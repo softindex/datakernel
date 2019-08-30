@@ -989,7 +989,7 @@ public final class SerializerBuilder {
 			listValue.add(call(self(), "deserializeVersion" + version, arg(0)));
 		}
 		asmFactory.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(BinaryInput.class, int.class),
-				switchForKey(arg(1), listKey, listValue));
+				switchByKey(arg(1), listKey, listValue));
 	}
 
 	private void defineDeserializeVersion(SerializerGen serializerGen,

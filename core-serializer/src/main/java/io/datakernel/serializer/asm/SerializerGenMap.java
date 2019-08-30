@@ -46,14 +46,14 @@ public final class SerializerGenMap extends AbstractSerializerGenMap {
 	protected Expression createConstructor(Expression length) {
 		Class<?> rawType = keySerializer.getRawType();
 		if (rawType.isEnum()) {
-			return let(constructor(EnumMap.class, cast(value(getType(rawType)), Class.class)));
+			return constructor(EnumMap.class, cast(value(getType(rawType)), Class.class));
 		}
 		return super.createConstructor(length);
 	}
 
 	@Override
 	public Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
-		return Expressions.mapForEach(collection, forEachKey, forEachValue);
+		return Expressions.forEach(collection, forEachKey, forEachValue);
 	}
 
 	@Override

@@ -100,12 +100,12 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		if (nullable) {
 			staticMethods.registerStaticSerializeMethod(this, version,
 					ifThenElse(isNotNull(arg(2)),
-							switchForKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue),
+							switchByKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue),
 							callStatic(BinaryOutputUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
 			);
 		} else {
 			staticMethods.registerStaticSerializeMethod(this, version,
-					switchForKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue)
+					switchByKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue)
 			);
 		}
 	}
@@ -120,17 +120,19 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
-		List<Expression> list = new ArrayList<>();
+
+		List<Expression> versions = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), dataType));
+			versions.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), dataType));
 		}
-		if (nullable) list.add(-startIndex, nullRef(getRawType()));
+		if (nullable) versions.add(-startIndex, nullRef(getRawType()));
 
-		Variable subClassIndex = let(sub(call(arg(0), "readByte"), value(startIndex)));
+		Variable subClassIndex = var(sub(call(arg(0), "readByte"), value(startIndex)));
 
-		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassIndex, list), dataType));
+		staticMethods.registerStaticDeserializeMethod(this, version,
+				cast(switchByIndex(subClassIndex, versions), dataType));
 	}
 
 	@Override

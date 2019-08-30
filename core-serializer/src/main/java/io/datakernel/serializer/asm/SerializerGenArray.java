@@ -88,7 +88,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 		Expression writeBytes = callStatic(BinaryOutputUtils.class, "write", byteArray, off, castedValue);
 		Expression writeZero = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0)));
 		Expression writeLength = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
-		Expression expressionFor = expressionFor(value(0), length,
+		Expression expressionFor = loop(value(0), length,
 				it -> set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)));
 
 		if (!nullable) {
@@ -124,7 +124,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 								sequence(
 										type.getComponentType() == Byte.TYPE ?
 												call(arg(0), "read", array) :
-												expressionFor(value(0), len,
+												loop(value(0), len,
 														i -> setArrayItem(array, i,
 																cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
 										array))) :
@@ -135,7 +135,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 										sequence(
 												type.getComponentType() == Byte.TYPE ?
 														call(arg(0), "read", array) :
-														expressionFor(value(0), dec(len),
+														loop(value(0), dec(len),
 																i -> setArrayItem(array, i,
 																		cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
 												array)

@@ -21,7 +21,6 @@ import org.objectweb.asm.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -56,7 +55,7 @@ public final class Expressions {
 	 * @param expression expression which will be processed when variable will be used
 	 * @return new instance of the Expression
 	 */
-	public static Variable let(Expression expression) {
+	public static Variable var(Expression expression) {
 		return new ExpressionLet(expression);
 	}
 
@@ -65,8 +64,12 @@ public final class Expressions {
 		return sequence(let, fn.apply(let));
 	}
 
-	public static Expression let(Expression expression1, Expression expression2, BiFunction<Variable, Variable, Expression> fn) {
-		return fn.apply(new ExpressionLet(expression1), new ExpressionLet(expression2));
+	public static Expression let(Expression[] expressions, Function<Variable[], Expression> fn) {
+		Variable[] variables = Arrays.stream(expressions).map(Expressions::var).toArray(Variable[]::new);
+		List<Expression> sequence = new ArrayList<>(variables.length + 1);
+		sequence.addAll(asList(variables));
+		sequence.add(fn.apply(variables));
+		return sequence(sequence);
 	}
 
 	/**
@@ -348,7 +351,7 @@ public final class Expressions {
 	 * @param value value which will be created as constant
 	 * @return new instance of the ExpressionConstant
 	 */
-	public static ExpressionConstant value(Object value) {
+	public static Expression value(Object value) {
 		return new ExpressionConstant(value);
 	}
 
@@ -358,7 +361,7 @@ public final class Expressions {
 	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionHash hashCodeOfThis(List<String> properties) {
+	public static Expression hashCodeOfThis(List<String> properties) {
 		List<Expression> arguments = new ArrayList<>();
 		for (String property : properties) {
 			arguments.add(property(new VarThis(), property));
@@ -366,7 +369,7 @@ public final class Expressions {
 		return new ExpressionHash(arguments);
 	}
 
-	public static ExpressionHash hashCodeOfThis(String... properties) {
+	public static Expression hashCodeOfThis(String... properties) {
 		return hashCodeOfThis(asList(properties));
 	}
 
@@ -376,7 +379,7 @@ public final class Expressions {
 	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionHash hashCodeOfArgs(List<Expression> properties) {
+	public static Expression hashCodeOfArgs(List<Expression> properties) {
 		return new ExpressionHash(properties);
 	}
 
@@ -386,7 +389,7 @@ public final class Expressions {
 	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionHash hashCodeOfArgs(Expression... properties) {
+	public static Expression hashCodeOfArgs(Expression... properties) {
 		return hashCodeOfArgs(asList(properties));
 	}
 
@@ -531,28 +534,88 @@ public final class Expressions {
 		return ExpressionVoid.INSTANCE;
 	}
 
-	public static Expression switchForPosition(Expression position, List<Expression> list) {
-		return new ExpressionSwitch(position, null, list);
+	public static Expression exception(Class<? extends Throwable> exception) {
+		return new ExpressionThrow(exception, null);
 	}
 
-	public static Expression switchForPosition(Expression position, Expression... expressions) {
-		return new ExpressionSwitch(position, null, asList(expressions));
+	public static Expression exception(Class<? extends Throwable> exception, Expression message) {
+		return new ExpressionThrow(exception, message);
 	}
 
-	public static Expression switchForPosition(Expression position, Expression defaultExp, List<Expression> list) {
-		return new ExpressionSwitch(position, defaultExp, list);
+	public static final class SwitchByIndexBuilder {
+		private final List<Expression> expressions = new ArrayList<>();
+		private Expression defaultExpression = exception(IllegalArgumentException.class);
+
+		public SwitchByIndexBuilder with(Expression expression) {
+			this.expressions.add(expression);
+			return this;
+		}
+
+		public SwitchByIndexBuilder with(List<Expression> expressions) {
+			this.expressions.addAll(expressions);
+			return this;
+		}
+
+		public SwitchByIndexBuilder with(Expression... expressions) {
+			this.expressions.addAll(asList(expressions));
+			return this;
+		}
+
+		public SwitchByIndexBuilder withDefault(Expression defaultExpression) {
+			this.defaultExpression = defaultExpression;
+			return this;
+		}
 	}
 
-	public static Expression switchForPosition(Expression position, Expression defaultExp, Expression... expressions) {
-		return new ExpressionSwitch(position, defaultExp, asList(expressions));
+	public static Expression switchByIndex(Expression index, Consumer<SwitchByIndexBuilder> builderConsumer) {
+		SwitchByIndexBuilder builder = new SwitchByIndexBuilder();
+		return new ExpressionSwitchByIndex(index, builder.expressions, builder.defaultExpression);
 	}
 
-	public static Expression switchForKey(Expression key, List<Expression> listKey, List<Expression> listValue) {
-		return new ExpressionSwitchForKey(key, null, listKey, listValue);
+	public static Expression switchByIndex(Expression index, List<Expression> expressions) {
+		return new ExpressionSwitchByIndex(index, expressions, exception(IllegalArgumentException.class));
 	}
 
-	public static Expression switchForKey(Expression key, Expression defaultExp, List<Expression> listKey, List<Expression> listValue) {
-		return new ExpressionSwitchForKey(key, defaultExp, listKey, listValue);
+	public static Expression switchByIndex(Expression index, Expression... expressions) {
+		return new ExpressionSwitchByIndex(index, asList(expressions), null);
+	}
+
+	public static Expression switchByIndex(Expression index, Expression defaultExp, List<Expression> expressions) {
+		return new ExpressionSwitchByIndex(index, expressions, defaultExp);
+	}
+
+	public static Expression switchByIndex(Expression index, Expression defaultExp, Expression[] expressions) {
+		return new ExpressionSwitchByIndex(index, asList(expressions), defaultExp);
+	}
+
+	public static final class SwitchByKeyBuilder {
+		private final List<Expression> matchCases = new ArrayList<>();
+		private final List<Expression> matchExpressions = new ArrayList<>();
+		private Expression defaultExpression = exception(IllegalArgumentException.class);
+
+		public SwitchByKeyBuilder with(Expression matchCase, Expression matchExpression) {
+			this.matchCases.add(matchCase);
+			this.matchExpressions.add(matchExpression);
+			return this;
+		}
+
+		public SwitchByKeyBuilder withDefault(Expression defaultExpression) {
+			this.defaultExpression = defaultExpression;
+			return this;
+		}
+	}
+
+	public static Expression switchByKey(Expression index, Consumer<SwitchByKeyBuilder> builderConsumer) {
+		SwitchByKeyBuilder builder = new SwitchByKeyBuilder();
+		return new ExpressionSwitchByKey(index, builder.matchCases, builder.matchExpressions, builder.defaultExpression);
+	}
+
+	public static Expression switchByKey(Expression key, List<Expression> matchCases, List<Expression> matchExceptions) {
+		return new ExpressionSwitchByKey(key, matchCases, matchExceptions, exception(IllegalArgumentException.class));
+	}
+
+	public static Expression switchByKey(Expression key, List<Expression> listKey, List<Expression> listValue, Expression defaultExpression) {
+		return new ExpressionSwitchByKey(key, listKey, listValue, defaultExpression);
 	}
 
 	public static Expression setArrayItem(Expression array, Expression position, Expression newElement) {
@@ -567,11 +630,11 @@ public final class Expressions {
 		return new ExpressionIteratorForEach(collection, type, it);
 	}
 
-	public static Expression expressionFor(Expression from, Expression to, Function<Expression, Expression> it) {
+	public static Expression loop(Expression from, Expression to, Function<Expression, Expression> it) {
 		return new ExpressionFor(from, to, it);
 	}
 
-	public static Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
+	public static Expression forEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
 		return new ExpressionMapForEach(collection, forEachKey, forEachValue);
 	}
 
@@ -600,8 +663,8 @@ public final class Expressions {
 	}
 
 	public static ExpressionSequence sequenceOf(Consumer<List<Expression>> consumer) {
-		ExpressionSequence sequence = new ExpressionSequence();
-		consumer.accept(sequence.expressions);
-		return sequence;
+		List<Expression> expressions = new ArrayList<>();
+		consumer.accept(expressions);
+		return new ExpressionSequence(expressions);
 	}
 }

@@ -22,7 +22,8 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.callStatic;
+import static io.datakernel.codegen.Expressions.value;
 
 public class SerializerGenSet extends AbstractSerializerGenCollection {
 	// region creators
@@ -42,7 +43,7 @@ public class SerializerGenSet extends AbstractSerializerGenCollection {
 	@Override
 	protected Expression createConstructor(Expression length) {
 		if (valueSerializer.getRawType().isEnum()) {
-			return let(callStatic(EnumSet.class, "noneOf", value(valueSerializer.getRawType())));
+			return callStatic(EnumSet.class, "noneOf", value(valueSerializer.getRawType()));
 		}
 		return super.createConstructor(length);
 	}

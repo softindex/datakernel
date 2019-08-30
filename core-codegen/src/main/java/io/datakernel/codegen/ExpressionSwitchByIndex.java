@@ -16,7 +16,6 @@
 
 package io.datakernel.codegen;
 
-import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -24,57 +23,47 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.codegen.Expressions.newLocal;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-final class ExpressionSwitch implements Expression {
+final class ExpressionSwitchByIndex implements Expression {
 	private final Expression index;
-	private final List<Expression> list;
-	@Nullable
-	private final Expression defaultExp;
+	private final List<Expression> expressions;
+	private final Expression defaultExpression;
 
-	ExpressionSwitch(Expression index, @Nullable Expression defaultExp, List<Expression> list) {
-		this.index = checkNotNull(index);
-		this.list = checkNotNull(list);
-		this.defaultExp = defaultExp;
+	ExpressionSwitchByIndex(Expression index, List<Expression> expressions, Expression defaultExpression) {
+		this.index = index;
+		this.expressions = expressions;
+		this.defaultExpression = defaultExpression;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		VarLocal varReadedSubClass = newLocal(ctx, index.load(ctx));
-		varReadedSubClass.store(ctx);
+		VarLocal index = newLocal(ctx, this.index.load(ctx));
+		index.store(ctx);
 
 		Label labelExit = new Label();
 
 		Type listItemType = getType(Object.class);
 
-		for (int i = 0; i < list.size(); i++) {
+		for (int i = 0; i < expressions.size(); i++) {
 			Label labelNext = new Label();
 
 			g.push(i);
-			varReadedSubClass.load(ctx);
+			index.load(ctx);
 			g.ifCmp(INT_TYPE, GeneratorAdapter.NE, labelNext);
 
-			listItemType = list.get(i).load(ctx);
+			listItemType = expressions.get(i).load(ctx);
 			g.goTo(labelExit);
 
 			g.mark(labelNext);
 		}
 
-		if (defaultExp != null) {
-			defaultExp.load(ctx);
-		} else {
-			Variable sb = new ExpressionLet(constructor(StringBuilder.class));
-			call(sb, "append", value("Key '")).load(ctx);
-			call(sb, "append", cast(varReadedSubClass, getType(int.class))).load(ctx);
-			call(sb, "append", value(String.format("' not in range [0-%d)", list.size()))).load(ctx);
-			constructor(IllegalArgumentException.class, call(sb, "toString")).load(ctx);
-			g.throwException();
-		}
+		defaultExpression.load(ctx);
+
 		g.mark(labelExit);
 
 		return listItemType;
@@ -85,19 +74,19 @@ final class ExpressionSwitch implements Expression {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		ExpressionSwitch that = (ExpressionSwitch) o;
+		ExpressionSwitchByIndex that = (ExpressionSwitchByIndex) o;
 
-		if (!index.equals(that.index)) return false;
-		if (!list.equals(that.list)) return false;
-		return Objects.equals(defaultExp, that.defaultExp);
-
+		if (!Objects.equals(index, that.index)) return false;
+		if (!Objects.equals(expressions, that.expressions)) return false;
+		if (!Objects.equals(defaultExpression, that.defaultExpression)) return false;
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
 		int result = index.hashCode();
-		result = 31 * result + list.hashCode();
-		result = 31 * result + (defaultExp == null ? 0 : list.hashCode());
+		result = 31 * result + expressions.hashCode();
+		result = 31 * result + (defaultExpression == null ? 0 : expressions.hashCode());
 		return result;
 	}
 }

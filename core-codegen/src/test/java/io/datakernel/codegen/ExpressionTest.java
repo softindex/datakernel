@@ -176,7 +176,6 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void test() throws IllegalAccessException, InstantiationException {
-		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test.class)
 				.withField("x", int.class)
 				.withField("y", Long.class)
@@ -199,10 +198,11 @@ public class ExpressionTest {
 						set(property(arg(0), "property1"), value(10)),
 						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
-				.withMethod("ctor", sequence(
-						local,
-						set(property(local, "property2"), value(2)),
-						local))
+				.withMethod("ctor", let(
+						constructor(TestPojo.class, value(1)),
+						instance -> sequence(
+								set(property(instance, "property2"), value(2)),
+								instance)))
 				.withMethod("getX",
 						property(self(), "x"))
 				.withMethod("getY",
@@ -608,7 +608,6 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBuildedInstance() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass1 = ClassBuilder.create(definingClassLoader, Test.class)
 				.withField("x", int.class)
 				.withField("y", Long.class)
@@ -631,10 +630,11 @@ public class ExpressionTest {
 						set(property(arg(0), "property1"), value(10)),
 						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
-				.withMethod("ctor", sequence(
-						local,
-						set(property(local, "property2"), value(2)),
-						local))
+				.withMethod("ctor", let(
+						constructor(TestPojo.class, value(1)),
+						local -> sequence(
+								set(property(local, "property2"), value(2)),
+								local)))
 				.withMethod("getX",
 						property(self(), "x"))
 				.withMethod("getY",
@@ -678,10 +678,11 @@ public class ExpressionTest {
 						set(property(arg(0), "property1"), value(10)),
 						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
-				.withMethod("ctor", sequence(
-						local,
-						set(property(local, "property2"), value(2)),
-						local))
+				.withMethod("ctor", let(
+						constructor(TestPojo.class, value(1)),
+						local -> sequence(
+								set(property(local, "property2"), value(2)),
+								local)))
 				.withMethod("getX",
 						property(self(), "x"))
 				.withMethod("getY",

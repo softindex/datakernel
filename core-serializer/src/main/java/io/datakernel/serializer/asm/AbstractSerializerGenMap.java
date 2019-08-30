@@ -51,7 +51,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	protected abstract Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue);
 
 	protected Expression createConstructor(Expression length) {
-		return let(constructor(mapImplType, !nullable ? length : dec(length)));
+		return constructor(mapImplType, !nullable ? length : dec(length));
 	}
 
 	@Override
@@ -95,25 +95,29 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	@Override
 	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		check(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
-		return let(
-				call(arg(0), "readVarInt"),
-				length -> {
-					Expression container = createConstructor(length);
-					Expression forEach = expressionFor(value(0), (!nullable ? length : dec(length)),
-							it -> sequence(
-									call(container, "put",
-											cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), keyType),
-											cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), valueType)
-									),
-									voidExp()));
-					if (!nullable) {
-						return sequence(container, forEach, container);
-					} else {
-						return ifThenElse(cmpEq(length, value(0)),
+		return let(call(arg(0), "readVarInt"), length ->
+				!nullable ?
+						let(createConstructor(length), instance -> sequence(
+								loop(value(0), length,
+										it -> sequence(
+												call(instance, "put",
+														cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), keyType),
+														cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), valueType)
+												),
+												voidExp())),
+								instance)) :
+						ifThenElse(
+								cmpEq(length, value(0)),
 								nullRef(mapImplType),
-								sequence(container, forEach, container));
-					}
-				});
+								let(createConstructor(length), instance -> sequence(
+										loop(value(0), dec(length),
+												it -> sequence(
+														call(instance, "put",
+																cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), keyType),
+																cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), valueType)
+														),
+														voidExp())),
+										instance))));
 	}
 
 	@Override

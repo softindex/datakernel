@@ -19,28 +19,18 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.VOID_TYPE;
 
 /**
  * Defines methods which allow to use several methods one after the other
  */
-public final class ExpressionSequence implements Expression {
-	final List<Expression> expressions = new ArrayList<>();
+final class ExpressionSequence implements Expression {
+	private final List<Expression> expressions;
 
-	public ExpressionSequence() {
-	}
-
-	public ExpressionSequence(List<Expression> expressions) {
-		this.expressions.addAll(expressions);
-	}
-
-	public ExpressionSequence add(Expression expression) {
-		expressions.add(checkNotNull(expression));
-		return this;
+	ExpressionSequence(List<Expression> expressions) {
+		this.expressions = expressions;
 	}
 
 	@Override

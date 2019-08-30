@@ -330,7 +330,7 @@ public class SerializerGenClass implements SerializerGen {
 			if (!fieldGen.hasVersion(version)) continue;
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			Expression expression = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel));
+			Expression expression = var(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel));
 			list.add(expression);
 			map.put(fieldName, cast(expression, fieldGen.getRawType()));
 		}
@@ -342,7 +342,7 @@ public class SerializerGenClass implements SerializerGen {
 			constructor = callFactory(map, version);
 		}
 
-		Expression local = let(constructor);
+		Expression local = var(constructor);
 		list.add(local);
 
 		for (Method method : setters.keySet()) {
@@ -429,9 +429,9 @@ public class SerializerGenClass implements SerializerGen {
 
 	@SuppressWarnings("unchecked")
 	private Expression deserializeInterface(Class<?> targetType,
-	                                        int version,
-	                                        StaticMethods staticMethods,
-	                                        CompatibilityLevel compatibilityLevel) {
+			int version,
+			StaticMethods staticMethods,
+			CompatibilityLevel compatibilityLevel) {
 		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), (Class<Object>) targetType);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
@@ -445,44 +445,42 @@ public class SerializerGenClass implements SerializerGen {
 
 		Class<?> newClass = asmFactory.build();
 
-		Expression local = let(constructor(newClass));
-		List<Expression> list = new ArrayList<>();
-		list.add(local);
+		return let(
+				constructor(newClass),
+				instance -> sequenceOf(expressions -> {
+					for (String fieldName : fields.keySet()) {
+						FieldGen fieldGen = fields.get(fieldName);
+						if (!fieldGen.hasVersion(version))
+							continue;
+						Variable property = property(instance, fieldName);
 
-		for (String fieldName : fields.keySet()) {
-			FieldGen fieldGen = fields.get(fieldName);
-			if (!fieldGen.hasVersion(version))
-				continue;
-			Variable property = property(local, fieldName);
-
-			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			Expression expression =
-					fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel);
-			list.add(set(property, expression));
-		}
-
-		list.add(local);
-		return sequence(list);
+						fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
+						Expression expression =
+								fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel);
+						expressions.add(set(property, expression));
+					}
+					expressions.add(instance);
+				}));
 	}
 
 	private Expression deserializeClassSimple(int version,
-	                                          StaticMethods staticMethods,
-	                                          CompatibilityLevel compatibilityLevel) {
-		Expression local = let(constructor(dataTypeIn));
+			StaticMethods staticMethods,
+			CompatibilityLevel compatibilityLevel) {
+		return let(
+				constructor(dataTypeIn),
+				instance ->
+						sequenceOf(expressions -> {
+							for (String fieldName : fields.keySet()) {
+								FieldGen fieldGen = fields.get(fieldName);
 
-		List<Expression> list = new ArrayList<>();
-		list.add(local);
-		for (String fieldName : fields.keySet()) {
-			FieldGen fieldGen = fields.get(fieldName);
+								if (!fieldGen.hasVersion(version)) continue;
 
-			if (!fieldGen.hasVersion(version)) continue;
-
-			Variable property = property(local, fieldName);
-			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			list.add(set(property, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel)));
-		}
-		list.add(local);
-		return sequence(list);
+								Variable property = property(instance, fieldName);
+								fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
+								expressions.add(set(property, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel)));
+							}
+							expressions.add(instance);
+						}));
 	}
 
 	private Expression pushDefaultValue(Type type) {
