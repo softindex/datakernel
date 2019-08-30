@@ -47,21 +47,14 @@ To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io)
 ### Basic HTTP server in less than 15 lines of code:
 ```java
 public final class HelloWorldExample { 
-    private static final byte[] HELLO_WORLD = "Hello world!".getBytes(UTF_8);
-    
     public static void main(String[] args) throws IOException {
-    	Eventloop eventloop = Eventloop.create();
-    	AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+    	  Eventloop eventloop = Eventloop.create();
+    	  AsyncHttpServer server = AsyncHttpServer.create(eventloop,
                 request -> Promise.of(
                         HttpResponse.ok200()
-                        .withBody(HELLO_WORLD)))
+                                .withPlainText("Hello world!")))
                 .withListenPort(8080);
-
-    	server.listen();
-
-        System.out.println("Server is running");
-        System.out.println("You can connect from browser by visiting 'http://localhost:8080/'");
-
+        server.listen();
         eventloop.run();
     }
 }
