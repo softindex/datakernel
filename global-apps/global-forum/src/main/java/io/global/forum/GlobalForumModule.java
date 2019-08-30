@@ -11,7 +11,6 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
-import io.datakernel.remotefs.LocalFsClient;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.SimKey;
@@ -20,13 +19,17 @@ import io.global.forum.container.ForumUserContainer;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
-import io.global.ot.service.ContainerHolder;
+import io.global.ot.service.ContainerKeyManager;
+import io.global.ot.service.ContainerManager;
+import io.global.ot.service.FsContainerKeyManager;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
+import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
@@ -48,19 +51,17 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	AsyncServlet servlet(ContainerHolder<ForumUserContainer> containerHolder, @Named("Forum") AsyncServlet forumServlet) {
+	AsyncServlet servlet(ContainerManager<ForumUserContainer> containerManager, @Named("Forum") AsyncServlet forumServlet) {
 		return RoutingServlet.create()
 				.map("/:pubKey/*", request -> {
 					try {
 						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
-						return containerHolder.getUserContainer(pubKey)
-								.then(container -> {
-									if (container == null) {
-										return Promise.of(HttpResponse.notFound404());
-									}
-									request.attach(container);
-									return forumServlet.serve(request);
-								});
+						ForumUserContainer container = containerManager.getUserContainer(pubKey);
+						if (container == null) {
+							return Promise.of(HttpResponse.notFound404());
+						}
+						request.attach(container);
+						return forumServlet.serve(request);
 					} catch (ParseException ignored) {
 						return Promise.of(HttpResponse.notFound404());
 					}
@@ -78,15 +79,14 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	ContainerEnsurer<ForumUserContainer> containerEnsurer(ContainerHolder<ForumUserContainer> containerHolder) {
-		Eventloop eventloop = containerHolder.getEventloop();
-		LocalFsClient fsClient = LocalFsClient.create(eventloop, Paths.get("containers"));
-		return ContainerEnsurer.create(containerHolder, fsClient, "keys.dat");
+	ContainerKeyManager containerKeyManager(Executor executor, Config config) {
+		Path containersDir = config.get(ofPath(), "containers.dir", Paths.get("containers"));
+		return FsContainerKeyManager.create(executor, containersDir, true);
 	}
 
 	@Provides
-	ContainerHolder<ForumUserContainer> containerHolder(Eventloop eventloop, BiFunction<Eventloop, PrivKey, ForumUserContainer> factory) {
-		return new ContainerHolder<>(eventloop, factory);
+	ContainerManager<ForumUserContainer> containerHolder(Eventloop eventloop, ContainerKeyManager containerKeyManager, BiFunction<Eventloop, PrivKey, ForumUserContainer> factory) {
+		return ContainerManager.create(eventloop, containerKeyManager, factory);
 	}
 
 	@Provides

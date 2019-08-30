@@ -15,15 +15,8 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>global-ot</artifactId>
+      <artifactId>global-launchers</artifactId>
       <version>${project.version}</version>
-      <optional>true</optional>
-    </dependency>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>global-pm</artifactId>
-      <version>${project.version}</version>
-      <optional>true</optional>
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>

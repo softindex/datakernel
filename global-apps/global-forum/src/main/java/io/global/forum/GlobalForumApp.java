@@ -13,7 +13,6 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.forum.container.ForumRepoNames;
-import io.global.forum.container.ForumUserContainer;
 import io.global.launchers.GlobalNodesModule;
 
 import java.util.concurrent.CompletionStage;
@@ -32,9 +31,6 @@ public final class GlobalForumApp extends Launcher {
 
 	@Inject
 	AsyncHttpServer server;
-
-	@Inject
-	ContainerEnsurer<ForumUserContainer> ensurer;
 
 	@Provides
 	Config config() {

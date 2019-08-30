@@ -10,15 +10,15 @@ import io.global.common.PrivKey;
 import org.jetbrains.annotations.NotNull;
 
 public final class ServiceEnsuringServlet implements AsyncServlet {
-	private final ContainerHolder<?> serviceHolder;
+	private final ContainerManager<?> serviceHolder;
 	private final AsyncServlet next;
 
-	private ServiceEnsuringServlet(ContainerHolder serviceHolder, AsyncServlet next) {
+	private ServiceEnsuringServlet(ContainerManager serviceHolder, AsyncServlet next) {
 		this.serviceHolder = serviceHolder;
 		this.next = next;
 	}
 
-	public static ServiceEnsuringServlet create(ContainerHolder serviceHolder, AsyncServlet next) {
+	public static ServiceEnsuringServlet create(ContainerManager serviceHolder, AsyncServlet next) {
 		return new ServiceEnsuringServlet(serviceHolder, next);
 	}
 
@@ -31,7 +31,8 @@ public final class ServiceEnsuringServlet implements AsyncServlet {
 						String key = request.getCookie("Key");
 						if (key != null) {
 							PrivKey privKey = PrivKey.fromString(key);
-							return serviceHolder.ensureUserContainer(privKey);
+							// return serviceHolder.ensureUserContainer(privKey);
+							return Promise.complete();
 						} else {
 							return Promise.complete();
 						}
