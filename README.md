@@ -5,8 +5,10 @@
 </p>
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
+[![Download](https://img.shields.io/badge/download-3.0.0--SNAPSHOT-blue.svg)](https://github.com/softindex/datakernel/archive/master.zip)
 [![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
-[![Download](https://img.shields.io/badge/download-3.0.0--SNAPSHOT-blue)](https://github.com/softindex/datakernel/archive/master.zip)
+
+[![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
 
 ## Introduction
 
@@ -43,7 +45,7 @@ To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io)
 
 ## Examples
 
-* **Basic HTTP server in less than 15 lines of code:**
+### Basic HTTP server in less than 15 lines of code:
 ```java
 public final class HelloWorldExample { 
     private static final byte[] HELLO_WORLD = "Hello world!".getBytes(UTF_8);
@@ -71,9 +73,7 @@ public final class HelloWorldExample {
 
 📌 *`AsyncHttpServer` handles ~165K requests per second on single core*
 
-<br>
-
-* **Even simpler asynchronous HTTP server:**
+### Even simpler asynchronous HTTP server:
 ```java
 public final class HttpHelloWorldExample extends HttpServerLauncher { 
     @Provides
@@ -101,9 +101,7 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 
 📌 *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
 
-<br>
-
-* **Lightning-fast RPC server:**
+### Lightning-fast RPC server:
 ```java
 ...
 public RpcServer rpcServer(Eventloop eventloop, Config config) {
