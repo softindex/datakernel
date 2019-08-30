@@ -31,19 +31,12 @@ final class ExpressionLet implements Variable {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return field.type(ctx);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		if (var == null) {
-			var = newLocal(ctx, field.type(ctx));
-			field.load(ctx);
+			var = newLocal(ctx, field.load(ctx));
 			var.store(ctx);
 		}
-		var.load(ctx);
-		return field.type(ctx);
+		return var.load(ctx);
 	}
 
 	@Nullable
@@ -55,8 +48,8 @@ final class ExpressionLet implements Variable {
 	@Override
 	public void store(Context ctx, Object storeContext, Type type) {
 		if (var == null) {
-			var = newLocal(ctx, field.type(ctx));
-			field.load(ctx);
+			Type fieldType = field.load(ctx);
+			var = newLocal(ctx, fieldType);
 			var.store(ctx);
 		}
 

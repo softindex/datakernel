@@ -20,14 +20,14 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.self;
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.argsToString;
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
 
 final class ExpressionCallStaticSelf implements Expression {
 	private final String methodName;
@@ -38,59 +38,43 @@ final class ExpressionCallStaticSelf implements Expression {
 		this.arguments = checkNotNull(expressions);
 	}
 
-	@Override
-	public Type type(Context ctx) {
-		List<Type> argumentTypes = new ArrayList<>();
-		for (Expression argument : arguments) {
-			argumentTypes.add(argument.type(ctx));
-		}
-
-		Set<Method> methods = ctx.getStaticMethods().keySet();
-		for (Method m : methods) {
-			if (m.getName().equals(methodName)) {
-				if (m.getArgumentTypes().length == argumentTypes.size()) {
-					Type[] methodTypes = m.getArgumentTypes();
-					boolean isSame = true;
-					for (int i = 0; i < argumentTypes.size(); i++) {
-						if (!methodTypes[i].equals(argumentTypes.get(i))) {
-							isSame = false;
-							break;
-						}
+	public Type type(Type[] argumentTypes, Context ctx) {
+		for (Method m : ctx.getStaticMethods().keySet()) {
+			if (m.getName().equals(methodName) && m.getArgumentTypes().length == argumentTypes.length) {
+				Type[] methodTypes = m.getArgumentTypes();
+				boolean found = true;
+				for (int i = 0; i < argumentTypes.length; i++) {
+					if (!methodTypes[i].equals(argumentTypes[i])) {
+						found = false;
+						break;
 					}
-					if (isSame) {
-						return m.getReturnType();
-					}
+				}
+				if (found) {
+					return m.getReturnType();
 				}
 			}
 		}
 		throw new RuntimeException(format("No method %s.%s(%s). %s",
-				self().type(ctx).getClassName(),
+				ctx.getThisType().getClassName(),
 				methodName,
-				(!argumentTypes.isEmpty() ? argsToString(argumentClasses(ctx, arguments)) : ""),
+				argumentTypes.length != 0 ?
+						argsToString(Arrays.stream(argumentTypes).collect(toList())) :
+						"",
 				exceptionInGeneratedClass(ctx)));
-	}
-
-	private static List<Class<?>> argumentClasses(Context ctx, List<Expression> expressions) {
-		List<Class<?>> classList = new ArrayList<>();
-		for (Expression expression : expressions) {
-			classList.add(getJavaType(ctx.getClassLoader(), expression.type(ctx)));
-		}
-		return classList;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Type ownerType = self().type(ctx);
 
-		List<Type> argumentTypes = new ArrayList<>();
-		for (Expression argument : arguments) {
-			argument.load(ctx);
-			argumentTypes.add(argument.type(ctx));
+		Type[] argumentTypes = new Type[arguments.size()];
+		for (int i = 0; i < arguments.size(); i++) {
+			Type argumentType = arguments.get(i).load(ctx);
+			argumentTypes[i] = argumentType;
 		}
 
-		Type returnType = type(ctx);
-		g.invokeStatic(ownerType, new Method(methodName, returnType, argumentTypes.toArray(new Type[]{})));
+		Type returnType = type(argumentTypes, ctx);
+		g.invokeStatic(ctx.getThisType(), new Method(methodName, returnType, argumentTypes));
 		return returnType;
 	}
 

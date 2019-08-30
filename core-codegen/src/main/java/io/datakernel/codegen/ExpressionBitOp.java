@@ -20,7 +20,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.codegen.Utils.isValidCast;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionBitOp implements Expression {
@@ -35,24 +34,6 @@ final class ExpressionBitOp implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		int leftSort = left.type(ctx).getSort();
-		int rightSort = right.type(ctx).getSort();
-
-		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
-			if (leftSort == Type.LONG || rightSort == Type.LONG) return Type.LONG_TYPE;
-			if (leftSort == Type.VOID || rightSort == Type.VOID) throw new IllegalArgumentException("One of types of bit operation arguments is void");
-			if (leftSort <= Type.INT && rightSort <= Type.INT) return Type.INT_TYPE;
-			throw new IllegalArgumentException("One of types of bit operation arguments is not integral");
-		} else {
-			if (rightSort == Type.VOID || rightSort > Type.INT) throw new IllegalArgumentException("Right argument of a bit operation arguments is void or not integral");
-			if (leftSort == Type.LONG) return Type.LONG_TYPE;
-			if (leftSort == Type.VOID || leftSort > Type.INT) throw new IllegalArgumentException("Left argument of a bit operation arguments is void or not integral");
-			return Type.INT_TYPE;
-		}
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
 			return loadOther(ctx);
@@ -62,30 +43,33 @@ final class ExpressionBitOp implements Expression {
 
 	private Type loadOther(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Type type = type(ctx);
 
-		left.load(ctx);
-		Type leftType = left.type(ctx);
-		if (isValidCast(leftType, type)) {
-			g.cast(leftType, type);
+		Type leftType = left.load(ctx);
+		Type rightType = right.load(ctx);
+
+		Type resultType = unifyType(leftType.getSort(), rightType.getSort());
+
+		if (!resultType.equals(leftType)) {
+			int rightLocal = g.newLocal(rightType);
+			g.storeLocal(rightLocal);
+			g.cast(leftType, resultType);
+			g.loadLocal(rightLocal);
 		}
 
-		right.load(ctx);
-		Type rightType = right.type(ctx);
-		if (isValidCast(rightType, type)) {
-			g.cast(rightType, type);
+		if (!resultType.equals(rightType)) {
+			g.cast(rightType, resultType);
 		}
 
-		g.visitInsn(type.getOpcode(op.opCode));
-		return type;
+		g.visitInsn(resultType.getOpcode(op.opCode));
+		return resultType;
 	}
 
 	private Type loadShift(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
 		VarLocal varIntShift = newLocal(ctx, Type.INT_TYPE);
-		right.load(ctx);
-		switch (right.type(ctx).getSort()) {
+		Type rightType = right.load(ctx);
+		switch (rightType.getSort()) {
 			case Type.BOOLEAN:
 			case Type.SHORT:
 			case Type.CHAR:
@@ -99,8 +83,8 @@ final class ExpressionBitOp implements Expression {
 		}
 		varIntShift.store(ctx);
 
-		left.load(ctx);
-		int valueSort = left.type(ctx).getSort();
+		Type leftType = left.load(ctx);
+		int valueSort = leftType.getSort();
 
 		if (valueSort == Type.LONG) {
 			varIntShift.load(ctx);
@@ -123,6 +107,20 @@ final class ExpressionBitOp implements Expression {
 		}
 
 		throw new IllegalArgumentException("Left type if not an integral type");
+	}
+
+	private Type unifyType(int leftSort, int rightSort) {
+		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
+			if (leftSort == Type.LONG || rightSort == Type.LONG) return Type.LONG_TYPE;
+			if (leftSort == Type.VOID || rightSort == Type.VOID) throw new IllegalArgumentException("One of types of bit operation arguments is void");
+			if (leftSort <= Type.INT && rightSort <= Type.INT) return Type.INT_TYPE;
+			throw new IllegalArgumentException("One of types of bit operation arguments is not integral");
+		} else {
+			if (rightSort == Type.VOID || rightSort > Type.INT) throw new IllegalArgumentException("Right argument of a bit operation arguments is void or not integral");
+			if (leftSort == Type.LONG) return Type.LONG_TYPE;
+			if (leftSort == Type.VOID || leftSort > Type.INT) throw new IllegalArgumentException("Left argument of a bit operation arguments is void or not integral");
+			return Type.INT_TYPE;
+		}
 	}
 
 	@Override

@@ -42,22 +42,15 @@ final class ExpressionSwitch implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		if (list.size() != 0) {
-			return list.get(0).type(ctx);
-		} else {
-			return getType(Object.class);
-		}
-	}
-
-	@Override
 	public Type load(Context ctx) {
-		VarLocal varReadedSubClass = newLocal(ctx, index.type(ctx));
-		index.load(ctx);
+		GeneratorAdapter g = ctx.getGeneratorAdapter();
+
+		VarLocal varReadedSubClass = newLocal(ctx, index.load(ctx));
 		varReadedSubClass.store(ctx);
 
 		Label labelExit = new Label();
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
+
+		Type listItemType = getType(Object.class);
 
 		for (int i = 0; i < list.size(); i++) {
 			Label labelNext = new Label();
@@ -66,7 +59,7 @@ final class ExpressionSwitch implements Expression {
 			varReadedSubClass.load(ctx);
 			g.ifCmp(INT_TYPE, GeneratorAdapter.NE, labelNext);
 
-			list.get(i).load(ctx);
+			listItemType = list.get(i).load(ctx);
 			g.goTo(labelExit);
 
 			g.mark(labelNext);
@@ -84,7 +77,7 @@ final class ExpressionSwitch implements Expression {
 		}
 		g.mark(labelExit);
 
-		return type(ctx);
+		return listItemType;
 	}
 
 	@Override

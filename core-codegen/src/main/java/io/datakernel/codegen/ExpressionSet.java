@@ -33,11 +33,6 @@ final class ExpressionSet implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return Type.VOID_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		Object storeContext = to.beginStore(ctx);
 		Type type = from.load(ctx);

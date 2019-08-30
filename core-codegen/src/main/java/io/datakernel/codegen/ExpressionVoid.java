@@ -27,11 +27,6 @@ final class ExpressionVoid implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return VOID_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		return VOID_TYPE;
 	}

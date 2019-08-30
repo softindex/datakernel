@@ -31,15 +31,10 @@ final class ExpressionArrayGet implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return Type.getType(array.type(ctx).getDescriptor().substring(1));
-	}
-
-	@Override
 	public Type load(Context ctx) {
-		Type type = Type.getType(array.type(ctx).getDescriptor().substring(1));
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		array.load(ctx);
+		Type arrayType = array.load(ctx);
+		Type type = Type.getType(arrayType.getDescriptor().substring(1));
 		index.load(ctx);
 		g.arrayLoad(type);
 		return type;

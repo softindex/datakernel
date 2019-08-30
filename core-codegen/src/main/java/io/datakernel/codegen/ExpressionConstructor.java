@@ -41,28 +41,20 @@ final class ExpressionConstructor implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return getType(type);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
+		g.newInstance(getType(type));
+		g.dup();
+
 		Class<?>[] fieldTypes = new Class<?>[fields.size()];
-		Expression[] fieldVars = new Expression[fields.size()];
 		for (int i = 0; i < fields.size(); i++) {
 			Expression field = fields.get(i);
-			Type fieldType = field.type(ctx);
+			Type fieldType = field.load(ctx);
 			fieldTypes[i] = getJavaType(ctx.getClassLoader(), fieldType);
-			fieldVars[i] = field;
 		}
+
 		try {
 			Constructor<?> constructor = type.getConstructor(fieldTypes);
-			g.newInstance(getType(type));
-			g.dup();
-			for (Expression fieldVar : fieldVars) {
-				fieldVar.load(ctx);
-			}
 			g.invokeConstructor(getType(type), getMethod(constructor));
 			return getType(type);
 		} catch (NoSuchMethodException ignored) {

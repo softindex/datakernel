@@ -25,9 +25,11 @@ import io.datakernel.serializer.asm.SerializerGenArray;
 import io.datakernel.serializer.asm.SerializerGenByte;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Utils.*;
 import static java.util.Collections.singletonList;
 
 public final class MeasureHyperLogLog extends Measure {
@@ -111,20 +113,30 @@ public final class MeasureHyperLogLog extends Measure {
 		}
 
 		@Override
-		public Type type(Context ctx) {
-			return Type.VOID_TYPE;
-		}
-
-		@Override
 		public Type load(Context ctx) {
-			Type valueType = value.type(ctx);
+			GeneratorAdapter g = ctx.getGeneratorAdapter();
+			Type accumulatorType = accumulator.load(ctx);
+			Type valueType = value.load(ctx);
+			String methodName;
+			Type methodParameterType;
 			if (valueType == Type.LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
-				call(accumulator, "addLong", value).load(ctx);
+				methodName = "addLong";
+				methodParameterType = Type.LONG_TYPE;
 			} else if (valueType == Type.INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
-				call(accumulator, "addInt", value).load(ctx);
+				methodName = "addInt";
+				methodParameterType = Type.INT_TYPE;
 			} else {
-				call(accumulator, "addObject", value).load(ctx);
+				methodName = "addObject";
+				methodParameterType = Type.getType(Object.class);
 			}
+
+			if (isWrapperType(valueType)) {
+				g.unbox(methodParameterType);
+			}
+
+			invokeVirtualOrInterface(g, getJavaType(ctx.getClassLoader(), accumulatorType),
+					new org.objectweb.asm.commons.Method(methodName, Type.VOID_TYPE, new Type[]{methodParameterType}));
+
 			return Type.VOID_TYPE;
 		}
 

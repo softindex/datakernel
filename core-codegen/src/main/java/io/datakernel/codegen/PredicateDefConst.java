@@ -27,11 +27,6 @@ final class PredicateDefConst implements PredicateDef {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return Type.BOOLEAN_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		g.push(value);

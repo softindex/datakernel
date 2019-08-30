@@ -47,11 +47,6 @@ public final class Property implements Variable {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return typeOfPropertyOrGetter(ctx, owner.type(ctx), property);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		Type ownerType = owner.load(ctx);
 		return loadPropertyOrGetter(ctx, ownerType, property);

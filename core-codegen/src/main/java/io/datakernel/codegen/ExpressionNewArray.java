@@ -32,15 +32,6 @@ final class ExpressionNewArray implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		if (getType(type).getSort() == Type.ARRAY) {
-			return getType(type);
-		} else {
-			return getType("[L" + type.getName() + ";");
-		}
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		length.load(ctx);

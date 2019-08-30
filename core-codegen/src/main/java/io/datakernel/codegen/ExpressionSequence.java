@@ -44,16 +44,6 @@ public final class ExpressionSequence implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		Expression expression = getLast(expressions);
-		return expression.type(ctx);
-	}
-
-	private Expression getLast(List<Expression> list) {
-		return list.get(list.size() - 1);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 

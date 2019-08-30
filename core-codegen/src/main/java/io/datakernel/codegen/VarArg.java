@@ -30,14 +30,9 @@ public final class VarArg implements Variable {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return ctx.getArgumentType(argument);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		ctx.getGeneratorAdapter().loadArg(argument);
-		return type(ctx);
+		return ctx.getArgumentType(argument);
 	}
 
 	@Nullable

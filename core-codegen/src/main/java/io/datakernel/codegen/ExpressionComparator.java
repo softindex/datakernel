@@ -104,11 +104,6 @@ public final class ExpressionComparator implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return INT_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 

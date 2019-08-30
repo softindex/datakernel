@@ -22,8 +22,9 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
 
+import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Utils.tryGetJavaType;
+import static io.datakernel.codegen.Utils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
@@ -41,30 +42,26 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 	protected abstract Expression getValue(VarLocal varIt);
 
 	@Override
-	public Type type(Context ctx) {
-		return Type.VOID_TYPE;
-	}
-
-	@Override
 	public final Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		if (collection.type(ctx).getSort() == Type.ARRAY) {
+		Type collectionType = collection.load(ctx);
+		if (collectionType.getSort() == Type.ARRAY) {
 			return arrayForEach(ctx, g, labelLoop, labelExit);
 		}
 
 		VarLocal varIter = newLocal(ctx, getType(Iterator.class));
 
-		Class<?> t = tryGetJavaType(collection.type(ctx));
+		Class<?> t = tryGetJavaType(collectionType);
 		if (t.isInstance(Iterator.class) || t == Iterator.class) {
-			collection.load(ctx);
-			varIter.store(ctx);
+			// do nothing
 		} else {
-			call(collection, "iterator").load(ctx);
-			varIter.store(ctx);
+			invokeVirtualOrInterface(g, getJavaType(ctx.getClassLoader(), collectionType),
+					new org.objectweb.asm.commons.Method("iterator", getType(Iterator.class), new Type[]{}));
 		}
+		varIter.store(ctx);
 
 		g.mark(labelLoop);
 
@@ -87,7 +84,6 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 
 	public Type arrayForEach(Context ctx, GeneratorAdapter g, Label labelLoop, Label labelExit) {
 		VarLocal len = newLocal(ctx, Type.INT_TYPE);
-		collection.load(ctx);
 		g.arrayLength();
 		len.store(ctx);
 

@@ -23,14 +23,6 @@ import org.objectweb.asm.Type;
  */
 public interface Expression {
 	/**
-	 * Returns the type of the context
-	 *
-	 * @param ctx information about a dynamic class
-	 * @return type of the context
-	 */
-	Type type(Context ctx);
-
-	/**
 	 * Processes data and returns its type
 	 *
 	 * @param ctx information about a dynamic class

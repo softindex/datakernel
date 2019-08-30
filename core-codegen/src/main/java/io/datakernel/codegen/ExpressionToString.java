@@ -75,11 +75,6 @@ public final class ExpressionToString implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return getType(String.class);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
@@ -131,7 +126,7 @@ public final class ExpressionToString implements Expression {
 		}
 
 		g.invokeVirtual(getType(StringBuilder.class), getMethod("String toString()"));
-		return type(ctx);
+		return getType(String.class);
 	}
 
 	@SuppressWarnings("RedundantIfStatement")

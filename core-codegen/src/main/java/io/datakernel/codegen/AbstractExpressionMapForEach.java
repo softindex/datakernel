@@ -47,11 +47,6 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 	protected abstract Expression getValue(VarLocal entry);
 
 	@Override
-	public final Type type(Context ctx) {
-		return Type.VOID_TYPE;
-	}
-
-	@Override
 	public final Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label labelLoop = new Label();
@@ -69,9 +64,9 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
 		Expression varEntry = cast(call(iterator, "next"), entryType);
-		varEntry.load(ctx);
+		Type varEntryType = varEntry.load(ctx);
 
-		VarLocal local = newLocal(ctx, varEntry.type(ctx));
+		VarLocal local = newLocal(ctx, varEntryType);
 		local.store(ctx);
 
 		ctx.addParameter("key", getKey(local));

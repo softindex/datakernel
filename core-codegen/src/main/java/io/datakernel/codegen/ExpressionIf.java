@@ -34,20 +34,15 @@ final class ExpressionIf implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return left.type(ctx);
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		Label labelTrue = new Label();
 		Label labelExit = new Label();
 
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		condition.load(ctx);
+		Type conditionType = condition.load(ctx);
 		g.push(true);
 
-		g.ifCmp(condition.type(ctx), GeneratorAdapter.EQ, labelTrue);
+		g.ifCmp(conditionType, GeneratorAdapter.EQ, labelTrue);
 
 		if (right != null) {
 			right.load(ctx);
@@ -56,10 +51,10 @@ final class ExpressionIf implements Expression {
 		g.goTo(labelExit);
 
 		g.mark(labelTrue);
-		left.load(ctx);
+		Type leftType = left.load(ctx);
 
 		g.mark(labelExit);
-		return left.type(ctx);
+		return leftType;
 	}
 
 	@SuppressWarnings("RedundantIfStatement")

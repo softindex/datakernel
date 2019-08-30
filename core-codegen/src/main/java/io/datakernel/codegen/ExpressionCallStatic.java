@@ -40,39 +40,14 @@ final class ExpressionCallStatic implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		List<Class<?>> argumentClasses = new ArrayList<>();
-		for (Expression argument : arguments) {
-			argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
-		}
-
-		Class<?>[] arguments = argumentClasses.toArray(new Class<?>[]{});
-
-		Type returnType;
-		try {
-			Method method = owner.getMethod(name, arguments);
-			Class<?> returnClass = method.getReturnType();
-			returnType = getType(returnClass);
-		} catch (NoSuchMethodException ignored) {
-			throw new RuntimeException(format("No static method %s.%s(%s). %s",
-					owner.getName(),
-					name,
-					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
-					exceptionInGeneratedClass(ctx)));
-		}
-
-		return returnType;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		List<Class<?>> argumentClasses = new ArrayList<>();
 		for (Expression argument : arguments) {
-			argument.load(ctx);
-			if (argument.type(ctx).equals(getType(Object[].class))) {
+			Type argumentType = argument.load(ctx);
+			if (argumentType.equals(getType(Object[].class))) {
 				argumentClasses.add(Object[].class);
 			} else {
-				argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
+				argumentClasses.add(getJavaType(ctx.getClassLoader(), argumentType));
 			}
 		}
 

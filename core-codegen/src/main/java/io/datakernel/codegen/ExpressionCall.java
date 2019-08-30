@@ -43,63 +43,19 @@ final class ExpressionCall implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		List<Class<?>> argumentClasses = new ArrayList<>();
-		List<Type> argumentTypes = new ArrayList<>();
-		for (Expression argument : arguments) {
-			Type argumentType = argument.type(ctx);
-			argumentTypes.add(argumentType);
-			argumentClasses.add(argumentType.equals(getType(Object[].class)) ?
-					Object[].class :
-					getJavaType(ctx.getClassLoader(), argumentType));
-		}
-		Type ownerType = owner.type(ctx);
-		try {
-			if (!ctx.getThisType().equals(ownerType)) {
-				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), ownerType);
-				Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
-				return getType(method.getReturnType());
-			}
-			outer:
-			for (org.objectweb.asm.commons.Method method : ctx.getMethods().keySet()) {
-				if (!method.getName().equals(methodName) || method.getArgumentTypes().length != arguments.size()) {
-					continue;
-				}
-				Type[] methodTypes = method.getArgumentTypes();
-				for (int i = 0; i < arguments.size(); i++) {
-					if (!methodTypes[i].equals(argumentTypes.get(i))) {
-						continue outer;
-					}
-				}
-				return method.getReturnType();
-			}
-			throw new NoSuchMethodException("goto catch block");
-		} catch (NoSuchMethodException ignored) {
-			throw new RuntimeException(format("No method %s.%s(%s). %s",
-					ownerType.getClassName(),
-					methodName,
-					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
-					exceptionInGeneratedClass(ctx)
-			));
-		}
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		owner.load(ctx);
+		Type ownerType = owner.load(ctx);
 
 		List<Class<?>> argumentClasses = new ArrayList<>();
 		List<Type> argumentTypes = new ArrayList<>();
 		for (Expression argument : arguments) {
-			argument.load(ctx);
-			Type argumentType = argument.type(ctx);
+			Type argumentType = argument.load(ctx);
 			argumentTypes.add(argumentType);
 			argumentClasses.add(getJavaType(ctx.getClassLoader(), argumentType));
 		}
 
-		Type ownerType = owner.type(ctx);
 		try {
 			if (!ctx.getThisType().equals(ownerType)) {
 				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), ownerType);

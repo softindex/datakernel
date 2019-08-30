@@ -37,13 +37,8 @@ final class ExpressionCast implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return targetType == THIS_TYPE ? ctx.getThisType() : targetType;
-	}
-
-	@Override
 	public Type load(Context ctx) {
-		Type targetType = type(ctx);
+		Type targetType = this.targetType == THIS_TYPE ? ctx.getThisType() : this.targetType;
 		loadAndCast(ctx, expression, targetType);
 		return targetType;
 	}

@@ -38,23 +38,6 @@ final class ExpressionStaticField implements Variable {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		Type fieldType;
-		try {
-			Field field = owner.getField(name);
-			Class<?> type = field.getType();
-			fieldType = getType(type);
-		} catch (NoSuchFieldException ignored) {
-			throw new RuntimeException(format("No static field %s.%s %s",
-					owner.getName(),
-					name,
-					exceptionInGeneratedClass(ctx)));
-		}
-
-		return fieldType;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		Type fieldType;
 		Field field;

@@ -34,18 +34,13 @@ final class ExpressionArraySet implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return Type.VOID_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		array.load(ctx);
+		Type arrayType = array.load(ctx);
 		position.load(ctx);
 		newElement.load(ctx);
-		g.arrayStore(getType(array.type(ctx).getDescriptor().substring(1)));
+		g.arrayStore(getType(arrayType.getDescriptor().substring(1)));
 		return Type.VOID_TYPE;
 	}
 

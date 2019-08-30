@@ -19,30 +19,27 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.call;
+import static io.datakernel.codegen.Utils.getJavaType;
+import static io.datakernel.codegen.Utils.invokeVirtualOrInterface;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionLength implements Expression {
-	private final Expression field;
+	private final Expression value;
 
-	ExpressionLength(Expression field) {
-		this.field = checkNotNull(field);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return Type.INT_TYPE;
+	ExpressionLength(Expression value) {
+		this.value = checkNotNull(value);
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		if (field.type(ctx).getSort() == Type.ARRAY) {
-			field.load(ctx);
+		Type valueType = value.load(ctx);
+		if (valueType.getSort() == Type.ARRAY) {
 			g.arrayLength();
-		} else if (field.type(ctx).getSort() == Type.OBJECT) {
-			call(field, "size").load(ctx);
+		} else if (valueType.getSort() == Type.OBJECT) {
+			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), valueType);
+			invokeVirtualOrInterface(g, ownerJavaType, new org.objectweb.asm.commons.Method("size", Type.INT_TYPE, new Type[]{}));
 		}
 		return Type.INT_TYPE;
 	}
@@ -53,11 +50,11 @@ final class ExpressionLength implements Expression {
 		if (o == null || getClass() != o.getClass()) return false;
 
 		ExpressionLength that = (ExpressionLength) o;
-		return field.equals(that.field);
+		return value.equals(that.value);
 	}
 
 	@Override
 	public int hashCode() {
-		return field.hashCode();
+		return value.hashCode();
 	}
 }

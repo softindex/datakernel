@@ -31,14 +31,10 @@ public final class VarLocal implements Variable {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return ctx.getGeneratorAdapter().getLocalType(local);
-	}
-
-	@Override
 	public Type load(Context ctx) {
-		ctx.getGeneratorAdapter().loadLocal(local);
-		return type(ctx);
+		GeneratorAdapter g = ctx.getGeneratorAdapter();
+		g.loadLocal(local);
+		return g.getLocalType(local);
 	}
 
 	@Nullable

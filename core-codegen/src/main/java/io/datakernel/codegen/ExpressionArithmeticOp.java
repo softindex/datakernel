@@ -19,7 +19,6 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.newLocal;
 import static io.datakernel.codegen.Utils.*;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
@@ -67,61 +66,28 @@ final class ExpressionArithmeticOp implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		Type leftType = left.type(ctx);
-		Type rightType = right.type(ctx);
-		if (isWrapperType(leftType)) {
-			leftType = unwrap(leftType);
-		}
-		if (isWrapperType(rightType)) {
-			rightType = unwrap(rightType);
-		}
-		return getType(unifyArithmeticTypes(getJavaType(leftType), getJavaType(rightType)));
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Expression leftVar = left;
-		Expression rightVar = right;
-		if (isWrapperType(leftVar.type(ctx))) {
-			leftVar.load(ctx);
-			g.unbox(unwrap(leftVar.type(ctx)));
-			VarLocal newLeftVar = newLocal(ctx, unwrap(leftVar.type(ctx)));
-			newLeftVar.storeLocal(g);
-			leftVar = newLeftVar;
+		Type leftType = left.load(ctx);
+		if (isWrapperType(leftType)) {
+			leftType = unwrap(leftType);
+			g.unbox(leftType);
 		}
-		if (isWrapperType(rightVar.type(ctx))) {
-			rightVar.load(ctx);
-			g.unbox(unwrap(rightVar.type(ctx)));
-			VarLocal newRightVar = newLocal(ctx, unwrap(rightVar.type(ctx)));
-			newRightVar.storeLocal(g);
-			rightVar = newRightVar;
+		Type rightType = right.load(ctx);
+		if (isWrapperType(rightType)) {
+			rightType = unwrap(rightType);
+			g.unbox(rightType);
 		}
-		Type resultType = getType(unifyArithmeticTypes(
-				getJavaType(leftVar.type(ctx)), getJavaType(rightVar.type(ctx))));
-		if (leftVar.type(ctx) != resultType) {
-			leftVar.load(ctx);
-			Type type = leftVar.type(ctx);
-			if (isValidCast(type, resultType)) {
-				g.cast(type, resultType);
-			}
-			VarLocal newLeftVar = newLocal(ctx, resultType);
-			newLeftVar.storeLocal(g);
-			leftVar = newLeftVar;
+		Type resultType = getType(unifyArithmeticTypes(getJavaType(leftType), getJavaType(rightType)));
+		if (leftType != resultType) {
+			int rightLocal = g.newLocal(rightType);
+			g.storeLocal(rightLocal);
+			g.cast(leftType, resultType);
+			g.loadLocal(rightLocal);
 		}
-		if (rightVar.type(ctx) != resultType) {
-			rightVar.load(ctx);
-			Type type = rightVar.type(ctx);
-			if (isValidCast(type, resultType)) {
-				g.cast(type, resultType);
-			}
-			VarLocal newRightVar = newLocal(ctx, resultType);
-			newRightVar.storeLocal(g);
-			rightVar = newRightVar;
+		if (rightType != resultType) {
+			g.cast(rightType, resultType);
 		}
-		leftVar.load(ctx);
-		rightVar.load(ctx);
 		g.visitInsn(resultType.getOpcode(op.opCode));
 		return resultType;
 	}

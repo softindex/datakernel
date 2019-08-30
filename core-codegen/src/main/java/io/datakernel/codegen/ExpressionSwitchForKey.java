@@ -20,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -27,7 +28,9 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static org.objectweb.asm.Type.VOID_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 public final class ExpressionSwitchForKey implements Expression {
@@ -65,37 +68,29 @@ public final class ExpressionSwitchForKey implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		if (listValue.size() != 0) {
-			return listValue.get(0).type(ctx);
-		} else {
-			return getType(Object.class);
-		}
-	}
-
-	@Override
 	public Type load(Context ctx) {
-		VarLocal varKey = newLocal(ctx, key.type(ctx));
-		key.load(ctx);
+		Type keyType = key.load(ctx);
+		VarLocal varKey = newLocal(ctx, keyType);
 		varKey.store(ctx);
 
 		Label labelExit = new Label();
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		boolean keyPrimitiveType = Utils.isPrimitiveType(key.type(ctx));
+		boolean keyPrimitiveType = isPrimitiveType(keyType);
+		Type listValueType = getType(Object.class);
 		for (int i = 0; i < listKey.size(); i++) {
 			Label labelNext = new Label();
 			if (keyPrimitiveType) {
 				listKey.get(i).load(ctx);
 				varKey.load(ctx);
-				g.ifCmp(key.type(ctx), GeneratorAdapter.NE, labelNext);
+				g.ifCmp(keyType, GeneratorAdapter.NE, labelNext);
 			} else {
 				call(listKey.get(i), "equals", varKey).load(ctx);
 				g.push(true);
 				g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, labelNext);
 			}
 
-			listValue.get(i).load(ctx);
+			listValueType = listValue.get(i).load(ctx);
 			g.goTo(labelExit);
 
 			g.mark(labelNext);
@@ -111,8 +106,14 @@ public final class ExpressionSwitchForKey implements Expression {
 			Iterator<Expression> iterator = listKey.iterator();
 			while (iterator.hasNext()) {
 				Expression expression = iterator.next();
-				boolean primitiveType = Utils.isPrimitiveType(expression.type(ctx));
-				call(sb, "append", primitiveType ? expression : call(expression, "toString")).load(ctx);
+
+				Type sbType = sb.load(ctx);
+				Type expressionType = expression.load(ctx);
+				if (isPrimitiveType(expressionType)) {
+					g.box(expressionType);
+				}
+				g.invokeVirtual(sbType, new Method("append", VOID_TYPE, new Type[]{getType(Object.class)}));
+
 				if (iterator.hasNext()) {
 					call(sb, "append", value(", ")).load(ctx);
 				}
@@ -124,7 +125,7 @@ public final class ExpressionSwitchForKey implements Expression {
 		}
 		g.mark(labelExit);
 
-		return type(ctx);
+		return listValueType;
 	}
 
 	@Override

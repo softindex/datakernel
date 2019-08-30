@@ -28,12 +28,6 @@ public final class ExpressionParameter implements Expression {
 		}
 
 		@Override
-		public Type type(Context ctx) {
-			ensureExpression(ctx);
-			return result.type(ctx);
-		}
-
-		@Override
 		public Type load(Context ctx) {
 			ensureExpression(ctx);
 			return result.load(ctx);
@@ -59,11 +53,6 @@ public final class ExpressionParameter implements Expression {
 			expression = ctx.removeParameter(name);
 		}
 		return expression;
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return ensureExpression(ctx).type(ctx);
 	}
 
 	@Override

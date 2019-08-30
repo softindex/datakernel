@@ -52,11 +52,6 @@ public final class PredicateDefOr implements PredicateDef {
 	}
 
 	@Override
-	public final Type type(Context ctx) {
-		return BOOLEAN_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label exit = new Label();

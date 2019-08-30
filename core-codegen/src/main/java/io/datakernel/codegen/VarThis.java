@@ -23,14 +23,9 @@ import org.objectweb.asm.Type;
  */
 final class VarThis implements Expression {
 	@Override
-	public Type type(Context ctx) {
-		return ctx.getThisType();
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		ctx.getGeneratorAdapter().loadThis();
-		return type(ctx);
+		return ctx.getThisType();
 	}
 
 	@Override

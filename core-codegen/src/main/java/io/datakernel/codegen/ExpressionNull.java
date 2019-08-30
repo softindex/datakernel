@@ -34,11 +34,6 @@ final class ExpressionNull implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return type;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		g.push((String) null);

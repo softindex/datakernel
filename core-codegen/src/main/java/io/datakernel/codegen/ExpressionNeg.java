@@ -24,7 +24,8 @@ import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
-import static org.objectweb.asm.Type.*;
+import static org.objectweb.asm.Type.BOOLEAN_TYPE;
+import static org.objectweb.asm.Type.INT_TYPE;
 
 final class ExpressionNeg implements Expression {
 	private final Expression arg;
@@ -34,46 +35,22 @@ final class ExpressionNeg implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		switch (arg.type(ctx).getSort()) {
-			case Type.BOOLEAN:
-				return BOOLEAN_TYPE;
-			case Type.BYTE:
-			case Type.SHORT:
-			case Type.CHAR:
-			case Type.INT:
-				return INT_TYPE;
-			case Type.LONG:
-				return LONG_TYPE;
-			case Type.FLOAT:
-				return FLOAT_TYPE;
-			case Type.DOUBLE:
-				return DOUBLE_TYPE;
-			default:
-				throw new RuntimeException(format("%s is not primitive. %s",
-						getJavaType(ctx.getClassLoader(), arg.type(ctx)),
-						exceptionInGeneratedClass(ctx))
-				);
-		}
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		int sort = arg.type(ctx).getSort();
-		arg.load(ctx);
+		Type argType = arg.load(ctx);
+		int argSort = argType.getSort();
 
-		if (sort == Type.DOUBLE || sort == Type.FLOAT || sort == Type.LONG || sort == Type.INT) {
-			g.math(GeneratorAdapter.NEG, arg.type(ctx));
-			return arg.type(ctx);
+		if (argSort == Type.DOUBLE || argSort == Type.FLOAT || argSort == Type.LONG || argSort == Type.INT) {
+			g.math(GeneratorAdapter.NEG, argType);
+			return argType;
 		}
-		if (sort == Type.BYTE || sort == Type.SHORT || sort == Type.CHAR) {
-//			g.cast(arg.type(ctx), INT_TYPE);
+		if (argSort == Type.BYTE || argSort == Type.SHORT || argSort == Type.CHAR) {
+//			g.cast(argType, INT_TYPE);
 			g.math(GeneratorAdapter.NEG, INT_TYPE);
-			return arg.type(ctx);
+			return argType;
 		}
 
-		if (sort == Type.BOOLEAN) {
+		if (argSort == Type.BOOLEAN) {
 			Label labelTrue = new Label();
 			Label labelExit = new Label();
 			g.push(true);
@@ -89,7 +66,7 @@ final class ExpressionNeg implements Expression {
 		}
 
 		throw new RuntimeException(format("%s is not primitive. %s",
-				getJavaType(ctx.getClassLoader(), arg.type(ctx)),
+				getJavaType(ctx.getClassLoader(), argType),
 				exceptionInGeneratedClass(ctx))
 		);
 	}

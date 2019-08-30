@@ -21,6 +21,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
+import java.util.Objects;
+
 import static io.datakernel.codegen.CompareOperation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.util.Preconditions.check;
@@ -45,30 +47,24 @@ final class PredicateDefCmp implements PredicateDef {
 	// endregion
 
 	@Override
-	public final Type type(Context ctx) {
-		return BOOLEAN_TYPE;
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label labelTrue = new Label();
 		Label labelExit = new Label();
 
-		Type leftFieldType = left.type(ctx);
-		check(leftFieldType.equals(right.type(ctx)), "Types of compared values should match");
-		left.load(ctx);
-		right.load(ctx);
+		Type leftType = left.load(ctx);
+		Type rightType = right.load(ctx);
+		check(Objects.equals(leftType, rightType), "Types of compared values should match");
 
-		if (isPrimitiveType(leftFieldType)) {
-			g.ifCmp(leftFieldType, operation.opCode, labelTrue);
+		if (isPrimitiveType(leftType)) {
+			g.ifCmp(leftType, operation.opCode, labelTrue);
 		} else {
 			if (operation == EQ || operation == NE) {
-				g.invokeVirtual(leftFieldType, new Method("equals", BOOLEAN_TYPE, new Type[]{Type.getType(Object.class)}));
+				g.invokeVirtual(leftType, new Method("equals", BOOLEAN_TYPE, new Type[]{Type.getType(Object.class)}));
 				g.push(operation == EQ);
 				g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelTrue);
 			} else {
-				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
+				g.invokeVirtual(leftType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
 				if (operation == LT) {
 					g.ifZCmp(GeneratorAdapter.LT, labelTrue);
 				} else if (operation == GT) {
