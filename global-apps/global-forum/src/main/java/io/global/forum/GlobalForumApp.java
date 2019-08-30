@@ -22,7 +22,7 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 
 public final class GlobalForumApp extends Launcher {
-	public static final String PROPERTIES_FILE = "global-forum-app.properties";
+	public static final String PROPERTIES_FILE = "forum.properties";
 	public static final String DEFAULT_SERVER_ID = "Global Forum App";
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
