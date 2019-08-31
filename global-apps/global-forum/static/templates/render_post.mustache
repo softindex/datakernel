@@ -1,5 +1,27 @@
-<div class="border-left border-dark ml-3">
-    {{>render_post_body}}
+<div class="card">
+    <div class="card-body">
+        <div class="row rounded">
+            <a href="/{{pubKey}}/thread/{{threadId}}/{{id}}" class="badge badge-secondary">#</a>
+            <span class="badge badge-primary badge-light">
+                {{author.id}} {{#format_date}}{{initialTimestamp}}{{/format_date}}
+            </span>
+        </div>
+        <div class="row text-wrap m-2">
+            <p>{{content}}</p>
+        </div>
+        <div class="row float-right">
+            <button class="delete btn btn-outline-primary btn-sm mx-1" data-post-id="{{id}}">delete</button>
+            <button class="reply btn btn-outline-primary btn-sm mx-1" data-post-id="{{id}}">reply</button>
+        </div>
+    </div>
+</div>
+<form class="reply-form d-none" id="reply_{{id}}" action="/{{pubKey}}/thread/{{threadId}}/{{id}}" method="post">
+    <div class="form-group m-3">
+        <textarea class="form-control" placeholder="Post your reply" name="content"></textarea>
+        <button type="submit" class="btn btn-primary btn-sm m-2">Reply</button>
+    </div>
+</form>
+<div class="ml-3 border-left border-dark">
     {{#children}}
         {{>render_post}}
     {{/children}}

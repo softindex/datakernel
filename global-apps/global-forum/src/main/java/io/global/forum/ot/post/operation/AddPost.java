@@ -41,7 +41,7 @@ public final class AddPost implements ThreadOperation {
 				posts.get(parentId).removeChild(post);
 			}
 		} else {
-			Post post = Post.create(author, initialTimestamp);
+			Post post = Post.create(postId, author, initialTimestamp);
 			posts.put(postId, post);
 			if (parentId != null) {
 				posts.get(parentId).addChild(post);

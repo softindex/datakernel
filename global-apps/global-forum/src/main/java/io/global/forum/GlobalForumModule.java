@@ -12,7 +12,7 @@ import io.datakernel.loader.StaticLoader;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.SimKey;
-import io.global.forum.Utils.MustacheSupplier;
+import io.global.forum.Utils.MustacheTemplater;
 import io.global.forum.container.ForumRepoNames;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.dao.ForumDao;
@@ -34,9 +34,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -44,7 +43,6 @@ import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.datakernel.util.CollectionUtils.map;
-import static io.global.forum.Utils.templated;
 import static io.global.forum.http.PublicServlet.DATE_TIME_FORMATTER;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -158,27 +156,25 @@ public final class GlobalForumModule extends AbstractModule {
 
 	@Provides
 	@Named("Forum")
-	AsyncServlet forumServlet(MustacheSupplier mustacheSupplier, StaticLoader staticLoader) {
+	AsyncServlet forumServlet(MustacheTemplater templater, StaticLoader staticLoader) {
 		return RoutingServlet.create()
-				.map("/*", PublicServlet.create(mustacheSupplier))
-				.map("/static", StaticServlet.create(staticLoader))
+				.map("/*", PublicServlet.create(templater))
+				.map("/static/*", StaticServlet.create(staticLoader))
 				.then(servlet ->
 						request -> {
-							Map<String, Object> mustacheContext = new HashMap<>();
+							Map<String, Object> mustacheContext = templater.getStaticContext();
 
 							mustacheContext.put("pubKey", request.getPathParameter("pubKey"));
 							mustacheContext.put("format_date", (Function<String, String>) instant ->
 									Instant.ofEpochMilli(Long.parseLong(instant.trim())).atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMATTER));
 
-							request.attach("mustacheContext", mustacheContext);
 							return servlet.serve(request);
 						})
 				.then(servlet ->
 						request -> servlet.serve(request)
 								.thenEx((response, e) -> {
-									Object context = request.getAttachment("mustacheContext");
 									if (e instanceof HttpException && ((HttpException) e).getCode() == 404) {
-										return Promise.of(templated(200, mustacheSupplier, "404", map("context", context, "message", e.getMessage())));
+										return templater.render(404, "404", map("message", e.getMessage()));
 									}
 									if (e != null) {
 										return Promise.<HttpResponse>ofException(e);
@@ -187,18 +183,18 @@ public final class GlobalForumModule extends AbstractModule {
 										return Promise.of(response);
 									}
 									String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
-									return Promise.of(templated(200, mustacheSupplier, "404", map("context", context, "message", message.isEmpty() ? null : message)));
+									return templater.render(404, "404", map("message", message.isEmpty() ? null : message));
 								}));
 	}
 
 	@Provides
-	ContainerKeyManager containerKeyManager(Eventloop eventloop, Executor executor, Config config) {
+	ContainerKeyManager containerKeyManager(Eventloop eventloop, ExecutorService executor, Config config) {
 		Path containersDir = config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR);
 		return FsContainerKeyManager.create(eventloop, executor, containersDir, true);
 	}
 
 	@Provides
-	StaticLoader staticLoader(Executor executor, Config config) {
+	StaticLoader staticLoader(ExecutorService executor, Config config) {
 		return StaticLoader.ofPath(executor, Paths.get(config.get("static.files")));
 	}
 
@@ -220,7 +216,7 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	Executor executor(Config config) {
+	ExecutorService executor(Config config) {
 		return getExecutor(config);
 	}
 

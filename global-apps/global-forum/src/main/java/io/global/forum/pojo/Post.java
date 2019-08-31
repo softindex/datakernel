@@ -9,28 +9,36 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.StringFormatUtils.limit;
 
 public final class Post {
-	private final List<Post> children = new ArrayList<>();
+	private final long postId;
 	@NotNull
 	private final UserId author;
+	private String content = "";
 	private final long initialTimestamp;
+	private long lastEditTimestamp = -1;
+
 	private final Set<UserId> likes = new HashSet<>();
 	private final Set<UserId> dislikes = new HashSet<>();
 	private final Map<String, Attachment> attachments = new HashMap<>();
 
 	@Nullable
 	private Post parent;
-	private String content = "";
+	private final List<Post> children = new ArrayList<>();
+
 	@Nullable
 	private UserId deletedBy;
-	private long lastEditTimestamp = -1;
 
-	private Post(@NotNull UserId author, long initialTimestamp) {
+	private Post(long postId, @NotNull UserId author, long initialTimestamp) {
+		this.postId = postId;
 		this.author = author;
 		this.initialTimestamp = initialTimestamp;
 	}
 
-	public static Post create(@NotNull UserId author, long initialTimestamp) {
-		return new Post(author, initialTimestamp);
+	public static Post create(long postId, @NotNull UserId author, long initialTimestamp) {
+		return new Post(postId, author, initialTimestamp);
+	}
+
+	public long getId() {
+		return postId;
 	}
 
 	// Mutates child

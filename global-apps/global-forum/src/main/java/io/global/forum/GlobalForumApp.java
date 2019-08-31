@@ -27,6 +27,7 @@ public final class GlobalForumApp extends Launcher {
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 	public static final String DEFAULT_FORUM_FS_DIR = "global-forum";
 	public static final String DEFAULT_TEMPLATE_PATH = "static/templates";
+	public static final String DEFAULT_STATIC_PATH = "static/files";
 	public static final ForumRepoNames DEFAULT_FORUM_REPO_NAMES = ForumRepoNames.ofDefault("global-forum");
 
 	@Inject
@@ -39,7 +40,7 @@ public final class GlobalForumApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
 				.with("static.templates", DEFAULT_TEMPLATE_PATH)
-				.with("static.files", DEFAULT_TEMPLATE_PATH)
+				.with("static.files", DEFAULT_STATIC_PATH)
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}

@@ -1,6 +1,8 @@
 package io.global.forum;
 
 import com.github.mustachejava.Mustache;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
@@ -18,13 +20,9 @@ import io.global.forum.ot.session.operation.SessionOperation;
 import io.global.forum.ot.session.operation.UpdateTimestamp;
 import io.global.forum.pojo.*;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
@@ -41,6 +39,7 @@ public final class Utils {
 		throw new AssertionError();
 	}
 
+	@SuppressWarnings("ConstantConditions") // - UserData::new is a false positive of the inspection?
 	public static final CodecRegistry REGISTRY = createOTRegistry()
 			.with(Instant.class, LONG_CODEC.transform(Instant::ofEpochMilli, Instant::toEpochMilli))
 			.with(ThreadMetadata.class, tuple(ThreadMetadata::new,
@@ -152,24 +151,48 @@ public final class Utils {
 		Mustache getMustache(String filename);
 	}
 
-	public static HttpResponse templated(int code, MustacheSupplier mustacheSupplier, String templateName, @Nullable Object scope) {
-		ByteBufWriter writer = new ByteBufWriter();
-		mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, scope);
-		return HttpResponse.ofCode(code)
-				.withBody(writer.getBuf())
-				.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
-	}
+	public static final class MustacheTemplater {
+		private final MustacheSupplier mustacheSupplier;
+		private final Map<String, Object> staticContext = new HashMap<>();
 
-	public static HttpResponse templated(int code, MustacheSupplier mustacheSupplier, String templateName) {
-		return templated(code, mustacheSupplier, templateName, null);
-	}
+		public MustacheTemplater(MustacheSupplier mustacheSupplier) {
+			this.mustacheSupplier = mustacheSupplier;
+		}
 
-	public static HttpResponse templated(MustacheSupplier mustacheSupplier, String templateName, @Nullable Object scope) {
-		return templated(200, mustacheSupplier, templateName, scope);
-	}
+		public Map<String, Object> getStaticContext() {
+			return staticContext;
+		}
 
-	public static HttpResponse templated(MustacheSupplier mustacheSupplier, String templateName) {
-		return templated(mustacheSupplier, templateName, null);
+		public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
+			ByteBufWriter writer = new ByteBufWriter();
+
+			scope.putAll(staticContext);
+
+			List<Promise<?>> promisesToWait = new ArrayList<>();
+
+			for (Map.Entry<String, Object> entry : scope.entrySet()) {
+				Object value = entry.getValue();
+				if (value instanceof Promise) {
+					Promise<?> promise = (Promise<?>) value;
+					if (promise.isResult()) {
+						entry.setValue(promise.getResult());
+					} else {
+						promisesToWait.add(promise.whenResult(entry::setValue));
+					}
+				}
+			}
+			return Promises.all(promisesToWait)
+					.map($ -> {
+						mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, scope);
+						return HttpResponse.ofCode(code)
+								.withBody(writer.getBuf())
+								.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
+					});
+		}
+
+		public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {
+			return render(200, templateName, scope);
+		}
 	}
 
 	public static HttpResponse redirect(HttpRequest request, @NotNull String to) {

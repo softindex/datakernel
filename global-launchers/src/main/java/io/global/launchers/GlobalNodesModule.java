@@ -284,5 +284,4 @@ public class GlobalNodesModule extends AbstractModule {
 				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
 	}
 	//endregion
-
 }
