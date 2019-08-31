@@ -17,7 +17,6 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -53,7 +52,7 @@ public final class SerializerGenMap extends AbstractSerializerGenMap {
 
 	@Override
 	public Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
-		return Expressions.forEach(collection, forEachKey, forEachValue);
+		return forEach(collection, forEachKey, forEachValue);
 	}
 
 	@Override

@@ -25,7 +25,6 @@ import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
@@ -62,10 +61,10 @@ public class AggregationUtils {
 				.initialize(cb ->
 						keys.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
-				.withMethod("compareTo", compareTo(keyList))
-				.withMethod("equals", asEquals(keyList))
-				.withMethod("hashCode", hashCodeOfThis(keyList))
-				.withMethod("toString", asString(keyList))
+				.withMethod("compareTo", compareToImpl(keyList))
+				.withMethod("equals", equalsImpl(keyList))
+				.withMethod("hashCode", hashCodeImpl(keyList))
+				.withMethod("toString", toStringImpl(keyList))
 				.build();
 	}
 
@@ -81,7 +80,7 @@ public class AggregationUtils {
 		return ClassBuilder.create(classLoader, Function.class)
 				.withMethod("apply",
 						let(constructor(resultClass), result ->
-								sequenceOf(expressions -> {
+								sequence(expressions -> {
 									for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
 										expressions.add(set(
 												property(result, fieldName),
@@ -98,7 +97,7 @@ public class AggregationUtils {
 		return ClassBuilder.create(classLoader, Function.class)
 				.withMethod("apply",
 						let(constructor(keyClass), key ->
-								sequenceOf(expressions -> {
+								sequence(expressions -> {
 									for (String keyString : keys) {
 										expressions.add(
 												set(
@@ -128,7 +127,7 @@ public class AggregationUtils {
 				.initialize(cb ->
 						fields.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
-				.withMethod("toString", asString(concat(keys.keySet(), fields.keySet())))
+				.withMethod("toString", toStringImpl(concat(keys.keySet(), fields.keySet())))
 				.build();
 	}
 
@@ -172,7 +171,7 @@ public class AggregationUtils {
 		return ClassBuilder.create(classLoader, Reducer.class)
 				.withMethod("onFirstItem",
 						let(constructor(outputClass), accumulator ->
-								sequenceOf(expressions -> {
+								sequence(expressions -> {
 									for (String key : keys) {
 										expressions.add(
 												set(
@@ -191,7 +190,7 @@ public class AggregationUtils {
 									expressions.add(accumulator);
 								})))
 				.withMethod("onNextItem",
-						sequenceOf(expressions -> {
+						sequence(expressions -> {
 							for (String field : fields) {
 								expressions.add(
 										aggregation.getMeasure(field)
@@ -213,7 +212,7 @@ public class AggregationUtils {
 		return ClassBuilder.create(classLoader, Aggregate.class)
 				.withMethod("createAccumulator",
 						let(constructor(outputClass), accumulator ->
-								sequenceOf(expressions -> {
+								sequence(expressions -> {
 									for (String key : keyFields.keySet()) {
 										String inputField = keyFields.get(key);
 										expressions.add(set(
@@ -231,7 +230,7 @@ public class AggregationUtils {
 									expressions.add(accumulator);
 								})))
 				.withMethod("accumulate",
-						sequenceOf(expressions -> {
+						sequence(expressions -> {
 							for (String measure : measureFields.keySet()) {
 								String inputFields = measureFields.get(measure);
 								Measure aggregateFunction = aggregation.getMeasure(measure);
@@ -255,15 +254,12 @@ public class AggregationUtils {
 		if (partitioningKey.isEmpty())
 			return singlePartition();
 
-		PredicateDefAnd predicate = PredicateDefAnd.create();
-		for (String keyComponent : partitioningKey) {
-			predicate.add(cmpEq(
-					property(cast(arg(0), recordClass), keyComponent),
-					property(cast(arg(1), recordClass), keyComponent)));
-		}
-
 		return ClassBuilder.create(classLoader, PartitionPredicate.class)
-				.withMethod("isSamePartition", predicate)
+				.withMethod("isSamePartition", and(
+						partitioningKey.stream()
+								.map(keyComponent -> cmpEq(
+										property(cast(arg(0), recordClass), keyComponent),
+										property(cast(arg(1), recordClass), keyComponent)))))
 				.buildClassAndCreateNewInstance();
 	}
 

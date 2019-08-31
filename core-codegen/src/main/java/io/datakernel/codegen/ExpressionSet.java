@@ -18,8 +18,6 @@ package io.datakernel.codegen;
 
 import org.objectweb.asm.Type;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 /**
  * Defines methods which allow to set fields
  */
@@ -28,8 +26,8 @@ final class ExpressionSet implements Expression {
 	private final Expression from;
 
 	ExpressionSet(StoreDef to, Expression from) {
-		this.to = checkNotNull(to);
-		this.from = checkNotNull(from);
+		this.to = to;
+		this.from = from;
 	}
 
 	@Override

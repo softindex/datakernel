@@ -19,15 +19,13 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 final class ExpressionArrayGet implements Expression {
 	private final Expression array;
 	private final Expression index;
 
 	ExpressionArrayGet(Expression array, Expression index) {
-		this.array = checkNotNull(array);
-		this.index = checkNotNull(index);
+		this.array = array;
+		this.index = index;
 	}
 
 	@Override

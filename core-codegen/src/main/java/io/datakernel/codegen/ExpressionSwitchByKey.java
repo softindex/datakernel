@@ -23,12 +23,13 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.codegen.Expressions.call;
-import static io.datakernel.codegen.Expressions.newLocal;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionSwitchByKey implements Expression {
+	public static final Expression DEFAULT_EXPRESSION = exception(IllegalArgumentException.class);
+
 	private final Expression value;
 	private final List<Expression> matchCases;
 	private final List<Expression> matchExpressions;

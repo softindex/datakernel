@@ -20,13 +20,11 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 final class PredicateDefNot implements PredicateDef {
 	private final PredicateDef predicateDef;
 
 	public PredicateDefNot(PredicateDef predicateDef) {
-		this.predicateDef = checkNotNull(predicateDef);
+		this.predicateDef = predicateDef;
 	}
 
 	@Override

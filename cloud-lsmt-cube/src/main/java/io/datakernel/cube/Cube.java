@@ -919,7 +919,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		RecordFunction createRecordFunction() {
 			return ClassBuilder.create(queryClassLoader, RecordFunction.class)
 					.withMethod("copyAttributes",
-							sequenceOf(expressions -> {
+							sequence(expressions -> {
 								for (String field : recordScheme.getFields()) {
 									int fieldIndex = recordScheme.getFieldIndex(field);
 									if (dimensionTypes.containsKey(field)) {
@@ -930,7 +930,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 								}
 							}))
 					.withMethod("copyMeasures",
-							sequenceOf(expressions -> {
+							sequence(expressions -> {
 								for (String field : recordScheme.getFields()) {
 									int fieldIndex = recordScheme.getFieldIndex(field);
 									if (!dimensionTypes.containsKey(field)) {
@@ -1143,7 +1143,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		TotalsFunction<R, R> createTotalsFunction() {
 			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)
 					.withMethod("zero",
-							sequenceOf(expressions -> {
+							sequence(expressions -> {
 								for (String field : resultStoredMeasures) {
 									Measure measure = measures.get(field);
 									expressions.add(measure.zeroAccumulator(
@@ -1151,7 +1151,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 								}
 							}))
 					.withMethod("init",
-							sequenceOf(expressions -> {
+							sequence(expressions -> {
 								for (String field : resultStoredMeasures) {
 									Measure measure = measures.get(field);
 									expressions.add(measure.initAccumulatorWithAccumulator(
@@ -1160,7 +1160,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 								}
 							}))
 					.withMethod("accumulate",
-							sequenceOf(expressions -> {
+							sequence(expressions -> {
 								for (String field : resultStoredMeasures) {
 									Measure measure = measures.get(field);
 									expressions.add(measure.reduce(
@@ -1169,7 +1169,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 								}
 							}))
 					.withMethod("computeMeasures",
-							sequenceOf(expressions -> {
+							sequence(expressions -> {
 								for (String computedMeasure : resultComputedMeasures) {
 									Expression result = cast(arg(0), resultClass);
 									expressions.add(set(property(result, computedMeasure),

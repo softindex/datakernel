@@ -26,7 +26,6 @@ import java.util.Objects;
 import static io.datakernel.codegen.CompareOperation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
 
@@ -40,9 +39,9 @@ final class PredicateDefCmp implements PredicateDef {
 
 	// region builders
 	PredicateDefCmp(CompareOperation operation, Expression left, Expression right) {
-		this.left = checkNotNull(left);
-		this.right = checkNotNull(right);
-		this.operation = checkNotNull(operation);
+		this.left = left;
+		this.right = right;
+		this.operation = operation;
 	}
 	// endregion
 

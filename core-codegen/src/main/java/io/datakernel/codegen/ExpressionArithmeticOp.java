@@ -20,7 +20,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArithmeticOp implements Expression {
@@ -29,9 +28,9 @@ final class ExpressionArithmeticOp implements Expression {
 	private final Expression right;
 
 	ExpressionArithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
-		this.op = checkNotNull(op);
-		this.left = checkNotNull(left);
-		this.right = checkNotNull(right);
+		this.op = op;
+		this.left = left;
+		this.right = right;
 	}
 
 	public static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {

@@ -24,14 +24,14 @@ public class DynamicClassCreationExample {
 				.withMethod("getId", property(self(), "id"))
 				.withMethod("getName", property(self(), "name"))
 				// compareTo, equals, hashCode and toString methods implementations follow the standard convention
-				.withMethod("int compareTo(Person)", compareTo("id", "name"))
-				.withMethod("equals", asEquals("id", "name"))
-				.withMethod("hashOfPojo", hashCodeOfArgs(property(arg(0), "id"), property(arg(0), "name")))
-				.withMethod("hash", hashCodeOfArgs(property(self(), "id"), property(self(), "name")))
-				.withMethod("toString", ((ExpressionToString) asString())
+				.withMethod("int compareTo(Person)", compareToImpl("id", "name"))
+				.withMethod("equals", equalsImpl("id", "name"))
+				.withMethod("hashOfPojo", hash(property(arg(0), "id"), property(arg(0), "name")))
+				.withMethod("hash", hash(property(self(), "id"), property(self(), "name")))
+				.withMethod("toString", ExpressionToString.create()
 						.withQuotes("{", "}", ", ")
-						.withArgument("id: ", property(self(), "id"))
-						.withArgument("name: ", property(self(), "name")))
+						.with("id: ", property(self(), "id"))
+						.with("name: ", property(self(), "name")))
 				.build();
 
 		// Instantiate two objects of dynamically defined class

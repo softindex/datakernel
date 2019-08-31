@@ -22,7 +22,6 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
@@ -31,7 +30,7 @@ final class ExpressionNeg implements Expression {
 	private final Expression arg;
 
 	ExpressionNeg(Expression arg) {
-		this.arg = checkNotNull(arg);
+		this.arg = arg;
 	}
 
 	@Override

@@ -20,7 +20,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionBitOp implements Expression {
 	private final BitOperation op;
@@ -28,9 +27,9 @@ final class ExpressionBitOp implements Expression {
 	private final Expression right;
 
 	ExpressionBitOp(BitOperation op, Expression left, Expression right) {
-		this.op = checkNotNull(op);
-		this.left = checkNotNull(left);
-		this.right = checkNotNull(right);
+		this.op = op;
+		this.left = left;
+		this.right = right;
 	}
 
 	@Override

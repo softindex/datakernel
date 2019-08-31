@@ -26,7 +26,6 @@ import java.util.Map;
 
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
 
@@ -46,31 +45,31 @@ public final class ExpressionToString implements Expression {
 		return new ExpressionToString();
 	}
 
-	public ExpressionToString withArgument(String label, Expression expression) {
-		this.arguments.put(checkNotNull(label), checkNotNull(expression));
+	public ExpressionToString with(String label, Expression expression) {
+		this.arguments.put(label, expression);
 		return this;
 	}
 
-	public ExpressionToString withArgument(Expression expression) {
-		this.arguments.put(arguments.size() + 1, checkNotNull(expression));
+	public ExpressionToString with(Expression expression) {
+		this.arguments.put(arguments.size() + 1, expression);
 		return this;
 	}
 
 	public ExpressionToString withSeparator(String separator) {
-		this.separator = checkNotNull(separator);
+		this.separator = separator;
 		return this;
 	}
 
 	public ExpressionToString withQuotes(String begin, String end) {
-		this.begin = checkNotNull(begin);
-		this.end = checkNotNull(end);
+		this.begin = begin;
+		this.end = end;
 		return this;
 	}
 
 	public ExpressionToString withQuotes(String begin, String end, String separator) {
-		this.begin = checkNotNull(begin);
-		this.end = checkNotNull(end);
-		this.separator = checkNotNull(separator);
+		this.begin = begin;
+		this.end = end;
+		this.separator = separator;
 		return this;
 	}
 

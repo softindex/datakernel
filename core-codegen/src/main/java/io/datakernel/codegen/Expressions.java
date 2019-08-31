@@ -21,22 +21,29 @@ import org.objectweb.asm.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
+import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
 import static io.datakernel.codegen.ExpressionComparator.*;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toList;
 import static org.objectweb.asm.Type.getType;
 
 /**
  * Defines list of possibilities for creating dynamic objects
  */
-public final class Expressions {
-	private Expressions() {
-	}
-
-	public static Expression sequence(List<Expression> parts) {
-		return new ExpressionSequence(parts);
+public class Expressions {
+	/**
+	 * Returns new constant for the value
+	 *
+	 * @param value value which will be created as constant
+	 * @return new instance of the ExpressionConstant
+	 */
+	public static Expression value(Object value) {
+		return new ExpressionConstant(value);
 	}
 
 	/**
@@ -47,6 +54,24 @@ public final class Expressions {
 	 */
 	public static Expression sequence(Expression... parts) {
 		return new ExpressionSequence(asList(parts));
+	}
+
+	public static Expression sequence(List<Expression> parts) {
+		List<Expression> list = new ArrayList<>(parts.size());
+		for (Expression part : parts) {
+			if (part instanceof ExpressionSequence) {
+				list.addAll(((ExpressionSequence) part).expressions);
+			} else {
+				list.add(part);
+			}
+		}
+		return new ExpressionSequence(list);
+	}
+
+	public static Expression sequence(Consumer<List<Expression>> consumer) {
+		List<Expression> expressions = new ArrayList<>();
+		consumer.accept(expressions);
+		return new ExpressionSequence(expressions);
 	}
 
 	/**
@@ -60,8 +85,8 @@ public final class Expressions {
 	}
 
 	public static Expression let(Expression expression, Function<Variable, Expression> fn) {
-		ExpressionLet let = new ExpressionLet(expression);
-		return sequence(let, fn.apply(let));
+		Variable variable = var(expression);
+		return sequence(variable, fn.apply(variable));
 	}
 
 	public static Expression let(Expression[] expressions, Function<Variable[], Expression> fn) {
@@ -212,15 +237,13 @@ public final class Expressions {
 	 * @return new instance of the PredicateDefAnd
 	 */
 	public static PredicateDef and(List<PredicateDef> predicateDefs) {
-		return PredicateDefAnd.create(predicateDefs);
+		return new PredicateDefAnd(predicateDefs);
 	}
 
-	/**
-	 * Returns result of logical 'and' for the list of predicates
-	 *
-	 * @param predicateDefs list of the predicate
-	 * @return new instance of the PredicateDefAnd
-	 */
+	public static PredicateDef and(Stream<PredicateDef> predicateDefs) {
+		return and(predicateDefs.collect(toList()));
+	}
+
 	public static PredicateDef and(PredicateDef... predicateDefs) {
 		return and(asList(predicateDefs));
 	}
@@ -232,15 +255,13 @@ public final class Expressions {
 	 * @return new instance of the PredicateDefOr
 	 */
 	public static PredicateDefOr or(List<PredicateDef> predicateDefs) {
-		return PredicateDefOr.create(predicateDefs);
+		return new PredicateDefOr(predicateDefs);
 	}
 
-	/**
-	 * Returns result of logical 'or' for the list of predicates
-	 *
-	 * @param predicateDefs list of the predicate
-	 * @return new instance of the PredicateDefAnd
-	 */
+	public static PredicateDefOr or(Stream<PredicateDef> predicateDefs) {
+		return or(predicateDefs.collect(toList()));
+	}
+
 	public static PredicateDefOr or(PredicateDef... predicateDefs) {
 		return or(asList(predicateDefs));
 	}
@@ -251,38 +272,8 @@ public final class Expressions {
 	 * @param properties list of the properties
 	 * @return new instance of the Expression
 	 */
-	public static Expression asEquals(List<String> properties) {
-		PredicateDefAnd predicate = PredicateDefAnd.create();
-		for (String property : properties) {
-			predicate.add(cmpEq(
-					property(self(), property),
-					property(cast(arg(0), ExpressionCast.THIS_TYPE), property)));
-		}
-		return predicate;
-	}
-
-	/**
-	 * Returns the string which was constructed from properties
-	 *
-	 * @param properties list of the properties
-	 * @return new instance of the ExpressionToString
-	 */
-	public static Expression asString(List<String> properties) {
-		ExpressionToString toString = new ExpressionToString();
-		for (String property : properties) {
-			toString.withArgument(property + "=", property(self(), property));
-		}
-		return toString;
-	}
-
-	/**
-	 * Returns the string which was constructed from properties
-	 *
-	 * @param properties list of the properties
-	 * @return new instance of the ExpressionToString
-	 */
-	public static Expression asString(String... properties) {
-		return asString(asList(properties));
+	public static Expression equalsImpl(String... properties) {
+		return equalsImpl(asList(properties));
 	}
 
 	/**
@@ -291,8 +282,35 @@ public final class Expressions {
 	 * @param properties list of the properties
 	 * @return new instance of the Expression
 	 */
-	public static Expression asEquals(String... properties) {
-		return asEquals(asList(properties));
+	public static Expression equalsImpl(List<String> properties) {
+		return and(properties.stream()
+				.map(property -> cmpEq(
+						property(self(), property),
+						property(cast(arg(0), THIS_TYPE), property))));
+	}
+
+	/**
+	 * Returns the string which was constructed from properties
+	 *
+	 * @param properties list of the properties
+	 * @return new instance of the ExpressionToString
+	 */
+	public static Expression toStringImpl(String... properties) {
+		return toStringImpl(asList(properties));
+	}
+
+	/**
+	 * Returns the string which was constructed from properties
+	 *
+	 * @param properties list of the properties
+	 * @return new instance of the ExpressionToString
+	 */
+	public static Expression toStringImpl(List<String> properties) {
+		ExpressionToString toString = ExpressionToString.create();
+		for (String property : properties) {
+			toString.with(property + "=", property(self(), property));
+		}
+		return toString;
 	}
 
 	/**
@@ -302,7 +320,18 @@ public final class Expressions {
 	 * @param properties properties which will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compare(Class<?> type, List<String> properties) {
+	public static Expression compare(Class<?> type, String... properties) {
+		return compare(type, asList(properties));
+	}
+
+	/**
+	 * Compares the properties
+	 *
+	 * @param type       type of the properties
+	 * @param properties properties which will be compared
+	 * @return new instance of the ExpressionComparator
+	 */
+	public static Expression compare(Class<?> type, List<String> properties) {
 		ExpressionComparator comparator = ExpressionComparator.create();
 		for (String property : properties) {
 			comparator.with(leftProperty(type, property), rightProperty(type, property), true);
@@ -313,12 +342,11 @@ public final class Expressions {
 	/**
 	 * Compares the properties
 	 *
-	 * @param type       type of the properties
-	 * @param properties properties which will be compared
+	 * @param properties list of the properties with will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compare(Class<?> type, String... properties) {
-		return compare(type, asList(properties));
+	public static Expression compareToImpl(String... properties) {
+		return compareToImpl(asList(properties));
 	}
 
 	/**
@@ -327,7 +355,7 @@ public final class Expressions {
 	 * @param properties list of the properties with will be compared
 	 * @return new instance of the ExpressionComparator
 	 */
-	public static ExpressionComparator compareTo(List<String> properties) {
+	public static Expression compareToImpl(List<String> properties) {
 		ExpressionComparator comparator = ExpressionComparator.create();
 		for (String property : properties) {
 			comparator.with(thisProperty(property), thatProperty(property), true);
@@ -336,23 +364,27 @@ public final class Expressions {
 	}
 
 	/**
-	 * Compares the properties
+	 * Returns a hash code which was calculated from the {@code properties}
 	 *
-	 * @param properties list of the properties with will be compared
-	 * @return new instance of the ExpressionComparator
+	 * @param properties list of the properties which will be hashed
+	 * @return new instance of the ExpressionHash
 	 */
-	public static ExpressionComparator compareTo(String... properties) {
-		return compareTo(asList(properties));
+	public static Expression hash(Expression... properties) {
+		return hash(asList(properties));
 	}
 
 	/**
-	 * Returns new constant for the value
+	 * Returns a hash code which was calculated from the {@code properties}
 	 *
-	 * @param value value which will be created as constant
-	 * @return new instance of the ExpressionConstant
+	 * @param properties list of the properties which will be hashed
+	 * @return new instance of the ExpressionHash
 	 */
-	public static Expression value(Object value) {
-		return new ExpressionConstant(value);
+	public static Expression hash(List<Expression> properties) {
+		return new ExpressionHash(properties);
+	}
+
+	public static Expression hashCodeImpl(String... properties) {
+		return hashCodeImpl(asList(properties));
 	}
 
 	/**
@@ -361,36 +393,11 @@ public final class Expressions {
 	 * @param properties list of the properties which will be hashed
 	 * @return new instance of the ExpressionHash
 	 */
-	public static Expression hashCodeOfThis(List<String> properties) {
-		List<Expression> arguments = new ArrayList<>();
-		for (String property : properties) {
-			arguments.add(property(new VarThis(), property));
-		}
-		return new ExpressionHash(arguments);
-	}
-
-	public static Expression hashCodeOfThis(String... properties) {
-		return hashCodeOfThis(asList(properties));
-	}
-
-	/**
-	 * Returns a hash code which was calculated from the {@code properties}
-	 *
-	 * @param properties list of the properties which will be hashed
-	 * @return new instance of the ExpressionHash
-	 */
-	public static Expression hashCodeOfArgs(List<Expression> properties) {
-		return new ExpressionHash(properties);
-	}
-
-	/**
-	 * Returns a hash code which was calculated from the {@code properties}
-	 *
-	 * @param properties list of the properties which will be hashed
-	 * @return new instance of the ExpressionHash
-	 */
-	public static Expression hashCodeOfArgs(Expression... properties) {
-		return hashCodeOfArgs(asList(properties));
+	public static Expression hashCodeImpl(List<String> properties) {
+		return new ExpressionHash(properties
+				.stream()
+				.map(property -> property(self(), property))
+				.collect(toList()));
 	}
 
 	public static Class<?> unifyArithmeticTypes(Class<?>... types) {
@@ -542,80 +549,38 @@ public final class Expressions {
 		return new ExpressionThrow(exception, message);
 	}
 
-	public static final class SwitchByIndexBuilder {
-		private final List<Expression> expressions = new ArrayList<>();
-		private Expression defaultExpression = exception(IllegalArgumentException.class);
-
-		public SwitchByIndexBuilder with(Expression expression) {
-			this.expressions.add(expression);
-			return this;
-		}
-
-		public SwitchByIndexBuilder with(List<Expression> expressions) {
-			this.expressions.addAll(expressions);
-			return this;
-		}
-
-		public SwitchByIndexBuilder with(Expression... expressions) {
-			this.expressions.addAll(asList(expressions));
-			return this;
-		}
-
-		public SwitchByIndexBuilder withDefault(Expression defaultExpression) {
-			this.defaultExpression = defaultExpression;
-			return this;
-		}
-	}
-
-	public static Expression switchByIndex(Expression index, Consumer<SwitchByIndexBuilder> builderConsumer) {
-		SwitchByIndexBuilder builder = new SwitchByIndexBuilder();
-		return new ExpressionSwitchByIndex(index, builder.expressions, builder.defaultExpression);
-	}
-
 	public static Expression switchByIndex(Expression index, List<Expression> expressions) {
-		return new ExpressionSwitchByIndex(index, expressions, exception(IllegalArgumentException.class));
+		return new ExpressionSwitchByIndex(index, expressions, ExpressionSwitchByIndex.DEFAULT_EXPRESSION);
 	}
 
 	public static Expression switchByIndex(Expression index, Expression... expressions) {
-		return new ExpressionSwitchByIndex(index, asList(expressions), null);
+		return new ExpressionSwitchByIndex(index, asList(expressions), ExpressionSwitchByIndex.DEFAULT_EXPRESSION);
 	}
 
-	public static Expression switchByIndex(Expression index, Expression defaultExp, List<Expression> expressions) {
-		return new ExpressionSwitchByIndex(index, expressions, defaultExp);
+	public static Expression switchByIndex(Expression index, List<Expression> expressions, Expression defaultExpression) {
+		return new ExpressionSwitchByIndex(index, expressions, defaultExpression);
 	}
 
-	public static Expression switchByIndex(Expression index, Expression defaultExp, Expression[] expressions) {
-		return new ExpressionSwitchByIndex(index, asList(expressions), defaultExp);
+	public static Expression switchByKey(Expression key, List<Expression> matchCases, List<Expression> matchExpressions) {
+		return new ExpressionSwitchByKey(key, matchCases, matchExpressions, ExpressionSwitchByKey.DEFAULT_EXPRESSION);
 	}
 
-	public static final class SwitchByKeyBuilder {
-		private final List<Expression> matchCases = new ArrayList<>();
-		private final List<Expression> matchExpressions = new ArrayList<>();
-		private Expression defaultExpression = exception(IllegalArgumentException.class);
+	public static Expression switchByKey(Expression key, List<Expression> matchCases, List<Expression> matchExpressions, Expression defaultExpression) {
+		return new ExpressionSwitchByKey(key, matchCases, matchExpressions, defaultExpression);
+	}
 
-		public SwitchByKeyBuilder with(Expression matchCase, Expression matchExpression) {
-			this.matchCases.add(matchCase);
-			this.matchExpressions.add(matchExpression);
-			return this;
+	public static Expression switchByKey(Expression key, Map<Expression, Expression> cases) {
+		return switchByKey(key, cases, ExpressionSwitchByKey.DEFAULT_EXPRESSION);
+	}
+
+	public static Expression switchByKey(Expression key, Map<Expression, Expression> cases, Expression defaultExpression) {
+		List<Expression> matchCases = new ArrayList<>();
+		List<Expression> matchExpressions = new ArrayList<>();
+		for (Map.Entry<Expression, Expression> entry : cases.entrySet()) {
+			matchCases.add(entry.getKey());
+			matchExpressions.add(entry.getValue());
 		}
-
-		public SwitchByKeyBuilder withDefault(Expression defaultExpression) {
-			this.defaultExpression = defaultExpression;
-			return this;
-		}
-	}
-
-	public static Expression switchByKey(Expression index, Consumer<SwitchByKeyBuilder> builderConsumer) {
-		SwitchByKeyBuilder builder = new SwitchByKeyBuilder();
-		return new ExpressionSwitchByKey(index, builder.matchCases, builder.matchExpressions, builder.defaultExpression);
-	}
-
-	public static Expression switchByKey(Expression key, List<Expression> matchCases, List<Expression> matchExceptions) {
-		return new ExpressionSwitchByKey(key, matchCases, matchExceptions, exception(IllegalArgumentException.class));
-	}
-
-	public static Expression switchByKey(Expression key, List<Expression> listKey, List<Expression> listValue, Expression defaultExpression) {
-		return new ExpressionSwitchByKey(key, listKey, listValue, defaultExpression);
+		return new ExpressionSwitchByKey(key, matchCases, matchExpressions, defaultExpression);
 	}
 
 	public static Expression setArrayItem(Expression array, Expression position, Expression newElement) {
@@ -662,9 +627,4 @@ public final class Expressions {
 		return call(list, "add", value);
 	}
 
-	public static ExpressionSequence sequenceOf(Consumer<List<Expression>> consumer) {
-		List<Expression> expressions = new ArrayList<>();
-		consumer.accept(expressions);
-		return new ExpressionSequence(expressions);
-	}
 }

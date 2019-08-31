@@ -20,35 +20,18 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static java.util.Collections.emptyList;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 /**
  * Defines methods for using logical 'or' for boolean type
  */
-public final class PredicateDefOr implements PredicateDef {
-	private final List<PredicateDef> predicates = new ArrayList<>();
+final class PredicateDefOr implements PredicateDef {
+	private final List<PredicateDef> predicates;
 
-	// region builders
-	private PredicateDefOr(List<PredicateDef> predicates) {
-		this.predicates.addAll(predicates);
-	}
-
-	public static PredicateDefOr create() {
-		return new PredicateDefOr(emptyList());
-	}
-
-	public static PredicateDefOr create(List<PredicateDef> predicates) {
-		return new PredicateDefOr(predicates);
-	}
-	// endregion
-
-	public PredicateDefOr add(PredicateDef predicateDef) {
-		this.predicates.add(predicateDef);
-		return this;
+	PredicateDefOr(List<PredicateDef> predicates) {
+		this.predicates = predicates;
 	}
 
 	@Override

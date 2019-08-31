@@ -20,14 +20,13 @@ import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionLet implements Variable {
 	private final Expression field;
 	private VarLocal var;
 
 	ExpressionLet(Expression field) {
-		this.field = checkNotNull(field);
+		this.field = field;
 	}
 
 	@Override

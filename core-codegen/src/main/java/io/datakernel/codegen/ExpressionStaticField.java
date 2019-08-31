@@ -24,7 +24,6 @@ import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
@@ -33,8 +32,8 @@ final class ExpressionStaticField implements Variable {
 	private final String name;
 
 	ExpressionStaticField(Class<?> owner, String name) {
-		this.owner = checkNotNull(owner);
-		this.name = checkNotNull(name);
+		this.owner = owner;
+		this.name = name;
 	}
 
 	@Override

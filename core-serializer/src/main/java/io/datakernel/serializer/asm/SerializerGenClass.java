@@ -447,7 +447,7 @@ public class SerializerGenClass implements SerializerGen {
 
 		return let(
 				constructor(newClass),
-				instance -> sequenceOf(expressions -> {
+				instance -> sequence(expressions -> {
 					for (String fieldName : fields.keySet()) {
 						FieldGen fieldGen = fields.get(fieldName);
 						if (!fieldGen.hasVersion(version))
@@ -469,7 +469,7 @@ public class SerializerGenClass implements SerializerGen {
 		return let(
 				constructor(dataTypeIn),
 				instance ->
-						sequenceOf(expressions -> {
+						sequence(expressions -> {
 							for (String fieldName : fields.keySet()) {
 								FieldGen fieldGen = fields.get(fieldName);
 

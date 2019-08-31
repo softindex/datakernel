@@ -182,16 +182,16 @@ public class ExpressionTest {
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareTo("x"))
+						compareToImpl("x"))
 				.withMethod("equals",
-						asEquals("x"))
+						equalsImpl("x"))
 				.withMethod("setXY", sequence(
 						set(property(self(), "x"), arg(0)),
 						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+						hash(property(arg(0), "property1"), property(arg(0), "property2")))
 				.withMethod("property1",
 						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
@@ -218,8 +218,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(property(self(), "x"))
-								.withArgument("labelY: ", property(self(), "y")))
+								.with(property(self(), "x"))
+								.with("labelY: ", property(self(), "y")))
 				.build();
 		Test test = testClass.newInstance();
 
@@ -269,7 +269,7 @@ public class ExpressionTest {
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test2.class)
 				.withMethod("hash",
-						hashCodeOfArgs(
+						hash(
 								property(arg(0), "property1"),
 								property(arg(0), "property2"),
 								property(arg(0), "property3"),
@@ -614,16 +614,16 @@ public class ExpressionTest {
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareTo("x"))
+						compareToImpl("x"))
 				.withMethod("equals",
-						asEquals("x"))
+						equalsImpl("x"))
 				.withMethod("setXY", sequence(
 						set(property(self(), "x"), arg(0)),
 						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+						hash(property(arg(0), "property1"), property(arg(0), "property2")))
 				.withMethod("property1",
 						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
@@ -650,8 +650,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(property(self(), "x"))
-								.withArgument("labelY: ", property(self(), "y")))
+								.with(property(self(), "x"))
+								.with("labelY: ", property(self(), "y")))
 				.build();
 
 		Class<Test> testClass2 = ClassBuilder.create(definingClassLoader, Test.class)
@@ -660,16 +660,16 @@ public class ExpressionTest {
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareTo("x"))
+						compareToImpl("x"))
 				.withMethod("equals",
-						asEquals("x"))
+						equalsImpl("x"))
 				.withMethod("setXY", sequence(
 						set(property(self(), "x"), arg(0)),
 						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(
+						hash(
 								property(arg(0), "property1"),
 								property(arg(0), "property2")))
 				.withMethod("property1",
@@ -698,8 +698,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(property(self(), "x"))
-								.withArgument("labelY: ", property(self(), "y")))
+								.with(property(self(), "x"))
+								.with("labelY: ", property(self(), "y")))
 				.build();
 
 		assertEquals(testClass1, testClass2);
@@ -899,7 +899,7 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(call(self(), "b")))
+								.with(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 
 		assertNull(instance.b());
@@ -917,7 +917,7 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(call(self(), "b")))
+								.with(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 		assertEquals(folder.list().length, 1);
 		assertNull(instance.b());

@@ -23,7 +23,6 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
@@ -36,8 +35,8 @@ final class ExpressionConstructor implements Expression {
 	private final List<Expression> fields;
 
 	ExpressionConstructor(Class<?> type, List<Expression> fields) {
-		this.type = checkNotNull(type);
-		this.fields = checkNotNull(fields);
+		this.type = type;
+		this.fields = fields;
 	}
 
 	@Override

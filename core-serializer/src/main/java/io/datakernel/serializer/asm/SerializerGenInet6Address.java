@@ -17,7 +17,6 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
@@ -62,7 +61,7 @@ public class SerializerGenInet6Address implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return let(Expressions.newArray(byte[].class, value(16)), local ->
+		return let(newArray(byte[].class, value(16)), local ->
 				sequence(
 						call(arg(0), "read", local),
 						callStatic(getRawType(), "getByAddress", local)));

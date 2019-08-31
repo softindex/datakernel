@@ -73,7 +73,7 @@ public final class Utils {
 				.withMethod("extractKey",
 						let(
 								newArray(Object.class, value(recordDimensions.size())),
-								key -> sequenceOf(expressions -> {
+								key -> sequence(expressions -> {
 									for (int i = 0; i < recordDimensions.size(); i++) {
 										String dimension = recordDimensions.get(i);
 										expressions.add(setArrayItem(key, value(i),
@@ -88,7 +88,7 @@ public final class Utils {
 		List<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributesFunction.class)
 				.withMethod("applyAttributes",
-						sequenceOf(expressions -> {
+						sequence(expressions -> {
 							for (String attribute : recordAttributes) {
 								String attributeName = attribute.substring(attribute.indexOf('.') + 1);
 								int resolverAttributeIndex = resolverAttributes.indexOf(attributeName);

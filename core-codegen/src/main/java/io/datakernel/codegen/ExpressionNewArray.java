@@ -19,7 +19,6 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionNewArray implements Expression {
@@ -27,8 +26,8 @@ final class ExpressionNewArray implements Expression {
 	private final Expression length;
 
 	ExpressionNewArray(Class<?> type, Expression length) {
-		this.type = checkNotNull(type);
-		this.length = checkNotNull(length);
+		this.type = type;
+		this.length = length;
 	}
 
 	@Override

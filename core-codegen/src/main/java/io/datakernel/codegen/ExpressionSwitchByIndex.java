@@ -23,11 +23,14 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.List;
 import java.util.Objects;
 
+import static io.datakernel.codegen.Expressions.exception;
 import static io.datakernel.codegen.Expressions.newLocal;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionSwitchByIndex implements Expression {
+	public static final Expression DEFAULT_EXPRESSION = exception(IllegalArgumentException.class);
+
 	private final Expression index;
 	private final List<Expression> expressions;
 	private final Expression defaultExpression;

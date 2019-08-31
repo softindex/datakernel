@@ -23,7 +23,6 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Objects;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -34,7 +33,7 @@ final class ExpressionConstant implements Expression {
 	private String staticConstantField;
 
 	ExpressionConstant(Object value) {
-		this.value = checkNotNull(value);
+		this.value = value;
 	}
 
 	public Object getValue() {

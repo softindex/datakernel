@@ -18,7 +18,6 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -36,7 +35,7 @@ public final class MeasureCount extends Measure {
 
 	@Override
 	public Expression zeroAccumulator(Variable accumulator) {
-		return Expressions.voidExp();
+		return voidExp();
 	}
 
 	@Override

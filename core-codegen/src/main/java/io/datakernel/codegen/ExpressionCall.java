@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
@@ -37,9 +36,9 @@ final class ExpressionCall implements Expression {
 	private final List<Expression> arguments;
 
 	ExpressionCall(Expression owner, String methodName, List<Expression> arguments) {
-		this.owner = checkNotNull(owner);
-		this.methodName = checkNotNull(methodName);
-		this.arguments = checkNotNull(arguments);
+		this.owner = owner;
+		this.methodName = methodName;
+		this.arguments = arguments;
 	}
 
 	@Override
