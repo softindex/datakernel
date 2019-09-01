@@ -18,7 +18,6 @@ package io.datakernel.codegen;
 
 import org.objectweb.asm.Type;
 
-import static io.datakernel.codegen.Utils.loadAndCast;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
@@ -26,7 +25,7 @@ import static org.objectweb.asm.Type.getType;
  * Defines method in order to cast a function to a type
  */
 final class ExpressionCast implements Expression {
-	public static final Type THIS_TYPE = getType(Object.class);
+	static final Type SELF_TYPE = getType(Object.class);
 
 	private final Expression expression;
 	private final Type targetType;
@@ -38,8 +37,8 @@ final class ExpressionCast implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		Type targetType = this.targetType == THIS_TYPE ? ctx.getThisType() : this.targetType;
-		loadAndCast(ctx, expression, targetType);
+		Type targetType = this.targetType == SELF_TYPE ? ctx.getSelfType() : this.targetType;
+		ctx.cast(expression.load(ctx), targetType);
 		return targetType;
 	}
 

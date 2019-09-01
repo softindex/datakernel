@@ -25,7 +25,7 @@ final class VarThis implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		ctx.getGeneratorAdapter().loadThis();
-		return ctx.getThisType();
+		return ctx.getSelfType();
 	}
 
 	@Override

@@ -23,7 +23,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.Iterator;
 import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.newLocal;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
@@ -31,13 +31,13 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 	protected final Expression collection;
 	protected final Function<Expression, Expression> forKey;
 	protected final Function<Expression, Expression> forValue;
-	protected final Class<?> entryType;
+	protected final Class<?> entryClazz;
 
-	protected AbstractExpressionMapForEach(Expression collection, Function<Expression, Expression> forKey, Function<Expression, Expression> forValue, Class<?> entryType) {
+	protected AbstractExpressionMapForEach(Expression collection, Function<Expression, Expression> forKey, Function<Expression, Expression> forValue, Class<?> entryClazz) {
 		this.collection = collection;
 		this.forKey = forKey;
 		this.forValue = forValue;
-		this.entryType = entryType;
+		this.entryClazz = entryClazz;
 	}
 
 	protected abstract Expression getEntries();
@@ -52,21 +52,20 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		Expression it = call(getEntries(), "iterator");
-		it.load(ctx);
+		ctx.invoke(getEntries(), "iterator");
 		VarLocal iterator = newLocal(ctx, getType(Iterator.class));
 		iterator.store(ctx);
 
 		g.mark(labelLoop);
 
-		call(iterator, "hasNext").load(ctx);
+		ctx.invoke(iterator, "hasNext");
 		g.push(false);
 		g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
-		Expression varEntry = cast(call(iterator, "next"), entryType);
-		Type varEntryType = varEntry.load(ctx);
+		Type entryType = getType(entryClazz);
+		ctx.cast(ctx.invoke(iterator, "next"), entryType);
 
-		VarLocal entry = newLocal(ctx, varEntryType);
+		VarLocal entry = newLocal(ctx, entryType);
 		entry.store(ctx);
 
 		forKey.apply(getKey(entry)).load(ctx);
@@ -87,7 +86,7 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		if (!collection.equals(that.collection)) return false;
 		if (!forKey.equals(that.forKey)) return false;
 		if (!forValue.equals(that.forValue)) return false;
-		return entryType.equals(that.entryType);
+		return entryClazz.equals(that.entryClazz);
 	}
 
 	@Override
@@ -95,7 +94,7 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		int result = collection.hashCode();
 		result = 31 * result + forKey.hashCode();
 		result = 31 * result + forValue.hashCode();
-		result = 31 * result + entryType.hashCode();
+		result = 31 * result + entryClazz.hashCode();
 		return result;
 	}
 }

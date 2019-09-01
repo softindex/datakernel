@@ -22,10 +22,13 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Utils.getJavaType;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionCallStatic implements Expression {
@@ -63,7 +66,7 @@ final class ExpressionCallStatic implements Expression {
 			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,
-					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
+					argumentClasses.stream().map(Objects::toString).collect(joining(",")),
 					exceptionInGeneratedClass(ctx)));
 
 		}

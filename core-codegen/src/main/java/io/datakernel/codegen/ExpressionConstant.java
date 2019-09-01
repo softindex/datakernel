@@ -78,7 +78,7 @@ final class ExpressionConstant implements Expression {
 				staticConstantField = "$STATIC_CONSTANT_" + (ctx.getStaticConstants().size() + 1);
 				ctx.addStaticConstant(staticConstantField, value);
 			}
-			g.getStatic(ctx.getThisType(), staticConstantField, getType(value.getClass()));
+			g.getStatic(ctx.getSelfType(), staticConstantField, getType(value.getClass()));
 		}
 		return type;
 	}

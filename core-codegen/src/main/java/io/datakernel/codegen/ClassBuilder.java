@@ -34,8 +34,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static io.datakernel.codegen.Utils.loadAndCast;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.getInternalName;
 import static org.objectweb.asm.Type.getType;
@@ -126,15 +126,15 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	 * Creates a new instance of AsmFunctionFactory
 	 *
 	 * @param classLoader class loader
-	 * @param type        type of dynamic class
+	 * @param mainClass        type of dynamic class
 	 */
-	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> type) {
-		this(classLoader, type, Collections.EMPTY_LIST);
+	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainClass) {
+		this(classLoader, mainClass, emptyList());
 	}
 
-	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainType, List<Class<?>> types) {
+	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainClass, List<Class<?>> types) {
 		this.classLoader = classLoader;
-		this.mainClass = mainType;
+		this.mainClass = mainClass;
 		this.otherClasses = types;
 	}
 
@@ -343,7 +343,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticConstants, m.getArgumentTypes(), m, methods, staticMethods);
 
 				Expression expression = staticMethods.get(m);
-				loadAndCast(ctx, expression, m.getReturnType());
+				ctx.cast(expression.load(ctx), m.getReturnType());
 				g.returnValue();
 
 				g.endMethod();
@@ -359,7 +359,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticConstants, m.getArgumentTypes(), m, methods, staticMethods);
 
 				Expression expression = methods.get(m);
-				loadAndCast(ctx, expression, m.getReturnType());
+				ctx.cast(expression.load(ctx), m.getReturnType());
 				g.returnValue();
 
 				g.endMethod();

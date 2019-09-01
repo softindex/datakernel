@@ -23,7 +23,8 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.exception;
+import static io.datakernel.codegen.Expressions.newLocal;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.getType;
 
@@ -60,7 +61,7 @@ final class ExpressionSwitchByKey implements Expression {
 				value.load(ctx);
 				g.ifCmp(keyType, GeneratorAdapter.NE, labelNext);
 			} else {
-				call(matchCases.get(i), "equals", value).load(ctx);
+				ctx.invoke(matchCases.get(i), "equals", value);
 				g.push(true);
 				g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, labelNext);
 			}

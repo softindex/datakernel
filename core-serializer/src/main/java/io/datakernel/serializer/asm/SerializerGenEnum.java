@@ -22,7 +22,6 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
-import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -62,12 +61,12 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = call(cast(value, Enum.class), "ordinal");
 		if (isSmallEnum()) {
-			ordinal = cast(ordinal, Type.BYTE_TYPE);
+			ordinal = cast(ordinal, byte.class);
 			return !nullable ?
 					callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, ordinal) :
 					ifThenElse(isNull(value),
 							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0)),
-							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE)));
+							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), byte.class)));
 		}
 		return !nullable ?
 				callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, ordinal) :

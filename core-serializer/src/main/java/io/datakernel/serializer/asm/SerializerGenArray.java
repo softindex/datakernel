@@ -81,32 +81,32 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 			StaticMethods staticMethods,
 			CompatibilityLevel compatibilityLevel) {
 		Expression castedValue = cast(value, type);
-		Expression length = fixedSize != -1 ?
-				value(fixedSize) :
-				length(castedValue);
-
-		Expression writeBytes = callStatic(BinaryOutputUtils.class, "write", byteArray, off, castedValue);
-		Expression writeZero = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0)));
-		Expression writeLength = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
-		Expression expressionFor = loop(value(0), length,
-				it -> set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)));
+		Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
+		Expression writeLength = set(off,
+				callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression writeZeroLength = set(off,
+				callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0)));
+		Expression writeByteArray = callStatic(BinaryOutputUtils.class, "write", byteArray, off, castedValue);
+		Expression writeCollection = loop(value(0), length,
+				it -> set(off,
+						valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)));
 
 		if (!nullable) {
 			if (type.getComponentType() == Byte.TYPE) {
-				return sequence(writeLength, writeBytes);
+				return sequence(writeLength, writeByteArray);
 			} else {
-				return sequence(writeLength, expressionFor, off);
+				return sequence(writeLength, writeCollection, off);
 			}
 		} else {
 			if (type.getComponentType() == Byte.TYPE) {
 				return ifThenElse(isNull(value),
-						sequence(writeZero, off),
-						sequence(writeLength, writeBytes)
+						sequence(writeZeroLength, off),
+						sequence(writeLength, writeByteArray)
 				);
 			} else {
 				return ifThenElse(isNull(value),
-						sequence(writeZero, off),
-						sequence(writeLength, expressionFor, off));
+						sequence(writeZeroLength, off),
+						sequence(writeLength, writeCollection, off));
 			}
 		}
 	}

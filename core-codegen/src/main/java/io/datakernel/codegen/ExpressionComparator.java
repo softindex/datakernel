@@ -24,7 +24,6 @@ import org.objectweb.asm.commons.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
@@ -36,6 +35,8 @@ import static org.objectweb.asm.commons.GeneratorAdapter.NE;
  * Defines methods to compare some fields
  */
 public final class ExpressionComparator implements Expression {
+	private final List<ComparablePair> pairs = new ArrayList<>();
+
 	private static final class ComparablePair {
 		private final Expression left;
 		private final Expression right;
@@ -69,8 +70,6 @@ public final class ExpressionComparator implements Expression {
 		}
 	}
 
-	private final List<ComparablePair> pairs = new ArrayList<>();
-
 	private ExpressionComparator() {
 	}
 
@@ -92,7 +91,7 @@ public final class ExpressionComparator implements Expression {
 	}
 
 	public static Expression thatProperty(String property) {
-		return property(cast(arg(0), THIS_TYPE), property);
+		return property(castIntoSelf(arg(0)), property);
 	}
 
 	public static Expression leftProperty(Class<?> type, String property) {

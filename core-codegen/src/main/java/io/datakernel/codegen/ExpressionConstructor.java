@@ -20,10 +20,14 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.lang.reflect.Constructor;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
 
@@ -59,7 +63,7 @@ final class ExpressionConstructor implements Expression {
 		} catch (NoSuchMethodException ignored) {
 			throw new RuntimeException(format("No constructor %s.<init>(%s). %s",
 					type.getName(),
-					(fieldTypes.length != 0 ? argsToString(fieldTypes) : ""),
+					Arrays.stream(fieldTypes).map(Objects::toString).collect(joining(",")),
 					exceptionInGeneratedClass(ctx)));
 		}
 	}

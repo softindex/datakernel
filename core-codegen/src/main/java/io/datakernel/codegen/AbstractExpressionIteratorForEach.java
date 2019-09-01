@@ -23,9 +23,8 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.Iterator;
 import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Expressions.newLocal;
+import static io.datakernel.codegen.Utils.tryGetJavaType;
 import static org.objectweb.asm.Type.getType;
 
 public abstract class AbstractExpressionIteratorForEach implements Expression {
@@ -58,18 +57,17 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 		if (t.isInstance(Iterator.class) || t == Iterator.class) {
 			// do nothing
 		} else {
-			invokeVirtualOrInterface(g, getJavaType(ctx.getClassLoader(), collectionType),
-					new org.objectweb.asm.commons.Method("iterator", getType(Iterator.class), new Type[]{}));
+			ctx.invoke(collectionType, "iterator");
 		}
 		varIter.store(ctx);
 
 		g.mark(labelLoop);
 
-		call(varIter, "hasNext").load(ctx);
+		ctx.invoke(varIter, "hasNext");
 		g.push(false);
 		g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
-		cast(call(varIter, "next"), type).load(ctx);
+		ctx.cast(ctx.invoke(varIter, "next"), getType(type));
 		VarLocal it = newLocal(ctx, getType(type));
 		it.store(ctx);
 

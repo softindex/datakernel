@@ -29,7 +29,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.isWrapperType;
 import static java.util.Collections.singletonList;
 
 public final class MeasureHyperLogLog extends Measure {
@@ -134,8 +134,7 @@ public final class MeasureHyperLogLog extends Measure {
 				g.unbox(methodParameterType);
 			}
 
-			invokeVirtualOrInterface(g, getJavaType(ctx.getClassLoader(), accumulatorType),
-					new org.objectweb.asm.commons.Method(methodName, Type.VOID_TYPE, new Type[]{methodParameterType}));
+			ctx.invoke(accumulatorType, methodName, methodParameterType);
 
 			return Type.VOID_TYPE;
 		}

@@ -22,12 +22,12 @@ import org.objectweb.asm.commons.Method;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
-import static io.datakernel.codegen.Utils.argsToString;
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.joining;
 
 final class ExpressionCallStaticSelf implements Expression {
 	private final String methodName;
@@ -55,11 +55,9 @@ final class ExpressionCallStaticSelf implements Expression {
 			}
 		}
 		throw new RuntimeException(format("No method %s.%s(%s). %s",
-				ctx.getThisType().getClassName(),
+				ctx.getSelfType().getClassName(),
 				methodName,
-				argumentTypes.length != 0 ?
-						argsToString(Arrays.stream(argumentTypes).collect(toList())) :
-						"",
+				Arrays.stream(argumentTypes).map(Objects::toString).collect(joining(",")),
 				exceptionInGeneratedClass(ctx)));
 	}
 
@@ -74,7 +72,7 @@ final class ExpressionCallStaticSelf implements Expression {
 		}
 
 		Type returnType = type(argumentTypes, ctx);
-		g.invokeStatic(ctx.getThisType(), new Method(methodName, returnType, argumentTypes));
+		g.invokeStatic(ctx.getSelfType(), new Method(methodName, returnType, argumentTypes));
 		return returnType;
 	}
 

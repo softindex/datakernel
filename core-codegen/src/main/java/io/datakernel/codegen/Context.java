@@ -20,8 +20,17 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import static io.datakernel.codegen.Utils.*;
+import static java.lang.String.format;
+import static java.util.stream.Collectors.joining;
+import static org.objectweb.asm.Type.getType;
 
 /**
  * Contains information about a dynamic class
@@ -29,7 +38,7 @@ import java.util.Map;
 public final class Context {
 	private final DefiningClassLoader classLoader;
 	private final GeneratorAdapter g;
-	private final Type thisType;
+	private final Type selfType;
 	private final Method method;
 	private final Class<?> mainClass;
 	private final List<Class<?>> otherClasses;
@@ -39,9 +48,15 @@ public final class Context {
 	private final Map<Method, Expression> methods;
 	private final Map<Method, Expression> staticMethods;
 
-	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> mainClass,
-			List<Class<?>> otherClasses, Map<String, Class<?>> fields, Map<String, Object> staticConstants,
-			Type[] argumentTypes, Method method, Map<Method, Expression> methods,
+	public Context(DefiningClassLoader classLoader, GeneratorAdapter g,
+			Type selfType,
+			Class<?> mainClass,
+			List<Class<?>> otherClasses,
+			Map<String, Class<?>> fields,
+			Map<String, Object> staticConstants,
+			Type[] argumentTypes,
+			Method method,
+			Map<Method, Expression> methods,
 			Map<Method, Expression> staticMethods) {
 		this.classLoader = classLoader;
 		this.g = g;
@@ -49,7 +64,7 @@ public final class Context {
 		this.mainClass = mainClass;
 		this.otherClasses = otherClasses;
 		this.argumentTypes = argumentTypes;
-		this.thisType = thisType;
+		this.selfType = selfType;
 		this.fields = fields;
 		this.staticConstants = staticConstants;
 		this.methods = methods;
@@ -72,8 +87,8 @@ public final class Context {
 		return otherClasses;
 	}
 
-	public Type getThisType() {
-		return thisType;
+	public Type getSelfType() {
+		return selfType;
 	}
 
 	public Map<String, Class<?>> getFields() {
@@ -106,6 +121,120 @@ public final class Context {
 
 	public Method getMethod() {
 		return method;
+	}
+
+	public Type invoke(Expression owner, String methodName, Expression... arguments) {
+		Type ownerType = owner.load(this);
+		Type[] argumentTypes = new Type[arguments.length];
+		for (int i = 0; i < arguments.length; i++) {
+			Expression argument = arguments[i];
+			argumentTypes[i] = argument.load(this);
+		}
+		return invoke(ownerType, methodName, argumentTypes);
+	}
+
+	public Type invoke(Type ownerType, String methodName, Type... argumentTypes) {
+		Class<?>[] argumentClasses = Stream.of(argumentTypes).map(type -> getJavaType(getClassLoader(), type)).toArray(Class[]::new);
+		try {
+			if (!getSelfType().equals(ownerType)) {
+				Class<?> javaOwnerType = getJavaType(getClassLoader(), ownerType);
+				java.lang.reflect.Method javaMethod = javaOwnerType.getMethod(methodName, argumentClasses);
+				Type returnType = getType(javaMethod.getReturnType());
+				invokeVirtualOrInterface(g, javaOwnerType, new org.objectweb.asm.commons.Method(methodName, returnType, argumentTypes));
+				return returnType;
+			}
+			for (Method method : getMethods().keySet()) {
+				if (method.getName().equals(methodName) && method.getArgumentTypes().length == argumentTypes.length) {
+					Type[] methodTypes = method.getArgumentTypes();
+					if (IntStream.range(0, argumentTypes.length).allMatch(i -> methodTypes[i].equals(argumentTypes[i]))) {
+						g.invokeVirtual(ownerType, method);
+						return method.getReturnType();
+					}
+				}
+			}
+			throw new NoSuchMethodException();
+		} catch (NoSuchMethodException ignored) {
+			throw new IllegalArgumentException(
+					format("No method %s.%s(%s). %s",
+							ownerType.getClassName(),
+							methodName,
+							Arrays.stream(argumentClasses).map(Objects::toString).collect(joining(",")),
+							exceptionInGeneratedClass(this)));
+		}
+	}
+
+	public void cast(Type type, Type targetType) {
+		GeneratorAdapter g = getGeneratorAdapter();
+
+		if (type.equals(targetType)) {
+			return;
+		}
+
+		if (targetType == Type.VOID_TYPE) {
+			if (type.getSize() == 1)
+				g.pop();
+			if (type.getSize() == 2)
+				g.pop2();
+			return;
+		}
+
+		if (type == Type.VOID_TYPE) {
+			throw new RuntimeException(format("Can't cast VOID_TYPE to %s. %s",
+					targetType.getClassName(),
+					exceptionInGeneratedClass(this)));
+		}
+
+		if (type.equals(getSelfType())) {
+			Class<?> javaType = getJavaType(getClassLoader(), targetType);
+			if (javaType.isAssignableFrom(getMainClass())) {
+				return;
+			}
+			for (Class<?> aClass : getOtherClasses()) {
+				if (javaType.isAssignableFrom(aClass)) {
+					return;
+				}
+			}
+			throw new RuntimeException(format("Can't cast self %s to %s, %s",
+					type.getClassName(),
+					targetType.getClassName(),
+					exceptionInGeneratedClass(this)));
+		}
+
+		if (!type.equals(getSelfType()) && !targetType.equals(getSelfType()) &&
+				getJavaType(getClassLoader(), targetType).isAssignableFrom(getJavaType(getClassLoader(), type))) {
+			return;
+		}
+
+		if (targetType.equals(getType(Object.class)) && isPrimitiveType(type)) {
+			g.box(type);
+//			g.cast(wrap(type), getType(Object.class));
+			return;
+		}
+
+		if ((isPrimitiveType(type) || isWrapperType(type)) &&
+				(isPrimitiveType(targetType) || isWrapperType(targetType))) {
+
+			Type targetTypePrimitive = isPrimitiveType(targetType) ? targetType : unwrap(targetType);
+
+			if (isWrapperType(type)) {
+				g.invokeVirtual(type, primitiveValueMethod(targetType));
+				return;
+			}
+
+			assert isPrimitiveType(type);
+
+			if (isValidCast(type, targetTypePrimitive)) {
+				g.cast(type, targetTypePrimitive);
+			}
+
+			if (isWrapperType(targetType)) {
+				g.valueOf(targetTypePrimitive);
+			}
+
+			return;
+		}
+
+		g.checkCast(targetType);
 	}
 
 }

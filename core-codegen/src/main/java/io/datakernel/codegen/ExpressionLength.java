@@ -19,8 +19,6 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Utils.getJavaType;
-import static io.datakernel.codegen.Utils.invokeVirtualOrInterface;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ExpressionLength implements Expression {
@@ -38,8 +36,7 @@ final class ExpressionLength implements Expression {
 		if (valueType.getSort() == Type.ARRAY) {
 			g.arrayLength();
 		} else if (valueType.getSort() == Type.OBJECT) {
-			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), valueType);
-			invokeVirtualOrInterface(g, ownerJavaType, new org.objectweb.asm.commons.Method("size", Type.INT_TYPE, new Type[]{}));
+			ctx.invoke(valueType, "size");
 		}
 		return Type.INT_TYPE;
 	}

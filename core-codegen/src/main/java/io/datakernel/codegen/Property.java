@@ -67,16 +67,16 @@ final class Property implements Variable {
 
 		Class<?> valueClass = getJavaType(ctx.getClassLoader(), valueType);
 
-		if (ctx.getThisType().equals(ownerType)) {
+		if (ctx.getSelfType().equals(ownerType)) {
 			Class<?> propertyClass = ctx.getFields().get(property);
 			if (propertyClass == null) {
 				throw new RuntimeException(format("No property \"%s\" in generated class %s. %s",
 						property,
-						ctx.getThisType().getClassName(),
+						ctx.getSelfType().getClassName(),
 						exceptionInGeneratedClass(ctx)));
 			}
 			Type propertyType = getType(propertyClass);
-			cast(ctx, valueType, propertyType);
+			ctx.cast(valueType, propertyType);
 			g.putField(ownerType, property, propertyType);
 			return;
 		}
@@ -87,7 +87,7 @@ final class Property implements Variable {
 			Field javaProperty = argumentClass.getField(property);
 			if (Modifier.isPublic(javaProperty.getModifiers())) {
 				Type propertyType = getType(javaProperty.getType());
-				cast(ctx, valueType, propertyType);
+				ctx.cast(valueType, propertyType);
 				g.putField(ownerType, property, propertyType);
 				return;
 			}
@@ -110,7 +110,7 @@ final class Property implements Variable {
 
 		if (javaSetter != null) {
 			Type fieldType = getType(javaSetter.getParameterTypes()[0]);
-			cast(ctx, valueType, fieldType);
+			ctx.cast(valueType, fieldType);
 			invokeVirtualOrInterface(g, argumentClass, getMethod(javaSetter));
 			Type returnType = getType(javaSetter.getReturnType());
 			if (returnType.getSize() == 1) {
@@ -169,7 +169,7 @@ final class Property implements Variable {
 	private static Type loadPropertyOrGetter(Context ctx, Type ownerType, String property, boolean load) {
 		GeneratorAdapter g = load ? ctx.getGeneratorAdapter() : null;
 
-		if (ownerType.equals(ctx.getThisType())) {
+		if (ownerType.equals(ctx.getSelfType())) {
 			Class<?> thisPropertyClass = ctx.getFields().get(property);
 			if (thisPropertyClass != null) {
 				Type resultType = Type.getType(thisPropertyClass);

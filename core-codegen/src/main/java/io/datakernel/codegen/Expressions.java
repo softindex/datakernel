@@ -26,7 +26,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
+import static io.datakernel.codegen.ExpressionCast.SELF_TYPE;
 import static io.datakernel.codegen.ExpressionComparator.*;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -115,19 +115,12 @@ public class Expressions {
 	 * @param type       expression will be casted to the 'type'
 	 * @return new instance of the Expression which is casted to the type
 	 */
-	public static Expression cast(Expression expression, Type type) {
-		return new ExpressionCast(expression, type);
+	public static Expression cast(Expression expression, Class<?> type) {
+		return new ExpressionCast(expression, getType(type));
 	}
 
-	/**
-	 * Casts expression to the type
-	 *
-	 * @param expression expressions which will be casted
-	 * @param type       expression will be casted to the 'type'
-	 * @return new instance of the Expression which is casted to the type
-	 */
-	public static Expression cast(Expression expression, Class<?> type) {
-		return cast(expression, getType(type));
+	public static Expression castIntoSelf(Expression expression) {
+		return new ExpressionCast(expression, SELF_TYPE);
 	}
 
 	/**
@@ -286,7 +279,7 @@ public class Expressions {
 		return and(properties.stream()
 				.map(property -> cmpEq(
 						property(self(), property),
-						property(cast(arg(0), THIS_TYPE), property))));
+						property(castIntoSelf(arg(0)), property))));
 	}
 
 	/**
@@ -472,7 +465,7 @@ public class Expressions {
 	 * @return new instance of the ExpressionCall
 	 */
 	public static Expression call(Expression owner, String methodName, Expression... arguments) {
-		return new ExpressionCall(owner, methodName, Arrays.asList(arguments));
+		return new ExpressionCall(owner, methodName, arguments);
 	}
 
 	public static Expression ifThenElse(PredicateDef condition, Expression left, Expression right) {

@@ -17,32 +17,28 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
-import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.CHAR_TYPE;
 import static org.objectweb.asm.Type.getType;
 
+@SuppressWarnings("WeakerAccess")
 public final class Utils {
-
-	private static final Map<String, Type> wrapperToPrimitive = new HashMap<>();
+	private static final Map<String, Type> WRAPPER_TO_PRIMITIVE = new HashMap<>();
 
 	static {
 		for (Class<?> primitiveType : Primitives.allPrimitiveTypes()) {
 			Class<?> wrappedType = Primitives.wrap(primitiveType);
-			wrapperToPrimitive.put(wrappedType.getName(), getType(primitiveType));
+			WRAPPER_TO_PRIMITIVE.put(wrappedType.getName(), getType(primitiveType));
 		}
 	}
 
@@ -80,7 +76,7 @@ public final class Utils {
 
 	public static boolean isWrapperType(Type type) {
 		return type.getSort() == Type.OBJECT &&
-				wrapperToPrimitive.containsKey(type.getClassName());
+				WRAPPER_TO_PRIMITIVE.containsKey(type.getClassName());
 	}
 
 	public static Method primitiveValueMethod(Type type) {
@@ -101,7 +97,7 @@ public final class Utils {
 		if (type.equals(getType(byte.class)) || type.equals(BYTE_TYPE))
 			return BYTE_VALUE;
 
-		throw new RuntimeException(format("No primitive value method for %s ", type.getClassName()));
+		throw new IllegalArgumentException(format("No primitive value method for %s ", type.getClassName()));
 	}
 
 	public static Type wrap(Type type) {
@@ -125,30 +121,13 @@ public final class Utils {
 		if (sort == Type.VOID)
 			return VOID_TYPE;
 
-		throw new RuntimeException(format("%s is not primitive", type.getClassName()));
+		throw new IllegalArgumentException(format("%s is not primitive", type.getClassName()));
 	}
 
 	public static Type unwrap(Type type) {
 		check(type.getSort() == Type.OBJECT, "Cannot unwrap type that is not an object reference");
-		Type result = wrapperToPrimitive.get(type.getClassName());
+		Type result = WRAPPER_TO_PRIMITIVE.get(type.getClassName());
 		return checkNotNull(result);
-	}
-
-	@Nullable
-	public static Type complementTypeOrNull(Type type) {
-		if (isPrimitiveType(type))
-			return wrap(type);
-		if (isWrapperType(type))
-			return unwrap(type);
-		return null;
-	}
-
-	public static Type complementType(Type type) {
-		Type result = complementTypeOrNull(type);
-		if (result != null)
-			return result;
-
-		throw new RuntimeException(format("%s is not primitive or wrapper", type.getClassName()));
 	}
 
 	public static Class<?> getJavaType(ClassLoader classLoader, Type type) {
@@ -175,7 +154,7 @@ public final class Utils {
 			try {
 				return classLoader.loadClass(type.getClassName());
 			} catch (ClassNotFoundException e) {
-				throw new RuntimeException(format("No class %s in class loader", type.getClassName()), e);
+				throw new IllegalArgumentException(format("No class %s in class loader", type.getClassName()), e);
 			}
 		}
 		if (sort == Type.ARRAY) {
@@ -187,12 +166,12 @@ public final class Utils {
 				try {
 					result = Class.forName(className);
 				} catch (ClassNotFoundException e) {
-					throw new RuntimeException(format("No class %s in Class.forName", className), e);
+					throw new IllegalArgumentException(format("No class %s in Class.forName", className), e);
 				}
 			}
 			return result;
 		}
-		throw new RuntimeException(format("No Java type for %s", type.getClassName()));
+		throw new IllegalArgumentException(format("No Java type for %s", type.getClassName()));
 	}
 
 	public static Class<?> getJavaType(Type type) {
@@ -239,7 +218,7 @@ public final class Utils {
 				try {
 					result = Class.forName(className);
 				} catch (ClassNotFoundException e) {
-					throw new RuntimeException(format("No class %s in Class.forName", className), e);
+					throw new IllegalArgumentException(format("No class %s in Class.forName", className), e);
 				}
 			}
 			return result;
@@ -254,112 +233,11 @@ public final class Utils {
 			g.invokeVirtual(getType(owner), method);
 	}
 
-	public static void loadAndCast(Context ctx, Expression expression, Type targetType) {
-		Type type = expression.load(ctx);
-		cast(ctx, type, targetType);
-	}
-
-	public static void cast(Context ctx, Type type, Type targetType) {
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
-
-		if (type.equals(targetType)) {
-			return;
-		}
-
-		if (targetType == Type.VOID_TYPE) {
-			if (type.getSize() == 1)
-				g.pop();
-			if (type.getSize() == 2)
-				g.pop2();
-			return;
-		}
-
-		if (type == Type.VOID_TYPE) {
-			throw new RuntimeException(format("Can't cast VOID_TYPE to %s. %s",
-					targetType.getClassName(),
-					exceptionInGeneratedClass(ctx)));
-		}
-
-		if (type.equals(ctx.getThisType())) {
-			Class<?> javaType = getJavaType(ctx.getClassLoader(), targetType);
-			if (javaType.isAssignableFrom(ctx.getMainClass())) {
-				return;
-			}
-			for (Class<?> aClass : ctx.getOtherClasses()) {
-				if (javaType.isAssignableFrom(aClass)) {
-					return;
-				}
-			}
-			throw new RuntimeException(format("Can't cast self %s to %s, %s",
-					type.getClassName(),
-					targetType.getClassName(),
-					exceptionInGeneratedClass(ctx)));
-		}
-
-		if (!type.equals(ctx.getThisType()) && !targetType.equals(ctx.getThisType()) &&
-				getJavaType(ctx.getClassLoader(), targetType).isAssignableFrom(getJavaType(ctx.getClassLoader(), type))) {
-			return;
-		}
-
-		if (targetType.equals(getType(Object.class)) && isPrimitiveType(type)) {
-			g.box(type);
-//			g.cast(wrap(type), getType(Object.class));
-			return;
-		}
-
-		if ((isPrimitiveType(type) || isWrapperType(type)) &&
-				(isPrimitiveType(targetType) || isWrapperType(targetType))) {
-
-			Type targetTypePrimitive = isPrimitiveType(targetType) ? targetType : unwrap(targetType);
-
-			if (isWrapperType(type)) {
-				g.invokeVirtual(type, primitiveValueMethod(targetType));
-				return;
-			}
-
-			assert isPrimitiveType(type);
-
-			if (isValidCast(type, targetTypePrimitive)) {
-				g.cast(type, targetTypePrimitive);
-			}
-
-			if (isWrapperType(targetType)) {
-				g.valueOf(targetTypePrimitive);
-			}
-
-			return;
-		}
-
-		g.checkCast(targetType);
-	}
-
 	public static String exceptionInGeneratedClass(Context ctx) {
 		return format("Thrown in generated class %s in method %s",
-				ctx.getThisType().getClassName(),
+				ctx.getSelfType().getClassName(),
 				ctx.getMethod()
 		);
-	}
-
-	public static <T> String argsToString(T[] args) {
-		return argsToString(asList(args));
-	}
-
-	public static <T> String argsToString(T[] args, String separator) {
-		return argsToString(asList(args), separator);
-	}
-
-	public static <T> String argsToString(Collection<T> args) {
-		return argsToString(args, ", ");
-	}
-
-	public static <T> String argsToString(Collection<T> args, String separator) {
-		StringBuilder stringBuilder = new StringBuilder();
-		Iterator<T> iterator = args.iterator();
-		stringBuilder.append(iterator.next());
-		while (iterator.hasNext()) {
-			stringBuilder.append(separator).append(iterator.next());
-		}
-		return stringBuilder.toString();
 	}
 
 	public static boolean isValidCast(Type from, Type to) {
