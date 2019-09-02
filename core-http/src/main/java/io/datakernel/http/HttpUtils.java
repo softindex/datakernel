@@ -28,12 +28,14 @@ import java.net.UnknownHostException;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpHeaders.HOST;
 
 /**
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
 	public static final ParseException INVALID_Q_VALUE = new ParseException("Value of 'q' should start either from 0 or 1");
+	private static final int URI_DEFAULT_CAPACITY = 1 << 5;
 
 	public static InetAddress inetAddress(String host) {
 		try {
@@ -255,5 +257,34 @@ public final class HttpUtils {
 			}
 		}
 		return 0;
+	}
+
+	/**
+	 * (RFC3986) scheme://authority/path/?query#fragment
+	 */
+	@Nullable
+	public static String getFullUri(HttpRequest request, int builderCapacity) {
+		String host = request.getHeader(HOST);
+		if (host == null) {
+			return null;
+		}
+		String query = request.getQuery();
+		String fragment = request.getFragment();
+		StringBuilder fullUriBuilder = new StringBuilder(builderCapacity)
+				.append(request.isHttps() ? "https://" : "http://")
+				.append(host)
+				.append(request.getPath());
+		if (!query.isEmpty()) {
+			fullUriBuilder.append("?").append(query);
+		}
+		if (!fragment.isEmpty()) {
+			fullUriBuilder.append("#").append(fragment);
+		}
+		return fullUriBuilder.toString();
+	}
+
+	@Nullable
+	public static String getFullUri(HttpRequest request) {
+		return getFullUri(request, URI_DEFAULT_CAPACITY);
 	}
 }

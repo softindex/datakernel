@@ -16,11 +16,12 @@
 
 package io.datakernel.util;
 
+import io.datakernel.http.HttpRequest;
 import org.junit.Test;
 
+import static io.datakernel.http.HttpUtils.getFullUri;
 import static io.datakernel.http.HttpUtils.isInetAddress;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class TestUtils {
 	@Test
@@ -81,5 +82,53 @@ public class TestUtils {
 
 		ip = "0:0:0:0:0:0:13.1.68.3";
 		assertTrue(isInetAddress(ip));
+	}
+
+	@Test
+	public void testFullUriHttp() {
+		String fullUri = "http://localhost:8080/example/test?param=1&param=2#test";
+		HttpRequest httpRequest = HttpRequest.get(fullUri);
+		assertEquals(getFullUri(httpRequest), fullUri);
+	}
+
+
+	@Test
+	public void testFullUriHttps() {
+		String fullUri = "https://localhost:8080/";
+		HttpRequest httpRequest = HttpRequest.get(fullUri);
+		assertEquals(fullUri, getFullUri(httpRequest));
+	}
+
+	@Test
+	public void testFullUriWithoutSlash() {
+		String fullUri = "https://localhost:8080";
+		HttpRequest httpRequest = HttpRequest.get(fullUri);
+		assertEquals(fullUri + "/", getFullUri(httpRequest));
+	}
+
+	@Test
+	public void testFullUriWithoutPath() {
+		String fullUri = "https://localhost:8080?test=test&test2=test2";
+		HttpRequest httpRequest = HttpRequest.get(fullUri);
+		assertEquals("https://localhost:8080" + "/" + "?test=test&test2=test2", getFullUri(httpRequest));
+	}
+
+	@Test
+	public void testFullUriWithSlashWithoutPath() {
+		String fullUri = "https://localhost:8080/?test=test&test2=test2";
+		HttpRequest httpRequest = HttpRequest.get(fullUri);
+		assertEquals(fullUri, getFullUri(httpRequest));
+	}
+
+	/**
+	 * The authority component is terminated by the next slash ("/"), question mark ("?"),
+	 * or number sign ("#") character, or by the end of the URI
+	 * https://tools.ietf.org/html/rfc3986#section-3.2
+	 */
+	@Test
+	public void test() {
+		String fullUri = "https://localhost:8080#####################";
+		HttpRequest httpRequest = HttpRequest.get(fullUri);
+		assertEquals("https://localhost:8080/#####################", getFullUri(httpRequest));
 	}
 }
