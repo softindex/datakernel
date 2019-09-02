@@ -61,9 +61,9 @@ public final class HelloWorldExample {
 ```
 `AsyncHttpServer` is a built-in implementation of an HTTP server which asynchronously runs in a Node.js-inspired Event Loop.
 
-📌 *The JAR file size of this example is only 1MB*
+📌 *The JAR file size of this example is only 723KB*
 
-📌 *`AsyncHttpServer` handles ~165K requests per second on single core*
+📌 *`AsyncHttpServer` handles ~170K requests per second on single core*
 
 ### Even simpler asynchronous HTTP server:
 ```java
