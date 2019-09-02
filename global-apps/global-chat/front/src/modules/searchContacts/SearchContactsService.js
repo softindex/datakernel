@@ -31,7 +31,6 @@ class SearchContactsService extends Service {
     await Promise.resolve(this._contactsCheckoutPromise);
     this.search(this.state.search);
     this._contactsOTStateManager.addChangeListener(() => {
-      console.log('>>', this.state.search);
       this.search(this.state.search);
     });
   }

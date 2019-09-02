@@ -10,8 +10,7 @@ class RoomsService extends Service {
   constructor(roomsOTStateManager, pubicKey) {
     super({
       rooms: new Map(),
-      roomsReady: false,
-      roomsError: ''
+      roomsReady: false
     });
     this._roomsOTStateManager = roomsOTStateManager;
     this._reconnectTimeout = null;

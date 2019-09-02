@@ -16,6 +16,8 @@ import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
 import SelectContactsList from "../SelectContactsList/SelectContactsList";
 import {withSnackbar} from "notistack";
+import NamesService from "../../modules/names/NamesService";
+import {getAppStoreContactName} from "global-apps-common/src/utils/utils";
 
 function CreateChatDialogView({
                                 classes,
@@ -25,6 +27,7 @@ function CreateChatDialogView({
                                 onSubmit,
                                 onContactToggle,
                                 contacts,
+                                names,
                                 search,
                                 searchReady,
                                 searchContacts,
@@ -49,7 +52,7 @@ function CreateChatDialogView({
               <ContactChip
                 color="primary"
                 label={name}
-                onDelete={onContactToggle.bind(this, publicKey, name)}
+                onDelete={onContactToggle.bind(this, publicKey)}
               />
             ))}
           </div>
@@ -67,7 +70,8 @@ function CreateChatDialogView({
             contacts={contacts}
             loading={loading}
             publicKey={publicKey}
-            onContactCheck={onContactToggle}
+            onContactToggle={onContactToggle}
+            names={names}
           />
         </DialogContent>
         <DialogActions>
@@ -94,11 +98,13 @@ function CreateChatDialogView({
 function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSnackbar}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
-    () => SearchContactsService.createFrom(contactsOTStateManager),
+    () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
     [contactsOTStateManager]
   );
   const contactsService = getInstance(ContactsService);
   const roomsService = getInstance(RoomsService);
+  const namesService = getInstance(NamesService);
+  const {names} = useService(namesService);
 
   const [loading, setLoading] = useState(false);
   const [participants, setParticipants] = useState(new Map());
@@ -120,6 +126,7 @@ function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSn
     publicKey,
     open,
     onClose,
+    names,
 
     onSubmit(event) {
       event.preventDefault();
@@ -130,18 +137,15 @@ function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSn
           return;
         }
 
-        const participantsKeys = participants.keys();
-
-        for (const participantKey of participantsKeys) {
+        for (const participantKey of participants.keys()) {
           if (!contacts.has(participantKey)) {
             await contactsService.addContact(participantKey);
           }
         }
 
-        const roomId = await roomsService.createRoom(participantsKeys);
+        const roomId = await roomsService.createRoom(participants.keys());
 
         history.push(path.join('/room', roomId || ''));
-        setParticipants(new Map());
         onClose();
       })()
         .catch(error => enqueueSnackbar(error.message, {
@@ -156,7 +160,7 @@ function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSn
       return onSearchChange(event.target.value);
     },
 
-    onContactToggle(participantPublicKey, name) { // TODO Remove name
+    onContactToggle(participantPublicKey) {
       if (loading) {
         return;
       }
@@ -165,7 +169,11 @@ function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSn
       if (participants.has(participantPublicKey)) {
         participants.delete(participantPublicKey);
       } else {
-        participants.set(participantPublicKey, name);
+        if (names.has(participantPublicKey)) {
+          participants.set(participantPublicKey, names.get(participantPublicKey));
+        } else {
+          participants.set(participantPublicKey, getAppStoreContactName(searchContacts.get(participantPublicKey)));
+        }
       }
 
       setParticipants(participants);

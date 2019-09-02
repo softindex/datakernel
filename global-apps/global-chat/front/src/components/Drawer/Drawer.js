@@ -68,16 +68,20 @@ function Drawer({classes, open, onClose, onLogout, publicKey}) {
           </List>
         </div>
       </MUIDrawer>
-      <ProfileDialog
-        open={openProfile}
-        onClose={onProfileClose}
-        publicKey={publicKey}
-      />
-      <CreateChatDialog
-        open={showChatDialog}
-        onClose={onChatDialogClose}
-        publicKey={publicKey}
-      />
+      {openProfile && (
+        <ProfileDialog
+          open={openProfile}
+          onClose={onProfileClose}
+          publicKey={publicKey}
+        />
+      )}
+      {showChatDialog && (
+        <CreateChatDialog
+          open={showChatDialog}
+          onClose={onChatDialogClose}
+          publicKey={publicKey}
+        />
+      )}
     </>
   )
 }

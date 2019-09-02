@@ -20,20 +20,21 @@ const ROOMS_TAB = 'rooms';
 const CONTACTS_TAB = 'contacts';
 
 function SideBarTabsView({
-                       classes,
-                       search,
-                       searchReady,
-                       searchContacts,
-                       tabId,
-                       onTabChange,
-                       rooms,
-                       contacts,
-                       names,
-                       roomsReady,
-                       publicKey,
-                       onAddContact,
-                       onRemoveContact
-                     }) {
+                           classes,
+                           search,
+                           searchReady,
+                           searchError,
+                           searchContacts,
+                           tabId,
+                           onTabChange,
+                           rooms,
+                           contacts,
+                           names,
+                           roomsReady,
+                           publicKey,
+                           onAddContact,
+                           onRemoveContact
+                         }) {
   return (
     <>
       <Paper square className={classes.paper}>
@@ -69,8 +70,8 @@ function SideBarTabsView({
             </Paper>
             <ContactsList
               searchReady={searchReady}
+              searchError={searchError}
               searchContacts={searchContacts}
-              publicKey={publicKey}
               onAddContact={onAddContact}
             />
             {searchContacts.size === 0 && searchReady && (
@@ -89,7 +90,19 @@ function SideBarTabsView({
   );
 }
 
-function SideBarTabs({classes, publicKey, searchContacts, searchReady, search, onAddContact, history, match}) {
+function SideBarTabs({
+                       classes,
+                       publicKey,
+                       searchContacts,
+                       searchReady,
+                       search,
+                       searchError,
+                       onAddContact,
+                       history,
+                       match,
+                       enqueueSnackbar,
+                       closeSnackbar
+                     }) {
   const [tabId, setTabId] = useState(ROOMS_TAB);
   const contactsService = getInstance(ContactsService);
   const {contacts} = useService(contactsService);
@@ -99,11 +112,12 @@ function SideBarTabs({classes, publicKey, searchContacts, searchReady, search, o
   const {names} = useService(namesService);
 
   const props = {
+    classes,
     publicKey,
     searchContacts,
     searchReady,
+    searchError,
     search,
-    classes,
     onAddContact,
     contacts,
     roomsReady,
@@ -130,12 +144,19 @@ function SideBarTabs({classes, publicKey, searchContacts, searchReady, search, o
     ),
 
     onRemoveContact(contactPublicKey) {
+      enqueueSnackbar('Deleting...');
       return contactsService.removeContact(contactPublicKey)
         .then((dialogRoomId) => {
           const {roomId} = match.params;
+          setTimeout(() => closeSnackbar(), 1000);
           if (roomId === dialogRoomId) {
             history.push(path.join('/room', ''));
           }
+        })
+        .catch((err) => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
         });
     },
 

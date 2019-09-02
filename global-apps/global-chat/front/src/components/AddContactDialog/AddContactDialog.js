@@ -7,7 +7,6 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import {withSnackbar} from 'notistack';
 import addContactDialogStyles from "./addContactDialogStyles";
 
 class AddContactDialog extends React.Component {
@@ -30,11 +29,6 @@ class AddContactDialog extends React.Component {
       .then(() => {
         this.props.onClose();
       })
-      .catch(err => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
       .finally(() => {
         this.setState({
           loading: false
@@ -50,7 +44,7 @@ class AddContactDialog extends React.Component {
         loading={this.state.loading}
       >
         <form onSubmit={this.onSubmit}>
-          <DialogTitle onClose={this.props.onClose}>Add Contact</DialogTitle>
+          <DialogTitle>Add Contact</DialogTitle>
           <DialogContent>
             <DialogContentText>
               Enter contact name to start chat
@@ -93,6 +87,4 @@ class AddContactDialog extends React.Component {
   }
 }
 
-export default withSnackbar(
-  withStyles(addContactDialogStyles)(AddContactDialog)
-);
+export default withStyles(addContactDialogStyles)(AddContactDialog);

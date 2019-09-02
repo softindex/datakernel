@@ -1,6 +1,5 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import {getAppStoreContactName, getInstance, useService} from "global-apps-common";
 import {withSnackbar} from "notistack";
 import List from "@material-ui/core/List";
 import selectContactsListStyles from "./selectContactsListStyles";
@@ -8,14 +7,13 @@ import {withRouter} from "react-router-dom";
 import Typography from "@material-ui/core/Typography";
 import ContactItem from "../ContactItem/ContactItem";
 import ListSubheader from "@material-ui/core/ListSubheader";
-import NamesService from "../../modules/names/NamesService";
 
 function SelectContactsListView({
                                   classes,
                                   names,
                                   participants,
                                   filteredContacts,
-                                  onContactCheck,
+                                  onContactToggle,
                                   search,
                                   searchContacts}) {
   return (
@@ -30,7 +28,7 @@ function SelectContactsListView({
                   contactId={publicKey}
                   contact={{}}
                   selected={participants.has(publicKey)}
-                  onClick={onContactCheck.bind(this, publicKey, names.get(publicKey))}
+                  onClick={onContactToggle.bind(this, publicKey)}
                   publicKey={publicKey}
                   contactName={names.get(publicKey)}
                 />
@@ -48,7 +46,7 @@ function SelectContactsListView({
                     contactId={publicKey}
                     contact={contact}
                     selected={participants.has(publicKey)}
-                    onClick={onContactCheck.bind(this, publicKey, getAppStoreContactName(contact))}
+                    onClick={onContactToggle.bind(this, publicKey)}
                     publicKey={publicKey}
                   />
                 ))}
@@ -69,16 +67,13 @@ function SelectContactsListView({
   );
 }
 
-function SelectContactsList({classes, search, searchContacts, contacts, participants, onContactCheck, publicKey}) {
-  const namesService = getInstance(NamesService);
-  const {names} = useService(namesService);
-
+function SelectContactsList({classes, search, searchContacts, contacts, participants, onContactToggle, publicKey, names}) {
   const props = {
     classes,
     participants,
     search,
     searchContacts,
-    onContactCheck,
+    onContactToggle,
     names,
 
     filteredContacts: [...contacts]

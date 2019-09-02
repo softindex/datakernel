@@ -11,7 +11,6 @@ import {Link, withRouter} from "react-router-dom";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from "@material-ui/icons/Delete";
 import {getRoomName} from "../../common/utils";
-import {withSnackbar} from "notistack";
 
 class RoomItem extends React.Component {
   state = {
@@ -31,14 +30,7 @@ class RoomItem extends React.Component {
 
   onRemoveContact(room) {
     const publicKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
-    this.props.enqueueSnackbar('Deleting...');
     this.props.onRemoveContact(publicKey)
-      .then(() => {setTimeout(() => this.props.closeSnackbar(), 1000) })
-      .catch((err) => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
   }
 
   closeAddDialog = () => {
@@ -90,16 +82,18 @@ class RoomItem extends React.Component {
             </IconButton>
           )}
         </ListItem>
-        <AddContactDialog
-          open={this.state.showAddContactDialog}
-          onClose={this.closeAddDialog}
-          contactPublicKey={this.getContactId(room)}
-          onAddContact={this.props.onAddContact}
-        />
+        {this.state.showAddContactDialog && (
+          <AddContactDialog
+            open={this.state.showAddContactDialog}
+            onClose={this.closeAddDialog}
+            contactPublicKey={this.getContactId(room)}
+            onAddContact={this.props.onAddContact}
+          />
+        )}
       </>
     )
   }
 }
 
-export default withSnackbar(withRouter(withStyles(roomItemStyles)(RoomItem)));
+export default withRouter(withStyles(roomItemStyles)(RoomItem));
 

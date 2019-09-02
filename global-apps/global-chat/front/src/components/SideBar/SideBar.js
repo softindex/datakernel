@@ -21,7 +21,7 @@ function SideBarView({
                        searchReady,
                        searchContacts,
                        onSearchChange,
-                       error,
+                       searchError,
                        publicKey
                      }) {
   return (
@@ -35,6 +35,7 @@ function SideBarView({
       <SideBarTabs
         searchContacts={searchContacts}
         searchReady={searchReady}
+        searchError={searchError}
         search={search}
         publicKey={publicKey}
         onAddContact={onAddContact}
@@ -45,18 +46,18 @@ function SideBarView({
         contactPublicKey={search}
         onAddContact={onAddContact}
       />
-      {error && (
-        <Snackbar error={error.message} />
+      {searchError && (
+        <Snackbar error={searchError.message} />
       )}
     </div>
   );
 }
 
-function SideBar({publicKey, classes, history, enqueueSnackbar}) {
+function SideBar({classes, history, publicKey, enqueueSnackbar}) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
-    () => SearchContactsService.createFrom(contactsOTStateManager),
+    () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
     [contactsOTStateManager]
   );
   initService(searchContactsService, err => enqueueSnackbar(err.message, {
@@ -65,7 +66,6 @@ function SideBar({publicKey, classes, history, enqueueSnackbar}) {
 
   const {search, searchContacts, searchReady, searchError} = useService(searchContactsService);
   const contactsService = getInstance(ContactsService);
-  const {contactsError} = useService(contactsService);
   function onSearchChange(value) {
     if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(value)) {
       setShowAddDialog(true);
@@ -74,14 +74,13 @@ function SideBar({publicKey, classes, history, enqueueSnackbar}) {
   }
 
   const props = {
-    publicKey,
     classes,
+    publicKey,
     search,
     searchContacts,
     searchReady,
-    searchError,
     showAddDialog,
-    error: searchError || contactsError,
+    searchError,
 
     onCloseAddDialog() {
       onSearchChange('');
@@ -92,6 +91,11 @@ function SideBar({publicKey, classes, history, enqueueSnackbar}) {
       return contactsService.addContact(contactPublicKey, name)
         .then(({dialogRoomId}) => {
           history.push(path.join('/room', dialogRoomId));
+        })
+        .catch(err => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
         });
     },
 

@@ -7,7 +7,7 @@ import contactMenuStyles from "./contactMenuStyles";
 import {withStyles} from '@material-ui/core';
 import {withSnackbar} from "notistack";
 
-function ContactMenu({onAddContact, classes, enqueueSnackbar}) {
+function ContactMenu({onAddContact, classes}) {
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
 

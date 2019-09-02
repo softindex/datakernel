@@ -9,21 +9,21 @@ import IconButton from '@material-ui/core/IconButton';
 import {getInstance, useService} from "global-apps-common/lib";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 
-function MessageFormView(props) {
+function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
   return (
-    <form className={props.classes.form} onSubmit={props.onSubmit}>
-      <Paper className={props.classes.root} elevation={2}>
+    <form className={classes.form} onSubmit={onSubmit}>
+      <Paper className={classes.root} elevation={2}>
         <InputBase
           inputProps={{
-            className: props.classes.inputText,
+            className: classes.inputText,
             required: true
           }}
-          className={props.classes.input}
+          className={classes.input}
           placeholder="Message"
-          onChange={props.onChangeMessage}
-          value={props.message}
+          onChange={onChangeMessage.bind(this)}
+          value={message}
         />
-        <Divider className={props.classes.divider}/>
+        <Divider className={classes.divider}/>
         <IconButton color="primary" type="submit">
           <SendIcon/>
         </IconButton>
@@ -32,29 +32,33 @@ function MessageFormView(props) {
   );
 }
 
-function MessageForm(props) {
+function MessageForm({classes, enqueueSnackbar}) {
   const chatRoomService = getInstance(ChatRoomService);
   const [message, setMessage] = useState('');
 
-  const onChangeMessage = event => {
-    setMessage(event.target.value);
-  };
+  const props = {
+    classes,
+    message,
+    onChangeMessage(event) {
+      setMessage(event.target.value);
+    },
+    onSubmit(event) {
+      event.preventDefault();
+      if (!message) {
+        return;
+      }
 
-  const onSubmit = event => {
-    event.preventDefault();
-    if (!message) {
-      return;
-    }
-    props.sendMessage(message);
-    setMessage('');
-  };
-
-  props = {
-    ...props,
-    onChangeMessage,
-    onSubmit,
-    async sendMessage(message) {
-      await chatRoomService.sendMessage(message);
+      (async () => {
+        await chatRoomService.sendMessage(message);
+      })()
+        .catch((err) => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        })
+        .finally(() => {
+          setMessage('');
+        });
     }
   };
 

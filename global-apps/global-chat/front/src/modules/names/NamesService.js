@@ -9,8 +9,7 @@ class NamesService extends Service {
   constructor(contactsOTStateManager, roomsOTStateManager, globalAppStoreAPI, publicKey, profileServiceCreate) {
     super({
       names: new Map(),
-      namesReady: false,
-      namesError: ''
+      namesReady: false
     });
     this._myPublicKey = publicKey;
     this._contactsOTStateManager = contactsOTStateManager;

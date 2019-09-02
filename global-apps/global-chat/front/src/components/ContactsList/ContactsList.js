@@ -9,7 +9,7 @@ import ContactItem from "../ContactItem/ContactItem";
 import {withSnackbar} from "notistack";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
 
-function ContactsList(props) {
+function ContactsList({classes, searchReady, searchError, searchContacts, onAddContact}) {
   const [showAddContactDialog, setAddDialog] = useState(false);
   const [contactId, setContactId] = useState('');
 
@@ -22,35 +22,26 @@ function ContactsList(props) {
     setAddDialog(false);
   };
 
-  function onConfirmAddContact(contactId) {
-    return props.onAddContact(contactId)
-      .catch((err) => {
-        props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      });
-  }
-
   return (
     <>
-      {!props.searchReady && props.error === undefined && (
-        <Grow in={!props.searchReady}>
-          <div className={props.classes.progressWrapper}>
+      {!searchReady && searchError === undefined && (
+        <Grow in={!searchReady}>
+          <div className={classes.progressWrapper}>
             <CircularProgress/>
           </div>
         </Grow>
       )}
-      {!(props.error === '' || props.error === undefined) && (
-        <Paper square className={props.classes.paperError}>
-          <Typography className={props.classes.dividerText}>
-            {props.error}
+      {!(searchError === '' || searchError === undefined) && (
+        <Paper square className={classes.paperError}>
+          <Typography className={classes.dividerText}>
+            {searchError}
           </Typography>
         </Paper>
       )}
-      {props.searchReady && props.searchContacts.size !== 0 && (
+      {searchReady && searchContacts.size !== 0 && (
         <>
           <List>
-            {[...props.searchContacts]
+            {[...searchContacts]
               .map(([publicKey, contact]) => (
                 <ContactItem
                   contact={contact}
@@ -58,15 +49,17 @@ function ContactsList(props) {
                 />
               ))}
           </List>
-          <ConfirmDialog
-            open={showAddContactDialog}
-            onClose={closeAddDialog}
-            title="Add Contact"
-            subtitle="Do you want to add this contact?"
-            onConfirm={() => {
-              return onConfirmAddContact(contactId)
-            }}
-          />
+          {showAddContactDialog && (
+            <ConfirmDialog
+              open={showAddContactDialog}
+              onClose={closeAddDialog}
+              title="Add Contact"
+              subtitle="Do you want to add this contact?"
+              onConfirm={() => {
+                return onAddContact(contactId)
+              }}
+            />
+          )}
         </>
       )}
     </>

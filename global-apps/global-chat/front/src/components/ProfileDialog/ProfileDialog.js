@@ -15,55 +15,68 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
 import MyProfileService from "../../modules/myProfile/MyProfileService";
 
-function ProfileDialogView(props) {
+function ProfileDialogView({
+                             classes,
+                             open,
+                             onClose,
+                             loading,
+                             profileReady,
+                             profile,
+                             name,
+                             onSubmit,
+                             onChangeName,
+                             publicKey,
+                             onDoubleClick,
+                             copyToClipboard
+                           }) {
   return (
     <Dialog
-      open={props.open}
-      onClose={props.onClose}
-      loading={props.loading}
+      open={open}
+      onClose={onClose}
+      loading={loading}
     >
-      <DialogTitle onClose={props.onClose}>
+      <DialogTitle>
         My Profile
       </DialogTitle>
-      {!props.profileReady && (
-        <Grow in={!props.profileReady}>
-          <div className={props.classes.progressWrapper}>
+      {!profileReady && (
+        <Grow in={!profileReady}>
+          <div className={classes.progressWrapper}>
             <CircularProgress/>
           </div>
         </Grow>
       )}
-      {props.profileReady && (
-        <form onSubmit={props.onSubmit}>
-          <DialogContent classes={{root: props.classes.dialogContent}}>
+      {profileReady && (
+        <form onSubmit={onSubmit}>
+          <DialogContent classes={{root: classes.dialogContent}}>
             <TextField
-              className={props.classes.textField}
-              defaultValue={props.name === null ? props.profile.name : props.name}
-              disabled={props.loading}
+              className={classes.textField}
+              defaultValue={name === null ? profile.name : name}
+              disabled={loading}
               margin="normal"
               label="Name"
               type="text"
               fullWidth
-              onChange={props.onChangeName}
+              onChange={onChangeName}
               variant="outlined"
             />
             <TextField
-              className={props.classes.textField}
-              value={props.publicKey}
+              className={classes.textField}
+              value={publicKey}
               label="Public Key"
               autoFocus
               margin="normal"
               fullWidth
-              inputProps={{onDoubleClick: props.onDoubleClick, id: 'inputId'}}
+              inputProps={{onDoubleClick: onDoubleClick, id: 'inputId'}}
               type="text"
               variant="outlined"
               InputProps={{
                 readOnly: true,
-                classes: {input: props.classes.input},
+                classes: {input: classes.input},
                 endAdornment: (
                   <IconButton
-                    className={props.classes.iconButton}
-                    onClick={props.copyToClipboard}
-                    disabled={props.loading}
+                    className={classes.iconButton}
+                    onClick={copyToClipboard}
+                    disabled={loading}
                   >
                     <Tooltip title="Copy">
                       <Icon>file_copy</Icon>
@@ -76,11 +89,11 @@ function ProfileDialogView(props) {
           </DialogContent>
           <DialogActions>
             <Button
-              className={props.classes.saveButton}
+              className={classes.saveButton}
               color="primary"
               variant="contained"
               type="submit"
-              disabled={props.loading}
+              disabled={loading}
             >
               Save
             </Button>
@@ -91,7 +104,7 @@ function ProfileDialogView(props) {
   );
 }
 
-function ProfileDialog(props) {
+function ProfileDialog({classes, enqueueSnackbar, publicKey, open, onClose}) {
   const profileService = getInstance(MyProfileService);
   const {profile, profileReady} = useService(profileService);
   const [loading, setLoading] = useState(false);
@@ -111,33 +124,31 @@ function ProfileDialog(props) {
     setName(event.target.value)
   };
 
-  const onSubmit = event => {
-    event.preventDefault();
-    setLoading(true);
-
-    return props.onSetProfileField('name', name)
-      .catch(err => {
-        props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
-
-  props = {
-    ...props,
+  const props = {
+    classes,
     profile,
+    publicKey,
     profileReady,
     name,
     loading,
+    open,
+    onClose,
     copyToClipboard,
-    onSubmit,
     onDoubleClick,
     onChangeName,
-    onSetProfileField(fieldName, value) {
-      return profileService.setProfileField(fieldName, value);
+
+    onSubmit(event) {
+      event.preventDefault();
+      setLoading(true);
+      (async () => {
+        await profileService.setProfileField('name', name)
+      })()
+        .catch(error => enqueueSnackbar(error.message, {
+          variant: 'error'
+        }))
+        .finally(() => {
+          setLoading(false);
+        });
     }
   };
 
