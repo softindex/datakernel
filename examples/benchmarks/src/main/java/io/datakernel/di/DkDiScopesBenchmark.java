@@ -254,8 +254,6 @@ public class DkDiScopesBenchmark {
         cookbook = new AbstractModule() {
             @Override
             protected void configure() {
-                super.configure();
-                final SimpleScope orderScope = new SimpleScope();
 				bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
 						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
             }
@@ -317,7 +315,7 @@ public class DkDiScopesBenchmark {
     }
 
 
-    @Param({"0", "1", "10"})
+    @Param({"1", "10"})
     int arg;
 
     @Benchmark
