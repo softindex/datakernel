@@ -1,21 +1,16 @@
 window.onload = () => {
-  $('.reply').click(e => {
-    let exact = $('#reply_' + e.target.dataset.postId);
-    let was = exact.hasClass('d-none');
-    $('.reply-form').addClass('d-none');
-    if (was) {
-      exact.removeClass('d-none')
-    } else {
-      exact.addClass('d-none')
-    }
-  });
   $('.delete').click(e => {
-    if (confirm('are you sure you want to delete post?')) {
-      alert('TODO');
-    }
+    fetch(e.target.dataset.url, {method: 'delete'}).then(() => location.reload(), console.error);
+  });
+  $('.restore').click(e => {
+    fetch(e.target.dataset.url + '/restore', {method: 'post'}).then(() => location.reload(), console.error);
+  });
+  $('.custom-file input').change(function (e) {
+    $(this).next('.custom-file-label').html(Array.prototype.slice.call(e.target.files).map(f => f.name).join(', '));
   });
 
-  $(window).on('unload', () => localStorage.setItem('scroll', $(document).scrollTop()));
+
+  $(window).on('beforeunload', () => localStorage.setItem('scroll', $(document).scrollTop()));
   let scroll = localStorage.getItem('scroll');
   if (scroll) {
     $('html, body').scrollTop(scroll);

@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 public final class AttachmentDataHandler {
 	private static final Map<String, AttachmentType> ATTACHMENT_FIELD_NAMES = Arrays.stream(AttachmentType.values())
-			.collect(Collectors.toMap(type -> type.toString().toLowerCase() + "Attachment", Function.identity()));
+			.collect(Collectors.toMap(type -> type.toString().toLowerCase() + "_attachment", Function.identity()));
 
 	public static MultipartDataHandler create(ThreadDao threadDao, Map<String, String> paramMap, Map<String, Attachment> attachmentMap) {
 		return MultipartDataHandler.fieldsToMap(paramMap, (fieldName, fileName) -> {

@@ -19,9 +19,7 @@ import io.global.forum.dao.ForumDao;
 import io.global.forum.dao.ThreadDao;
 import io.global.forum.http.PublicServlet;
 import io.global.forum.ot.session.UserIdSessionStore;
-import io.global.forum.pojo.AuthService;
-import io.global.forum.pojo.ThreadMetadata;
-import io.global.forum.pojo.UserId;
+import io.global.forum.pojo.*;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
@@ -32,18 +30,15 @@ import io.global.ot.service.UserContainer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.datakernel.util.CollectionUtils.map;
-import static io.global.forum.http.PublicServlet.DATE_TIME_FORMATTER;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyMap;
@@ -72,6 +67,9 @@ public final class GlobalForumModule extends AbstractModule {
 	@Provides
 	AsyncServlet servlet(ContainerManager<ForumUserContainer> containerManager, @Named("Forum") AsyncServlet forumServlet) {
 		return RoutingServlet.create()
+
+				.map(GET, "/", request -> Promise.of(HttpResponse.redirect302("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")))
+
 				.map("/:pubKey/*", request -> {
 					try {
 						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
@@ -81,16 +79,21 @@ public final class GlobalForumModule extends AbstractModule {
 						}
 						ForumDao dao = container.getForumDao();
 
-						// this is a stub ofc
-						if (!didIt) {
-							didIt = true;
-							UserId anton = new UserId(AuthService.DK_APP_STORE, "anton");
-							UserId eduard = new UserId(AuthService.DK_APP_STORE, "eduard");
-							UserId lera = new UserId(AuthService.DK_APP_STORE, "lera");
-							dao.createThread(new ThreadMetadata("thread #1"))
-									.then(tid -> {
-										ThreadDao threadDao = dao.getThreadDao(tid);
-										assert threadDao != null;
+									// this is a stub ofc
+									if (!didIt) {
+										didIt = true;
+										UserId anton = new UserId(AuthService.DK_APP_STORE, "anton");
+										UserId eduard = new UserId(AuthService.DK_APP_STORE, "eduard");
+										UserId lera = new UserId(AuthService.DK_APP_STORE, "lera");
+
+										dao.updateUser(anton, new UserData(UserRole.COMMON, "", "Anton", null, null));
+										dao.updateUser(lera, new UserData(UserRole.COMMON, "", "Lera", null, null));
+										dao.updateUser(eduard, new UserData(UserRole.COMMON, "", "Eduard", null, null));
+
+										dao.createThread(new ThreadMetadata("thread #1"))
+												.then(tid -> {
+													ThreadDao threadDao = dao.getThreadDao(tid);
+													assert threadDao != null;
 
 										return threadDao.addRootPost(anton, "Hello World", emptyMap())
 												.then($ -> threadDao.addPost(eduard, 0L, "Hello, Anton", emptyMap()))
@@ -165,8 +168,8 @@ public final class GlobalForumModule extends AbstractModule {
 							Map<String, Object> mustacheContext = templater.getStaticContext();
 
 							mustacheContext.put("pubKey", request.getPathParameter("pubKey"));
-							mustacheContext.put("format_date", (Function<String, String>) instant ->
-									Instant.ofEpochMilli(Long.parseLong(instant.trim())).atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMATTER));
+
+							mustacheContext.put("forum", request.getAttachment(ForumDao.class).getForumMetadata());
 
 							return servlet.serve(request);
 						})

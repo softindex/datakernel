@@ -1,79 +1,102 @@
 package io.global.forum.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.global.forum.Utils.MustacheTemplater;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.dao.ThreadDao;
+import io.global.forum.http.view.PostView;
+import io.global.forum.http.view.ThreadView;
+import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.AuthService;
-import io.global.forum.pojo.Post;
-import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserId;
 import org.jetbrains.annotations.NotNull;
 
-import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.function.BiFunction;
 
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.forum.Utils.redirect;
-import static java.util.Collections.emptyMap;
-import static java.util.stream.Collectors.toList;
 
 public final class PublicServlet {
-
-	public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
-
 	public static AsyncServlet create(MustacheTemplater templater) {
 		return RoutingServlet.create()
 				.map(GET, "/", request -> {
 					ForumDao forumDao = request.getAttachment(ForumDao.class);
 					return forumDao.getThreads()
-							.then(threads ->
-									Promises.toList(threads.entrySet().stream()
-											.map(e -> {
-												ThreadDao dao = forumDao.getThreadDao(e.getKey());
-												return dao != null ? getThreadInfo(e.getKey(), e.getValue(), dao) : null;
-											})
-											.filter(Objects::nonNull))
-											.then(ts -> {
-												List<ThreadInfo> sorted = ts.stream().sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp())).collect(toList());
-												return templater.render("threadList", map("threads", sorted));
-											}));
+							.then(threads -> ThreadView.from(forumDao, threads))
+							.then(threads -> templater.render("threadList", map("threads", threads)));
 				})
-				.map(GET, "/thread/:threadID", postServlet(templater).then(parsePathIds()))
-				.map(GET, "/thread/:threadID/:postID", postServlet(templater).then(parsePathIds()))
-				.map(POST, "/thread/:threadID/:postID", parsePathIds().serve(request -> {
-					Long tid = request.getAttachment("threadID");
-					Long pid = request.getAttachment("postID");
+				.map("/:threadID/*", RoutingServlet.create()
+						.map(GET, "/", postServlet(templater).then(parsePathIds()))
+						.map("/:postID/*", RoutingServlet.create()
+								.map(GET, "/", postServlet(templater))
+								.map(GET, "/download/:identifier", request -> {
+									ThreadDao threadDao = request.getAttachment(ThreadDao.class);
+									Long pid = request.getAttachment("postID");
+									String gfsid = request.getPathParameter("identifier");
 
-					ForumDao forumDao = request.getAttachment(ForumDao.class);
-					ThreadDao dao = forumDao.getThreadDao(tid);
-					String content = request.getPostParameter("content");
-					if (dao == null) {
-						return Promise.of(HttpResponse.notFound404());
-					}
+									return threadDao.getAttachment(pid, gfsid)
+											.then(attachment -> threadDao.attachmentSize(gfsid)
+													.then(size -> {
+														try {
+															return Promise.of(HttpResponse.file(
+																	(offset, limit) ->
+																			threadDao.loadAttachment(gfsid, offset, limit),
+																	attachment.getFilename(),
+																	size,
+																	request.getHeader(HttpHeaders.RANGE)
+															));
+														} catch (HttpException e) {
+															return Promise.<HttpResponse>ofException(e);
+														}
+													}));
+								})
+								.map(POST, "/", request -> {
+									ThreadDao dao = request.getAttachment(ThreadDao.class);
 
-					return dao.addPost(new UserId(AuthService.DK_APP_STORE, "ANON"), pid, content, emptyMap())
-							.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/thread/" + tid + "/" + pid));
-				}))
-				.map(DELETE, "/thread/:threadID/:postID", parsePathIds().serve(request -> {
-					Long tid = request.getAttachment("threadID");
-					Long pid = request.getAttachment("postID");
+									Map<String, Attachment> attachmentMap = new HashMap<>();
+									Map<String, String> paramsMap = new HashMap<>();
 
-					ForumDao forumDao = request.getAttachment(ForumDao.class);
-					ThreadDao dao = forumDao.getThreadDao(tid);
-					if (dao == null) {
-						return Promise.of(HttpResponse.notFound404());
-					}
+									UserId user = new UserId(AuthService.DK_APP_STORE, "ANON");
+									Long tid = request.getAttachment("threadID");
+									Long pid = request.getAttachment("postID");
 
-					return dao.removePost(new UserId(AuthService.DK_APP_STORE, "ANON"), pid)
-							.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/thread/" + tid + "/" + pid));
-				}));
+									return request.handleMultipart(AttachmentDataHandler.create(dao, paramsMap, attachmentMap))
+											.then($ -> {
+												String content = paramsMap.get("content");
+												if (content == null) {
+													return Promise.ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
+												}
+												return dao.addPost(user, pid, content, attachmentMap).toVoid();
+											})
+											.thenEx(revertIfException(dao, attachmentMap))
+											.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/" + tid + "/" + pid));
+								})
+								.map(DELETE, "/", parsePathIds().serve(request -> {
+									Long tid = request.getAttachment("threadID");
+									Long pid = request.getAttachment("postID");
+
+									ThreadDao dao = request.getAttachment(ThreadDao.class);
+
+									UserId user = new UserId(AuthService.DK_APP_STORE, "ANON");
+									return dao.removePost(user, pid)
+											.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/" + tid + "/" + pid));
+								}))
+								.map(POST, "/restore", parsePathIds().serve(request -> {
+									Long tid = request.getAttachment("threadID");
+									Long pid = request.getAttachment("postID");
+
+									ThreadDao dao = request.getAttachment(ThreadDao.class);
+
+									return dao.restorePost(pid)
+											.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/" + tid + "/" + pid));
+								}))
+								.then(parsePathIds()))
+						.then(attachThreadDao()));
 	}
 
 	@NotNull
@@ -82,20 +105,51 @@ public final class PublicServlet {
 			Long tid = request.getAttachment("threadID");
 			Long pid = request.getAttachment("postID");
 			if (pid != null && pid == 0L) {
-				return Promise.of(redirect(request, request.getPathParameter("pubKey") + "/thread/" + tid));
+				return Promise.of(redirect(request, request.getPathParameter("pubKey") + "/" + tid));
 			}
 			ForumDao forumDao = request.getAttachment(ForumDao.class);
-			ThreadDao dao = forumDao.getThreadDao(tid);
-			if (dao == null) {
-				return Promise.of(HttpResponse.notFound404());
-			}
+			ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 
 			return templater.render(pid != null ? "subthread" : "thread", map(
 					"threadId", tid,
-					"thread", dao.getThreadMetadata(),
-					"post", dao.getPost(pid != null ? pid : 0L)
+					"thread", threadDao.getThreadMetadata(),
+					"post", threadDao.getPost(pid != null ? pid : 0L).then(post -> PostView.from(forumDao, post))
 			));
 		};
+	}
+
+	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(ThreadDao threadDao, Map<String, Attachment> attachments) {
+		return ($, e) -> {
+			if (e == null) {
+				return Promise.complete();
+			}
+			return threadDao.deleteAttachments(attachments.keySet())
+					.thenEx(($2, e2) -> {
+						if (e2 != null) {
+							e.addSuppressed(e2);
+						}
+						return Promise.ofException(e);
+					});
+		};
+	}
+
+	private static AsyncServletDecorator attachThreadDao() {
+		return servlet ->
+				request -> {
+					String sid = request.getPathParameter("threadID");
+					try {
+						long id = Long.parseLong(sid);
+						ForumDao forumDao = request.getAttachment(ForumDao.class);
+						ThreadDao dao = forumDao.getThreadDao(id);
+						if (dao == null) {
+							return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
+						}
+						request.attach(ThreadDao.class, dao);
+						return servlet.serve(request);
+					} catch (NumberFormatException e) {
+						return Promise.ofException(HttpException.ofCode(400, "Path parameter 'threadID' (" + sid + ") is not an ID"));
+					}
+				};
 	}
 
 	private static AsyncServletDecorator parsePathIds() {
@@ -115,33 +169,5 @@ public final class PublicServlet {
 					}
 					return servlet.serve(request);
 				};
-	}
-
-	private static Promise<ThreadInfo> getThreadInfo(Long tid, ThreadMetadata meta, ThreadDao dao) {
-		return dao.getPost(0L).map(rootPost -> new ThreadInfo(tid, meta, rootPost));
-	}
-
-	public static class ThreadInfo {
-		private final long id;
-		private final ThreadMetadata meta;
-		private final Post root;
-
-		public ThreadInfo(long id, ThreadMetadata meta, Post root) {
-			this.id = id;
-			this.meta = meta;
-			this.root = root;
-		}
-
-		public long getId() {
-			return id;
-		}
-
-		public ThreadMetadata getMeta() {
-			return meta;
-		}
-
-		public Post getRoot() {
-			return root;
-		}
 	}
 }

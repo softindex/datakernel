@@ -16,7 +16,7 @@ public final class UserData {
 	@Nullable
 	private String lastName;
 	@Nullable
-	private BanState banState = null;
+	private BanState banState;
 
 	public UserData(UserRole role, @Nullable String email, @Nullable String username, @Nullable String firstName,
 			@Nullable String lastName, @Nullable BanState banState) {

@@ -46,7 +46,7 @@ public final class Utils {
 					ThreadMetadata::getTitle, STRING_CODEC))
 			.with(UserId.class, registry -> tuple(UserId::new,
 					UserId::getAuthService, ofEnum(AuthService.class),
-					UserId::getId, STRING_CODEC))
+					UserId::getAuthId, STRING_CODEC))
 			.with(UserData.class, registry -> tuple(UserData::new,
 					UserData::getRole, ofEnum(UserRole.class),
 					UserData::getEmail, STRING_CODEC.nullable(),
@@ -66,7 +66,7 @@ public final class Utils {
 					IpBanState::getIpRange, registry.get(IpRange.class)))
 			.with(Attachment.class, registry -> tuple(Attachment::new,
 					Attachment::getAttachmentType, ofEnum(AttachmentType.class),
-					Attachment::getFileName, STRING_CODEC))
+					Attachment::getFilename, STRING_CODEC))
 			.with(ForumMetadata.class, registry -> tuple(ForumMetadata::new,
 					ForumMetadata::getName, STRING_CODEC,
 					ForumMetadata::getDescription, STRING_CODEC))

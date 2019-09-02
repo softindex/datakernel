@@ -1,27 +1,90 @@
 <div class="card">
-    <div class="card-body">
+    <div class="card-body clearfix">
         <div class="row rounded">
-            <a href="/{{pubKey}}/thread/{{threadId}}/{{id}}" class="badge badge-secondary">#</a>
+            <a href="/{{pubKey}}/{{threadId}}/{{postId}}" class="badge badge-secondary">#</a>
             <span class="badge badge-primary badge-light">
-                {{author.id}} {{#format_date}}{{initialTimestamp}}{{/format_date}}
+                {{author}} {{initialTimestamp}}
             </span>
+            {{#deletedBy}}
+                <span class="badge badge-secondary badge-info">
+                    <i>deleted by: <b>{{.}}</b></i>
+                </span>
+            {{/deletedBy}}
         </div>
-        <div class="row text-wrap m-2">
-            <p>{{content}}</p>
-        </div>
+        {{^deletedBy}}
+            <div class="row text-wrap m-2">
+                <p>{{content}}</p>
+            </div>
+            <div class="row m-2">
+                <ul class="list-group col-auto">
+                    {{#attachments}}
+                        <li class="list-group-item text-truncate">
+                            <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                               class="stretched-link">🠋</a>
+                            {{filename}}
+                        </li>
+                    {{/attachments}}
+                </ul>
+            </div>
+        {{/deletedBy}}
         <div class="row float-right">
-            <button class="delete btn btn-outline-primary btn-sm mx-1" data-post-id="{{id}}">delete</button>
-            <button class="reply btn btn-outline-primary btn-sm mx-1" data-post-id="{{id}}">reply</button>
+            {{#deletedBy}}
+                <button class="restore btn btn-outline-primary btn-sm mx-1" data-post-id="{{postId}}"
+                        data-url="/{{pubKey}}/{{threadId}}/{{postId}}">
+                    restore
+                </button>
+            {{/deletedBy}}
+            {{^deletedBy}}
+                <button class="delete btn btn-outline-primary btn-sm mx-1" data-post-id="{{postId}}"
+                        data-url="/{{pubKey}}/{{threadId}}/{{postId}}">
+                    delete
+                </button>
+                <button class="btn btn-outline-primary btn-sm mx-1" data-post-id="{{postId}}" data-toggle="collapse"
+                        data-target="#reply_{{postId}}">
+                    reply
+                </button>
+            {{/deletedBy}}
         </div>
     </div>
 </div>
-<form class="reply-form d-none" id="reply_{{id}}" action="/{{pubKey}}/thread/{{threadId}}/{{id}}" method="post">
-    <div class="form-group m-3">
-        <textarea class="form-control" placeholder="Post your reply" name="content"></textarea>
-        <button type="submit" class="btn btn-primary btn-sm m-2">Reply</button>
-    </div>
-</form>
 <div class="ml-3 border-left border-dark">
+    {{^deletedBy}}
+        <div class="collapse" id="reply_{{postId}}">
+            <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
+                  method="post" enctype="multipart/form-data">
+                <div class="mx-3">
+                    <textarea class="form-control" placeholder="Post your reply" name="content"></textarea>
+                </div>
+                <div class="collapse" id="attachments_{{postId}}">
+                    <div class="mx-3 mt-3">
+                        <div class="custom-file col-3">
+                            <input type="file" class="custom-file-input" id="image_attachment_{{postId}}" multiple
+                                   name="image_attachment">
+                            <label class="custom-file-label" for="image_attachment_{{postId}}">Attach images</label>
+                        </div>
+                        <div class="custom-file col-3">
+                            <input type="file" class="custom-file-input" id="video_attachment_{{postId}}" multiple
+                                   name="video_attachment">
+                            <label class="custom-file-label" for="video_attachment_{{postId}}">Attach videos</label>
+                        </div>
+                        <div class="custom-file col-3">
+                            <input type="file" class="custom-file-input" id="document_attachment_{{postId}}" multiple
+                                   name="document_attachmen">
+                            <label class="custom-file-label" for="document_attachment_{{postId}}">Attach
+                                documents</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-3">
+                    <button type="submit" class="btn btn-sm btn-primary">post</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="collapse"
+                            data-target="#attachments_{{postId}}">
+                        attach
+                    </button>
+                </div>
+            </form>
+        </div>
+    {{/deletedBy}}
     {{#children}}
         {{>render_post}}
     {{/children}}

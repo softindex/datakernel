@@ -91,6 +91,17 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
+	public Promise<Void> restorePost(Long postId) {
+		long lastEditTimestamp = now.currentTimeMillis();
+		return getPost(postId)
+				.then(post -> {
+					long prevLastEditTimestamp = post.getLastEditTimestamp();
+					stateManager.add(PostChangesOperation.restore(postId, post.getDeletedBy(), prevLastEditTimestamp, lastEditTimestamp));
+					return stateManager.sync();
+				});
+	}
+
+	@Override
 	public Promise<Void> updatePost(Long postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved) {
 		long lastEditTimestamp = now.currentTimeMillis();
 		return getPost(postId)

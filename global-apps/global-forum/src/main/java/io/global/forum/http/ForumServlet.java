@@ -134,11 +134,11 @@ public final class ForumServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.map(DELETE, "/thread/:id", request ->
+				.map(DELETE, "/:id", request ->
 						getId(request)
 								.then(forumDao::removeThread)
 								.map($ -> HttpResponse.ok200()))
-				.map("/thread/:id", ThreadServlet.create()
+				.map("/:id", ThreadServlet.create()
 						.then(servlet ->
 								request ->
 										getId(request)

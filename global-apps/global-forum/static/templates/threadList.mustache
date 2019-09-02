@@ -2,10 +2,11 @@
     {{$content}}
         <div class="container list-group">
             {{#threads}}
-                <a href="{{pubKey}}/thread/{{id}}" class="list-group-item list-group-item-action">
+                <a href="{{pubKey}}/{{id}}" class="list-group-item list-group-item-action">
                     {{meta.title}}
-                    <span class="badge badge-secondary badge-light float-right">{{root.author.id}}
-                        , {{#format_date}}{{root.initialTimestamp}}{{/format_date}}</span>
+                    <span class="badge badge-secondary badge-light float-right">
+                        {{root.author}}, {{root.initialTimestamp}}
+                    </span>
                 </a>
             {{/threads}}
         </div>

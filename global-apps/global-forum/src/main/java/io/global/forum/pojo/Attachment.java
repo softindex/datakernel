@@ -13,7 +13,7 @@ public final class Attachment {
 		return attachmentType;
 	}
 
-	public String getFileName() {
+	public String getFilename() {
 		return fileName;
 	}
 

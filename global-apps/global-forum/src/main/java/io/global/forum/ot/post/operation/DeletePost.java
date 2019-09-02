@@ -26,6 +26,10 @@ public final class DeletePost implements ThreadOperation {
 		return new DeletePost(postId, deletedBy, timestamp, true);
 	}
 
+	public static DeletePost restore(long postId, UserId deletedBy, long timestamp) {
+		return new DeletePost(postId, deletedBy, timestamp, false);
+	}
+
 	@Override
 	public void apply(Map<Long, Post> posts) {
 		Post post = posts.get(postId);

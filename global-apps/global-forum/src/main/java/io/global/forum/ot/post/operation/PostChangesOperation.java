@@ -47,6 +47,12 @@ public final class PostChangesOperation implements ThreadOperation {
 		return new PostChangesOperation(emptyList(), emptyList(), emptyList(), singletonList(deletePost), singletonList(changeLastEditTimestamp));
 	}
 
+	public static PostChangesOperation restore(long postId, UserId deletedBy, long prevTimestamp, long nextTimestamp) {
+		DeletePost restorePost = DeletePost.restore(postId, deletedBy, nextTimestamp);
+		ChangeLastEditTimestamp changeLastEditTimestamp = new ChangeLastEditTimestamp(postId, prevTimestamp, nextTimestamp);
+		return new PostChangesOperation(emptyList(), emptyList(), emptyList(), singletonList(restorePost), singletonList(changeLastEditTimestamp));
+	}
+
 	@Override
 	public void apply(Map<Long, Post> posts) {
 		changeContentOps.forEach(op -> op.apply(posts));

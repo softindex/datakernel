@@ -4,19 +4,19 @@ import org.jetbrains.annotations.NotNull;
 
 public final class UserId implements Comparable<UserId> {
 	private final AuthService authService;
-	private final String id;
+	private final String authId;
 
-	public UserId(AuthService authService, String id) {
+	public UserId(AuthService authService, String authId) {
 		this.authService = authService;
-		this.id = id;
+		this.authId = authId;
 	}
 
 	public AuthService getAuthService() {
 		return authService;
 	}
 
-	public String getId() {
-		return id;
+	public String getAuthId() {
+		return authId;
 	}
 
 	@Override
@@ -26,19 +26,19 @@ public final class UserId implements Comparable<UserId> {
 
 		UserId userId = (UserId) o;
 
-		return authService == userId.authService && id.equals(userId.id);
+		return authService == userId.authService && authId.equals(userId.authId);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * authService.hashCode() + id.hashCode();
+		return 31 * authService.hashCode() + authId.hashCode();
 	}
 
 	@Override
 	public int compareTo(@NotNull UserId o) {
 		int result = authService.compareTo(o.authService);
 		if (result != 0) return result;
-		return id.compareTo(o.id);
+		return authId.compareTo(o.authId);
 	}
 }
 

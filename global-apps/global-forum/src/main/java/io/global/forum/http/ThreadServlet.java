@@ -159,7 +159,7 @@ public final class ThreadServlet {
 													return Promise.of(HttpResponse.file(
 															(offset, limit) ->
 																	threadDao.loadAttachment(globalFsId, offset, limit),
-															attachment.getFileName(),
+															attachment.getFilename(),
 															size,
 															request.getHeader(HttpHeaders.RANGE)
 													));

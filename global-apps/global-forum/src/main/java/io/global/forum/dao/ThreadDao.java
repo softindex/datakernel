@@ -35,6 +35,8 @@ public interface ThreadDao {
 
 	Promise<Void> removePost(UserId user, Long postId);
 
+	Promise<Void> restorePost(Long postId);
+
 	Promise<Void> updatePost(Long postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved);
 
 	Promise<Attachment> getAttachment(Long postId, String globalFsId);
