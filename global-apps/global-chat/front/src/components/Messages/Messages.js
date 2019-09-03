@@ -3,8 +3,7 @@ import {withStyles} from '@material-ui/core';
 import messagesStyles from './messagesStyles';
 import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
-import Grow from '@material-ui/core/Grow';
-import {getInstance, useService} from "global-apps-common/lib";
+import {getInstance, useService} from "global-apps-common";
 import NamesService from "../../modules/names/NamesService";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 
@@ -25,11 +24,9 @@ class MessagesView extends React.Component {
     return (
       <div className={classes.root}>
         {!chatReady && (
-          <Grow in={!chatReady}>
-            <div className={classes.progressWrapper}>
-              <CircularProgress/>
-            </div>
-          </Grow>
+          <div className={classes.progressWrapper}>
+            <CircularProgress/>
+          </div>
         )}
         {chatReady && (
           <div ref={this.wrapper} className={classes.wrapper}>

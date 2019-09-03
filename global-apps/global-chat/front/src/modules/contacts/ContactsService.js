@@ -1,9 +1,7 @@
-import {Service} from 'global-apps-common';
+import {Service, delay} from 'global-apps-common';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
-import {wait, retry} from 'global-apps-common';
-import {createDialogRoomId} from '../../common/utils';
-
-const RETRY_TIMEOUT = 1000;
+import {retry} from 'global-apps-common';
+import {createDialogRoomId, RETRY_TIMEOUT} from '../../common/utils';
 
 class ContactsService extends Service {
   constructor(contactsOTStateManager, roomsService, publicKey) {
@@ -16,6 +14,8 @@ class ContactsService extends Service {
     this._roomsService = roomsService;
     this._contactsCheckoutPromise = null;
     this._roomsCheckoutPromise = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
   static createFrom(contactsOTStateManager, roomsService, publicKey) {
@@ -28,12 +28,33 @@ class ContactsService extends Service {
 
   async init() {
     this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
-    await Promise.resolve(this._contactsCheckoutPromise);
+    try {
+      await this._contactsCheckoutPromise;
+    } catch (err) {
+      console.log(err);
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
+      await this.init();
+      return;
+    }
+
     this._onStateChange();
     this._contactsOTStateManager.addChangeListener(this._onStateChange);
   }
 
   stop() {
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._contactsCheckoutPromise.stop();
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
   }
@@ -61,7 +82,7 @@ class ContactsService extends Service {
 
     return {
       dialogRoomId
-    }
+    };
   }
 
   _onStateChange = () => {
@@ -82,8 +103,13 @@ class ContactsService extends Service {
     try {
       await this._contactsOTStateManager.sync();
     } catch (err) {
-      console.error(err);
-      await wait(RETRY_TIMEOUT);
+      console.log(err);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

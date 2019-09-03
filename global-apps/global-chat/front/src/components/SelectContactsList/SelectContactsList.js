@@ -3,7 +3,6 @@ import {withStyles} from '@material-ui/core';
 import {withSnackbar} from "notistack";
 import List from "@material-ui/core/List";
 import selectContactsListStyles from "./selectContactsListStyles";
-import {withRouter} from "react-router-dom";
 import Typography from "@material-ui/core/Typography";
 import ContactItem from "../ContactItem/ContactItem";
 import ListSubheader from "@material-ui/core/ListSubheader";
@@ -15,7 +14,8 @@ function SelectContactsListView({
                                   filteredContacts,
                                   onContactToggle,
                                   search,
-                                  searchContacts}) {
+                                  searchContacts
+                                }) {
   return (
     <div className={classes.chatsList}>
       <List subheader={<li/>}>
@@ -25,12 +25,11 @@ function SelectContactsListView({
               <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
               {filteredContacts.map(([publicKey]) =>
                 <ContactItem
-                  contactId={publicKey}
-                  contact={{}}
                   selected={participants.has(publicKey)}
                   onClick={onContactToggle.bind(this, publicKey)}
-                  publicKey={publicKey}
-                  contactName={names.get(publicKey)}
+                  username={names.get(publicKey)}
+                  firstName=''
+                  lastName=''
                 />
               )}
             </List>
@@ -43,11 +42,11 @@ function SelectContactsListView({
               {[...searchContacts]
                 .map(([publicKey, contact]) => (
                   <ContactItem
-                    contactId={publicKey}
-                    contact={contact}
+                    username={contact.username}
+                    firstName={contact.firstName}
+                    lastName={contact.lastName}
                     selected={participants.has(publicKey)}
                     onClick={onContactToggle.bind(this, publicKey)}
-                    publicKey={publicKey}
                   />
                 ))}
             </List>
@@ -67,7 +66,16 @@ function SelectContactsListView({
   );
 }
 
-function SelectContactsList({classes, search, searchContacts, contacts, participants, onContactToggle, publicKey, names}) {
+function SelectContactsList({
+                              classes,
+                              search,
+                              searchContacts,
+                              contacts,
+                              participants,
+                              onContactToggle,
+                              publicKey,
+                              names
+                            }) {
   const props = {
     classes,
     participants,
@@ -77,20 +85,20 @@ function SelectContactsList({classes, search, searchContacts, contacts, particip
     names,
 
     filteredContacts: [...contacts]
-        .filter(([contactPublicKey]) => {
-          const name = names.get(contactPublicKey);
-          return (
-            contactPublicKey !== publicKey
-            && name
-            && name.toLowerCase().includes(search.toLowerCase())
-          );
-        })
-        .sort(([leftPublicKey], [rightPublicKey]) => {
-          return names.get(leftPublicKey).localeCompare(names.get(rightPublicKey));
-        }),
+      .filter(([contactPublicKey]) => {
+        const name = names.get(contactPublicKey);
+        return (
+          contactPublicKey !== publicKey
+          && name
+          && name.toLowerCase().includes(search.toLowerCase())
+        );
+      })
+      .sort(([leftPublicKey], [rightPublicKey]) => {
+        return names.get(leftPublicKey).localeCompare(names.get(rightPublicKey));
+      }),
   };
 
   return <SelectContactsListView {...props}/>;
 }
 
-export default withRouter(withSnackbar(withStyles(selectContactsListStyles)(SelectContactsList)));
+export default withSnackbar(withStyles(selectContactsListStyles)(SelectContactsList));

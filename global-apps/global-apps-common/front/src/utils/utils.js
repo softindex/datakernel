@@ -2,6 +2,22 @@ export const ROOT_COMMIT_ID = 'AQAAAAAAAAA=';
 
 const randomStringChars = '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
 
+export function delay(timeout) {
+  let timeoutId;
+  let rejectPromise;
+  const promise = new Promise((resolve, reject) => {
+    rejectPromise = reject;
+    timeoutId = setTimeout(resolve, timeout);
+  });
+  return {
+    cancel() {
+      clearTimeout(timeoutId);
+      rejectPromise(new Error('Delay has been closed'));
+    },
+    promise
+  };
+}
+
 export function randomString(length) {
   let result = '';
   for (let i = length; i > 0; --i) {

@@ -1,12 +1,12 @@
 import {Service} from 'global-apps-common';
-import {wait, retry, toEmoji} from 'global-apps-common';
+import {retry, toEmoji} from 'global-apps-common';
 import {GlobalAppStoreAPI} from "global-apps-common";
 import ProfileService from "../profile/ProfileService";
-
-const RETRY_TIMEOUT = 1000;
+import {RETRY_TIMEOUT} from '../../common/utils';
+import {delay} from "global-apps-common/lib";
 
 class NamesService extends Service {
-  constructor(contactsOTStateManager, roomsOTStateManager, globalAppStoreAPI, publicKey, profileServiceCreate) {
+  constructor(contactsOTStateManager, roomsOTStateManager, globalAppStoreAPI, publicKey, createProfileService) {
     super({
       names: new Map(),
       namesReady: false
@@ -15,9 +15,11 @@ class NamesService extends Service {
     this._contactsOTStateManager = contactsOTStateManager;
     this._roomsOTStateManager = roomsOTStateManager;
     this._globalAppStoreAPI = globalAppStoreAPI;
-    this._profileServiceCreate = profileServiceCreate;
+    this.createProfileService = createProfileService;
     this._contactsCheckoutPromise = null;
     this._roomsCheckoutPromise = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
   static createFrom(contactsOTStateManager, roomsOTStateManager, publicKey) {
@@ -27,7 +29,7 @@ class NamesService extends Service {
       GlobalAppStoreAPI.create(process.env.REACT_APP_GLOBAL_OAUTH_LINK),
       publicKey,
       contactPublicKey => {
-        return ProfileService.create(contactPublicKey)
+        return ProfileService.createFrom(contactPublicKey)
       });
   }
 
@@ -35,10 +37,24 @@ class NamesService extends Service {
     this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
     this._roomsCheckoutPromise = retry(() => this._roomsOTStateManager.checkout(), RETRY_TIMEOUT);
 
-    await Promise.all([
-      this._contactsCheckoutPromise,
-      this._roomsCheckoutPromise
-    ]);
+    try {
+      await Promise.all([
+        this._contactsCheckoutPromise,
+        this._roomsCheckoutPromise
+      ]);
+    } catch (err) {
+      console.log(err);
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
+      await this.init();
+      return;
+    }
 
     this._onStateChange();
 
@@ -47,22 +63,29 @@ class NamesService extends Service {
   }
 
   stop() {
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._contactsCheckoutPromise.stop();
+    this._roomsCheckoutPromise.stop();
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async _getChatProfileName(publicKey) {
-    const profilesService = this._profileServiceCreate(publicKey);
+  async _getChatProfile(publicKey) {
+    const profilesService = this.createProfileService(publicKey);
     return profilesService.getProfile();
   }
 
   _onStateChange = () => {
     let roomParticipants = new Set();
     const contacts = this._getContactsFromStateManager();
-    for (const [, {participants}] of this._getRooms()) {
-      participants
-        .filter(publicKey => publicKey !== this._myPublicKey)
-        .map(publicKey => roomParticipants.add(publicKey));
+    for (const [, {participants}] of [...this._roomsOTStateManager.getState()]) {
+      for (const publicKey of participants) {
+        roomParticipants.add(publicKey);
+      }
     }
 
     this._getNames(new Set([...roomParticipants]), contacts)
@@ -81,10 +104,6 @@ class NamesService extends Service {
     );
   }
 
-  _getRooms() {
-    return [...this._roomsOTStateManager.getState()]
-  }
-
   _getUserByPublicKey(publicKey) {
     return this._globalAppStoreAPI.getUserByPublicKey(publicKey);
   }
@@ -93,16 +112,20 @@ class NamesService extends Service {
     const names = new Map(this.state.names);
 
     for (const publicKey of publicKeys) {
-      if (contacts.has(publicKey)) {
+      if (contacts.has(publicKey) && publicKey !== this._myPublicKey) {
         if (contacts.get(publicKey).name !== '') {
           names.set(publicKey, contacts.get(publicKey).name);
           continue;
         }
       }
 
-      const userProfile = await this._getChatProfileName(publicKey);
+      const userProfile = await this._getChatProfile(publicKey);
       if (Object.entries(userProfile).length !== 0 && userProfile.name !== '') {
         names.set(publicKey, userProfile.name);
+        continue;
+      }
+
+      if (publicKey === this._myPublicKey) {
         continue;
       }
 
@@ -123,8 +146,13 @@ class NamesService extends Service {
       await this._contactsOTStateManager.sync();
       await this._roomsOTStateManager.sync();
     } catch (err) {
-      console.error(err);
-      await wait(RETRY_TIMEOUT);
+      console.log(err);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

@@ -1,13 +1,13 @@
 import React from 'react';
-import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
+import {BrowserRouter as ReactRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from "./MainScreen/MainScreen";
 import {SignUp} from "global-apps-common";
 import {withSnackbar} from 'notistack';
 import {OAuthCallback} from "global-apps-common";
 
-function App() {
+function Router() {
   return (
-    <Router>
+    <ReactRouter>
       <Switch>
         <Route
           exact={true}
@@ -24,8 +24,8 @@ function App() {
         <Route path="/room/:roomId" component={MainScreen}/>
         <Route path="/" component={MainScreen}/>
       </Switch>
-    </Router>
+    </ReactRouter>
   );
 }
 
-export default withSnackbar(App);
+export default withSnackbar(Router);

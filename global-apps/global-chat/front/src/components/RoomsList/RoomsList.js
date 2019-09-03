@@ -4,7 +4,6 @@ import RoomItem from "../RoomItem/RoomItem";
 import roomsListStyles from "./roomsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
-import Grow from "@material-ui/core/Grow";
 import {withRouter} from "react-router-dom";
 
 function RoomsList(props) {
@@ -21,11 +20,9 @@ function RoomsList(props) {
   return (
     <>
       {!props.roomsReady && (
-        <Grow in={!props.ready}>
-          <div className={props.classes.progressWrapper}>
-            <CircularProgress/>
-          </div>
-        </Grow>
+        <div className={props.classes.progressWrapper}>
+          <CircularProgress/>
+        </div>
       )}
       {props.roomsReady && (
         <List>
@@ -38,9 +35,7 @@ function RoomsList(props) {
                 showAddContactButton={checkContactExists(room)}
                 names={props.names}
                 publicKey={props.publicKey}
-                onAddContact={props.onAddContact}
                 onRemoveContact={props.onRemoveContact}
-                myName={props.myName}
               />
             )
           )}

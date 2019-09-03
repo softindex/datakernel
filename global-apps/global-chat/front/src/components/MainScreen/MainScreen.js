@@ -1,15 +1,15 @@
-import React, {useEffect, useMemo} from 'react';
+import React, {useMemo} from 'react';
 import Header from "../Header/Header"
 import ChatRoom from "../ChatRoom/ChatRoom"
 import SideBar from "../SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
-import {checkAuth, AuthContext, connectService, RegisterDependency, useService} from 'global-apps-common';
+import {checkAuth, AuthContext, connectService, RegisterDependency, useService, initService} from 'global-apps-common';
 import {withSnackbar} from "notistack";
 import EmptyChat from "../EmptyChatRoom/EmptyChatRoom";
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
-import MyProfileService from "../../modules/myProfile/MyProfileService";
+import MyProfileService from "../../modules/profile/MyProfileService";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import roomsOTSystem from "../../modules/rooms/ot/RoomsOTSystem";
 import roomsSerializer from "../../modules/rooms/ot/serializer";
@@ -62,25 +62,16 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes}) {
   const {rooms} = useService(roomsService);
   const {names} = useService(namesService);
 
-  useEffect(() => {
-    Promise.all([
-      contactsService.init(),
-      roomsService.init(),
-      profileService.init(),
-      namesService.init()
-    ]).catch((err) => {
-      enqueueSnackbar(err.message, {
-        variant: 'error'
-      });
+  function errorHandler(err) {
+    enqueueSnackbar(err.message, {
+      variant: 'error'
     });
+  }
 
-    return () => {
-      roomsService.stop();
-      contactsService.stop();
-      profileService.stop();
-      namesService.stop();
-    };
-  }, []);
+  initService(contactsService, errorHandler);
+  initService(roomsService, errorHandler);
+  initService(profileService, errorHandler);
+  initService(namesService, errorHandler);
 
   const {roomId} = match.params;
 

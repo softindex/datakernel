@@ -70,14 +70,12 @@ function Drawer({classes, open, onClose, onLogout, publicKey}) {
       </MUIDrawer>
       {openProfile && (
         <ProfileDialog
-          open={openProfile}
           onClose={onProfileClose}
           publicKey={publicKey}
         />
       )}
       {showChatDialog && (
         <CreateChatDialog
-          open={showChatDialog}
           onClose={onChatDialogClose}
           publicKey={publicKey}
         />

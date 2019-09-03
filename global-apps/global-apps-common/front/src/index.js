@@ -10,9 +10,10 @@ import SignUpAbstractionImage from './signUp/SignUpAbstractionImage/SignUpAbstra
 import SignUp from './signUp/SignUp/SignUp';
 import OAuthCallback from './auth/OAuthCallback/OAuthCallback';
 import Avatar from './avatar/Avatar';
-import useService from './serviceHooks';
-import * as utils from './utils/utils';
 
+export * from './utils/utils';
+export * from './serviceHooks';
+export * from './DI';
 export {
   checkAuth,
   request,
@@ -27,17 +28,3 @@ export {
   Avatar
 }
 
-export * from './utils/utils';
-export * from './serviceHooks';
-export * from './DI';
-// export * from './auth/AuthService';
-// export * from './auth/AuthContext';
-// export * from './auth/checkAuth';
-// export * from './globalAppStoreAPI/GlobalAppStoreAPI';
-// export * from './globalAppStoreAPI/request';
-// export * from './auth/OAuthCallback/OAuthCallback';
-// export * from './connectService/connectService';
-// export * from './connectService/Service';
-// export * from './signUp/SignUp/SignUp';
-// export * from './signUp/SignUpAbstractionImage/SignUpAbstractionImage';
-// export * from './avatar/Avatar';

@@ -1,23 +1,32 @@
 import crypto from "crypto";
 
+export const RETRY_TIMEOUT = 1000;
+
 export function getRoomName(participants, names, myPublicKey) {
   if (participants.length === 1) {
-    return (names.get(myPublicKey) === '' || names.get(myPublicKey) === undefined) ? 'Me' : names.get(myPublicKey);
+    return names.get(myPublicKey) || 'Me';
   }
-  return participants
-    .filter(participantPublicKey => participantPublicKey !== myPublicKey)
-    .map(publicKey => {
-      return names.get(publicKey)
-    })
-    .join(', ');
+
+  const resolvedNames = [];
+
+  for (const participantPublicKey of participants) {
+    if (participantPublicKey === myPublicKey) {
+      continue;
+    }
+
+    if (!names.has(participantPublicKey)) {
+      return null;
+    }
+
+    resolvedNames.push(names.get(participantPublicKey));
+  }
+
+  return resolvedNames.join(', ');
 }
 
 export function createDialogRoomId(firstPublicKey, secondPublicKey) {
-  if (firstPublicKey === secondPublicKey) {
-    return crypto.createHash('sha256').update([firstPublicKey]).digest('hex');
-  }
   return crypto
     .createHash('sha256')
-    .update([firstPublicKey, secondPublicKey].sort().join(';'))
+    .update([...new Set([firstPublicKey, secondPublicKey])].sort().join(';'))
     .digest('hex');
 }

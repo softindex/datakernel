@@ -8,7 +8,7 @@ import Paper from "@material-ui/core/Paper";
 import RoomsList from "../RoomsList/RoomsList";
 import {useService, getInstance} from "global-apps-common";
 import Typography from "@material-ui/core/Typography";
-import {createDialogRoomId, getRoomName} from '../../common/utils';
+import {getRoomName} from '../../common/utils';
 import {withRouter} from "react-router-dom";
 import {withSnackbar} from "notistack";
 import ContactsList from "../ContactsList/ContactsList";
@@ -23,7 +23,6 @@ function SideBarTabsView({
                            classes,
                            search,
                            searchReady,
-                           searchError,
                            searchContacts,
                            tabId,
                            onTabChange,
@@ -32,7 +31,6 @@ function SideBarTabsView({
                            names,
                            roomsReady,
                            publicKey,
-                           onAddContact,
                            onRemoveContact
                          }) {
   return (
@@ -55,7 +53,6 @@ function SideBarTabsView({
           contacts={contacts}
           names={names}
           roomsReady={roomsReady}
-          onAddContact={onAddContact}
           onRemoveContact={onRemoveContact}
           publicKey={publicKey}
           showDeleteButton={tabId === "contacts"}
@@ -70,9 +67,7 @@ function SideBarTabsView({
             </Paper>
             <ContactsList
               searchReady={searchReady}
-              searchError={searchError}
               searchContacts={searchContacts}
-              onAddContact={onAddContact}
             />
             {searchContacts.size === 0 && searchReady && (
               <Typography
@@ -96,7 +91,6 @@ function SideBarTabs({
                        searchContacts,
                        searchReady,
                        search,
-                       searchError,
                        onAddContact,
                        history,
                        match,
@@ -116,7 +110,6 @@ function SideBarTabs({
     publicKey,
     searchContacts,
     searchReady,
-    searchError,
     search,
     onAddContact,
     contacts,
@@ -135,7 +128,9 @@ function SideBarTabs({
             return false;
           }
 
-          return roomName.toLowerCase().includes(search.toLowerCase());
+          if (roomName !== null) {
+            return roomName.toLowerCase().includes(search.toLowerCase());
+          }
         })
         .sort(([, leftRoom], [, rightRoom]) => {
           return getRoomName(leftRoom.participants, names, publicKey)

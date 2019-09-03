@@ -6,7 +6,7 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {getInstance, useService} from "global-apps-common";
+import {getInstance, useService, getAppStoreContactName, initService} from "global-apps-common";
 import ContactChip from '../ContactChip/ContactChip';
 import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
@@ -17,11 +17,9 @@ import RoomsService from "../../modules/rooms/RoomsService";
 import SelectContactsList from "../SelectContactsList/SelectContactsList";
 import {withSnackbar} from "notistack";
 import NamesService from "../../modules/names/NamesService";
-import {getAppStoreContactName} from "global-apps-common/src/utils/utils";
 
 function CreateChatDialogView({
                                 classes,
-                                open,
                                 onClose,
                                 loading,
                                 onSubmit,
@@ -37,7 +35,6 @@ function CreateChatDialogView({
                               }) {
   return (
     <Dialog
-      open={open}
       onClose={onClose}
       loading={loading}
       maxWidth='sm'
@@ -95,7 +92,7 @@ function CreateChatDialogView({
   );
 }
 
-function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSnackbar}) {
+function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
@@ -105,6 +102,10 @@ function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSn
   const roomsService = getInstance(RoomsService);
   const namesService = getInstance(NamesService);
   const {names} = useService(namesService);
+
+  initService(searchContactsService, err => enqueueSnackbar(err.message, {
+    variant: 'error'
+  }));
 
   const [loading, setLoading] = useState(false);
   const [participants, setParticipants] = useState(new Map());
@@ -124,7 +125,6 @@ function CreateChatDialog({classes, history, open, onClose, publicKey, enqueueSn
     searchReady,
     contacts,
     publicKey,
-    open,
     onClose,
     names,
 

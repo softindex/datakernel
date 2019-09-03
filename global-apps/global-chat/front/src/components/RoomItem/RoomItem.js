@@ -84,10 +84,8 @@ class RoomItem extends React.Component {
         </ListItem>
         {this.state.showAddContactDialog && (
           <AddContactDialog
-            open={this.state.showAddContactDialog}
             onClose={this.closeAddDialog}
             contactPublicKey={this.getContactId(room)}
-            onAddContact={this.props.onAddContact}
           />
         )}
       </>

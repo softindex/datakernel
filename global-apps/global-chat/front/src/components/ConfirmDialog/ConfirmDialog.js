@@ -9,25 +9,19 @@ import Dialog from "../Dialog/Dialog";
 import confirmDialogStyles from "./confirmDialogStyles";
 import CircularProgress from "@material-ui/core/CircularProgress";
 
-function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes}) {
+function ConfirmDialog({classes, onClose, onConfirm, title, subtitle}) {
   const [loading, setLoading] = useState(false);
 
-  const onAgree = () => {
-    setLoading(true);
-    onConfirm()
-      .then(() => {
-        onClose();
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
+  function handleConfirm() {
+    const promise = onConfirm();
+    if (promise) {
+      setLoading(true);
+      promise.finally(() => setLoading(false));
+    }
+  }
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-    >
+    <Dialog onClose={onClose}>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>
@@ -45,7 +39,7 @@ function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes}) {
         </Button>
         <Button
           className={classes.actionButton}
-          onClick={onAgree}
+          onClick={handleConfirm}
           color="primary"
           variant="contained"
           disabled={loading}

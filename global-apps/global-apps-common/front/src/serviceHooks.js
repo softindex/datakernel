@@ -23,6 +23,6 @@ export function useService(service) {
 export function initService(service, errorHandler) {
   useEffect(() => {
     service.init().catch(errorHandler);
-    return service.stop();
+    return () => service.stop();
   }, [service]);
 }

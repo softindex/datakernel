@@ -1,9 +1,8 @@
-import {Service} from 'global-apps-common';
 import RoomsOTOperation from "./ot/RoomsOTOperation";
-import {randomString, wait} from 'global-apps-common';
-import {createDialogRoomId} from '../../common/utils';
+import {randomString, Service} from 'global-apps-common';
+import {createDialogRoomId, RETRY_TIMEOUT} from '../../common/utils';
+import {delay} from "global-apps-common/lib";
 
-const RETRY_TIMEOUT = 1000;
 const ROOM_ID_LENGTH = 32;
 
 class RoomsService extends Service {
@@ -13,7 +12,8 @@ class RoomsService extends Service {
       roomsReady: false
     });
     this._roomsOTStateManager = roomsOTStateManager;
-    this._reconnectTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
     this._myPublicKey = pubicKey;
   }
 
@@ -26,7 +26,14 @@ class RoomsService extends Service {
       await this._roomsOTStateManager.checkout();
     } catch (err) {
       console.log(err);
-      await this._reconnectDelay();
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this.init();
       return;
     }
@@ -37,7 +44,12 @@ class RoomsService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -102,18 +114,17 @@ class RoomsService extends Service {
     return new Map(rooms);
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-  }
-
   async _sync() {
     try {
       await this._roomsOTStateManager.sync();
     } catch (err) {
       console.log(err);
-      await wait(RETRY_TIMEOUT);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

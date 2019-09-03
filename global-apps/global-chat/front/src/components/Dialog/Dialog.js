@@ -10,6 +10,7 @@ function Dialog({children, onClose, loading, classes, ...otherProps}) {
   return (
     <MUDialog
       {...otherProps}
+      open={true}
       classes={{paper: classes.muDialog}}
       fullWidth={otherProps.maxWidth}
     >

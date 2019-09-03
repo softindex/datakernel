@@ -1,21 +1,20 @@
-import {retry, Service} from 'global-apps-common';
-import {GlobalAppStoreAPI} from 'global-apps-common';
-
-const RETRY_TIMEOUT = 1000;
+import {retry, Service, delay, GlobalAppStoreAPI} from 'global-apps-common';
+import {RETRY_TIMEOUT} from '../../common/utils';
 
 class SearchContactsService extends Service {
   constructor(contactsOTStateManager, publicKey, globalAppStoreAPI) {
     super({
       searchContacts: new Map(),
       searchReady: false,
-      search: '',
-      searchError: ''
+      search: ''
     });
 
     this._myPublicKey = publicKey;
     this._globalAppStoreAPI = globalAppStoreAPI;
     this._contactsOTStateManager = contactsOTStateManager;
     this._contactsCheckoutPromise = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
   static createFrom(contactsOTStateManager, publicKey) {
@@ -28,7 +27,22 @@ class SearchContactsService extends Service {
 
   async init() {
     this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
-    await Promise.resolve(this._contactsCheckoutPromise);
+    try {
+      await this._contactsCheckoutPromise;
+    } catch (err) {
+      console.log(err);
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
+      await this.init();
+      return;
+    }
+
     this.search(this.state.search);
     this._contactsOTStateManager.addChangeListener(() => {
       this.search(this.state.search);
@@ -36,6 +50,12 @@ class SearchContactsService extends Service {
   }
 
   stop() {
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._contactsCheckoutPromise.stop();
     this._contactsOTStateManager.removeChangeListener(() => this.search(this.state.search));
   }
@@ -55,10 +75,8 @@ class SearchContactsService extends Service {
           searchContacts,
           searchReady: true
         });
-      }).catch((error) => {
-      console.error(error);
-      this.setState({searchError: error.toString()})
-    });
+      })
+      .catch((error) => console.error(error));
   }
 }
 

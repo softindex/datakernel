@@ -6,7 +6,7 @@ import {withStyles} from '@material-ui/core';
 import InputBase from '@material-ui/core/InputBase';
 import Divider from '@material-ui/core/Divider';
 import IconButton from '@material-ui/core/IconButton';
-import {getInstance, useService} from "global-apps-common/lib";
+import {getInstance} from "global-apps-common";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 
 function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
@@ -48,9 +48,7 @@ function MessageForm({classes, enqueueSnackbar}) {
         return;
       }
 
-      (async () => {
-        await chatRoomService.sendMessage(message);
-      })()
+      chatRoomService.sendMessage(message)
         .catch((err) => {
           enqueueSnackbar(err.message, {
             variant: 'error'
@@ -62,7 +60,7 @@ function MessageForm({classes, enqueueSnackbar}) {
     }
   };
 
-  return <MessageFormView {...props} />
+  return <MessageFormView {...props}/>
 }
 
 export default withStyles(messageFormStyles)(MessageForm);

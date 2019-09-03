@@ -13,11 +13,10 @@ import IconButton from "@material-ui/core/IconButton";
 import {withSnackbar} from "notistack";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import Grow from "@material-ui/core/Grow";
-import MyProfileService from "../../modules/myProfile/MyProfileService";
+import MyProfileService from "../../modules/profile/MyProfileService";
 
 function ProfileDialogView({
                              classes,
-                             open,
                              onClose,
                              loading,
                              profileReady,
@@ -31,7 +30,6 @@ function ProfileDialogView({
                            }) {
   return (
     <Dialog
-      open={open}
       onClose={onClose}
       loading={loading}
     >
@@ -50,7 +48,7 @@ function ProfileDialogView({
           <DialogContent classes={{root: classes.dialogContent}}>
             <TextField
               className={classes.textField}
-              defaultValue={name === null ? profile.name : name}
+              value={name === null ? profile.name : name}
               disabled={loading}
               margin="normal"
               label="Name"
@@ -104,7 +102,7 @@ function ProfileDialogView({
   );
 }
 
-function ProfileDialog({classes, enqueueSnackbar, publicKey, open, onClose}) {
+function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
   const profileService = getInstance(MyProfileService);
   const {profile, profileReady} = useService(profileService);
   const [loading, setLoading] = useState(false);
@@ -131,7 +129,6 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, open, onClose}) {
     profileReady,
     name,
     loading,
-    open,
     onClose,
     copyToClipboard,
     onDoubleClick,
@@ -140,9 +137,7 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, open, onClose}) {
     onSubmit(event) {
       event.preventDefault();
       setLoading(true);
-      (async () => {
-        await profileService.setProfileField('name', name)
-      })()
+      profileService.setProfileField('name', name)
         .catch(error => enqueueSnackbar(error.message, {
           variant: 'error'
         }))

@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import App from './components/App';
+import Router from './components/Router';
 import * as serviceWorker from './serviceWorker';
 import cookies from 'js-cookie';
 import {AuthService} from 'global-apps-common';
@@ -18,7 +18,7 @@ ReactDOM.render((
     <CssBaseline/>
     <SnackbarProvider maxSnack={1}>
       <AuthContext.Provider value={accountService}>
-        <App/>
+        <Router/>
       </AuthContext.Provider>
     </SnackbarProvider>
   </MuiThemeProvider>
