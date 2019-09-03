@@ -163,11 +163,12 @@ public final class Utils {
 		public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
 			ByteBufWriter writer = new ByteBufWriter();
 
-			scope.putAll(staticContext);
+			Map<String, Object> context = new HashMap<>(scope);
+			context.putAll(staticContext);
 
 			List<Promise<?>> promisesToWait = new ArrayList<>();
 
-			for (Map.Entry<String, Object> entry : scope.entrySet()) {
+			for (Map.Entry<String, Object> entry : context.entrySet()) {
 				Object value = entry.getValue();
 				if (value instanceof Promise) {
 					Promise<?> promise = (Promise<?>) value;
@@ -180,7 +181,7 @@ public final class Utils {
 			}
 			return Promises.all(promisesToWait)
 					.map($ -> {
-						mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, scope);
+						mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
 						return HttpResponse.ofCode(code)
 								.withBody(writer.getBuf())
 								.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
@@ -189,6 +190,10 @@ public final class Utils {
 
 		public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {
 			return render(200, templateName, scope);
+		}
+
+		public Promise<HttpResponse> render(String templateName) {
+			return render(200, templateName, emptyMap());
 		}
 	}
 

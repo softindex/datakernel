@@ -32,6 +32,8 @@ public interface ForumDao {
 
 	Promise<String> createThread(ThreadMetadata threadMetadata);
 
+	Promise<Void> updateThread(String threadId, ThreadMetadata threadMetadata);
+
 	Promise<Map<String, ThreadMetadata>> getThreads();
 
 	Promise<Void> removeThread(String id);
@@ -40,4 +42,5 @@ public interface ForumDao {
 	ThreadDao getThreadDao(String id);
 
 	SessionStore<UserId> getSessionStore();
+
 }

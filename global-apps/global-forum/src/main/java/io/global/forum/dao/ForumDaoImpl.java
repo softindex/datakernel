@@ -115,6 +115,11 @@ public final class ForumDaoImpl implements ForumDao {
 	}
 
 	@Override
+	public Promise<Void> updateThread(String threadId, ThreadMetadata threadMetadata) {
+		return applyAndSync(threadsStateManager, MapOperation.forKey(threadId, SetValue.set(threadsView.get(threadId), threadMetadata)));
+	}
+
+	@Override
 	public Promise<Void> removeThread(String id) {
 		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(threadsView.get(id), null)));
 		// ^ this will also remove the state manager because of the listener

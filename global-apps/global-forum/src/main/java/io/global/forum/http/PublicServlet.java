@@ -10,6 +10,7 @@ import io.global.forum.http.view.PostView;
 import io.global.forum.http.view.ThreadView;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.AuthService;
+import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserId;
 import org.jetbrains.annotations.NotNull;
 
@@ -19,6 +20,7 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.forum.Utils.redirect;
 
@@ -30,6 +32,39 @@ public final class PublicServlet {
 					return forumDao.getThreads()
 							.then(threads -> ThreadView.from(forumDao, threads))
 							.then(threads -> templater.render("threadList", map("threads", threads)));
+				})
+				.map(GET, "/new", request -> templater.render("newThread", map("creatingNewThread", true)))
+				.map(POST, "/new", request -> {
+
+					UserId user = new UserId(AuthService.DK_APP_STORE, "ANON");
+					ForumDao forumDao = request.getAttachment(ForumDao.class);
+
+					return forumDao.createThread(new ThreadMetadata("<unnamed>"))
+							.then(tid -> {
+								ThreadDao dao = forumDao.getThreadDao(tid);
+								assert dao != null : "No thread dao just after creating the thread";
+
+								Map<String, Attachment> attachmentMap = new HashMap<>();
+								Map<String, String> paramsMap = new HashMap<>();
+
+								return request.handleMultipart(AttachmentDataHandler.create(dao, paramsMap, attachmentMap))
+										.then($ -> {
+											String title = paramsMap.get("title");
+											if (title == null) {
+												return Promise.<HttpResponse>ofException(new ParseException(ThreadServlet.class, "'title' POST parameter is required"));
+											}
+
+											String content = paramsMap.get("content");
+											if (content == null) {
+												return Promise.<HttpResponse>ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
+											}
+
+											return forumDao.updateThread(tid, new ThreadMetadata(title))
+													.then($2 -> dao.addRootPost(user, content, attachmentMap))
+													.thenEx(revertIfException(dao, attachmentMap))
+													.map($2 -> redirect302("/" + request.getPathParameter("pubKey") + "/" + tid));
+										});
+							});
 				})
 				.map("/:threadID/*", RoutingServlet.create()
 						.map(GET, "/", postServlet(templater))

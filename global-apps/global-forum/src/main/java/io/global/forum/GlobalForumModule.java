@@ -78,21 +78,21 @@ public final class GlobalForumModule extends AbstractModule {
 						}
 						ForumDao dao = container.getForumDao();
 
-									// region stub data
-									if (!didIt) {
-										didIt = true;
-										UserId anton = new UserId(AuthService.DK_APP_STORE, "anton");
-										UserId eduard = new UserId(AuthService.DK_APP_STORE, "eduard");
-										UserId lera = new UserId(AuthService.DK_APP_STORE, "lera");
+						// region stub data
+						if (!didIt) {
+							didIt = true;
+							UserId anton = new UserId(AuthService.DK_APP_STORE, "anton");
+							UserId eduard = new UserId(AuthService.DK_APP_STORE, "eduard");
+							UserId lera = new UserId(AuthService.DK_APP_STORE, "lera");
 
-										dao.updateUser(anton, new UserData(UserRole.COMMON, "", "Anton", null, null));
-										dao.updateUser(lera, new UserData(UserRole.COMMON, "", "Lera", null, null));
-										dao.updateUser(eduard, new UserData(UserRole.COMMON, "", "Eduard", null, null));
+							dao.updateUser(anton, new UserData(UserRole.COMMON, "", "Anton", null, null));
+							dao.updateUser(lera, new UserData(UserRole.COMMON, "", "Lera", null, null));
+							dao.updateUser(eduard, new UserData(UserRole.COMMON, "", "Eduard", null, null));
 
-										dao.createThread(new ThreadMetadata("thread #1"))
-												.then(tid -> {
-													ThreadDao threadDao = dao.getThreadDao(tid);
-													assert threadDao != null;
+							dao.createThread(new ThreadMetadata("thread #1"))
+									.then(tid -> {
+										ThreadDao threadDao = dao.getThreadDao(tid);
+										assert threadDao != null;
 
 										return threadDao.addRootPost(anton, "Hello World", emptyMap())
 												.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
@@ -104,22 +104,22 @@ public final class GlobalForumModule extends AbstractModule {
 										ThreadDao threadDao = dao.getThreadDao(tid);
 										assert threadDao != null;
 
-													return threadDao.addRootPost(anton, "Hello World", emptyMap())
-															.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
-															.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #1", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #2", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #3", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #4", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #5", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #6", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #7", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #8", emptyMap()))
-															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #9", emptyMap()));
-												})
-												.whenResult($ -> {});
-									}
-									// endregion
+										return threadDao.addRootPost(anton, "Hello World", emptyMap())
+												.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
+												.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #1", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #2", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #3", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #4", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #5", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #6", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #7", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #8", emptyMap()))
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #9", emptyMap()));
+									})
+									.whenResult($ -> {});
+						}
+						// endregion
 
 						request.attach(ForumDao.class, dao);
 						return forumServlet.serve(request);
@@ -127,35 +127,35 @@ public final class GlobalForumModule extends AbstractModule {
 						return Promise.of(HttpResponse.notFound404());
 					}
 				})
-				.map(GET, "/", request -> Promise.of(HttpResponse.redirect302("1"))); // TODO anton: this is debug-only too
+				.map(GET, "/", request -> Promise.of(HttpResponse.redirect302("1")))
+				.then(sessionDecorator()); // TODO anton: this is debug-only too
 	}
 
-	@Provides
 	AsyncServletDecorator sessionDecorator() {
-		return servlet -> request -> {
-			String sessionId = request.getCookie(SESSION_ID);
-			if (sessionId != null) {
-				ForumUserContainer container = request.getAttachment(ForumUserContainer.class);
-				String pubKeyString = container.getKeys().getPubKey().asString();
-				UserIdSessionStore sessionStore = container.getSessionStore();
-				return sessionStore.get(sessionId)
-						.then(userId -> {
-							if (userId != null) {
-								request.attach(userId);
-							}
-							return servlet.serve(request)
-									.map(response -> {
-										int maxAge = userId == null ? 0 : (int) sessionStore.getSessionLifetime().getSeconds();
-										return response
-												.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-														.withMaxAge(maxAge)
-														.withPath("/" + pubKeyString));
-									});
-						});
-			} else {
-				return servlet.serve(request);
-			}
-		};
+		return servlet ->
+				request -> {
+					String sessionId = request.getCookie(SESSION_ID);
+					if (sessionId == null) {
+						return servlet.serve(request);
+					}
+					ForumUserContainer container = request.getAttachment(ForumUserContainer.class);
+					String pubKeyString = container.getKeys().getPubKey().asString();
+					UserIdSessionStore sessionStore = container.getSessionStore();
+					return sessionStore.get(sessionId)
+							.then(userId -> {
+								if (userId != null) {
+									request.attach(userId);
+								}
+								return servlet.serve(request)
+										.map(response -> {
+											int maxAge = userId == null ? 0 : (int) sessionStore.getSessionLifetime().getSeconds();
+											return response
+													.withCookie(HttpCookie.of(SESSION_ID, sessionId)
+															.withMaxAge(maxAge)
+															.withPath("/" + pubKeyString));
+										});
+							});
+				};
 	}
 
 	@Provides

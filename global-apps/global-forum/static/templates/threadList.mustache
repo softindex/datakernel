@@ -1,14 +1,16 @@
 {{<base}}
     {{$content}}
-        <div class="container list-group">
-            {{#threads}}
-                <a href="{{pubKey}}/{{id}}" class="list-group-item list-group-item-action">
-                    {{meta.title}}
-                    <span class="badge badge-secondary badge-light float-right">
+        <div class="container">
+            <div class="list-group my-3">
+                {{#threads}}
+                    <a href="{{pubKey}}/{{id}}" class="list-group-item list-group-item-action">
+                        {{meta.title}}
+                        <span class="badge badge-secondary badge-light float-right">
                         {{root.author}}, {{root.initialTimestamp}}
                     </span>
-                </a>
-            {{/threads}}
+                    </a>
+                {{/threads}}
+            </div>
         </div>
     {{/content}}
 {{/base}}
