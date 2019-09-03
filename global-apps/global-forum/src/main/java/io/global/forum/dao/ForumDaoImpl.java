@@ -25,16 +25,16 @@ import java.util.Set;
 public final class ForumDaoImpl implements ForumDao {
 	private final OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
-	private final OTStateManager<CommitId, MapOperation<Long, IpBanState>> bansStateManager;
-	private final OTStateManager<CommitId, MapOperation<Long, ThreadMetadata>> threadsStateManager;
+	private final OTStateManager<CommitId, MapOperation<String, IpBanState>> bansStateManager;
+	private final OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager;
 	private final SessionStore<UserId> sessionStore;
 
 	private final ForumUserContainer container;
 
 	private final ChangeValueContainer<ForumMetadata> metadataView;
 	private final Map<UserId, UserData> usersView;
-	private final Map<Long, IpBanState> ipBanView;
-	private final Map<Long, ThreadMetadata> threadsView;
+	private final Map<String, IpBanState> ipBanView;
+	private final Map<String, ThreadMetadata> threadsView;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -49,8 +49,8 @@ public final class ForumDaoImpl implements ForumDao {
 
 		metadataView = (ChangeValueContainer<ForumMetadata>) metadataStateManager.getState();
 		usersView = ((MapOTState<UserId, UserData>) usersStateManager.getState()).getMap();
-		ipBanView = ((MapOTState<Long, IpBanState>) bansStateManager.getState()).getMap();
-		threadsView = ((MapOTStateListenerProxy<Long, ThreadMetadata>) threadsStateManager.getState()).getMap();
+		ipBanView = ((MapOTState<String, IpBanState>) bansStateManager.getState()).getMap();
+		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) threadsStateManager.getState()).getMap();
 	}
 
 	@Override
@@ -79,15 +79,15 @@ public final class ForumDaoImpl implements ForumDao {
 	}
 
 	@Override
-	public Promise<Long> banIpRange(IpRange range, UserId banner, Instant until, String reason) {
+	public Promise<String> banIpRange(IpRange range, UserId banner, Instant until, String reason) {
 		IpBanState state = new IpBanState(new BanState(banner, until, reason), range);
-		long id = Utils.generateId();
+		String id = Utils.generateId();
 		return applyAndSync(bansStateManager, MapOperation.forKey(id, SetValue.set(null, state)))
 				.map($ -> id);
 	}
 
 	@Override
-	public Promise<Map<Long, IpBanState>> getBannedRanges() {
+	public Promise<Map<String, IpBanState>> getBannedRanges() {
 		return Promise.of(ipBanView);
 	}
 
@@ -97,32 +97,32 @@ public final class ForumDaoImpl implements ForumDao {
 	}
 
 	@Override
-	public Promise<Void> unbanIpRange(long id) {
+	public Promise<Void> unbanIpRange(String id) {
 		return applyAndSync(bansStateManager, MapOperation.forKey(id, SetValue.set(ipBanView.get(id), null)));
 	}
 
 	@Override
-	public Promise<Map<Long, ThreadMetadata>> getThreads() {
+	public Promise<Map<String, ThreadMetadata>> getThreads() {
 		return Promise.of(threadsView);
 	}
 
 	// invariant: just after creating the thread you should do `getThreadDao(id).addRootPost(...)`
 	@Override
-	public Promise<Long> createThread(ThreadMetadata threadMetadata) {
-		long id = Utils.generateId();
+	public Promise<String> createThread(ThreadMetadata threadMetadata) {
+		String id = Utils.generateId();
 		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(null, threadMetadata)))
 				.map($ -> id);
 	}
 
 	@Override
-	public Promise<Void> removeThread(long id) {
+	public Promise<Void> removeThread(String id) {
 		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(threadsView.get(id), null)));
 		// ^ this will also remove the state manager because of the listener
 	}
 
 	@Override
 	@Nullable
-	public ThreadDao getThreadDao(long id) {
+	public ThreadDao getThreadDao(String id) {
 		return container.getThreadDao(id);
 	}
 

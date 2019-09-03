@@ -29,17 +29,15 @@
         {{/deletedBy}}
         <div class="row float-right">
             {{#deletedBy}}
-                <button class="restore btn btn-outline-primary btn-sm mx-1" data-post-id="{{postId}}"
-                        data-url="/{{pubKey}}/{{threadId}}/{{postId}}">
-                    restore
-                </button>
+                <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                    <button class="btn btn-outline-primary btn-sm mx-1">restore</button>
+                </form>
             {{/deletedBy}}
             {{^deletedBy}}
-                <button class="delete btn btn-outline-primary btn-sm mx-1" data-post-id="{{postId}}"
-                        data-url="/{{pubKey}}/{{threadId}}/{{postId}}">
-                    delete
-                </button>
-                <button class="btn btn-outline-primary btn-sm mx-1" data-post-id="{{postId}}" data-toggle="collapse"
+                <form action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+                    <button class="btn btn-outline-primary btn-sm mx-1">delete</button>
+                </form>
+                <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
                         data-target="#reply_{{postId}}">
                     reply
                 </button>
@@ -69,7 +67,7 @@
                         </div>
                         <div class="custom-file col-3">
                             <input type="file" class="custom-file-input" id="document_attachment_{{postId}}" multiple
-                                   name="document_attachmen">
+                                   name="document_attachment">
                             <label class="custom-file-label" for="document_attachment_{{postId}}">Attach
                                 documents</label>
                         </div>

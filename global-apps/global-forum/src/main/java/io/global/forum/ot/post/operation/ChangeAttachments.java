@@ -8,15 +8,15 @@ import java.util.Map;
 import static io.global.forum.pojo.AttachmentType.DOCUMENT;
 
 public final class ChangeAttachments implements ThreadOperation {
-	public static final ChangeAttachments EMPTY = new ChangeAttachments(0, "", new Attachment(DOCUMENT, ""), 0, true);
+	public static final ChangeAttachments EMPTY = new ChangeAttachments("", "", new Attachment(DOCUMENT, ""), 0, true);
 
-	private final long postId;
+	private final String postId;
 	private final String globalFsId;
 	private final Attachment attachment;
 	private final long timestamp;
 	private final boolean remove;
 
-	public ChangeAttachments(long postId, String globalFsId, Attachment attachment, long timestamp, boolean remove) {
+	public ChangeAttachments(String postId, String globalFsId, Attachment attachment, long timestamp, boolean remove) {
 		this.postId = postId;
 		this.globalFsId = globalFsId;
 		this.attachment = attachment;
@@ -25,7 +25,7 @@ public final class ChangeAttachments implements ThreadOperation {
 	}
 
 	@Override
-	public void apply(Map<Long, Post> posts) {
+	public void apply(Map<String, Post> posts) {
 		Post post = posts.get(postId);
 		if (remove) {
 			post.removeAttachment(globalFsId);
@@ -46,7 +46,7 @@ public final class ChangeAttachments implements ThreadOperation {
 				remove != other.remove;
 	}
 
-	public long getPostId() {
+	public String getPostId() {
 		return postId;
 	}
 

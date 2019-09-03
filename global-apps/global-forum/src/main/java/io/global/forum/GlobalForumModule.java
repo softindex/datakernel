@@ -67,19 +67,18 @@ public final class GlobalForumModule extends AbstractModule {
 	@Provides
 	AsyncServlet servlet(ContainerManager<ForumUserContainer> containerManager, @Named("Forum") AsyncServlet forumServlet) {
 		return RoutingServlet.create()
-
-				.map(GET, "/", request -> Promise.of(HttpResponse.redirect302("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")))
-
 				.map("/:pubKey/*", request -> {
 					try {
-						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
+						// PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
+						PubKey pubKey = PrivKey.fromString(request.getPathParameter("pubKey")).computePubKey(); // TODO anton: this is debug-only of course
+
 						ForumUserContainer container = containerManager.getUserContainer(pubKey);
 						if (container == null) {
 							return Promise.of(HttpResponse.notFound404());
 						}
 						ForumDao dao = container.getForumDao();
 
-									// this is a stub ofc
+									// region stub data
 									if (!didIt) {
 										didIt = true;
 										UserId anton = new UserId(AuthService.DK_APP_STORE, "anton");
@@ -96,37 +95,39 @@ public final class GlobalForumModule extends AbstractModule {
 													assert threadDao != null;
 
 										return threadDao.addRootPost(anton, "Hello World", emptyMap())
-												.then($ -> threadDao.addPost(eduard, 0L, "Hello, Anton", emptyMap()))
+												.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
 												.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton", emptyMap()));
+												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton", emptyMap()));
 									})
 									.then($ -> dao.createThread(new ThreadMetadata("second thread")))
 									.then(tid -> {
 										ThreadDao threadDao = dao.getThreadDao(tid);
 										assert threadDao != null;
 
-										return threadDao.addRootPost(anton, "Hello World", emptyMap())
-												.then($ -> threadDao.addPost(eduard, 0L, "Hello, Anton", emptyMap()))
-												.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #1", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #2", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #3", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #4", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #5", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #6", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #7", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #8", emptyMap()))
-												.then($ -> threadDao.addPost(lera, 0L, "Goodbye, Anton #9", emptyMap()));
-									})
-									.whenComplete(() -> {});
-						}
+													return threadDao.addRootPost(anton, "Hello World", emptyMap())
+															.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
+															.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #1", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #2", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #3", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #4", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #5", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #6", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #7", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #8", emptyMap()))
+															.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #9", emptyMap()));
+												})
+												.whenResult($ -> {});
+									}
+									// endregion
 
 						request.attach(ForumDao.class, dao);
 						return forumServlet.serve(request);
 					} catch (ParseException ignored) {
 						return Promise.of(HttpResponse.notFound404());
 					}
-				});
+				})
+				.map(GET, "/", request -> Promise.of(HttpResponse.redirect302("1"))); // TODO anton: this is debug-only too
 	}
 
 	@Provides

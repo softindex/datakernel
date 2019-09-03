@@ -71,30 +71,30 @@ public final class Utils {
 					ForumMetadata::getName, STRING_CODEC,
 					ForumMetadata::getDescription, STRING_CODEC))
 			.with(AddPost.class, registry -> tuple(AddPost::new,
-					AddPost::getPostId, registry.get(Long.class),
-					AddPost::getParentId, LONG_CODEC.nullable(),
+					AddPost::getPostId, STRING_CODEC,
+					AddPost::getParentId, STRING_CODEC.nullable(),
 					AddPost::getAuthor, registry.get(UserId.class),
 					AddPost::getInitialTimestamp, LONG_CODEC,
 					AddPost::isRemove, BOOLEAN_CODEC))
 			.with(ChangeAttachments.class, registry -> tuple(ChangeAttachments::new,
-					ChangeAttachments::getPostId, LONG_CODEC,
+					ChangeAttachments::getPostId, STRING_CODEC,
 					ChangeAttachments::getGlobalFsId, STRING_CODEC,
 					ChangeAttachments::getAttachment, registry.get(Attachment.class),
 					ChangeAttachments::getTimestamp, LONG_CODEC,
 					ChangeAttachments::isRemove, BOOLEAN_CODEC))
 			.with(ChangeContent.class, registry -> tuple(ChangeContent::new,
-					ChangeContent::getPostId, LONG_CODEC,
+					ChangeContent::getPostId, STRING_CODEC,
 					ChangeContent::getChangeContent, CHANGE_NAME_CODEC))
 			.with(ChangeLastEditTimestamp.class, registry -> tuple(ChangeLastEditTimestamp::new,
-					ChangeLastEditTimestamp::getPostId, LONG_CODEC,
+					ChangeLastEditTimestamp::getPostId, STRING_CODEC,
 					ChangeLastEditTimestamp::getPrevTimestamp, LONG_CODEC,
 					ChangeLastEditTimestamp::getNextTimestamp, LONG_CODEC))
 			.with(ChangeRating.class, registry -> tuple(ChangeRating::new,
-					ChangeRating::getPostId, LONG_CODEC,
+					ChangeRating::getPostId, STRING_CODEC,
 					ChangeRating::getUserId, registry.get(UserId.class),
 					ChangeRating::getSetRating, getSetValueCodec(BOOLEAN_CODEC)))
 			.with(DeletePost.class, registry -> tuple(DeletePost::new,
-					DeletePost::getPostId, LONG_CODEC,
+					DeletePost::getPostId, STRING_CODEC,
 					DeletePost::getDeletedBy, registry.get(UserId.class),
 					DeletePost::getTimestamp, LONG_CODEC,
 					DeletePost::isDelete, BOOLEAN_CODEC))
@@ -125,24 +125,21 @@ public final class Utils {
 					.with(UpdateTimestamp.class, registry.get(UpdateTimestamp.class)));
 
 	private static final char[] CHAR_POOL = {
-			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
-			'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-			'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c',
-			'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
-			'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+			'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+			'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+			'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 	};
 	private static final Random RANDOM = new Random();
+	private static final int ID_SIZE = 10;
 
-	public static String generateBase62(int size) {
-		StringBuilder sb = new StringBuilder(size);
-		for (int i = 0; i < size; i++) {
+	public static String generateId() {
+		StringBuilder sb = new StringBuilder(ID_SIZE);
+		for (int i = 0; i < 10; i++) {
 			sb.append(CHAR_POOL[RANDOM.nextInt(CHAR_POOL.length)]);
 		}
 		return sb.toString();
-	}
-
-	public static Long generateId() {
-		return RANDOM.nextLong();
 	}
 
 	@FunctionalInterface
@@ -214,7 +211,7 @@ public final class Utils {
 		}
 	}
 
-	public static final StructuredEncoder<Tuple2<Map<Long, Post>, Long>> RECURSIVE_POST_ENCODER;
+	public static final StructuredEncoder<Tuple2<Map<String, Post>, String>> RECURSIVE_POST_ENCODER;
 
 	public static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
 		StructuredCodec<UserId> userIdCodec = REGISTRY.get(UserId.class);
@@ -230,19 +227,19 @@ public final class Utils {
 	};
 
 	static {
-		LazyEncoder<Tuple2<Map<Long, Post>, Long>> lazyPostEncoder = new LazyEncoder<>();
+		LazyEncoder<Tuple2<Map<String, Post>, String>> lazyPostEncoder = new LazyEncoder<>();
 		RECURSIVE_POST_ENCODER = ofObject((out, data) -> {
-			Map<Long, Post> posts = data.getValue1();
-			Long ourRootId = data.getValue2();
+			Map<String, Post> posts = data.getValue1();
+			String ourRootId = data.getValue2();
 			Post post = posts.get(ourRootId);
 			List<Post> children = post.getChildren();
 
-			List<Tuple2<Map<Long, Post>, Long>> childrenEntries = posts.entrySet().stream()
+			List<Tuple2<Map<String, Post>, String>> childrenEntries = posts.entrySet().stream()
 					.filter(postEntry -> children.contains(postEntry.getValue()))
 					.map(postEntry -> new Tuple2<>(posts, postEntry.getKey()))
 					.collect(toList());
 
-			out.writeKey("id", LONG_CODEC, ourRootId);
+			out.writeKey("id", STRING_CODEC, ourRootId);
 			POST_SIMPLE_ENCODER.encode(out, post);
 			out.writeKey("children", StructuredEncoder.ofList(lazyPostEncoder), childrenEntries);
 		});
@@ -251,11 +248,11 @@ public final class Utils {
 
 	public static final StructuredEncoder<Object> EMPTY_OBJECT_ENCODER = StructuredEncoder.ofObject();
 
-	public static final StructuredEncoder<Map<Long, Post>> POSTS_ENCODER_ROOT = postsEncoder(0L);
+	public static final StructuredEncoder<Map<String, Post>> POSTS_ENCODER_ROOT = postsEncoder("root");
 
 	public static final StructuredEncoder<Post> POST_ENCODER = StructuredEncoder.ofObject(POST_SIMPLE_ENCODER);
 
-	public static StructuredEncoder<Map<Long, Post>> postsEncoder(long startingId) {
+	public static StructuredEncoder<Map<String, Post>> postsEncoder(String startingId) {
 		return (out, posts) -> {
 			Post root = posts.get(startingId);
 			if (root == null) {

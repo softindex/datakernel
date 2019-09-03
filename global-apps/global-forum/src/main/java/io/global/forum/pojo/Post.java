@@ -9,7 +9,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.StringFormatUtils.limit;
 
 public final class Post {
-	private final long postId;
+	private final String postId;
 	@NotNull
 	private final UserId author;
 	private String content = "";
@@ -27,17 +27,17 @@ public final class Post {
 	@Nullable
 	private UserId deletedBy;
 
-	private Post(long postId, @NotNull UserId author, long initialTimestamp) {
+	private Post(String postId, @NotNull UserId author, long initialTimestamp) {
 		this.postId = postId;
 		this.author = author;
 		this.initialTimestamp = initialTimestamp;
 	}
 
-	public static Post create(long postId, @NotNull UserId author, long initialTimestamp) {
+	public static Post create(String postId, @NotNull UserId author, long initialTimestamp) {
 		return new Post(postId, author, initialTimestamp);
 	}
 
-	public long getId() {
+	public String getId() {
 		return postId;
 	}
 

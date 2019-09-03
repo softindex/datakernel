@@ -4,8 +4,6 @@ import io.datakernel.async.Promise;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.exception.ParseException;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.http.HttpException;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
 import io.datakernel.http.RoutingServlet;
@@ -19,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.http.HttpMethod.*;
 import static io.global.forum.Utils.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -68,7 +66,7 @@ public final class ForumServlet {
 										return Promise.<HttpResponse>ofException(INSUFFICIENT_RIGHTS);
 									}
 									return forumDao.getBannedRanges()
-											.map(bans -> HttpResponse.ok200().withJson(REGISTRY.get(new TypeT<Map<Long, IpBanState>>() {}), bans));
+											.map(bans -> HttpResponse.ok200().withJson(REGISTRY.get(new TypeT<Map<String, IpBanState>>() {}), bans));
 								}))
 				.map(POST, "/ban", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -99,13 +97,12 @@ public final class ForumServlet {
 										return Promise.<HttpResponse>ofException(INSUFFICIENT_RIGHTS);
 									}
 
-									return getId(request)
-											.then(forumDao::unbanIpRange)
+									return forumDao.unbanIpRange(request.getPathParameter("id"))
 											.map($ -> HttpResponse.ok200());
 								}))
 				.map(GET, "/threads", request ->
 						forumDao.getThreads()
-								.map(threads -> HttpResponse.ok200().withJson(REGISTRY.get(new TypeT<Map<Long, ThreadMetadata>>() {}), threads)))
+								.map(threads -> HttpResponse.ok200().withJson(REGISTRY.get(new TypeT<Map<String, ThreadMetadata>>() {}), threads)))
 				.map(POST, "/thread", request -> {
 					try {
 						ThreadMetadata metadata = JsonUtils.fromJson(REGISTRY.get(ThreadMetadata.class), request.getBody().asString(UTF_8));
@@ -128,27 +125,24 @@ public final class ForumServlet {
 												return threadDao.addRootPost(userId, content, attachmentMap);
 											})
 											.thenEx(revertIfException(forumDao, threadDao, id, attachmentMap))
-											.map($ -> HttpResponse.ok201().withJson(LONG_CODEC, id));
+											.map($ -> HttpResponse.ok201().withJson(STRING_CODEC, id));
 								});
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
 				.map(DELETE, "/:id", request ->
-						getId(request)
-								.then(forumDao::removeThread)
+						forumDao.removeThread(request.getPathParameter("id"))
 								.map($ -> HttpResponse.ok200()))
 				.map("/:id", ThreadServlet.create()
 						.then(servlet ->
-								request ->
-										getId(request)
-												.then(tid -> {
-													request.attach(forumDao.getThreadDao(tid));
-													return servlet.serve(request);
-												})));
+								request -> {
+									request.attach(forumDao.getThreadDao(request.getPathParameter("id")));
+									return servlet.serve(request);
+								}));
 	}
 
-	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(ForumDao forumDao, ThreadDao threadDao, long id, Map<String, Attachment> attachments) {
+	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(ForumDao forumDao, ThreadDao threadDao, String id, Map<String, Attachment> attachments) {
 		return ($, e) -> {
 			if (e == null) {
 				return Promise.complete();
@@ -167,15 +161,6 @@ public final class ForumServlet {
 								});
 					});
 		};
-	}
-
-	private static Promise<Long> getId(HttpRequest request) {
-		String id = request.getPathParameter("id");
-		try {
-			return Promise.of(Long.parseLong(id));
-		} catch (NumberFormatException e) {
-			return Promise.ofException(HttpException.ofCode(401, "bad id: " + id));
-		}
 	}
 }
 

@@ -14,17 +14,17 @@ import java.util.Objects;
 import static java.util.stream.Collectors.toList;
 
 public class ThreadView {
-	private final long id;
+	private final String id;
 	private final ThreadMetadata meta;
 	private final PostView root;
 
-	public ThreadView(long id, ThreadMetadata meta, PostView root) {
+	public ThreadView(String id, ThreadMetadata meta, PostView root) {
 		this.id = id;
 		this.meta = meta;
 		this.root = root;
 	}
 
-	public long getId() {
+	public String getId() {
 		return id;
 	}
 
@@ -36,12 +36,12 @@ public class ThreadView {
 		return root;
 	}
 
-	public static Promise<List<ThreadView>> from(ForumDao forumDao, Map<Long, ThreadMetadata> threads) {
+	public static Promise<List<ThreadView>> from(ForumDao forumDao, Map<String, ThreadMetadata> threads) {
 		return Promises.toList(threads.entrySet().stream()
 				.map(e -> {
 					ThreadDao dao = forumDao.getThreadDao(e.getKey());
 					return dao != null ?
-							dao.getPost(0L)
+							dao.getPost("root")
 									.then(rootPost ->
 											PostView.from(forumDao, rootPost)
 													.map(post -> new ThreadView(e.getKey(), e.getValue(), post))) :

@@ -38,14 +38,8 @@ public final class ThreadServlet {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 					UserId author = request.getAttachment(UserId.class);
 
-					Long parentId;
-					try {
-						String parentIdString = request.getQueryParameter("parentId");
-						if (parentIdString == null) {
-							throw new ParseException();
-						}
-						parentId = Long.parseLong(parentIdString);
-					} catch (NumberFormatException | ParseException e) {
+					String parentId = request.getQueryParameter("parentId");
+					if (parentId == null) {
 						return Promise.ofException(HttpException.ofCode(400, "'parentId' numerical query parameter is required"));
 					}
 
@@ -67,7 +61,7 @@ public final class ThreadServlet {
 				.map("/:postId/*", RoutingServlet.create()
 						.map(GET, "/", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-							Long postId = request.getAttachment("postId");
+							String postId = request.getPathParameter("postId");
 							return threadDao.listPosts()
 									.then(posts -> {
 										Post post = posts.get(postId);
@@ -80,7 +74,7 @@ public final class ThreadServlet {
 						})
 						.map(GET, "/tree", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-							Long postId = request.getAttachment("postId");
+							String postId = request.getPathParameter("postId");
 							return threadDao.listPosts()
 									.then(posts -> {
 										Post post = posts.get(postId);
@@ -93,7 +87,7 @@ public final class ThreadServlet {
 						})
 						.map(PUT, "/", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-							Long postId = request.getAttachment("postId");
+							String postId = request.getPathParameter("postId");
 
 							Map<String, Attachment> attachmentMap = new HashMap<>();
 							Map<String, String> paramsMap = new HashMap<>();
@@ -115,14 +109,14 @@ public final class ThreadServlet {
 						.map(DELETE, "/", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 							UserId userId = request.getAttachment(UserId.class);
-							Long postId = request.getAttachment("postId");
+							String postId = request.getPathParameter("postId");
 							return threadDao.removePost(userId, postId)
 									.map($ -> HttpResponse.ok200());
 						})
 						.map(POST, "/rating", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 							UserId userId = request.getAttachment(UserId.class);
-							Long postId = request.getAttachment("postId");
+							String postId = request.getPathParameter("postId");
 
 							String setRating = request.getPostParameter("setRating");
 							if (setRating == null) {
@@ -146,7 +140,7 @@ public final class ThreadServlet {
 						})
 						.map(GET, "/:globalFsId", request -> {
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-							Long postId = request.getAttachment("postId");
+							String postId = request.getPathParameter("postId");
 							String globalFsId = request.getPathParameter("globalFsId");
 							if (globalFsId.isEmpty()) {
 								return Promise.ofException(HttpException.notFound404());

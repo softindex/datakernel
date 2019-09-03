@@ -8,18 +8,18 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 
 public final class ChangeRating implements ThreadOperation {
-	private final long postId;
+	private final String postId;
 	private final UserId userId;
 	private final SetValue<Boolean> setRating;
 
-	public ChangeRating(long postId, UserId userId, SetValue<Boolean> setRating) {
+	public ChangeRating(String postId, UserId userId, SetValue<Boolean> setRating) {
 		this.postId = postId;
 		this.userId = userId;
 		this.setRating = setRating;
 	}
 
 	@Override
-	public void apply(Map<Long, Post> posts) {
+	public void apply(Map<String, Post> posts) {
 		Post post = posts.get(postId);
 		Boolean next = setRating.getNext();
 		if (next == null) {
@@ -31,7 +31,7 @@ public final class ChangeRating implements ThreadOperation {
 		}
 	}
 
-	public long getPostId() {
+	public String getPostId() {
 		return postId;
 	}
 

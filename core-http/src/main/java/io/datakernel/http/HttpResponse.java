@@ -263,7 +263,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	@FunctionalInterface
 	public interface FileSliceSupplier {
 
-		Promise<? extends ChannelSupplier<ByteBuf>> getFileSlice(long offset, long limit);
+		Promise<ChannelSupplier<ByteBuf>> getFileSlice(long offset, long limit);
 	}
 
 	// endregion

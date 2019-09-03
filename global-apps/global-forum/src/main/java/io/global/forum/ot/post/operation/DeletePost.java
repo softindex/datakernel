@@ -8,30 +8,30 @@ import java.util.Map;
 import static io.global.forum.pojo.AuthService.DK_APP_STORE;
 
 public final class DeletePost implements ThreadOperation {
-	public static final DeletePost EMPTY = new DeletePost(0, new UserId(DK_APP_STORE, ""), -1, true);
+	public static final DeletePost EMPTY = new DeletePost("", new UserId(DK_APP_STORE, ""), -1, true);
 
-	private final long postId;
+	private final String postId;
 	private final UserId deletedBy;
 	private final long timestamp;
 	private final boolean delete;
 
-	public DeletePost(long postId, UserId deletedBy, long timestamp, boolean delete) {
+	public DeletePost(String postId, UserId deletedBy, long timestamp, boolean delete) {
 		this.postId = postId;
 		this.deletedBy = deletedBy;
 		this.timestamp = timestamp;
 		this.delete = delete;
 	}
 
-	public static DeletePost delete(long postId, UserId deletedBy, long timestamp) {
+	public static DeletePost delete(String postId, UserId deletedBy, long timestamp) {
 		return new DeletePost(postId, deletedBy, timestamp, true);
 	}
 
-	public static DeletePost restore(long postId, UserId deletedBy, long timestamp) {
+	public static DeletePost restore(String postId, UserId deletedBy, long timestamp) {
 		return new DeletePost(postId, deletedBy, timestamp, false);
 	}
 
 	@Override
-	public void apply(Map<Long, Post> posts) {
+	public void apply(Map<String, Post> posts) {
 		Post post = posts.get(postId);
 		if (delete) {
 			post.delete(deletedBy);
@@ -45,13 +45,13 @@ public final class DeletePost implements ThreadOperation {
 	}
 
 	public boolean isInversionFor(DeletePost other) {
-		return postId == other.postId &&
+		return postId.equals(other.postId) &&
 				deletedBy.equals(other.deletedBy) &&
 				timestamp == other.timestamp &&
 				delete != other.delete;
 	}
 
-	public long getPostId() {
+	public String getPostId() {
 		return postId;
 	}
 

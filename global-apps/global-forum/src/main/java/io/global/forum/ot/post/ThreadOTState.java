@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ThreadOTState implements OTState<ThreadOperation> {
-	private Map<Long, Post> posts = new HashMap<>();
+	private Map<String, Post> posts = new HashMap<>();
 
 	@Override
 	public void init() {
@@ -21,7 +21,7 @@ public final class ThreadOTState implements OTState<ThreadOperation> {
 		op.apply(posts);
 	}
 
-	public Map<Long, Post> getPostsView() {
+	public Map<String, Post> getPostsView() {
 		return Collections.unmodifiableMap(posts);
 	}
 }

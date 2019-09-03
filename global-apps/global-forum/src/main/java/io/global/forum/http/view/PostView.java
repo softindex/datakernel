@@ -21,7 +21,7 @@ public final class PostView {
 	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
 	private static final Comparator<Map.Entry<String, Attachment>> ATTACHMENT_COMPARATOR = Comparator.comparing(a -> a.getValue().getFilename());
 
-	private final long postId;
+	private final String postId;
 	private final String author;
 	private final String content;
 	private final String initialTimestamp;
@@ -33,8 +33,8 @@ public final class PostView {
 	@Nullable
 	private final String deletedBy;
 
-	public PostView(long id, String author, String content, String initialTimestamp, String lastEditTimestamp, List<PostView> children, List<AttachmentView> attachments, @Nullable String deletedBy) {
-		postId = id;
+	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp, List<PostView> children, List<AttachmentView> attachments, @Nullable String deletedBy) {
+		this.postId = postId;
 		this.author = author;
 		this.content = content;
 		this.initialTimestamp = initialTimestamp;
@@ -44,7 +44,7 @@ public final class PostView {
 		this.deletedBy = deletedBy;
 	}
 
-	public long getPostId() {
+	public String getPostId() {
 		return postId;
 	}
 

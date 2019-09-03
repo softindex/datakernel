@@ -24,7 +24,7 @@ public final class AttachmentDataHandler {
 			}
 			AttachmentType type = ATTACHMENT_FIELD_NAMES.get(fieldName);
 			if (type == null) {
-				return Promise.ofException(HttpException.ofCode(400, "Unknown parameter"));
+				return Promise.ofException(HttpException.ofCode(400, "Unknown parameter '" + fieldName + "'"));
 			}
 			return threadDao.uploadAttachment()
 					.map(uploader -> {

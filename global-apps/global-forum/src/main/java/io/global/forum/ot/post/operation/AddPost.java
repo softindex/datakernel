@@ -11,16 +11,16 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.global.forum.pojo.AuthService.DK_APP_STORE;
 
 public final class AddPost implements ThreadOperation {
-	public static final AddPost EMPTY = new AddPost(0L, null, new UserId(DK_APP_STORE, ""), -1, false);
+	public static final AddPost EMPTY = new AddPost("", null, new UserId(DK_APP_STORE, ""), -1, false);
 
-	private final Long postId;
+	private final String postId;
 	@Nullable
-	private final Long parentId;
+	private final String parentId;
 	private final UserId author;
 	private final long initialTimestamp;
 	private final boolean remove;
 
-	public AddPost(Long postId, @Nullable Long parentId, UserId author, long initialTimestamp, boolean remove) {
+	public AddPost(String postId, @Nullable String parentId, UserId author, long initialTimestamp, boolean remove) {
 		this.postId = postId;
 		this.parentId = parentId;
 		this.author = author;
@@ -28,13 +28,13 @@ public final class AddPost implements ThreadOperation {
 		this.remove = remove;
 	}
 
-	public static AddPost addPost(Long postId, @Nullable Long parentId, UserId author, long initialTimestamp) {
+	public static AddPost addPost(String postId, @Nullable String parentId, UserId author, long initialTimestamp) {
 		checkArgument(initialTimestamp != -1, "Trying to create empty operation");
 		return new AddPost(postId, parentId, author, initialTimestamp, false);
 	}
 
 	@Override
-	public void apply(Map<Long, Post> posts) {
+	public void apply(Map<String, Post> posts) {
 		if (remove) {
 			Post post = posts.remove(postId);
 			if (parentId != null) {
@@ -61,12 +61,12 @@ public final class AddPost implements ThreadOperation {
 				remove != other.remove;
 	}
 
-	public Long getPostId() {
+	public String getPostId() {
 		return postId;
 	}
 
 	@Nullable
-	public Long getParentId() {
+	public String getParentId() {
 		return parentId;
 	}
 

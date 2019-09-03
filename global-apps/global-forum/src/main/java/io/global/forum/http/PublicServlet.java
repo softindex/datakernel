@@ -17,7 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.forum.Utils.redirect;
 
@@ -31,21 +32,20 @@ public final class PublicServlet {
 							.then(threads -> templater.render("threadList", map("threads", threads)));
 				})
 				.map("/:threadID/*", RoutingServlet.create()
-						.map(GET, "/", postServlet(templater).then(parsePathIds()))
+						.map(GET, "/", postServlet(templater))
 						.map("/:postID/*", RoutingServlet.create()
 								.map(GET, "/", postServlet(templater))
-								.map(GET, "/download/:identifier", request -> {
+								.map(GET, "/download/:tag", request -> {
 									ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-									Long pid = request.getAttachment("postID");
-									String gfsid = request.getPathParameter("identifier");
+									String pid = request.getPathParameter("postID");
+									String tag = request.getPathParameter("tag");
 
-									return threadDao.getAttachment(pid, gfsid)
-											.then(attachment -> threadDao.attachmentSize(gfsid)
+									return threadDao.getAttachment(pid, tag)
+											.then(attachment -> threadDao.attachmentSize(tag)
 													.then(size -> {
 														try {
 															return Promise.of(HttpResponse.file(
-																	(offset, limit) ->
-																			threadDao.loadAttachment(gfsid, offset, limit),
+																	(offset, limit) -> threadDao.loadAttachment(tag, offset, limit),
 																	attachment.getFilename(),
 																	size,
 																	request.getHeader(HttpHeaders.RANGE)
@@ -62,8 +62,8 @@ public final class PublicServlet {
 									Map<String, String> paramsMap = new HashMap<>();
 
 									UserId user = new UserId(AuthService.DK_APP_STORE, "ANON");
-									Long tid = request.getAttachment("threadID");
-									Long pid = request.getAttachment("postID");
+									String tid = request.getPathParameter("threadID");
+									String pid = request.getPathParameter("postID");
 
 									return request.handleMultipart(AttachmentDataHandler.create(dao, paramsMap, attachmentMap))
 											.then($ -> {
@@ -76,35 +76,34 @@ public final class PublicServlet {
 											.thenEx(revertIfException(dao, attachmentMap))
 											.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/" + tid + "/" + pid));
 								})
-								.map(DELETE, "/", parsePathIds().serve(request -> {
-									Long tid = request.getAttachment("threadID");
-									Long pid = request.getAttachment("postID");
+								.map(POST, "/delete", request -> {
+									String tid = request.getPathParameter("threadID");
+									String pid = request.getPathParameter("postID");
 
 									ThreadDao dao = request.getAttachment(ThreadDao.class);
 
 									UserId user = new UserId(AuthService.DK_APP_STORE, "ANON");
 									return dao.removePost(user, pid)
 											.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/" + tid + "/" + pid));
-								}))
-								.map(POST, "/restore", parsePathIds().serve(request -> {
-									Long tid = request.getAttachment("threadID");
-									Long pid = request.getAttachment("postID");
+								})
+								.map(POST, "/restore", request -> {
+									String tid = request.getPathParameter("threadID");
+									String pid = request.getPathParameter("postID");
 
 									ThreadDao dao = request.getAttachment(ThreadDao.class);
 
 									return dao.restorePost(pid)
 											.map($ -> redirect(request, "/" + request.getPathParameter("pubKey") + "/" + tid + "/" + pid));
 								}))
-								.then(parsePathIds()))
 						.then(attachThreadDao()));
 	}
 
 	@NotNull
 	private static AsyncServlet postServlet(MustacheTemplater templater) {
 		return request -> {
-			Long tid = request.getAttachment("threadID");
-			Long pid = request.getAttachment("postID");
-			if (pid != null && pid == 0L) {
+			String tid = request.getPathParameter("threadID");
+			String pid = request.getPathParameters().get("postID");
+			if ("root".equals(pid)) {
 				return Promise.of(redirect(request, request.getPathParameter("pubKey") + "/" + tid));
 			}
 			ForumDao forumDao = request.getAttachment(ForumDao.class);
@@ -113,7 +112,7 @@ public final class PublicServlet {
 			return templater.render(pid != null ? "subthread" : "thread", map(
 					"threadId", tid,
 					"thread", threadDao.getThreadMetadata(),
-					"post", threadDao.getPost(pid != null ? pid : 0L).then(post -> PostView.from(forumDao, post))
+					"post", threadDao.getPost(pid != null ? pid : "root").then(post -> PostView.from(forumDao, post))
 			));
 		};
 	}
@@ -136,37 +135,12 @@ public final class PublicServlet {
 	private static AsyncServletDecorator attachThreadDao() {
 		return servlet ->
 				request -> {
-					String sid = request.getPathParameter("threadID");
-					try {
-						long id = Long.parseLong(sid);
-						ForumDao forumDao = request.getAttachment(ForumDao.class);
-						ThreadDao dao = forumDao.getThreadDao(id);
-						if (dao == null) {
-							return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
-						}
-						request.attach(ThreadDao.class, dao);
-						return servlet.serve(request);
-					} catch (NumberFormatException e) {
-						return Promise.ofException(HttpException.ofCode(400, "Path parameter 'threadID' (" + sid + ") is not an ID"));
+					String id = request.getPathParameter("threadID");
+					ThreadDao dao = request.getAttachment(ForumDao.class).getThreadDao(id);
+					if (dao == null) {
+						return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
 					}
-				};
-	}
-
-	private static AsyncServletDecorator parsePathIds() {
-		return servlet ->
-				request -> {
-					for (Map.Entry<String, String> entry : request.getPathParameters().entrySet()) {
-						String key = entry.getKey();
-						if (!key.toLowerCase().endsWith("id")) {
-							continue;
-						}
-						try {
-							Long id = Long.valueOf(entry.getValue());
-							request.attach(key, id);
-						} catch (NumberFormatException e) {
-							return Promise.ofException(HttpException.ofCode(400, "Path parameter '" + key + "' (" + entry.getValue() + ") is not an ID"));
-						}
-					}
+					request.attach(ThreadDao.class, dao);
 					return servlet.serve(request);
 				};
 	}

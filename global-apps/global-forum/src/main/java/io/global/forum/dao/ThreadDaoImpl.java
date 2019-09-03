@@ -21,7 +21,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static io.global.forum.Utils.generateBase62;
+import static io.global.forum.Utils.generateId;
 import static io.global.forum.ot.post.operation.PostChangesOperation.attachmentsToOps;
 import static io.global.forum.ot.post.operation.PostChangesOperation.rating;
 import static java.util.Collections.emptyList;
@@ -29,15 +29,15 @@ import static java.util.Collections.singletonList;
 
 public final class ThreadDaoImpl implements ThreadDao {
 	private final ForumDao parent;
-	private final Long threadId;
+	private final String threadId;
 	private final OTStateManager<CommitId, ThreadOperation> stateManager;
-	private final Map<Long, Post> postsView;
+	private final Map<String, Post> postsView;
 
 	private final FsClient attachmentFs;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public ThreadDaoImpl(ForumDao parent, Long threadId, OTStateManager<CommitId, ThreadOperation> stateManager, FsClient attachmentFs) {
+	public ThreadDaoImpl(ForumDao parent, String threadId, OTStateManager<CommitId, ThreadOperation> stateManager, FsClient attachmentFs) {
 		this.parent = parent;
 		this.threadId = threadId;
 		this.stateManager = stateManager;
@@ -51,16 +51,16 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Long> addPost(UserId author, @Nullable Long parentId, String content, Map<String, Attachment> attachments) {
+	public Promise<String> addPost(UserId author, String parentId, String content, Map<String, Attachment> attachments) {
 		long initialTimestamp = now.currentTimeMillis();
 		return Promise.complete()
 				.then($ -> {
 					if (parentId == null && !postsView.isEmpty()) {
 						return Promise.ofException(ROOT_ALREADY_PRESENT_EXCEPTION);
 					}
-					Long postId;
+					String postId;
 					if (parentId == null) {
-						postId = 0L;
+						postId = "root";
 					} else {
 						do {
 							postId = Utils.generateId();
@@ -68,19 +68,19 @@ public final class ThreadDaoImpl implements ThreadDao {
 					}
 					stateManager.add(AddPost.addPost(postId, parentId, author, initialTimestamp));
 					stateManager.add(PostChangesOperation.forNewPost(postId, content, attachments, initialTimestamp));
-					Long finalPostId = postId;
+					String finalPostId = postId;
 					return stateManager.sync().map($2 -> finalPostId);
 				});
 	}
 
 	@Override
-	public Promise<Post> getPost(Long postId) {
+	public Promise<Post> getPost(String postId) {
 		Post post = postsView.get(postId);
 		return post == null ? Promise.ofException(POST_NOT_FOUND) : Promise.of(post);
 	}
 
 	@Override
-	public Promise<Void> removePost(UserId user, Long postId) {
+	public Promise<Void> removePost(UserId user, String postId) {
 		long lastEditTimestamp = now.currentTimeMillis();
 		return getPost(postId)
 				.then(post -> {
@@ -91,7 +91,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> restorePost(Long postId) {
+	public Promise<Void> restorePost(String postId) {
 		long lastEditTimestamp = now.currentTimeMillis();
 		return getPost(postId)
 				.then(post -> {
@@ -102,7 +102,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> updatePost(Long postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved) {
+	public Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved) {
 		long lastEditTimestamp = now.currentTimeMillis();
 		return getPost(postId)
 				.then(post -> {
@@ -136,7 +136,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Attachment> getAttachment(Long postId, String globalFsId) {
+	public Promise<Attachment> getAttachment(String postId, String globalFsId) {
 		return getPost(postId)
 				.then(post -> {
 					Attachment attachment = post.getAttachments().get(globalFsId);
@@ -148,7 +148,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> like(UserId user, Long postId) {
+	public Promise<Void> like(UserId user, String postId) {
 		return getPost(postId)
 				.then(post -> {
 					if (post.getLikes().contains(user)) {
@@ -161,7 +161,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> dislike(UserId user, Long postId) {
+	public Promise<Void> dislike(UserId user, String postId) {
 		return getPost(postId)
 				.then(post -> {
 					if (post.getDislikes().contains(user)) {
@@ -174,7 +174,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> removeLikeOrDislike(UserId user, Long postId) {
+	public Promise<Void> removeLikeOrDislike(UserId user, String postId) {
 		return getPost(postId)
 				.then(post -> {
 					Boolean previousValue;
@@ -191,13 +191,13 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Map<Long, Post>> listPosts() {
+	public Promise<Map<String, Post>> listPosts() {
 		return Promise.of(postsView);
 	}
 
 	@Override
 	public Promise<AttachmentUploader> uploadAttachment() {
-		return Promises.until(() -> Promise.of(generateBase62(GLOBAL_FS_ID_LENGTH)),
+		return Promises.until(() -> Promise.of(generateId()),
 				globalFsId -> attachmentFs.getMetadata(globalFsId)
 						.map(Objects::isNull))
 				.then(globalFsId ->

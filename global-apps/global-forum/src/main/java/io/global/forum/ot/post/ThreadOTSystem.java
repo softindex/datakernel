@@ -61,7 +61,7 @@ public final class ThreadOTSystem {
 				})
 				.withTransformFunction(PostChangesOperation.class, PostChangesOperation.class, postChangesOTSystem::transform)
 				.withTransformFunction(AddPost.class, PostChangesOperation.class, (left, right) -> {
-					Long postId = left.getPostId();
+					String postId = left.getPostId();
 					PostChangesOperation changesById = extractOpsById(postId, right);
 					if (changesById.isEmpty()) {
 						return TransformResult.of(right, left);
@@ -91,13 +91,13 @@ public final class ThreadOTSystem {
 				.withInvertFunction(ChangeLastEditTimestamp.class, op ->
 						singletonList(new ChangeLastEditTimestamp(op.getPostId(), op.getNextTimestamp(), op.getPrevTimestamp())))
 				.withSquashFunction(ChangeLastEditTimestamp.class, ChangeLastEditTimestamp.class, (first, second) -> {
-					if (first.getPostId() != second.getPostId()) {
+					if (!first.getPostId().equals(second.getPostId())) {
 						return null;
 					}
 					return new ChangeLastEditTimestamp(first.getPostId(), first.getPrevTimestamp(), second.getNextTimestamp());
 				})
 				.withTransformFunction(ChangeLastEditTimestamp.class, ChangeLastEditTimestamp.class, (left, right) -> {
-					if (left.getPostId() != right.getPostId()) {
+					if (!left.getPostId().equals(right.getPostId())) {
 						return TransformResult.of(right, left);
 					}
 					if (left.getPrevTimestamp() != right.getPrevTimestamp()) {
@@ -123,7 +123,7 @@ public final class ThreadOTSystem {
 					return null;
 				})
 				.withTransformFunction(DeletePost.class, DeletePost.class, (left, right) -> {
-					if (left.getPostId() != right.getPostId()) {
+					if (!left.getPostId().equals(right.getPostId())) {
 						return TransformResult.of(right, left);
 					}
 					if (left.getTimestamp() > right.getTimestamp()) {
@@ -145,7 +145,7 @@ public final class ThreadOTSystem {
 				.withInvertFunction(ChangeRating.class, op ->
 						singletonList(new ChangeRating(op.getPostId(), op.getUserId(), op.getSetRating().invert())))
 				.withSquashFunction(ChangeRating.class, ChangeRating.class, (first, second) -> {
-					if (first.getPostId() != second.getPostId() || first.getUserId() != second.getUserId()) {
+					if (!first.getPostId().equals(second.getPostId()) || first.getUserId() != second.getUserId()) {
 						return null;
 					}
 					SetValue<Boolean> firstSetRating = first.getSetRating();
@@ -154,7 +154,7 @@ public final class ThreadOTSystem {
 					return new ChangeRating(first.getPostId(), first.getUserId(), squashed);
 				})
 				.withTransformFunction(ChangeRating.class, ChangeRating.class, (left, right) -> {
-					if (left.getPostId() != right.getPostId() || left.getUserId() != right.getUserId()) {
+					if (!left.getPostId().equals(right.getPostId()) || left.getUserId() != right.getUserId()) {
 						return TransformResult.of(right, left);
 					}
 					TransformResult<SetValue<Boolean>> subResult = subSystem.transform(left.getSetRating(), right.getSetRating());
@@ -174,7 +174,7 @@ public final class ThreadOTSystem {
 					return null;
 				})
 				.withTransformFunction(ChangeAttachments.class, ChangeAttachments.class, (left, right) -> {
-					if (left.getPostId() != right.getPostId() || !left.getGlobalFsId().equals(right.getGlobalFsId())) {
+					if (!left.getPostId().equals(right.getPostId()) || !left.getGlobalFsId().equals(right.getGlobalFsId())) {
 						return TransformResult.of(right, left);
 					}
 					if (!(left.isRemove() && right.isRemove()) || !left.getAttachment().equals(right.getAttachment())) {
@@ -196,13 +196,13 @@ public final class ThreadOTSystem {
 				.withInvertFunction(ChangeContent.class, op ->
 						singletonList(new ChangeContent(op.getPostId(), op.getNext(), op.getPrev(), op.getTimestamp())))
 				.withSquashFunction(ChangeContent.class, ChangeContent.class, (first, second) -> {
-					if (first.getPostId() != second.getPostId()) {
+					if (!first.getPostId().equals(second.getPostId())) {
 						return null;
 					}
 					return new ChangeContent(first.getPostId(), first.getPrev(), second.getNext(), second.getTimestamp());
 				})
 				.withTransformFunction(ChangeContent.class, ChangeContent.class, (left, right) -> {
-					if (left.getPostId() != right.getPostId()) {
+					if (!left.getPostId().equals(right.getPostId())) {
 						return TransformResult.of(right, left);
 					}
 					TransformResult<ChangeName> subResult = nameOTSystem.transform(
@@ -227,12 +227,12 @@ public final class ThreadOTSystem {
 				.collect(toList());
 	}
 
-	private static PostChangesOperation extractOpsById(long id, PostChangesOperation changes) {
-		List<ChangeContent> changeContents = doFilter(changes.getChangeContentOps(), op -> op.getPostId() == id);
-		List<ChangeAttachments> changeAttachments = doFilter(changes.getChangeAttachmentsOps(), op -> op.getPostId() == id);
-		List<ChangeRating> changeRating = doFilter(changes.getChangeRatingOps(), op -> op.getPostId() == id);
-		List<ChangeLastEditTimestamp> changeTimestamp = doFilter(changes.getChangeLastEditTimestamps(), op -> op.getPostId() == id);
-		List<DeletePost> deletePost = doFilter(changes.getDeletePostOps(), op -> op.getPostId() == id);
+	private static PostChangesOperation extractOpsById(String id, PostChangesOperation changes) {
+		List<ChangeContent> changeContents = doFilter(changes.getChangeContentOps(), op -> op.getPostId().equals(id));
+		List<ChangeAttachments> changeAttachments = doFilter(changes.getChangeAttachmentsOps(), op -> op.getPostId().equals(id));
+		List<ChangeRating> changeRating = doFilter(changes.getChangeRatingOps(), op -> op.getPostId().equals(id));
+		List<ChangeLastEditTimestamp> changeTimestamp = doFilter(changes.getChangeLastEditTimestamps(), op -> op.getPostId().equals(id));
+		List<DeletePost> deletePost = doFilter(changes.getDeletePostOps(), op -> op.getPostId().equals(id));
 		return new PostChangesOperation(changeContents, changeAttachments, changeRating, deletePost, changeTimestamp);
 	}
 }

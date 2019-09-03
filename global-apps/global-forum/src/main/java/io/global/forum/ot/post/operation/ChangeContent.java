@@ -8,25 +8,25 @@ import java.util.Map;
 import static io.datakernel.util.StringFormatUtils.limit;
 
 public final class ChangeContent implements ThreadOperation {
-	private final long postId;
+	private final String postId;
 	private final ChangeName changeContent;
 
-	public ChangeContent(long postId, ChangeName changeContent) {
+	public ChangeContent(String postId, ChangeName changeContent) {
 		this.postId = postId;
 		this.changeContent = changeContent;
 	}
 
-	public ChangeContent(long postId, String prev, String next, long timestamp) {
+	public ChangeContent(String postId, String prev, String next, long timestamp) {
 		this(postId, new ChangeName(prev, next, timestamp));
 	}
 
 	@Override
-	public void apply(Map<Long, Post> posts) {
+	public void apply(Map<String, Post> posts) {
 		Post post = posts.get(postId);
 		post.setContent(changeContent.getNext());
 	}
 
-	public long getPostId() {
+	public String getPostId() {
 		return postId;
 	}
 

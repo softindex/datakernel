@@ -22,22 +22,22 @@ public interface ForumDao {
 
 	Promise<Set<UserId>> listKnownUsers();
 
-	Promise<Long> banIpRange(IpRange range, UserId banner, Instant until, String description);
+	Promise<String> banIpRange(IpRange range, UserId banner, Instant until, String description);
 
-	Promise<Map<Long, IpBanState>> getBannedRanges();
+	Promise<Map<String, IpBanState>> getBannedRanges();
 
 	Promise<Boolean> isBanned(InetAddress address);
 
-	Promise<Void> unbanIpRange(long id);
+	Promise<Void> unbanIpRange(String id);
 
-	Promise<Long> createThread(ThreadMetadata threadMetadata);
+	Promise<String> createThread(ThreadMetadata threadMetadata);
 
-	Promise<Map<Long, ThreadMetadata>> getThreads();
+	Promise<Map<String, ThreadMetadata>> getThreads();
 
-	Promise<Void> removeThread(long id);
+	Promise<Void> removeThread(String id);
 
 	@Nullable
-	ThreadDao getThreadDao(long id);
+	ThreadDao getThreadDao(String id);
 
 	SessionStore<UserId> getSessionStore();
 }

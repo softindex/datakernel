@@ -6,7 +6,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
-import io.datakernel.util.ApplicationSettings;
 import io.global.forum.pojo.Attachment;
 import io.global.forum.pojo.Post;
 import io.global.forum.pojo.ThreadMetadata;
@@ -17,8 +16,6 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ThreadDao {
-	int GLOBAL_FS_ID_LENGTH = ApplicationSettings.getInt(ThreadDao.class, "globalFsIdLength", 10);
-
 	StacklessException POST_NOT_FOUND = new StacklessException(ThreadDao.class, "Post with given id not found");
 	StacklessException ATTACHMENT_NOT_FOUND = new StacklessException(ThreadDao.class, "Attachment not found");
 	StacklessException ROOT_ALREADY_PRESENT_EXCEPTION = new StacklessException(ThreadDao.class, "Root post has already been added");
@@ -29,25 +26,25 @@ public interface ThreadDao {
 		return addPost(author, null, content, attachments).toVoid();
 	}
 
-	Promise<Long> addPost(UserId author, @Nullable Long parentId, @Nullable String content, Map<String, Attachment> attachments);
+	Promise<String> addPost(UserId author, @Nullable String parentId, @Nullable String content, Map<String, Attachment> attachments);
 
-	Promise<Post> getPost(Long postId);
+	Promise<Post> getPost(String postId);
 
-	Promise<Void> removePost(UserId user, Long postId);
+	Promise<Void> removePost(UserId user, String postId);
 
-	Promise<Void> restorePost(Long postId);
+	Promise<Void> restorePost(String postId);
 
-	Promise<Void> updatePost(Long postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved);
+	Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved);
 
-	Promise<Attachment> getAttachment(Long postId, String globalFsId);
+	Promise<Attachment> getAttachment(String postId, String globalFsId);
 
-	Promise<Void> like(UserId user, Long postId);
+	Promise<Void> like(UserId user, String postId);
 
-	Promise<Void> dislike(UserId user, Long postId);
+	Promise<Void> dislike(UserId user, String postId);
 
-	Promise<Void> removeLikeOrDislike(UserId user, Long postId);
+	Promise<Void> removeLikeOrDislike(UserId user, String postId);
 
-	Promise<Map<Long, Post>> listPosts();
+	Promise<Map<String, Post>> listPosts();
 
 	Promise<AttachmentUploader> uploadAttachment();
 
