@@ -1,6 +1,7 @@
 package io.global.forum.dao;
 
 import io.datakernel.async.Promise;
+import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.forum.Utils;
@@ -26,6 +27,7 @@ public final class ForumDaoImpl implements ForumDao {
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
 	private final OTStateManager<CommitId, MapOperation<Long, IpBanState>> bansStateManager;
 	private final OTStateManager<CommitId, MapOperation<Long, ThreadMetadata>> threadsStateManager;
+	private final SessionStore<UserId> sessionStore;
 
 	private final ForumUserContainer container;
 
@@ -41,6 +43,7 @@ public final class ForumDaoImpl implements ForumDao {
 		this.usersStateManager = container.getUsersStateManager();
 		this.bansStateManager = container.getBansStateManager();
 		this.threadsStateManager = container.getThreadsStateManager();
+		this.sessionStore = container.getSessionStore();
 
 		this.container = container;
 
@@ -121,6 +124,11 @@ public final class ForumDaoImpl implements ForumDao {
 	@Nullable
 	public ThreadDao getThreadDao(long id) {
 		return container.getThreadDao(id);
+	}
+
+	@Override
+	public SessionStore<UserId> getSessionStore() {
+		return sessionStore;
 	}
 
 	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {

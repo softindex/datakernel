@@ -18,6 +18,10 @@ import io.global.forum.ot.MapOTStateListenerProxy;
 import io.global.forum.ot.post.ThreadOTState;
 import io.global.forum.ot.post.ThreadOTSystem;
 import io.global.forum.ot.post.operation.ThreadOperation;
+import io.global.forum.ot.session.SessionOTState;
+import io.global.forum.ot.session.SessionOTSystem;
+import io.global.forum.ot.session.UserIdSessionStore;
+import io.global.forum.ot.session.operation.SessionOperation;
 import io.global.forum.pojo.IpBanState;
 import io.global.forum.pojo.ThreadMetadata;
 import io.global.forum.pojo.UserData;
@@ -60,6 +64,7 @@ public final class ForumUserContainer implements UserContainer {
 	private final OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
 	private final OTStateManager<CommitId, MapOperation<Long, IpBanState>> bansStateManager;
+	private final OTStateManager<CommitId, SessionOperation> sessionStateManager;
 
 	private final OTStateManager<CommitId, MapOperation<Long, ThreadMetadata>> threadsStateManager;
 
@@ -67,6 +72,7 @@ public final class ForumUserContainer implements UserContainer {
 	private final Map<Long, OTStateManager<CommitId, ThreadOperation>> threadStateManagers = new HashMap<>();
 	private final Map<Long, ThreadDao> threadDaos = new HashMap<>();
 
+	private final UserIdSessionStore sessionStore;
 	private final MapOTStateListenerProxy<Long, ThreadMetadata> threadsState;
 
 	private final ForumDao forumDao;
@@ -88,7 +94,9 @@ public final class ForumUserContainer implements UserContainer {
 		this.metadataStateManager = createStateManager(names.getMetadata(), REGISTRY.get(new TypeT<ChangeValue<ForumMetadata>>() {}), ChangeValueOTSystem.get(), ChangeValueContainer.of(ForumMetadata.EMPTY));
 		this.usersStateManager = createStateManager(names.getUsers(), REGISTRY.get(new TypeT<MapOperation<UserId, UserData>>() {}), MapOTSystem.create(), new MapOTState<>());
 		this.bansStateManager = createStateManager(names.getBans(), REGISTRY.get(new TypeT<MapOperation<Long, IpBanState>>() {}), MapOTSystem.create(), new MapOTState<>());
+		this.sessionStateManager = createStateManager(names.getSession(), REGISTRY.get(new TypeT<SessionOperation>() {}), SessionOTSystem.SYSTEM, new SessionOTState());
 
+		this.sessionStore = UserIdSessionStore.create(this.sessionStateManager);
 		this.threadsState = new MapOTStateListenerProxy<>();
 		this.threadsStateManager = createStateManager(names.getThreads(), REGISTRY.get(new TypeT<MapOperation<Long, ThreadMetadata>>() {}), MapOTSystem.create(), threadsState);
 
@@ -135,7 +143,8 @@ public final class ForumUserContainer implements UserContainer {
 						}
 					});
 				}));
-		return Promises.all(metadataStateManager.start(), usersStateManager.start(), bansStateManager.start(), threadsStart)
+		return Promises.all(metadataStateManager.start(), usersStateManager.start(), bansStateManager.start(), sessionStateManager.start(), threadsStart)
+				.then($ -> sessionStore.start())
 				.whenComplete(toLogger(logger, "start"));
 	}
 
@@ -148,7 +157,8 @@ public final class ForumUserContainer implements UserContainer {
 						pendingThreadStateManagers.values().stream().map(s -> s.then(OTStateManager::stop)))))
 				.whenResult($ -> threadStateManagers.clear());
 
-		return Promises.all(metadataStateManager.stop(), usersStateManager.stop(), bansStateManager.stop(), threadsStop)
+		return Promises.all(metadataStateManager.stop(), usersStateManager.stop(), bansStateManager.stop(), sessionStateManager.stop(), threadsStop)
+				.then($ -> sessionStore.stop())
 				.whenComplete(toLogger(logger, "stop"));
 	}
 
@@ -179,6 +189,10 @@ public final class ForumUserContainer implements UserContainer {
 	@Nullable
 	public ThreadDao getThreadDao(Long threadId) {
 		return threadDaos.get(threadId);
+	}
+
+	public UserIdSessionStore getSessionStore() {
+		return sessionStore;
 	}
 
 	private Promise<OTStateManager<CommitId, ThreadOperation>> ensureThread(Long threadId) {

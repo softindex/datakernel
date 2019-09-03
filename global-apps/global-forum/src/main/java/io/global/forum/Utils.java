@@ -15,6 +15,9 @@ import io.datakernel.writer.ByteBufWriter;
 import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.ot.post.operation.*;
+import io.global.forum.ot.session.operation.AddOrRemoveSession;
+import io.global.forum.ot.session.operation.SessionOperation;
+import io.global.forum.ot.session.operation.UpdateTimestamp;
 import io.global.forum.pojo.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -47,9 +50,12 @@ public final class Utils {
 					UserId::getAuthService, ofEnum(AuthService.class),
 					UserId::getId, STRING_CODEC))
 			.with(UserData.class, registry -> tuple(UserData::new,
+					UserData::getRole, ofEnum(UserRole.class),
 					UserData::getEmail, STRING_CODEC.nullable(),
-					UserData::getName, STRING_CODEC.nullable(),
-					UserData::getRole, ofEnum(UserRole.class)))
+					UserData::getUsername, STRING_CODEC.nullable(),
+					UserData::getFirstName, STRING_CODEC.nullable(),
+					UserData::getLastName, STRING_CODEC.nullable(),
+					UserData::getBanState, registry.get(BanState.class).nullable()))
 			.with(IpRange.class, registry -> tuple(IpRange::new,
 					IpRange::getLowerBound, LONG_CODEC,
 					IpRange::getUpperBound, LONG_CODEC))
@@ -106,7 +112,19 @@ public final class Utils {
 			.with(IpBanRequest.class, registry -> object(IpBanRequest::new,
 					"range", IpBanRequest::getRange, registry.get(IpRange.class),
 					"until", IpBanRequest::getUntil, registry.get(Instant.class),
-					"description", IpBanRequest::getDescription, STRING_CODEC));
+					"description", IpBanRequest::getDescription, STRING_CODEC))
+			.with(AddOrRemoveSession.class, registry -> tuple(AddOrRemoveSession::of,
+					AddOrRemoveSession::getSessionId, STRING_CODEC,
+					AddOrRemoveSession::getUserId, registry.get(UserId.class),
+					AddOrRemoveSession::getTimestamp, LONG_CODEC,
+					AddOrRemoveSession::isRemove, BOOLEAN_CODEC))
+			.with(UpdateTimestamp.class, registry -> tuple(UpdateTimestamp::update,
+					UpdateTimestamp::getSessionId, STRING_CODEC,
+					UpdateTimestamp::getPrevious, LONG_CODEC,
+					UpdateTimestamp::getNext, LONG_CODEC))
+			.with(SessionOperation.class, registry -> CodecSubtype.<SessionOperation>create()
+					.with(AddOrRemoveSession.class, registry.get(AddOrRemoveSession.class))
+					.with(UpdateTimestamp.class, registry.get(UpdateTimestamp.class)));
 
 	private static final char[] CHAR_POOL = {
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C',
@@ -145,8 +163,6 @@ public final class Utils {
 		String referer = request.getHeader(REFERER);
 		return HttpResponse.redirect302(referer == null ? to : referer);
 	}
-
-	// region codecs
 
 	public static class LazyEncoder<T> implements StructuredEncoder<T> {
 

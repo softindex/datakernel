@@ -22,4 +22,10 @@ public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	public Promise<@Nullable T> get(String sessionId) {
 		return Promise.of(store.get(sessionId));
 	}
+
+	@Override
+	public Promise<Void> remove(String sessionId) {
+		store.remove(sessionId);
+		return Promise.complete();
+	}
 }

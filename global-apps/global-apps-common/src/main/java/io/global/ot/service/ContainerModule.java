@@ -13,8 +13,8 @@ import java.util.function.BiFunction;
 public abstract class ContainerModule<T extends UserContainer> extends AbstractModule {
 
 	@Provides
-	ContainerKeyManager containerKeyManager(Executor executor, Path containersPath) {
-		return FsContainerKeyManager.create(executor, containersPath, true);
+	ContainerKeyManager containerKeyManager(Eventloop eventloop, Executor executor, Path containersPath) {
+		return FsContainerKeyManager.create(eventloop, executor, containersPath, true);
 	}
 
 	@Provides

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <title>Global Forum</title>
+</head>
+<body>
+<h1>Container exists!</h1>
+<h2>Container pub key: {{pubKey}}</h2>
+{{#userId}}
+    <h3>Logged in via {{authService}} as {{id}}</h3>
+    <form action="/{{pubKey}}/logout/" method="post">
+        <input type="submit" value="Log out"/>
+    </form>
+{{/userId}}
+{{#userData}}
+    <h4>Role: {{role}}</h4>
+    <h4>Username: {{username}}</h4>
+    <h4>First name: {{firstName}}</h4>
+    <h4>Last name: {{lastName}}</h4>
+    <h4>Email: {{email}}</h4>
+{{/userData}}
+
+{{^userId}}
+    <h3>Not logged in</h3>
+    <a href="{{appStoreUrl}}/oauth?redirectURI=http://localhost:8080/{{pubKey}}/auth">
+        <button>Log in via App Store</button>
+    </a>
+{{/userId}}
+
+
+</body>
+</html>

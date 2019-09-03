@@ -10,4 +10,6 @@ public interface SessionStore<T> {
 	Promise<Void> save(String sessionId, T sessionObject);
 
 	Promise<@Nullable T> get(String sessionId);
+
+	Promise<Void> remove(String sessionId);
 }

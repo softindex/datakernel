@@ -10,13 +10,34 @@ public final class UserData {
 	@Nullable
 	private String email;
 	@Nullable
-	private String name;
+	private String username;
+	@Nullable
+	private String firstName;
+	@Nullable
+	private String lastName;
 	@Nullable
 	private BanState banState = null;
 
-	public UserData(@Nullable String email, @Nullable String name, UserRole role) {
+	public UserData(UserRole role, @Nullable String email, @Nullable String username, @Nullable String firstName,
+			@Nullable String lastName, @Nullable BanState banState) {
+		this.role = role;
 		this.email = email;
-		this.name = name;
+		this.username = username;
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.banState = banState;
+	}
+
+	public UserData(UserRole role, @Nullable String email, @Nullable String username, @Nullable String firstName,
+			@Nullable String lastName) {
+		this(role, email, username, firstName, lastName, null);
+	}
+
+	public UserRole getRole() {
+		return role;
+	}
+
+	public void setRole(UserRole role) {
 		this.role = role;
 	}
 
@@ -30,20 +51,30 @@ public final class UserData {
 	}
 
 	@Nullable
-	public String getName() {
-		return name;
+	public String getUsername() {
+		return username;
 	}
 
-	public void setName(@Nullable String name) {
-		this.name = name;
+	public void setUsername(@Nullable String username) {
+		this.username = username;
 	}
 
-	public UserRole getRole() {
-		return role;
+	@Nullable
+	public String getFirstName() {
+		return firstName;
 	}
 
-	public void setRole(UserRole role) {
-		this.role = role;
+	public void setFirstName(@Nullable String firstName) {
+		this.firstName = firstName;
+	}
+
+	@Nullable
+	public String getLastName() {
+		return lastName;
+	}
+
+	public void setLastName(@Nullable String lastName) {
+		this.lastName = lastName;
 	}
 
 	@Nullable
@@ -59,20 +90,22 @@ public final class UserData {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		UserData data = (UserData) o;
-
-		if (role != data.role) return false;
-		if (!Objects.equals(email, data.email)) return false;
-		if (!Objects.equals(name, data.name)) return false;
-		return Objects.equals(banState, data.banState);
+		UserData userData = (UserData) o;
+		return role == userData.role &&
+				Objects.equals(email, userData.email) &&
+				Objects.equals(username, userData.username) &&
+				Objects.equals(firstName, userData.firstName) &&
+				Objects.equals(lastName, userData.lastName) &&
+				Objects.equals(banState, userData.banState);
 	}
 
 	@Override
 	public int hashCode() {
 		int result = role.hashCode();
 		result = 31 * result + (email != null ? email.hashCode() : 0);
-		result = 31 * result + (name != null ? name.hashCode() : 0);
+		result = 31 * result + (username != null ? username.hashCode() : 0);
+		result = 31 * result + (firstName != null ? firstName.hashCode() : 0);
+		result = 31 * result + (lastName != null ? lastName.hashCode() : 0);
 		result = 31 * result + (banState != null ? banState.hashCode() : 0);
 		return result;
 	}

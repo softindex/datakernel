@@ -17,7 +17,6 @@ import io.global.launchers.GlobalNodesModule;
 
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.di.module.Modules.combine;
 
@@ -38,7 +37,7 @@ public final class GlobalForumApp extends Launcher {
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
-				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
+				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 

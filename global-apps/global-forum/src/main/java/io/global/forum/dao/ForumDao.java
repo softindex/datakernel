@@ -1,6 +1,7 @@
 package io.global.forum.dao;
 
 import io.datakernel.async.Promise;
+import io.datakernel.http.session.SessionStore;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.pojo.*;
 import org.jetbrains.annotations.Nullable;
@@ -37,4 +38,6 @@ public interface ForumDao {
 
 	@Nullable
 	ThreadDao getThreadDao(long id);
+
+	SessionStore<UserId> getSessionStore();
 }
