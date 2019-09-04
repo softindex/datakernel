@@ -3,14 +3,11 @@ import {withStyles} from '@material-ui/core';
 import messagesStyles from './messagesStyles';
 import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
-import Grow from '@material-ui/core/Grow';
-import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
-import {connectService} from 'global-apps-common';
-import {AuthContext} from "global-apps-common";
-import RoomsContext from "../../modules/rooms/RoomsContext";
-import ContactsContext from "../../modules/contacts/ContactsContext";
+import {getInstance, useService} from "global-apps-common";
+import NamesService from "../../modules/names/NamesService";
+import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 
-class Messages extends React.Component {
+class MessagesView extends React.Component {
   wrapper = React.createRef();
 
   componentDidUpdate(prevProps) {
@@ -27,11 +24,9 @@ class Messages extends React.Component {
     return (
       <div className={classes.root}>
         {!chatReady && (
-          <Grow in={!chatReady}>
-            <div className={classes.progressWrapper}>
-              <CircularProgress/>
-            </div>
-          </Grow>
+          <div className={classes.progressWrapper}>
+            <CircularProgress/>
+          </div>
         )}
         {chatReady && (
           <div ref={this.wrapper} className={classes.wrapper}>
@@ -63,25 +58,21 @@ class Messages extends React.Component {
   }
 }
 
-export default withStyles(messagesStyles)(
-  connectService(ContactsContext, (
-    {names}, contactsService) => (
-    {contactsService, names})
-  )(
-    connectService(RoomsContext, (
-      {rooms}, roomsService) => (
-      {rooms, roomsService})
-    )(
-      connectService(ChatRoomContext, (
-        {messages, chatReady}) => (
-        {messages, chatReady})
-      )(
-        connectService(AuthContext, (
-          {publicKey}) => ({publicKey})
-        )(
-          Messages
-        )
-      )
-    )
-  )
-);
+function Messages({classes, publicKey}) {
+  const namesService = getInstance(NamesService);
+  const {names} = useService(namesService);
+  const chatRoomService = getInstance(ChatRoomService);
+  const {messages, chatReady} = useService(chatRoomService);
+
+  const props = {
+    classes,
+    publicKey,
+    names,
+    messages,
+    chatReady
+  };
+
+  return <MessagesView {...props} />
+}
+
+export default withStyles(messagesStyles)(Messages);

@@ -1,6 +1,4 @@
-import React from 'react';
-import {connectService} from 'global-apps-common';
-import ChatRoomContext from '../../modules/chatroom/ChatRoomContext';
+import React, {useState} from 'react';
 import Paper from '@material-ui/core/Paper';
 import SendIcon from '@material-ui/icons/Send';
 import messageFormStyles from './messageFormStyles';
@@ -8,62 +6,61 @@ import {withStyles} from '@material-ui/core';
 import InputBase from '@material-ui/core/InputBase';
 import Divider from '@material-ui/core/Divider';
 import IconButton from '@material-ui/core/IconButton';
+import {getInstance} from "global-apps-common";
+import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 
-class MessageForm extends React.Component {
-  state = {
-    message: ''
-  };
-
-  onChangeMessage = event => {
-    this.setState({
-      message: event.target.value
-    });
-  };
-
-  onSubmit = event => {
-    event.preventDefault();
-
-    if (!this.state.message) {
-      return;
-    }
-
-    this.props.sendMessage(this.state.message);
-    this.setState({
-      message: ''
-    });
-  };
-
-  render() {
-    return (
-      <form className={this.props.classes.form} onSubmit={this.onSubmit}>
-        <Paper className={this.props.classes.root} elevation={2}>
-          <InputBase
-            inputProps={{
-              className: this.props.classes.inputText,
-              required: true
-            }}
-            className={this.props.classes.input}
-            placeholder="Message"
-            onChange={this.onChangeMessage}
-            value={this.state.message}
-          />
-          <Divider className={this.props.classes.divider}/>
-          <IconButton color="primary" type="submit">
-            <SendIcon/>
-          </IconButton>
-        </Paper>
-      </form>
-    );
-  }
+function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
+  return (
+    <form className={classes.form} onSubmit={onSubmit}>
+      <Paper className={classes.root} elevation={2}>
+        <InputBase
+          inputProps={{
+            className: classes.inputText,
+            required: true
+          }}
+          className={classes.input}
+          placeholder="Message"
+          onChange={onChangeMessage.bind(this)}
+          value={message}
+        />
+        <Divider className={classes.divider}/>
+        <IconButton color="primary" type="submit">
+          <SendIcon/>
+        </IconButton>
+      </Paper>
+    </form>
+  );
 }
 
-export default withStyles(messageFormStyles)(
-  connectService(ChatRoomContext, (state, chatService) => ({
-      async sendMessage(message) {
-        await chatService.sendMessage(message);
+function MessageForm({classes, enqueueSnackbar}) {
+  const chatRoomService = getInstance(ChatRoomService);
+  const [message, setMessage] = useState('');
+
+  const props = {
+    classes,
+    message,
+    onChangeMessage(event) {
+      setMessage(event.target.value);
+    },
+    onSubmit(event) {
+      event.preventDefault();
+      if (!message) {
+        return;
       }
-    })
-  )(
-    MessageForm
-  )
-);
+
+      chatRoomService.sendMessage(message)
+        .catch((err) => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        })
+        .finally(() => {
+          setMessage('');
+        });
+    }
+  };
+
+  return <MessageFormView {...props}/>
+}
+
+export default withStyles(messageFormStyles)(MessageForm);

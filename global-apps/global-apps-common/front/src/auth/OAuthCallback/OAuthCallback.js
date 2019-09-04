@@ -1,8 +1,9 @@
 import React, {useEffect} from 'react';
 import qs from 'query-string';
 import connectService from '../../connectService/connectService';
-import {Redirect, withRouter} from 'react-router-dom';
+import {withRouter} from 'react-router-dom';
 import AuthContext from "../AuthContext";
+import AfterAuthRedirect from "../AfterAuthRedirect";
 
 function OAuthCallback({location, authByPrivateKey}) {
   const params = qs.parse(location.search);
@@ -13,7 +14,7 @@ function OAuthCallback({location, authByPrivateKey}) {
     }
   });
 
-  return <Redirect to='/'/>;
+  return <AfterAuthRedirect/>;
 }
 
 export default connectService(

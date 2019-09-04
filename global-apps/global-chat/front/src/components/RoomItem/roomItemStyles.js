@@ -13,15 +13,6 @@ const roomItemStyles = theme => ({
       visibility: 'visible'
     }
   },
-  avatar: {
-    width: theme.spacing.unit * 6,
-    height: theme.spacing.unit * 6,
-    float: 'left',
-    alignItems: 'center'
-  },
-  avatarContent: {
-    fontSize: '1rem'
-  },
   link: {
     display: 'flex',
     flexGrow: 1,
@@ -31,7 +22,9 @@ const roomItemStyles = theme => ({
     alignItems: 'center'
   },
   itemText: {
-    overflow: 'hidden'
+    overflow: 'hidden',
+    color: theme.palette.secondary.contrastText,
+    textOverflow: 'ellipsis'
   },
   itemTextPrimary: {
     textOverflow: 'ellipsis',

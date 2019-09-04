@@ -11,11 +11,12 @@ import Button from "@material-ui/core/Button";
 import signUpStyles from "./signUpStyles";
 import SignUpAbstractionImage from "../SignUpAbstractionImage/SignUpAbstractionImage";
 import {withSnackbar} from "notistack";
+import AfterAuthRedirect from "../../auth/AfterAuthRedirect";
 
 class SignUp extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {online: window.navigator.onLine};
+    this.state = {online: window.navigator.onLine, redirect: false};
     this._wentOnline = () => this.setState({online: true});
     this._wentOffline = () => this.setState({online: false});
   }
@@ -27,7 +28,7 @@ class SignUp extends React.Component {
   onUploadFile = () => {
     this.props.accountService.authByFile(this.input.files[0])
       .then(() => {
-        this.props.history.push('/');
+        this.setState({redirect: true});
       })
       .catch(error => {
         this.props.enqueueSnackbar(error.message, {
@@ -48,72 +49,75 @@ class SignUp extends React.Component {
 
   render() {
     return (
-      <div className={this.props.classes.root}>
-        <Grid className={this.props.classes.container} container>
-          <Grid className={this.props.classes.column} item xs={12} sm={12} md={8} lg={6}>
-            <Typography
-              variant="h2"
-              gutterBottom
-              color="textPrimary"
-              className={this.props.classes.title}
-            >
+      <>
+        <div className={this.props.classes.root}>
+          <Grid className={this.props.classes.container} container>
+            <Grid className={this.props.classes.column} item xs={12} sm={12} md={8} lg={6}>
+              <Typography
+                variant="h2"
+                gutterBottom
+                color="textPrimary"
+                className={this.props.classes.title}
+              >
                 {this.props.title}
-            </Typography>
-            <Typography
-              className={this.props.classes.description}
-              variant="h6"
-              color="textSecondary"
-            >
+              </Typography>
+              <Typography
+                className={this.props.classes.description}
+                variant="h6"
+                color="textSecondary"
+              >
                 {this.props.description}
-            </Typography>
-            <Grid container spacing={32}>
-              <Grid item xs={12} lg={6} md={6}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  className={this.props.classes.button}
-                  shape="round"
-                  fullWidth
-                  disabled={!this.state.online}
-                  onClick={this.onAuthByAppStore}
-                >
-                  <StoreIcon className={this.props.classes.storeIcon}/>
-                  Auth by App Store
-                </Button>
-              </Grid>
-              <Grid item xs={12} lg={6} md={6}>
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  className={this.props.classes.button}
-                  shape="round"
-                  fullWidth
-                  onClick={() => this.input.click()}
-                >
-                  <AttachFileIcon className={this.props.classes.attachIcon}/>
-                  Auth by key
-                </Button>
+              </Typography>
+              <Grid container spacing={32}>
+                <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    className={this.props.classes.button}
+                    shape="round"
+                    fullWidth
+                    disabled={!this.state.online}
+                    onClick={this.onAuthByAppStore}
+                  >
+                    <StoreIcon className={this.props.classes.storeIcon}/>
+                    Auth by App Store
+                  </Button>
+                </Grid>
+                <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
+                  <Button
+                    variant="outlined"
+                    color="inherit"
+                    className={this.props.classes.button}
+                    shape="round"
+                    fullWidth
+                    onClick={() => this.input.click()}
+                  >
+                    <AttachFileIcon className={this.props.classes.attachIcon}/>
+                    Auth by key
+                  </Button>
+                </Grid>
               </Grid>
             </Grid>
+            <Grid className={this.props.classes.columnRight} item md={4} lg={6}>
+              <div className={this.props.classes.gradientOverlay}/>
+              <SignUpAbstractionImage
+                nodesCount={30}
+                nodesSize={2}
+                size={100}
+                className={this.props.classes.animation}
+              />
+            </Grid>
           </Grid>
-          <Grid className={this.props.classes.columnRight} item md={4} lg={6}>
-            <div className={this.props.classes.gradientOverlay}/>
-            <SignUpAbstractionImage
-              nodesCount={30}
-              nodesSize={2}
-              size={100}
-              className={this.props.classes.animation}
-            />
-          </Grid>
-        </Grid>
-        <input
-          accept=".dat"
-          ref={ref => this.input = ref}
-          type="file"
-          className={this.props.classes.input}
-          onChange={this.onUploadFile}
-        />
-      </div>
+          <input
+            accept=".dat"
+            ref={ref => this.input = ref}
+            type="file"
+            className={this.props.classes.input}
+            onChange={this.onUploadFile}
+          />
+        </div>
+        {this.state.redirect && <AfterAuthRedirect/>}
+      </>
     );
   }
 

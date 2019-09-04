@@ -1,8 +1,22 @@
-import crypto from "crypto";
-
 export const ROOT_COMMIT_ID = 'AQAAAAAAAAA=';
 
 const randomStringChars = '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
+
+export function delay(timeout) {
+  let timeoutId;
+  let rejectPromise;
+  const promise = new Promise((resolve, reject) => {
+    rejectPromise = reject;
+    timeoutId = setTimeout(resolve, timeout);
+  });
+  return {
+    cancel() {
+      clearTimeout(timeoutId);
+      rejectPromise(new Error('Delay has been closed'));
+    },
+    promise
+  };
+}
 
 export function randomString(length) {
   let result = '';
@@ -46,35 +60,6 @@ export function toEmoji(str, length) {
   return emoji;
 }
 
-export function getAvatarLetters(roomName) {
-  if (!roomName) {
-    return ''
-  }
-  const nameString = [...roomName];
-  if (roomName.includes(" ")) {
-    if (nameString[0].length === 2) {
-      return nameString[0][0] + nameString[0][1] + nameString[roomName.indexOf(" ") - 2]
-    }
-    return nameString[0][0] + nameString[roomName.indexOf(" ") + 1]
-  } else {
-    return roomName.length > 1 ?
-      nameString[0].length === 2 ?
-        nameString[0][0] + nameString[0][1] :
-        nameString[0][0] + nameString[1] :
-      nameString[0][0];
-  }
-}
-
-export function createDialogRoomId(firstPublicKey, secondPublicKey) {
-  if (firstPublicKey === secondPublicKey) {
-    return crypto.createHash('sha256').update([firstPublicKey]).digest('hex');
-  }
-  return crypto
-    .createHash('sha256')
-    .update([firstPublicKey, secondPublicKey].sort().join(';'))
-    .digest('hex');
-}
-
 export function retry(fn, delay) {
   let timeoutId;
 
@@ -101,27 +86,30 @@ export function retry(fn, delay) {
   return promise;
 }
 
-export function getRoomName(participants, names, myPublicKey, myName) {
-  if (participants.length === 1) {
-    return (myName === '' || myName === undefined) ? 'Me' : myName;
-  }
-
-  return participants
-    .filter(participantPublicKey => participantPublicKey !== myPublicKey)
-    .map(publicKey => {
-      if (typeof names.get(publicKey) === 'object') {
-        return names.get(publicKey).name
-      }
-      return names.get(publicKey)
-    })
-    .join(', ');
-}
-
 export function getAppStoreContactName(contact) {
-  if (contact === undefined) {
+  if (contact === undefined || Object.keys(contact).length === 0) {
     return;
   }
   return contact.firstName !== '' && contact.lastName !== '' ?
     contact.firstName + ' ' + contact.lastName :
-    contact.username
+    contact.username;
+}
+
+export function getAvatarLetters(name) {
+  if (!name) {
+    return ''
+  }
+  const nameString = [...name];
+  if (name.includes(" ")) {
+    if (nameString[0].length === 2) {
+      return (nameString[0][0] + nameString[0][1] + nameString[name.indexOf(" ") - 2]).toUpperCase()
+    }
+    return (nameString[0][0] + nameString[name.indexOf(" ") + 1]).toUpperCase()
+  } else {
+    return (name.length > 1 ?
+      nameString[0].length === 2 ?
+        nameString[0][0] + nameString[0][1] :
+        nameString[0][0] + nameString[1] :
+      nameString[0][0]).toUpperCase();
+  }
 }

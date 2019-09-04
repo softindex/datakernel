@@ -1,58 +1,72 @@
 import React from 'react';
-import {Paper, withStyles} from '@material-ui/core';
+import {Icon, TextField, withStyles} from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
-import Popover from '@material-ui/core/Popover';
-import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
 import inviteButtonStyles from "./inviteButtonStyles";
+import IconButton from "@material-ui/core/IconButton";
+import Tooltip from "@material-ui/core/Tooltip";
+import {withRouter} from "react-router-dom";
 
-function InviteButton({classes}) {
-  const [anchorEl, setAnchorEl] = React.useState(null);
+function InviteButton({classes, publicKey}) {
+  const [showTextField, setShowTextField] = React.useState(false);
 
-  function onClick(event) {
-    setAnchorEl(event.currentTarget);
+  function onClick() {
+    setShowTextField(true);
   }
 
-  function onClose() {
-    setAnchorEl(null);
-  }
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(document.getElementById('inviteInputId').value);
+  };
 
-  const open = Boolean(anchorEl);
+  const onDoubleClick = event => {
+    event.preventDefault();
+    const input = document.getElementById('inviteInputId');
+    input.setSelectionRange(0, input.value.length);
+  };
+
   return (
-    <div>
-      <Button
-        variant="outlined"
-        size="medium"
-        fullWidth={true}
-        color="primary"
-        className={classes.inviteButton}
-        onClick={onClick}
-      >
-        Invite Friends
-        <AddIcon className={classes.addIcon}/>
-      </Button>
-      <Popover
-        open={open}
-        anchorEl={anchorEl}
-        onClose={onClose}
-        classes={{paper: classes.invitePaper}}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-      >
-        <Typography variant="h6">Invite friends with this link:</Typography>
-        <Typography variant="subtitle1">url link</Typography>
-        <Button size="small" variant="outlined" className={classes.button}>
-          Copy Link
+    <>
+      {!showTextField && (
+        <Button
+          variant="outlined"
+          size="medium"
+          fullWidth={true}
+          color="primary"
+          className={classes.inviteButton}
+          onClick={onClick}
+        >
+          <AddIcon className={classes.addIcon}/>
+          Invite Friends
         </Button>
-      </Popover>
-    </div>
+      )}
+      {showTextField && (
+        <TextField
+          className={classes.textField}
+          value={window.location.host + "/invite/" + publicKey}
+          label="Invite Link"
+          autoFocus
+          margin="normal"
+          inputProps={{onDoubleClick: onDoubleClick, id: 'inviteInputId'}}
+          type="text"
+          variant="outlined"
+          InputProps={{
+            readOnly: true,
+            endAdornment: (
+              <IconButton
+                className={classes.iconButton}
+                onClick={copyToClipboard}
+              >
+                <Tooltip title="Copy">
+                  <Icon>file_copy</Icon>
+                </Tooltip>
+              </IconButton>
+            ),
+          }}
+        >
+        </TextField>
+      )}
+    </>
   );
 }
 
-export default withStyles(inviteButtonStyles)(InviteButton)
+export default withStyles(inviteButtonStyles)(InviteButton);

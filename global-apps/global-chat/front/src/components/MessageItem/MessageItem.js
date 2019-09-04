@@ -35,13 +35,15 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
           {text}
         </Typography>
         <Typography
+          color="textSecondary"
           variant="caption">
           {time}
         </Typography>
       </Paper>
       {drawSide === 'left' && (
         <div className={classes.statusWrapper}>
-          {loaded ? <DoneAllIcon/> : <DoneIcon/>}
+          {loaded && <DoneAllIcon/>}
+          {!loaded && <DoneIcon/>}
         </div>
       )}
     </div>

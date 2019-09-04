@@ -8,10 +8,9 @@ import Grow from "@material-ui/core/Grow";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import searchStyles from "./searchStyles";
 
-
 function Search({classes, searchReady, ...otherProps}) {
   return (
-    <Paper className={classes.search}>
+    <Paper className={classes.root}>
       <IconButton
         className={classes.iconButton}
         disabled={true}

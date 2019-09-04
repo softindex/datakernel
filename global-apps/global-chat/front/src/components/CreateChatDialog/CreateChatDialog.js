@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useMemo, useState} from "react";
 import path from 'path';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
@@ -6,321 +6,185 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {connectService, getAppStoreContactName} from "global-apps-common";
-import RoomsContext from "../../modules/rooms/RoomsContext";
+import {getInstance, useService, getAppStoreContactName, initService} from "global-apps-common";
 import ContactChip from '../ContactChip/ContactChip';
-import {withSnackbar} from "notistack";
-import ContactsContext from "../../modules/contacts/ContactsContext";
-import List from "@material-ui/core/List";
-import Paper from "@material-ui/core/Paper";
-import RoomItem from "../RoomItem/RoomItem";
 import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
-import SearchContactsContext from "../../modules/searchContacts/SearchContactsContext";
-import Typography from "@material-ui/core/Typography";
-import SearchContactItem from "../SearchContactItem/SearchContactItem";
-import ListSubheader from "@material-ui/core/ListSubheader";
 import Search from "../Search/Search";
+import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
+import ContactsService from "../../modules/contacts/ContactsService";
+import RoomsService from "../../modules/rooms/RoomsService";
+import SelectContactsList from "../SelectContactsList/SelectContactsList";
+import {withSnackbar} from "notistack";
+import NamesService from "../../modules/names/NamesService";
 
-class CreateChatDialog extends React.Component {
-  state = {
-    participants: new Set(),
-    searchContacts: new Map(),
-    loading: false,
-    search: ''
-  };
+function CreateChatDialogView({
+                                classes,
+                                onClose,
+                                loading,
+                                onSubmit,
+                                onContactToggle,
+                                contacts,
+                                names,
+                                search,
+                                searchReady,
+                                searchContacts,
+                                onSearchChange,
+                                participants,
+                                publicKey
+                              }) {
+  return (
+    <Dialog
+      onClose={onClose}
+      loading={loading}
+      maxWidth='sm'
+    >
+      <form onSubmit={onSubmit} className={classes.form}>
+        <DialogTitle>
+          Add Members
+        </DialogTitle>
+        <DialogContent className={classes.dialogContent}>
+          <div className={classes.chipsContainer}>
+            {[...participants].map(([publicKey, name]) => (
+              <ContactChip
+                color="primary"
+                label={name}
+                onDelete={onContactToggle.bind(this, publicKey)}
+              />
+            ))}
+          </div>
+          <Search
+            classes={{root: classes.search}}
+            placeholder="Search people..."
+            value={search}
+            onChange={onSearchChange}
+            searchReady={searchReady}
+          />
+          <SelectContactsList
+            search={search}
+            searchContacts={searchContacts}
+            participants={participants}
+            contacts={contacts}
+            loading={loading}
+            publicKey={publicKey}
+            onContactToggle={onContactToggle}
+            names={names}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            className={classes.actionButton}
+            onClick={onClose}
+          >
+            Close
+          </Button>
+          <Button
+            className={classes.actionButton}
+            type="submit"
+            color="primary"
+            variant="contained"
+          >
+            Create
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}
 
-  sortContacts() {
-    return [...this.props.rooms].sort(((array1, array2) => {
-      const contactId1 = array1[1].participants.find(publicKey => publicKey !== this.props.publicKey);
-      const contactId2 = array2[1].participants.find(publicKey => publicKey !== this.props.publicKey);
-      if (this.props.names.has(contactId1) && this.props.names.has(contactId2)) {
-        return this.props.names.get(contactId1).localeCompare(this.props.names.get(contactId2))
-      }
-    }));
+function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar}) {
+  const contactsOTStateManager = getInstance('contactsOTStateManager');
+  const searchContactsService = useMemo(
+    () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
+    [contactsOTStateManager]
+  );
+  const contactsService = getInstance(ContactsService);
+  const roomsService = getInstance(RoomsService);
+  const namesService = getInstance(NamesService);
+  const {names} = useService(namesService);
+
+  initService(searchContactsService, err => enqueueSnackbar(err.message, {
+    variant: 'error'
+  }));
+
+  const [loading, setLoading] = useState(false);
+  const [participants, setParticipants] = useState(new Map());
+  const {search, searchContacts, searchReady} = useService(searchContactsService);
+  const {contacts} = useService(contactsService);
+
+  function onSearchChange(value) {
+    return searchContactsService.search(value);
   }
 
-  getFilteredRooms(rooms) {
-    return new Map(
-      [...rooms]
-        .filter(([, {dialog, participants}]) => {
-          if (!(dialog && this.props.contacts.has(participants.find((publicKey) =>
-            publicKey !== this.props.publicKey)))) {
-            return false;
+  const props = {
+    classes,
+    participants,
+    loading,
+    search,
+    searchContacts,
+    searchReady,
+    contacts,
+    publicKey,
+    onClose,
+    names,
+
+    onSubmit(event) {
+      event.preventDefault();
+      setLoading(true);
+
+      (async () => {
+        if (participants.size === 0) {
+          return;
+        }
+
+        for (const participantKey of participants.keys()) {
+          if (!contacts.has(participantKey)) {
+            await contactsService.addContact(participantKey);
           }
-          const publicKey = participants.find(participantPublicKey => participantPublicKey !== this.props.publicKey);
-          if (this.props.names.get(publicKey) !== undefined) {
-            return this.props.names.get(publicKey).toLowerCase().includes(this.state.search.toLowerCase());
-          }
-        }))
-  }
+        }
 
-  onSearchChange = event => {
-    this.setState({
-      search: event.target.value
-    }, () => {
-      if (this.state.search !== '') {
-        this.props.search(this.state.search)
-      }
-    });
-  };
+        const roomId = await roomsService.createRoom(participants.keys());
 
-  isSearchInContacts() {
-    let isSearchInContacts = true;
-    [...this.props.searchContacts].map(([publicKey,]) => {
-      if (!this.props.contacts.has(publicKey)) {
-        isSearchInContacts = false;
-      }
-    });
-    return isSearchInContacts;
-  }
-
-  onContactCheck(roomParticipants) {
-    if (this.state.loading) {
-      return;
-    }
-    const pubKey = roomParticipants.find(publicKey => publicKey !== this.props.publicKey);
-    let searchContacts = this.state.searchContacts;
-    let participants = new Set(this.state.participants);
-
-    if (this.props.searchContacts.size !== 0) {
-      searchContacts.set(pubKey, this.props.searchContacts.get(pubKey));
-      this.setState({
-        searchContacts
-      });
-    }
-
-    if (participants.has(pubKey)) {
-      participants.delete(pubKey)
-    } else {
-      participants.add(pubKey);
-    }
-    this.setState({
-      participants: participants
-    });
-  }
-
-  onClose = () => {
-    this.setState({
-      participants: new Set(),
-      searchContacts: new Map(),
-      search: ''
-    });
-    this.props.onClose();
-  };
-
-  onSubmit = event => {
-    event.preventDefault();
-
-    if (this.state.participants.size === 0 || this.state.loading) {
-      return;
-    }
-
-    this.setState({
-      loading: true
-    });
-
-    [...this.state.participants].map((publicKey => {
-      if (!this.props.contacts.has(publicKey)) {
-        this.props.onAddContact(publicKey);
-      }
-    }));
-
-    this.props.onCreateRoom([...this.state.participants])
-      .then(() => {
-        this.props.onClose();
-      })
-      .catch(err => {
-        this.props.enqueueSnackbar(err.message, {
+        history.push(path.join('/room', roomId || ''));
+        onClose();
+      })()
+        .catch(error => enqueueSnackbar(error.message, {
           variant: 'error'
+        }))
+        .finally(() => {
+          setLoading(false);
         });
-      })
-      .finally(() => {
-        this.setState({
-          participants: new Set(),
-          search: '',
-          loading: false
-        });
-      });
+    },
+
+    onSearchChange(event) {
+      return onSearchChange(event.target.value);
+    },
+
+    onContactToggle(participantPublicKey) {
+      if (loading) {
+        return;
+      }
+
+      const participants = new Map(props.participants);
+      if (participants.has(participantPublicKey)) {
+        participants.delete(participantPublicKey);
+      } else {
+        if (names.has(participantPublicKey)) {
+          participants.set(participantPublicKey, names.get(participantPublicKey));
+        } else {
+          participants.set(participantPublicKey, getAppStoreContactName(searchContacts.get(participantPublicKey)));
+        }
+      }
+
+      setParticipants(participants);
+    }
   };
 
-  render() {
-    const {classes, names} = this.props;
-
-    return (
-      <Dialog
-        open={this.props.open}
-        onClose={this.onClose}
-        loading={this.state.loading}
-        maxWidth='sm'
-      >
-        <form onSubmit={this.onSubmit} className={classes.form}>
-          <DialogTitle onClose={this.props.onClose}>
-            Add Members
-          </DialogTitle>
-          <DialogContent className={classes.dialogContent}>
-            <div className={classes.chipsContainer}>
-              {[...this.state.participants].map(pubKey => (
-                <ContactChip
-                  color="primary"
-                  label={names.get(pubKey) || getAppStoreContactName(this.state.searchContacts.get(pubKey))}
-                  onDelete={this.onContactCheck.bind(this, [pubKey])}
-                />
-              ))}
-            </div>
-            <Search
-              classes={{search: classes.search}}
-              placeholder="Search people..."
-              value={this.state.search}
-              onChange={this.onSearchChange}
-              searchReady={this.props.searchReady}
-            />
-            <div className={classes.chatsList}>
-              {[...this.getFilteredRooms(this.sortContacts())].length === 0 &&
-              this.props.searchContacts.size === 0 && this.state.search !== '' && (
-                <Typography
-                  className={classes.secondaryDividerText}
-                  color="textSecondary"
-                  variant="body1"
-                >
-                  Nothing found
-                </Typography>
-              )}
-              {([...this.getFilteredRooms(this.sortContacts())].length !== 0 ||
-                this.props.searchContacts.size !== 0) && (
-                <List subheader={<li/>}>
-                  {[...this.getFilteredRooms(this.sortContacts())].length !== 0 && (
-                    <li>
-                      <List className={classes.innerUl}>
-                        <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
-                        {[...this.getFilteredRooms(this.sortContacts())].map(([roomId, room]) =>
-                          <RoomItem
-                            roomId={roomId}
-                            room={room}
-                            selected={this.state.participants
-                              .has(room.participants.find(pubKey => pubKey !== this.props.publicKey))}
-                            roomSelected={false}
-                            onClick={!this.state.loading && this.onContactCheck.bind(this, room.participants)}
-                            contacts={this.props.names}
-                            publicKey={this.props.publicKey}
-                            linkDisabled={true}
-                          />
-                        )}
-                      </List>
-                    </li>
-                  )}
-                  {this.state.search !== '' && !this.isSearchInContacts() && (
-                    <li>
-                      <List className={classes.innerUl}>
-                        <ListSubheader className={classes.listSubheader}>People</ListSubheader>
-                        {this.props.error !== undefined && (
-                          <Paper square className={classes.paperError}>
-                            <Typography className={classes.dividerText}>
-                              {this.props.error}
-                            </Typography>
-                          </Paper>
-                        )}
-                        {this.props.searchReady && (
-                          <>
-                            {this.props.searchContacts.size !== 0 && (
-                              <List>
-                                {[...this.props.searchContacts]
-                                  .filter(([publicKey,]) => publicKey !== this.props.publicKey)
-                                  .map(([publicKey, contact]) => (
-                                    <>
-                                      {!this.props.contacts.has(publicKey) && (
-                                        <SearchContactItem
-                                          contactId={publicKey}
-                                          contact={contact}
-                                          publicKey={this.props.publicKey}
-                                          onClick={!this.state.loading && this.onContactCheck
-                                            .bind(this, [publicKey, this.props.publicKey])}
-                                          selected={this.state.participants.has(publicKey)}
-                                        />
-                                      )}
-                                    </>
-                                  ))}
-                              </List>
-                            )}
-                            {this.props.searchContacts.size === 0 && (
-                              <Typography
-                                className={classes.secondaryDividerText}
-                                color="textSecondary"
-                                variant="body1"
-                              >
-                                Nothing found
-                              </Typography>
-                            )}
-                          </>
-                        )}
-                      </List>
-                    </li>
-                  )}
-                </List>
-              )}
-            </div>
-          </DialogContent>
-          <DialogActions>
-            <Button
-              className={this.props.classes.actionButton}
-              onClick={this.onClose}
-            >
-              Close
-            </Button>
-            <Button
-              className={this.props.classes.actionButton}
-              type="submit"
-              color="primary"
-              variant="contained"
-            >
-              Create
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    );
-  }
+  return <CreateChatDialogView {...props}/>;
 }
 
 export default withRouter(
   withSnackbar(
-    connectService(
-      ContactsContext,
-      ({contacts, names}, contactsService) => ({
-        contactsService, contacts, names,
-        onAddContact(contactPublicKey) {
-          contactsService.addContact(contactPublicKey)
-        }
-      })
-    )(
-      connectService(
-        SearchContactsContext, ({searchContacts, searchReady, error}, searchContactsService) => ({
-          searchContacts, searchReady, searchContactsService,
-          search(searchField) {
-            return searchContactsService.search(searchField);
-          }
-        })
-      )(
-        connectService(
-          RoomsContext,
-          ({rooms}, roomsService, props) => ({
-            rooms,
-            onCreateRoom(participants) {
-              return roomsService.createRoom(participants)
-                .then(roomId => {
-                  props.history.push(path.join('/room', roomId || ''));
-                })
-                .catch((err) => {
-                  props.enqueueSnackbar(err.message, {
-                    variant: 'error'
-                  });
-                })
-            }
-          })
-        )(
-          withStyles(createChatDialogStyles)(CreateChatDialog)
-        )
-      )
-    )
+    withStyles(createChatDialogStyles)(CreateChatDialog)
   )
 );

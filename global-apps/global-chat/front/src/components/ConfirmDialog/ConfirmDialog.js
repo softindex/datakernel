@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useState} from "react";
 import {withStyles} from '@material-ui/core';
 import {DialogTitle} from '@material-ui/core';
 import DialogContent from "@material-ui/core/DialogContent";
@@ -7,13 +7,21 @@ import DialogActions from "@material-ui/core/DialogActions";
 import Button from "@material-ui/core/Button";
 import Dialog from "../Dialog/Dialog";
 import confirmDialogStyles from "./confirmDialogStyles";
+import CircularProgress from "@material-ui/core/CircularProgress";
 
-function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes}) {
+function ConfirmDialog({classes, onClose, onConfirm, title, subtitle}) {
+  const [loading, setLoading] = useState(false);
+
+  function handleConfirm() {
+    const promise = onConfirm();
+    if (promise) {
+      setLoading(true);
+      promise.finally(() => setLoading(false));
+    }
+  }
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-    >
+    <Dialog onClose={onClose}>
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>
@@ -25,18 +33,26 @@ function ConfirmDialog({open, onConfirm, onClose, title, subtitle, classes}) {
           className={classes.actionButton}
           onClick={onClose}
           color="primary"
+          disabled={loading}
         >
           Cancel
         </Button>
         <Button
           className={classes.actionButton}
-          onClick={onConfirm}
+          onClick={handleConfirm}
           color="primary"
           variant="contained"
+          disabled={loading}
         >
           OK
         </Button>
       </DialogActions>
+      {loading && (
+        <CircularProgress
+          size={24}
+          className={classes.circularProgress}
+        />
+      )}
     </Dialog>
   );
 }

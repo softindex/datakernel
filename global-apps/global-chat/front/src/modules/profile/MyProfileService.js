@@ -1,11 +1,9 @@
-import {Service} from 'global-apps-common';
+import {Service, delay} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import myProfileOTSystem from "./ot/MyProfileOTSystem";
-import myProfileSerializer from "./ot/serializer";
-import MyProfileOTOperation from "./ot/MyProfileOTOperation";
-import {wait} from 'global-apps-common';
-
-const RETRY_TIMEOUT = 1000;
+import profileOTSystem from "./ot/ProfileOTSystem";
+import profileSerializer from "./ot/serializer";
+import ProfileOTOperation from "./ot/ProfileOTOperation";
+import {RETRY_TIMEOUT} from '../../common/utils';
 
 class MyProfileService extends Service {
   constructor(profileOTStateManager) {
@@ -14,15 +12,16 @@ class MyProfileService extends Service {
       profileReady: false
     });
     this._profileOTStateManager = profileOTStateManager;
-    this._reconnectTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
   static create() {
     const profileOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/myProfile',
-      serializer: myProfileSerializer
+      serializer: profileSerializer
     });
-    const profileOTStateManager = new OTStateManager(() => ({}), profileOTNode, myProfileOTSystem);
+    const profileOTStateManager = new OTStateManager(() => ({}), profileOTNode, profileOTSystem);
     return new MyProfileService(profileOTStateManager);
   }
 
@@ -30,8 +29,15 @@ class MyProfileService extends Service {
     try {
       await this._profileOTStateManager.checkout();
     } catch (err) {
-      console.error(err);
-      await this._reconnectDelay();
+      console.log(err);
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this.init();
       return;
     }
@@ -41,12 +47,17 @@ class MyProfileService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._profileOTStateManager.removeChangeListener(this._onStateChange);
   }
 
   async setProfileField(fieldName, value) {
-    const profileNameOperation = new MyProfileOTOperation({
+    const profileNameOperation = new ProfileOTOperation({
       [fieldName]: {
         prev: this.state.profile[fieldName],
         next: value
@@ -67,18 +78,17 @@ class MyProfileService extends Service {
     return this._profileOTStateManager.getState();
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-  }
-
   async _sync() {
     try {
       await this._profileOTStateManager.sync();
     } catch (err) {
       console.log(err);
-      await wait(RETRY_TIMEOUT);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

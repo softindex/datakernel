@@ -1,4 +1,5 @@
-import React from "react";
+import React, {useState} from "react";
+import path from 'path';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import Dialog from '../Dialog/Dialog';
@@ -7,91 +8,100 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import {withSnackbar} from 'notistack';
 import addContactDialogStyles from "./addContactDialogStyles";
+import {getInstance} from "global-apps-common/lib";
+import ContactsService from "../../modules/contacts/ContactsService";
+import {withSnackbar} from "notistack";
+import {withRouter} from "react-router-dom";
 
-class AddContactDialog extends React.Component {
-  state = {
-    name: '',
-    loading: false
-  };
-
-  handleNameChange = event => {
-    this.setState({name: event.target.value});
-  };
-
-  onSubmit = event => {
-    event.preventDefault();
-    this.setState({
-      loading: true
-    });
-
-    this.props.onAddContact(this.props.contactPublicKey, this.state.name)
-      .then(() => {
-        this.props.onClose();
-      })
-      .catch(err => {
-        this.props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      })
-      .finally(() => {
-        this.setState({
-          loading: false
-        });
-      });
-  };
-
-  render() {
-    return (
-      <Dialog
-        open={this.props.open}
-        onClose={this.props.onClose}
-        loading={this.state.loading}
-      >
-        <form onSubmit={this.onSubmit}>
-          <DialogTitle onClose={this.props.onClose}>Add Contact</DialogTitle>
-          <DialogContent>
-            <DialogContentText>
-              Enter contact name to start chat
-            </DialogContentText>
-            <TextField
-              required={true}
-              className={this.props.classes.textField}
-              autoFocus
-              disabled={this.state.loading}
-              label="Name"
-              margin="normal"
-              type="text"
-              fullWidth
-              variant="outlined"
-              onChange={this.handleNameChange}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button
-              className={this.props.classes.actionButton}
-              disabled={this.state.loading}
-              onClick={this.props.onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              className={this.props.classes.actionButton}
-              loading={this.state.loading}
-              type="submit"
-              color="primary"
-              variant="contained"
-            >
-              Add Contact
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    );
-  }
+function AddContactDialogView({classes, onClose, name, loading, onSubmit, onNameChange}) {
+  return (
+    <Dialog
+      onClose={onClose}
+      loading={loading}
+    >
+      <form onSubmit={onSubmit}>
+        <DialogTitle>Add Contact</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Enter contact name to start chat
+          </DialogContentText>
+          <TextField
+            required={true}
+            className={classes.textField}
+            autoFocus
+            disabled={loading}
+            label="Name"
+            margin="normal"
+            type="text"
+            fullWidth
+            variant="outlined"
+            onChange={onNameChange}
+            value={name}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            className={classes.actionButton}
+            disabled={loading}
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            className={classes.actionButton}
+            loading={loading}
+            type="submit"
+            disabled={loading}
+            color="primary"
+            variant="contained"
+          >
+            Add Contact
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
 }
 
-export default withSnackbar(
-  withStyles(addContactDialogStyles)(AddContactDialog)
+function AddContactDialog({classes, history, enqueueSnackbar, contactPublicKey, onClose}) {
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const contactsService = getInstance(ContactsService);
+
+  const props = {
+    classes,
+    name,
+    loading,
+    onClose,
+
+    onNameChange(event) {
+      setName(event.target.value);
+    },
+
+    onSubmit(event) {
+      event.preventDefault();
+      setLoading(true);
+      return contactsService.addContact(contactPublicKey, name)
+        .then(({dialogRoomId}) => {
+          history.push(path.join('/room', dialogRoomId));
+          onClose();
+        })
+        .catch(err => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        })
+        .finally(() => {
+          setLoading(false);
+        })
+    }
+  };
+  return <AddContactDialogView {...props}/>
+}
+
+export default withRouter(
+  withSnackbar(
+    withStyles(addContactDialogStyles)(AddContactDialog)
+  )
 );

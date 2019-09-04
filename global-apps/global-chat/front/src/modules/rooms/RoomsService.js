@@ -1,18 +1,19 @@
-import {Service} from 'global-apps-common';
 import RoomsOTOperation from "./ot/RoomsOTOperation";
-import {randomString, wait, createDialogRoomId} from 'global-apps-common';
+import {randomString, Service} from 'global-apps-common';
+import {createDialogRoomId, RETRY_TIMEOUT} from '../../common/utils';
+import {delay} from "global-apps-common/lib";
 
-const RETRY_TIMEOUT = 1000;
 const ROOM_ID_LENGTH = 32;
 
 class RoomsService extends Service {
   constructor(roomsOTStateManager, pubicKey) {
     super({
       rooms: new Map(),
-      roomsReady: false,
+      roomsReady: false
     });
     this._roomsOTStateManager = roomsOTStateManager;
-    this._reconnectTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
     this._myPublicKey = pubicKey;
   }
 
@@ -25,7 +26,14 @@ class RoomsService extends Service {
       await this._roomsOTStateManager.checkout();
     } catch (err) {
       console.log(err);
-      await this._reconnectDelay();
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this.init();
       return;
     }
@@ -36,10 +44,19 @@ class RoomsService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._roomsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
+  /**
+   * @param {Iterable<string>} participants
+   * @returns {Promise<string>}
+   */
   async createRoom(participants) {
     const roomId = randomString(ROOM_ID_LENGTH);
     await this._createRoom(roomId, [...participants, this._myPublicKey]);
@@ -49,20 +66,16 @@ class RoomsService extends Service {
   async createDialog(participantPublicKey) {
     let participants = [this._myPublicKey];
     if (this._myPublicKey !== participantPublicKey) {
-      participants = [this._myPublicKey, participantPublicKey];
+      participants.push(participantPublicKey);
     }
-    const roomId = createDialogRoomId(this._myPublicKey, participantPublicKey);
 
-    let roomExists = false;
-    [...this.state.rooms].map(([id, ]) => {
-      if (id === roomId) {
-        roomExists = true;
-      }
-    });
-    if (roomExists) {
-      return;
+    const roomId = createDialogRoomId(this._myPublicKey, participantPublicKey);
+    const roomExists = [...this.state.rooms].find(([id]) => id === roomId);
+    if (!roomExists) {
+      await this._createRoom(roomId, participants);
     }
-    await this._createRoom(roomId, participants);
+
+    return roomId;
   }
 
   async quitRoom(roomId) {
@@ -101,18 +114,17 @@ class RoomsService extends Service {
     return new Map(rooms);
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-  }
-
   async _sync() {
     try {
       await this._roomsOTStateManager.sync();
     } catch (err) {
       console.log(err);
-      await wait(RETRY_TIMEOUT);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

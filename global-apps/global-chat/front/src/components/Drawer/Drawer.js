@@ -12,7 +12,7 @@ import {connectService} from "global-apps-common";
 import {AuthContext} from "global-apps-common";
 import CreateChatDialog from "../CreateChatDialog/CreateChatDialog";
 
-function Drawer({classes, open, onClose, logout, publicKey}) {
+function Drawer({classes, open, onClose, onLogout, publicKey}) {
   const [openProfile, setOpenProfile] = useState(false);
   const [showChatDialog, setShowChatDialog] = useState(false);
 
@@ -59,7 +59,7 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
               </ListItemIcon>
               <ListItemText primary="New Chat"/>
             </ListItem>
-            <ListItem button onClick={logout}>
+            <ListItem button onClick={onLogout}>
               <ListItemIcon>
                 <Icon className={classes.accountIcon}>logout</Icon>
               </ListItemIcon>
@@ -68,26 +68,28 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
           </List>
         </div>
       </MUIDrawer>
-      <ProfileDialog
-        open={openProfile}
-        onClose={onProfileClose}
-        publicKey={publicKey}
-      />
-      <CreateChatDialog
-        open={showChatDialog}
-        onClose={onChatDialogClose}
-        publicKey={publicKey}
-      />
+      {openProfile && (
+        <ProfileDialog
+          onClose={onProfileClose}
+          publicKey={publicKey}
+        />
+      )}
+      {showChatDialog && (
+        <CreateChatDialog
+          onClose={onChatDialogClose}
+          publicKey={publicKey}
+        />
+      )}
     </>
   )
 }
 
 export default connectService(
   AuthContext,
-  ({publicKey}, contactsService) => ({
+  ({publicKey}, authService) => ({
     publicKey,
-    logout() {
-      contactsService.logout();
+    onLogout() {
+      authService.logout();
     }
   })
 )(

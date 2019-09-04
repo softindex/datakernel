@@ -1,11 +1,16 @@
 import React from 'react';
-import {Redirect} from 'react-router-dom';
+import {Redirect, withRouter} from 'react-router-dom';
 import connectService from '../connectService/connectService';
 import AuthContext from './AuthContext';
 
 function checkAuth(Component) {
   function CheckAuth(props) {
-    const {authorized, ...otherProps} = props;
+    const {authorized, location, ...otherProps} = props;
+
+    if (location.pathname !== "/") {
+      localStorage.setItem('redirectURI', location.pathname);
+    }
+
     if (!authorized) {
       return <Redirect to='/sign-up'/>
     }
@@ -15,7 +20,7 @@ function checkAuth(Component) {
     );
   }
 
-  return connectService(AuthContext, ({authorized}) => ({authorized}))(CheckAuth);
+  return withRouter(connectService(AuthContext, ({authorized}) => ({authorized}))(CheckAuth));
 }
 
 export default checkAuth;

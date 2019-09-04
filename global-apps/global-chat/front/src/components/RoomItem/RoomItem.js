@@ -1,18 +1,16 @@
 import React from "react";
 import path from 'path';
 import {withStyles} from '@material-ui/core';
-import ListItemAvatar from "@material-ui/core/ListItemAvatar";
-import Avatar from "@material-ui/core/Avatar";
+import {Avatar} from "global-apps-common";
 import ListItemText from "@material-ui/core/ListItemText";
 import ListItem from "@material-ui/core/ListItem";
 import roomItemStyles from "./roomItemStyles";
 import ContactMenu from "../ContactMenu/ContactMenu";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import {Link, withRouter} from "react-router-dom";
-import Badge from "@material-ui/core/Badge";
 import IconButton from "@material-ui/core/IconButton";
 import DeleteIcon from "@material-ui/icons/Delete";
-import {getAvatarLetters, getRoomName} from "global-apps-common";
+import {getRoomName} from "../../common/utils";
 
 class RoomItem extends React.Component {
   state = {
@@ -20,18 +18,9 @@ class RoomItem extends React.Component {
   };
 
   static defaultProps = {
-    selected: false,
-    isContactsTab: false,
-    roomSelected: true
+    showDeleteButton: false,
+    active: true
   };
-
-  componentDidMount() {
-    this.checkContactExists(this.props.room)
-  }
-
-  getRoomPath(roomId) {
-    return path.join('/room', roomId || '');
-  }
 
   onClickAddContact() {
     this.setState({
@@ -39,15 +28,9 @@ class RoomItem extends React.Component {
     });
   }
 
-  checkContactExists(room) {
-    if (room.participants.length === 2 && room.dialog) {
-      const participantPublicKey = room.participants
-        .find(participantPublicKey => participantPublicKey !== this.props.publicKey);
-      if (!this.props.contacts.has(participantPublicKey)) {
-        return true
-      }
-    }
-    return false;
+  onRemoveContact(room) {
+    const publicKey = room.participants.find(publicKey => publicKey !== this.props.publicKey);
+    this.props.onRemoveContact(publicKey)
   }
 
   closeAddDialog = () => {
@@ -63,58 +46,48 @@ class RoomItem extends React.Component {
 
   render() {
     const {classes, room, roomId} = this.props;
-    const contactsNames = !this.props.linkDisabled ? this.props.names : this.props.contacts;
+    const roomURL = path.join('/room', roomId || '');
+    const roomName = getRoomName(room.participants, this.props.names, this.props.publicKey);
+
     return (
       <>
         <ListItem
-          onClick={this.props.onClick}
           className={classes.listItem}
           button
-          selected={roomId === this.props.match.params.roomId && this.props.roomSelected}
+          selected={roomId === this.props.match.params.roomId}
         >
           <Link
-            to={this.getRoomPath(roomId)}
-            style={this.props.linkDisabled ? {pointerEvents: "none"} : null}
+            to={roomURL}
             className={classes.link}
           >
-            <ListItemAvatar className={classes.avatar}>
-              <Badge
-                invisible={!this.props.selected}
-                color="primary"
-                variant="dot"
-              >
-                <Avatar className={classes.avatarContent}>
-                  {getAvatarLetters(getRoomName(room.participants, contactsNames,
-                    this.props.publicKey, this.props.myName)).toUpperCase()}
-                  </Avatar>
-              </Badge>
-            </ListItemAvatar>
-
+            <Avatar
+              selected={!this.props.selected}
+              name={roomName}
+            />
             <ListItemText
-              primary={getRoomName(room.participants, contactsNames, this.props.publicKey, this.props.myName)}
+              primary={roomName}
               className={classes.itemText}
               classes={{primary: classes.itemTextPrimary}}
             />
           </Link>
-          {this.checkContactExists(room) && !this.props.isContactsTab && (
+          {this.props.showAddContactButton && !this.props.showDeleteButton && (
             <ContactMenu onAddContact={this.onClickAddContact.bind(this)}/>
           )}
-          {this.props.isContactsTab && (
+          {this.props.showDeleteButton && (
             <IconButton className={classes.deleteIcon}>
               <DeleteIcon
-                onClick={this.props.onRemoveContact}
+                onClick={this.onRemoveContact.bind(this, room)}
                 fontSize="medium"
               />
             </IconButton>
           )}
         </ListItem>
-        <AddContactDialog
-          open={this.state.showAddContactDialog}
-          onClose={this.closeAddDialog}
-          contactPublicKey={this.getContactId(room)}
-          publicKey={this.props.publicKey}
-          onAddContact={this.props.onAddContact}
-        />
+        {this.state.showAddContactDialog && (
+          <AddContactDialog
+            onClose={this.closeAddDialog}
+            contactPublicKey={this.getContactId(room)}
+          />
+        )}
       </>
     )
   }

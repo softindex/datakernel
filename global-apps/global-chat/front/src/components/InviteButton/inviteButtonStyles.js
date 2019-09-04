@@ -7,10 +7,18 @@ const inviteButtonStyles = theme => ({
     marginTop: theme.spacing.unit * 2
   },
   addIcon: {
-    marginLeft: theme.spacing.unit
+    marginRight: theme.spacing.unit
   },
   invitePaper: {
     padding: theme.spacing.unit * 2
+  },
+  iconButton: {
+    borderRadius: '100%',
+    marginLeft: theme.spacing.unit * 2
+  },
+  textField: {
+    display: 'flex',
+    margin: theme.spacing.unit * 3
   }
 });
 
