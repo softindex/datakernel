@@ -59,23 +59,22 @@ public final class GlobalFsDriverServlet {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						SimKey simKey = getSimKey(request);
 						String name = UrlParser.urlDecode(request.getRelativePath());
+						if (name == null) { // name is not utf so such file wont exist too, huh
+							return Promise.ofException(FILE_NOT_FOUND);
+						}
 						return driver.getMetadata(space, name)
 								.then(meta -> {
-									if (meta != null) {
-										try {
-											return Promise.of(HttpResponse.file(
-													(offset, limit) -> driver.download(space, name, offset, limit)
-															.map(supplier -> supplier
-																	.transformWith(CipherTransformer.create(simKey,
-																			CryptoUtils.nonceFromString(name), offset))),
-													name,
-													meta.getPosition(),
-													request.getHeader(HttpHeaders.RANGE)));
-										} catch (HttpException e) {
-											return Promise.<HttpResponse>ofException(e);
-										}
+									if (meta == null) {
+										return Promise.<HttpResponse>ofException(FILE_NOT_FOUND);
 									}
-									return Promise.ofException(FILE_NOT_FOUND);
+									return HttpResponse.file(
+											(offset, limit) -> driver.download(space, name, offset, limit)
+													.map(supplier -> supplier
+															.transformWith(CipherTransformer.create(simKey,
+																	CryptoUtils.nonceFromString(name), offset))),
+											name,
+											meta.getPosition(),
+											request.getHeader(HttpHeaders.RANGE));
 								});
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));

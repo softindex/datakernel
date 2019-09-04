@@ -1,17 +1,10 @@
-package io.global.forum;
+package io.global.forum.util;
 
-import com.github.mustachejava.Mustache;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
-import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codec.registry.CodecRegistry;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.util.Tuple2;
-import io.datakernel.writer.ByteBufWriter;
 import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.ot.post.operation.*;
@@ -19,17 +12,15 @@ import io.global.forum.ot.session.operation.AddOrRemoveSession;
 import io.global.forum.ot.session.operation.SessionOperation;
 import io.global.forum.ot.session.operation.UpdateTimestamp;
 import io.global.forum.pojo.*;
-import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
-import static io.datakernel.http.ContentTypes.HTML_UTF_8;
-import static io.datakernel.http.HttpHeaderValue.ofContentType;
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
-import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.global.ot.OTUtils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
@@ -39,7 +30,6 @@ public final class Utils {
 		throw new AssertionError();
 	}
 
-	@SuppressWarnings("ConstantConditions") // - UserData::new is a false positive of the inspection?
 	public static final CodecRegistry REGISTRY = createOTRegistry()
 			.with(Instant.class, LONG_CODEC.transform(Instant::ofEpochMilli, Instant::toEpochMilli))
 			.with(ThreadMetadata.class, tuple(ThreadMetadata::new,
@@ -107,10 +97,10 @@ public final class Utils {
 			.with(ThreadOperation.class, registry -> CodecSubtype.<ThreadOperation>create()
 					.with(AddPost.class, registry.get(AddPost.class))
 					.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)))
-			.with(IpBanRequest.class, registry -> object(IpBanRequest::new,
-					"range", IpBanRequest::getRange, registry.get(IpRange.class),
-					"until", IpBanRequest::getUntil, registry.get(Instant.class),
-					"description", IpBanRequest::getDescription, STRING_CODEC))
+			.with(IpBanRequest.class, registry -> tuple(IpBanRequest::new,
+					IpBanRequest::getRange, registry.get(IpRange.class),
+					IpBanRequest::getUntil, registry.get(Instant.class),
+					IpBanRequest::getDescription, STRING_CODEC))
 			.with(AddOrRemoveSession.class, registry -> tuple(AddOrRemoveSession::of,
 					AddOrRemoveSession::getSessionId, STRING_CODEC,
 					AddOrRemoveSession::getUserId, registry.get(UserId.class),
@@ -142,83 +132,7 @@ public final class Utils {
 		return sb.toString();
 	}
 
-	@FunctionalInterface
-	public interface MustacheSupplier {
-
-		Mustache getMustache(String filename);
-	}
-
-	public static final class MustacheTemplater {
-		private final MustacheSupplier mustacheSupplier;
-		private final Map<String, Object> staticContext = new HashMap<>();
-
-		public MustacheTemplater(MustacheSupplier mustacheSupplier) {
-			this.mustacheSupplier = mustacheSupplier;
-		}
-
-		public Map<String, Object> getStaticContext() {
-			return staticContext;
-		}
-
-		public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
-			ByteBufWriter writer = new ByteBufWriter();
-
-			Map<String, Object> context = new HashMap<>(scope);
-			context.putAll(staticContext);
-
-			List<Promise<?>> promisesToWait = new ArrayList<>();
-
-			for (Map.Entry<String, Object> entry : context.entrySet()) {
-				Object value = entry.getValue();
-				if (value instanceof Promise) {
-					Promise<?> promise = (Promise<?>) value;
-					if (promise.isResult()) {
-						entry.setValue(promise.getResult());
-					} else {
-						promisesToWait.add(promise.whenResult(entry::setValue));
-					}
-				}
-			}
-			return Promises.all(promisesToWait)
-					.map($ -> {
-						mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
-						return HttpResponse.ofCode(code)
-								.withBody(writer.getBuf())
-								.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
-					});
-		}
-
-		public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {
-			return render(200, templateName, scope);
-		}
-
-		public Promise<HttpResponse> render(String templateName) {
-			return render(200, templateName, emptyMap());
-		}
-	}
-
-	public static HttpResponse redirect(HttpRequest request, @NotNull String to) {
-		String referer = request.getHeader(REFERER);
-		return HttpResponse.redirect302(referer == null ? to : referer);
-	}
-
-	public static class LazyEncoder<T> implements StructuredEncoder<T> {
-
-		private StructuredEncoder<T> peer = null;
-
-		public void realize(StructuredEncoder<T> peer) {
-			this.peer = peer;
-		}
-
-		@Override
-		public void encode(StructuredOutput out, T item) {
-			peer.encode(out, item);
-		}
-	}
-
-	public static final StructuredEncoder<Tuple2<Map<String, Post>, String>> RECURSIVE_POST_ENCODER;
-
-	public static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
+	private static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
 		StructuredCodec<UserId> userIdCodec = REGISTRY.get(UserId.class);
 		StructuredCodec<Set<UserId>> userIdCodecSet = ofSet(userIdCodec);
 		out.writeKey("author", userIdCodec, post.getAuthor());
@@ -231,6 +145,7 @@ public final class Utils {
 		out.writeKey("dislikes", userIdCodecSet, post.getDislikes());
 	};
 
+	private static final StructuredEncoder<Tuple2<Map<String, Post>, String>> RECURSIVE_POST_ENCODER;
 	static {
 		LazyEncoder<Tuple2<Map<String, Post>, String>> lazyPostEncoder = new LazyEncoder<>();
 		RECURSIVE_POST_ENCODER = ofObject((out, data) -> {
@@ -251,10 +166,8 @@ public final class Utils {
 		lazyPostEncoder.realize(RECURSIVE_POST_ENCODER);
 	}
 
-	public static final StructuredEncoder<Object> EMPTY_OBJECT_ENCODER = StructuredEncoder.ofObject();
-
+	private static final StructuredEncoder<Object> EMPTY_OBJECT_ENCODER = StructuredEncoder.ofObject();
 	public static final StructuredEncoder<Map<String, Post>> POSTS_ENCODER_ROOT = postsEncoder("root");
-
 	public static final StructuredEncoder<Post> POST_ENCODER = StructuredEncoder.ofObject(POST_SIMPLE_ENCODER);
 
 	public static StructuredEncoder<Map<String, Post>> postsEncoder(String startingId) {

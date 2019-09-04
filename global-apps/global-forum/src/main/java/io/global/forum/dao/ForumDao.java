@@ -2,6 +2,7 @@ package io.global.forum.dao;
 
 import io.datakernel.async.Promise;
 import io.datakernel.http.session.SessionStore;
+import io.global.common.KeyPair;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.pojo.*;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +13,14 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ForumDao {
+
+	KeyPair getKeys();
+
+	SessionStore<UserId> getSessionStore();
+
+	@Nullable
+	ThreadDao getThreadDao(String id);
+
 	Promise<ForumMetadata> getForumMetadata();
 
 	Promise<Void> setForumMetadata(ForumMetadata metadata);
@@ -37,10 +46,4 @@ public interface ForumDao {
 	Promise<Map<String, ThreadMetadata>> getThreads();
 
 	Promise<Void> removeThread(String id);
-
-	@Nullable
-	ThreadDao getThreadDao(String id);
-
-	SessionStore<UserId> getSessionStore();
-
 }

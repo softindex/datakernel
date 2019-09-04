@@ -11,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.Set;
 
-public interface AppStoreApi {
+public interface AppStore {
 	Promise<Profile> exchangeAuthToken(String authToken);
 
 	Promise<@Nullable User> findUserByPublicKey(PubKey pubKey);

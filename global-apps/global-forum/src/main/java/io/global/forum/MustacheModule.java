@@ -7,17 +7,22 @@ import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.global.forum.Utils.MustacheTemplater;
+import io.global.forum.util.MustacheTemplater;
 
-import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.config.ConfigConverters.ofPath;
+
 public final class MustacheModule extends AbstractModule {
+	public static final Path DEFAULT_TEMPLATE_PATH = Paths.get("static/templates");
 
 	@Provides
 	MustacheFactory mustacheFactory(Config config) {
-		return new DefaultMustacheFactory(new File(config.get("static.templates")));
+		Path templatesDir = config.get(ofPath(), "static.templates", DEFAULT_TEMPLATE_PATH);
+		return new DefaultMustacheFactory(templatesDir.toFile());
 	}
 
 	@Export

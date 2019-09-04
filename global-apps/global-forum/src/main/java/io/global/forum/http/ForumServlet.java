@@ -19,7 +19,7 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.http.HttpMethod.*;
-import static io.global.forum.Utils.REGISTRY;
+import static io.global.forum.util.Utils.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class ForumServlet {

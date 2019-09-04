@@ -110,7 +110,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	@NotNull
-	public static HttpResponse file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader) throws HttpException {
+	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader) {
 		HttpResponse response = rangeHeader == null ? HttpResponse.ok200() : HttpResponse.ok206();
 
 		String localName = name.substring(name.lastIndexOf('/') + 1);
@@ -126,11 +126,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		long contentLength, offset;
 		if (rangeHeader != null) {
 			if (!rangeHeader.startsWith("bytes=")) {
-				throw HttpException.ofCode(416, "Invalid range header (not in bytes)");
+				return Promise.ofException(HttpException.ofCode(416, "Invalid range header (not in bytes)"));
 			}
 			rangeHeader = rangeHeader.substring(6);
 			if (!rangeHeader.matches("(\\d+)?-(\\d+)?")) {
-				throw HttpException.ofCode(416, "Only single part ranges are allowed");
+				return Promise.ofException(HttpException.ofCode(416, "Only single part ranges are allowed"));
 			}
 			String[] parts = rangeHeader.split("-", 2);
 			long endOffset;
@@ -144,13 +144,13 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				}
 			} else {
 				if (parts[1].isEmpty()) {
-					throw HttpException.ofCode(416, "Invalid range");
+					return Promise.ofException(HttpException.ofCode(416, "Invalid range"));
 				}
 				offset = size - Long.parseLong(parts[1]);
 				endOffset = size;
 			}
 			if (endOffset != -1 && offset > endOffset) {
-				throw HttpException.ofCode(416, "Invalid range");
+				return Promise.ofException(HttpException.ofCode(416, "Invalid range"));
 			}
 			contentLength = endOffset - offset + 1;
 			response.addHeader(CONTENT_RANGE, "bytes " + offset + "-" + endOffset + "/" + size);
@@ -160,11 +160,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 		}
 		response.addHeader(CONTENT_LENGTH, Long.toString(contentLength));
 		response.setBodyStream(ChannelSupplier.ofPromise(downloader.getFileSlice(offset, contentLength)));
-		return response;
+		return Promise.of(response);
 	}
 
 	@NotNull
-	public static HttpResponse file(FileSliceSupplier downloader, String name, long size) throws HttpException {
+	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size) {
 		return file(downloader, name, size, null);
 	}
 	// endregion

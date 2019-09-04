@@ -20,8 +20,8 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.Utils.nullToEmpty;
-import static io.global.forum.Utils.*;
 import static io.global.forum.dao.ThreadDao.POST_NOT_FOUND;
+import static io.global.forum.util.Utils.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class ThreadServlet {
@@ -148,19 +148,14 @@ public final class ThreadServlet {
 
 							return threadDao.getAttachment(postId, globalFsId)
 									.then(attachment -> threadDao.attachmentSize(globalFsId)
-											.then(size -> {
-												try {
-													return Promise.of(HttpResponse.file(
+											.then(size ->
+													HttpResponse.file(
 															(offset, limit) ->
 																	threadDao.loadAttachment(globalFsId, offset, limit),
 															attachment.getFilename(),
 															size,
 															request.getHeader(HttpHeaders.RANGE)
-													));
-												} catch (HttpException e) {
-													return Promise.<HttpResponse>ofException(e);
-												}
-											}));
+													)));
 						})
 						.then(servlet -> request -> {
 							try {

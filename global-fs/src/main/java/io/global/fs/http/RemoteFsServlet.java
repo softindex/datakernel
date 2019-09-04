@@ -74,20 +74,14 @@ public final class RemoteFsServlet implements AsyncServlet {
 					String name = request.getRelativePath();
 					return client.getMetadata(name)
 							.then(meta -> {
-								if (meta != null) {
-									try {
-										return Promise.of(HttpResponse.file(
-												(offset, limit) -> client.download(name, offset, limit),
-												name,
-												meta.getSize(),
-												request.getHeader(HttpHeaders.RANGE))
-										);
-									} catch (HttpException e) {
-										return Promise.<HttpResponse>ofException(e);
-									}
-								} else {
+								if (meta == null) {
 									return Promise.<HttpResponse>ofException(FILE_NOT_FOUND);
 								}
+								return HttpResponse.file(
+										(offset, limit) -> client.download(name, offset, limit),
+										name,
+										meta.getSize(),
+										request.getHeader(HttpHeaders.RANGE));
 							});
 				})
 				.map(POST, "/" + DELETE + "/*", request -> {

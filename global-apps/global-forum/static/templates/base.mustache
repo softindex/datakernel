@@ -13,16 +13,26 @@
 <body>
 <div class="container">
     <nav class="navbar navbar-light bg-light my-3">
-        <a class="navbar-brand" href="/{{pubKey}}">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
+        <a class="navbar-brand" href="/{{pubKey}}/">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
 
         <ul class="navbar-nav mr-auto">
             <li class="nav-item active">
-                <a class="nav-link" href="/{{pubKey}}">Threads</a>
+                <a class="nav-link" href="/{{pubKey}}/">Threads</a>
             </li>
         </ul>
-        {{^creatingNewThread}}
-            <a class="btn btn-outline-success" href="/{{pubKey}}/new">New thread</a>
-        {{/creatingNewThread}}
+        {{^user}}
+            <a class="btn btn-outline-success"
+               href="{{appStoreUrl}}/oauth?redirectURI=http://localhost:8080/{{pubKey}}/authorize">Log In</a>
+        {{/user}}
+        {{#user}}
+            {{^creatingNewThread}}
+                <a class="btn btn-outline-success mx-2" href="/{{pubKey}}/new">New thread</a>
+            {{/creatingNewThread}}
+            <button class="btn btn-outline-success mx-2" type="submit">Hello, {{username}}</button>
+            <form action="/{{pubKey}}/logout/" method="post">
+                <button class="btn btn-outline-success" type="submit">Log Out</button>
+            </form>
+        {{/user}}
     </nav>
 </div>
 {{$content}}{{/content}}

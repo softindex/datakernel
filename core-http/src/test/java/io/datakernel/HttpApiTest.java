@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -101,7 +102,7 @@ public final class HttpApiTest {
 		requestCookies.add(cookie3);
 
 		HttpCookie cookie1 = HttpCookie.of("name2", "value2");
-		cookie1.setMaxAge(123);
+		cookie1.setMaxAge(Duration.ofSeconds(123));
 		cookie1.setExpirationDate(Instant.now());
 		cookie1.setPath("/");
 		responseCookies.add(cookie1);

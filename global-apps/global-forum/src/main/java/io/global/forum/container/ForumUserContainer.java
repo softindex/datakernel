@@ -48,7 +48,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.LogUtils.toLogger;
-import static io.global.forum.Utils.REGISTRY;
+import static io.global.forum.util.Utils.REGISTRY;
 import static java.util.Collections.emptySet;
 
 public final class ForumUserContainer implements UserContainer {

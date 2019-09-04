@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 public final class PostView {
 	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
 	private static final Comparator<Map.Entry<String, Attachment>> ATTACHMENT_COMPARATOR = Comparator.comparing(a -> a.getValue().getFilename());
+	private static final Comparator<Post> POST_COMPARATOR = Comparator.comparing(Post::getInitialTimestamp);
 
 	private final String postId;
 	private final String author;
@@ -83,7 +84,7 @@ public final class PostView {
 
 	// TODO anton: add recursion hard stop condition (like >100 child depth) and proper view/pagination
 	public static Promise<PostView> from(ForumDao forumDao, Post post) {
-		return Promises.toList(post.getChildren().stream().map(p -> from(forumDao, p)))
+		return Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(forumDao, p)))
 				.then(children -> {
 					UserId deleter = post.getDeletedBy();
 					Promise<String> username = forumDao.getUser(post.getAuthor()).map(u -> u != null ? u.getUsername() : "ghost");

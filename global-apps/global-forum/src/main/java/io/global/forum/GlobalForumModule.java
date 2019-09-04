@@ -9,17 +9,18 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
+import io.global.appstore.AppStore;
+import io.global.appstore.HttpAppStore;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.SimKey;
-import io.global.forum.Utils.MustacheTemplater;
 import io.global.forum.container.ForumRepoNames;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.dao.ThreadDao;
 import io.global.forum.http.PublicServlet;
-import io.global.forum.ot.session.UserIdSessionStore;
 import io.global.forum.pojo.*;
+import io.global.forum.util.MustacheTemplater;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
@@ -30,7 +31,6 @@ import io.global.ot.service.UserContainer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.function.BiFunction;
 
@@ -38,15 +38,13 @@ import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.datakernel.util.CollectionUtils.map;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyMap;
 
 public final class GlobalForumModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
-	public static final String SESSION_ID = "SESSION_ID";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
+	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
 	private final String forumFsDir;
 	private final ForumRepoNames forumRepoNames;
@@ -69,8 +67,7 @@ public final class GlobalForumModule extends AbstractModule {
 		return RoutingServlet.create()
 				.map("/:pubKey/*", request -> {
 					try {
-						// PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
-						PubKey pubKey = PrivKey.fromString(request.getPathParameter("pubKey")).computePubKey(); // TODO anton: this is debug-only of course
+						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
 
 						ForumUserContainer container = containerManager.getUserContainer(pubKey);
 						if (container == null) {
@@ -127,68 +124,31 @@ public final class GlobalForumModule extends AbstractModule {
 						return Promise.of(HttpResponse.notFound404());
 					}
 				})
-				.map(GET, "/", request -> Promise.of(HttpResponse.redirect302("1")))
-				.then(sessionDecorator()); // TODO anton: this is debug-only too
-	}
-
-	AsyncServletDecorator sessionDecorator() {
-		return servlet ->
-				request -> {
-					String sessionId = request.getCookie(SESSION_ID);
-					if (sessionId == null) {
-						return servlet.serve(request);
+				.map(GET, "/", request -> {
+					try {
+						return Promise.of(HttpResponse.redirect302(PrivKey.fromString("1").computePubKey().asString() + "/"));
+					} catch (ParseException e) {
+						throw new AssertionError();
 					}
-					ForumUserContainer container = request.getAttachment(ForumUserContainer.class);
-					String pubKeyString = container.getKeys().getPubKey().asString();
-					UserIdSessionStore sessionStore = container.getSessionStore();
-					return sessionStore.get(sessionId)
-							.then(userId -> {
-								if (userId != null) {
-									request.attach(userId);
-								}
-								return servlet.serve(request)
-										.map(response -> {
-											int maxAge = userId == null ? 0 : (int) sessionStore.getSessionLifetime().getSeconds();
-											return response
-													.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-															.withMaxAge(maxAge)
-															.withPath("/" + pubKeyString));
-										});
-							});
-				};
+				}); // TODO anton: this is debug-only
 	}
 
 	@Provides
 	@Named("Forum")
-	AsyncServlet forumServlet(MustacheTemplater templater, StaticLoader staticLoader) {
+	AsyncServlet forumServlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader) {
+		String appStoreUrl = config.get("appStoreUrl", "");
 		return RoutingServlet.create()
-				.map("/*", PublicServlet.create(templater))
-				.map("/static/*", StaticServlet.create(staticLoader))
-				.then(servlet ->
-						request -> {
-							Map<String, Object> mustacheContext = templater.getStaticContext();
-
-							mustacheContext.put("pubKey", request.getPathParameter("pubKey"));
-
-							mustacheContext.put("forum", request.getAttachment(ForumDao.class).getForumMetadata());
-
+				.map("/*", PublicServlet.create(appStore, templater)
+						.then(servlet -> request -> {
+							templater.put("appStoreUrl", appStoreUrl);
 							return servlet.serve(request);
-						})
-				.then(servlet ->
-						request -> servlet.serve(request)
-								.thenEx((response, e) -> {
-									if (e instanceof HttpException && ((HttpException) e).getCode() == 404) {
-										return templater.render(404, "404", map("message", e.getMessage()));
-									}
-									if (e != null) {
-										return Promise.<HttpResponse>ofException(e);
-									}
-									if (response.getCode() != 404) {
-										return Promise.of(response);
-									}
-									String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
-									return templater.render(404, "404", map("message", message.isEmpty() ? null : message));
-								}));
+						}))
+				.map("/static/*", StaticServlet.create(staticLoader));
+	}
+
+	@Provides
+	AppStore appStore(Config config, Eventloop eventloop) {
+		return HttpAppStore.create(config.get("appStoreUrl"), AsyncHttpClient.create(eventloop));
 	}
 
 	@Provides
@@ -199,7 +159,8 @@ public final class GlobalForumModule extends AbstractModule {
 
 	@Provides
 	StaticLoader staticLoader(ExecutorService executor, Config config) {
-		return StaticLoader.ofPath(executor, Paths.get(config.get("static.files")));
+		Path staticPath = config.get(ofPath(), "static.files", DEFAULT_STATIC_PATH);
+		return StaticLoader.ofPath(executor, staticPath);
 	}
 
 	@Provides

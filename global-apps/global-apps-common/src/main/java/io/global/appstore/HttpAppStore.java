@@ -19,17 +19,17 @@ import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.global.Utils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class HttpAppStoreApi implements AppStoreApi {
+public final class HttpAppStore implements AppStore {
 	private final String appStoreUrl;
 	private final IAsyncHttpClient httpClient;
 
-	private HttpAppStoreApi(String appStoreUrl, IAsyncHttpClient httpClient) {
+	private HttpAppStore(String appStoreUrl, IAsyncHttpClient httpClient) {
 		this.appStoreUrl = appStoreUrl;
 		this.httpClient = httpClient;
 	}
 
-	public static HttpAppStoreApi create(String appStoreUrl, IAsyncHttpClient httpClient) {
-		return new HttpAppStoreApi(appStoreUrl, httpClient);
+	public static HttpAppStore create(String appStoreUrl, IAsyncHttpClient httpClient) {
+		return new HttpAppStore(appStoreUrl, httpClient);
 	}
 
 	@Override
