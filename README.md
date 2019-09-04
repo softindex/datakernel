@@ -16,8 +16,8 @@ DataKernel is a full-featured alternative Java framework, created from ground up
 ## Features
 
 - 💕 Fully **asynchronous** modular framework
-- 🧩 Exceptionally fast, powerful and simple **Dependency Injection**
-- ⏱ Magnificently **fast build** and **start-up times** of your applications with **extremely small** JAR sizes
+- 🧩 Exceptionally fast, powerful, and simple **Dependency Injection**
+- ⏱ Magnificently **fast build** and **start-up times** for your applications with **extremely small** JAR sizes
 - 🚀 A wide selection of application launchers and **embedded servers**
 - ⚙️ **Elegant** data structures and components with outstanding **performance**
 - 🌎 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
@@ -40,7 +40,7 @@ mvn archetype:generate \
 
 ... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 
 
-To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
+To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow our 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
 
 ## Examples
 
@@ -63,7 +63,7 @@ public final class HelloWorldExample {
 
 📌 *The JAR file size of this example is only 723KB*
 
-📌 *`AsyncHttpServer` handles ~170K requests per second on single core*
+📌 *`AsyncHttpServer` handles ~170K requests per second on a single core*
 
 ### Even simpler asynchronous HTTP server:
 ```java
@@ -79,7 +79,7 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
     }
 }
 ```
-`HttpServerLauncher` - a predefined DataKernel [Launcher](https://datakernel.io/docs/core/launcher.html), which takes care of application lifecycle and provides needed components for our server
+`HttpServerLauncher` - a predefined DataKernel [Launcher](https://datakernel.io/docs/core/launcher.html) which takes care of the application lifecycle and provides needed components for our server
 
 `@Provides` - one of the [DataKernel DI](https://datakernel.io/docs/core/di.html) annotations
 
@@ -89,7 +89,7 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 
 📌 *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
 
-📌 *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 2.5 times faster than Guice and 100s times faster than Spring.*
+📌 *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 5.5 times faster than Guice and 100s times faster than Spring.*
 
 📌 *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
 
@@ -105,7 +105,7 @@ public RpcServer rpcServer(Eventloop eventloop, Config config) {
 }
 ...
 ```
-📌 *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on single core*.
+📌 *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on a single core*.
 
 ## Documentation
 See the docs, examples and tutorials on [our website](https://datakernel.io).
