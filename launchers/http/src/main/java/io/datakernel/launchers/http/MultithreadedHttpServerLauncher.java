@@ -6,6 +6,7 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -16,13 +17,12 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
-import io.datakernel.worker.WorkerPool;
-import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.*;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
@@ -91,10 +91,13 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
+				WorkerPoolModule.create(),
 				JmxModule.create()
 						.initialize(ofGlobalEventloopStats()),
-				ConfigModule.create().printEffectiveConfig(),
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				getBusinessLogicModule()
 		);
 	}

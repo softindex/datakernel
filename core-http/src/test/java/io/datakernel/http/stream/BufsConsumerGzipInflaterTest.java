@@ -16,7 +16,7 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
@@ -226,7 +226,7 @@ public final class BufsConsumerGzipInflaterTest {
 
 	private void doTest(@Nullable Exception expectedException) {
 		gunzip.getInput().set(ChannelSupplier.ofIterable(list));
-		MaterializedPromise<Void> processResult = gunzip.getProcessCompletion();
+		Promise<Void> processResult = gunzip.getProcessCompletion();
 		if (expectedException == null) {
 			await(processResult);
 		} else {

@@ -16,19 +16,10 @@
 
 package io.datakernel.async;
 
-import io.datakernel.exception.StacklessException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.functional.Try;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Represents a {@link Promise} which can be completed or completedExceptionally
@@ -39,27 +30,29 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
  *
  * @param <T> result type
  */
-public final class SettablePromise<T> extends AbstractPromise<T> implements MaterializedPromise<T>, SettableCallback<T> {
-	private static final Throwable PROMISE_NOT_SET = new StacklessException(SettablePromise.class, "Promise has not been completed yet");
-
-	private T result;
-
-	@Nullable
-	private Throwable exception = PROMISE_NOT_SET;
-
+public final class SettablePromise<T> extends AbstractPromise<T> implements Callback<T> {
+	/**
+	 * Accepts the provided values and performs this operation
+	 * on them. If the {@code Throwable e} is {@code null},
+	 * provided {@code result} will be set to this
+	 * {@code SettablePromise}.
+	 * <p>
+	 * Otherwise, {@code Throwable e} will be set.
+	 *
+	 * @param result a value to be set to this
+	 * 				{@code SettablePromise} if
+	 * 			    {@code e} is {@code null}
+	 * @param e 	a {@code Throwable}, which will
+	 *          	be set to this {@code SettablePromise}
+	 *          	if not {@code null}
+	 */
 	@Override
-	public boolean isComplete() {
-		return exception != PROMISE_NOT_SET;
-	}
-
-	@Override
-	public boolean isResult() {
-		return exception == null;
-	}
-
-	@Override
-	public boolean isException() {
-		return exception != null && exception != PROMISE_NOT_SET;
+	public void accept(T result, @Nullable Throwable e) {
+		if (e == null) {
+			set(result);
+		} else {
+			setException(e);
+		}
 	}
 
 	/**
@@ -67,11 +60,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 * completes it. {@code AssertionError} is thrown when you
 	 * try to set result for an already completed {@code Promise}.
 	 */
-	@Override
 	public void set(T result) {
-		assert !isComplete();
-		this.result = result;
-		this.exception = null;
 		complete(result);
 	}
 
@@ -82,217 +71,68 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Mate
 	 *
 	 * @param e exception
 	 */
-	@Override
 	public void setException(@NotNull Throwable e) {
-		assert !isComplete();
-		exception = e;
 		completeExceptionally(e);
 	}
 
-	@Override
-	protected void subscribe(@NotNull Callback<? super T> next) {
-		assert !isComplete();
-		super.subscribe(next);
-	}
-
-	@Override
-	public T getResult() {
-		if (isResult()) {
-			return result;
+	/**
+	 * Tries to set provided {@code result} for this
+	 * {@code SettablePromise} if it is not completed yet.
+	 * Otherwise does nothing.
+	 */
+	public void trySet(T result) {
+		if (!isComplete()) {
+			set(result);
 		}
-		throw new IllegalStateException("Promise has no result");
 	}
 
-	@NotNull
-	@Override
-	public Throwable getException() {
-		if (isException()) {
-			return exception;
+	/**
+	 * Tries to set provided {@code e} exception for this
+	 * {@code SettablePromise} if it is not completed yet.
+	 * Otherwise does nothing.
+	 */
+	public void trySetException(@NotNull Throwable e) {
+		if (!isComplete()) {
+			setException(e);
 		}
-		throw new IllegalStateException("Promise has no exception");
 	}
 
-	@Override
-	public @NotNull Try<T> getTry() {
-		if (isResult()) return Try.of(result);
-		if (isException()) {
-			return Try.ofException(exception);
-		}
-		throw new IllegalStateException("Promise was not completed");
-	}
-
-	@NotNull
-	@Override
-	public <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull P promise) {
-		if (isComplete()) {
-			promise.accept(result, exception);
-			return promise;
-		}
-		return super.next(promise);
-	}
-
-	@NotNull
-	@SuppressWarnings("unchecked")
-	@Override
-	public <U> Promise<U> map(@NotNull Function<? super T, ? extends U> fn) {
-		if (isComplete()) {
-			try {
-				return isResult() ? Promise.of(fn.apply(result)) : (Promise<U>) this;
-			} catch (UncheckedException u) {
-				return Promise.ofException(u.getCause());
+	/**
+	 * Tries to set result or exception for this {@code SettablePromise}
+	 * if it not completed yet. Otherwise does nothing.
+	 */
+	public void trySet(T result, @Nullable Throwable e) {
+		if (!isComplete()) {
+			if (e == null) {
+				trySet(result);
+			} else {
+				trySetException(e);
 			}
 		}
-		return super.map(fn);
 	}
 
-	@NotNull
-	@Override
-	public <U> Promise<U> mapEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
-		if (isComplete()) {
-			try {
-				return Promise.of(fn.apply(result, exception));
-			} catch (UncheckedException u) {
-				return Promise.ofException(u.getCause());
-			}
-		}
-		return super.mapEx(fn);
+	public void post(T result) {
+		getCurrentEventloop().post(() -> set(result));
 	}
 
-	@NotNull
-	@SuppressWarnings("unchecked")
-	@Override
-	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
-		if (isComplete()) {
-			try {
-				return isResult() ? (Promise<U>) fn.apply(result) : (Promise<U>) this;
-			} catch (UncheckedException u) {
-				return Promise.ofException(u.getCause());
-			}
-		}
-		return super.then(fn);
+	public void postException(@NotNull Throwable e) {
+		getCurrentEventloop().post(() -> setException(e));
 	}
 
-	@SuppressWarnings("unchecked")
-	@NotNull
-	@Override
-	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
-		if (isComplete()) {
-			try {
-				return (Promise<U>) fn.apply(result, exception);
-			} catch (UncheckedException u) {
-				return Promise.ofException(u.getCause());
-			}
-		}
-		return super.thenEx(fn);
+	public void post(T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> accept(result, e));
 	}
 
-	@NotNull
-	@Override
-	public Promise<T> whenComplete(@NotNull Callback<? super T> action) {
-		if (isComplete()) {
-			action.accept(result, exception);
-			return this;
-		}
-		return super.whenComplete(action);
+	public void tryPost(T result) {
+		getCurrentEventloop().post(() -> trySet(result));
 	}
 
-	@NotNull
-	@Override
-	public Promise<T> whenComplete(@NotNull Runnable action) {
-		if (isComplete()) {
-			action.run();
-			return this;
-		}
-		return super.whenComplete(action);
+	public void tryPostException(@NotNull Throwable e) {
+		getCurrentEventloop().post(() -> trySetException(e));
 	}
 
-	@NotNull
-	@Override
-	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
-		if (isComplete()) {
-			if (isResult()) action.accept(result);
-			return this;
-		}
-		return super.whenResult(action);
-	}
-
-	@Override
-	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
-		if (isComplete()) {
-			if (isException()) {
-				action.accept(exception);
-			}
-			return this;
-		}
-		return super.whenException(action);
-	}
-
-	@NotNull
-	@Override
-	public MaterializedPromise<T> async() {
-		if (isComplete()) {
-			SettablePromise<T> promise = new SettablePromise<>();
-			getCurrentEventloop().post(exception == null ?
-					() -> promise.set(result) :
-					() -> promise.setException(exception));
-			return promise;
-		}
-		return this;
-	}
-
-	@NotNull
-	@Override
-	public Promise<Try<T>> toTry() {
-		if (isComplete()) {
-			return Promise.of(Try.of(result, exception));
-		}
-		return super.toTry();
-	}
-
-	@NotNull
-	@SuppressWarnings("unchecked")
-	@Override
-	public Promise<Void> toVoid() {
-		if (isComplete()) {
-			return isResult() ? Promise.complete() : (Promise<Void>) this;
-		}
-		return super.toVoid();
-	}
-
-	@NotNull
-	@Override
-	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (isComplete()) {
-			return Promise.of(result, exception).combine(other, fn);
-		}
-		return super.combine(other, fn);
-	}
-
-	@NotNull
-	@Override
-	public Promise<Void> both(@NotNull Promise<?> other) {
-		if (isComplete()) {
-			return Promise.of(result, exception).both(other);
-		}
-		return super.both(other);
-	}
-
-	@NotNull
-	@Override
-	public Promise<T> either(@NotNull Promise<? extends T> other) {
-		if (isComplete()) {
-			return Promise.of(result, exception).either(other);
-		}
-		return super.either(other);
-	}
-
-	@NotNull
-	@Override
-	public CompletableFuture<T> toCompletableFuture() {
-		if (isComplete()) {
-			return isResult() ? completedFuture(result) : Promise.<T>ofException(exception).toCompletableFuture();
-		}
-		return super.toCompletableFuture();
+	public void tryPost(T result, @Nullable Throwable e) {
+		getCurrentEventloop().post(() -> trySet(result, e));
 	}
 
 	@Override

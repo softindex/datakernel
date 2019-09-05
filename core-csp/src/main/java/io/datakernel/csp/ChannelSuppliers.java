@@ -16,7 +16,10 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.*;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.queue.ChannelBuffer;
@@ -150,12 +153,12 @@ public final class ChannelSuppliers {
 
 	private static <T, A, R> void toCollectorImpl(ChannelSupplier<T> supplier,
 			A accumulatedValue, BiConsumer<A, T> accumulator, Function<A, R> finisher,
-			SettableCallback<R> cb) {
+			SettablePromise<R> cb) {
 		Promise<T> promise;
 		while (true) {
 			promise = supplier.get();
 			if (!promise.isResult()) break;
-			T item = promise.materialize().getResult();
+			T item = promise.getResult();
 			if (item != null) {
 				try {
 					accumulator.accept(accumulatedValue, item);
@@ -196,7 +199,7 @@ public final class ChannelSuppliers {
 				.then(t -> streamTo(t.getValue1(), t.getValue2()));
 	}
 
-	public static <T> MaterializedPromise<Void> streamTo(Try<ChannelSupplier<T>> supplier, Try<ChannelConsumer<T>> consumer) {
+	public static <T> Promise<Void> streamTo(Try<ChannelSupplier<T>> supplier, Try<ChannelConsumer<T>> consumer) {
 		if (supplier.isSuccess() && consumer.isSuccess()) {
 			return streamTo(supplier.get(), consumer.get());
 		}
@@ -220,17 +223,17 @@ public final class ChannelSuppliers {
 	 * @return a promise of {@code null} as a marker of completion of stream,
 	 * or promise of exception, if there was an exception while streaming
 	 */
-	public static <T> MaterializedPromise<Void> streamTo(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer) {
+	public static <T> Promise<Void> streamTo(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer) {
 		return Promise.ofCallback(cb ->
 				streamToImpl(supplier, consumer, cb));
 	}
 
-	private static <T> void streamToImpl(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer, SettableCallback<Void> cb) {
+	private static <T> void streamToImpl(ChannelSupplier<T> supplier, ChannelConsumer<T> consumer, SettablePromise<Void> cb) {
 		Promise<T> supplierPromise;
 		while (true) {
 			supplierPromise = supplier.get();
 			if (!supplierPromise.isResult()) break;
-			T item = supplierPromise.materialize().getResult();
+			T item = supplierPromise.getResult();
 			if (item == null) break;
 			Promise<Void> consumerPromise = consumer.accept(item);
 			if (consumerPromise.isResult()) continue;
@@ -294,7 +297,7 @@ public final class ChannelSuppliers {
 				return Promise.ofCallback(this::next);
 			}
 
-			private void next(SettableCallback<V> cb) {
+			private void next(SettablePromise<V> cb) {
 				if (!endOfStream) {
 					supplier.get()
 							.whenComplete((item, e) -> {

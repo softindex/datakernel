@@ -1,6 +1,6 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.stream.TestStreamSuppliers.Decorator.Context;
 
@@ -31,7 +31,7 @@ public class TestStreamSuppliers {
 			}
 
 			@Override
-			public MaterializedPromise<Void> getEndOfStream() {
+			public Promise<Void> getEndOfStream() {
 				return endOfStream;
 			}
 		};

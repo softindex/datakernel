@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
@@ -249,8 +248,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private final SettablePromise<@Nullable Void> closeNotification = new SettablePromise<>();
 
-	@Nullable
-	private SettableCallback<Void> closeCallback;
+	private SettablePromise<Void> closeCallback;
 
 	void onConnectionClosed() {
 		if (getConnectionsCount() == 0 && closeCallback != null) {
@@ -260,7 +258,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	@Override
-	protected void onClose(SettableCallback<@Nullable Void> cb) {
+	protected void onClose(SettablePromise<@Nullable Void> cb) {
 		closeNotification.set(null);
 		poolKeepAlive.closeAllConnections();
 		keepAliveTimeoutMillis = 0;

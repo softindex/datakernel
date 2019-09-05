@@ -1,6 +1,6 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.TestStreamConsumers.Decorator.Context;
@@ -54,7 +54,7 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public MaterializedPromise<Void> getAcknowledgement() {
+			public Promise<Void> getAcknowledgement() {
 				return acknowledgement;
 			}
 

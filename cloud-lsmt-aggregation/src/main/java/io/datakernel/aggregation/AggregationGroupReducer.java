@@ -19,7 +19,6 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.AbstractStreamConsumer;
@@ -69,7 +68,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		this.classLoader = checkNotNull(classLoader, "Cannot create AggregationGroupReducer with ClassLoader that is null");
 	}
 
-	public MaterializedPromise<List<AggregationChunk>> getResult() {
+	public Promise<List<AggregationChunk>> getResult() {
 		return chunksCollector.get();
 	}
 

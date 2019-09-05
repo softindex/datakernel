@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
@@ -174,6 +175,7 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		multibind(new Key<Set<Initializer<JmxModule>>>() {}, Multibinder.toSet());
 	}
 
+	@Export
 	@ProvidesIntoSet
 	LauncherService start(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
 		return new LauncherService() {

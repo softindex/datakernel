@@ -1,9 +1,9 @@
 package io.datakernel.di.annotation;
 
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
+import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
@@ -13,9 +13,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * <p>
  * If you have only few distinct <i>groups</i> of objects with the same type, consider making your own {@link NameAnnotation name annotations}.
  */
-@Retention(RUNTIME)
-@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
 @NameAnnotation
+@Target({FIELD, PARAMETER, METHOD})
+@Retention(RUNTIME)
 public @interface Named {
 	String value();
 }

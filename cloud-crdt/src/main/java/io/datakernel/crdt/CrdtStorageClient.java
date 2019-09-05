@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
@@ -44,9 +43,9 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.function.Function;
 
+import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.crdt.CrdtMessaging.CrdtMessages.PING;
 import static io.datakernel.crdt.CrdtMessaging.CrdtResponses.*;
-import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 
 public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
@@ -172,13 +171,13 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

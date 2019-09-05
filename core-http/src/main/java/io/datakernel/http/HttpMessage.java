@@ -69,7 +69,7 @@ public abstract class HttpMessage {
 	Recyclable bufs;
 
 	protected int maxBodySize;
-	protected Map<Type, Object> attachments;
+	protected Map<Object, Object> attachments;
 
 	protected HttpMessage() {
 	}
@@ -238,6 +238,7 @@ public abstract class HttpMessage {
 	/**
 	 * Consumes the body stream if this message works in {@link #MUST_LOAD_BODY streaming mode} and collects
 	 * it to a single {@link ByteBuf} or just returns the body if message is not in streaming mode.
+	 *
 	 * @param maxBodySize max number of bytes to load from the stream, an exception is returned if exceeded.
 	 */
 	public Promise<ByteBuf> loadBody(int maxBodySize) {
@@ -271,7 +272,7 @@ public abstract class HttpMessage {
 	}
 
 	/**
-	 * Attaches an arbitrary object to this message.
+	 * Attaches an arbitrary object to this message by its type.
 	 * This is used for context management.
 	 * For example some {@link io.datakernel.http.session.SessionServlet wrapper auth servlet} could
 	 * add some kind of session data here.
@@ -304,6 +305,17 @@ public abstract class HttpMessage {
 	}
 
 	/**
+	 * Attaches an arbitrary object to this message by string key.
+	 * This is used for context management.
+	 */
+	public <T> void attach(String key, T extra) {
+		if (attachments == null) {
+			attachments = new HashMap<>();
+		}
+		attachments.put(key, extra);
+	}
+
+	/**
 	 * @see #attach(Type, Object)
 	 */
 	@SuppressWarnings("unchecked")
@@ -325,6 +337,25 @@ public abstract class HttpMessage {
 		}
 		Object res = attachments.get(type);
 		return (T) res;
+	}
+
+	/**
+	 * @see #attach(String, Object)
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> T getAttachment(String key) {
+		if (attachments == null) {
+			return null;
+		}
+		Object res = attachments.get(key);
+		return (T) res;
+	}
+
+	/**
+	 * Retrieves a set of all attachment keys for this HttpMessage
+	 */
+	public Set<Object> getAttachmentKeys() {
+		return attachments.keySet();
 	}
 
 	/**

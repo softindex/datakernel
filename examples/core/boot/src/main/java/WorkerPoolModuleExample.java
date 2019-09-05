@@ -17,7 +17,7 @@ public final class WorkerPoolModuleExample extends AbstractModule {
 	}
 
 	public static void main(String[] args) {
-		Injector injector = Injector.of(new WorkerPoolModule(), new WorkerPoolModuleExample());
+		Injector injector = Injector.of(WorkerPoolModule.create(), new WorkerPoolModuleExample());
 		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
 		WorkerPool.Instances<String> strings = workerPool.getInstances(String.class);
 		strings.forEach(System.out::println);

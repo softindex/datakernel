@@ -71,14 +71,18 @@ public final class Utils {
 		return map.entrySet().stream().collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())));
 	}
 
-	public static <K, V> Map<K, Set<V>> transformMultimapValues(Map<K, Set<V>> multimap, BiFunction<K, V, V> fn) {
+	public static <K, V, V1> Map<K, Set<V1>> transformMultimapValues(Map<K, Set<V>> multimap, BiFunction<? super K, ? super V, ? extends V1> fn) {
+		return transformMultimap(multimap, Function.identity(), fn);
+	}
+
+	public static <K, V, K1, V1> Map<K1, Set<V1>> transformMultimap(Map<K, Set<V>> multimap, Function<? super K, ? extends K1> fnKey, BiFunction<? super K, ? super V, ? extends V1> fnValue) {
 		return multimap.entrySet()
 				.stream()
 				.collect(toMap(
-						Entry::getKey,
+						entry -> fnKey.apply(entry.getKey()),
 						entry -> entry.getValue()
 								.stream()
-								.map(binding -> fn.apply(entry.getKey(), binding))
+								.map(v -> fnValue.apply(entry.getKey(), v))
 								.collect(toSet())));
 	}
 
@@ -87,15 +91,15 @@ public final class Utils {
 				.collect(toMap(Entry::getKey, e -> squasher.apply(e.getKey(), e.getValue())));
 	}
 
-	public static void checkArgument(boolean condition) {
-		if (!condition) {
-			throw new IllegalArgumentException();
-		}
-	}
-
 	public static void checkArgument(boolean condition, String message) {
 		if (!condition) {
 			throw new IllegalArgumentException(message);
+		}
+	}
+
+	public static void checkState(boolean condition, String message) {
+		if (!condition) {
+			throw new IllegalStateException(message);
 		}
 	}
 

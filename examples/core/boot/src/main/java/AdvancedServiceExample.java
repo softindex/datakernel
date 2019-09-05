@@ -1,4 +1,3 @@
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -16,6 +15,7 @@ import java.util.concurrent.Executors;
 
 
 @SuppressWarnings("unused")
+//[START EXAMPLE]
 public class AdvancedServiceExample extends Launcher {
 	@Inject DBService dbService;
 	@Inject AuthService authService;
@@ -48,7 +48,7 @@ public class AdvancedServiceExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.defaultInstance();
+		return ServiceGraphModule.create();
 	}
 
 	@SuppressWarnings("FieldCanBeLocal")
@@ -69,18 +69,16 @@ public class AdvancedServiceExample extends Launcher {
 		}
 
 		@Override
-		public @NotNull MaterializedPromise<?> start() {
+		public @NotNull Promise<?> start() {
 			System.out.println("AuthService starting");
 			return Promise.ofBlockingRunnable(executor,
-					() -> System.out.println("AuthService started"))
-					.materialize();
+						() -> System.out.println("AuthService started"));
 		}
 
 		@Override
-		public @NotNull MaterializedPromise<?> stop() {
+		public @NotNull Promise<?> stop() {
 			return Promise.ofBlockingRunnable(executor,
-					() -> System.out.println("AuthService stopped"))
-					.materialize();
+						() -> System.out.println("AuthService stopped"));
 		}
 	}
 
@@ -153,3 +151,4 @@ public class AdvancedServiceExample extends Launcher {
 		example.launch(args);
 	}
 }
+//[END EXAMPLE]

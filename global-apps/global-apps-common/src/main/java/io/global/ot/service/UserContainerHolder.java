@@ -1,6 +1,5 @@
 package io.global.ot.service;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
@@ -32,7 +31,7 @@ public final class UserContainerHolder<D> implements EventloopService {
 	private final GlobalPmDriver<CreateSharedRepo> pmDriver;
 	private final String indexRepoName;
 	private final String sharedRepoPrefix;
-	private final Map<PubKey, MaterializedPromise<UserContainer<D>>> containers = new HashMap<>();
+	private final Map<PubKey, Promise<UserContainer<D>>> containers = new HashMap<>();
 
 	private UserContainerHolder(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem, StructuredCodec<D> diffCodec,
 			GlobalPmDriver<CreateSharedRepo> pmDriver, String indexRepoName, String sharedRepoPrefix) {
@@ -54,9 +53,8 @@ public final class UserContainerHolder<D> implements EventloopService {
 		PubKey pubKey = privKey.computePubKey();
 		if (!containers.containsKey(pubKey)) {
 			UserContainer<D> container = getUserContainer(privKey);
-			MaterializedPromise<UserContainer<D>> containerPromise = container.start()
-					.map($ -> container)
-					.materialize();
+			Promise<UserContainer<D>> containerPromise = container.start()
+					.map($ -> container);
 			containers.put(pubKey, containerPromise);
 			containerPromise
 					.whenException(e -> containers.remove(pubKey));
@@ -80,15 +78,14 @@ public final class UserContainerHolder<D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promises.all(containers.values().stream()
-				.map(containerPromise -> containerPromise.getResult().stop()))
-				.materialize();
+				.map(containerPromise -> containerPromise.getResult().stop()));
 	}
 }

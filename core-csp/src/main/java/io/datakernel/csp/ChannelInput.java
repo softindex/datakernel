@@ -16,7 +16,6 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
@@ -28,14 +27,14 @@ import java.util.function.Predicate;
 
 @FunctionalInterface
 public interface ChannelInput<T> {
-	MaterializedPromise<Void> set(ChannelSupplier<T> input);
+	Promise<Void> set(ChannelSupplier<T> input);
 
 	default ChannelConsumer<T> getConsumer() {
 		return getConsumer(new ChannelZeroBuffer<>());
 	}
 
 	default ChannelConsumer<T> getConsumer(ChannelQueue<T> queue) {
-		MaterializedPromise<Void> extraAcknowledge = set(queue.getSupplier());
+		Promise<Void> extraAcknowledge = set(queue.getSupplier());
 		return queue.getConsumer(extraAcknowledge);
 	}
 

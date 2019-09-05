@@ -1,19 +1,19 @@
-import Service from '../../common/Service';
+import {Service, delay} from 'global-apps-common';
 import ChatRoomOTOperation from './ot/ChatRoomOTOperation';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import chatRoomSerializer from "./ot/serializer";
 import chatRoomOTSystem from "./ot/ChatRoomOTSystem";
-
-const RETRY_CHECKOUT_TIMEOUT = 1000;
+import {RETRY_TIMEOUT} from '../../common/utils'
 
 class ChatRoomService extends Service {
   constructor(chatOTStateManager, publicKey) {
     super({
       messages: [],
-      ready: false,
+      chatReady: false
     });
     this._chatOTStateManager = chatOTStateManager;
-    this._reconnectTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
     this._publicKey = publicKey;
   }
 
@@ -27,12 +27,18 @@ class ChatRoomService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       await this._chatOTStateManager.checkout();
     } catch (err) {
       console.log(err);
-      await this._reconnectDelay();
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this.init();
       return;
     }
@@ -43,7 +49,12 @@ class ChatRoomService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._chatOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -58,7 +69,7 @@ class ChatRoomService extends Service {
   _onStateChange = () => {
     this.setState({
       messages: this._getMessagesFromStateManager(),
-      ready: true
+      chatReady: true
     });
   };
 
@@ -69,17 +80,19 @@ class ChatRoomService extends Service {
       .sort((left, right) => left.timestamp - right.timestamp);
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_CHECKOUT_TIMEOUT);
-    });
-  }
-
   async _sync() {
     try {
       await this._chatOTStateManager.sync();
     } catch (err) {
       console.log(err);
+
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this._sync();
     }
   }

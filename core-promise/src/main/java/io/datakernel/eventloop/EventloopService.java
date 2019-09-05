@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -34,7 +34,7 @@ public interface EventloopService {
 	 * Callback completes immediately if the component is already running.
 	 */
 	@NotNull
-	MaterializedPromise<?> start();
+	Promise<?> start();
 
 	@NotNull
 	default CompletableFuture<?> startFuture() {
@@ -46,7 +46,7 @@ public interface EventloopService {
 	 * Callback completes immediately if the component is not running / already stopped.
 	 */
 	@NotNull
-	MaterializedPromise<?> stop();
+	Promise<?> stop();
 
 	@NotNull
 	default CompletableFuture<?> stopFuture() {

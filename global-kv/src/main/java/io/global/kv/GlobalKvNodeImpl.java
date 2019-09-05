@@ -16,7 +16,10 @@
 
 package io.global.kv;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Callback;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
@@ -106,7 +109,7 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 									localCompleted.set(true);
 								}
 
-								MaterializedPromise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
+								Promise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
 								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 							});
 

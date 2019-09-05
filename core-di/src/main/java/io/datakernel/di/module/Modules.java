@@ -1,45 +1,28 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.util.Trie;
-import io.datakernel.di.util.Utils;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.BiFunction;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.module.UniqueNameImpl.uniqueName;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * This class contains a set of utilities for working with {@link Module modules}.
  */
-@SuppressWarnings("WeakerAccess")
 public final class Modules {
+	static Module EMPTY = new SimpleModule(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
+
 	private Modules() {
-	}
-
-	/**
-	 * Creates a {@link Module module} out of given binding graph trie
-	 */
-	public static Module of(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return new ModuleImpl(bindings.map(Utils::toMultimap), emptyMap(), emptyMap(), emptyMap());
-	}
-
-	/**
-	 * Creates a {@link Module module} out of given binding graph trie, transformers, generators and multibinders
-	 */
-	public static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-			Map<Integer, Set<BindingTransformer<?>>> transformers,
-			Map<Class<?>, Set<BindingGenerator<?>>> generators,
-			Map<Key<?>, Multibinder<?>> multibinders) {
-		return new ModuleImpl(bindings, transformers, generators, multibinders);
-	}
-
-	/**
-	 * @see #combine(Collection)
-	 */
-	public static Module combine(Module... modules) {
-		return modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
 	/**
@@ -61,15 +44,28 @@ public final class Modules {
 			mergeMultibinders(multibinders, module.getMultibinders());
 		}
 
-		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, multibinders);
+		return new SimpleModule(bindings, bindingTransformers, bindingGenerators, multibinders);
 	}
 
-	public static Module override(Module... modules) {
-		return override(Arrays.asList(modules));
+	/**
+	 * @see #combine(Collection)
+	 */
+	public static Module combine(Module... modules) {
+		return modules.length == 0 ? Module.empty() : modules.length == 1 ? modules[0] : combine(Arrays.asList(modules));
 	}
 
+	/**
+	 * Consecutively overrides each of the given modules with the next one after it and returns the accumulated result.
+	 */
 	public static Module override(List<Module> modules) {
 		return modules.stream().reduce(Module.empty(), Modules::override);
+	}
+
+	/**
+	 * @see #combine(Collection)
+	 */
+	public static Module override(Module... modules) {
+		return override(Arrays.asList(modules));
 	}
 
 	/**
@@ -88,7 +84,7 @@ public final class Modules {
 		Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>(into.getMultibinders());
 		multibinders.putAll(replacements.getMultibinders());
 
-		return new ModuleImpl(bindings, bindingTransformers, bindingGenerators, multibinders);
+		return new SimpleModule(bindings, bindingTransformers, bindingGenerators, multibinders);
 	}
 
 	/**
@@ -108,44 +104,98 @@ public final class Modules {
 					});
 					scopes.put(k, scope);
 				}));
-		return new ModuleImpl(Trie.leaf(bindings), from.getBindingTransformers(), from.getBindingGenerators(), from.getMultibinders());
+		return new SimpleModule(Trie.leaf(bindings), from.getBindingTransformers(), from.getBindingGenerators(), from.getMultibinders());
 	}
 
-	public static class ModuleImpl implements Module {
-		private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
-		private final Map<Integer, Set<BindingTransformer<?>>> transformers;
-		private final Map<Class<?>, Set<BindingGenerator<?>>> generators;
-		private final Map<Key<?>, Multibinder<?>> multibinders;
+	static Module export(Module module, Set<Key<?>> exportedKeys) {
+		Set<Key<?>> originalKeys = new HashSet<>();
+		module.getBindings().dfs(multimap -> originalKeys.addAll(multimap.keySet()));
 
-		private ModuleImpl(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
-				Map<Integer, Set<BindingTransformer<?>>> transformers,
-				Map<Class<?>, Set<BindingGenerator<?>>> generators,
-				Map<Key<?>, Multibinder<?>> multibinders) {
-			this.bindings = bindings;
-			this.transformers = transformers;
-			this.generators = generators;
-			this.multibinders = multibinders;
+		Set<Key<?>> missing = new HashSet<>(exportedKeys);
+		missing.removeAll(originalKeys);
+		if (!missing.isEmpty()) {
+			throw new DIException(missing.stream()
+					.map(Key::getDisplayString)
+					.collect(joining(", ", "Exporting keys ", " that were not provided by the module")));
 		}
 
-		@Override
-		public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
-			return bindings;
-		}
+		return doRebindExports(module,
+				originalKeys.stream()
+						.filter(originalKey -> !exportedKeys.contains(originalKey))
+						.collect(toMap(identity(), originalKey ->
+								Key.ofType(originalKey.getType(), uniqueName(originalKey.getName())))));
+	}
 
-		@Override
-		public Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
-			return transformers;
-		}
+	static Module rebindExports(Module module, Map<Key<?>, Key<?>> originalToNew) {
+		Set<Key<?>> originalKeys = new HashSet<>();
+		module.getBindings().dfs(multimap -> originalKeys.addAll(multimap.keySet()));
+		if (originalToNew.keySet().stream().noneMatch(originalKeys::contains)) return module;
+		return doRebindExports(module, originalToNew);
+	}
 
-		@Override
-		public Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
-			return generators;
-		}
+	@SuppressWarnings("unchecked")
+	private static Module doRebindExports(Module module, Map<Key<?>, Key<?>> originalToNew) {
+		Map<Key<?>, Key<?>> newToOriginal = originalToNew.entrySet().stream().collect(toMap(Map.Entry::getValue, Map.Entry::getKey));
+		return new SimpleModule(
+				module.getBindings()
+						.map(bindingsMap ->
+								transformMultimap(bindingsMap,
+										key -> originalToNew.getOrDefault(key, key),
+										(key, binding) ->
+												binding.rebindDependencies(
+														binding.getDependencies()
+																.stream()
+																.map(Dependency::getKey)
+																.filter(originalToNew::containsKey)
+																.collect(toMap(identity(), originalToNew::get))))),
+				transformMultimapValues(module.getBindingTransformers(),
+						($, transformer) ->
+								(bindings, scope, key, binding) ->
+										((BindingTransformer<Object>) transformer).transform(
+												new BindingLocator() {
+													@Override
+													public @Nullable <T> Binding<T> get(Key<T> key) {
+														return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
+													}
+												},
+												scope,
+												(Key<Object>) newToOriginal.getOrDefault(key, key),
+												binding)),
+				transformMultimapValues(module.getBindingGenerators(),
+						($, generator) ->
+								(BindingGenerator<Object>) (bindings, scope, key) ->
+										((BindingGenerator<Object>) generator).generate(
+												new BindingLocator() {
+													@Override
+													public @Nullable <T> Binding<T> get(Key<T> key) {
+														return (Binding<T>) bindings.get(originalToNew.getOrDefault(key, key));
+													}
+												},
+												scope,
+												(Key<Object>) newToOriginal.getOrDefault(key, key))),
+				module.getMultibinders()
+		);
+	}
 
-		@Override
-		public Map<Key<?>, Multibinder<?>> getMultibinders() {
-			return multibinders;
-		}
+	@SuppressWarnings("unchecked")
+	static Module rebindImports(Module module, BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
+		return new SimpleModule(
+				module.getBindings().map(bindingsMap -> transformMultimapValues(bindingsMap, rebinder)),
+				transformMultimapValues(module.getBindingTransformers(),
+						(priority, bindingTransformer) ->
+								(bindings, scope, key, binding) -> {
+									Binding<Object> transformed = ((BindingTransformer<Object>) bindingTransformer).transform(bindings, scope, key, binding);
+									if (transformed == binding) return binding;
+									return (Binding<Object>) rebinder.apply(key, transformed);
+								}),
+				transformMultimapValues(module.getBindingGenerators(),
+						(clazz, bindingGenerator) ->
+								(provider, scope, key) -> {
+									Binding<Object> generated = ((BindingGenerator<Object>) bindingGenerator).generate(provider, scope, key);
+									if (generated == null) return null;
+									return (Binding<Object>) rebinder.apply(key, generated);
+								}),
+				module.getMultibinders());
 	}
 
 }

@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
@@ -60,7 +59,7 @@ public class ServiceGraphTest {
 
 		@Override
 		protected void configure() {
-			install(ServiceGraphModule.defaultInstance());
+			install(ServiceGraphModule.create());
 		}
 
 		@Provides
@@ -74,7 +73,7 @@ public class ServiceGraphTest {
 			return new EventloopServiceEmpty(eventloop) {
 				@NotNull
 				@Override
-				public MaterializedPromise<Void> start() {
+				public Promise<Void> start() {
 					return Promise.ofException(INTERRUPTED);
 				}
 			};
@@ -106,13 +105,13 @@ public class ServiceGraphTest {
 
 		@NotNull
 		@Override
-		public MaterializedPromise<Void> start() {
+		public Promise<Void> start() {
 			return Promise.complete();
 		}
 
 		@NotNull
 		@Override
-		public MaterializedPromise<Void> stop() {
+		public Promise<Void> stop() {
 			return Promise.complete();
 		}
 

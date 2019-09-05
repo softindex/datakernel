@@ -27,35 +27,55 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+
+@SuppressWarnings({"unchecked", "WeakerAccess", "unused", "ConstantConditions"})
 abstract class AbstractPromise<T> implements Promise<T> {
+	private static final Object PROMISE_NOT_SET = new Object();
 
-	private static final Callback<Object> COMPLETED_PROMISE =
-			(value, e) -> { throw new UnsupportedOperationException("Promise already completed successfully");};
+	protected T result = (T) PROMISE_NOT_SET;
 
-	private static final Callback<Object> COMPLETED_EXCEPTIONALLY_PROMISE =
-			(value, e) -> { throw new UnsupportedOperationException("Promise already completed with exception");};
+	@Nullable
+	protected Throwable exception;
 
 	@Nullable
 	protected Callback<? super T> next;
 
 	@Override
-	public boolean isComplete() {
-		return next == COMPLETED_PROMISE || next == COMPLETED_EXCEPTIONALLY_PROMISE;
+	public final boolean isComplete() {
+		return result != PROMISE_NOT_SET;
 	}
 
 	@Override
-	public boolean isResult() {
-		return next == COMPLETED_PROMISE;
+	public final boolean isResult() {
+		return result != PROMISE_NOT_SET && exception == null;
 	}
 
 	@Override
-	public boolean isException() {
-		return next == COMPLETED_EXCEPTIONALLY_PROMISE;
+	public final boolean isException() {
+		return exception != null;
+	}
+
+	@Override
+	public T getResult() {
+		return result != PROMISE_NOT_SET ? result : null;
+	}
+
+	@Override
+	public Throwable getException() {
+		return exception;
+	}
+
+	@Override
+	public Try<T> getTry() {
+		if (isResult()) return Try.of(result);
+		if (isException()) return Try.ofException(exception);
+		return null;
 	}
 
 	@Async.Execute
 	protected void complete(@Nullable T value, @Nullable Throwable e) {
-		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
+		assert !isComplete();
 		if (e == null) {
 			complete(value);
 		} else {
@@ -65,20 +85,19 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@Async.Execute
 	protected void complete(@Nullable T value) {
-		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
+		assert !isComplete();
+		result = value;
 		if (next != null) {
-			Callback<? super T> next = this.next;
-			this.next = COMPLETED_PROMISE;
 			next.accept(value, null);
 		}
 	}
 
 	@Async.Execute
 	protected void completeExceptionally(@Nullable Throwable e) {
-		assert next != COMPLETED_PROMISE && next != COMPLETED_EXCEPTIONALLY_PROMISE;
+		assert !isComplete();
+		result = null;
+		exception = e;
 		if (next != null) {
-			Callback<? super T> next = this.next;
-			this.next = COMPLETED_EXCEPTIONALLY_PROMISE;
 			next.accept(null, e);
 		}
 	}
@@ -103,12 +122,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@Async.Schedule @NotNull P promise) {
+	public <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull P promise) {
+		if (isComplete()) {
+			promise.accept(result, exception);
+			return promise;
+		}
 		subscribe(promise);
 		return promise;
 	}
 
-	protected void subscribe(@Async.Schedule @NotNull Callback<? super T> consumer) {
+	protected void subscribe(@NotNull Callback<? super T> consumer) {
+		assert !isComplete();
 		if (next == null) {
 			next = consumer;
 		} else {
@@ -123,8 +147,15 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public <U> Promise<U> map(@Async.Schedule @NotNull Function<? super T, ? extends U> fn) {
-		return next(new NextPromise<T, U>() {
+	public <U> Promise<U> map(@NotNull Function<? super T, ? extends U> fn) {
+		if (isComplete()) {
+			try {
+				return isResult() ? Promise.of(fn.apply(result)) : (Promise<U>) this;
+			} catch (UncheckedException u) {
+				return Promise.ofException(u.getCause());
+			}
+		}
+		NextPromise<T, U> resultPromise = new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
@@ -140,13 +171,22 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					completeExceptionally(e);
 				}
 			}
-		});
+		};
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	@NotNull
 	@Override
-	public <U> Promise<U> mapEx(@Async.Schedule @NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
-		return next(new NextPromise<T, U>() {
+	public <U> Promise<U> mapEx(@NotNull BiFunction<? super T, Throwable, ? extends U> fn) {
+		if (isComplete()) {
+			try {
+				return Promise.of(fn.apply(result, exception));
+			} catch (UncheckedException u) {
+				return Promise.ofException(u.getCause());
+			}
+		}
+		NextPromise<T, U> resultPromise = new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, Throwable e) {
 				if (e == null) {
@@ -169,13 +209,22 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					complete(newResult);
 				}
 			}
-		});
+		};
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	@NotNull
 	@Override
-	public <U> Promise<U> then(@Async.Schedule @NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
-		return next(new NextPromise<T, U>() {
+	public <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn) {
+		if (isComplete()) {
+			try {
+				return isResult() ? (Promise<U>) fn.apply(result) : (Promise<U>) this;
+			} catch (UncheckedException u) {
+				return Promise.ofException(u.getCause());
+			}
+		}
+		NextPromise<T, U> resultPromise = new NextPromise<T, U>() {
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
@@ -191,14 +240,24 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					completeExceptionally(e);
 				}
 			}
-		});
+		};
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	@NotNull
 	@Override
-	public <U> Promise<U> thenEx(@Async.Schedule @NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
-		return next(new NextPromise<T, U>() {
-			private void accept(@Async.Execute BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn, T result, Throwable e) {
+	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
+		if (isComplete()) {
+			try {
+				return (Promise<U>) fn.apply(result, exception);
+			} catch (UncheckedException u) {
+				return Promise.ofException(u.getCause());
+			}
+		}
+		NextPromise<T, U> resultPromise = new NextPromise<T, U>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
 					Promise<? extends U> promise;
 					try {
@@ -219,17 +278,18 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					promise.whenComplete(this::complete);
 				}
 			}
-
-			@Override
-			public void accept(T result, @Nullable Throwable e) {
-				accept(fn, result, e);
-			}
-		});
+		};
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	@NotNull
 	@Override
 	public Promise<T> whenComplete(@NotNull Callback<? super T> action) {
+		if (isComplete()) {
+			action.accept(result, exception);
+			return this;
+		}
 		subscribe(action);
 		return this;
 	}
@@ -237,38 +297,76 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	@NotNull
 	@Override
 	public Promise<T> whenComplete(@NotNull Runnable action) {
-		return whenComplete((result, e) -> action.run());
+		if (isComplete()) {
+			action.run();
+			return this;
+		}
+		subscribe((result, e) -> action.run());
+		return this;
 	}
 
 	@NotNull
 	@Override
-	public Promise<T> whenResult(@Async.Schedule @NotNull Consumer<? super T> action) {
-		return whenComplete(new Callback<T>() {
-			private void accept(@Async.Execute Consumer<? super T> action, T result) {
+	public Promise<T> whenResult(@NotNull Consumer<? super T> action) {
+		if (isComplete()) {
+			if (isResult()) action.accept(result);
+			return this;
+		}
+		subscribe((result, e) -> {
+			if (e == null) {
 				action.accept(result);
 			}
-
-			@Override
-			public void accept(T result, @Nullable Throwable e) {
-				if (e == null) {
-					accept(action, result);
-				}
-			}
 		});
+		return this;
 	}
 
 	@Override
-	public Promise<T> whenException(@Async.Schedule @NotNull Consumer<Throwable> action) {
-		return whenComplete((result, e) -> {
+	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
+		if (isComplete()) {
+			if (isException()) {
+				action.accept(exception);
+			}
+			return this;
+		}
+		subscribe((result, e) -> {
 			if (e != null) {
 				action.accept(e);
 			}
 		});
+		return this;
 	}
 
 	private static final Object NO_RESULT = new Object();
 
-	@SuppressWarnings("unchecked")
+	@NotNull
+	@Override
+	public Promise<T> async() {
+		if (isComplete()) {
+			SettablePromise<T> promise = new SettablePromise<>();
+			getCurrentEventloop().post(exception == null ?
+					() -> promise.set(result) :
+					() -> promise.setException(exception));
+			return promise;
+		}
+		return this;
+	}
+
+	@NotNull
+	@Override
+	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
+		if (isComplete()) {
+			return isResult() ? other.map(otherResult -> fn.apply(getResult(), otherResult)) : (Promise<V>) this;
+		}
+		if (other.isComplete()) {
+			return other.isResult() ? this.map(result -> fn.apply(result, other.getResult())) : (Promise<V>) other;
+		}
+		PromiseCombine<T, V, U> resultPromise = new PromiseCombine<>(fn);
+		other.whenComplete(resultPromise::acceptOther);
+		subscribe(resultPromise);
+		return resultPromise;
+	}
+
+	@SuppressWarnings({"unchecked", "WeakerAccess"})
 	private static class PromiseCombine<T, V, U> extends NextPromise<T, V> {
 		final BiFunction<? super T, ? super U, ? extends V> fn;
 		@Nullable
@@ -293,20 +391,20 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			}
 		}
 
-		protected void onOtherComplete(@Nullable U otherResult) {
-			if (thisResult != NO_RESULT) {
-				onBothResults(thisResult, otherResult);
+		public void acceptOther(U otherResult, @Nullable Throwable e) {
+			if (e == null) {
+				if (thisResult != NO_RESULT) {
+					onBothResults(thisResult, otherResult);
+				} else {
+					this.otherResult = otherResult;
+				}
 			} else {
-				this.otherResult = otherResult;
+				tryCompleteExceptionally(e);
 			}
 		}
 
 		void onBothResults(@Nullable T thisResult, @Nullable U otherResult) {
-			this.thisResult = null;
-			this.otherResult = null;
-			if (!isComplete()) {
-				complete(fn.apply(thisResult, otherResult));
-			}
+			tryComplete(fn.apply(thisResult, otherResult));
 		}
 
 		void onAnyException(@NotNull Throwable e) {
@@ -315,21 +413,18 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	}
 
 	@NotNull
-	@SuppressWarnings("unchecked")
 	@Override
-	public <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (other instanceof CompletePromise) {
-			return map(result -> fn.apply(result, ((CompletePromise<U>) other).getResult()));
+	public Promise<Void> both(@NotNull Promise<?> other) {
+		if (isComplete()) {
+			return isResult() ? other.toVoid() : (Promise<Void>) this;
 		}
-		@NotNull PromiseCombine<T, V, U> resultPromise = new PromiseCombine<>(fn);
-		other.whenComplete((result, e) -> {
-			if (e == null) {
-				resultPromise.onOtherComplete(result);
-			} else {
-				resultPromise.onAnyException(e);
-			}
-		});
-		return next(resultPromise);
+		if (other.isComplete()) {
+			return other.isResult() ? toVoid() : (Promise<Void>) other;
+		}
+		PromiseBoth<Object> resultPromise = new PromiseBoth<>();
+		other.whenComplete(resultPromise);
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	private static class PromiseBoth<T> extends NextPromise<T, Void> {
@@ -349,19 +444,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public Promise<Void> both(@NotNull Promise<?> other) {
-		if (other instanceof CompletePromise) return toVoid();
-		PromiseBoth<T> resultPromise = new PromiseBoth<>();
-		other.whenComplete((result, e) -> {
-			if (e == null) {
-				if (--resultPromise.counter == 0) {
-					resultPromise.complete(null);
-				}
-			} else {
-				resultPromise.tryCompleteExceptionally(e);
-			}
-		});
-		return next(resultPromise);
+	public Promise<T> either(@NotNull Promise<? extends T> other) {
+		if (isComplete()) {
+			return isResult() ? this : (Promise<T>) other;
+		}
+		if (other.isComplete()) {
+			return other.isResult() ? (Promise<T>) other : this;
+		}
+		EitherPromise<T> resultPromise = new EitherPromise<>();
+		other.whenComplete(resultPromise);
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	private static final class EitherPromise<T> extends NextPromise<T, T> {
@@ -381,29 +474,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public Promise<T> either(@NotNull Promise<? extends T> other) {
-		if (other instanceof CompletePromise) {
-			@SuppressWarnings("unchecked") CompletePromise<T> otherCompletePromise = (CompletePromise<T>) other;
-			if (otherCompletePromise.isException()) return this;
-			return otherCompletePromise;
-		}
-		EitherPromise<T> resultPromise = new EitherPromise<>();
-		other.whenComplete((result, e) -> {
-			if (e == null) {
-				resultPromise.tryComplete(result);
-			} else {
-				if (++resultPromise.errors == 2) {
-					resultPromise.completeExceptionally(e);
-				}
-			}
-		});
-		return next(resultPromise);
-	}
-
-	@NotNull
-	@Override
 	public Promise<Try<T>> toTry() {
-		return next(new NextPromise<T, Try<T>>() {
+		if (isComplete()) {
+			return Promise.of(isResult() ? Try.of(result) : Try.ofException(exception));
+		}
+		NextPromise<T, Try<T>> resultPromise = new NextPromise<T, Try<T>>() {
 			@Override
 			public void accept(T result, @Nullable Throwable e) {
 				if (e == null) {
@@ -412,18 +487,43 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					complete(Try.ofException(e));
 				}
 			}
-		});
+		};
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	@NotNull
 	@Override
 	public Promise<Void> toVoid() {
-		return map($ -> null);
+		if (isComplete()) {
+			return isResult() ? Promise.complete() : (Promise<Void>) this;
+		}
+		NextPromise<T, Void> resultPromise = new NextPromise<T, Void>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					complete(null);
+				} else {
+					completeExceptionally(e);
+				}
+			}
+		};
+		subscribe(resultPromise);
+		return resultPromise;
 	}
 
 	@NotNull
 	@Override
 	public CompletableFuture<T> toCompletableFuture() {
+		if (isComplete()) {
+			if (isResult()) {
+				return CompletableFuture.completedFuture(result);
+			} else {
+				CompletableFuture<T> future = new CompletableFuture<>();
+				future.completeExceptionally(exception);
+				return future;
+			}
+		}
 		CompletableFuture<T> future = new CompletableFuture<>();
 		subscribe((result, e) -> {
 			if (e == null) {

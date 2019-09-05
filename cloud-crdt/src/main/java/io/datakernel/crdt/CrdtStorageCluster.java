@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.crdt.primitives.CrdtType;
@@ -268,13 +267,13 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

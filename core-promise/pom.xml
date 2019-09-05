@@ -13,8 +13,8 @@
 
   <name>DataKernel: Promises</name>
   <description>
-    A convenient way to organize asynchronous code. Promises are a faster and
-    more efficient version of JavaScript's Promise and Java's CompletionStage.
+    A convenient way to organize asynchronous code.
+    Promises are a faster and more efficient version of JavaScript's Promise and Java's CompletionStage's.
   </description>
 
   <dependencies>

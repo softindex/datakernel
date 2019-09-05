@@ -96,7 +96,7 @@ public final class AsyncCollector<R> implements Cancellable {
 	}
 
 	@NotNull
-	public MaterializedPromise<R> get() {
+	public Promise<R> get() {
 		return resultPromise;
 	}
 

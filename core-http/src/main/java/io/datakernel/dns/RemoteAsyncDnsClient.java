@@ -16,9 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.AsyncUdpSocket;
@@ -62,7 +60,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	public static final InetSocketAddress LOCAL_DNS = new InetSocketAddress("192.168.0.1", DNS_SERVER_PORT);
 
 	private final Eventloop eventloop;
-	private final Map<DnsTransaction, SettableCallback<DnsResponse>> transactions = new HashMap<>();
+	private final Map<DnsTransaction, SettablePromise<DnsResponse>> transactions = new HashMap<>();
 
 	private DatagramSocketSettings datagramSocketSettings = DatagramSocketSettings.create();
 	private InetSocketAddress dnsServerAddress = GOOGLE_PUBLIC_DNS;
@@ -150,12 +148,14 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	}
 
 	@Override
-	public MaterializedPromise<DnsResponse> resolve(DnsQuery query) {
+	public Promise<DnsResponse> resolve(DnsQuery query) {
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);
 			return Promise.of(fromQuery);
 		}
+		// ignore the result because soon or later it will be sent and just completed
+		// here we use that transactions map because it easily could go completely out of order and we should be ok with that
 		return getSocket()
 				.then(socket -> {
 					logger.trace("Resolving {} with DNS server {}", query, dnsServerAddress);
@@ -178,7 +178,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 							.whenResult(packet -> {
 								try {
 									DnsResponse queryResult = DnsProtocol.readDnsResponse(packet.getBuf());
-									SettableCallback<DnsResponse> cb = transactions.remove(queryResult.getTransaction());
+									SettablePromise<DnsResponse> cb = transactions.remove(queryResult.getTransaction());
 									if (cb == null) {
 										logger.warn("Received a DNS response that had no listener (most likely because it timed out) : {}", queryResult);
 										return;
@@ -216,7 +216,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 								}
 								return Promise.ofException(e);
 							});
-				}).materialize();
+				});
 	}
 
 	private void closeIfDone() {

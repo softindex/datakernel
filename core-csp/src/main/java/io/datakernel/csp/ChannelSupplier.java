@@ -183,8 +183,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * @return a ChannelSupplier of {@code promise} or a wrapper ChannelSupplier
 	 */
 	static <T> ChannelSupplier<T> ofPromise(Promise<? extends ChannelSupplier<T>> promise) {
-		if (promise.isResult()) return promise.materialize().getResult();
-		MaterializedPromise<? extends ChannelSupplier<T>> materializedPromise = promise.materialize();
+		if (promise.isResult()) return promise.getResult();
 		return new AbstractChannelSupplier<T>() {
 			ChannelSupplier<T> supplier;
 			Throwable exception;
@@ -192,7 +191,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected Promise<T> doGet() {
 				if (supplier != null) return supplier.get();
-				return materializedPromise.thenEx((supplier, e) -> {
+				return promise.thenEx((supplier, e) -> {
 					if (e == null) {
 						this.supplier = supplier;
 						return supplier.get();
@@ -205,7 +204,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				materializedPromise.whenResult(supplier -> supplier.close(e));
+				promise.whenResult(supplier -> supplier.close(e));
 			}
 		};
 	}
@@ -345,7 +344,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 				while (true) {
 					Promise<T> promise = ChannelSupplier.this.get();
 					if (promise.isResult()) {
-						T value = promise.materialize().getResult();
+						T value = promise.getResult();
 						if (value == null || predicate.test(value)) return promise;
 						tryRecycle(value);
 						continue;
@@ -410,18 +409,18 @@ public interface ChannelSupplier<T> extends Cancellable {
 	/**
 	 * @see ChannelSuppliers#streamTo(ChannelSupplier, ChannelConsumer)
 	 */
-	default MaterializedPromise<Void> streamTo(ChannelConsumer<T> consumer) {
+	default Promise<Void> streamTo(ChannelConsumer<T> consumer) {
 		return ChannelSuppliers.streamTo(this, consumer);
 	}
 
-	default MaterializedPromise<Void> streamTo(Promise<? extends ChannelConsumer<T>> consumer) {
+	default Promise<Void> streamTo(Promise<? extends ChannelConsumer<T>> consumer) {
 		return ChannelSuppliers.streamTo(this, ChannelConsumer.ofPromise(consumer));
 	}
 
 	/**
 	 * Binds this ChannelSupplier to provided {@link ChannelInput}
 	 */
-	default MaterializedPromise<Void> bindTo(ChannelInput<T> to) {
+	default Promise<Void> bindTo(ChannelInput<T> to) {
 		return to.set(this);
 	}
 
@@ -442,7 +441,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 
 	default ChannelSupplier<T> withEndOfStream(Function<Promise<Void>, Promise<Void>> fn) {
 		SettablePromise<Void> endOfStream = new SettablePromise<>();
-		MaterializedPromise<Void> newEndOfStream = fn.apply(endOfStream).materialize();
+		Promise<Void> newEndOfStream = fn.apply(endOfStream);
 		return new AbstractChannelSupplier<T>(this) {
 			@SuppressWarnings("unchecked")
 			@Override
@@ -467,7 +466,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 		};
 	}
 
-	static MaterializedPromise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
+	static Promise<Void> getEndOfStream(Consumer<Function<Promise<Void>, Promise<Void>>> fn) {
 		return Promise.ofCallback(cb ->
 				fn.accept(endOfStream -> endOfStream.whenComplete(cb)));
 	}

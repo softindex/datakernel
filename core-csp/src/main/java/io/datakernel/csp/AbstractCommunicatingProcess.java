@@ -16,7 +16,10 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncProcess;
+import io.datakernel.async.Cancellable;
+import io.datakernel.async.Promise;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
@@ -72,7 +75,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> getProcessCompletion() {
+	public Promise<Void> getProcessCompletion() {
 		return processCompletion;
 	}
 
@@ -86,7 +89,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 */
 	@NotNull
 	@Override
-	public final MaterializedPromise<Void> startProcess() {
+	public final Promise<Void> startProcess() {
 		if (!processStarted) {
 			processStarted = true;
 			beforeProcess();
@@ -142,7 +145,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		AsyncProcess.super.close();
 	}
 
-	public final <T> ChannelSupplier<T> sanitize(ChannelSupplier<T> supplier) {
+	protected final <T> ChannelSupplier<T> sanitize(ChannelSupplier<T> supplier) {
 		return new AbstractChannelSupplier<T>() {
 			@Override
 			protected Promise<T> doGet() {
@@ -157,7 +160,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		};
 	}
 
-	public final <T> ChannelConsumer<T> sanitize(ChannelConsumer<T> consumer) {
+	protected final <T> ChannelConsumer<T> sanitize(ChannelConsumer<T> consumer) {
 		return new AbstractChannelConsumer<T>() {
 			@Override
 			protected Promise<Void> doAccept(@Nullable T item) {
@@ -172,7 +175,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		};
 	}
 
-	public final BinaryChannelSupplier sanitize(BinaryChannelSupplier supplier) {
+	protected final BinaryChannelSupplier sanitize(BinaryChannelSupplier supplier) {
 		return new BinaryChannelSupplier(supplier.getBufs()) {
 			@Override
 			public Promise<Void> needMoreData() {
@@ -192,7 +195,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		};
 	}
 
-	public final <T> Promise<T> sanitize(Promise<T> promise) {
+	protected final <T> Promise<T> sanitize(Promise<T> promise) {
 		assert !isProcessComplete();
 		return promise
 				.thenEx(this::sanitize);
@@ -211,7 +214,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 * otherwise. If the process was already completed,
 	 * returns {@link #ASYNC_PROCESS_IS_COMPLETE}.
 	 */
-	public final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
+	protected final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
 		if (isProcessComplete()) {
 			tryRecycle(value);
 			if (value instanceof Cancellable) {

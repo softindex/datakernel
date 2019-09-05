@@ -91,7 +91,7 @@ public final class RuntimeCheckpointStorage implements CheckpointStorage {
 
 	@Override
 	public Promise<Void> drop(String filename, long revision) {
-		SignedData<GlobalFsCheckpoint> meta = loadMetaCheckpoint(filename).materialize().getResult();
+		SignedData<GlobalFsCheckpoint> meta = loadMetaCheckpoint(filename).getResult();
 		if (meta != null && meta.getValue().getRevision() < revision) {
 			storage.remove(filename);
 		}

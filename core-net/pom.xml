@@ -13,8 +13,9 @@
 
   <name>DataKernel: Net</name>
   <description>
-    Net module handles low-level asynchronous socket I/O (TCP/UDP). Provides an ability to create servers that run
-    on an eventloop.
+    Net module handles low-level asynchronous socket I/O (TCP/UDP).
+    Package provides a tools for TCP/UDP servers creation
+    which could be launched on the eventloop.
   </description>
 
   <dependencies>

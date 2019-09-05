@@ -1,7 +1,6 @@
 import io.datakernel.config.Config;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
-import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 
 import java.net.InetAddress;
 
@@ -9,39 +8,19 @@ import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 //[START EXAMPLE]
-public final class ConfigModuleExample extends AbstractModule {
+public final class ConfigModuleExample {
 	private static final String PROPERTIES_FILE = "example.properties";
 
-	@Provides
-	Config config() {
-		return Config.ofClassPathProperties(PROPERTIES_FILE);
-	}
-
-	@Provides
-	String phrase(Config config) {
-		return config.get("phrase");
-	}
-
-	@Provides
-	Integer number(Config config) {
-		return config.get(ofInteger(), "number");
-	}
-
-	@Provides
-	InetAddress address(Config config) {
-		return config.get(ofInetAddress(), "address");
-	}
-
 	public static void main(String[] args) {
-		Injector injector = Injector.of(new ConfigModuleExample());
+		Injector injector = Injector.of(Module.create()
+				.bind(Config.class).to(() -> Config.ofClassPathProperties(PROPERTIES_FILE))
+				.bind(String.class).to(c -> c.get("phrase"), Config.class)
+				.bind(Integer.class).to(c -> c.get(ofInteger(), "number"), Config.class)
+				.bind(InetAddress.class).to(c -> c.get(ofInetAddress(), "address"), Config.class));
 
-		String phrase = injector.getInstance(String.class);
-		Integer number = injector.getInstance(Integer.class);
-		InetAddress address = injector.getInstance(InetAddress.class);
-
-		System.out.println(phrase);
-		System.out.println(number);
-		System.out.println(address);
+		System.out.println(injector.getInstance(String.class));
+		System.out.println(injector.getInstance(Integer.class));
+		System.out.println(injector.getInstance(InetAddress.class));
 	}
 }
 //[END EXAMPLE]

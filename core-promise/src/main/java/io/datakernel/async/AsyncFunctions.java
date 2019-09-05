@@ -223,7 +223,7 @@ public class AsyncFunctions {
 
 			Promise<R> promise = doCall(key);
 			if (promise.isResult()) {
-				R result = promise.materialize().getResult();
+				R result = promise.getResult();
 				put(key, result);
 				return promise;
 			}

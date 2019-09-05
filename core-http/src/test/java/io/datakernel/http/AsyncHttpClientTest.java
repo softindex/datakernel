@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.csp.ChannelSupplier;
@@ -133,7 +133,7 @@ public final class AsyncHttpClientTest {
 	public void testActiveRequestsCounter() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-		List<SettableCallback<HttpResponse>> responses = new ArrayList<>();
+		List<SettablePromise<HttpResponse>> responses = new ArrayList<>();
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
 				request -> Promise.ofCallback(responses::add))

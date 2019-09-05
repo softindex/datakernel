@@ -102,7 +102,6 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 							.until(f -> {
 								boolean res = !f.isData() && getFilenameFromHeader(f.getHeaders().get("content-disposition"))
 										.mapEx((x, e) -> x)
-										.materialize()
 										.getResult() != null; // ignoring any exceptions in this hack
 								if (res) {
 									last.set(f);

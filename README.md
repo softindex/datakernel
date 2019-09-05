@@ -13,7 +13,7 @@ business logic instead of learning framework specifications**.
 DataKernel consists of three modules:
  * [Core](https://datakernel.io/docs/core/) - building blocks of the framework and everything you need to create **asynchronous web applications**.
  * [Cloud](https://datakernel.io/docs/cloud/) - components for **decentralized cloud solutions** of different complexity.
- * [Global Cloud](https://datakernel.io/docs/global/) (coming soon) - components for **ultimately scalable**, decentralized, yet practical and high-performance **cloud solutions**.
+ * [Global Cloud](https://datakernel.io/docs/global-cloud/) (coming soon) - components for **ultimately scalable**, decentralized, yet practical and high-performance **cloud solutions**.
 
 To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow [this](https://datakernel.io/docs/core/tutorials/getting-started) 
 5-minute getting-started guide. 

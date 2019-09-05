@@ -134,20 +134,22 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 				.map(logFiles ->
 						logFiles.stream()
 								.filter(logFile -> isFileInRange(logFile, startPosition, endLogFile))
+								.map(logFile -> logFile.equals(startPosition.getLogFile()) ?
+										startPosition : LogPosition.create(logFile, 0)
+								)
 								.sorted()
 								.collect(toList()))
 				.map(logFilesToRead -> readLogFiles(logPartition, startPosition, logFilesToRead));
 	}
 
-	private StreamSupplierWithResult<T, LogPosition> readLogFiles(@NotNull String logPartition, @NotNull LogPosition startPosition, @NotNull List<LogFile> logFiles) {
+	private StreamSupplierWithResult<T, LogPosition> readLogFiles(@NotNull String logPartition, @NotNull LogPosition startPosition, @NotNull List<LogPosition> logFiles) {
 		SettablePromise<LogPosition> positionPromise = new SettablePromise<>();
 
 		Iterator<StreamSupplier<T>> logFileStreams = new Iterator<StreamSupplier<T>>() {
 			final Stopwatch sw = Stopwatch.createUnstarted();
 
-			final Iterator<LogFile> it = logFiles.iterator();
-			int n;
-			LogFile currentLogFile;
+			final Iterator<LogPosition> it = logFiles.iterator();
+			LogPosition currentPosition;
 			long inputStreamPosition;
 
 			@Override
@@ -158,20 +160,17 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 			}
 
 			LogPosition getLogPosition() {
-				if (currentLogFile == null)
+				if (currentPosition == null)
 					return startPosition;
 
-				if (currentLogFile.equals(startPosition.getLogFile()))
-					return LogPosition.create(currentLogFile, startPosition.getPosition() + inputStreamPosition);
-
-				return LogPosition.create(currentLogFile, inputStreamPosition);
+				return LogPosition.create(currentPosition.getLogFile(), currentPosition.getPosition() + inputStreamPosition);
 			}
 
 			@Override
 			public StreamSupplier<T> next() {
-				currentLogFile = it.next();
-				long position = n++ == 0 ? startPosition.getPosition() : 0L;
-
+				currentPosition = it.next();
+				long position = currentPosition.getPosition();
+				LogFile currentLogFile = currentPosition.getLogFile();
 				if (logger.isTraceEnabled())
 					logger.trace("Read log file `{}` from: {}", currentLogFile, position);
 
@@ -209,10 +208,12 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 
 			private void log(Throwable e) {
 				if (e == null && logger.isTraceEnabled()) {
-					logger.trace("Finish log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
+					logger.trace("Finish log file {}:`{}` in {}, compressed bytes: {} ({} bytes/s)",
+							client, namingScheme.path(logPartition, currentPosition.getLogFile()),
 							sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1));
 				} else if (e != null && logger.isErrorEnabled()) {
-					logger.error("Error on log file `{}` in {}, compressed bytes: {} ({} bytes/s)", currentLogFile,
+					logger.error("Error on log file {}:`{}` in {}, compressed bytes: {} ({} bytes/s)",
+							client, namingScheme.path(logPartition, currentPosition.getLogFile()),
 							sw, inputStreamPosition, inputStreamPosition / Math.max(sw.elapsed(SECONDS), 1), e);
 				}
 			}
@@ -227,7 +228,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 		Preconditions.checkArgument(!logPartition.contains("-"), "Using dash (-) in log partition name is not allowed");
 	}
 
-	private boolean isFileInRange(@NotNull LogFile logFile, @NotNull LogPosition startPosition, @Nullable LogFile endFile) {
+	private static boolean isFileInRange(@NotNull LogFile logFile, @NotNull LogPosition startPosition, @Nullable LogFile endFile) {
 		if (logFile.compareTo(startPosition.getLogFile()) < 0)
 			return false;
 

@@ -16,25 +16,24 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 
 import java.util.function.Function;
 
 public final class StreamConsumerWithResult<T, X> {
 	private final StreamConsumer<T> consumer;
-	private final MaterializedPromise<X> result;
+	private final Promise<X> result;
 
-	private StreamConsumerWithResult(StreamConsumer<T> consumer, MaterializedPromise<X> result) {
+	private StreamConsumerWithResult(StreamConsumer<T> consumer, Promise<X> result) {
 		this.consumer = consumer;
 		this.result = result;
 	}
 
 	public static <T, X> StreamConsumerWithResult<T, X> of(StreamConsumer<T> consumer, Promise<X> result) {
-		return new StreamConsumerWithResult<>(consumer, result.materialize());
+		return new StreamConsumerWithResult<>(consumer, result);
 	}
 
-	public StreamConsumerWithResult<T, X> sanitize() {
+	protected StreamConsumerWithResult<T, X> sanitize() {
 		return new StreamConsumerWithResult<>(consumer,
 				consumer.getAcknowledgement().combine(result.whenException(consumer::close), ($, v) -> v).post());
 	}
@@ -44,7 +43,7 @@ public final class StreamConsumerWithResult<T, X> {
 			Function<Promise<X>, Promise<X1>> resultTransformer) {
 		return new StreamConsumerWithResult<>(
 				consumerTransformer.apply(consumer),
-				resultTransformer.apply(result).materialize());
+				resultTransformer.apply(result));
 	}
 
 	public <T1> StreamConsumerWithResult<T1, X> transformConsumer(Function<StreamConsumer<T>, StreamConsumer<T1>> consumerTransformer) {
@@ -65,7 +64,7 @@ public final class StreamConsumerWithResult<T, X> {
 		return consumer;
 	}
 
-	public MaterializedPromise<X> getResult() {
+	public Promise<X> getResult() {
 		return result;
 	}
 }

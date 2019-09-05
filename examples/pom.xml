@@ -17,6 +17,7 @@
     <module>core</module>
     <module>cloud</module>
     <module>tutorials</module>
+    <module>benchmarks</module>
   </modules>
 
   <dependencies>

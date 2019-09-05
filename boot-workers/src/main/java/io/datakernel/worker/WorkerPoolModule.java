@@ -21,20 +21,34 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
+import java.lang.annotation.Annotation;
+
 public final class WorkerPoolModule extends AbstractModule {
+	private final Class<? extends Annotation>[] workerScopes;
+
+	@SafeVarargs
+	private WorkerPoolModule(Class<? extends Annotation>... workerScopes) {
+		this.workerScopes = workerScopes;
+	}
+
+	public static WorkerPoolModule create() {
+		return new WorkerPoolModule(Worker.class);
+	}
+
+	@SafeVarargs
+	public static WorkerPoolModule create(Class<? extends Annotation>... workerScopes) {
+		return new WorkerPoolModule(workerScopes);
+	}
+
 	@Override
 	protected void configure() {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
 
-		generate(int.class, (provider, scope, key) -> {
-			if (scope.length == 0 || key.getName() == null || key.getName().getAnnotationType() != WorkerId.class) {
-				return null;
-			}
-			return Binding.to(() -> {
-				throw new IllegalStateException("Expected instance override for the worker id by Injector#enterScope call");
-			});
-		});
-		generate(WorkerPool.Instances.class, (provider, scope, key) -> {
+		for (Class<? extends Annotation> scope : workerScopes) {
+			bind(int.class).annotatedWith(WorkerId.class).in(scope).toDynamic();
+		}
+
+		generate(WorkerPool.Instances.class, (bindings, scope, key) -> {
 			Key<Object> requestedKey = key.getTypeParameter(0);
 			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getName()));
 		});

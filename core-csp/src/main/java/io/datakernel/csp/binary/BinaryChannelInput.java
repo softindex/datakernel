@@ -16,17 +16,17 @@
 
 package io.datakernel.csp.binary;
 
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
 
 @FunctionalInterface
 public interface BinaryChannelInput extends ChannelInput<ByteBuf> {
-	MaterializedPromise<Void> set(BinaryChannelSupplier input);
+	Promise<Void> set(BinaryChannelSupplier input);
 
 	@Override
-	default MaterializedPromise<Void> set(ChannelSupplier<ByteBuf> input) {
+	default Promise<Void> set(ChannelSupplier<ByteBuf> input) {
 		return set(BinaryChannelSupplier.of(input));
 	}
 }

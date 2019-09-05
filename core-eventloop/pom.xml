@@ -15,8 +15,8 @@
   <description>
     Efficient non-blocking network and file I/O, for building Node.js-like client/server applications with
     high performance requirements. It is similar to Event Loop in Node.js.
-    Although Eventloop runs in a single thread, multiple Eventloops can run at the same time allowing for efficient
-    CPU usage.
+    Although Eventloop runs in a single thread, multiple event loops can be
+    launched at the same time allowing for efficient CPU usage.
   </description>
 
   <dependencies>

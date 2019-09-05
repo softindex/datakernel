@@ -16,8 +16,11 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncSuppliers;
 import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
+import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -68,7 +71,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	private int failedFiles = 0;
 
 	@Nullable
-	private SettableCallback<Void> closeCallback;
+	private SettablePromise<Void> closeCallback;
 
 	private final PromiseStats repartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
 	private final PromiseStats singleFileRepartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
@@ -281,13 +284,13 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return repartition.isRunning() ?
 				Promise.ofCallback(cb -> this.closeCallback = cb) :
 				Promise.complete();

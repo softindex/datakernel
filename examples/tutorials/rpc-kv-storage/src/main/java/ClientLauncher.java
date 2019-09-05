@@ -22,7 +22,7 @@ public class ClientLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				new ClientModule());
 	}
 

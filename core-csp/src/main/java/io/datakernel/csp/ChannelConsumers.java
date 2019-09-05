@@ -17,7 +17,7 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettableCallback;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.UncheckedException;
@@ -59,7 +59,7 @@ public final class ChannelConsumers {
 		return Promise.ofCallback(cb -> acceptAllImpl(output, it, cb));
 	}
 
-	private static <T> void acceptAllImpl(ChannelConsumer<T> output, Iterator<? extends T> it, SettableCallback<Void> cb) {
+	private static <T> void acceptAllImpl(ChannelConsumer<T> output, Iterator<? extends T> it, SettablePromise<Void> cb) {
 		while (it.hasNext()) {
 			Promise<Void> accept = output.accept(it.next());
 			if (accept.isResult()) continue;

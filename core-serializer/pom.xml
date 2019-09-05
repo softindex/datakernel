@@ -13,7 +13,7 @@
 
   <name>DataKernel: Serializer</name>
   <description>
-    Extremely fast and space-efficient serializers, crafted using bytecode engineering.
+    Extremely fast and space-efficient serializers. It was crafted using bytecode engineering.
   </description>
 
   <dependencies>

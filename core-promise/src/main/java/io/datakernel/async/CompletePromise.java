@@ -26,12 +26,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 
 /**
  * Represents a completed {@code Promise} with a result of unspecified type.
  */
-public abstract class CompletePromise<T> implements MaterializedPromise<T> {
+@SuppressWarnings("unchecked")
+public abstract class CompletePromise<T> implements Promise<T> {
 	@Override
 	public final boolean isComplete() {
 		return true;
@@ -50,13 +50,11 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@Override
 	abstract public T getResult();
 
-	@NotNull
 	@Override
 	public final Throwable getException() {
-		throw new UnsupportedOperationException();
+		return null;
 	}
 
-	@NotNull
 	@Override
 	public Try<T> getTry() {
 		return Try.of(getResult());
@@ -137,11 +135,17 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	}
 
 	@NotNull
-	@SuppressWarnings("unchecked")
 	@Override
 	public final <U, V> Promise<V> combine(@NotNull Promise<? extends U> other, @NotNull BiFunction<? super T, ? super U, ? extends V> fn) {
-		if (other instanceof CompletePromise) {
-			return Promise.of(fn.apply(getResult(), ((CompletePromise<U>) other).getResult()));
+		if (other.isComplete()) {
+			if (other.isResult()) {
+				try {
+					return Promise.of(fn.apply(getResult(), other.getResult()));
+				} catch (UncheckedException u) {
+					return Promise.ofException(u.getCause());
+				}
+			}
+			return (Promise<V>) other;
 		}
 		return other.map(otherResult -> fn.apply(getResult(), otherResult));
 	}
@@ -149,9 +153,6 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@NotNull
 	@Override
 	public final Promise<Void> both(@NotNull Promise<?> other) {
-		if (other instanceof CompletePromise) {
-			return Promise.complete();
-		}
 		return other.toVoid();
 	}
 
@@ -163,7 +164,7 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 
 	@NotNull
 	@Override
-	public final MaterializedPromise<T> async() {
+	public final Promise<T> async() {
 		SettablePromise<T> result = new SettablePromise<>();
 		getCurrentEventloop().post(() -> result.set(getResult()));
 		return result;
@@ -184,6 +185,6 @@ public abstract class CompletePromise<T> implements MaterializedPromise<T> {
 	@NotNull
 	@Override
 	public final CompletableFuture<T> toCompletableFuture() {
-		return completedFuture(getResult());
+		return CompletableFuture.completedFuture(getResult());
 	}
 }

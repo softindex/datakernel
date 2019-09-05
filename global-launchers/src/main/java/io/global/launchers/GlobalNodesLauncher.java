@@ -22,12 +22,15 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
@@ -72,9 +75,11 @@ public class GlobalNodesLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
-				ConfigModule.create().printEffectiveConfig(),
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalNodesModule());
 	}
 

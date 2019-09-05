@@ -57,7 +57,7 @@ public class TriggersModuleTest {
 		int firstPoolSize = 10;
 		int secondPoolSize = 5;
 		Injector injector = Injector.of(
-				new WorkerPoolModule(),
+				WorkerPoolModule.create(),
 				new AbstractModule() {
 					int counter = 0;
 

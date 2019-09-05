@@ -1,6 +1,5 @@
 package io.global.ot.service.synchronization;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
@@ -50,7 +49,7 @@ public final class SynchronizationService<D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		SharedReposOTState resourceListState = userContainer.getResourceListState();
 		Set<SharedRepo> sharedRepos = resourceListState.getSharedRepos();
 		sharedRepos.forEach(resource -> {
@@ -74,9 +73,8 @@ public final class SynchronizationService<D> implements EventloopService {
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
-		return Promises.all(synchronizers.values().stream().map(RepoSynchronizer::stop))
-				.materialize();
+	public Promise<Void> stop() {
+		return Promises.all(synchronizers.values().stream().map(RepoSynchronizer::stop));
 	}
 
 	public RepoSynchronizer<D> ensureSynchronizer(String id) {

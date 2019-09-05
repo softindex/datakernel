@@ -43,14 +43,14 @@ public final class RoutingServletTest {
 	void check(Promise<HttpResponse> promise, String expectedBody, int expectedCode) {
 		assertTrue(promise.isComplete());
 		if (promise.isResult()) {
-			HttpResponse result = promise.materialize().getResult();
+			HttpResponse result = promise.getResult();
 			result.loadBody()
 					.whenComplete(assertComplete($ -> {
 						assertEquals(expectedBody, result.getBody().asString(UTF_8));
 						assertEquals(expectedCode, result.getCode());
 					}));
 		} else {
-			assertEquals(expectedCode, ((HttpException) promise.materialize().getException()).getCode());
+			assertEquals(expectedCode, ((HttpException) promise.getException()).getCode());
 		}
 	}
 

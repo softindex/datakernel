@@ -16,7 +16,6 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
@@ -63,12 +62,12 @@ public interface ChannelOutput<T> {
 		return output -> set(output.peek(peek));
 	}
 
-	default MaterializedPromise<Void> bindTo(ChannelInput<T> to) {
+	default Promise<Void> bindTo(ChannelInput<T> to) {
 		return bindTo(to, new ChannelZeroBuffer<>());
 	}
 
-	default MaterializedPromise<Void> bindTo(ChannelInput<T> to, ChannelQueue<T> queue) {
-		MaterializedPromise<Void> extraAcknowledgement = to.set(queue.getSupplier());
+	default Promise<Void> bindTo(ChannelInput<T> to, ChannelQueue<T> queue) {
+		Promise<Void> extraAcknowledgement = to.set(queue.getSupplier());
 		set(queue.getConsumer(extraAcknowledgement));
 		return extraAcknowledgement;
 	}

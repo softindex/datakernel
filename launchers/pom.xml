@@ -14,7 +14,7 @@
 
   <name>DataKernel: Launchers</name>
   <description>
-    A set of predefined launchers as well as some common initializers for services.
+    Package provides a set of predefined launchers for different services as HTTP servers, RPC endpoints, etc.
   </description>
 
   <modules>

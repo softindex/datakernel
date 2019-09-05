@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
+//[START EXAMPLE]
 public class RpcExample extends Launcher {
 	private static final int SERVICE_PORT = 34765;
 
@@ -49,7 +50,7 @@ public class RpcExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.defaultInstance();
+		return ServiceGraphModule.create();
 	}
 
 	@Override
@@ -65,3 +66,4 @@ public class RpcExample extends Launcher {
 		example.launch(args);
 	}
 }
+//[END EXAMPLE]

@@ -16,7 +16,6 @@
 
 package io.datakernel.crdt.local;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtFilter;
@@ -119,13 +118,13 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

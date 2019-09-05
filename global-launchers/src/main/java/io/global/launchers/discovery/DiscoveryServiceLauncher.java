@@ -21,11 +21,13 @@ import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.launcher.OnStart;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
@@ -37,6 +39,7 @@ import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.discovery.RemoteFsAnnouncementStorage;
 import io.global.common.discovery.RemoteFsSharedKeyStorage;
 
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
@@ -101,9 +104,11 @@ public class DiscoveryServiceLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
-				ConfigModule.create().printEffectiveConfig()
+				ConfigModule.create()
+						.printEffectiveConfig()
+						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
 		);
 	}
 

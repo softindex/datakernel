@@ -19,7 +19,7 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.MaterializedPromise;
+import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.stream.*;
@@ -74,7 +74,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		return chunker;
 	}
 
-	public MaterializedPromise<List<AggregationChunk>> getResult() {
+	public Promise<List<AggregationChunk>> getResult() {
 		return result;
 	}
 
@@ -133,7 +133,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 			}
 		}
 
-		public MaterializedPromise<AggregationChunk> getResult() {
+		public Promise<AggregationChunk> getResult() {
 			return result;
 		}
 	}

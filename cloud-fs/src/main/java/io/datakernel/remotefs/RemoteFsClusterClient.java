@@ -17,7 +17,6 @@
 package io.datakernel.remotefs;
 
 import io.datakernel.async.Cancellable;
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
@@ -285,12 +284,11 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 					ChannelSplitter<ByteBuf> splitter = ChannelSplitter.<ByteBuf>create().lenient();
 
-					MaterializedPromise<List<Try<Void>>> uploadResults = Promises.toList(successes.stream()
-							.map(s -> getAcknowledgement(fn ->
+					Promise<List<Try<Void>>> uploadResults = Promises.toList(successes.stream()
+							.map(s1 -> getAcknowledgement(fn ->
 									splitter.addOutput()
-											.set(s.consumer.withAcknowledgement(fn)))
-									.toTry()))
-							.materialize();
+											.set(s1.consumer.withAcknowledgement(fn)))
+									.toTry()));
 
 					if (logger.isTraceEnabled()) {
 						logger.trace("uploading file {} to {}, {}", filename, successes.stream().map(s -> s.id.toString()).collect(joining(", ", "[", "]")), this);
@@ -481,13 +479,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		return Promise.complete();
 	}
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		return Promise.complete();
 	}
 

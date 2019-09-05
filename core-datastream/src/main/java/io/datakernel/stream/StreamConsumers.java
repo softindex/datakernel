@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.csp.ChannelConsumer;
@@ -49,7 +48,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public MaterializedPromise<Void> getAcknowledgement() {
+		public Promise<Void> getAcknowledgement() {
 			return acknowledgement;
 		}
 
@@ -184,7 +183,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public MaterializedPromise<Void> getAcknowledgement() {
+		public Promise<Void> getAcknowledgement() {
 			return acknowledgement;
 		}
 
@@ -209,7 +208,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public MaterializedPromise<Void> getAcknowledgement() {
+		public Promise<Void> getAcknowledgement() {
 			return acknowledgement;
 		}
 

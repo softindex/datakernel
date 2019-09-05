@@ -16,7 +16,6 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractCommunicatingProcess;
@@ -45,7 +44,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 	}
 
 	@Override
-	public MaterializedPromise<Void> set(ChannelSupplier<ByteBuf> input) {
+	public Promise<Void> set(ChannelSupplier<ByteBuf> input) {
 		this.input = sanitize(input);
 		startProcess();
 		return getProcessCompletion();

@@ -13,8 +13,8 @@
 
   <name>DataKernel: Dataflow</name>
   <description>
-    Distributed stream-based batch processing engine for Big Data applications. Contains tools to work with datasets
-    which can span multiple partitions.
+    Distributed stream-based batch processing engine for Big Data applications.
+    Package contains tools to work with large datasets which could be spanned into multiple partitions.
   </description>
 
   <dependencies>

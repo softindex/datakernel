@@ -1,11 +1,15 @@
 package io.datakernel.di.core;
 
+import io.datakernel.di.impl.AbstractCompiledBinding;
+import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
@@ -35,15 +39,22 @@ public interface Multibinder<T> {
 	 * Multibinder that returns a binding that applies given reducing function to set of <b>instances</b> provided by all conflicting bindings.
 	 */
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
-		return (key, bindings) -> {
-			List<Binding.Factory<T>> factories = new ArrayList<>();
-			Set<Dependency> dependencies = new HashSet<>();
-			for (Binding<T> binding : bindings) {
-				dependencies.addAll(binding.getDependencies());
-				factories.add(binding.getFactory());
-			}
-			return new Binding<>(dependencies, locator -> reducerFunction.apply(key, factories.stream().map(factory -> factory.create(locator))));
-		};
+		return (key, bindings) ->
+				new Binding<>(bindings.stream().map(Binding::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
+						(compiledBindings, threadsafe, scope, index) ->
+								new AbstractCompiledBinding<T>(scope, index) {
+									final CompiledBinding[] conflictedBindings = bindings.stream()
+											.map(Binding::getCompiler)
+											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings, true, scope, index))
+											.toArray(CompiledBinding[]::new);
+
+									@Override
+									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										//noinspection unchecked
+										return reducerFunction.apply(key,
+												Stream.of(conflictedBindings).map(binding -> (T) binding.createInstance(scopedInstances, synchronizedScope)));
+									}
+								});
 	}
 
 	/**
@@ -80,6 +91,7 @@ public interface Multibinder<T> {
 
 	/**
 	 * Multibinder that returns a binding for a merged map of maps provided by all conflicting bindings.
+	 *
 	 * @throws DIException on map merge conflicts
 	 */
 	@SuppressWarnings("unchecked")

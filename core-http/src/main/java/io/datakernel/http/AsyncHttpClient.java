@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.MaterializedPromise;
 import io.datakernel.async.Promise;
 import io.datakernel.async.SettablePromise;
 import io.datakernel.dns.AsyncDnsClient;
@@ -440,7 +439,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> start() {
+	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return Promise.complete();
 	}
@@ -457,7 +456,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@NotNull
 	@Override
-	public MaterializedPromise<Void> stop() {
+	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
 		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
