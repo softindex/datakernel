@@ -34,54 +34,70 @@
                 </form>
             {{/deletedBy}}
             {{^deletedBy}}
-                <form action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
-                    <button class="btn btn-outline-primary btn-sm mx-1">delete</button>
-                </form>
-                <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
-                        data-target="#reply_{{postId}}">
-                    reply
-                </button>
+                {{#user}}
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                id="change_menu_{{postId}}"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            change
+                        </button>
+
+                        <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                              action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+                            <a class="dropdown-item" href="/{{pubKey}}/{{threadId}}/{{postId}}/edit">edit</a>
+                            <button class="dropdown-item" type="submit">delete</button>
+                        </form>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
+                            data-target="#reply_{{postId}}">
+                        reply
+                    </button>
+                {{/user}}
             {{/deletedBy}}
         </div>
     </div>
 </div>
 <div class="ml-3 border-left border-dark">
     {{^deletedBy}}
-        <div class="collapse" id="reply_{{postId}}">
-            <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
-                  method="post" enctype="multipart/form-data">
-                <div class="mx-3">
-                    <textarea class="form-control" placeholder="Post your reply" name="content"></textarea>
-                </div>
-                <div class="collapse" id="attachments_{{postId}}">
-                    <div class="mx-3 mt-3">
-                        <div class="custom-file col-3">
-                            <input type="file" class="custom-file-input" id="image_attachment_{{postId}}" multiple
-                                   name="image_attachment">
-                            <label class="custom-file-label" for="image_attachment_{{postId}}">Attach images</label>
-                        </div>
-                        <div class="custom-file col-3">
-                            <input type="file" class="custom-file-input" id="video_attachment_{{postId}}" multiple
-                                   name="video_attachment">
-                            <label class="custom-file-label" for="video_attachment_{{postId}}">Attach videos</label>
-                        </div>
-                        <div class="custom-file col-3">
-                            <input type="file" class="custom-file-input" id="document_attachment_{{postId}}" multiple
-                                   name="document_attachment">
-                            <label class="custom-file-label" for="document_attachment_{{postId}}">Attach
-                                documents</label>
+        {{#user}}
+            <div class="collapse" id="reply_{{postId}}">
+                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
+                      method="post" enctype="multipart/form-data">
+                    <div class="mx-3">
+                        <textarea class="form-control" placeholder="Post your reply" name="content"
+                                  data-post-button="post_button_{{postId}}"></textarea>
+                    </div>
+                    <div class="collapse" id="attachments_{{postId}}">
+                        <div class="mx-3 mt-3">
+                            <div class="custom-file col-3">
+                                <input type="file" class="custom-file-input" id="image_attachment_{{postId}}" multiple
+                                       name="image_attachment">
+                                <label class="custom-file-label" for="image_attachment_{{postId}}">Attach images</label>
+                            </div>
+                            <div class="custom-file col-3">
+                                <input type="file" class="custom-file-input" id="video_attachment_{{postId}}" multiple
+                                       name="video_attachment">
+                                <label class="custom-file-label" for="video_attachment_{{postId}}">Attach videos</label>
+                            </div>
+                            <div class="custom-file col-3">
+                                <input type="file" class="custom-file-input" id="document_attachment_{{postId}}"
+                                       multiple
+                                       name="document_attachment">
+                                <label class="custom-file-label" for="document_attachment_{{postId}}">Attach
+                                    documents</label>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="p-3">
-                    <button type="submit" class="btn btn-sm btn-primary">post</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="collapse"
-                            data-target="#attachments_{{postId}}">
-                        attach
-                    </button>
-                </div>
-            </form>
-        </div>
+                    <div class="p-3">
+                        <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{postId}}">post</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="collapse"
+                                data-target="#attachments_{{postId}}">
+                            attach
+                        </button>
+                    </div>
+                </form>
+            </div>
+        {{/user}}
     {{/deletedBy}}
     {{#children}}
         {{>render_post}}

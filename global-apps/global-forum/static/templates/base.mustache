@@ -12,27 +12,43 @@
 </head>
 <body>
 <div class="container">
-    <nav class="navbar navbar-light bg-light my-3">
+    <nav class="navbar navbar-expand-md navbar-light bg-light my-3">
         <a class="navbar-brand" href="/{{pubKey}}/">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
 
-        <ul class="navbar-nav mr-auto">
-            <li class="nav-item active">
-                <a class="nav-link" href="/{{pubKey}}/">Threads</a>
-            </li>
-        </ul>
-        {{^user}}
-            <a class="btn btn-outline-success"
-               href="{{appStoreUrl}}/oauth?redirectURI=http://localhost:8080/{{pubKey}}/authorize">Log In</a>
-        {{/user}}
-        {{#user}}
-            {{^creatingNewThread}}
-                <a class="btn btn-outline-success mx-2" href="/{{pubKey}}/new">New thread</a>
-            {{/creatingNewThread}}
-            <button class="btn btn-outline-success mx-2" type="submit">Hello, {{username}}</button>
-            <form action="/{{pubKey}}/logout/" method="post">
-                <button class="btn btn-outline-success" type="submit">Log Out</button>
-            </form>
-        {{/user}}
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <!--                <li class="nav-item">-->
+                <!--                    <a class="nav-link" href="/{{pubKey}}/">Threads</a>-->
+                <!--                </li>-->
+                {{#user}}
+                    {{^creatingNewThread}}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/{{pubKey}}/new">New thread</a>
+                        </li>
+                    {{/creatingNewThread}}
+                {{/user}}
+            </ul>
+            <div class="row ml-auto mr-0">
+                {{^user}}
+                    <a class="btn btn-outline-success"
+                       href="{{appStoreUrl}}/oauth?redirectURI=http://localhost:8080/{{pubKey}}/authorize?origin="
+                       id="login_button">Log In</a>
+                {{/user}}
+                {{#user}}
+                    <span class="navbar-text mx-2" style="position: relative;">
+                        Hello, <a class="stretched-link" href="/{{pubKey}}/profile">{{username}}</a>
+                    </span>
+                    <form action="/{{pubKey}}/logout" method="post">
+                        <button class="btn btn-outline-success mx-2" type="submit">Log Out</button>
+                    </form>
+                {{/user}}
+            </div>
+        </div>
     </nav>
 </div>
 {{$content}}{{/content}}

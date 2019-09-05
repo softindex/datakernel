@@ -19,17 +19,17 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.global.Utils.generateString;
 import static io.global.forum.pojo.AuthService.DK_APP_STORE;
+import static io.global.forum.util.Utils.redirectToReferer;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class PublicServlet {
-	private static final String SESSION_ID = "SESSION_ID";
+	private static final String SESSION_ID = "FORUM_SID";
 
 	public static AsyncServlet create(AppStore appStore, MustacheTemplater templater) {
 		return RoutingServlet.create()
@@ -72,7 +72,8 @@ public final class PublicServlet {
 											return sessionStore.save(sessionId, userId)
 													.map($2 -> {
 														String pk = forumDao.getKeys().getPubKey().asString();
-														return HttpResponse.redirect302("/" + pk)
+														String origin = request.getQueryParameter("origin");
+														return redirect302(origin != null ? origin : "/" + pk)
 																.withCookie(HttpCookie.of(SESSION_ID, sessionId)
 																		.withPath("/" + pk)
 																		.withMaxAge(sessionStore.getSessionLifetime()));
@@ -89,13 +90,12 @@ public final class PublicServlet {
 					return forumDao.getSessionStore().remove(sessionId)
 							.map($ -> {
 								String pk = forumDao.getKeys().getPubKey().asString();
-								return HttpResponse.redirect302("/" + pk)
+								return redirectToReferer(request, "/" + pk)
 										.withCookie(HttpCookie.of(SESSION_ID, "<unset>")
 												.withPath("/" + pk)
 												.withMaxAge(Duration.ZERO));
 							});
 				})
-
 				.map(GET, "/new", request -> {
 					if (request.getAttachment(UserId.class) == null) {
 						return Promise.ofException(HttpException.ofCode(401, "Not authorized"));
@@ -128,13 +128,45 @@ public final class PublicServlet {
 											if (content == null) {
 												return Promise.<HttpResponse>ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
 											}
+											String pk = forumDao.getKeys().getPubKey().asString();
 
 											return forumDao.updateThread(tid, new ThreadMetadata(title))
 													.then($2 -> dao.addRootPost(userId, content, attachmentMap))
 													.thenEx(revertIfException(dao, attachmentMap))
-													.map($2 -> redirect302("../" + tid));
+													.map($2 -> redirect302("/" + pk + "/" + tid));
 										});
 							});
+				})
+				.map(GET, "/profile", request -> {
+					if (request.getAttachment(UserId.class) == null) {
+						return Promise.ofException(HttpException.ofCode(401, "Not authorized"));
+					}
+					return templater.render("profile");
+				})
+				.map(POST, "/profile", request -> {
+					UserId userId = request.getAttachment(UserId.class);
+					if (userId == null) {
+						return Promise.ofException(HttpException.ofCode(401, "Not authorized"));
+					}
+					ForumDao forumDao = request.getAttachment(ForumDao.class);
+
+					Map<String, String> params = request.getPostParameters();
+
+					return forumDao.getUser(userId)
+							.then(oldData -> {
+								assert oldData != null; // TODO anton: check that
+
+								String email = params.get("email");
+								String username = params.get("username");
+								String firstName = params.get("first_name");
+								String lastName = params.get("last_name");
+
+								if (username == null) {
+									return Promise.ofException(HttpException.ofCode(401, "Username POST parameter is required"));
+								}
+								return forumDao.updateUser(userId, new UserData(oldData.getRole(), email, username, firstName, lastName));
+							})
+							.map($ -> redirectToReferer(request, "/" + forumDao.getKeys().getPubKey().asString() + "/profile"));
 				})
 				.map("/:threadID/*", threadServlet(templater))
 				.then(session(templater))
@@ -169,6 +201,13 @@ public final class PublicServlet {
 				.then(attachThreadDao());
 	}
 
+	private static HttpResponse postOpRedirect(HttpRequest request) {
+		String tid = request.getPathParameter("threadID");
+		String pid = request.getPathParameter("postID");
+		ForumDao forumDao = request.getAttachment(ForumDao.class);
+		return redirectToReferer(request, "/" + forumDao.getKeys().getPubKey().asString() + "/" + tid + "/" + pid);
+	}
+
 	@NotNull
 	private static AsyncServlet postOperations() {
 		return RoutingServlet.create()
@@ -190,28 +229,14 @@ public final class PublicServlet {
 								return threadDao.addPost(user, pid, content, attachmentMap).toVoid();
 							})
 							.thenEx(revertIfException(threadDao, attachmentMap))
-							.map($ -> {
-								String referer = request.getHeader(REFERER);
-								return redirect302(referer != null ? referer : ".");
-							});
+							.map($ -> postOpRedirect(request));
 				})
-				.map(POST, "/delete", request -> {
-					String pid = request.getPathParameter("postID");
-
-					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-
-					UserId user = request.getAttachment(UserId.class);
-					return threadDao.removePost(user, pid)
-							.map($ -> redirect302("../.."));
-				})
-				.map(POST, "/restore", request -> {
-					String pid = request.getPathParameter("postID");
-
-					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-
-					return threadDao.restorePost(pid)
-							.map($ -> redirect302("../.."));
-				})
+				.map(POST, "/delete", request ->
+						request.getAttachment(ThreadDao.class).removePost(request.getAttachment(UserId.class), request.getPathParameter("postID"))
+								.map($ -> postOpRedirect(request)))
+				.map(POST, "/restore", request ->
+						request.getAttachment(ThreadDao.class).restorePost(request.getPathParameter("postID"))
+								.map($ -> postOpRedirect(request)))
 				.map(GET, "/download/:tag", request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 					String pid = request.getPathParameter("postID");
@@ -277,25 +302,26 @@ public final class PublicServlet {
 						return servlet.serve(request);
 					}
 					ForumDao forumDao = request.getAttachment(ForumDao.class);
-					String pubKey = forumDao.getKeys().getPubKey().asString();
 					SessionStore<UserId> sessionStore = forumDao.getSessionStore();
 					return sessionStore.get(sessionId)
 							.then(userId -> {
+								Duration maxAge;
 								if (userId != null) {
 									templater.put("user", forumDao.getUser(userId));
 									request.attach(userId);
+									maxAge = sessionStore.getSessionLifetime();
 								} else {
-									templater.remove("user");
+									maxAge = Duration.ZERO;
 								}
 								return servlet.serve(request)
 										.map(response -> {
-											Duration maxAge = userId != null ?
-													sessionStore.getSessionLifetime() :
-													Duration.ZERO;
+											if (response.getCookie(SESSION_ID) != null) {
+												return response;
+											}
 											return response
 													.withCookie(HttpCookie.of(SESSION_ID, sessionId)
 															.withMaxAge(maxAge)
-															.withPath("/" + pubKey));
+															.withPath("/" + forumDao.getKeys().getPubKey().asString()));
 										});
 							});
 				};

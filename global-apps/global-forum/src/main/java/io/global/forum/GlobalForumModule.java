@@ -140,6 +140,7 @@ public final class GlobalForumModule extends AbstractModule {
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStore, templater)
 						.then(servlet -> request -> {
+							templater.clear();
 							templater.put("appStoreUrl", appStoreUrl);
 							return servlet.serve(request);
 						}))

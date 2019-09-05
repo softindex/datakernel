@@ -27,8 +27,8 @@ public final class MustacheTemplater {
 		staticContext.put(name, object);
 	}
 
-	public void remove(String name) {
-		staticContext.remove(name);
+	public void clear() {
+		staticContext.clear();
 	}
 
 	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {

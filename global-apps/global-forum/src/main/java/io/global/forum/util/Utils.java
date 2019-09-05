@@ -4,6 +4,8 @@ import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.registry.CodecRegistry;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.util.Tuple2;
 import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
@@ -21,6 +23,7 @@ import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
+import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.global.ot.OTUtils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
@@ -130,6 +133,11 @@ public final class Utils {
 			sb.append(CHAR_POOL[RANDOM.nextInt(CHAR_POOL.length)]);
 		}
 		return sb.toString();
+	}
+
+	public static HttpResponse redirectToReferer(HttpRequest request, String defaultPath) {
+		String referer = request.getHeader(REFERER);
+		return HttpResponse.redirect302(referer != null ? referer : defaultPath);
 	}
 
 	private static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
