@@ -5,7 +5,6 @@ import Button from '@material-ui/core/Button';
 import inviteButtonStyles from "./inviteButtonStyles";
 import IconButton from "@material-ui/core/IconButton";
 import Tooltip from "@material-ui/core/Tooltip";
-import {withRouter} from "react-router-dom";
 
 function InviteButton({classes, publicKey}) {
   const [showTextField, setShowTextField] = React.useState(false);

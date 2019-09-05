@@ -1,5 +1,4 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import path from 'path';
 import Header from "../Header/Header"
 import ChatRoom from "../ChatRoom/ChatRoom"
 import SideBar from "../SideBar/SideBar";
@@ -18,7 +17,6 @@ import NamesService from "../../modules/names/NamesService";
 import contactsSerializer from "../../modules/contacts/ot/serializer";
 import contactsOTSystem from "../../modules/contacts/ot/ContactsOTSystem";
 import {getRoomName} from "../../common/utils";
-import {withRouter} from "react-router-dom";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 
 function MainScreen({publicKey, enqueueSnackbar, match, classes, history}) {
@@ -87,6 +85,8 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes, history}) {
       if (/^[0-9a-z:]{5,}:[0-9a-z:]{5,}$/i.test(redirectPublicKey)) {
         if (!contacts.has(redirectPublicKey)) {
           setRedirectPublicKey(redirectPublicKey);
+        } else {
+          setRedirectPublicKey(null);
         }
       }
     }
@@ -116,7 +116,11 @@ function MainScreen({publicKey, enqueueSnackbar, match, classes, history}) {
                   <ChatRoom roomId={roomId} publicKey={publicKey}/>
                 )}
               </div>
-              {redirectPublicKey !== null && <AddContactDialog contactPublicKey={redirectPublicKey}/>}
+              {redirectPublicKey !== null && (
+                <AddContactDialog
+                  onClose={() => {setRedirectPublicKey(null)}}
+                  contactPublicKey={redirectPublicKey}/>
+                )}
             </RegisterDependency>
           </RegisterDependency>
         </RegisterDependency>
