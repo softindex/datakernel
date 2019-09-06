@@ -1,4 +1,4 @@
-import {Service, randomString, wait} from 'global-apps-common';
+import {Service, randomString, delay} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import notesOTSystem from "./ot/NotesOTSystem";
 import NotesOTOperation from "./ot/NotesOTOperation";
@@ -10,11 +10,12 @@ class NotesService extends Service {
   constructor(notesOTStateManager) {
     super({
       notes: {},
-      ready: false,
-      newNotes: new Set()
+      ready: false
+      // newNotes: new Set()
     });
     this._notesOTStateManager = notesOTStateManager;
-    this._reconnectTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
   static create() {
@@ -31,10 +32,16 @@ class NotesService extends Service {
     try {
       await this._notesOTStateManager.checkout();
     } catch (err) {
-      console.error(err);
-      await this._reconnectDelay();
-      await this.init();
+      console.log(err);
 
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
+      await this.init();
       return;
     }
 
@@ -43,16 +50,21 @@ class NotesService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._notesOTStateManager.removeChangeListener(this._onStateChange);
   }
 
   async createNote(name) {
     const id = randomString(32);
     this._sendOperation(id, name);
-    this.setState({
-      newNotes: new Set([...this.state.newNotes, id])
-    });
+    // this.setState({
+    //   newNotes: new Set([...this.state.newNotes, id])
+    // });
 
     return id;
   };
@@ -91,18 +103,17 @@ class NotesService extends Service {
     return this._notesOTStateManager.getState();
   }
 
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-  }
-
   async _sync() {
     try {
       await this._notesOTStateManager.sync();
     } catch (err) {
       console.log(err);
-      await wait(RETRY_TIMEOUT);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

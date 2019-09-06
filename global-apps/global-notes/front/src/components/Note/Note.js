@@ -1,64 +1,39 @@
-import React from 'react';
+import React, {useMemo} from 'react';
 import NoteService from '../../modules/note/NoteService';
 import NoteEditor from '../NoteEditor/NoteEditor';
 import {withSnackbar} from "notistack";
-import {RegisterDependency} from 'global-apps-common';
+import {RegisterDependency, initService} from 'global-apps-common';
 
-class Note extends React.Component {
-  state = {
-    noteId: null,
-    noteService: null
+function Note({noteId, enqueueSnackbar}) {
+  const noteService = useMemo(() => (
+    NoteService.create(noteId)
+  ), [noteId]);
+
+  const onInsert = (position, content) => {
+    noteService.insert(position, content);
   };
 
-  onInsert = (position, content) => {
-    this.state.noteService.insert(position, content);
+  const onDelete = (position, content) => {
+    noteService.delete(position, content);
   };
 
-  onDelete = (position, content) => {
-    this.state.noteService.delete(position, content);
+  const onReplace = (position, oldContent, newContent) => {
+    noteService.replace(position, oldContent, newContent);
   };
 
-  onReplace = (position, oldContent, newContent) => {
-    this.state.noteService.replace(position, oldContent, newContent);
-  };
+  initService(noteService, err => enqueueSnackbar(err.message, {
+    variant: 'error'
+  }));
 
-  static getDerivedStateFromProps(props, state) {
-    if (props.noteId !== state.noteId) {
-      if (state.noteService) {
-        state.noteService.stop();
-      }
-
-      const noteService = NoteService.create(props.noteId);
-      noteService.init()
-        .catch(err => {
-          props.enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
-        });
-
-      return {
-        noteId: props.noteId,
-        noteService
-      };
-    }
-    return state;
-  }
-
-  componentWillUnmount() {
-    this.state.noteService.stop();
-  }
-
-  render() {
-    return (
-      <RegisterDependency name={NoteService} value={this.state.noteService}>
-        <NoteEditor
-          onInsert={this.onInsert}
-          onDelete={this.onDelete}
-          onReplace={this.onReplace}
-        />
-      </RegisterDependency>
-    );
-  }
+  return (
+    <RegisterDependency name={NoteService} value={noteService}>
+      <NoteEditor
+        onInsert={onInsert}
+        onDelete={onDelete}
+        onReplace={onReplace}
+      />
+    </RegisterDependency>
+  );
 }
 
 export default withSnackbar(Note);

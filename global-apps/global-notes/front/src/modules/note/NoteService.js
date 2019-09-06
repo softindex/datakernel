@@ -1,5 +1,5 @@
 import {ClientOTNode, OTStateManager} from 'ot-core/lib';
-import {Service, ROOT_COMMIT_ID} from 'global-apps-common';
+import {Service, delay} from 'global-apps-common';
 import DeleteOperation from './ot/operations/DeleteOperation';
 import InsertOperation from './ot/operations/InsertOperation';
 import serializer from '../note/ot/serializer';
@@ -8,40 +8,39 @@ import noteOTSystem from './ot/NoteOTSystem';
 const RETRY_TIMEOUT = 1000;
 
 class NoteService extends Service {
-  constructor(noteOTStateManager, isNew) {
+  constructor(noteOTStateManager) {
     super({
       content: '',
       ready: false
     });
 
     this._noteOTStateManager = noteOTStateManager;
-    this._reconnectTimeout = null;
-    this._resyncTimeout = null;
-    this._isNew = isNew;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
-  static create(noteId, isNew) {
+  static create(noteId) {
     const noteOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/note/' + noteId,
       serializer: serializer
     });
     const noteOTStateManager = new OTStateManager(() => '', noteOTNode, noteOTSystem);
 
-    return new NoteService(noteOTStateManager, isNew);
+    return new NoteService(noteOTStateManager);
   }
 
   async init() {
     try {
-      if (this._isNew) {
-        this._noteOTStateManager.checkoutRoot(ROOT_COMMIT_ID);
-      } else {
-        await this._noteOTStateManager.checkout();
-      }
+      await this._noteOTStateManager.checkout();
     } catch (err) {
       console.error(err);
-      const delay = this._retryDelay();
-      this._reconnectTimeout = delay.timeoutId;
-      await delay.promise;
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this.init();
       return;
     }
@@ -51,8 +50,12 @@ class NoteService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
-    clearTimeout(this._resyncTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._noteOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -88,29 +91,17 @@ class NoteService extends Service {
     this._sync();
   }
 
-  _retryDelay() {
-    let timeoutId;
-    const promise = new Promise(resolve => {
-      timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-
-    return {timeoutId, promise};
-  }
-
   async _sync() {
     try {
       await this._noteOTStateManager.sync();
-
-      if (this._isNew && this._noteOTStateManager.getRevision() !== ROOT_COMMIT_ID) {
-        this._isNew = false;
-      }
     } catch (err) {
-      console.error(err);
-
-      const delay = this._retryDelay();
-      this._resyncTimeout = delay.timeoutId;
-      await delay.promise;
-
+      console.log(err);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }
