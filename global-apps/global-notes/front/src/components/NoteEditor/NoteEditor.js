@@ -1,45 +1,23 @@
 import React, {useEffect} from 'react';
 import {getDifference} from './utils';
-import connectService from '../../common/connectService';
-import NoteContext from '../../modules/note/NoteContext';
 import noteEditorStyles from "./noteEditorStyles";
 import withStyles from "@material-ui/core/es/styles/withStyles";
 import {Paper} from "@material-ui/core";
+import {getInstance, useService} from "global-apps-common";
+import NoteService from "../../modules/note/NoteService";
 
-function NoteEditor(props) {
+function NoteEditorView({classes, content, onChange}) {
   let textInput = React.createRef();
 
   useEffect(() => {
     textInput.focus();
   }, [textInput]);
 
-  const onChange = event => {
-    const difference = getDifference(props.content, event.target.value, event.target.selectionEnd);
-
-    if (!difference) {
-      return;
-    }
-
-    switch (difference.operation) {
-      case 'insert':
-        props.onInsert(difference.position, difference.content);
-        break;
-      case 'delete':
-        props.onDelete(difference.position, difference.content);
-        break;
-      case 'replace':
-        props.onReplace(difference.position, difference.oldContent, difference.newContent);
-        break;
-      default:
-        throw new Error('Unsupported operation');
-    }
-  };
-
   return (
-    <Paper className={props.classes.paper}>
+    <Paper className={classes.paper}>
       <textarea
-        className={props.classes.noteEditor}
-        value={props.content}
+        className={classes.noteEditor}
+        value={content}
         onChange={onChange}
         ref={input => {
           textInput = input
@@ -49,9 +27,38 @@ function NoteEditor(props) {
   );
 }
 
-export default connectService(
-  NoteContext,
-  ({content}, noteService) => ({content, noteService})
-)(
-  withStyles(noteEditorStyles)(NoteEditor)
-);
+function NoteEditor({classes, onInsert, onDelete, onReplace}) {
+  const noteService = getInstance(NoteService);
+  const {content} = useService(noteService);
+
+  const props = {
+    classes,
+    content,
+
+    onChange(event) {
+      const difference = getDifference(content, event.target.value, event.target.selectionEnd);
+
+      if (!difference) {
+        return;
+      }
+
+      switch (difference.operation) {
+        case 'insert':
+          onInsert(difference.position, difference.content);
+          break;
+        case 'delete':
+          onDelete(difference.position, difference.content);
+          break;
+        case 'replace':
+          onReplace(difference.position, difference.oldContent, difference.newContent);
+          break;
+        default:
+          throw new Error('Unsupported operation');
+      }
+    }
+  };
+
+  return <NoteEditorView {...props}/>
+}
+
+export default withStyles(noteEditorStyles)(NoteEditor);

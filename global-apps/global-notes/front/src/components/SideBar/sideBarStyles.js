@@ -18,12 +18,11 @@ const sideBarStyles = theme => ({
     },
     overflowX: 'hidden',
     background: theme.palette.primary.contrastText,
-    marginTop: theme.spacing.unit,
     marginBottom: theme.spacing.unit
   },
   button: {
     width: theme.spacing.unit * 41,
-    margin: 'auto',
+    margin:  `${theme.spacing.unit * 2}px auto`,
     borderRadius: theme.spacing.unit * 9,
     marginTop: theme.spacing.unit * 2
   },

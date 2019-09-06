@@ -2,21 +2,18 @@ import React, {useEffect} from 'react';
 import {withSnackbar} from 'notistack';
 import Grid from '@material-ui/core/Grid';
 import DebugNotesList from '../DebugNotesList/DebugNotesList';
-import NotesContext from '../../modules/notes/NotesContext';
 import NotesService from '../../modules/notes/NotesService';
-import connectService from '../../common/connectService';
-import AccountContext from '../../modules/account/AccountContext';
-import checkAuth from '../../common/checkAuth';
+import {checkAuth, RegisterDependency} from 'global-apps-common';
 import CommitsGraph from '../CommitsGraph/CommitsGraph';
 
-function DebugScreen(props) {
+function DebugScreen({match, enqueueSnackbar}) {
   const notesService = NotesService.create();
-  const {noteId} = props.match.params;
+  const {noteId} = match.params;
 
   useEffect(() => {
     notesService.init()
       .catch(err => {
-        props.enqueueSnackbar(err.message, {
+        enqueueSnackbar(err.message, {
           variant: 'error'
         });
       });
@@ -27,7 +24,7 @@ function DebugScreen(props) {
   });
 
   return (
-    <NotesContext.Provider value={notesService}>
+    <RegisterDependency name={NotesService} value={notesService}>
       <Grid container>
         <Grid item xs={3}>
           <DebugNotesList/>
@@ -36,15 +33,8 @@ function DebugScreen(props) {
           {noteId && (<CommitsGraph noteId={noteId}/>)}
         </Grid>
       </Grid>
-    </NotesContext.Provider>
+    </RegisterDependency>
   );
 }
 
-export default connectService(
-  AccountContext,
-  (state, accountService) => ({accountService})
-)(
-  checkAuth(
-    withSnackbar(DebugScreen)
-  )
-);
+export default checkAuth(withSnackbar(DebugScreen));

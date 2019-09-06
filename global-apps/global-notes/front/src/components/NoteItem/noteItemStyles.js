@@ -3,23 +3,26 @@ const noteItemStyles = theme => ({
     borderRadius: 4,
     paddingTop: theme.spacing.unit * 0.5,
     paddingBottom: theme.spacing.unit * 0.5,
-    '& > div' : {
+    '& > div': {
       display: 'none'
     },
     '&:hover > div': {
       display: 'block'
-    }
+    },
+    boxShadow: `0px 13px ${theme.spacing.unit}px -${theme.spacing.unit * 2}px rgba(0,0,0,0.5)`
   },
   link: {
     display: 'flex',
     flexGrow: 1,
-    minWidth: theme.spacing.unit * 33.75,
+    minWidth: theme.spacing.unit * 34,
     textDecoration: 'none',
     height: theme.spacing.unit * 8,
-    alignItems: 'center'
+    alignItems: 'center',
+    color: theme.palette.secondary.contrastText
   },
   itemText: {
-    overflow: 'hidden'
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
   },
   itemTextPrimary: {
     textOverflow: 'ellipsis',

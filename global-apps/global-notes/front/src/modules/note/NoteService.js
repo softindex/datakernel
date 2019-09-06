@@ -1,10 +1,9 @@
 import {ClientOTNode, OTStateManager} from 'ot-core/lib';
-import Service from '../../common/Service';
+import {Service, ROOT_COMMIT_ID} from 'global-apps-common';
 import DeleteOperation from './ot/operations/DeleteOperation';
 import InsertOperation from './ot/operations/InsertOperation';
 import serializer from '../note/ot/serializer';
 import noteOTSystem from './ot/NoteOTSystem';
-import {ROOT_COMMIT_ID} from '../../common/utils';
 
 const RETRY_TIMEOUT = 1000;
 

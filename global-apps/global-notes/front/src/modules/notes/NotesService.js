@@ -1,8 +1,7 @@
-import Service from '../../common/Service';
+import {Service, randomString, wait} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import notesOTSystem from "./ot/NotesOTSystem";
 import NotesOTOperation from "./ot/NotesOTOperation";
-import {randomString, wait} from '../../common/utils';
 import serializer from "../notes/ot/serializer";
 
 const RETRY_TIMEOUT = 1000;

@@ -39,7 +39,7 @@ public final class GlobalNotesLauncher extends Launcher {
 	@Override
 	public Module getModule() {
 		return Modules.combine(
-				ServiceGraphModule.defaultInstance(),
+				ServiceGraphModule.create(),
 				ConfigModule.create().printEffectiveConfig(),
 				new NotesModule(NOTES_INDEX_REPO),
 				new DictionaryModule(NOTES_INDEX_REPO),

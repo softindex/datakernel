@@ -1,52 +1,64 @@
-import React, {useEffect} from 'react';
+import React, {useMemo} from 'react';
 import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
 import Header from '../Header/Header';
 import SideBar from '../SideBar/SideBar';
 import mainScreenStyles from './mainScreenStyles';
-import checkAuth from '../../common/checkAuth';
-import NotesContext from '../../modules/notes/NotesContext';
 import NotesService from '../../modules/notes/NotesService';
 import EmptyNote from '../EmptyNote/EmptyNote';
 import Note from '../Note/Note';
+import {
+  checkAuth,
+  initService,
+  AuthContext,
+  connectService,
+  RegisterDependency,
+  useService
+} from 'global-apps-common';
 
-function MainScreen(props) {
-  const notesService = NotesService.create();
-  const {noteId} = props.match.params;
+function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
+  const {notesService} = useMemo(() => {
+    const notesService = NotesService.create();
+    return {
+      notesService
+    }
+  }, [publicKey]);
 
-  useEffect(() => {
-    notesService.init()
-      .catch(err => {
-        props.enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
-      });
+  function errorHandler(err) {
+    enqueueSnackbar(err.message, {
+      variant: 'error'
+    });
+  }
 
-    return () => {
-      notesService.stop();
-    };
-  });
+  initService(notesService, errorHandler);
+  const {noteId} = match.params;
+  const {notes} = useService(notesService);
 
   return (
-    <NotesContext.Provider value={notesService}>
+    <RegisterDependency name={NotesService} value={notesService}>
       <Header noteId={noteId}/>
-      <div className={props.classes.note}>
+      <div className={classes.note}>
         <SideBar/>
         {!noteId && (
           <EmptyNote/>
         )}
         {noteId && (
-          <Note
-            noteId={noteId}
-            isNew={notesService.state.newNotes.has(noteId)}/>
+          <Note noteId={noteId}/>
         )}
       </div>
-    </NotesContext.Provider>
+    </RegisterDependency>
   )
 }
 
-export default checkAuth(
-  withSnackbar(
-    withStyles(mainScreenStyles)(MainScreen)
+export default connectService(
+  AuthContext, ({publicKey}, accountService) => ({
+    publicKey, accountService
+  })
+)(
+  checkAuth(
+    withSnackbar(
+      withStyles(mainScreenStyles)(MainScreen)
+    )
   )
 );
+

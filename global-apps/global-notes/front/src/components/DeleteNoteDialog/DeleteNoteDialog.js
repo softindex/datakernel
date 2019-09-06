@@ -8,24 +8,15 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import DialogContentText from '@material-ui/core/DialogContentText';
 import noteDialogsStyles from '../CreateNoteDialog/noteDialogsStyles';
 import Dialog from '../Dialog/Dialog'
-import connectService from '../../common/connectService';
-import NotesContext from '../../modules/notes/NotesContext';
 import {withRouter} from "react-router-dom";
+import {getInstance} from "global-apps-common";
+import NotesService from "../../modules/notes/NotesService";
 
-function DeleteNoteDialog(props) {
-  const onDelete = () => {
-    return props.deleteNote(props.noteId);
-  };
-
+function DeleteNoteDialogView({classes, onClose, onDelete}) {
   return (
-    <Dialog
-      open={props.open}
-      onClose={props.onClose}
-    >
+    <Dialog onClose={onClose}>
       <form>
-        <DialogTitle
-          onClose={props.onClose}
-        >
+        <DialogTitle>
           Delete note
         </DialogTitle>
         <DialogContent>
@@ -35,13 +26,13 @@ function DeleteNoteDialog(props) {
         </DialogContent>
         <DialogActions>
           <Button
-            className={props.classes.actionButton}
-            onClick={props.onClose}
+            className={classes.actionButton}
+            onClick={onClose}
           >
             No
           </Button>
           <Button
-            className={props.classes.actionButton}
+            className={classes.actionButton}
             color="primary"
             variant="contained"
             onClick={onDelete}
@@ -54,27 +45,35 @@ function DeleteNoteDialog(props) {
   );
 }
 
+function DeleteNoteDialog({classes, match, history, onClose, enqueueSnackbar, currentNoteId}) {
+  const notesService = getInstance(NotesService);
+
+  const props = {
+    classes,
+    onClose,
+
+    onDelete() {
+      return notesService.deleteNote(currentNoteId)
+        .then(() => {
+          const {noteId} = match.params;
+          onClose();
+          if (currentNoteId === noteId) {
+            history.push('/note/');
+          }
+        })
+        .catch(err => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        })
+    }
+  };
+
+  return <DeleteNoteDialogView {...props}/>
+}
+
 export default withRouter(
-  connectService(
-    NotesContext,
-    (state, notesService, props) => ({
-      deleteNote(currentNoteId) {
-        notesService.deleteNote(currentNoteId)
-          .then(() => {
-            const {noteId} = props.match.params;
-            props.onClose();
-            if (currentNoteId === noteId) {
-              props.history.push('/note/');
-            }
-          })
-          .catch(err => {
-            props.enqueueSnackbar(err.message, {
-              variant: 'error'
-            });
-          })
-      }
-    })
-  )(
-    withSnackbar(withStyles(noteDialogsStyles)(DeleteNoteDialog))
+  withSnackbar(
+    withStyles(noteDialogsStyles)(DeleteNoteDialog)
   )
 );

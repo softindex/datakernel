@@ -3,6 +3,9 @@ const notesListStyles = theme => ({
     margin: 'auto',
     marginTop: theme.spacing.unit * 2,
     textAlign: 'center'
+  },
+  itemsList: {
+    paddingTop: 0
   }
 });
 

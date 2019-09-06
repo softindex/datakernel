@@ -5,17 +5,17 @@ const headerStyles = theme => ({
   },
   noteTitleContainer: {
     display: 'flex',
-    marginLeft: theme.spacing.unit * 24,
-    flexGrow: 1
+    flexGrow: 1,
+    overflow: 'hidden'
   },
   title: {
     marginLeft: theme.spacing.unit * 3,
+    minWidth: theme.spacing.unit * 37
   },
   noteTitle: {
     fontSize: theme.typography.body1.fontSize,
-    flexGrow: 1,
-    display: 'flex',
-    alignItems: 'center'
+    overflow: 'hidden',
+    textOverflow: 'ellipsis'
   },
   listItemIcon: {
     color: 'inherit'
@@ -27,6 +27,7 @@ const headerStyles = theme => ({
     fontSize: theme.spacing.unit * 3
   },
   logout: {
+    marginLeft: theme.spacing.unit * 2,
     '&:hover': {
       cursor: 'pointer'
     }

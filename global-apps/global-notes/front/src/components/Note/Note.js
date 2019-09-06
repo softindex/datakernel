@@ -1,15 +1,10 @@
 import React from 'react';
-import PropTypes from 'prop-types';
 import NoteService from '../../modules/note/NoteService';
-import NoteContext from '../../modules/note/NoteContext';
 import NoteEditor from '../NoteEditor/NoteEditor';
 import {withSnackbar} from "notistack";
+import {RegisterDependency} from 'global-apps-common';
 
 class Note extends React.Component {
-  static propTypes = {
-    noteId: PropTypes.string.isRequired
-  };
-
   state = {
     noteId: null,
     noteService: null
@@ -33,7 +28,7 @@ class Note extends React.Component {
         state.noteService.stop();
       }
 
-      const noteService = NoteService.create(props.noteId, props.isNew);
+      const noteService = NoteService.create(props.noteId);
       noteService.init()
         .catch(err => {
           props.enqueueSnackbar(err.message, {
@@ -55,13 +50,13 @@ class Note extends React.Component {
 
   render() {
     return (
-      <NoteContext.Provider value={this.state.noteService}>
+      <RegisterDependency name={NoteService} value={this.state.noteService}>
         <NoteEditor
           onInsert={this.onInsert}
           onDelete={this.onDelete}
           onReplace={this.onReplace}
         />
-      </NoteContext.Provider>
+      </RegisterDependency>
     );
   }
 }

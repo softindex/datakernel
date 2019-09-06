@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
@@ -8,129 +8,110 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import noteDialogsStyles from './noteDialogsStyles';
 import Dialog from '../Dialog/Dialog'
-import connectService from '../../common/connectService';
-import NotesContext from '../../modules/notes/NotesContext';
 import {withRouter} from "react-router-dom";
+import {getInstance} from "global-apps-common";
+import NotesService from "../../modules/notes/NotesService";
 
-class CreateNoteDialog extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      name: props.rename.noteName || '',
-      loading: false
-    };
-  }
+function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose, onNameChange}) {
+  return (
+    <Dialog onClose={onClose}>
+      <form onSubmit={onSubmit}>
+        <DialogTitle>
+          {rename.show ? 'Rename note' : 'Create note'}
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            required={true}
+            autoFocus
+            value={name}
+            disabled={loading}
+            margin="normal"
+            label="Note name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            onChange={onNameChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            className={classes.actionButton}
+            onClick={onClose}
+          >
+            Close
+          </Button>
+          <Button
+            className={classes.actionButton}
+            type="submit"
+            color="primary"
+            variant="contained"
+          >
+            {rename.show ? 'Rename' : 'Create'}
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}
 
-  componentDidUpdate(prevProps, prevState) {
-    if (prevProps.rename.noteName !== this.props.rename.noteName) {
-      this.setState({
-        name: this.props.rename.noteName
-      });
+function CreateNoteDialog({classes, enqueueSnackbar, onClose, rename, history}) {
+  const notesService = getInstance(NotesService);
+  const [name, setName] = useState(rename.noteName || '');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(
+    () => {
+      setName(rename.noteName)
+    },
+    [rename.noteName]
+  );
+
+  const props = {
+    classes,
+    onClose,
+    loading,
+    name,
+    rename,
+
+    onNameChange(event) {
+      setName(event.target.value);
+    },
+
+    onSubmit(event) {
+      event.preventDefault();
+      setLoading(true);
+
+      if (!rename.show) {
+        notesService.createNote(name)
+          .then(newNoteId => {
+            onClose();
+            history.push('/note/' + newNoteId);
+          })
+          .catch(err => {
+            enqueueSnackbar(err.message, {
+              variant: 'error'
+            });
+          });
+      } else {
+        notesService.renameNote(rename.noteId, name)
+          .then(() => {
+            onClose();
+          })
+          .catch(err => {
+            enqueueSnackbar(err.message, {
+              variant: 'error'
+            });
+          });
+      }
+      setLoading(false);
     }
-  }
-
-  onNameChange = event => {
-    this.setState({
-      name: event.target.value
-    });
   };
 
-  onSubmit = event => {
-    event.preventDefault();
-    this.setState({
-      loading: true
-    });
-
-    this.props.onSubmit(this.props.rename.noteId, this.state.name);
-
-    this.setState({
-      name: '',
-      loading: false
-    });
-  };
-
-  onClose = () => {
-    this.props.onClose();
-    this.setState({
-      name: ''
-    });
-  };
-
-  render() {
-    return (
-      <Dialog
-        open={this.props.open}
-        onClose={this.onClose}
-      >
-        <form onSubmit={this.onSubmit}>
-          <DialogTitle onClose={this.onClose}>
-            {this.props.rename.show ? 'Rename note' : 'Create note'}
-          </DialogTitle>
-          <DialogContent>
-            <TextField
-              required={true}
-              autoFocus
-              value={this.state.name}
-              disabled={this.state.loading}
-              margin="normal"
-              label="Note name"
-              type="text"
-              fullWidth
-              variant="outlined"
-              onChange={this.onNameChange}
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button
-              className={this.props.classes.actionButton}
-              onClick={this.onClose}
-            >
-              Close
-            </Button>
-            <Button
-              className={this.props.classes.actionButton}
-              type="submit"
-              color="primary"
-              variant="contained"
-            >
-              {this.props.rename.show ? 'Rename' : 'Create'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
-    );
-  }
+  return <CreateNoteDialogView {...props}/>
 }
 
 export default withRouter(
-  connectService(
-    NotesContext, (state, notesService, props) => ({
-      onSubmit(id, name) {
-        if (!props.rename.show) {
-          notesService.createNote(name)
-            .then(newNoteId => {
-              props.onClose();
-              props.history.push('/note/' + newNoteId);
-            })
-            .catch(err => {
-              props.enqueueSnackbar(err.message, {
-                variant: 'error'
-              });
-            });
-        } else {
-          notesService.renameNote(id, name)
-            .then(() => {
-              props.onClose();
-            })
-            .catch(err => {
-              props.enqueueSnackbar(err.message, {
-                variant: 'error'
-              });
-            });
-        }
-      }
-    })
-  )(
-    withSnackbar(withStyles(noteDialogsStyles)(CreateNoteDialog))
+  withSnackbar(
+    withStyles(noteDialogsStyles)(CreateNoteDialog)
   )
 );

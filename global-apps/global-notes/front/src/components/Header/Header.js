@@ -6,13 +6,11 @@ import Typography from '@material-ui/core/Typography';
 import ArrowIcon from '@material-ui/icons/KeyboardArrowRight';
 import Icon from '@material-ui/core/Icon';
 import headerStyles from './headerStyles';
-import connectService from '../../common/connectService';
-import AccountContext from '../../modules/account/AccountContext';
-import NotesContext from '../../modules/notes/NotesContext';
+import {connectService, AuthContext} from 'global-apps-common';
+import {getInstance, useService} from "global-apps-common";
+import NotesService from "../../modules/notes/NotesService";
 
-function Header({classes, notes, noteId, logout}) {
-  const note = notes[noteId];
-
+function HeaderView({classes, note, onLogout}) {
   return (
     <AppBar className={classes.appBar} position="fixed">
       <Toolbar>
@@ -40,7 +38,7 @@ function Header({classes, notes, noteId, logout}) {
         </div>
         <div
           color="inherit"
-          onClick={logout}
+          onClick={onLogout}
           className={classes.logout}
         >
           <Icon className={classes.accountIcon}>logout</Icon>
@@ -50,20 +48,26 @@ function Header({classes, notes, noteId, logout}) {
   );
 }
 
+function Header({classes, noteId, onLogout}) {
+  const notesService = getInstance(NotesService);
+  const {notes} = useService(notesService);
+  const note = notes[noteId];
+  const props = {
+    classes,
+    note,
+    onLogout
+  };
+
+  return <HeaderView {...props}/>
+}
+
 export default connectService(
-  NotesContext,
-  ({ready, notes}, notesService) => ({
-    ready, notes, notesService
+  AuthContext,
+  (state, accountService) => ({
+    onLogout() {
+      accountService.logout();
+    }
   })
 )(
-  connectService(
-    AccountContext,
-    (state, accountService) => ({
-      logout() {
-        accountService.logout();
-      }
-    })
-  )(
-    withStyles(headerStyles)(Header)
-  )
+  withStyles(headerStyles)(Header)
 );

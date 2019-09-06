@@ -3,25 +3,18 @@ import path from 'path';
 import {withStyles} from '@material-ui/core';
 import List from '@material-ui/core/List';
 import CircularProgress from '@material-ui/core/CircularProgress';
-import Grow from '@material-ui/core/Grow';
 import NoteItem from '../DebugNoteItem/DebugNoteItem';
 import notesListStyles from './notesListStyles';
-import connectService from '../../common/connectService';
-import NotesContext from '../../modules/notes/NotesContext';
+import {getInstance, useService} from "global-apps-common";
+import NotesService from "../../modules/notes/NotesService";
 
-function DebugNotesList({classes, ready, notes}) {
-  const getNotePath = noteId => {
-    return path.join('/debug', noteId || '');
-  };
-
+function DebugNotesListView({classes, ready, notes, getNotePath}) {
   return (
     <>
       {!ready && (
-        <Grow in={!ready}>
-          <div className={classes.progressWrapper}>
-            <CircularProgress/>
-          </div>
-        </Grow>
+        <div className={classes.progressWrapper}>
+          <CircularProgress/>
+        </div>
       )}
       {ready && (
         <div className={classes.notesList}>
@@ -43,9 +36,20 @@ function DebugNotesList({classes, ready, notes}) {
   );
 }
 
-export default connectService(
-  NotesContext,
-  ({notes, ready}, notesService) => ({notes, ready, notesService})
-)(
-  withStyles(notesListStyles)(DebugNotesList)
-);
+function DebugNotesList({classes}) {
+  const notesService = getInstance(NotesService);
+  const {notes, ready} = useService(notesService);
+  const props = {
+    classes,
+    notes,
+    ready,
+
+    getNotePath(noteId) {
+      return path.join('/debug', noteId || '');
+    }
+  };
+
+  return <DebugNotesListView {...props}/>
+}
+
+export default withStyles(notesListStyles)(DebugNotesList);
