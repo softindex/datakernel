@@ -17,9 +17,7 @@ import io.global.common.SimKey;
 import io.global.forum.container.ForumRepoNames;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.dao.ForumDao;
-import io.global.forum.dao.ThreadDao;
 import io.global.forum.http.PublicServlet;
-import io.global.forum.pojo.*;
 import io.global.forum.util.MustacheTemplater;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.ot.api.GlobalOTNode;
@@ -39,7 +37,6 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
-import static java.util.Collections.emptyMap;
 
 public final class GlobalForumModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
@@ -60,65 +57,18 @@ public final class GlobalForumModule extends AbstractModule {
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
-	boolean didIt = false;
-
 	@Provides
 	AsyncServlet servlet(ContainerManager<ForumUserContainer> containerManager, @Named("Forum") AsyncServlet forumServlet) {
 		return RoutingServlet.create()
 				.map("/:pubKey/*", request -> {
 					try {
 						PubKey pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
-
 						ForumUserContainer container = containerManager.getUserContainer(pubKey);
 						if (container == null) {
 							return Promise.of(HttpResponse.notFound404());
 						}
-						ForumDao dao = container.getForumDao();
 
-						// region stub data
-						if (!didIt) {
-							didIt = true;
-							UserId anton = new UserId(AuthService.DK_APP_STORE, "anton");
-							UserId eduard = new UserId(AuthService.DK_APP_STORE, "eduard");
-							UserId lera = new UserId(AuthService.DK_APP_STORE, "lera");
-
-							dao.updateUser(anton, new UserData(UserRole.COMMON, "", "Anton", null, null));
-							dao.updateUser(lera, new UserData(UserRole.COMMON, "", "Lera", null, null));
-							dao.updateUser(eduard, new UserData(UserRole.COMMON, "", "Eduard", null, null));
-
-							dao.createThread(new ThreadMetadata("thread #1"))
-									.then(tid -> {
-										ThreadDao threadDao = dao.getThreadDao(tid);
-										assert threadDao != null;
-
-										return threadDao.addRootPost(anton, "Hello World", emptyMap())
-												.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
-												.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton", emptyMap()));
-									})
-									.then($ -> dao.createThread(new ThreadMetadata("second thread")))
-									.then(tid -> {
-										ThreadDao threadDao = dao.getThreadDao(tid);
-										assert threadDao != null;
-
-										return threadDao.addRootPost(anton, "Hello World", emptyMap())
-												.then($ -> threadDao.addPost(eduard, "root", "Hello, Anton", emptyMap()))
-												.then(pid -> threadDao.addPost(anton, pid, "Hello, Eduard", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #1", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #2", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #3", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #4", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #5", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #6", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #7", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #8", emptyMap()))
-												.then($ -> threadDao.addPost(lera, "root", "Goodbye, Anton #9", emptyMap()));
-									})
-									.whenResult($ -> {});
-						}
-						// endregion
-
-						request.attach(ForumDao.class, dao);
+						request.attach(ForumDao.class, container.getForumDao());
 						return forumServlet.serve(request);
 					} catch (ParseException ignored) {
 						return Promise.of(HttpResponse.notFound404());

@@ -44,7 +44,7 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * This is an implementation of the asynchronous HTTP server on top of {@link Eventloop}.
- * It has a root {@link AsyncServlet} that reveives and handles all the responses that come to this server.
+ * It has a root {@link AsyncServlet} that receives and handles all the responses that come to this server.
  */
 @SuppressWarnings({"UnusedReturnValue", "WeakerAccess", "unused"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {

@@ -3,9 +3,7 @@ package io.global.forum.http.view;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.global.forum.dao.ForumDao;
-import io.global.forum.pojo.Attachment;
-import io.global.forum.pojo.Post;
-import io.global.forum.pojo.UserId;
+import io.global.forum.pojo.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
@@ -15,6 +13,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 
+import static io.global.forum.pojo.ForumPrivilege.*;
 import static java.util.stream.Collectors.toList;
 
 public final class PostView {
@@ -34,7 +33,14 @@ public final class PostView {
 	@Nullable
 	private final String deletedBy;
 
-	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp, List<PostView> children, List<AttachmentView> attachments, @Nullable String deletedBy) {
+	private final boolean editable;
+	private final boolean deletedVisible;
+
+	private final boolean editedNow;
+
+	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp,
+			List<PostView> children, List<AttachmentView> attachments, @Nullable String deletedBy,
+			boolean editable, boolean deletedVisible, boolean editedNow) {
 		this.postId = postId;
 		this.author = author;
 		this.content = content;
@@ -43,6 +49,9 @@ public final class PostView {
 		this.children = children;
 		this.attachments = attachments;
 		this.deletedBy = deletedBy;
+		this.editable = editable;
+		this.deletedVisible = deletedVisible;
+		this.editedNow = editedNow;
 	}
 
 	public String getPostId() {
@@ -78,31 +87,54 @@ public final class PostView {
 		return deletedBy;
 	}
 
+	public boolean isEditable() {
+		return editable;
+	}
+
+	public boolean isDeletedVisible() {
+		return deletedVisible;
+	}
+
+	public boolean isEditedNow() {
+		return editedNow;
+	}
+
 	private static String format(long timestamp) {
 		return Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMAT);
 	}
 
 	// TODO anton: add recursion hard stop condition (like >100 child depth) and proper view/pagination
-	public static Promise<PostView> from(ForumDao forumDao, Post post) {
-		return Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(forumDao, p)))
+	public static Promise<PostView> from(ForumDao forumDao, Post post, @Nullable UserId currentUser, @Nullable String editedPostId) {
+		return Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(forumDao, p, currentUser, editedPostId)))
 				.then(children -> {
-					UserId deleter = post.getDeletedBy();
-					Promise<String> username = forumDao.getUser(post.getAuthor()).map(u -> u != null ? u.getUsername() : "ghost");
-					Promise<String> deleterName = deleter != null ? forumDao.getUser(deleter).map(u -> u != null ? u.getUsername() : "ghost") : Promise.of(null);
-					return Promises.toTuple(username, deleterName)
-							.map(names ->
-									new PostView(
-											post.getId(),
-											names.getValue1(),
-											post.getContent(),
-											format(post.getInitialTimestamp()),
-											format(post.getLastEditTimestamp()),
-											children,
-											post.getAttachments().entrySet().stream()
-													.sorted(ATTACHMENT_COMPARATOR)
-													.map(AttachmentView::from)
-													.collect(toList()),
-											names.getValue2()));
+					UserId deleterId = post.getDeletedBy();
+					Promise<@Nullable UserData> authorPromise = forumDao.getUser(post.getAuthor());
+					Promise<@Nullable UserData> deleterPromise = deleterId != null ? forumDao.getUser(deleterId) : Promise.of(null);
+					Promise<@Nullable UserData> currentPromise = currentUser != null ? forumDao.getUser(currentUser) : Promise.of(null);
+					return Promises.toTuple(authorPromise, deleterPromise, currentPromise)
+							.map(users -> {
+								UserData author = users.getValue1();
+								UserData deleter = users.getValue2();
+								UserData current = users.getValue3();
+								UserRole role = current != null ? current.getRole() : UserRole.NONE;
+
+								boolean own = post.getAuthor().equals(currentUser);
+								return new PostView(
+										post.getId(),
+										author != null ? author.getUsername() : null,
+										post.getContent(),
+										format(post.getInitialTimestamp()),
+										format(post.getLastEditTimestamp()),
+										children,
+										post.getAttachments().entrySet().stream()
+												.sorted(ATTACHMENT_COMPARATOR)
+												.map(AttachmentView::from)
+												.collect(toList()),
+										deleter != null ? deleter.getUsername() : null,
+										role.has(EDIT_ANY_POST) || own && role.has(EDIT_OWN_POST),
+										role.has(SEE_ANY_DELETED_POSTS) || own && role.has(SEE_OWN_DELETED_POSTS),
+										post.getId().equals(editedPostId));
+							});
 				});
 	}
 }

@@ -27,6 +27,7 @@ import static io.global.Utils.generateString;
 import static io.global.forum.pojo.AuthService.DK_APP_STORE;
 import static io.global.forum.util.Utils.redirectToReferer;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.toMap;
 
 public final class PublicServlet {
 	private static final String SESSION_ID = "FORUM_SID";
@@ -35,8 +36,9 @@ public final class PublicServlet {
 		return RoutingServlet.create()
 				.map(GET, "/", request -> {
 					ForumDao forumDao = request.getAttachment(ForumDao.class);
+					UserId userId = request.getAttachment(UserId.class);
 					return forumDao.getThreads()
-							.then(threads -> ThreadView.from(forumDao, threads))
+							.then(threads -> ThreadView.from(forumDao, threads, userId))
 							.then(threads -> templater.render("threadList", map("threads", threads)));
 				})
 				.map(GET, "/authorize", request -> {
@@ -197,7 +199,7 @@ public final class PublicServlet {
 		return RoutingServlet.create()
 				.map(GET, "/", postViewServlet(templater))
 				.map(GET, "/:postID/", postViewServlet(templater))
-				.map("/:postID/*", postOperations())
+				.map("/:postID/*", postOperations(templater))
 				.then(attachThreadDao());
 	}
 
@@ -209,7 +211,7 @@ public final class PublicServlet {
 	}
 
 	@NotNull
-	private static AsyncServlet postOperations() {
+	private static AsyncServlet postOperations(MustacheTemplater templater) {
 		return RoutingServlet.create()
 				.map(POST, "/", request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
@@ -230,6 +232,18 @@ public final class PublicServlet {
 							})
 							.thenEx(revertIfException(threadDao, attachmentMap))
 							.map($ -> postOpRedirect(request));
+				})
+				.map(GET, "/edit", request -> {
+					String tid = request.getPathParameter("threadID");
+					String pid = request.getPathParameter("postID");
+					ForumDao forumDao = request.getAttachment(ForumDao.class);
+					UserId userId = request.getAttachment(UserId.class);
+					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
+					return templater.render("subthread", map(
+							"threadId", tid,
+							"thread", threadDao.getThreadMetadata(),
+							"post", threadDao.getPost(pid).then(post -> PostView.from(forumDao, post, userId, pid))
+					));
 				})
 				.map(POST, "/delete", request ->
 						request.getAttachment(ThreadDao.class).removePost(request.getAttachment(UserId.class), request.getPathParameter("postID"))
@@ -269,12 +283,12 @@ public final class PublicServlet {
 			if ("root".equals(pid)) {
 				return Promise.of(redirect302("../"));
 			}
-
+			UserId userId = request.getAttachment(UserId.class);
 			ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 			return templater.render(pid != null ? "subthread" : "thread", map(
 					"threadId", tid,
 					"thread", threadDao.getThreadMetadata(),
-					"post", threadDao.getPost(pid != null ? pid : "root").then(post -> PostView.from(forumDao, post))
+					"post", threadDao.getPost(pid != null ? pid : "root").then(post -> PostView.from(forumDao, post, userId, null))
 			));
 		};
 	}
@@ -307,7 +321,16 @@ public final class PublicServlet {
 							.then(userId -> {
 								Duration maxAge;
 								if (userId != null) {
-									templater.put("user", forumDao.getUser(userId));
+									Promise<UserData> userDataPromise = forumDao.getUser(userId);
+									templater.put("user", userDataPromise);
+									templater.put("privileges", userDataPromise.map(userData -> {
+										if (userData == null) {
+											return null;
+										}
+										return userData.getRole().getPrivileges().stream()
+												.collect(toMap(p -> p.name().toLowerCase(), $ -> true));
+									}));
+
 									request.attach(userId);
 									maxAge = sessionStore.getSessionLifetime();
 								} else {
@@ -315,7 +338,7 @@ public final class PublicServlet {
 								}
 								return servlet.serve(request)
 										.map(response -> {
-											if (response.getCookie(SESSION_ID) != null) {
+											if (response.getCookie(SESSION_ID) != null) { // servlet itself had set the session (logout request)
 												return response;
 											}
 											return response

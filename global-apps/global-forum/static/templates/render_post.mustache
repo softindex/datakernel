@@ -3,7 +3,7 @@
         <div class="row rounded">
             <a href="/{{pubKey}}/{{threadId}}/{{postId}}" class="badge badge-secondary">#</a>
             <span class="badge badge-primary badge-light">
-                {{author}} {{initialTimestamp}}
+                {{author}}{{^author}}<i>ghost</i>{{/author}} {{initialTimestamp}}
             </span>
             {{#deletedBy}}
                 <span class="badge badge-secondary badge-info">
@@ -11,47 +11,59 @@
                 </span>
             {{/deletedBy}}
         </div>
-        {{^deletedBy}}
-            <div class="row text-wrap m-2">
+        <div class="row text-wrap text-break m-2{{#deletedBy}} text-secondary{{/deletedBy}}">
+            {{#editedNow}}
+                <form class="form-group" action="/{{pubKey}}/{{threadId}}/{{postId}}/edit/{{postId}}" method="post">
+                    <textarea class="form-control" name="content">{{content}}</textarea>
+                </form>
+            {{/editedNow}}
+            {{^editedNow}}
                 <p>{{content}}</p>
-            </div>
-            <div class="row m-2">
-                <ul class="list-group col-auto">
-                    {{#attachments}}
-                        <li class="list-group-item text-truncate">
-                            <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
-                               class="stretched-link">🠋</a>
-                            {{filename}}
-                        </li>
-                    {{/attachments}}
-                </ul>
-            </div>
-        {{/deletedBy}}
+            {{/editedNow}}
+        </div>
+        <div class="row m-2">
+            <ul class="list-group col-auto">
+                {{#attachments}}
+                    <li class="list-group-item text-truncate">
+                        <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                           class="stretched-link">🠋</a>
+                        {{filename}}
+                    </li>
+                {{/attachments}}
+            </ul>
+        </div>
         <div class="row float-right">
             {{#deletedBy}}
-                <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
-                    <button class="btn btn-outline-primary btn-sm mx-1">restore</button>
-                </form>
+                {{#editable}}
+                    <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                        <button class="btn btn-outline-primary btn-sm mx-1">restore</button>
+                    </form>
+                {{/editable}}
             {{/deletedBy}}
             {{^deletedBy}}
                 {{#user}}
-                    <div class="dropdown">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
-                                id="change_menu_{{postId}}"
-                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            change
-                        </button>
+                    {{#editable}}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                    id="change_menu_{{postId}}"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                change
+                            </button>
+                            <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                                  action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
 
-                        <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
-                              action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
-                            <a class="dropdown-item" href="/{{pubKey}}/{{threadId}}/{{postId}}/edit">edit</a>
-                            <button class="dropdown-item" type="submit">delete</button>
-                        </form>
-                    </div>
-                    <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
-                            data-target="#reply_{{postId}}">
-                        reply
-                    </button>
+                                <a class="dropdown-item" href="/{{pubKey}}/{{threadId}}/{{postId}}/edit">edit</a>
+                                <button class="dropdown-item" type="submit">delete</button>
+                            </form>
+
+                        </div>
+                    {{/editable}}
+                    {{#privileges.create_post}}
+                        <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
+                                data-target="#reply_{{postId}}">
+                            reply
+                        </button>
+                    {{/privileges.create_post}}
                 {{/user}}
             {{/deletedBy}}
         </div>
@@ -100,6 +112,13 @@
         {{/user}}
     {{/deletedBy}}
     {{#children}}
-        {{>render_post}}
+        {{#deletedBy}}
+            {{#deletedVisible}}
+                {{>render_post}}
+            {{/deletedVisible}}
+        {{/deletedBy}}
+        {{^deletedBy}}
+            {{>render_post}}
+        {{/deletedBy}}
     {{/children}}
 </div>

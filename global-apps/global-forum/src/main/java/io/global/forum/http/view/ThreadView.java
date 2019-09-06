@@ -5,6 +5,8 @@ import io.datakernel.async.Promises;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.dao.ThreadDao;
 import io.global.forum.pojo.ThreadMetadata;
+import io.global.forum.pojo.UserId;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.List;
@@ -36,14 +38,14 @@ public class ThreadView {
 		return root;
 	}
 
-	public static Promise<List<ThreadView>> from(ForumDao forumDao, Map<String, ThreadMetadata> threads) {
+	public static Promise<List<ThreadView>> from(ForumDao forumDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
 		return Promises.toList(threads.entrySet().stream()
 				.map(e -> {
 					ThreadDao dao = forumDao.getThreadDao(e.getKey());
 					return dao != null ?
 							dao.getPost("root")
 									.then(rootPost ->
-											PostView.from(forumDao, rootPost)
+											PostView.from(forumDao, rootPost, currentUser, null)
 													.map(post -> new ThreadView(e.getKey(), e.getValue(), post))) :
 							null;
 				})

@@ -4,6 +4,7 @@ import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.*;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.TypeT;
@@ -191,7 +192,7 @@ public final class ForumUserContainer implements UserContainer {
 		return threadDaos.get(threadId);
 	}
 
-	public UserIdSessionStore getSessionStore() {
+	public SessionStore<UserId> getSessionStore() {
 		return sessionStore;
 	}
 

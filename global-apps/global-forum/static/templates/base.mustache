@@ -27,9 +27,11 @@
                 <!--                </li>-->
                 {{#user}}
                     {{^creatingNewThread}}
-                        <li class="nav-item">
-                            <a class="nav-link" href="/{{pubKey}}/new">New thread</a>
-                        </li>
+                        {{#privileges.create_thread}}
+                            <li class="nav-item">
+                                <a class="nav-link" href="/{{pubKey}}/new">New thread</a>
+                            </li>
+                        {{/privileges.create_thread}}
                     {{/creatingNewThread}}
                 {{/user}}
             </ul>
