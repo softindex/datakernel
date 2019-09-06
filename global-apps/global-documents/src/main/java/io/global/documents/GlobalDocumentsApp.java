@@ -14,7 +14,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.documents.document.edit.EditOperation;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.ProfileModule;
+import io.global.ot.DictionaryModule;
 import io.global.ot.SharedRepoModule;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
@@ -31,6 +31,7 @@ public final class GlobalDocumentsApp extends Launcher {
 	private static final String DEFAULT_SERVER_ID = "Global Documents";
 	private static final String DOCUMENT_REPO_PREFIX = "documents/document";
 	private static final String DOCUMENTS_INDEX_REPO = "documents/index";
+	private static final String PROFILE_REPO = "profile";
 
 	@Inject
 	AsyncHttpServer server;
@@ -52,7 +53,7 @@ public final class GlobalDocumentsApp extends Launcher {
 						.printEffectiveConfig()
 						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new DocumentsModule(),
-				new ProfileModule(),
+				new DictionaryModule(PROFILE_REPO),
 				new ContactsModule(),
 				new IndexRepoModule(DOCUMENTS_INDEX_REPO),
 				new UserContainerModule<EditOperation>(DOCUMENTS_INDEX_REPO, DOCUMENT_REPO_PREFIX) {},

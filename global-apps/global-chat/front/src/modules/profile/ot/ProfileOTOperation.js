@@ -40,8 +40,8 @@ class ProfileOTOperation {
     return new ProfileOTOperation(nextValues);
   }
 
-  isEqual(profileOTOperation) {
-    return isEqual(profileOTOperation.toJSON(), this.toJSON());
+  isEqual(profilesOTOperation) {
+    return isEqual(profilesOTOperation.toJSON(), this.toJSON());
   }
 
   toJSON() {

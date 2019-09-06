@@ -1,48 +1,43 @@
-import Service from '../../common/Service';
+import {Service, delay} from 'global-apps-common';
 import ChatRoomOTOperation from './ot/ChatRoomOTOperation';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import chatRoomSerializer from "./ot/serializer";
 import chatRoomOTSystem from "./ot/ChatRoomOTSystem";
-import {ROOT_COMMIT_ID} from "../../common/utils";
-
-const RETRY_TIMEOUT = 1000;
+import {RETRY_TIMEOUT} from '../../common/utils'
 
 class ChatRoomService extends Service {
-  constructor(chatOTStateManager, publicKey, setNotNew) {
+  constructor(chatOTStateManager, publicKey) {
     super({
       messages: [],
-      ready: false,
+      chatReady: false
     });
     this._chatOTStateManager = chatOTStateManager;
-    this._reconnectTimeout = null;
-    this._resyncTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
     this._publicKey = publicKey;
-    this._setNotNew = setNotNew;
   }
 
-  static createFrom(roomId, publicKey, setNotNew) {
+  static createFrom(roomId, publicKey) {
     const chatRoomOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/room/' + roomId,
       serializer: chatRoomSerializer
     });
     const chatRoomStateManager = new OTStateManager(() => new Set(), chatRoomOTNode, chatRoomOTSystem);
-    return new ChatRoomService(chatRoomStateManager, publicKey, setNotNew);
+    return new ChatRoomService(chatRoomStateManager, publicKey);
   }
 
   async init() {
-    // Get initial state
     try {
-      if (this._setNotNew) {
-        this._chatOTStateManager.checkoutRoot(ROOT_COMMIT_ID);
-      } else {
-        await this._chatOTStateManager.checkout();
-      }
+      await this._chatOTStateManager.checkout();
     } catch (err) {
       console.log(err);
 
-      const delay = this._retryDelay();
-      this._reconnectTimeout = delay.timeoutId;
-      await delay.promise;
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
 
       await this.init();
       return;
@@ -54,8 +49,12 @@ class ChatRoomService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
-    clearTimeout(this._resyncTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._chatOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -70,7 +69,7 @@ class ChatRoomService extends Service {
   _onStateChange = () => {
     this.setState({
       messages: this._getMessagesFromStateManager(),
-      ready: true
+      chatReady: true
     });
   };
 
@@ -81,27 +80,18 @@ class ChatRoomService extends Service {
       .sort((left, right) => left.timestamp - right.timestamp);
   }
 
-  _retryDelay() {
-    let timeoutId;
-    const promise = new Promise(resolve => {
-      timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-    return {timeoutId, promise};
-  }
-
   async _sync() {
     try {
       await this._chatOTStateManager.sync();
-      if (this._setNotNew && this._chatOTStateManager.getRevision() !== ROOT_COMMIT_ID) {
-        this._setNotNew();
-        this._setNotNew = null;
-      }
     } catch (err) {
       console.log(err);
 
-      const delay = this._retryDelay();
-      this._resyncTimeout = delay.timeoutId;
-      await delay.promise;
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
 
       await this._sync();
     }

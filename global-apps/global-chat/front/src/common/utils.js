@@ -1,52 +1,32 @@
 import crypto from "crypto";
 
-export const ROOT_COMMIT_ID = 'AQAAAAAAAAA=';
+export const RETRY_TIMEOUT = 1000;
 
-const randomStringChars = '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
-export function randomString(length) {
-  let result = '';
-  for (let i = length; i > 0; --i) {
-    result += randomStringChars[Math.floor(Math.random() * randomStringChars.length)];
+export function getRoomName(participants, names, myPublicKey) {
+  if (participants.length === 1) {
+    return names.get(myPublicKey) || 'Me';
   }
-  return result;
-}
 
-export function wait(delay) {
-  return new Promise(resolve => {
-    setTimeout(resolve, delay);
-  });
-}
+  const resolvedNames = [];
 
-const emojiGroups = [
-  [0x1F601, 0x1F64F],
-  [0x1F680, 0x1F6C0]
-];
-export function toEmoji(str, length) {
-  const count = emojiGroups.reduce((count, [from, to]) => {
-    return count + to - from + 1;
-  }, 0);
-
-  let emoji = '';
-  for (let i = 0; i < length; i++) {
-    let emojiIndex = (str.charCodeAt(i * 3) + str.charCodeAt(i * 3 + 1) + str.charCodeAt(i * 3 + 2)) % count;
-
-    for (const [startCode, endCode] of emojiGroups) {
-      const countInGroup = endCode - startCode + 1;
-
-      if (emojiIndex < countInGroup) {
-        emoji += String.fromCodePoint(startCode + emojiIndex);
-        break;
-      }
-
-      emojiIndex -= countInGroup;
+  for (const participantPublicKey of participants) {
+    if (participantPublicKey === myPublicKey) {
+      continue;
     }
+
+    if (!names.has(participantPublicKey)) {
+      return null;
+    }
+
+    resolvedNames.push(names.get(participantPublicKey));
   }
-  return emoji;
+
+  return resolvedNames.join(', ');
 }
 
 export function createDialogRoomId(firstPublicKey, secondPublicKey) {
   return crypto
     .createHash('sha256')
-    .update([firstPublicKey, secondPublicKey].sort().join(';'))
+    .update([...new Set([firstPublicKey, secondPublicKey])].sort().join(';'))
     .digest('hex');
 }
