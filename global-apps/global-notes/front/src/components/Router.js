@@ -1,7 +1,7 @@
 import React from 'react';
 import {BrowserRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from './MainScreen/MainScreen';
-import {SignUp, AccountCallback} from 'global-apps-common';
+import {SignUp, OAuthCallback} from 'global-apps-common';
 import DebugScreen from './DebugScreen/DebugScreen';
 
 function Router() {
@@ -15,7 +15,7 @@ function Router() {
               across all your devices."
           />
         )}/>
-        <Route exact={true} path="/sign-up/oauth" component={AccountCallback}/>
+        <Route exact={true} path="/sign-up/auth" component={OAuthCallback}/>
         <Route exact={true} path="/note/:noteId" component={MainScreen}/>
         <Route exact={true} path="/debug" component={DebugScreen}/>
         <Route exact={true} path="/debug/:noteId" component={DebugScreen}/>

@@ -4,14 +4,14 @@ import {Redirect, withRouter} from 'react-router-dom';
 
 function AfterAuthRedirect({history}) {
   const redirectURI = localStorage.getItem('redirectURI') || '/';
+
   useEffect(() => {
     if (redirectURI !== '/') {
       history.push(path.join(redirectURI));
     }
-    return () => {
-      localStorage.clear();
-    }
   }, [redirectURI]);
+
+  localStorage.clear();
 
   return <Redirect to='/'/>;
 }
