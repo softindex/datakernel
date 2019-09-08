@@ -26,7 +26,7 @@ import io.datakernel.serializer.util.BinaryOutputUtils;
 import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class SerializerGenArray implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;

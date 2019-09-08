@@ -19,7 +19,7 @@ package io.datakernel.jmx;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 final class ValueFetcherFromGetter implements ValueFetcher {
 	private final Method getter;

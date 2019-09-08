@@ -17,8 +17,8 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.bytebuf.ByteBuf.ByteBufSlice;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;

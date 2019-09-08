@@ -28,7 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {

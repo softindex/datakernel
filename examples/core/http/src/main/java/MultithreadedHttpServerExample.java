@@ -1,8 +1,8 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
+import io.datakernel.promise.Promise;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 

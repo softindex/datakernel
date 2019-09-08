@@ -18,8 +18,8 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.processor.StreamSorter;
-import io.datakernel.stream.processor.StreamSorterStorage;
+import io.datakernel.datastream.processor.StreamSorter;
+import io.datakernel.datastream.processor.StreamSorterStorage;
 
 import java.util.Collection;
 import java.util.Comparator;

@@ -18,17 +18,16 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.junit.Test;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.CollectionUtils.first;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.time.Month.JANUARY;
 import static java.time.ZoneOffset.UTC;
 import static java.util.Arrays.asList;

@@ -1,7 +1,8 @@
 package io.datakernel.loader;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -9,9 +10,9 @@ import org.junit.Test;
 
 import java.nio.file.Paths;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.loader.StaticLoader.NOT_FOUND_EXCEPTION;
+import static io.datakernel.http.loader.StaticLoader.NOT_FOUND_EXCEPTION;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 

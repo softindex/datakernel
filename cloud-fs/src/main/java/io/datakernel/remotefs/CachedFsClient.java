@@ -16,21 +16,21 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.AsyncSuppliers;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.function.AsyncSuppliers;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.RefLong;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ref.RefLong;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -38,7 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.Preconditions.*;
 
 /**
  * Represents a cached filesystem client which is an implementation of {@link FsClient}.

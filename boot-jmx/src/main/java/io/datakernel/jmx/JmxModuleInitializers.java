@@ -1,8 +1,8 @@
 package io.datakernel.jmx;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.Initializer;
 
 public class JmxModuleInitializers {
 	private JmxModuleInitializers() {}

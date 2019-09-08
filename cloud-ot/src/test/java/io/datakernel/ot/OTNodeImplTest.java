@@ -1,6 +1,6 @@
 package io.datakernel.ot;
 
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
@@ -14,11 +14,11 @@ import org.junit.Test;
 
 import java.util.function.Consumer;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singleton;
 import static org.hamcrest.Matchers.containsString;

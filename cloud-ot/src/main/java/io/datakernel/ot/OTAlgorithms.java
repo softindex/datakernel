@@ -1,12 +1,12 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.async.function.AsyncPredicate;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +15,13 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Promises.toList;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.CollectorsEx.throwingMerger;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.GraphReducer.Result.*;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.CollectorsEx.throwingMerger;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.promise.Promises.toList;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toMap;

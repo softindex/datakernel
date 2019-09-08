@@ -16,10 +16,12 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncPredicate;
+import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.SimpleServer;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -30,9 +32,9 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.Promises.loop;
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.promise.Promises.loop;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;

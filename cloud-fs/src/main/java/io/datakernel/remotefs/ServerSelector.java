@@ -3,7 +3,7 @@ package io.datakernel.remotefs;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.HashUtils.murmur3hash;
+import static io.datakernel.common.HashUtils.murmur3hash;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 

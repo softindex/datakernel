@@ -16,13 +16,13 @@
 
 package io.datakernel.service;
 
+import io.datakernel.common.Initializable;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.di.core.Name;
-import io.datakernel.jmx.ConcurrentJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -33,12 +33,14 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.StringFormatUtils.formatDuration;
+import static io.datakernel.common.collection.CollectionUtils.concat;
+import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.di.util.ReflectionUtils.getShortName;
+import static io.datakernel.di.util.Utils.union;
 import static io.datakernel.service.util.Utils.combineAll;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.StringFormatUtils.formatDuration;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;

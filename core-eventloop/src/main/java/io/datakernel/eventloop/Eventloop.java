@@ -17,19 +17,20 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.async.Completable;
-import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.time.CurrentTimeProviderSystem;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.inspector.BaseInspector;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.common.time.CurrentTimeProviderSystem;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.util.OptimizedSelectedKeysSet;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,10 +52,10 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
-import static io.datakernel.eventloop.Utils.tryToOptimizeSelector;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.ReflectionUtils.isPrivateApiAvailable;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.eventloop.util.ReflectionUtils.isPrivateApiAvailable;
+import static io.datakernel.eventloop.util.Utils.tryToOptimizeSelector;
 import static java.util.Collections.emptyIterator;
 
 /**
@@ -281,7 +282,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
-	@Nullable Selector ensureSelector() {
+	@Nullable public Selector ensureSelector() {
 		if (selector == null) {
 			openSelector();
 		}

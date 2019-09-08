@@ -17,6 +17,9 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 

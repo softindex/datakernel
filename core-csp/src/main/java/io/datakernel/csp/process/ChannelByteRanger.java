@@ -16,9 +16,9 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.dsl.ChannelTransformer;
+import io.datakernel.promise.Promise;
 
 /** Drops exactly N bytes from a csp strem of byte buffers and limits that stream to exactly M bytes in length */
 public final class ChannelByteRanger extends AbstractChannelTransformer<ChannelByteRanger, ByteBuf, ByteBuf> {

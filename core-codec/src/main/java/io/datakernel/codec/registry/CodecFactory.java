@@ -1,7 +1,7 @@
 package io.datakernel.codec.registry;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.util.TypeT;
+import io.datakernel.common.reflection.TypeT;
 
 import java.lang.reflect.Type;
 

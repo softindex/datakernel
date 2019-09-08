@@ -1,12 +1,12 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.*;
+import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.http.session.SessionServlet;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.http.session.SessionStoreInMemory;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.promise.Promise;
 
 import java.util.Map;
 import java.util.UUID;

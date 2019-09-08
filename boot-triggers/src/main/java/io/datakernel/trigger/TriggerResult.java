@@ -16,16 +16,16 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.jmx.MBeanFormat;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static io.datakernel.jmx.MBeanFormat.formatExceptionMultiline;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.eventloop.jmx.MBeanFormat.formatExceptionMultiline;
 
 public final class TriggerResult {
 	private static final TriggerResult NONE = new TriggerResult(0, null, null);

@@ -6,10 +6,10 @@ import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelInput;
 
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.Sliceable.trySlice;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.Recyclable.tryRecycle;
-import static io.datakernel.util.Sliceable.trySlice;
 
 /**
  * Communicating process which distributes

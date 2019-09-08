@@ -16,10 +16,10 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.asm.Annotations;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
+import io.datakernel.common.Preconditions;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
@@ -28,7 +28,6 @@ import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
 import io.datakernel.serializer.util.BinaryOutputUtils;
-import io.datakernel.util.Preconditions;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -42,8 +41,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 

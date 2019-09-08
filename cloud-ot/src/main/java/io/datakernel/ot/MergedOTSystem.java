@@ -1,10 +1,10 @@
 package io.datakernel.ot;
 
+import io.datakernel.common.tuple.Tuple2;
+import io.datakernel.common.tuple.TupleConstructor2;
+import io.datakernel.common.tuple.TupleConstructor3;
+import io.datakernel.common.tuple.TupleConstructor4;
 import io.datakernel.ot.exceptions.OTTransformException;
-import io.datakernel.util.Tuple2;
-import io.datakernel.util.TupleConstructor2;
-import io.datakernel.util.TupleConstructor3;
-import io.datakernel.util.TupleConstructor4;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;

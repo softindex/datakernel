@@ -16,13 +16,14 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.*;
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Collections.emptyList;
 
 final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {

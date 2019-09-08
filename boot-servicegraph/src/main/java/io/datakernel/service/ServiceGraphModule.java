@@ -16,6 +16,9 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.Initializer;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
@@ -23,12 +26,9 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.ScopedValue;
 import io.datakernel.di.util.Trie;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopServer;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.net.BlockingSocketServer;
 import io.datakernel.launcher.LauncherService;
-import io.datakernel.net.BlockingSocketServer;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
+import io.datakernel.net.EventloopServer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
@@ -43,13 +43,13 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.intersection;
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.service.util.Utils.combineAll;
 import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.intersection;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Collections.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.*;

@@ -17,7 +17,8 @@
 package io.datakernel.codec.registry;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.util.*;
+import io.datakernel.common.reflection.RecursiveType;
+import io.datakernel.common.tuple.*;
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -25,7 +26,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 /**
  * A registry which stores codecs by their type and allows dynamic dispatch of them.

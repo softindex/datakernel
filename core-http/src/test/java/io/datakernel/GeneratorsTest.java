@@ -1,11 +1,11 @@
 package io.datakernel;
 
-import io.datakernel.async.Promise;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.OptionalGeneratorModule;
 import io.datakernel.http.di.PromiseGeneratorModule;
+import io.datakernel.promise.Promise;
 import org.junit.Test;
 
 import java.util.Optional;

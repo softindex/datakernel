@@ -16,10 +16,9 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.Promise;
-import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -30,8 +29,6 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-
-import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
 
 /**
  * Represents a cache for storing resolved domains during its time to live.
@@ -152,7 +149,7 @@ public final class DnsCache {
 			}
 			expirationTime += Math.min(minTtl, maxTtl);
 		} else {
-			expirationTime += response.getErrorCode() == ResponseErrorCode.TIMED_OUT ?
+			expirationTime += response.getErrorCode() == DnsProtocol.ResponseErrorCode.TIMED_OUT ?
 					timedOutExceptionTtl :
 					errorCacheExpiration;
 		}
@@ -286,7 +283,7 @@ public final class DnsCache {
 		}
 
 		public Promise<DnsResponse> getResponseAsPromise() {
-			if (response.getErrorCode() == NO_ERROR) {
+			if (response.getErrorCode() == DnsProtocol.ResponseErrorCode.NO_ERROR) {
 				return Promise.of(response);
 			}
 			return Promise.ofException(new DnsQueryException(DnsCache.class, response));

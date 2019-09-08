@@ -1,5 +1,6 @@
 package io.datakernel.eventloop;
 
+import io.datakernel.eventloop.util.OptimizedSelectedKeysSet;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -8,7 +9,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.util.Iterator;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.junit.Assert.*;
 
 public class OptimizedSetTest {

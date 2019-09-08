@@ -1,12 +1,12 @@
 package io.datakernel.multilog;
 
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplierWithResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.util.BinarySerializers;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierWithResult;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -16,8 +16,8 @@ import org.junit.rules.TemporaryFolder;
 
 import java.util.List;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 

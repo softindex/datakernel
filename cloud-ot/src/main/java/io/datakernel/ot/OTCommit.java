@@ -26,8 +26,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectorsEx.throwingMerger;
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.CollectorsEx.throwingMerger;
+import static io.datakernel.common.Preconditions.*;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;

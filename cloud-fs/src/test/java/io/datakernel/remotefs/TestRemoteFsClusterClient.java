@@ -16,15 +16,15 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncConsumer;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
-import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.*;
@@ -40,8 +40,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 import static java.util.Collections.singletonList;

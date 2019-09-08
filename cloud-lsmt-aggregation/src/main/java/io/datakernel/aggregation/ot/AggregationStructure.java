@@ -3,11 +3,11 @@ package io.datakernel.aggregation.ot;
 import io.datakernel.aggregation.ChunkIdCodec;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.util.Initializable;
+import io.datakernel.common.Initializable;
 
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 @SuppressWarnings("rawtypes")
 public final class AggregationStructure implements Initializable<AggregationStructure> {

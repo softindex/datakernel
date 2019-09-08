@@ -1,12 +1,12 @@
 package io.datakernel.aggregation.util;
 
 import io.datakernel.aggregation.IdGenerator;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.PromiseStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 
 import javax.sql.DataSource;
@@ -15,8 +15,8 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.common.Preconditions.checkState;
 
 public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBeanEx {
 

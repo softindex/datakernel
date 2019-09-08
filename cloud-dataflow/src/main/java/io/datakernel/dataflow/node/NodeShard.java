@@ -18,9 +18,9 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.Sharders.HashSharder;
-import io.datakernel.stream.processor.StreamSharder;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.Sharders.HashSharder;
+import io.datakernel.datastream.processor.StreamSharder;
 
 import java.util.ArrayList;
 import java.util.List;

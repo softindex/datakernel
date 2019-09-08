@@ -4,8 +4,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.config.Config.concatPath;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class ConfigWithFullPath implements Config {
 	private final String path;

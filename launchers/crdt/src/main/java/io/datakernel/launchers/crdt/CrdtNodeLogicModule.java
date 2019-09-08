@@ -16,6 +16,7 @@
 
 package io.datakernel.launchers.crdt;
 
+import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtRepartitionController;
 import io.datakernel.crdt.CrdtServer;
@@ -29,7 +30,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.RecursiveType;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.annotation.ElementType;

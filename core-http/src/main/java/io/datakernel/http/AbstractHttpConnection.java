@@ -16,32 +16,32 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.AsyncProcess;
 import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.async.process.AsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.*;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
-import static io.datakernel.async.AsyncExecutors.ofMaxRecursiveCalls;
+import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaderValue.ofBytes;
 import static io.datakernel.http.HttpHeaderValue.ofDecimal;

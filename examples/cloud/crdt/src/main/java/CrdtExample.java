@@ -4,11 +4,11 @@ import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.primitives.LWWSet;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 
 import java.nio.file.Paths;
 import java.util.HashMap;

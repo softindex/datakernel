@@ -28,8 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.common.collection.CollectionUtils.map;
+import static io.datakernel.promise.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;

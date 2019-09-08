@@ -25,7 +25,7 @@ import java.util.Objects;
 
 import static io.datakernel.codegen.CompareOperation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.check;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
 

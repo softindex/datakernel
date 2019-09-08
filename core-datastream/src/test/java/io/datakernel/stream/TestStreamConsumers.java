@@ -1,8 +1,9 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.datastream.*;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.stream.TestStreamConsumers.Decorator.Context;
 import org.jetbrains.annotations.NotNull;
 

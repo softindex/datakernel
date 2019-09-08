@@ -20,7 +20,7 @@ import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeReduceSimple;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.List;

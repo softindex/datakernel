@@ -1,4 +1,4 @@
-import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.function.AsyncConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;

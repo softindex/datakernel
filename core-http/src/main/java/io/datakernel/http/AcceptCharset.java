@@ -17,15 +17,15 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import java.nio.charset.Charset;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
  * This is a value class for the Accept-Charset header value.

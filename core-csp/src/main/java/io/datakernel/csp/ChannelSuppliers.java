@@ -16,20 +16,20 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.collection.CollectionUtils;
+import io.datakernel.common.collection.Try;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.functional.Try;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.MemSize;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -43,9 +43,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
-import static io.datakernel.util.Recyclable.deepRecycle;
-import static io.datakernel.util.Recyclable.tryRecycle;
-import static io.datakernel.util.Utils.nullify;
+import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.Utils.nullify;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.

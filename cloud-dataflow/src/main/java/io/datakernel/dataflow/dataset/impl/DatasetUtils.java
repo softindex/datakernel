@@ -24,8 +24,8 @@ import io.datakernel.dataflow.node.NodeDownload;
 import io.datakernel.dataflow.node.NodeReduce;
 import io.datakernel.dataflow.node.NodeShard;
 import io.datakernel.dataflow.node.NodeUpload;
-import io.datakernel.stream.processor.StreamReducers;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.List;

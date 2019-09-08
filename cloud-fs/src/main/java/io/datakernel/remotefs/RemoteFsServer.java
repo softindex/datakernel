@@ -16,18 +16,18 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.RecyclingChannelConsumer;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.PromiseStats;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
 
@@ -39,12 +39,12 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.remotefs.RemoteFsUtils.checkRange;
 import static io.datakernel.remotefs.RemoteFsUtils.getErrorCode;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
 
 /**
  * An implementation of {@link AbstractServer} for RemoteFs.

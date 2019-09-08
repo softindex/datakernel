@@ -16,11 +16,11 @@
 
 package io.datakernel.etl;
 
-import io.datakernel.async.Promise;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamConsumerWithResult;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 

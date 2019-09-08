@@ -16,9 +16,9 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.util.Recyclable;
-import io.datakernel.util.Sliceable;
-import io.datakernel.util.Utils;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.Sliceable;
+import io.datakernel.common.Utils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

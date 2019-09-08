@@ -20,9 +20,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.binary.BinaryUtils;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.ParserFunction;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.ParserFunction;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;

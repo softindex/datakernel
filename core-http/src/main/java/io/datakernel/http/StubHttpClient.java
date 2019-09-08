@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.promise.Promise;
 
 /**
  * A stub client which forwards requests straight to the underlying servlet without any real I/O operations.

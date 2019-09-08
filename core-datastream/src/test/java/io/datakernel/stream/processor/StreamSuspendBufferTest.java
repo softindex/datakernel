@@ -1,10 +1,11 @@
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.SettablePromise;
+import io.datakernel.common.ref.RefBoolean;
+import io.datakernel.datastream.*;
+import io.datakernel.datastream.processor.StreamBuffer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.ref.RefBoolean;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.stream.TestStreamConsumers.decorator;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;

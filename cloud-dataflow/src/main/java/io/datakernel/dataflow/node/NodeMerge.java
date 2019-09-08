@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.processor.StreamMerger;
+import io.datakernel.datastream.processor.StreamMerger;
 
 import java.util.ArrayList;
 import java.util.Collection;

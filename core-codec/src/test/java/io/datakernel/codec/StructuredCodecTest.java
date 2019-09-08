@@ -1,9 +1,9 @@
 package io.datakernel.codec;
 
 import io.datakernel.codec.json.JsonUtils;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.util.Tuple2;
 import org.junit.Rule;
 import org.junit.Test;
 

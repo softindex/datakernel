@@ -16,9 +16,9 @@
 
 package io.datakernel.launchers.rpc;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.util.Initializer;
 
 import java.time.Duration;
 

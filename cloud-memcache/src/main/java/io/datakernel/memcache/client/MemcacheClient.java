@@ -1,6 +1,6 @@
 package io.datakernel.memcache.client;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 public interface MemcacheClient<K, V> {
 

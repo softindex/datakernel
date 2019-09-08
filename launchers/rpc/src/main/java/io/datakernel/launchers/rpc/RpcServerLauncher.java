@@ -16,7 +16,7 @@
 
 package io.datakernel.launchers.rpc;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -30,9 +30,9 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.Initializer;
 
 import java.util.concurrent.CompletionStage;
 

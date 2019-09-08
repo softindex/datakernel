@@ -16,7 +16,6 @@
 
 package io.datakernel.dataflow.stream;
 
-import io.datakernel.async.Promise;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
@@ -25,12 +24,13 @@ import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.helper.StreamMergeSorterStorageStub;
 import io.datakernel.dataflow.server.*;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.StreamSorterStorage;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -43,9 +43,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;

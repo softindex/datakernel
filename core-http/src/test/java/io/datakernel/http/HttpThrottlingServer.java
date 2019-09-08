@@ -16,17 +16,17 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopInspector;
 import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.promise.Promise;
 
 import java.util.Random;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.getFreePort;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 public class HttpThrottlingServer {
 	private static final Random rand = new Random();

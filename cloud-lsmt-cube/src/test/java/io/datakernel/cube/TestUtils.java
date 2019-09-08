@@ -27,7 +27,7 @@ import io.datakernel.ot.OTStateManager;
 import java.io.IOException;
 import java.sql.SQLException;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 

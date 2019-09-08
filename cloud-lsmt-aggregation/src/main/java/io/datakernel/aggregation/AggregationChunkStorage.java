@@ -17,10 +17,10 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 
 import java.util.List;
 import java.util.Set;

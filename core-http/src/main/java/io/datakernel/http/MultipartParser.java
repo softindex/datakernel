@@ -16,19 +16,19 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.http.MultipartParser.MultipartFrame;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.Recyclable;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,8 +39,8 @@ import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
-import static io.datakernel.util.MemSize.kilobytes;
-import static io.datakernel.util.Utils.nullify;
+import static io.datakernel.common.MemSize.kilobytes;
+import static io.datakernel.common.Utils.nullify;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 

@@ -1,16 +1,16 @@
 package io.datakernel.http.di;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;

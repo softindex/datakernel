@@ -16,13 +16,13 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.attributes.AttributeResolver;
 import io.datakernel.cube.attributes.AttributeResolver.AttributesFunction;
 import io.datakernel.cube.attributes.AttributeResolver.KeyFunction;
 import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.promise.Promise;
 
 import java.util.*;
 

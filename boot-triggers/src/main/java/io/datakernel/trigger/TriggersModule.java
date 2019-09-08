@@ -16,17 +16,15 @@
 
 package io.datakernel.trigger;
 
+import io.datakernel.common.Initializable;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.jmx.KeyWithWorkerData;
 import io.datakernel.launcher.LauncherService;
-import io.datakernel.util.DIUtils;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
+import io.datakernel.trigger.jmx.KeyWithWorkerData;
+import io.datakernel.trigger.util.Utils;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
@@ -35,13 +33,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.datakernel.util.DIUtils.prettyPrintSimpleKeyName;
+import static io.datakernel.trigger.util.Utils.prettyPrintSimpleKeyName;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
-	private Function<Key<?>, String> keyToString = DIUtils::prettyPrintSimpleKeyName;
+	private Function<Key<?>, String> keyToString = Utils::prettyPrintSimpleKeyName;
 
 	private final Map<Class<?>, Set<TriggerConfig<?>>> classSettings = new LinkedHashMap<>();
 	private final Map<Key<?>, Set<TriggerConfig<?>>> keySettings = new LinkedHashMap<>();
@@ -101,7 +99,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		Set<TriggerConfig<?>> triggerConfigs = classSettings.computeIfAbsent(type, $ -> new LinkedHashSet<>());
 
 		if (!triggerConfigs.add(new TriggerConfig<>(severity, name, triggerFunction))) {
-			throw new IllegalArgumentException("Cannot assign duplicate triggers");
+			throw new IllegalArgumentException("Cannot assign duplicate trigger");
 		}
 
 		return this;
@@ -111,7 +109,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		Set<TriggerConfig<?>> triggerConfigs = keySettings.computeIfAbsent(key, $ -> new LinkedHashSet<>());
 
 		if (!triggerConfigs.add(new TriggerConfig<>(severity, name, triggerFunction))) {
-			throw new IllegalArgumentException("Cannot assign duplicate triggers");
+			throw new IllegalArgumentException("Cannot assign duplicate trigger");
 		}
 
 		return this;

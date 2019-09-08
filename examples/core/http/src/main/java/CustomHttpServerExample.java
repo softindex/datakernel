@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
@@ -7,6 +6,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 //[START EXAMPLE]

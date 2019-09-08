@@ -22,10 +22,10 @@ import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.*;
-import io.datakernel.util.RecursiveType;
 
 import java.lang.reflect.Type;
 import java.time.DateTimeException;

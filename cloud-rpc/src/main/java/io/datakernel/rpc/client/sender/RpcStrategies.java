@@ -22,8 +22,8 @@ import io.datakernel.rpc.hash.ShardingFunction;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 /**

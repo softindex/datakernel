@@ -1,8 +1,8 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.promise.Promise;
 
 import static io.datakernel.http.HttpResponse.ok200;
 

@@ -1,6 +1,6 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;

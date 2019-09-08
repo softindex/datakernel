@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.junit.Test;
 
 import java.nio.charset.Charset;
@@ -28,7 +28,8 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufStrings.asAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static java.nio.charset.Charset.forName;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 public class HttpCharsetTest {
 	@Test

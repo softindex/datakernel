@@ -16,22 +16,22 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.csp.process.ChannelDeserializer;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
-import io.datakernel.csp.process.ChannelSerializer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.MemSize;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -39,7 +39,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.lang.ClassLoader.getSystemClassLoader;

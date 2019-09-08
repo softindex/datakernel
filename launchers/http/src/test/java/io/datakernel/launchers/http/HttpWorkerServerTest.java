@@ -16,16 +16,16 @@
 
 package io.datakernel.launchers.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.net.PrimaryServer;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;

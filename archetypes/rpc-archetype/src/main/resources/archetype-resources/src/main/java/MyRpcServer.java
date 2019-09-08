@@ -1,6 +1,6 @@
 package ${groupId};
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.di.annotation.Provides;

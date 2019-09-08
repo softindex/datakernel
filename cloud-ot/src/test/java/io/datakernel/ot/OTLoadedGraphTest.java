@@ -9,12 +9,12 @@ import org.junit.Test;
 
 import java.util.Set;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 

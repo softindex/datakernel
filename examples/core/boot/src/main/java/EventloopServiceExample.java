@@ -1,10 +1,10 @@
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.NotNull;
 

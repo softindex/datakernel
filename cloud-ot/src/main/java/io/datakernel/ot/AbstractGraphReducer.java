@@ -1,6 +1,6 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Collection;

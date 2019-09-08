@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 @FunctionalInterface
 public interface SerializerGenBuilder {

@@ -16,10 +16,10 @@
 
 package io.datakernel.csp.binary;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 
 @FunctionalInterface
 public interface BinaryChannelInput extends ChannelInput<ByteBuf> {

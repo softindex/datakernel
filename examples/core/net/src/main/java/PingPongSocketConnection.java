@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-import io.datakernel.async.AsyncPredicate;
+import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleServer;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.SimpleServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.Promises.loop;
-import static io.datakernel.async.Promises.repeat;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.promise.Promises.loop;
+import static io.datakernel.promise.Promises.repeat;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class PingPongSocketConnection {

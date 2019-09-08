@@ -16,9 +16,11 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.net.AsyncUdpSocketImpl;
+import io.datakernel.net.UdpPacket;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -29,8 +31,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 import java.util.Arrays;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertArrayEquals;
 

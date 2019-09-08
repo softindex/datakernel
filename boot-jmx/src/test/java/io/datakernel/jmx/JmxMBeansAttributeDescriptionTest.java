@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;

@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
@@ -7,6 +6,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
+import io.datakernel.promise.Promise;
 
 import java.util.Map;
 import java.util.Set;

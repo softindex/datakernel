@@ -17,7 +17,7 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;

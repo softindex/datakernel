@@ -1,9 +1,9 @@
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.util.ByteBufWriter;
+import io.datakernel.common.collection.Either;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.functional.Either;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpResponse;
@@ -12,13 +12,13 @@ import io.datakernel.http.decoder.DecodeErrors;
 import io.datakernel.http.decoder.Decoder;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.writer.ByteBufWriter;
+import io.datakernel.promise.Promise;
 
 import java.util.Map;
 
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.decoder.Decoders.ofPost;
-import static io.datakernel.util.CollectionUtils.map;
 
 //[START REGION_1]
 public final class HttpDecoderExample extends HttpServerLauncher {

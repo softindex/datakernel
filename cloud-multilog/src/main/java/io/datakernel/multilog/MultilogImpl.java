@@ -16,28 +16,28 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.csp.process.ChannelDeserializer;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.Preconditions;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.parse.TruncatedDataException;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
-import io.datakernel.csp.process.ChannelSerializer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplierWithResult;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.datastream.stats.StreamRegistry;
+import io.datakernel.datastream.stats.StreamStats;
+import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.TruncatedDataException;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.StreamSupplierWithResult;
-import io.datakernel.stream.stats.StreamRegistry;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.stream.stats.StreamStatsDetailed;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.Preconditions;
-import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -48,7 +48,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
+import static io.datakernel.datastream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 

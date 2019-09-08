@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.attributes;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 import java.util.List;
 import java.util.Map;

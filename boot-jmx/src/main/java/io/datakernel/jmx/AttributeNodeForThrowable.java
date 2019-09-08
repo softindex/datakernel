@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.eventloop.jmx.MBeanFormat;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.*;

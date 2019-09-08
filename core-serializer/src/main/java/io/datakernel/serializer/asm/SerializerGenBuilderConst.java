@@ -16,8 +16,8 @@
 
 package io.datakernel.serializer.asm;
 
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 	private final SerializerGen serializer;

@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
@@ -9,6 +8,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.di.RequestScope;
 import io.datakernel.http.di.ScopeServlet;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
+import io.datakernel.promise.Promise;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 

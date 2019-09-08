@@ -19,7 +19,7 @@ package io.datakernel.cube;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RecordScheme {
 	private final LinkedHashMap<String, Type> fieldTypes = new LinkedHashMap<>();

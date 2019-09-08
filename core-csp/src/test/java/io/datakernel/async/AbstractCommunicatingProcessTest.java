@@ -18,9 +18,10 @@ package io.datakernel.async;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
-import io.datakernel.exception.ParseException;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -31,10 +32,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.util.Recyclable.deepRecycle;
-import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 

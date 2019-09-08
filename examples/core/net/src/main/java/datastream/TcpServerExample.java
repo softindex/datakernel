@@ -2,12 +2,12 @@ package datastream;
 
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelDeserializer;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.stream.processor.StreamMapper;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.net.AsyncTcpSocketImpl;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

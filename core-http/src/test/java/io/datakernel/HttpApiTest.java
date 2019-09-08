@@ -16,9 +16,9 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -33,9 +33,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.time.ZoneOffset.UTC;
 import static java.util.stream.Collectors.toList;

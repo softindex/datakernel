@@ -22,7 +22,7 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public class RpcStrategyRandomSampling implements RpcStrategy {
 	private final Random random = new Random();

@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.ExceptionStats;
 import org.junit.Before;
 import org.junit.Test;
 

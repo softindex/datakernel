@@ -16,16 +16,16 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.process.AsyncProcess;
+import io.datakernel.async.process.Cancellable;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
 
 /**
  * An abstract AsyncProcess which describes interactions

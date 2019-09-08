@@ -21,10 +21,10 @@ import org.junit.Test;
 
 import java.util.NoSuchElementException;
 
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.config.ConfigConverters.ofByte;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
-import static io.datakernel.util.CollectionUtils.set;
 import static org.junit.Assert.*;
 
 public class TreeConfigTest {

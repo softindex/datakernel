@@ -1,9 +1,9 @@
 package io.datakernel.trigger;
 
+import io.datakernel.common.ref.RefBoolean;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
-import io.datakernel.util.ref.RefBoolean;
 import org.junit.Before;
 import org.junit.Test;
 

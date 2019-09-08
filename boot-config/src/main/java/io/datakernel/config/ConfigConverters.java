@@ -16,18 +16,18 @@
 
 package io.datakernel.config;
 
-import io.datakernel.async.EventloopTaskScheduler.Schedule;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.process.RetryPolicy;
+import io.datakernel.async.service.EventloopTaskScheduler.Schedule;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.StringFormatUtils;
+import io.datakernel.common.Utils;
+import io.datakernel.common.concurrent.SimpleThreadFactory;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.exception.ParseException;
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.SimpleThreadFactory;
-import io.datakernel.util.StringFormatUtils;
-import io.datakernel.util.Utils;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.SocketSettings;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
@@ -44,11 +44,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import static io.datakernel.common.Utils.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
-import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
-import static io.datakernel.util.Utils.*;
+import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;

@@ -17,10 +17,10 @@
 package io.datakernel.crdt;
 
 import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -34,9 +34,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.*;
-import static io.datakernel.util.CollectionUtils.set;
 
 public final class TestCrdtLocalFileConsolidation {
 	private LocalFsClient fsClient;

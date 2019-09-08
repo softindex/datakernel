@@ -16,13 +16,13 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -30,8 +30,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.remotefs.RemoteFsUtils.escapeGlob;
-import static io.datakernel.util.CollectionUtils.map;
 import static java.util.stream.Collectors.toList;
 
 /**

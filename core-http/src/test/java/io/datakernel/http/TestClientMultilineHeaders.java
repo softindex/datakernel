@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -25,8 +25,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaders.ALLOW;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 

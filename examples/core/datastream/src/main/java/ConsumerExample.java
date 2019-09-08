@@ -1,8 +1,8 @@
-import io.datakernel.async.Promise;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.promise.Promise;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 

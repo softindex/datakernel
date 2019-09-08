@@ -18,12 +18,12 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.Promise;
+import io.datakernel.async.process.AsyncCollector;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);

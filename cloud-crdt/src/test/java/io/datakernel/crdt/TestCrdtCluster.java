@@ -17,12 +17,12 @@
 package io.datakernel.crdt;
 
 import io.datakernel.crdt.local.CrdtStorageMap;
-import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.AbstractServer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinarySerializers;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -32,7 +32,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.Collections.singleton;

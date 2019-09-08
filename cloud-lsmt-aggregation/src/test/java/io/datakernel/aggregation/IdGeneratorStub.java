@@ -1,6 +1,6 @@
 package io.datakernel.aggregation;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 public class IdGeneratorStub implements IdGenerator<Long> {
 	public long chunkId;

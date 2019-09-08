@@ -1,7 +1,11 @@
 package io.datakernel.stream;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.datastream.ForwardingStreamSupplier;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplierTransformer;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.stream.TestStreamSuppliers.Decorator.Context;
 
 import java.util.function.Function;

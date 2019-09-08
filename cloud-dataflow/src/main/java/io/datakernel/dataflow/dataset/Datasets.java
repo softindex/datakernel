@@ -20,9 +20,9 @@ import io.datakernel.dataflow.dataset.impl.*;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
-import io.datakernel.stream.processor.StreamJoin.Joiner;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
-import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
+import io.datakernel.datastream.processor.StreamJoin.Joiner;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
 
 import java.util.Comparator;
 import java.util.List;

@@ -1,6 +1,6 @@
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncPredicate;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 import java.util.Arrays;
 

@@ -16,9 +16,9 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.Recyclable;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.InvalidSizeException;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,7 +27,7 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 
-import static io.datakernel.util.CollectionUtils.emptyIterator;
+import static io.datakernel.common.collection.CollectionUtils.emptyIterator;
 import static java.lang.System.arraycopy;
 
 /**

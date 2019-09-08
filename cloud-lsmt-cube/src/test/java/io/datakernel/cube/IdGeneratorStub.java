@@ -1,7 +1,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.IdGenerator;
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 public class IdGeneratorStub implements IdGenerator<Long> {
 	public long chunkId;

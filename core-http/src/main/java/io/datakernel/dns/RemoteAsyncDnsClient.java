@@ -16,20 +16,20 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncUdpSocket;
-import io.datakernel.eventloop.AsyncUdpSocketImpl;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.common.inspector.BaseInspector;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.UdpPacket;
-import io.datakernel.exception.ParseException;
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.net.AsyncUdpSocket;
+import io.datakernel.net.AsyncUdpSocketImpl;
+import io.datakernel.net.UdpPacket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -43,9 +43,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.async.Promises.TIMEOUT_EXCEPTION;
-import static io.datakernel.async.Promises.timeout;
-import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.TIMED_OUT;
+import static io.datakernel.promise.Promises.TIMEOUT_EXCEPTION;
+import static io.datakernel.promise.Promises.timeout;
 
 /**
  * Implementation of {@link AsyncDnsClient} that asynchronously
@@ -207,7 +206,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 								}
 								if (e == TIMEOUT_EXCEPTION) {
 									logger.trace("{} timed out", query);
-									e = new DnsQueryException(RemoteAsyncDnsClient.class, DnsResponse.ofFailure(transaction, TIMED_OUT));
+									e = new DnsQueryException(RemoteAsyncDnsClient.class, DnsResponse.ofFailure(transaction, DnsProtocol.ResponseErrorCode.TIMED_OUT));
 									transactions.remove(transaction);
 									closeIfDone();
 								}

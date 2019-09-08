@@ -21,8 +21,8 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 

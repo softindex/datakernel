@@ -16,9 +16,9 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 
 import java.io.IOException;
 

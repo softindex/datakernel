@@ -18,11 +18,11 @@ package io.datakernel.cube.http;
 
 import io.datakernel.codec.*;
 import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.cube.QueryResult;
 import io.datakernel.cube.Record;
 import io.datakernel.cube.RecordScheme;
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.RecursiveType;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;

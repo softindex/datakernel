@@ -37,8 +37,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.LENGTH_TOO_BIG;
 import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
 import static io.datakernel.test.TestUtils.getFreePort;

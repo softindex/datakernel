@@ -16,17 +16,17 @@
 
 package io.datakernel.csp.net;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.binary.ByteBufSerializer;
-import io.datakernel.csp.process.ChannelDeserializer;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.SimpleServer;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.SimpleServer;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.MemSize;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,9 +35,9 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.LongStream;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.serializer.util.BinarySerializers.LONG_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;

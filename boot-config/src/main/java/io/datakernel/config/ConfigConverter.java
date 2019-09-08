@@ -16,15 +16,15 @@
 
 package io.datakernel.config;
 
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.ParserFunction;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.ParserFunction;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public interface ConfigConverter<T> {
 	T get(Config config, @Nullable T defaultValue);

@@ -1,6 +1,6 @@
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 //[START EXAMPLE]
 public class PromiseChainExample {

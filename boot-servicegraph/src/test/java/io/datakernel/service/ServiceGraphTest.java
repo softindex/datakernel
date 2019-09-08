@@ -16,14 +16,14 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.promise.Promise;
 import org.hamcrest.core.IsSame;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
@@ -55,7 +55,7 @@ public class ServiceGraphTest {
 
 	// region modules
 	public static class FailingModule extends AbstractModule {
-		public static final io.datakernel.exception.ExpectedException INTERRUPTED = new io.datakernel.exception.ExpectedException("interrupted");
+		public static final io.datakernel.common.exception.ExpectedException INTERRUPTED = new io.datakernel.common.exception.ExpectedException("interrupted");
 
 		@Override
 		protected void configure() {

@@ -11,9 +11,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.singletonList;
 
 public class LogOT {

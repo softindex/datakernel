@@ -13,11 +13,11 @@ import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 import java.time.Duration;
 
+import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.HASH_FUNCTION;
 import static io.datakernel.rpc.client.RpcClient.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
-import static io.datakernel.util.MemSize.kilobytes;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public class MemcacheClientModule extends AbstractModule {

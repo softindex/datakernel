@@ -1,10 +1,10 @@
 package io.datakernel.http.session;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;

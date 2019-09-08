@@ -1,6 +1,5 @@
 package io.datakernel.promise;
 
-import io.datakernel.async.SettablePromise;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.Scope;

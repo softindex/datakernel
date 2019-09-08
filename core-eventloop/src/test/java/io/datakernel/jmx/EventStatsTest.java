@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.EventStats;
 import org.junit.Test;
 
 import java.time.Duration;

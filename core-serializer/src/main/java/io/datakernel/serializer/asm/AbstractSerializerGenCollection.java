@@ -26,8 +26,8 @@ import io.datakernel.serializer.util.BinaryOutputUtils;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, NullableOptimization {
 	protected final SerializerGen valueSerializer;

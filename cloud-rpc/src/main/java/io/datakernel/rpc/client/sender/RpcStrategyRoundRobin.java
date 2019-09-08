@@ -24,7 +24,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class RpcStrategyRoundRobin implements RpcStrategy {
 	private final RpcStrategyList list;

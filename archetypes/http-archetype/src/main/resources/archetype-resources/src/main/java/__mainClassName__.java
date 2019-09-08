@@ -1,6 +1,6 @@
 package ${groupId};
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;

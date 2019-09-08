@@ -16,8 +16,9 @@
 
 package io.datakernel.rpc;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.Stopwatch;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -27,7 +28,6 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.Stopwatch;
 import org.junit.*;
 
 import java.net.InetAddress;

@@ -17,20 +17,22 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.MemSize;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.net.SocketSettings;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketImpl.JmxInspector;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
@@ -41,8 +43,6 @@ import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -54,8 +54,8 @@ import java.util.*;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.async.Callback.toAnotherEventloop;
-import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**

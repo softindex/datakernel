@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.CollectionUtils.list;
+import static io.datakernel.common.collection.CollectionUtils.list;
 import static org.junit.Assert.*;
 
 public class DecodeErrorsTest {

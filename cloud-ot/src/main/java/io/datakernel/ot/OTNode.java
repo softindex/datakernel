@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.promise.Promise;
 
 import java.util.List;
 

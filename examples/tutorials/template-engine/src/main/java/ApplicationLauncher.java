@@ -1,23 +1,23 @@
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.util.ByteBufWriter;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.writer.ByteBufWriter;
+import io.datakernel.promise.Promise;
 
 import java.util.Map;
 
+import static io.datakernel.common.collection.CollectionUtils.list;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.util.CollectionUtils.list;
-import static io.datakernel.util.CollectionUtils.map;
 import static java.util.Collections.emptyMap;
 
 //[START REGION_1]

@@ -20,6 +20,7 @@ import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;

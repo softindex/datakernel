@@ -16,9 +16,9 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.async.Promise;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplierWithResult;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplierWithResult;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

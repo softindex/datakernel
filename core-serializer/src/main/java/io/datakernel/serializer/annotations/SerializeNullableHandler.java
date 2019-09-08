@@ -23,7 +23,7 @@ import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenNullable;
 import io.datakernel.serializer.asm.SerializerGenString;
 
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.check;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override

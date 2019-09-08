@@ -1,11 +1,11 @@
 package io.datakernel.aggregation.fieldtype;
 
-import io.datakernel.util.RecursiveType;
+import io.datakernel.common.reflection.RecursiveType;
 import org.junit.Test;
 
 import java.util.List;
 
-import static io.datakernel.util.RecursiveType.of;
+import static io.datakernel.common.reflection.RecursiveType.of;
 import static org.junit.Assert.assertEquals;
 
 public class RecursiveTypeTest {

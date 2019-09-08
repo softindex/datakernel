@@ -16,9 +16,10 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.common.exception.ExpectedException;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -27,9 +28,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.stream.StreamSupplier.concat;
+import static io.datakernel.datastream.StreamSupplier.concat;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamConsumers.decorator;
 import static io.datakernel.stream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;

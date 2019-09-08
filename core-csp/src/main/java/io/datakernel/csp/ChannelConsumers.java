@@ -16,12 +16,12 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.Recyclable;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.common.Recyclable.deepRecycle;
 
 /**
  * Provides additional functionality for managing {@link ChannelConsumer}s.

@@ -17,10 +17,10 @@
 package io.datakernel.service;
 
 import io.datakernel.async.Callback;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopServer;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.net.BlockingSocketServer;
+import io.datakernel.eventloop.net.BlockingSocketServer;
+import io.datakernel.net.EventloopServer;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;

@@ -16,13 +16,15 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.jmx.api.JmxReducer;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
 
 @SuppressWarnings("rawtypes")

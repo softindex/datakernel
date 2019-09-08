@@ -26,8 +26,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 

@@ -16,9 +16,9 @@
 
 package io.datakernel.worker;
 
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.util.ref.RefInt;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -28,7 +28,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.assertEquals;
 

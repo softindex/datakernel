@@ -23,8 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.JmxUtils.createDescriptionMap;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 
@@ -58,7 +57,11 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	@Override
 	public final Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
+		if (description != null) {
+			return singletonMap(name, singletonMap(name, description));
+		} else {
+			return singletonMap(name, Collections.emptyMap());
+		}
 	}
 
 	@Override

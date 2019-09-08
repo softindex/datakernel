@@ -26,11 +26,11 @@ import org.junit.Test;
 
 import java.util.List;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.OTAlgorithms.merge;
 import static io.datakernel.ot.OTAlgorithms.mergeAndUpdateHeads;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument"})

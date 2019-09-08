@@ -17,12 +17,12 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.util.Utils;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Objects;
 
+import static io.datakernel.common.Utils.deepHashCode;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -94,6 +94,6 @@ final class ExpressionConstant implements Expression {
 
 	@Override
 	public int hashCode() {
-		return Utils.deepHashCode(value);
+		return deepHashCode(value);
 	}
 }

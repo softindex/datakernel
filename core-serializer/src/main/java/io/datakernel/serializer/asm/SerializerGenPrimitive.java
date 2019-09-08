@@ -20,7 +20,7 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import static io.datakernel.codegen.utils.Primitives.wrap;
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.check;
 
 public abstract class SerializerGenPrimitive implements SerializerGen {
 

@@ -16,27 +16,31 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.SettablePromise;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.common.MemSize;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.Preconditions.*;
 import static java.util.Arrays.asList;
 
 /**

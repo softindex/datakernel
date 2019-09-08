@@ -18,8 +18,8 @@ package io.datakernel.ot;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.ot.utils.*;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -35,15 +35,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
-import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;

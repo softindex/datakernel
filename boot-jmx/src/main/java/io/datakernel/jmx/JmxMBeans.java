@@ -16,10 +16,15 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.JmxReducers.JmxReducerDistinct;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.ReflectionUtils;
+import io.datakernel.eventloop.jmx.EventloopJmxMBean;
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.eventloop.jmx.JmxRefreshableStats;
+import io.datakernel.eventloop.jmx.JmxStats;
+import io.datakernel.eventloop.util.ReflectionUtils;
+import io.datakernel.jmx.api.*;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerDistinct;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +41,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.Preconditions.*;
-import static io.datakernel.util.ReflectionUtils.*;
+import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.collection.CollectionUtils.first;
+import static io.datakernel.eventloop.util.ReflectionUtils.*;
 import static java.lang.Math.ceil;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;

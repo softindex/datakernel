@@ -16,15 +16,15 @@
 
 package io.datakernel.codec;
 
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.*;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.tuple.*;
 
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 

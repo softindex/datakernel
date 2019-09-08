@@ -1,13 +1,17 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.promise.Promise;
 
 import java.util.concurrent.Executor;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
-import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class HttpRequestParametersExample extends HttpServerLauncher {

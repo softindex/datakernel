@@ -16,14 +16,14 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.stream.processor.MultiSharder;
-import io.datakernel.util.HashUtils;
+import io.datakernel.common.HashUtils;
+import io.datakernel.datastream.processor.MultiSharder;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {

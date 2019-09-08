@@ -16,14 +16,17 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.ExpectedException;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamSorter;
+import io.datakernel.datastream.processor.StreamSorterStorage;
+import io.datakernel.datastream.processor.StreamSorterStorageImpl;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.MemSize;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
@@ -37,8 +40,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.stream.TestStreamConsumers.*;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;

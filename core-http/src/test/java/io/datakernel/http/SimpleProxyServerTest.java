@@ -16,11 +16,11 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.dns.CachedAsyncDnsClient;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import org.junit.Rule;
 import org.junit.Test;

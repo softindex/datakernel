@@ -20,7 +20,7 @@ import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeJoin;
-import io.datakernel.stream.processor.StreamJoin.Joiner;
+import io.datakernel.datastream.processor.StreamJoin.Joiner;
 
 import java.util.ArrayList;
 import java.util.List;

@@ -16,11 +16,11 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 
 import java.util.List;
 import java.util.function.Predicate;

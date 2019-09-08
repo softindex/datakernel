@@ -16,17 +16,17 @@
 
 package io.datakernel.etl;
 
-import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.stream.*;
+import io.datakernel.async.process.AsyncCollector;
+import io.datakernel.datastream.*;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
 
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {

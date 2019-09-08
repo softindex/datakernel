@@ -17,21 +17,20 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.StringFormatUtils;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.eventloop.jmx.ValueStats;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.launcher.LauncherService;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.StringFormatUtils;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
 
@@ -46,7 +45,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 

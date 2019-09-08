@@ -25,10 +25,10 @@ import io.datakernel.aggregation.util.PartitionPredicate;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -39,10 +39,10 @@ import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodecs.ofTupleArray;
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.CollectionUtils.concat;
-import static io.datakernel.util.CollectionUtils.keysToMap;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.ReflectionUtils.extractFieldNameFromGetter;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.concat;
+import static io.datakernel.common.collection.CollectionUtils.keysToMap;
+import static io.datakernel.eventloop.util.ReflectionUtils.extractFieldNameFromGetter;
 
 /**
  * Defines a structure of an aggregation.

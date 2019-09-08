@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.ShardingFunction;
 import io.datakernel.rpc.server.RpcRequestHandler;

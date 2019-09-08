@@ -1,3 +1,4 @@
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -7,7 +8,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.MemSize;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Files;

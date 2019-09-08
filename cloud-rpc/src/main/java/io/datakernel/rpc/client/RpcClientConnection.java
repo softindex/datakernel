@@ -17,18 +17,18 @@
 package io.datakernel.rpc.client;
 
 import io.datakernel.async.Callback;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.jmx.JmxRefreshable;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;

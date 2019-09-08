@@ -1,7 +1,7 @@
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.promise.Promise;
 
 import java.io.IOException;
 

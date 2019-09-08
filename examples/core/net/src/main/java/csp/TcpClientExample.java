@@ -5,9 +5,9 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.AsyncTcpSocket;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;

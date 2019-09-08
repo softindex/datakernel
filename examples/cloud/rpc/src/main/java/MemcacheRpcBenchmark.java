@@ -1,6 +1,5 @@
 import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -14,9 +13,10 @@ import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.client.RawMemcacheClient;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.server.MemcacheServerModule;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletionStage;

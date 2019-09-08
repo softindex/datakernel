@@ -25,8 +25,8 @@ import io.datakernel.csp.dsl.WithChannelTransformer;
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}

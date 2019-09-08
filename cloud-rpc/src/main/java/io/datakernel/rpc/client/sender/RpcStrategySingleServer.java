@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RpcStrategySingleServer implements RpcStrategy {
 

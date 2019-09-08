@@ -18,9 +18,9 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.processor.StreamReducer;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.processor.StreamReducer;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 
 import java.util.Collection;
 import java.util.Comparator;

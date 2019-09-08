@@ -16,7 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
 
 /**
  * Represents a failed DNS query response as a exception.

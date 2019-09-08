@@ -20,7 +20,7 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.check;
 
 public final class SerializeSubclassesHandler implements AnnotationHandler<SerializeSubclasses, SerializeSubclassesEx> {
 	@Override

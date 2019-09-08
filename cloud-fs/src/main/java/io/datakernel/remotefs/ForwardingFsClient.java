@@ -16,10 +16,10 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

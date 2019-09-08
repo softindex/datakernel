@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.common.collection.CollectionUtils.concat;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;

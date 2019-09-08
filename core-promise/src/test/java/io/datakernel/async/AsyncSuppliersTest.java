@@ -1,12 +1,14 @@
 package io.datakernel.async;
 
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static io.datakernel.async.AsyncSuppliers.coalesce;
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.async.function.AsyncSuppliers.coalesce;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.promise.TestUtils.await;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 

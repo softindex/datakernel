@@ -11,14 +11,14 @@ import org.junit.Test;
 import java.util.*;
 import java.util.function.Consumer;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.coalesce;
+import static io.datakernel.common.collection.CollectionUtils.list;
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.ot.OTAlgorithms.loadForMerge;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
-import static io.datakernel.util.CollectionUtils.list;
-import static io.datakernel.util.CollectionUtils.set;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Utils.coalesce;
+import static io.datakernel.promise.TestUtils.await;
 import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("CodeBlock2Expr")

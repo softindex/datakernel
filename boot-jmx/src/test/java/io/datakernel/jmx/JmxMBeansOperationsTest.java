@@ -16,6 +16,9 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxParameter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;

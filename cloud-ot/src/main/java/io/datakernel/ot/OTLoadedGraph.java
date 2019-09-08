@@ -23,9 +23,9 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Utils.coalesce;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.coalesce;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
 import static java.util.Comparator.naturalOrder;

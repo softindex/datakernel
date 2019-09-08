@@ -30,9 +30,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.datakernel.aggregation.AggregationPredicates.toRangeScan;
-import static io.datakernel.util.CollectionUtils.intersection;
-import static io.datakernel.util.CollectionUtils.toLimitedString;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.intersection;
+import static io.datakernel.common.collection.CollectionUtils.toLimitedString;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableMap;
 

@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +28,7 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.Utils.arraysEquals;
+import static io.datakernel.common.Utils.arraysEquals;
 import static java.nio.charset.Charset.forName;
 
 /**

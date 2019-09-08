@@ -22,7 +22,7 @@ import io.datakernel.aggregation.PrimaryKey;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import java.util.Collections;
 import java.util.Set;

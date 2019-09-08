@@ -16,6 +16,7 @@
 
 package io.datakernel.trigger;
 
+import io.datakernel.common.ref.RefBoolean;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
@@ -23,7 +24,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.LauncherService;
-import io.datakernel.util.ref.RefBoolean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
@@ -43,7 +43,7 @@ public class TriggersModuleTest {
 	@Test
 	public void testDuplicatesRejection() {
 		exception.expect(IllegalArgumentException.class);
-		exception.expectMessage("Cannot assign duplicate triggers");
+		exception.expectMessage("Cannot assign duplicate trigger");
 		Injector.of(
 				TriggersModule.create()
 						.with(Eventloop.class, Severity.HIGH, "test", eventloop -> TriggerResult.create())

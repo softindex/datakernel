@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -11,6 +10,7 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.client.RawMemcacheClient;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.CompletionStage;

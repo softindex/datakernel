@@ -16,8 +16,8 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.exception.ParseException;
-import io.datakernel.util.ThreadLocalCharArray;
+import io.datakernel.common.concurrent.ThreadLocalCharArray;
+import io.datakernel.common.parse.ParseException;
 
 /**
  * This class contains various fast string utilities for {@link ByteBuf ByteBufs} and byte arrays

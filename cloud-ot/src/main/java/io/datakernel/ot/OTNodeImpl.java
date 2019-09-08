@@ -1,11 +1,11 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncPredicate;
+import io.datakernel.common.ref.Ref;
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
-import io.datakernel.util.ref.Ref;
-import io.datakernel.util.ref.RefInt;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,11 +13,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.DiffsReducer.toSquashedList;
 import static io.datakernel.ot.OTAlgorithms.*;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
 import static java.util.Collections.singleton;
 
 public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {

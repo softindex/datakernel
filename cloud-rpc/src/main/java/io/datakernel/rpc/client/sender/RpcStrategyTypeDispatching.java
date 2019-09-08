@@ -26,8 +26,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkState;
 
 public final class RpcStrategyTypeDispatching implements RpcStrategy {
 	private Map<Class<?>, RpcStrategy> dataTypeToStrategy = new HashMap<>();

@@ -1,7 +1,9 @@
 package io.datakernel.stream;
 
+import io.datakernel.common.ref.RefInt;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.ref.RefInt;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -10,8 +12,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.stream.TestStreamSuppliers.errorDecorator;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static org.hamcrest.core.IsInstanceOf.instanceOf;

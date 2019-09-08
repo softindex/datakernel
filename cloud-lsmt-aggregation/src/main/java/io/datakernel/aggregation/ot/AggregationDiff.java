@@ -22,9 +22,9 @@ import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.union;
 import static java.util.Collections.emptySet;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationDiff {
 	private final Set<AggregationChunk> addedChunks;

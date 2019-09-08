@@ -17,7 +17,7 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,7 +26,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	@FunctionalInterface

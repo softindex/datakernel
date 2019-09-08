@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 /**
  * Implementations of this interface specifies the behavior according to

@@ -1,11 +1,11 @@
 package io.datakernel.csp.queue;
 
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 
 /**

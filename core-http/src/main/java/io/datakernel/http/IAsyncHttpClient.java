@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 /**
  * An interface for an asyncronous HTTP client.

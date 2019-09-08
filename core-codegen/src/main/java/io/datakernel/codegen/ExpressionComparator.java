@@ -27,7 +27,7 @@ import java.util.List;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.check;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 

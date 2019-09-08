@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+
 import javax.management.openmbean.OpenType;
 import java.util.List;
 import java.util.Map;

@@ -16,11 +16,11 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.jmx.ConcurrentJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.Initializable;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -29,8 +29,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
-import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;

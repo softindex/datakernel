@@ -16,16 +16,16 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncExecutors;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
-import io.datakernel.async.Promise;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.function.AsyncSuppliers.AsyncSupplierWithStatus;
+import io.datakernel.async.process.AsyncExecutors;
+import io.datakernel.async.process.RetryPolicy;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.ot.OTNode.FetchData;
 import io.datakernel.ot.exceptions.OTTransformException;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -35,13 +35,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.coalesce;
-import static io.datakernel.async.Promises.sequence;
-import static io.datakernel.util.CollectionUtils.concat;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.async.function.AsyncSuppliers.coalesce;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.collection.CollectionUtils.concat;
+import static io.datakernel.promise.Promises.sequence;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 

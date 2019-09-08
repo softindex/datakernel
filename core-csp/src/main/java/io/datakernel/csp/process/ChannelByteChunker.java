@@ -16,12 +16,12 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.util.MemSize;
+import io.datakernel.common.MemSize;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 import static java.lang.Math.min;
 

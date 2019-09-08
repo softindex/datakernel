@@ -1,7 +1,7 @@
 package io.datakernel.csp;
 
-import io.datakernel.async.Promise;
-import io.datakernel.util.Recyclable;
+import io.datakernel.common.Recyclable;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

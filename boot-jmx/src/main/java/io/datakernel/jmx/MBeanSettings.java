@@ -21,7 +21,7 @@ import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class MBeanSettings {
 	private final Set<String> includedOptionals = new HashSet<>();

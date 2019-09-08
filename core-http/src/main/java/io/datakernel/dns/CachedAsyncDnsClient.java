@@ -16,10 +16,10 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -31,8 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static io.datakernel.dns.DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL;
 
 /**
  * Implementation of {@link AsyncDnsClient} that asynchronously
@@ -68,7 +66,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	}
 
 	public CachedAsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta) {
-		return withExpiration(errorCacheExpiration, hardExpirationDelta, DEFAULT_TIMED_OUT_EXCEPTION_TTL);
+		return withExpiration(errorCacheExpiration, hardExpirationDelta, DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL);
 	}
 
 	public CachedAsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta, Duration timedOutExceptionTtl) {

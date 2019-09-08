@@ -17,7 +17,7 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.RpcStrategyFirstValidResult.ResultValidator;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;

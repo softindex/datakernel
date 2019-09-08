@@ -1,22 +1,22 @@
 package io.datakernel.memcache.server;
 
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 import io.datakernel.memcache.protocol.SerializerGenSlice;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
+import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SERVER_SOCKET_SETTINGS;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SOCKET_SETTINGS;
-import static io.datakernel.util.MemSize.kilobytes;
 
 public class MemcacheServerModule extends AbstractModule {
 	private MemcacheServerModule() {}

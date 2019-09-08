@@ -17,18 +17,18 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.Callback;
+import io.datakernel.common.HashUtils;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.util.HashUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.collection.CollectionUtils.first;
 
 public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;

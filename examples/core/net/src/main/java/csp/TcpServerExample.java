@@ -8,7 +8,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleServer;
+import io.datakernel.net.SimpleServer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
