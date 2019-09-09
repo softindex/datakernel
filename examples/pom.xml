@@ -16,6 +16,7 @@
   <modules>
     <module>core</module>
     <module>cloud</module>
+    <module>android</module>
     <module>tutorials</module>
     <module>benchmarks</module>
   </modules>
@@ -26,4 +27,16 @@
       <artifactId>logback-classic</artifactId>
     </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>android-examples</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <modules>
+        <module>android</module>
+      </modules>
+    </profile>
+  </profiles>
 </project>
