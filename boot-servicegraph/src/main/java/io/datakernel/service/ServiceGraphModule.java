@@ -50,6 +50,7 @@ import static io.datakernel.common.collection.CollectionUtils.intersection;
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.service.util.Utils.combineAll;
 import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
+import static java.lang.Thread.currentThread;
 import static java.util.Collections.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.*;
@@ -120,7 +121,13 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				.register(Closeable.class, forCloseable())
 				.register(ExecutorService.class, forExecutorService())
 				.register(Timer.class, forTimer())
-				.register(DataSource.class, forDataSource())
+				.initialize(module -> {
+					try {
+						currentThread().getContextClassLoader().loadClass("javax.sql.DataSource");
+						module.register(DataSource.class, forDataSource());
+					} catch (ClassNotFoundException ignored) {
+					}
+				})
 				.register(EventloopService.class, forEventloopService())
 				.register(EventloopServer.class, forEventloopServer())
 				.register(Eventloop.class, forEventloop());
