@@ -1,10 +1,9 @@
 import React from 'react';
 import {BrowserRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from "./MainScreen/MainScreen";
-import SignUp from "./SignUp/SignUp";
-import OAuthCallback from "./OAuthCallback/OAuthCallback";
+import {OAuthCallback, SignUp} from "global-apps-common";
 
-function App() {
+function Router() {
   return (
     <BrowserRouter>
       <Switch>
@@ -17,4 +16,4 @@ function App() {
   );
 }
 
-export default App;
+export default Router;

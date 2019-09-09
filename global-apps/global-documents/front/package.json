@@ -13,6 +13,7 @@
     "lodash": "^4.17.15",
     "material-design-icons": "^3.0.1",
     "notistack": "^0.8.6",
+    "global-apps-common": "file:../../global-apps-common/front",
     "ot-core": "https://github.com/softindex/ot-core#v0.2.3",
     "prop-types": "^15.7.2",
     "query-string": "^6.8.1",
