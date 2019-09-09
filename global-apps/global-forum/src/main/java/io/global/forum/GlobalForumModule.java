@@ -29,7 +29,7 @@ import io.global.ot.service.UserContainer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
@@ -103,13 +103,13 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	ContainerKeyManager containerKeyManager(Eventloop eventloop, ExecutorService executor, Config config) {
+	ContainerKeyManager containerKeyManager(Eventloop eventloop, Executor executor, Config config) {
 		Path containersDir = config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR);
 		return FsContainerKeyManager.create(eventloop, executor, containersDir, true);
 	}
 
 	@Provides
-	StaticLoader staticLoader(ExecutorService executor, Config config) {
+	StaticLoader staticLoader(Executor executor, Config config) {
 		Path staticPath = config.get(ofPath(), "static.files", DEFAULT_STATIC_PATH);
 		return StaticLoader.ofPath(executor, staticPath);
 	}
@@ -132,7 +132,7 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	ExecutorService executor(Config config) {
+	Executor executor(Config config) {
 		return getExecutor(config);
 	}
 

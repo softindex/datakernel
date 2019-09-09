@@ -4,8 +4,13 @@ window.onload = () => {
   $('[data-post-button]').keydown((e) => {
     if (e.keyCode === 13 && e.ctrlKey) {
       e.preventDefault();
-      $(`#${e.target.dataset.postButton}`).click();
+      $(e.target.dataset.postButton).click();
     }
+  });
+  $('[data-post-content]').click((e) => {
+    let element = $(e.target.dataset.postContent);
+    let lines = Math.round(element.height() / parseFloat(element.css('line-height')));
+    element.replaceWith(`<textarea class="form-control" rows="${lines}">${element.text()}</textarea><button class="btn btn-sm btn-primary">save</button>`);
   });
 
   let $loginButton = $('#login_button');

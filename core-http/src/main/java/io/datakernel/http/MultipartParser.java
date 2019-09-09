@@ -294,7 +294,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 			return new MultipartDataHandler() {
 				@Override
 				public Promise<? extends ChannelConsumer<ByteBuf>> handleField(String fieldName) {
-					return Promise.of(ChannelConsumer.<ByteBuf>ofSupplier(supplier -> supplier.toCollector(ByteBufQueue.collector())
+					return Promise.of(ChannelConsumer.ofSupplier(supplier -> supplier.toCollector(ByteBufQueue.collector())
 							.map(value -> {
 								fields.put(fieldName, value.asString(UTF_8));
 								return (Void) null;

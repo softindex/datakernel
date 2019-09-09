@@ -6,7 +6,7 @@ import java.util.Set;
 
 import static io.global.forum.pojo.ForumPrivilege.*;
 
-public enum UserRole {
+public enum UserRole implements Comparable<UserRole> {
 	NONE,
 	COMMON(CREATE_THREAD, EDIT_OWN_THREAD, SEE_OWN_DELETED_THREADS, CREATE_POST, EDIT_OWN_POST, SEE_OWN_DELETED_POSTS, RATE_POST),
 	SUPER(COMMON, SEE_ANY_DELETED_THREADS, SEE_ANY_DELETED_POSTS, BAN_USER),
@@ -35,9 +35,5 @@ public enum UserRole {
 
 	public boolean has(ForumPrivilege privilege) {
 		return privileges.contains(privilege);
-	}
-
-	public boolean hasSufficientRights() {
-		return ordinal() > 0; // TODO anton: remove this stub
 	}
 }

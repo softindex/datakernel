@@ -1,5 +1,6 @@
 package io.global.forum.http;
 
+import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
@@ -31,6 +32,7 @@ import static java.util.stream.Collectors.toMap;
 
 public final class PublicServlet {
 	private static final String SESSION_ID = "FORUM_SID";
+	public static final String WHITESPACE = "^(?:\\p{Z}|\\p{C})*$";
 
 	public static AsyncServlet create(AppStore appStore, MustacheTemplater templater) {
 		return RoutingServlet.create()
@@ -40,6 +42,12 @@ public final class PublicServlet {
 					return forumDao.getThreads()
 							.then(threads -> ThreadView.from(forumDao, threads, userId))
 							.then(threads -> templater.render("threadList", map("threads", threads)));
+				})
+				.map(GET, "/login", request -> {
+					if (request.getAttachment(UserId.class) != null) {
+						return Promise.of(redirectToReferer(request, ".."));
+					}
+					return templater.render("login", map("loginScreen", true));
 				})
 				.map(GET, "/authorize", request -> {
 					String token = request.getQueryParameter("token");
@@ -113,30 +121,34 @@ public final class PublicServlet {
 
 					return forumDao.createThread(new ThreadMetadata("<unnamed>"))
 							.then(tid -> {
-								ThreadDao dao = forumDao.getThreadDao(tid);
-								assert dao != null : "No thread dao just after creating the thread";
+								ThreadDao threadDao = forumDao.getThreadDao(tid);
+								assert threadDao != null : "No thread dao just after creating the thread";
 
 								Map<String, Attachment> attachmentMap = new HashMap<>();
 								Map<String, String> paramsMap = new HashMap<>();
 
-								return request.handleMultipart(AttachmentDataHandler.create(dao, paramsMap, attachmentMap))
+								return request.handleMultipart(AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap))
 										.then($ -> {
 											String title = paramsMap.get("title");
-											if (title == null) {
-												return Promise.<HttpResponse>ofException(new ParseException(ThreadServlet.class, "'title' POST parameter is required"));
+											if (title == null || title.matches(WHITESPACE)) {
+												return Promise.ofException(new ParseException(ThreadServlet.class, "'title' POST parameter is required"));
+											}
+											if (title.length() > 120) {
+												return Promise.ofException(new ParseException(ThreadServlet.class, "Title is too long (" + title.length() + ">120)"));
 											}
 
 											String content = paramsMap.get("content");
-											if (content == null) {
-												return Promise.<HttpResponse>ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
+											if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
+												return Promise.ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
 											}
 											String pk = forumDao.getKeys().getPubKey().asString();
 
 											return forumDao.updateThread(tid, new ThreadMetadata(title))
-													.then($2 -> dao.addRootPost(userId, content, attachmentMap))
-													.thenEx(revertIfException(dao, attachmentMap))
+													.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
 													.map($2 -> redirect302("/" + pk + "/" + tid));
-										});
+										})
+										.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())))
+										.thenEx(revertIfException(() -> forumDao.removeThread(tid)));
 							});
 				})
 				.map(GET, "/profile", request -> {
@@ -225,12 +237,12 @@ public final class PublicServlet {
 					return request.handleMultipart(AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap))
 							.then($ -> {
 								String content = paramsMap.get("content");
-								if (content == null) {
+								if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
 									return Promise.ofException(new ParseException(ThreadServlet.class, "'content' POST parameter is required"));
 								}
 								return threadDao.addPost(user, pid, content, attachmentMap).toVoid();
 							})
-							.thenEx(revertIfException(threadDao, attachmentMap))
+							.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())))
 							.map($ -> postOpRedirect(request));
 				})
 				.map(GET, "/edit", request -> {
@@ -293,12 +305,12 @@ public final class PublicServlet {
 		};
 	}
 
-	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(ThreadDao threadDao, Map<String, Attachment> attachments) {
-		return ($, e) -> {
+	private static <T, E> BiFunction<T, Throwable, Promise<T>> revertIfException(AsyncSupplier<E> undo) {
+		return (result, e) -> {
 			if (e == null) {
-				return Promise.complete();
+				return Promise.of(result);
 			}
-			return threadDao.deleteAttachments(attachments.keySet())
+			return undo.get()
 					.thenEx(($2, e2) -> {
 						if (e2 != null) {
 							e.addSuppressed(e2);

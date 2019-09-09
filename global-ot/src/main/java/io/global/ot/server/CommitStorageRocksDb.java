@@ -16,6 +16,10 @@ import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -45,6 +49,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	private static final StructuredCodec<SignedData<RawCommitHead>> SIGNED_HEAD_CODEC = REGISTRY.get(new TypeT<SignedData<RawCommitHead>>() {});
 	private static final byte EMPTY = 0;
 
+	private final Executor executor;
 	private final Eventloop eventloop;
 	private final String storagePath;
 	private final DBOptions dbOptions;
@@ -55,9 +60,6 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 	private final List<ColumnFamilyHandle> handles = new ArrayList<>();
 
 	private TransactionDB db;
-
-	@NotNull
-	private Executor executor;
 
 	// columns
 	private Column<CommitId, RawCommit> commits;
@@ -138,6 +140,11 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 				new ColumnFamilyDescriptor("parent to children".getBytes(), columnFamilyOptions),
 				new ColumnFamilyDescriptor("pending commits".getBytes(), columnFamilyOptions)
 		);
+		try {
+			Files.createDirectories(Paths.get(storagePath).getParent());
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 		db = TransactionDB.open(dbOptions, transactionDBOptions, storagePath, descriptors, handles);
 		commits = new Column<>(handles.get(1), COMMIT_ID_CODEC, RAW_COMMIT_CODEC);
 		snapshots = new Column<>(handles.get(2), REPO_COMMIT_CODEC, SIGNED_SNAPSHOT_CODEC);

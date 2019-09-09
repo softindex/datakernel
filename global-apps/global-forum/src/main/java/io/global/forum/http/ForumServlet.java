@@ -62,7 +62,7 @@ public final class ForumServlet {
 									if (userData == null) {
 										return Promise.<HttpResponse>ofException(USER_NOT_FOUND);
 									}
-									if (!userData.getRole().hasSufficientRights()) {
+									if (!userData.getRole().has(ForumPrivilege.BAN_IP_RANGE)) {
 										return Promise.<HttpResponse>ofException(INSUFFICIENT_RIGHTS);
 									}
 									return forumDao.getBannedRanges()
@@ -75,7 +75,7 @@ public final class ForumServlet {
 								if (userData == null) {
 									return Promise.<HttpResponse>ofException(USER_NOT_FOUND);
 								}
-								if (!userData.getRole().hasSufficientRights()) {
+								if (!userData.getRole().has(ForumPrivilege.BAN_IP_RANGE)) {
 									return Promise.<HttpResponse>ofException(INSUFFICIENT_RIGHTS);
 								}
 								try {
@@ -93,7 +93,7 @@ public final class ForumServlet {
 									if (userData == null) {
 										return Promise.<HttpResponse>ofException(USER_NOT_FOUND);
 									}
-									if (!userData.getRole().hasSufficientRights()) {
+									if (!userData.getRole().has(ForumPrivilege.BAN_USER)) {
 										return Promise.<HttpResponse>ofException(INSUFFICIENT_RIGHTS);
 									}
 

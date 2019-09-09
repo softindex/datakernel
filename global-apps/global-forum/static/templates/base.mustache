@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
           integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -22,9 +23,6 @@
 
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav">
-                <!--                <li class="nav-item">-->
-                <!--                    <a class="nav-link" href="/{{pubKey}}/">Threads</a>-->
-                <!--                </li>-->
                 {{#user}}
                     {{^creatingNewThread}}
                         {{#privileges.create_thread}}
@@ -37,12 +35,16 @@
             </ul>
             <div class="row ml-auto mr-0">
                 {{^user}}
-                    <a class="btn btn-outline-success"
-                       href="{{appStoreUrl}}/oauth?redirectURI=http://localhost:8080/{{pubKey}}/authorize?origin="
-                       id="login_button">Log In</a>
+                    {{^loginScreen}}
+                        <a class="btn btn-outline-success"
+                           href="{{appStoreUrl}}/oauth?redirectURI=http://192.168.1.217:8080/{{pubKey}}/authorize?origin="
+                           id="login_button">
+                            Log In
+                        </a>
+                    {{/loginScreen}}
                 {{/user}}
                 {{#user}}
-                    <span class="navbar-text mx-2" style="position: relative;">
+                    <span class="navbar-text mr-2" style="position: relative;">
                         Hello, <a class="stretched-link" href="/{{pubKey}}/profile">{{username}}</a>
                     </span>
                     <form action="/{{pubKey}}/logout" method="post">

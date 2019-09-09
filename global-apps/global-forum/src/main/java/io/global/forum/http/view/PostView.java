@@ -2,10 +2,13 @@ package io.global.forum.http.view;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.global.common.CryptoUtils;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.pojo.*;
 import org.jetbrains.annotations.Nullable;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +34,9 @@ public final class PostView {
 	private final List<AttachmentView> attachments;
 
 	@Nullable
+	private final String emailMd5;
+
+	@Nullable
 	private final String deletedBy;
 
 	private final boolean editable;
@@ -39,7 +45,7 @@ public final class PostView {
 	private final boolean editedNow;
 
 	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp,
-			List<PostView> children, List<AttachmentView> attachments, @Nullable String deletedBy,
+			List<PostView> children, List<AttachmentView> attachments, String emailMd5, @Nullable String deletedBy,
 			boolean editable, boolean deletedVisible, boolean editedNow) {
 		this.postId = postId;
 		this.author = author;
@@ -48,6 +54,7 @@ public final class PostView {
 		this.lastEditTimestamp = lastEditTimestamp;
 		this.children = children;
 		this.attachments = attachments;
+		this.emailMd5 = emailMd5;
 		this.deletedBy = deletedBy;
 		this.editable = editable;
 		this.deletedVisible = deletedVisible;
@@ -85,6 +92,11 @@ public final class PostView {
 	@Nullable
 	public String getDeletedBy() {
 		return deletedBy;
+	}
+
+	@Nullable
+	public String getEmailMd5() {
+		return emailMd5;
 	}
 
 	public boolean isEditable() {
@@ -130,11 +142,23 @@ public final class PostView {
 												.sorted(ATTACHMENT_COMPARATOR)
 												.map(AttachmentView::from)
 												.collect(toList()),
+										author != null ? md5(author.getEmail()) : null,
 										deleter != null ? deleter.getUsername() : null,
-										role.has(EDIT_ANY_POST) || own && role.has(EDIT_OWN_POST),
+										role.has(EDIT_ANY_POST) || own && role.has(EDIT_OWN_POST) && (deleterId == null || post.getAuthor().equals(deleterId)),
 										role.has(SEE_ANY_DELETED_POSTS) || own && role.has(SEE_OWN_DELETED_POSTS),
 										post.getId().equals(editedPostId));
 							});
 				});
+	}
+
+	private static String md5(String str) {
+		MessageDigest md;
+		try {
+			md = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException e) {
+			throw new AssertionError(e);
+		}
+		md.update(str.getBytes());
+		return CryptoUtils.toHexString(md.digest());
 	}
 }

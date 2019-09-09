@@ -4,10 +4,19 @@
             <div class="list-group my-3">
                 {{#threads}}
                     <a href="/{{pubKey}}/{{id}}" class="list-group-item list-group-item-action">
-                        {{meta.title}}
-                        <span class="badge badge-secondary badge-light float-right">
-                        {{root.author}}, {{root.initialTimestamp}}
-                    </span>
+                        <span class="badge">{{root.initialTimestamp}}</span>
+                        <div class="row">
+                            <h5 class="col ml-1 my-auto text-wrap text-break">
+                                {{meta.title}}
+                            </h5>
+                            <div class="col-4 text-right align-self-center">
+                                <span class="badge">{{root.author}}</span>
+                                <div style="display: inline-block; width: 32px; height: 32px;">
+                                    <img class="rounded" alt="avatar" width="32"
+                                         src="https://gravatar.com/avatar/{{root.emailMd5}}{{^root.emailMd5}}none{{/root.emailMd5}}">
+                                </div>
+                            </div>
+                        </div>
                     </a>
                 {{/threads}}
             </div>
