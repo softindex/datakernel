@@ -41,17 +41,38 @@
                 </div>
             </div>
         </div>
-        <div class="row m-2">
-            <ul class="list-group col-auto">
-                {{#attachments}}
-                    <li class="list-group-item text-truncate">
-                        <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
-                           class="stretched-link">🠋</a>
-                        {{filename}}
-                    </li>
-                {{/attachments}}
-            </ul>
-        </div>
+        {{#attachments}}
+            <div class="row m-2">
+                {{#image}}
+                    <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}">
+                        <img src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                             class="img-thumbnail m-2">
+                    </a>
+                {{/image}}
+            </div>
+
+            <div class="row m-2">
+                {{#video}}
+                    <div class="embed-responsive embed-responsive-16by9 m-2">
+                        <video controls>
+                            <source src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}">
+                        </video>
+                    </div>
+                {{/video}}
+            </div>
+
+            <div class="row m-2">
+                {{#document}}
+                    <ul class="list-group col-auto">
+                        <li class="list-group-item text-truncate">
+                            <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                               class="stretched-link">🠋</a>
+                            {{filename}}
+                        </li>
+                    </ul>
+                {{/document}}
+            </div>
+        {{/attachments}}
         <div class="row">
             <div class="col"></div>
             {{#deletedBy}}{{#editable}}
@@ -105,20 +126,24 @@
                     <div class="collapse" id="attachments_{{postId}}">
                         <div class="mx-3 mt-3">
                             <div class="custom-file col-3">
-                                <input type="file" class="custom-file-input" id="image_attachment_{{postId}}" multiple
+                                <input type="file" accept="image/*" class="custom-file-input"
+                                       id="image_attachment_{{postId}}" multiple
                                        name="image_attachment">
-                                <label class="custom-file-label" for="image_attachment_{{postId}}">Attach images</label>
+                                <label class="custom-file-label text-truncate" for="image_attachment_{{postId}}">Attach
+                                    images</label>
                             </div>
                             <div class="custom-file col-3">
-                                <input type="file" class="custom-file-input" id="video_attachment_{{postId}}" multiple
+                                <input type="file" accept="video/mp4" class="custom-file-input"
+                                       id="video_attachment_{{postId}}" multiple
                                        name="video_attachment">
-                                <label class="custom-file-label" for="video_attachment_{{postId}}">Attach videos</label>
+                                <label class="custom-file-label text-truncate" for="video_attachment_{{postId}}">Attach
+                                    videos</label>
                             </div>
                             <div class="custom-file col-3">
                                 <input type="file" class="custom-file-input" id="document_attachment_{{postId}}"
                                        multiple
                                        name="document_attachment">
-                                <label class="custom-file-label" for="document_attachment_{{postId}}">Attach
+                                <label class="custom-file-label text-truncate" for="document_attachment_{{postId}}">Attach
                                     documents</label>
                             </div>
                         </div>

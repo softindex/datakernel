@@ -15,13 +15,15 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
+import static io.datakernel.util.CollectorsEx.toMultimap;
 import static io.global.forum.pojo.ForumPrivilege.*;
-import static java.util.stream.Collectors.toList;
 
 public final class PostView {
 	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
-	private static final Comparator<Map.Entry<String, Attachment>> ATTACHMENT_COMPARATOR = Comparator.comparing(a -> a.getValue().getFilename());
+	private static final Comparator<Entry<String, Attachment>> ATTACHMENT_COMPARATOR = Comparator.comparing(a -> a.getValue().getFilename());
 	private static final Comparator<Post> POST_COMPARATOR = Comparator.comparing(Post::getInitialTimestamp);
 
 	private final String postId;
@@ -31,7 +33,7 @@ public final class PostView {
 	private final String lastEditTimestamp;
 
 	private final List<PostView> children;
-	private final List<AttachmentView> attachments;
+	private final Map<String, Set<AttachmentView>> attachments;
 
 	@Nullable
 	private final String emailMd5;
@@ -45,7 +47,7 @@ public final class PostView {
 	private final boolean editedNow;
 
 	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp,
-			List<PostView> children, List<AttachmentView> attachments, String emailMd5, @Nullable String deletedBy,
+			List<PostView> children, Map<String, Set<AttachmentView>> attachments, String emailMd5, @Nullable String deletedBy,
 			boolean editable, boolean deletedVisible, boolean editedNow) {
 		this.postId = postId;
 		this.author = author;
@@ -85,7 +87,7 @@ public final class PostView {
 		return children;
 	}
 
-	public List<AttachmentView> getAttachments() {
+	public Map<String, Set<AttachmentView>> getAttachments() {
 		return attachments;
 	}
 
@@ -138,10 +140,7 @@ public final class PostView {
 										format(post.getInitialTimestamp()),
 										format(post.getLastEditTimestamp()),
 										children,
-										post.getAttachments().entrySet().stream()
-												.sorted(ATTACHMENT_COMPARATOR)
-												.map(AttachmentView::from)
-												.collect(toList()),
+										convert(post.getAttachments()),
 										author != null ? md5(author.getEmail()) : null,
 										deleter != null ? deleter.getUsername() : null,
 										role.has(EDIT_ANY_POST) || own && role.has(EDIT_OWN_POST) && (deleterId == null || post.getAuthor().equals(deleterId)),
@@ -161,4 +160,12 @@ public final class PostView {
 		md.update(str.getBytes());
 		return CryptoUtils.toHexString(md.digest());
 	}
+
+	private static Map<String, Set<AttachmentView>> convert(Map<String, Attachment> attachments) {
+		return attachments.entrySet().stream()
+				.sorted(ATTACHMENT_COMPARATOR)
+				.collect(toMultimap(entry -> entry.getValue().getAttachmentType().toString().toLowerCase(),
+						entry -> new AttachmentView(entry.getValue().getFilename(), entry.getKey())));
+	}
+
 }
