@@ -26,11 +26,13 @@ import picocli.CommandLine.*;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 @Command(name = "globalfs", description = "Basic command line utility for interacting with Global-FS",
-		subcommands = {GlobalFsUpload.class, GlobalFsDownload.class, GlobalFsDelete.class, GlobalFsList.class, GlobalFsAlias.class})
+		subcommands = {GlobalFsDelete.class, GlobalFsList.class, GlobalFsAlias.class})
 public final class GlobalFs {
 	static boolean loggingEnabled = true;
 	static Preferences keyStorage = Preferences.userRoot().node("globalfs/keys");
@@ -51,7 +53,10 @@ public final class GlobalFs {
 	private boolean helpRequested;
 
 	public static void main(String[] args) {
+		ExecutorService executor = Executors.newCachedThreadPool();
 		CommandLine commandLine = new CommandLine(GlobalFs.class);
+		commandLine.addSubcommand("upload", new GlobalFsUpload(executor));
+		commandLine.addSubcommand("download", new GlobalFsDownload(executor));
 
 		commandLine
 				.registerConverter(InetSocketAddress.class, Utils::parseInetSocketAddress)
@@ -71,6 +76,8 @@ public final class GlobalFs {
 			keyStorage.flush();
 		} catch (BackingStoreException e) {
 			err("Failed flushing the key storage for some reason: " + e);
+		} finally {
+			executor.shutdown();
 		}
 	}
 }
