@@ -3,7 +3,7 @@ package io.global.ot.service;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.AsyncServlet;
 import io.global.common.PrivKey;
 
 import java.nio.file.Path;
@@ -23,7 +23,7 @@ public abstract class ContainerModule<T extends UserContainer> extends AbstractM
 	}
 
 	@Provides
-	ServiceEnsuringServlet serviceEnsuringServlet(ContainerManager<T> containerManager, RoutingServlet servlet) {
-		return ServiceEnsuringServlet.create(containerManager, servlet);
+	ContainerServlet serviceEnsuringServlet(ContainerManager<T> containerManager, AsyncServlet servlet) {
+		return ContainerServlet.create(containerManager, servlet);
 	}
 }

@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.Utils.nullToEmpty;
@@ -55,7 +54,7 @@ public final class ThreadServlet {
 								}
 								return threadDao.addPost(author, parentId, content, attachmentMap).toVoid();
 							})
-							.thenEx(revertIfException(threadDao, attachmentMap))
+							.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())))
 							.map($ -> HttpResponse.ok201());
 				})
 				.map("/:postId/*", RoutingServlet.create()
@@ -103,7 +102,7 @@ public final class ThreadServlet {
 
 										return threadDao.updatePost(postId, content, attachmentMap, toBeRemoved);
 									})
-									.thenEx(revertIfException(threadDao, attachmentMap))
+									.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())))
 									.map($ -> HttpResponse.ok201());
 						})
 						.map(DELETE, "/", request -> {
@@ -178,21 +177,6 @@ public final class ThreadServlet {
 							}
 						})
 				);
-	}
-
-	private static BiFunction<Void, Throwable, Promise<Void>> revertIfException(ThreadDao threadDao, Map<String, Attachment> attachments) {
-		return ($, e) -> {
-			if (e == null) {
-				return Promise.complete();
-			}
-			return threadDao.deleteAttachments(attachments.keySet())
-					.thenEx(($2, e2) -> {
-						if (e2 != null) {
-							e.addSuppressed(e2);
-						}
-						return Promise.ofException(e);
-					});
-		};
 	}
 }
 

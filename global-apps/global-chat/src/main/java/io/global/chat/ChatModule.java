@@ -19,7 +19,7 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.map.MapOperation;
-import io.global.ot.service.ServiceEnsuringServlet;
+import io.global.ot.service.ContainerServlet;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.set.SetOperation;
 import io.global.ot.shared.SharedReposOperation;
@@ -51,7 +51,7 @@ public final class ChatModule extends AbstractModule {
 
 	@Provides
 	@Named("Chat")
-	AsyncHttpServer provideServer(Eventloop eventloop, ServiceEnsuringServlet servlet, Config config) {
+	AsyncHttpServer provideServer(Eventloop eventloop, ContainerServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}

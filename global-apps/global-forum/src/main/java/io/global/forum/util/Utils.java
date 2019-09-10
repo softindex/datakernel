@@ -1,5 +1,7 @@
 package io.global.forum.util;
 
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
@@ -20,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
@@ -124,21 +127,6 @@ public final class Utils {
 			'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
 	};
-	private static final Random RANDOM = new Random();
-	private static final int ID_SIZE = 10;
-
-	public static String generateId() {
-		StringBuilder sb = new StringBuilder(ID_SIZE);
-		for (int i = 0; i < 10; i++) {
-			sb.append(CHAR_POOL[RANDOM.nextInt(CHAR_POOL.length)]);
-		}
-		return sb.toString();
-	}
-
-	public static HttpResponse redirectToReferer(HttpRequest request, String defaultPath) {
-		String referer = request.getHeader(REFERER);
-		return HttpResponse.redirect302(referer != null ? referer : defaultPath);
-	}
 
 	private static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
 		StructuredCodec<UserId> userIdCodec = REGISTRY.get(UserId.class);
@@ -186,6 +174,37 @@ public final class Utils {
 			} else {
 				RECURSIVE_POST_ENCODER.encode(out, new Tuple2<>(posts, startingId));
 			}
+		};
+	}
+
+	private static final Random RANDOM = new Random();
+	private static final int ID_SIZE = 10;
+
+	public static String generateId() {
+		StringBuilder sb = new StringBuilder(ID_SIZE);
+		for (int i = 0; i < 10; i++) {
+			sb.append(CHAR_POOL[RANDOM.nextInt(CHAR_POOL.length)]);
+		}
+		return sb.toString();
+	}
+
+	public static HttpResponse redirectToReferer(HttpRequest request, String defaultPath) {
+		String referer = request.getHeader(REFERER);
+		return HttpResponse.redirect302(referer != null ? referer : defaultPath);
+	}
+
+	public static <T, E> BiFunction<T, Throwable, Promise<T>> revertIfException(AsyncSupplier<E> undo) {
+		return (result, e) -> {
+			if (e == null) {
+				return Promise.of(result);
+			}
+			return undo.get()
+					.thenEx(($2, e2) -> {
+						if (e2 != null) {
+							e.addSuppressed(e2);
+						}
+						return Promise.ofException(e);
+					});
 		};
 	}
 }

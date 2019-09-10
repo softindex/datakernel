@@ -69,8 +69,7 @@ public final class GlobalEditorApp extends Launcher {
 				new SharedRepoModule<DocumentMultiOperation>(DOCUMENT_REPO_PREFIX) {},
 				new ContainerModule<CommonUserContainer<DocumentMultiOperation>>() {
 					@Provides
-					BiFunction<Eventloop, PrivKey, CommonUserContainer<DocumentMultiOperation>> factory(OTDriver driver,
-							GlobalPmDriver<CreateSharedRepo> pmDriver) {
+					BiFunction<Eventloop, PrivKey, CommonUserContainer<DocumentMultiOperation>> factory(OTDriver driver, GlobalPmDriver<CreateSharedRepo> pmDriver) {
 						return (eventloop, privKey) -> {
 							RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
 							MyRepositoryId<DocumentMultiOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, DOCUMENT_MULTI_OPERATION_CODEC);

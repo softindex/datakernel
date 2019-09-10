@@ -18,7 +18,7 @@ import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsOperation;
-import io.global.ot.service.ServiceEnsuringServlet;
+import io.global.ot.service.ContainerServlet;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.GlobalPmDriver;
@@ -48,7 +48,7 @@ public final class EditorModule extends AbstractModule {
 
 	@Provides
 	@Named("Editor")
-	AsyncHttpServer provideServer(Eventloop eventloop, ServiceEnsuringServlet servlet, Config config) {
+	AsyncHttpServer provideServer(Eventloop eventloop, ContainerServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}

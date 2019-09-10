@@ -47,7 +47,7 @@ public final class PostView {
 	private final boolean editedNow;
 
 	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp,
-			List<PostView> children, Map<String, Set<AttachmentView>> attachments, String emailMd5, @Nullable String deletedBy,
+			List<PostView> children, Map<String, Set<AttachmentView>> attachments, @Nullable String emailMd5, @Nullable String deletedBy,
 			boolean editable, boolean deletedVisible, boolean editedNow) {
 		this.postId = postId;
 		this.author = author;

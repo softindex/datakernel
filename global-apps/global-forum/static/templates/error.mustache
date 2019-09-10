@@ -1,0 +1,15 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row justify-content-center">
+                <h1>{{code}}</h1>
+            </div>
+            <hr class="col-1 my-1 bg-dark">
+            <div class="row justify-content-center text-secondary">
+                {{message}}{{^message}}Sorry, an error has occured!{{/message}}
+            </div>
+        </div>
+
+    {{/content}}
+{{/base}}
+

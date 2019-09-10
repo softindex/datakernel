@@ -1,12 +1,12 @@
 package io.global.forum.http;
 
-import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.http.session.SessionStore;
 import io.global.appstore.AppStore;
 import io.global.common.PubKey;
+import io.global.forum.container.ForumUserContainer;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.dao.ThreadDao;
 import io.global.forum.http.view.PostView;
@@ -18,8 +18,10 @@ import org.jetbrains.annotations.NotNull;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
+import java.util.Map.Entry;
 
+import static io.datakernel.http.AsyncServletDecorator.mapResponse;
+import static io.datakernel.http.HttpHeaders.LOCATION;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
@@ -27,6 +29,7 @@ import static io.datakernel.util.CollectionUtils.map;
 import static io.global.Utils.generateString;
 import static io.global.forum.pojo.AuthService.DK_APP_STORE;
 import static io.global.forum.util.Utils.redirectToReferer;
+import static io.global.forum.util.Utils.revertIfException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toMap;
 
@@ -34,7 +37,7 @@ public final class PublicServlet {
 	private static final String SESSION_ID = "FORUM_SID";
 	public static final String WHITESPACE = "^(?:\\p{Z}|\\p{C})*$";
 
-	public static AsyncServlet create(AppStore appStore, MustacheTemplater templater) {
+	public static AsyncServlet create(String appStoreUrl, AppStore appStore, MustacheTemplater templater) {
 		return RoutingServlet.create()
 				.map(GET, "/", request -> {
 					ForumDao forumDao = request.getAttachment(ForumDao.class);
@@ -108,7 +111,7 @@ public final class PublicServlet {
 				})
 				.map(GET, "/new", request -> {
 					if (request.getAttachment(UserId.class) == null) {
-						return Promise.ofException(HttpException.ofCode(401, "Not authorized"));
+						return Promise.of(redirect302("/login"));
 					}
 					return templater.render("newThread", map("creatingNewThread", true));
 				})
@@ -182,37 +185,15 @@ public final class PublicServlet {
 							})
 							.map($ -> redirectToReferer(request, "/" + forumDao.getKeys().getPubKey().asString() + "/profile"));
 				})
-				.map("/:threadID/*", threadServlet(templater))
+				.map("/:threadID/*", RoutingServlet.create()
+						.map(GET, "/", postViewServlet(templater))
+						.map(GET, "/:postID/", postViewServlet(templater))
+						.map("/:postID/*", postOperations(templater))
+						.then(attachThreadDao()))
 				.then(session(templater))
-				.then(servlet ->
-						request -> {
-							ForumDao forumDao = request.getAttachment(ForumDao.class);
-							templater.put("pubKey", forumDao.getKeys().getPubKey().asString());
-							templater.put("forum", forumDao.getForumMetadata());
-
-							return servlet.serve(request)
-									.thenEx((response, e) -> {
-										if (e instanceof HttpException && ((HttpException) e).getCode() == 404) {
-											return templater.render(404, "404", map("message", e.getMessage()));
-										}
-										if (e != null) {
-											return Promise.<HttpResponse>ofException(e);
-										}
-										if (response.getCode() != 404) {
-											return Promise.of(response);
-										}
-										String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
-										return templater.render(404, "404", map("message", message.isEmpty() ? null : message));
-									});
-						});
-	}
-
-	private static AsyncServlet threadServlet(MustacheTemplater templater) {
-		return RoutingServlet.create()
-				.map(GET, "/", postViewServlet(templater))
-				.map(GET, "/:postID/", postViewServlet(templater))
-				.map("/:postID/*", postOperations(templater))
-				.then(attachThreadDao());
+				.then(renderErrors(templater))
+				.then(fixLocation())
+				.then(setup(appStoreUrl, templater));
 	}
 
 	private static HttpResponse postOpRedirect(HttpRequest request) {
@@ -305,19 +286,61 @@ public final class PublicServlet {
 		};
 	}
 
-	private static <T, E> BiFunction<T, Throwable, Promise<T>> revertIfException(AsyncSupplier<E> undo) {
-		return (result, e) -> {
-			if (e == null) {
-				return Promise.of(result);
+	private static AsyncServletDecorator setup(String appStoreUrl, MustacheTemplater templater) {
+		return servlet ->
+				request -> {
+					ForumDao forumDao = request.getAttachment(ForumUserContainer.class).getForumDao();
+					request.attach(ForumDao.class, forumDao);
+					PubKey pubKey = forumDao.getKeys().getPubKey();
+					request.attach(PubKey.class, pubKey);
+					templater.clear();
+					templater.put("appStoreUrl", appStoreUrl);
+					templater.put("pubKey", pubKey.asString());
+					templater.put("forum", forumDao.getForumMetadata());
+
+					return servlet.serve(request);
+				};
+	}
+
+	private static AsyncServletDecorator fixLocation() {
+		return mapResponse(response -> {
+			HttpResponse newResponse = HttpResponse.ofCode(response.getCode());
+			String prefix = response.getAttachment(PubKey.class).asString();
+
+			for (Entry<HttpHeader, HttpHeaderValue> pair : response.getHeaders()) {
+				HttpHeader header = pair.getKey();
+				HttpHeaderValue value = pair.getValue();
+				if (header != LOCATION) {
+					newResponse.withHeader(header, value);
+				} else {
+					String dir = value.toString();
+					newResponse.withHeader(header, dir.startsWith(".") ? value : HttpHeaderValue.of(prefix + dir));
+				}
 			}
-			return undo.get()
-					.thenEx(($2, e2) -> {
-						if (e2 != null) {
-							e.addSuppressed(e2);
-						}
-						return Promise.ofException(e);
-					});
-		};
+
+			return newResponse.withBodyStream(response.getBodyStream());
+		});
+	}
+
+	private static AsyncServletDecorator renderErrors(MustacheTemplater templater) {
+		return servlet ->
+				request ->
+						servlet.serve(request)
+								.thenEx((response, e) -> {
+									if (e instanceof HttpException) {
+										int code = ((HttpException) e).getCode();
+										return templater.render(code, "error", map("code", code, "message", e.getMessage()));
+									}
+									if (e != null) {
+										return Promise.ofException(e);
+									}
+									int code = response.getCode();
+									if (code < 400) {
+										return Promise.of(response);
+									}
+									String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
+									return templater.render(code, "error", map("code", code, "message", message.isEmpty() ? null : message));
+								});
 	}
 
 	private static AsyncServletDecorator session(MustacheTemplater templater) {
