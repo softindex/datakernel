@@ -8,7 +8,7 @@ import Paper from "@material-ui/core/Paper";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import DocumentsList from "../DocumentsList/DocumentsList";
 import ContactsList from "../ContactsList/ContactsList";
-import connectService from "../../common/connectService";
+import {connectService} from "global-apps-common";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import IconButton from "@material-ui/core/IconButton";
 import SearchIcon from "@material-ui/icons/Search";

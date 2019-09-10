@@ -1,4 +1,4 @@
-import Service from '../../common/Service';
+import {Service} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import profileOTSystem from "./ot/ProfileOTSystem";
 import profileSerializer from "./ot/serializer";

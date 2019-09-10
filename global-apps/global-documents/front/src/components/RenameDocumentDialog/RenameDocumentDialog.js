@@ -7,7 +7,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import connectService from "../../common/connectService";
+import {connectService} from "global-apps-common";
 import DocumentsContext from "../../modules/documents/DocumentsContext";
 import {withSnackbar} from "notistack";
 

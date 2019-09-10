@@ -3,7 +3,7 @@ import Header from "../Header/Header"
 import SideBar from "../SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
-import {checkAuth, AccountContext, connectService} from 'global-apps-common';
+import {checkAuth, AuthContext, connectService} from 'global-apps-common';
 import DocumentsContext from "../../modules/documents/DocumentsContext";
 import ContactsContext from "../../modules/contacts/ContactsContext";
 import {withSnackbar} from "notistack";
@@ -72,7 +72,7 @@ class MainScreen extends React.Component {
 }
 
 export default connectService(
-  AccountContext, ({publicKey}, accountService) => ({
+  AuthContext, ({publicKey}, accountService) => ({
     publicKey, accountService
   })
 )(checkAuth(

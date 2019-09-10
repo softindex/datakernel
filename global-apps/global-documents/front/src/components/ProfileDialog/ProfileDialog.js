@@ -1,7 +1,7 @@
 import * as React from "react";
 import {withStyles} from '@material-ui/core';
 import profileDialogStyles from './profileDialogStyles'
-import connectService from "../../common/connectService";
+import {connectService} from "global-apps-common";
 import Dialog from "../Dialog/Dialog";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogContent from "@material-ui/core/DialogContent";

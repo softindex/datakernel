@@ -1,5 +1,4 @@
-import Service from '../../common/Service';
-import GlobalAppStoreAPI from '../../common/GlobalAppStoreAPI';
+import {Service, GlobalAppStoreAPI} from 'global-apps-common';
 
 class SearchContactsService extends Service {
   constructor(globalAppStoreAPI) {

@@ -1,4 +1,4 @@
-import Service from '../../common/Service';
+import {Service} from 'global-apps-common';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import contactsOTSystem from "./ot/ContactsOTSystem";

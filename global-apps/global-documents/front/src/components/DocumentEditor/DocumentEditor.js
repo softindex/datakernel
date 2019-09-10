@@ -1,7 +1,7 @@
 import React, {useEffect} from 'react';
 import {Paper, withStyles} from '@material-ui/core';
 import {getDifference} from './utils';
-import connectService from "../../common/connectService";
+import {connectService} from "global-apps-common";
 import DocumentContext from "../../modules/document/DocumentContext";
 import editorStyles from "./editorStyles";
 

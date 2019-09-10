@@ -1,4 +1,4 @@
-import Service from '../../common/Service';
+import {Service} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import {ROOT_COMMIT_ID} from "../../common/utils";
 import InsertOperation from "./ot/InsertOperation";

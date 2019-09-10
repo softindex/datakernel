@@ -5,8 +5,7 @@ import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import ArrowIcon from '@material-ui/icons/KeyboardArrowRight'
 import headerStyles from './headerStyles';
-import connectService from "../../common/connectService";
-import AccountContext from "../../modules/account/AccountContext";
+import {connectService} from "global-apps-common";
 import DocumentsContext from "../../modules/documents/DocumentsContext";
 import MenuIcon from "@material-ui/icons/Menu";
 import Drawer from "../Drawer/Drawer";
