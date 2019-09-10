@@ -18,7 +18,7 @@ import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsOperation;
-import io.global.ot.dictionary.DictionaryOperation;
+import io.global.ot.map.MapOperation;
 import io.global.ot.service.ServiceEnsuringServlet;
 import io.global.ot.shared.SharedReposOperation;
 
@@ -55,7 +55,7 @@ public final class ChatModule extends AbstractModule {
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
 			DynamicOTNodeServlet<MessageOperation> roomServlet,
-			DynamicOTNodeServlet<DictionaryOperation> profileServlet,
+			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()

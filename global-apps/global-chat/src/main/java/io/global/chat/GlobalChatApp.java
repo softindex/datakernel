@@ -1,5 +1,6 @@
 package io.global.chat;
 
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -14,13 +15,15 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.messages.MessageOperation;
+import io.global.common.BinaryDataFormats;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.ProfileModule;
+import io.global.ot.MapModule;
 import io.global.ot.SharedRepoModule;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.service.UserContainerModule;
 import io.global.ot.shared.IndexRepoModule;
 
+import java.util.Comparator;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.Config.ofProperties;
@@ -32,6 +35,7 @@ public final class GlobalChatApp extends Launcher {
 	private static final String DEFAULT_SERVER_ID = "Global Chat";
 	private static final String CHAT_REPO_PREFIX = "chat/room";
 	private static final String CHAT_INDEX_REPO = "chat/index";
+	private static final String PROFILE_REPO_NAME = "profile";
 
 	@Inject
 	@Named("Chat")
@@ -46,6 +50,16 @@ public final class GlobalChatApp extends Launcher {
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
+	@Provides
+	<T extends Comparable<? super T>> Comparator<T> comparator() {
+		return Comparator.naturalOrder();
+	}
+
+	@Provides
+	CodecFactory registry() {
+		return BinaryDataFormats.createGlobal();
+	}
+
 	@Override
 	public Module getModule() {
 		return Modules.combine(
@@ -54,7 +68,7 @@ public final class GlobalChatApp extends Launcher {
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new ChatModule(),
-				new ProfileModule(),
+				new MapModule<String, String>(PROFILE_REPO_NAME) {},
 				new ContactsModule(),
 				new IndexRepoModule(CHAT_INDEX_REPO),
 				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
