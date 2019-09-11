@@ -1,4 +1,4 @@
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;

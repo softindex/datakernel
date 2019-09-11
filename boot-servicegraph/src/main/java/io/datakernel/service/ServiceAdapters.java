@@ -16,7 +16,7 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.net.BlockingSocketServer;

@@ -16,7 +16,7 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;

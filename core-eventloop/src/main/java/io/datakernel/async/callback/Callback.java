@@ -1,4 +1,4 @@
-package io.datakernel.async;
+package io.datakernel.async.callback;
 
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.Nullable;

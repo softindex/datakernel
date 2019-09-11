@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender.helper;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.sender.RpcSender;
 
 public final class RpcSenderStub implements RpcSender {

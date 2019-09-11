@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Completable;
+import io.datakernel.async.callback.Completable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;

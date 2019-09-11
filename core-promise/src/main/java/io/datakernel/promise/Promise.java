@@ -16,8 +16,8 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.Callback;
-import io.datakernel.async.Completable;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.async.callback.Completable;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.MemSize;
@@ -53,7 +53,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.async.Callback.toAnotherEventloop;
+import static io.datakernel.async.callback.Callback.toAnotherEventloop;
 import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;

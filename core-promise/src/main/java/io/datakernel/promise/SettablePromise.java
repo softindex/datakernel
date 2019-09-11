@@ -16,7 +16,7 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

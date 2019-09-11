@@ -16,7 +16,7 @@
 
 package io.datakernel.promise.jmx;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.ExceptionStats;

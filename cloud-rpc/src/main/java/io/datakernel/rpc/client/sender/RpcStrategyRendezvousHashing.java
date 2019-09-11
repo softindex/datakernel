@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.common.HashUtils;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;

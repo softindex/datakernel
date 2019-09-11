@@ -1,4 +1,4 @@
-package io.datakernel.async;
+package io.datakernel.async.callback;
 
 import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;

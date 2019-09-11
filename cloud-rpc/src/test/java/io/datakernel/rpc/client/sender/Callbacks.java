@@ -1,6 +1,6 @@
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 
 import java.util.concurrent.CompletableFuture;
 

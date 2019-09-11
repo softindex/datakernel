@@ -16,7 +16,7 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 
 /**
  * Helps to create sequent chains of {@code Promise}s.

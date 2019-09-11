@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.exception.AsyncTimeoutException;

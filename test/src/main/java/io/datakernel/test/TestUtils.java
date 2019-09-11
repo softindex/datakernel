@@ -17,7 +17,7 @@
 package io.datakernel.test;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import org.jetbrains.annotations.Nullable;
 
 import javax.sql.DataSource;

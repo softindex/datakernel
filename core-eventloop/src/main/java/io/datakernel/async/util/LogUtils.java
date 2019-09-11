@@ -16,7 +16,7 @@
 
 package io.datakernel.async.util;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.common.exception.StacklessException;
 import org.jetbrains.annotations.Nullable;

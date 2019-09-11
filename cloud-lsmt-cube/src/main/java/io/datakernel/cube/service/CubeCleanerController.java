@@ -1,7 +1,7 @@
 package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.RemoteFsChunkStorage;
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.cube.CubeDiffScheme;

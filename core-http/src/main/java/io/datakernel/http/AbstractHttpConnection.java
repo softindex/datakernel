@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.function.AsyncConsumer;
 import io.datakernel.async.process.AsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;

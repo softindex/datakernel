@@ -16,7 +16,7 @@
 
 package io.datakernel.async.function;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.process.AsyncExecutor;
 import io.datakernel.common.collection.Try;
 import io.datakernel.promise.Promise;
