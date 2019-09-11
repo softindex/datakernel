@@ -19,6 +19,7 @@ package io.datakernel.service;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Initializer;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
@@ -84,8 +85,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <p>
  * An application terminates if a circular dependency found.
  */
-@SuppressWarnings("WeakerAccess")
-public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
+public final class ServiceGraphModule extends AbstractModule implements ServiceGraphModuleSettings, Initializable<ServiceGraphModule> {
 	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
@@ -96,8 +96,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	private final Map<Key<?>, Set<Key<?>>> removedDependencies = new HashMap<>();
 
 	private final Executor executor;
-
-	private Initializer<ServiceGraph> initializer = Initializer.empty();
 
 	public ServiceGraphModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -141,6 +139,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param factory value to be associated with the specified type
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public <T> ServiceGraphModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
 		registeredServiceAdapters.put(type, factory);
 		return this;
@@ -154,11 +153,13 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param <T>     type of service
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
 		keys.put(key, factory);
 		return this;
 	}
 
+	@Override
 	public <T> ServiceGraphModule excludeSpecificKey(Key<T> key) {
 		excludedKeys.add(key);
 		return this;
@@ -171,6 +172,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param keyDependency key of dependency
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public ServiceGraphModule addDependency(Key<?> key, Key<?> keyDependency) {
 		addedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
 		return this;
@@ -183,13 +185,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param keyDependency key of dependency
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public ServiceGraphModule removeDependency(Key<?> key, Key<?> keyDependency) {
 		removedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
-		return this;
-	}
-
-	public ServiceGraphModule withInitializer(Initializer<ServiceGraph> initializer) {
-		this.initializer = initializer;
 		return this;
 	}
 
@@ -260,8 +258,18 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 	}
 
+	@Provides
+	ServiceGraph serviceGraph(Injector injector) {
+		ServiceGraph serviceGraph = ServiceGraph.create();
+		serviceGraph.setStartCallback(() -> doStart(serviceGraph, injector));
+		return serviceGraph;
+	}
+
 	@ProvidesIntoSet
-	LauncherService service(ServiceGraph serviceGraph) {
+	LauncherService service(Injector injector, ServiceGraph serviceGraph, @Optional Initializer<ServiceGraphModuleSettings> initializer) {
+		if (initializer != null) {
+			initializer.accept(this);
+		}
 		return new LauncherService() {
 			@Override
 			public CompletableFuture<?> start() {
@@ -299,14 +307,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		};
 	}
 
-	@Provides
-	ServiceGraph serviceGraph(Injector injector) {
-		return ServiceGraph.create()
-				.initialize(initializer)
-				.initialize(serviceGraph -> serviceGraph.withStartCallback(() -> initializeServiceGraph(serviceGraph, injector)));
-	}
-
-	private void initializeServiceGraph(ServiceGraph serviceGraph, Injector injector) {
+	private void doStart(ServiceGraph serviceGraph, Injector injector) {
 		logger.trace("Initializing ServiceGraph ...");
 
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
@@ -374,7 +375,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 							.collect(toSet()));
 		}
 
-		initializeServiceGraph(serviceGraph, instances, instanceDependencies);
+		doStart(serviceGraph, instances, instanceDependencies);
 	}
 
 	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
@@ -391,7 +392,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								.collect(toSet())));
 	}
 
-	private void initializeServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies) {
+	private void doStart(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies) {
 		IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
 
 		Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));

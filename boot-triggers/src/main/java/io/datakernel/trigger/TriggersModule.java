@@ -17,6 +17,8 @@
 package io.datakernel.trigger;
 
 import io.datakernel.common.Initializable;
+import io.datakernel.common.Initializer;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
@@ -38,7 +40,8 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
-public final class TriggersModule extends AbstractModule implements Initializable<TriggersModule> {
+@SuppressWarnings("unused")
+public final class TriggersModule extends AbstractModule implements TriggersModuleSettings, Initializable<TriggersModule> {
 	private Function<Key<?>, String> keyToString = Utils::prettyPrintSimpleKeyName;
 
 	private final Map<Class<?>, Set<TriggerConfig<?>>> classSettings = new LinkedHashMap<>();
@@ -90,11 +93,13 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return new TriggersModule();
 	}
 
+	@Override
 	public TriggersModule withNaming(Function<Key<?>, String> keyToString) {
 		this.keyToString = keyToString;
 		return this;
 	}
 
+	@Override
 	public <T> TriggersModule with(Class<T> type, Severity severity, String name, Function<T, TriggerResult> triggerFunction) {
 		Set<TriggerConfig<?>> triggerConfigs = classSettings.computeIfAbsent(type, $ -> new LinkedHashSet<>());
 
@@ -105,6 +110,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 		return this;
 	}
 
+	@Override
 	public <T> TriggersModule with(Key<T> key, Severity severity, String name, Function<T, TriggerResult> triggerFunction) {
 		Set<TriggerConfig<?>> triggerConfigs = keySettings.computeIfAbsent(key, $ -> new LinkedHashSet<>());
 
@@ -116,16 +122,19 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@Provides
-	Triggers triggersWatcher(Injector injector) {
+	Triggers triggers() {
 		return Triggers.create();
 	}
 
 	@ProvidesIntoSet
-	LauncherService start(Injector injector, Triggers triggers) {
+	LauncherService service(Injector injector, Triggers triggers, @Optional Initializer<TriggersModuleSettings> initializer) {
+		if (initializer != null) {
+			initializer.accept(this);
+		}
 		return new LauncherService() {
 			@Override
 			public CompletableFuture<?> start() {
-				initialize(injector);
+				doStart(injector, triggers);
 				return completedFuture(null);
 			}
 
@@ -137,9 +146,7 @@ public final class TriggersModule extends AbstractModule implements Initializabl
 	}
 
 	@SuppressWarnings("unchecked")
-	private void initialize(Injector injector) {
-		Triggers triggers = injector.getInstance(Triggers.class);
-
+	private void doStart(Injector injector, Triggers triggers) {
 		Map<KeyWithWorkerData, List<TriggerRegistryRecord>> triggersMap = new LinkedHashMap<>();
 
 		// register singletons

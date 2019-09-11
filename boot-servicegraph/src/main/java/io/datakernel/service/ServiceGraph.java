@@ -191,9 +191,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return new ServiceGraph();
 	}
 
-	public ServiceGraph withStartCallback(Runnable startCallback) {
+	void setStartCallback(Runnable startCallback) {
 		this.startCallback = startCallback;
-		return this;
 	}
 
 	public ServiceGraph withGraphvizGraph(String graphvizGraph) {
