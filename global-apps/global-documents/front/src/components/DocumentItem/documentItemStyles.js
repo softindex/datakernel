@@ -1,8 +1,8 @@
 const documentItemStyles = theme => ({
   listItem: {
     borderRadius: 4,
-    paddingTop: theme.spacing.unit * 0.5,
-    paddingBottom: theme.spacing.unit * 0.5,
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(0.5),
     '& > div' : {
       display: 'none'
     },
@@ -16,30 +16,20 @@ const documentItemStyles = theme => ({
       display: 'block'
     }
   },
-  avatar: {
-    width: theme.spacing.unit * 6,
-    height: theme.spacing.unit * 6,
-    float: 'left',
-    alignItems: 'center'
-  },
-  avatarContent: {
-    fontSize: '1rem'
-  },
   link: {
     display: 'flex',
+    color: theme.palette.secondary.contrastText,
     flexGrow: 1,
-    minWidth: theme.spacing.unit * 33.75,
+    minWidth: theme.spacing(34),
     textDecoration: 'none',
-    height: theme.spacing.unit * 8,
+    height: theme.spacing(8),
     alignItems: 'center'
   },
   itemText: {
-    overflow: 'hidden'
-  },
-  itemTextPrimary: {
     textOverflow: 'ellipsis',
     overflow: 'hidden',
-    whiteSpace: 'nowrap'
+    whiteSpace: 'nowrap',
+    marginRight: theme.spacing(1)
   }
 });
 

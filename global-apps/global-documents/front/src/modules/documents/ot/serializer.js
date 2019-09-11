@@ -1,7 +1,7 @@
 import CreateOrDropDocument from './CreateOrDropDocument';
 import RenameDocument from "./RenameDocument";
 
-const roomsSerializer = {
+const documentsSerializer = {
   serialize(value) {
     return {
       type: value instanceof RenameDocument ? 'RenameRepo' : 'CreateOrDropRepo',
@@ -22,4 +22,4 @@ const roomsSerializer = {
   }
 };
 
-export default roomsSerializer;
+export default documentsSerializer;

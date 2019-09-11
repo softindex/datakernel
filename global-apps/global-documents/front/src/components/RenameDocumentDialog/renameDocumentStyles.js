@@ -1,8 +1,8 @@
 const renameDocumentStyles = theme => ({
   actionButton: {
-    margin: theme.spacing,
+    margin: theme.spacing(1),
     position: 'relative',
-    right: theme.spacing.unit * 2
+    right: theme.spacing(2)
   }
 });
 

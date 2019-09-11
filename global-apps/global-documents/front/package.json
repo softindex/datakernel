@@ -4,16 +4,16 @@
   "private": true,
   "dependencies": {
     "@material-ui/core": "^4.0.0",
-    "@material-ui/icons": "^3.0.2",
+    "@material-ui/icons": "^4.0.0",
     "@material-ui/styles": "^4.0.2",
     "classnames": "2.2.6",
     "elliptic": "latest",
+    "global-apps-common": "file:../../global-apps-common/front",
     "js-cookie": "^2.2.0",
     "lodash": "^4.17.15",
     "material-design-icons": "^3.0.1",
     "notistack": "^0.8.6",
-    "global-apps-common": "file:../../global-apps-common/front",
-    "ot-core": "https://github.com/softindex/ot-core#v0.2.3",
+    "ot-core": "git+https://github.com/softindex/ot-core.git#v0.2.3",
     "prop-types": "^15.7.2",
     "query-string": "^6.8.1",
     "react": "^16.7.0",
@@ -21,9 +21,7 @@
     "react-app-rewired": "^2.0.2",
     "react-dom": "^16.7.0",
     "react-router-dom": "^5.0.0",
-    "react-scripts": "2.1.3",
-    "react-swipeable-views": "^0.13.3",
-    "workbox-webpack-plugin": "^3.6.3"
+    "react-scripts": "3.1.1"
   },
   "scripts": {
     "start": "react-app-rewired start",

@@ -5,12 +5,12 @@ const headerStyles = theme => ({
   },
   documentTitleContainer: {
     display: 'flex',
-    marginLeft: theme.spacing.unit * 14,
+    marginLeft: theme.spacing(14),
     flexGrow: 1,
     flexDirection: 'row-reverse'
   },
   title: {
-    marginLeft: theme.spacing.unit * 3,
+    marginLeft: theme.spacing(3),
   },
   documentTitle: {
     fontSize: '1rem',

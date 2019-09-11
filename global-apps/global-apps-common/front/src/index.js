@@ -1,4 +1,3 @@
-import React from 'react';
 import checkAuth from './auth/checkAuth';
 import request from './globalAppStoreAPI/request';
 import connectService from './connectService/connectService';
@@ -10,6 +9,7 @@ import SignUpAbstractionImage from './signUp/SignUpAbstractionImage/SignUpAbstra
 import SignUp from './signUp/SignUp/SignUp';
 import OAuthCallback from './auth/OAuthCallback/OAuthCallback';
 import Avatar from './avatar/Avatar';
+import ContactsChip from './contactsChip/ContactsChip'
 
 export * from './utils/utils';
 export * from './serviceHooks';
@@ -25,6 +25,7 @@ export {
   SignUpAbstractionImage,
   GlobalAppStoreAPI,
   OAuthCallback,
-  Avatar
+  Avatar,
+  ContactsChip
 }
 

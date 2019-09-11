@@ -1,70 +1,72 @@
-import {Service} from 'global-apps-common';
+import {Service, delay, retry} from 'global-apps-common';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
-import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import contactsOTSystem from "./ot/ContactsOTSystem";
-import contactsSerializer from "./ot/serializer";
-import {wait} from '../../common/utils';
 
 const RETRY_TIMEOUT = 1000;
 
 class ContactsService extends Service {
-  constructor(contactsOTStateManager) {
+  constructor(contactsOTStateManager, publicKey) {
     super({
       contacts: new Map(),
-      contactsReady: false,
+      ready: false
     });
+    this._myPublicKey = publicKey;
     this._contactsOTStateManager = contactsOTStateManager;
-    this._reconnectTimeout = null;
-    this.getContactName = this.getContactName.bind(this);
+    this._contactsCheckoutPromise = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
-  static create() {
-    const contactsOTNode = ClientOTNode.createWithJsonKey({
-      url: '/ot/contacts',
-      serializer: contactsSerializer
-    });
-    const contactsOTStateManager = new OTStateManager(() => new Map(), contactsOTNode, contactsOTSystem);
-    return new ContactsService(contactsOTStateManager);
+  static createFrom(contactsOTStateManager, publicKey) {
+    return new ContactsService(
+      contactsOTStateManager,
+      publicKey
+    );
   }
 
   async init() {
+    this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
     try {
-      await this._contactsOTStateManager.checkout();
+      await this._contactsCheckoutPromise;
     } catch (err) {
       console.log(err);
-      await this._reconnectDelay();
+
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
+
       await this.init();
       return;
     }
 
     this._onStateChange();
-
     this._contactsOTStateManager.addChangeListener(this._onStateChange);
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
+    this._contactsCheckoutPromise.stop();
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  addContact(pubKey, name) {
-    let operation = new ContactsOTOperation(pubKey, name, false);
+  async addContact(publicKey, alias = '') {
+    const operation = new ContactsOTOperation(publicKey, alias, false);
     this._contactsOTStateManager.add([operation]);
-
-    this._sync();
-  }
-
-  async removeContact(pubKey, name) {
-    let operation = new ContactsOTOperation(pubKey, name, true);
-    this._contactsOTStateManager.add([operation]);
-
     await this._sync();
   }
 
-  getContactName(publicKey) {
-    if (this.state.contacts.get(publicKey)){
-     return  this.state.contacts.get(publicKey).name
-    }
+  async removeContact(publicKey) {
+    const alias = this.state.contacts.get(publicKey).name;
+    let operation = new ContactsOTOperation(publicKey, alias, true);
+    this._contactsOTStateManager.add([operation]);
+    await this._sync();
   }
 
   _onStateChange = () => {
@@ -77,22 +79,21 @@ class ContactsService extends Service {
   _getContactsFromStateManager() {
     return new Map(
       [...this._contactsOTStateManager.getState()]
-        .map(([pubKey, name]) => [pubKey, {name}])
+        .map(([publicKey, name]) => [publicKey, {name}])
     );
-  }
-
-  _reconnectDelay() {
-    return new Promise(resolve => {
-      this._reconnectTimeout = setTimeout(resolve, RETRY_TIMEOUT);
-    });
   }
 
   async _sync() {
     try {
       await this._contactsOTStateManager.sync();
     } catch (err) {
-      console.error(err);
-      await wait(RETRY_TIMEOUT);
+      console.log(err);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

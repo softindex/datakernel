@@ -12,7 +12,7 @@ function Router() {
           path="/sign-up"
           component={() => (
             <SignUp
-              title="Global Chat"
+              title="Global Documents"
               description="An application that allows you to create, edit and share documents.
               It is easy to manage, and synchronize on all devices."
             />

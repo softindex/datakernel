@@ -5,11 +5,10 @@ import DocumentItem from "../DocumentItem/DocumentItem";
 import documentsListStyles from "./documentsListStyles";
 import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
-import Grow from "@material-ui/core/Grow";
 
-function DocumentsList({classes, ready, documents, deleteDocument}) {
+function DocumentsList({classes, ready, documents, onDeleteDocument}) {
   function onDelete(documentId) {
-    deleteDocument(documentId);
+    onDeleteDocument(documentId);
   }
 
   const onClickLink = (documentId) => {
@@ -19,11 +18,9 @@ function DocumentsList({classes, ready, documents, deleteDocument}) {
   return (
     <>
       {!ready && (
-        <Grow in={!ready}>
-          <div className={classes.progressWrapper}>
-            <CircularProgress/>
-          </div>
-        </Grow>
+        <div className={classes.progressWrapper}>
+          <CircularProgress/>
+        </div>
       )}
       {ready && (
         <div className={classes.documentsList}>
@@ -31,15 +28,17 @@ function DocumentsList({classes, ready, documents, deleteDocument}) {
             {[...documents].sort((document1, document2) =>
               document1[1].name.localeCompare(document2[1].name))
               .map(([documentId, document]) => (
-                <DocumentItem
-                  documentId={documentId}
-                  document={document}
-                  onClickLink={onClickLink}
-                  deleteDocument={() => {onDelete(documentId)}}
-                  showMenuIcon={true}
-                />
-              )
-            )}
+                  <DocumentItem
+                    documentId={documentId}
+                    document={document}
+                    onClickLink={onClickLink}
+                    onDeleteDocument={() => {
+                      onDelete(documentId)
+                    }}
+                    showMenuIcon={true}
+                  />
+                )
+              )}
           </List>
         </div>
       )}

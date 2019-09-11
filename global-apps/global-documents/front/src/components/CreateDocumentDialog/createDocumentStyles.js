@@ -1,47 +1,38 @@
-const createDocumentStyles = theme => ({
-  chip: {
-    margin: theme.spacing.unit,
-    marginTop: 0,
-    width: theme.spacing.unit * 18.5,
-    overflow: 'hidden'
+const createChatDialogStyles = theme => ({
+  dialogContent: {
+    paddingBottom: theme.spacing(1),
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 0
+  },
+  form: {
+    display: 'contents'
+  },
+  textField: {
+    margin: `${theme.spacing(2)}px ${theme.spacing(3)}px`
   },
   actionButton: {
     margin: theme.spacing,
     position: 'relative',
-    right: theme.spacing.unit * 2
+    right: theme.spacing(2)
   },
   chipsContainer: {
     display: 'flex',
     flexFlow: 'row wrap',
-    maxWidth: 350
-  },
-  chipText: {
-    width: 'inherit',
-    overflow: 'hidden',
-    display: 'inline-block',
-    textOverflow: 'ellipsis'
+    maxHeight: theme.spacing(12),
+    overflow: 'overlay'
   },
   search: {
-    padding: `${theme.spacing.unit * 0.25 }px ${theme.spacing.unit * 0.5 }px`,
+    padding: `${theme.spacing(1)}px 0px`,
     display: 'flex',
     alignItems: 'center',
-    width: 'auto',
-    boxShadow: 'none',
-    border: '1px solid',
-    borderColor: theme.palette.secondary.lightGrey,
-    marginTop: theme.spacing.unit,
-    marginBottom: theme.spacing.unit
-  },
-  input: {
-    marginLeft: 8,
-    flex: 1,
-  },
-  searchIcon: {
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit * 2}px`
-  },
-  subTitleType: {
-    marginBottom: theme.spacing.unit * 2
+    boxShadow: '0px 2px 8px 0px rgba(0,0,0,0.1)',
+    background: theme.palette.primary.background,
+    border: 'none',
+    flexGrow: 0,
+    marginBottom: theme.spacing(1)
   }
 });
 
-export default createDocumentStyles;
+export default createChatDialogStyles;

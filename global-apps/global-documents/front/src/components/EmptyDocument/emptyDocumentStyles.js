@@ -16,8 +16,8 @@ const emptyDocumentStyles = theme => {
       display: 'flex',
       backgroundColor: theme.palette.grey[600],
       padding: 6,
-      paddingLeft: theme.spacing.unit * 2,
-      paddingRight: theme.spacing.unit * 2,
+      paddingLeft: theme.spacing(2),
+      paddingRight: theme.spacing(2),
       borderRadius: 30,
       boxShadow: 'none'
     },

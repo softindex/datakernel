@@ -1,14 +1,14 @@
 const documentMenuStyles = theme => ({
   wrapperButton: {
-    minWidth: theme.spacing.unit * 8,
-    height: theme.spacing.unit * 8
+    minWidth: theme.spacing(8),
+    height: theme.spacing(8)
   },
   iconButton: {
-    marginTop: theme.spacing.unit
+    marginTop: theme.spacing(1)
   },
   menuPaper: {
-    maxHeight: theme.spacing.unit * 27,
-    width: theme.spacing.unit * 25
+    maxHeight: theme.spacing(27),
+    width: theme.spacing(25)
   }
 });
 

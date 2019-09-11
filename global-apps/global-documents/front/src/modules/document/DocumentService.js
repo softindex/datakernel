@@ -1,6 +1,5 @@
-import {Service} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import {ROOT_COMMIT_ID} from "../../common/utils";
+import {ROOT_COMMIT_ID, Service} from "global-apps-common";
 import InsertOperation from "./ot/InsertOperation";
 import DeleteOperation from "./ot/DeleteOperation";
 import serializer from "./ot/serializer";
@@ -30,7 +29,6 @@ class DocumentService extends Service {
   }
 
   async init() {
-    // Get initial state
     try {
       if (this._isNew) {
         this._documentOTStateManager.checkoutRoot(ROOT_COMMIT_ID);

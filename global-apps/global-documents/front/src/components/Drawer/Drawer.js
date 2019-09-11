@@ -9,9 +9,9 @@ import drawerStyles from './drawerStyles';
 import MUIDrawer from "@material-ui/core/Drawer";
 import ProfileDialog from "../ProfileDialog/ProfileDialog";
 import {connectService, AuthContext} from "global-apps-common";
-import CreateDocumentForm from "../CreateDocumentDialog/CreateDocumentDialog";
+import CreateDocumentDialog from "../CreateDocumentDialog/CreateDocumentDialog";
 
-function Drawer({classes, open, onClose, logout, publicKey}) {
+function Drawer({classes, open, onClose, onLogout, publicKey}) {
   const [openProfile, setOpenProfile] = useState(false);
   const [showChatDialog, setShowChatDialog] = useState(false);
 
@@ -25,7 +25,6 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
 
   function onChatDialogShow() {
     setShowChatDialog(true);
-    onClose();
   }
 
   function onChatDialogClose() {
@@ -58,7 +57,7 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
               </ListItemIcon>
               <ListItemText primary="Create Document"/>
             </ListItem>
-            <ListItem button onClick={logout}>
+            <ListItem button onClick={onLogout}>
               <ListItemIcon>
                 <Icon className={classes.accountIcon}>logout</Icon>
               </ListItemIcon>
@@ -67,16 +66,18 @@ function Drawer({classes, open, onClose, logout, publicKey}) {
           </List>
         </div>
       </MUIDrawer>
-      <ProfileDialog
-        open={openProfile}
-        onClose={onProfileClose}
-        publicKey={publicKey}
-      />
-      <CreateDocumentForm
-        open={showChatDialog}
-        onClose={onChatDialogClose}
-        publicKey={publicKey}
-      />
+      {openProfile && (
+        <ProfileDialog
+          onClose={onProfileClose}
+          publicKey={publicKey}
+        />
+      )}
+      {showChatDialog && (
+        <CreateDocumentDialog
+          onClose={onChatDialogClose}
+          publicKey={publicKey}
+        />
+      )}
     </>
   )
 }
@@ -85,7 +86,7 @@ export default connectService(
   AuthContext,
   ({publicKey}, contactsService) => ({
     publicKey,
-    logout() {
+    onLogout() {
       contactsService.logout();
     }
   })

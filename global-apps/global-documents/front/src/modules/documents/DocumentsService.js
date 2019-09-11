@@ -1,9 +1,8 @@
-import {Service} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import documentsOTSystem from "./ot/DocumentsOTSystem";
 import documentsSerializer from "./ot/serializer";
 import CreateOrDropDocument from "./ot/CreateOrDropDocument";
-import {randomString, wait, toEmoji} from '../../common/utils';
+import {randomString, wait, Service} from 'global-apps-common';
 import RenameDocument from "./ot/RenameDocument";
 
 const RETRY_TIMEOUT = 1000;
@@ -20,16 +19,15 @@ class DocumentsService extends Service {
     this._reconnectTimeout = null;
     this._contactsService = contactsService;
     this._myPublicKey = pubicKey;
-    this._getDocumentName.bind(this);
   }
 
-  static createForm(contactsService, pubKey) {
+  static createFrom(contactsService, publicKey) {
     const documentsOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/documents',
       serializer: documentsSerializer
     });
     const documentsOTStateManager = new OTStateManager(() => new Map(), documentsOTNode, documentsOTSystem);
-    return new DocumentsService(documentsOTStateManager, contactsService, pubKey);
+    return new DocumentsService(documentsOTStateManager, contactsService, publicKey);
   }
 
   async init() {
@@ -54,13 +52,13 @@ class DocumentsService extends Service {
     this._contactsService.removeChangeListener(this._onStateChange);
   }
 
-  createDocument(name, participants) {
+  async createDocument(name, participants) {
     const documentId = randomString(DOCUMENT_ID_LENGTH);
-    this._createDocument(documentId, name, [...participants, this._myPublicKey]);
+    await this._createDocument(documentId, name, [...participants, this._myPublicKey]);
     return documentId;
   }
 
-  deleteDocument(documentId) {
+  async deleteDocument(documentId) {
     const document = this.state.documents.get(documentId);
     if (!document) {
       return;
@@ -68,10 +66,10 @@ class DocumentsService extends Service {
 
     const deleteDocumentOperation = new CreateOrDropDocument(documentId, document.name, document.participants, true);
     this._documentsOTStateManager.add([deleteDocumentOperation]);
-    this._sync();
+    await this._sync();
   }
 
-  renameDocument(documentId, newDocumentName) {
+  async renameDocument(documentId, newDocumentName) {
     const document = this.state.documents.get(documentId);
     if (!document) {
       return;
@@ -79,17 +77,17 @@ class DocumentsService extends Service {
 
     const renameDocumentOperation = new RenameDocument(documentId, document.name, newDocumentName, Date.now());
     this._documentsOTStateManager.add([renameDocumentOperation]);
-    this._sync();
+    await this._sync();
   }
 
-  _createDocument(documentId, documentName, participants) {
+  async _createDocument(documentId, documentName, participants) {
     const addDocumentOperation = new CreateOrDropDocument(documentId, documentName, participants, false);
     this._documentsOTStateManager.add([addDocumentOperation]);
     this.setState({
       ...this.state,
       newDocuments: new Set([...this.state.newDocuments, documentId])
     });
-    this._sync();
+    await this._sync();
   }
 
   _onStateChange = () => {
@@ -98,15 +96,6 @@ class DocumentsService extends Service {
       documentsReady: true
     });
   };
-
-  _getDocumentName(document) {
-    return document.participants
-      .filter(participantPublicKey => participantPublicKey !== this._myPublicKey)
-      .map(participantPublicKey => {
-        return this._contactsService.getContactName(participantPublicKey) || toEmoji(participantPublicKey, 3);
-      })
-      .join(', ');
-  }
 
   _getDocuments() {
     const otState = [...this._documentsOTStateManager.getState()]

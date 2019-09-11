@@ -6,7 +6,7 @@ const drawerStyles = theme => ({
     width: 355
   },
   accountIcon: {
-    fontSize: theme.spacing.unit * 3
+    fontSize: theme.spacing(3)
   }
 });
 
