@@ -81,6 +81,8 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  */
 final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
+	public static final ParseException CONNECTION_CLOSED = new ParseException(HttpClientConnection.class, "Connection closed");
+
 	private SettablePromise<HttpResponse> promise;
 	private HttpResponse response;
 	private final AsyncHttpClient client;
@@ -262,7 +264,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onClosed() {
-		assert promise == null;
+		if (promise != null) {
+			if (inspector != null) inspector.onHttpError(this, (flags & KEEP_ALIVE) != 0, CONNECTION_CLOSED);
+			SettablePromise<HttpResponse> promise = this.promise;
+			this.promise = null;
+			promise.setException(CONNECTION_CLOSED);
+		}
 		if (pool == client.poolKeepAlive) {
 			AddressLinkedList addresses = client.addresses.get(remoteAddress);
 			addresses.removeNode(this);
