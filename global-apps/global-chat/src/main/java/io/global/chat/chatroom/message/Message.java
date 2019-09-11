@@ -1,21 +1,29 @@
-package io.global.chat.chatroom.messages;
+package io.global.chat.chatroom.message;
 
-public class Message {
+import io.global.common.PubKey;
+
+public final class Message {
+	private final MessageType messageType;
 	private final long timestamp;
-	private final String author;
+	private final PubKey author;
 	private final String content;
 
-	public Message(long timestamp, String author, String content) {
+	public Message(MessageType messageType, long timestamp, PubKey author, String content) {
+		this.messageType = messageType;
 		this.timestamp = timestamp;
 		this.author = author;
 		this.content = content;
+	}
+
+	public MessageType getMessageType() {
+		return messageType;
 	}
 
 	public long getTimestamp() {
 		return timestamp;
 	}
 
-	public String getAuthor() {
+	public PubKey getAuthor() {
 		return author;
 	}
 
@@ -27,13 +35,6 @@ public class Message {
 		return content.equals("");
 	}
 
-	public boolean equalsWithoutTimestamp(Message other) {
-		if (!author.equals(other.author)) return false;
-		if (!content.equals(other.content)) return false;
-
-		return true;
-	}
-
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -42,6 +43,7 @@ public class Message {
 		Message message = (Message) o;
 
 		if (timestamp != message.timestamp) return false;
+		if (messageType != message.messageType) return false;
 		if (!author.equals(message.author)) return false;
 		if (!content.equals(message.content)) return false;
 
@@ -50,7 +52,8 @@ public class Message {
 
 	@Override
 	public int hashCode() {
-		int result = (int) (timestamp ^ (timestamp >>> 32));
+		int result = messageType.hashCode();
+		result = 31 * result + (int) (timestamp ^ (timestamp >>> 32));
 		result = 31 * result + author.hashCode();
 		result = 31 * result + content.hashCode();
 		return result;
@@ -58,6 +61,12 @@ public class Message {
 
 	@Override
 	public String toString() {
-		return "{[" + timestamp + "] " + author + " : " + content + '}';
+		return "Message{" +
+				"messageType=" + messageType +
+				", timestamp=" + timestamp +
+				", author=" + author +
+				", content='" + content + '\'' +
+				'}';
 	}
 }
+

@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 public interface PmClient<T> {
 
-	Promise<Void> send(PubKey receiver, String mailBox, long timestamp, T payload);
+	Promise<Long> send(PubKey receiver, String mailBox, long timestamp, T payload);
 
 	Promise<ChannelConsumer<Message<T>>> multisend(PubKey receiver, String mailBox);
 

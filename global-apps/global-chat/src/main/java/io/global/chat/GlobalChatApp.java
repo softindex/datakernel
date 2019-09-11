@@ -14,7 +14,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.chat.chatroom.messages.MessageOperation;
+import io.global.chat.chatroom.operation.ChatRoomOperation;
 import io.global.common.BinaryDataFormats;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.MapModule;
@@ -71,8 +71,8 @@ public final class GlobalChatApp extends Launcher {
 				new MapModule<String, String>(PROFILE_REPO_NAME) {},
 				new ContactsModule(),
 				new IndexRepoModule(CHAT_INDEX_REPO),
-				new UserContainerModule<MessageOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
-				new SharedRepoModule<MessageOperation>(CHAT_REPO_PREFIX) {},
+				new UserContainerModule<ChatRoomOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
+				new SharedRepoModule<ChatRoomOperation>(CHAT_REPO_PREFIX) {},
 				// override for debug purposes
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))

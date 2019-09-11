@@ -1,5 +1,6 @@
 package io.global.chat;
 
+import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Named;
@@ -7,12 +8,15 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.loader.StaticLoader;
 import io.datakernel.ot.OTSystem;
-import io.global.chat.chatroom.messages.MessageOperation;
+import io.global.chat.chatroom.operation.ChatRoomOperation;
+import io.global.common.PrivKey;
 import io.global.common.SimKey;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
@@ -21,15 +25,20 @@ import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ServiceEnsuringServlet;
 import io.global.ot.shared.SharedReposOperation;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.PmClient;
+import io.global.pm.http.PmClientServlet;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.chat.Utils.MESSAGE_OPERATION_CODEC;
-import static io.global.chat.chatroom.messages.MessagesOTSystem.createOTSystem;
+import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
+import static io.global.chat.chatroom.ChatRoomOTSystem.createOTSystem;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
 public final class ChatModule extends AbstractModule {
@@ -38,8 +47,8 @@ public final class ChatModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		bind(new Key<OTSystem<MessageOperation>>() {}).toInstance(createOTSystem());
-		bind(new Key<StructuredCodec<MessageOperation>>() {}).toInstance(MESSAGE_OPERATION_CODEC);
+		bind(new Key<OTSystem<ChatRoomOperation>>() {}).toInstance(createOTSystem());
+		bind(new Key<StructuredCodec<ChatRoomOperation>>() {}).toInstance(CHAT_ROOM_OPERATION_CODEC);
 		super.configure();
 	}
 
@@ -54,8 +63,9 @@ public final class ChatModule extends AbstractModule {
 	RoutingServlet provideMainServlet(
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
-			DynamicOTNodeServlet<MessageOperation> roomServlet,
+			DynamicOTNodeServlet<ChatRoomOperation> roomServlet,
 			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
+			@Named("Calls") AsyncServlet callsServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()
@@ -64,6 +74,7 @@ public final class ChatModule extends AbstractModule {
 				.map("/ot/room/:suffix/*", roomServlet)
 				.map("/ot/profile/:pubKey/*", profileServlet)
 				.map("/ot/myProfile/*", profileServlet)
+				.map("/calls/*", callsServlet)
 				.map("/*", staticServlet);
 	}
 
@@ -84,6 +95,30 @@ public final class ChatModule extends AbstractModule {
 	@Provides
 	Executor provideExecutor(Config config) {
 		return getExecutor(config.getChild("executor"));
+	}
+
+	@Provides
+	GlobalPmDriver<String> callsPMDriver(GlobalPmNode node) {
+		return new GlobalPmDriver<>(node, STRING_CODEC);
+	}
+
+	@Provides
+	@Named("Calls")
+	AsyncServlet callsPMServlet(GlobalPmDriver<String> driver) {
+		return request -> {
+			try {
+				String key = request.getCookie("Key");
+				if (key == null) {
+					return Promise.ofException(new ParseException(ChatModule.class, "Cookie `Key` is required"));
+				}
+				PrivKey privKey = PrivKey.fromString(key);
+				PmClient<String> client = driver.adapt(privKey.computeKeys());
+				return PmClientServlet.create(client, STRING_CODEC)
+						.serve(request);
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
+		};
 	}
 
 }

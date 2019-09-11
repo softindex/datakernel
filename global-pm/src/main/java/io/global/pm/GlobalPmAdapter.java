@@ -25,8 +25,10 @@ public final class GlobalPmAdapter<T> implements PmClient<T> {
 	}
 
 	@Override
-	public Promise<Void> send(PubKey receiver, String mailBox, long timestamp, T payload) {
-		return driver.send(privKey, receiver, mailBox, Message.of(timestamp, pubKey, payload));
+	public Promise<Long> send(PubKey receiver, String mailBox, long timestamp, T payload) {
+		Message<T> message = Message.of(timestamp, pubKey, payload);
+		return driver.send(privKey, receiver, mailBox, message)
+				.map($ -> message.getId());
 	}
 
 	@Override
