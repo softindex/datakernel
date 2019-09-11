@@ -6,7 +6,6 @@ import io.datakernel.http.session.SessionServlet;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.http.session.SessionStoreInMemory;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.promise.Promise;
 
 import java.util.Map;
 import java.util.UUID;
@@ -55,7 +54,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 	AsyncServlet publicServlet(AuthService authService, SessionStore<String> store, StaticLoader staticLoader) {
 		return RoutingServlet.create()
 				//[START REGION_3]
-				.map("/", request -> Promise.of(HttpResponse.redirect302("/login")))
+				.map("/", request -> HttpResponse.redirect302("/login"))
 				//[END REGION_3]
 				.map(GET, "/signup", StaticServlet.create(staticLoader, "signup.html"))
 				.map(GET, "/login", StaticServlet.create(staticLoader, "login.html"))
@@ -70,8 +69,8 @@ public final class AuthLauncher extends HttpServerLauncher {
 										String sessionId = UUID.randomUUID().toString();
 
 										store.save(sessionId, "My object saved in session");
-										return Promise.of(HttpResponse.redirect302("/members")
-												.withCookie(HttpCookie.of(SESSION_ID, sessionId)));
+										return HttpResponse.redirect302("/members")
+												.withCookie(HttpCookie.of(SESSION_ID, sessionId));
 									}
 									return AsyncServlet.NEXT;
 								},
@@ -86,7 +85,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 							if (username != null && password != null) {
 								authService.register(username, password);
 							}
-							return Promise.of(HttpResponse.redirect302("/login"));
+							return HttpResponse.redirect302("/login");
 						}));
 	}
 	//[END REGION_2]
@@ -97,26 +96,24 @@ public final class AuthLauncher extends HttpServerLauncher {
 	AsyncServlet privateServlet(StaticLoader staticLoader) {
 		return RoutingServlet.create()
 				//[START REGION_6]
-				.map("/", request -> Promise.of(HttpResponse.redirect302("/members")))
+				.map("/", request -> HttpResponse.redirect302("/members"))
 				//[END REGION_6]
 				//[START REGION_7]
 				.map("/members/*", RoutingServlet.create()
 						.map(GET, "/", StaticServlet.create(staticLoader, "index.html"))
 						//[START REGION_8]
-						.map(GET, "/cookie", request -> Promise.of(
-								HttpResponse.ok200()
-										.withBody(wrapUtf8(request.getAttachment(String.class)))))
+						.map(GET, "/cookie", request ->
+								HttpResponse.ok200().withBody(wrapUtf8(request.getAttachment(String.class))))
 						//[END REGION_8]
 						.map(POST, "/logout", request -> {
 							String id = request.getCookie(SESSION_ID);
 							if (id != null) {
-								return Promise.of(
-										HttpResponse.redirect302("/")
-												.withCookie(HttpCookie.of(SESSION_ID, id).withPath("/").withMaxAge(0)));
+								return HttpResponse.redirect302("/")
+										.withCookie(HttpCookie.of(SESSION_ID, id).withPath("/").withMaxAge(0));
 							}
-							return Promise.of(HttpResponse.ofCode(404));
+							return HttpResponse.ofCode(404);
 						}));
-				//[END REGION_7]
+		//[END REGION_7]
 	}
 	//[END REGION_5]
 

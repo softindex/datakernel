@@ -53,18 +53,18 @@ public interface AsyncServletDecorator {
 
 	static AsyncServletDecorator onResponse(Consumer<HttpResponse> consumer) {
 		return servlet ->
-				request -> servlet.serve(request).whenResult(consumer);
+				request -> servlet.serveAsync(request).whenResult(consumer);
 	}
 
 	static AsyncServletDecorator onResponse(BiConsumer<HttpRequest, HttpResponse> consumer) {
 		return servlet ->
-				request -> servlet.serve(request)
+				request -> servlet.serveAsync(request)
 						.whenResult(response -> consumer.accept(request, response));
 	}
 
 	static AsyncServletDecorator mapResponse(Function<HttpResponse, HttpResponse> fn) {
 		return servlet ->
-				request -> servlet.serve(request)
+				request -> servlet.serveAsync(request)
 						.map(response -> {
 							HttpResponse newResponse = fn.apply(response);
 							if (response != newResponse) {
@@ -76,7 +76,7 @@ public interface AsyncServletDecorator {
 
 	static AsyncServletDecorator mapResponse(BiFunction<HttpRequest, HttpResponse, HttpResponse> fn) {
 		return servlet ->
-				request -> servlet.serve(request)
+				request -> servlet.serveAsync(request)
 						.map(response -> {
 							HttpResponse newResponse = fn.apply(request, response);
 							if (response != newResponse) {
@@ -92,38 +92,38 @@ public interface AsyncServletDecorator {
 
 	static AsyncServletDecorator onException(BiConsumer<HttpRequest, Throwable> consumer) {
 		return servlet ->
-				request -> servlet.serve(request).whenException((e -> consumer.accept(request, e)));
+				request -> servlet.serveAsync(request).whenException((e -> consumer.accept(request, e)));
 	}
 
 	static AsyncServletDecorator mapException(Function<Throwable, HttpResponse> fn) {
 		return servlet ->
-				request -> servlet.serve(request)
-						.thenEx(((response, e) -> {
+				request -> servlet.serveAsync(request)
+						.mapEx(((response, e) -> {
 							if (e == null) {
-								return Promise.of(response);
+								return response;
 							} else {
-								return Promise.of(fn.apply(e));
+								return fn.apply(e);
 							}
 						}));
 	}
 
 	static AsyncServletDecorator mapException(BiFunction<HttpRequest, Throwable, HttpResponse> fn) {
 		return servlet ->
-				request -> servlet.serve(request)
-						.thenEx(((response, e) -> {
+				request -> servlet.serveAsync(request)
+						.mapEx(((response, e) -> {
 							if (e == null) {
-								return Promise.of(response);
+								return response;
 							} else {
-								return Promise.of(fn.apply(request, e));
+								return fn.apply(request, e);
 							}
 						}));
 	}
 
 	static AsyncServletDecorator mapException(Predicate<Throwable> predicate, AsyncServlet fallbackServlet) {
 		return servlet ->
-				request -> servlet.serve(request)
+				request -> servlet.serveAsync(request)
 						.thenEx((response, e) -> predicate.test(e) ?
-								fallbackServlet.serve(request) :
+								fallbackServlet.serveAsync(request) :
 								Promise.of(response, e));
 	}
 
@@ -165,7 +165,7 @@ public interface AsyncServletDecorator {
 
 	static AsyncServletDecorator mapToHttpException(Function<Throwable, HttpException> fn) {
 		return servlet ->
-				request -> servlet.serve(request)
+				request -> servlet.serveAsync(request)
 						.thenEx(((response, e) -> {
 							if (e == null) {
 								return Promise.of(response);
@@ -178,7 +178,7 @@ public interface AsyncServletDecorator {
 
 	static AsyncServletDecorator mapToHttpException(BiFunction<HttpRequest, Throwable, HttpException> fn) {
 		return servlet ->
-				request -> servlet.serve(request)
+				request -> servlet.serveAsync(request)
 						.thenEx(((response, e) -> {
 							if (e == null) {
 								return Promise.of(response);
@@ -228,19 +228,19 @@ public interface AsyncServletDecorator {
 	static AsyncServletDecorator loadBody() {
 		return servlet ->
 				request -> request.loadBody()
-						.then($ -> servlet.serve(request));
+						.then($ -> servlet.serveAsync(request));
 	}
 
 	static AsyncServletDecorator loadBody(MemSize maxBodySize) {
 		return servlet ->
 				request -> request.loadBody(maxBodySize)
-						.then($ -> servlet.serve(request));
+						.then($ -> servlet.serveAsync(request));
 	}
 
 	static AsyncServletDecorator loadBody(int maxBodySize) {
 		return servlet ->
 				request -> request.loadBody(maxBodySize)
-						.then($ -> servlet.serve(request));
+						.then($ -> servlet.serveAsync(request));
 	}
 
 }

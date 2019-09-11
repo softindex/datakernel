@@ -1,7 +1,6 @@
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.promise.Promise;
 
 import java.io.IOException;
 
@@ -14,9 +13,8 @@ public final class HelloWorldExample {
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create();
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				request -> Promise.of(
-						HttpResponse.ok200()
-								.withBody(HELLO_WORLD)))
+				request -> HttpResponse.ok200()
+						.withBody(HELLO_WORLD))
 				.withListenPort(8080);
 
 		server.listen();

@@ -59,9 +59,9 @@ public final class SimpleProxyServerTest {
 	public void testSimpleProxyServer() throws Exception {
 		Eventloop eventloop1 = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
-		AsyncHttpServer echoServer = AsyncHttpServer.create(eventloop1, request ->
-				Promise.of(HttpResponse.ok200()
-						.withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
+		AsyncHttpServer echoServer = AsyncHttpServer.create(eventloop1,
+				request -> HttpResponse.ok200()
+						.withBody(encodeAscii(request.getUrl().getPathAndQuery())))
 				.withListenPort(ECHO_SERVER_PORT);
 		echoServer.listen();
 

@@ -11,7 +11,6 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
@@ -31,8 +30,7 @@ public class ModuleRebindExample extends Launcher {
 		@Provides
 		AsyncServlet servlet(Config config) {
 			String message = config.get("message");
-			return request -> Promise.of(
-					HttpResponse.ok200().withPlainText(message));
+			return request -> HttpResponse.ok200().withPlainText(message);
 		}
 
 		@Provides

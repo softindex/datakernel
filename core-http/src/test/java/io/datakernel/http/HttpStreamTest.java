@@ -95,10 +95,10 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testStreamDownload() throws IOException {
-		startTestServer(request -> Promise.of(
+		startTestServer(request ->
 				HttpResponse.ok200()
 						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
-								.mapAsync(item -> Promises.delay(1L, item)))));
+								.mapAsync(item -> Promises.delay(1L, item))));
 
 		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT))

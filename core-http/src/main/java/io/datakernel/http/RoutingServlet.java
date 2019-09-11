@@ -164,7 +164,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		if (urlPart.isEmpty()) {
 			AsyncServlet servlet = rootServlets.getOrDefault(method, rootServlets.get(null));
 			if (servlet != null) {
-				return servlet.serve(request);
+				return servlet.serveAsync(request);
 			}
 		} else {
 			int position = request.getPos();
@@ -191,7 +191,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		AsyncServlet servlet = fallbackServlets.getOrDefault(method, fallbackServlets.get(null));
 		if (servlet != null) {
 			request.setPos(introPosition);
-			return servlet.serve(request);
+			return servlet.serveAsync(request);
 		}
 		return null;
 	}

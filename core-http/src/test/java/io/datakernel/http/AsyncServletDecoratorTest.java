@@ -66,22 +66,21 @@ public class AsyncServletDecoratorTest {
 					ByteBuf loadedBody = request.getBody();
 					assertArrayEquals(loadedBody.getArray(), body);
 					loadedBody.recycle();
-					return Promise.of(HttpResponse.ok200());
+					return HttpResponse.ok200();
 				});
 
 		HttpRequest request = HttpRequest.get("http://example.com");
-		await(rootServlet.serve(request)).recycle();
+		await(rootServlet.serveAsync(request)).recycle();
 	}
 
 	@Test
 	public void testOnResponse() {
 		byte[] body = {0};
 		AsyncServlet rootServlet = onResponse(response -> response.setBody(body))
-				.serve(request -> Promise.of(HttpResponse.ok200()
-						.withBody(new byte[10])));
+				.serve(request -> HttpResponse.ok200().withBody(new byte[10]));
 
 		HttpRequest request = HttpRequest.get("http://example.com");
-		ByteBuf loadedBody = await(rootServlet.serve(request)
+		ByteBuf loadedBody = await(rootServlet.serveAsync(request)
 				.then(HttpMessage::loadBody));
 		assertArrayEquals(loadedBody.getArray(), body);
 		loadedBody.recycle();
@@ -96,10 +95,10 @@ public class AsyncServletDecoratorTest {
 				})
 				.serve(request -> {
 					assertNull(request.getCookie("test1"));
-					return Promise.of(HttpResponse.ok200());
+					return HttpResponse.ok200();
 				});
 
-		HttpResponse response = await(servlet.serve(HttpRequest.get("http://example.com")));
+		HttpResponse response = await(servlet.serveAsync(HttpRequest.get("http://example.com")));
 		assertNotNull(response.getCookie("test2"));
 		assertEquals(response.getCookie("test2").getValue(), "test2");
 	}
@@ -107,13 +106,13 @@ public class AsyncServletDecoratorTest {
 	@Test
 	public void testMapResponse() {
 		AsyncServlet servlet = mapResponse(response -> HttpResponse.ok200())
-				.serve(request -> Promise.of(
+				.serve(request ->
 						HttpResponse.ok200()
 								.withCookie(HttpCookie.of("test2", "test2"))
-								.withBody(ByteBufPool.allocate(100))));
+								.withBody(ByteBufPool.allocate(100)));
 
 		ByteBuf body = ByteBufPool.allocate(100);
-		await(servlet.serve(HttpRequest.get("http://example.com")
+		await(servlet.serveAsync(HttpRequest.get("http://example.com")
 				.withBody(body)));
 		body.recycle();
 	}
@@ -122,14 +121,14 @@ public class AsyncServletDecoratorTest {
 	public void testMapResponse2() {
 		AsyncServlet servlet = mapResponse(
 				response -> HttpResponse.ok200())
-				.serve(request -> Promise.of(HttpResponse.ok200()
+				.serve(request -> HttpResponse.ok200()
 						.withCookie(HttpCookie.of("test2", "test2"))
 						.withBodyStream(ChannelSupplier.of(
 								ByteBufPool.allocate(100),
-								ByteBufPool.allocate(100)))));
+								ByteBufPool.allocate(100))));
 
 		ByteBuf body = ByteBufPool.allocate(100);
-		await(servlet.serve(HttpRequest.get("http://example.com")
+		await(servlet.serveAsync(HttpRequest.get("http://example.com")
 				.withBody(body)));
 		body.recycle();
 	}
@@ -138,7 +137,7 @@ public class AsyncServletDecoratorTest {
 	public void testOnException() {
 		AsyncServlet servlet = onException((request, throwable) -> assertEquals(throwable.getClass(), HttpException.class))
 				.serve(request -> Promise.ofException(new HttpException(202)));
-		awaitException(servlet.serve(null));
+		awaitException(servlet.serveAsync(null));
 	}
 
 	@Test
@@ -148,7 +147,7 @@ public class AsyncServletDecoratorTest {
 				mapException(throwable -> HttpResponse.ofCode(200)))
 				.serve(request -> Promise.ofException(new HttpException(300)));
 
-		HttpResponse response = await(servlet.serve(null));
+		HttpResponse response = await(servlet.serveAsync(null));
 		assertEquals(response.getCode(), 200);
 	}
 
@@ -159,7 +158,7 @@ public class AsyncServletDecoratorTest {
 					throw new RuntimeException();
 				});
 
-		RuntimeException exception = awaitException(servlet.serve(HttpRequest.get("http://example.com")));
+		RuntimeException exception = awaitException(servlet.serveAsync(HttpRequest.get("http://example.com")));
 		assertNotNull(exception);
 	}
 
@@ -170,17 +169,17 @@ public class AsyncServletDecoratorTest {
 					throw new UncheckedException(new NullPointerException());
 				});
 
-		NullPointerException throwable = awaitException(servlet.serve(null));
+		NullPointerException throwable = awaitException(servlet.serveAsync(null));
 		assertNotNull(throwable);
 	}
 
 	@Test
 	public void testMapExceptionPredicate() {
 		Exception exception = new Exception("Test exception");
-		AsyncServlet servlet = mapException(e -> e == exception, $ -> Promise.of(HttpResponse.ok200().withBody("Test".getBytes(UTF_8))))
+		AsyncServlet servlet = mapException(e -> e == exception, $ -> HttpResponse.ok200().withBody("Test".getBytes(UTF_8)))
 				.serve($ -> Promise.ofException(exception));
 
-		HttpResponse response = await(servlet.serve(null));
+		HttpResponse response = await(servlet.serveAsync(null));
 		assertEquals(200, response.getCode());
 
 		ByteBuf body = await(response.loadBody());
@@ -189,28 +188,30 @@ public class AsyncServletDecoratorTest {
 
 	@Test
 	public void testMapHttpException404() {
-		AsyncServlet servlet = mapHttpException404(request -> {
-			String path = request.getPath();
-			switch (path) {
-				case "/resource":
-					return Promise.of(HttpResponse.ok200().withBody("Resource not found".getBytes(UTF_8)));
-				default:
-					throw new AssertionError();
-			}
-		}).serve(request -> {
-			String path = request.getPath();
-			switch (path) {
-				case "/resource":
-					return Promise.ofException(HttpException.ofCode(404));
-				default:
-					return Promise.of(HttpResponse.ok200());
-			}
-		});
+		AsyncServlet servlet = mapHttpException404(
+				request -> {
+					String path = request.getPath();
+					switch (path) {
+						case "/resource":
+							return HttpResponse.ok200().withBody("Resource not found".getBytes(UTF_8));
+						default:
+							throw new AssertionError();
+					}
+				})
+				.serve(request -> {
+					String path = request.getPath();
+					switch (path) {
+						case "/resource":
+							return Promise.ofException(HttpException.ofCode(404));
+						default:
+							return Promise.of(HttpResponse.ok200());
+					}
+				});
 
-		ByteBuf bodyClient = await(servlet.serve(HttpRequest.get("http://localhost/resource")).then(HttpResponse::loadBody));
+		ByteBuf bodyClient = await(servlet.serveAsync(HttpRequest.get("http://localhost/resource")).then(HttpResponse::loadBody));
 		assertEquals("Resource not found", bodyClient.asString(UTF_8));
 
-		HttpResponse responseOther = await(servlet.serve(HttpRequest.get("http://localhost/other")));
+		HttpResponse responseOther = await(servlet.serveAsync(HttpRequest.get("http://localhost/other")));
 		assertEquals(200, responseOther.getCode());
 	}
 }

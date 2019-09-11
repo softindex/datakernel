@@ -33,6 +33,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 	PollDao pollRepo() {
 		return new PollDaoImpl();
 	}
+
 	//[END REGION_1]
 	//[START REGION_2]
 	@Provides
@@ -42,22 +43,20 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 		Mustache listPolls = new DefaultMustacheFactory().compile("templates/listPolls.html");
 
 		return RoutingServlet.create()
-				.map(GET, "/", request -> Promise.of(
-						HttpResponse.ok200()
-								.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
+				.map(GET, "/", request -> HttpResponse.ok200()
+						.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet()))))
 				//[END REGION_2]
 				//[START REGION_3]
 				.map(GET, "/poll/:id", request -> {
 					int id = Integer.parseInt(request.getPathParameter("id"));
-					return Promise.of(
-							HttpResponse.ok200()
-									.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
+					return HttpResponse.ok200()
+							.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id))));
 				})
 				//[END REGION_3]
 				//[START REGION_4]
-				.map(GET, "/create", request -> Promise.of(
+				.map(GET, "/create", request ->
 						HttpResponse.ok200()
-								.withBody(applyTemplate(singlePollCreate, emptyMap()))))
+								.withBody(applyTemplate(singlePollCreate, emptyMap())))
 				.map(POST, "/vote", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
@@ -73,7 +72,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							question.vote(option);
 
 							String referer = request.getHeader(REFERER);
-							return Promise.of(HttpResponse.redirect302(referer != null ? referer : "/"));
+							return HttpResponse.redirect302(referer != null ? referer : "/");
 						}))
 				.map(POST, "/add", loadBody()
 						.serve(request -> {
@@ -85,7 +84,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							String option2 = params.get("option2");
 
 							int id = pollDao.add(new PollDao.Poll(title, message, list(option1, option2)));
-							return Promise.of(HttpResponse.redirect302("poll/" + id));
+							return HttpResponse.redirect302("poll/" + id);
 						}))
 				.map(POST, "/delete", loadBody()
 						.serve(request -> {
@@ -96,7 +95,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							}
 							pollDao.remove(Integer.parseInt(id));
 
-							return Promise.of(HttpResponse.redirect302("/"));
+							return HttpResponse.redirect302("/");
 						}));
 		//[END REGION_4]
 	}

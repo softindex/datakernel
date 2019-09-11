@@ -18,7 +18,6 @@ package io.datakernel;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -78,7 +77,7 @@ public final class HttpApiTest {
 		server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				request -> {
 					testRequest(request);
-					return Promise.of(createResponse());
+					return createResponse();
 				})
 				.withListenPort(PORT);
 

@@ -20,7 +20,6 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopInspector;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.promise.Promise;
 
 import java.util.Random;
 
@@ -82,7 +81,7 @@ public class HttpThrottlingServer {
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, int loadBusinessLogic) {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
-		AsyncServlet servlet = request -> Promise.of(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
+		AsyncServlet servlet = request -> longBusinessLogic(TEST_RESPONSE, loadBusinessLogic);
 		return AsyncHttpServer.create(eventloop, servlet).withListenPort(SERVER_PORT);
 	}
 

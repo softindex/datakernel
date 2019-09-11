@@ -40,7 +40,7 @@ public final class StubHttpClient implements IAsyncHttpClient {
 	public Promise<HttpResponse> request(HttpRequest request) {
 		Promise<HttpResponse> servletResult;
 		try {
-			servletResult = servlet.serve(request);
+			servletResult = servlet.serveAsync(request);
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
 		}

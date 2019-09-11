@@ -48,16 +48,16 @@ public final class SessionServlet<T> implements AsyncServlet {
 		String id = sessionIdExtractor.apply(request);
 
 		if (id == null) {
-			return publicServlet.serve(request);
+			return publicServlet.serveAsync(request);
 		}
 
 		return store.get(id)
 				.then(sessionObject -> {
 					if (sessionObject != null) {
 						request.attach(sessionObject);
-						return privateServlet.serve(request);
+						return privateServlet.serveAsync(request);
 					} else {
-						return publicServlet.serve(request);
+						return publicServlet.serveAsync(request);
 					}
 				});
 	}

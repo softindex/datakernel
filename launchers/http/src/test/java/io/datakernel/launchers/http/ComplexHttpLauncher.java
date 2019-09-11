@@ -15,7 +15,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.net.PrimaryServer;
-import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.TriggerResult;
@@ -130,7 +129,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Provides
 	@Worker
 	AsyncServlet workerServlet(@WorkerId int workerId) {
-		return $ -> Promise.of(HttpResponse.ok200().withPlainText("Hello from worker #" + workerId));
+		return $ -> HttpResponse.ok200().withPlainText("Hello from worker #" + workerId);
 	}
 	// endregion
 
@@ -150,7 +149,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Provides
 	@MyWorker
 	AsyncServlet myWorkerServlet(@WorkerId int workerId) {
-		return $ -> Promise.of(HttpResponse.ok200().withPlainText("Hello from my worker #" + workerId));
+		return $ -> HttpResponse.ok200().withPlainText("Hello from my worker #" + workerId);
 	}
 	// endregion
 

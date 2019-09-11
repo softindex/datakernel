@@ -84,7 +84,7 @@ public final class BasicAuth implements AsyncServlet {
 				.then(result -> {
 					if (result) {
 						request.attach(new BasicAuthCredentials(authData[0], authData[1]));
-						return next.serve(request);
+						return next.serveAsync(request);
 					}
 					return Promise.of(failureResponse.apply(HttpResponse.unauthorized401(challenge)));
 				});

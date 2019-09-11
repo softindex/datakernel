@@ -17,12 +17,12 @@
 package io.datakernel.http;
 
 import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.promise.Async;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.Executor;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -32,15 +32,15 @@ import java.util.stream.Stream;
 @FunctionalInterface
 public interface AsyncServlet {
 	@NotNull
-	Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
+	Async<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException;
+
+	@NotNull
+	default Promise<HttpResponse> serveAsync(@NotNull HttpRequest request) throws UncheckedException {
+		return serve(request).get();
+	}
 
 	default AsyncServlet then(AsyncServletDecorator decorator) {
 		return decorator.serve(this);
-	}
-
-	@NotNull
-	static AsyncServlet of(@NotNull Function<HttpRequest, HttpResponse> fn) {
-		return request -> Promise.of(fn.apply(request));
 	}
 
 	/**
@@ -58,6 +58,6 @@ public interface AsyncServlet {
 	static AsyncServlet firstSuccessful(AsyncServlet... servlets) {
 		return httpRequest -> Promises.first(
 				(httpResponse, e) -> e == null && httpResponse != null,
-				Stream.of(servlets).map(servlet -> () -> servlet.serve(httpRequest)));
+				Stream.of(servlets).map(servlet -> () -> servlet.serveAsync(httpRequest)));
 	}
 }

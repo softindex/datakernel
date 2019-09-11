@@ -5,7 +5,6 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.promise.Promise;
 
 import java.util.concurrent.Executor;
 
@@ -29,15 +28,13 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 				.map(POST, "/hello", loadBody()
 						.serve(request -> {
 							String name = request.getPostParameters().get("name");
-							return Promise.of(
-									HttpResponse.ok200()
-											.withHtml("<h1><center>Hello from POST, " + name + "!</center></h1>"));
+							return HttpResponse.ok200()
+									.withHtml("<h1><center>Hello from POST, " + name + "!</center></h1>");
 						}))
 				.map(GET, "/hello", request -> {
 					String name = request.getQueryParameter("name");
-					return Promise.of(
-							HttpResponse.ok200()
-									.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>"));
+					return HttpResponse.ok200()
+							.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>");
 				})
 				.map("/*", StaticServlet.ofClassPath(executor, RESOURCE_DIR)
 						.withIndexHtml());

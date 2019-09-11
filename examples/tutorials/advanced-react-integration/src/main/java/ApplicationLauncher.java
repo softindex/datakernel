@@ -8,7 +8,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.promise.Promise;
 
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -57,23 +56,21 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							try {
 								Record record = JsonUtils.fromJson(RECORD_CODEC, body.getString(UTF_8));
 								recordDAO.add(record);
-
-								return Promise.of(HttpResponse.ok200());
+								return HttpResponse.ok200();
 							} catch (ParseException e) {
-								return Promise.of(HttpResponse.ofCode(400));
+								return HttpResponse.ofCode(400);
 							}
 						}))
 				.map(GET, "/get/all", request -> {
 					Map<Integer, Record> records = recordDAO.findAll();
-					return Promise.of(
-							HttpResponse.ok200()
-									.withJson(ofMap(INT_CODEC, RECORD_CODEC), records));
+					return HttpResponse.ok200()
+							.withJson(ofMap(INT_CODEC, RECORD_CODEC), records);
 				})
 				//[START REGION_4]
 				.map(GET, "/delete/:recordId", request -> {
 					int id = parseInt(request.getPathParameter("recordId"));
 					recordDAO.delete(id);
-					return Promise.of(HttpResponse.ok200());
+					return HttpResponse.ok200();
 				})
 				//[END REGION_4]
 				.map(GET, "/toggle/:recordId/:planId", request -> {
@@ -83,8 +80,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 					Record record = recordDAO.find(id);
 					Plan plan = record.getPlans().get(planId);
 					plan.toggle();
-
-					return Promise.of(HttpResponse.ok200());
+					return HttpResponse.ok200();
 				});
 		//[END REGION_3]
 	}

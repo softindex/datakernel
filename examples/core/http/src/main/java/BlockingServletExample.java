@@ -4,7 +4,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.promise.Promise;
 
 import java.util.concurrent.Executor;
 
@@ -20,9 +19,8 @@ public final class BlockingServletExample extends HttpServerLauncher {
 	@Provides
 	AsyncServlet servlet(Executor executor) {
 		return RoutingServlet.create()
-				.map("/", request -> Promise.of(
-						HttpResponse.ok200()
-								.withHtml("<a href='hardWork'>Do hard work</a>")))
+				.map("/", request -> HttpResponse.ok200()
+						.withHtml("<a href='hardWork'>Do hard work</a>"))
 				.map("/hardWork", AsyncServlet.ofBlocking(executor, request -> {
 					Thread.sleep(2000); //Hard work
 					return HttpResponse.ok200()

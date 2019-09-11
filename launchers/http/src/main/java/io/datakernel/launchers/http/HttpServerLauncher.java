@@ -16,7 +16,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
-import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
@@ -103,8 +102,7 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Provides
 					public AsyncServlet servlet(Config config) {
 						String message = config.get("message", "Hello, world!");
-						return req -> Promise.of(
-								HttpResponse.ok200().withBody(wrapForReading(encodeAscii(message))));
+						return request -> HttpResponse.ok200().withBody(wrapForReading(encodeAscii(message)));
 					}
 				};
 

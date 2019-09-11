@@ -19,6 +19,7 @@ package io.datakernel.async.function;
 import io.datakernel.async.callback.Callback;
 import io.datakernel.async.process.AsyncExecutor;
 import io.datakernel.common.collection.Try;
+import io.datakernel.promise.Async;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +35,7 @@ import java.util.stream.Stream;
  * Represents asynchronous supplier that returns {@link Promise} of some data.
  */
 @FunctionalInterface
-public interface AsyncSupplier<T> {
+public interface AsyncSupplier<T> extends Async<T> {
 	/**
 	 * Gets {@link Promise} of data item asynchronously.
 	 */

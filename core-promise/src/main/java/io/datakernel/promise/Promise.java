@@ -52,7 +52,7 @@ import java.util.function.Supplier;
  *
  * @see CompletionStage
  */
-public interface Promise<T> extends Completable<T> {
+public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<T> {
 	/**
 	 * Creates successfully completed {@code Promise}
 	 */
@@ -217,7 +217,6 @@ public interface Promise<T> extends Completable<T> {
 
 	@FunctionalInterface
 	interface BlockingCallable<V> {
-
 		V call() throws Exception;
 	}
 
@@ -260,7 +259,6 @@ public interface Promise<T> extends Completable<T> {
 
 	@FunctionalInterface
 	interface BlockingRunnable {
-
 		void run() throws Exception;
 	}
 
@@ -295,6 +293,11 @@ public interface Promise<T> extends Completable<T> {
 				cb.setException(e);
 			}
 		});
+	}
+
+	@Override
+	default Promise<T> get() {
+		return this;
 	}
 
 	@Contract(pure = true)

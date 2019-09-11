@@ -64,11 +64,10 @@ public final class AbstractHttpConnectionTest {
 	@Test
 	public void testMultiLineHeader() throws Exception {
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
-				request -> Promise.of(
-						HttpResponse.ok200()
-								.withHeader(DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
-								.withHeader(CONTENT_TYPE, "text/\n          html")
-								.withBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>"))))
+				request -> HttpResponse.ok200()
+						.withHeader(DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
+						.withHeader(CONTENT_TYPE, "text/\n          html")
+						.withBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>")))
 				.withListenPort(PORT)
 				.withAcceptOnce();
 		server.listen();
@@ -84,10 +83,9 @@ public final class AbstractHttpConnectionTest {
 	@Test
 	public void testGzipCompression() throws Exception {
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
-				request -> Promise.of(
-						HttpResponse.ok200()
-								.withBodyGzipCompression()
-								.withBody(encodeAscii("Test message"))))
+				request -> HttpResponse.ok200()
+						.withBodyGzipCompression()
+						.withBody(encodeAscii("Test message")))
 				.withListenPort(PORT)
 				.withAcceptOnce();
 
@@ -107,7 +105,7 @@ public final class AbstractHttpConnectionTest {
 		client.withKeepAliveTimeout(Duration.ofSeconds(1));
 		client.withMaxKeepAliveRequests(5);
 
-		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> Promise.of(HttpResponse.ok200()))
+		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> HttpResponse.ok200())
 				.withListenPort(PORT);
 		server.listen();
 
@@ -119,7 +117,7 @@ public final class AbstractHttpConnectionTest {
 	public void testServerWithMaxKeepAliveRequests() throws Exception {
 		client.withKeepAliveTimeout(Duration.ofSeconds(1));
 
-		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> Promise.of(HttpResponse.ok200()))
+		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request -> HttpResponse.ok200())
 				.withListenPort(PORT)
 				.withMaxKeepAliveRequests(5);
 		server.listen();

@@ -6,7 +6,6 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 //[START EXAMPLE]
@@ -23,9 +22,8 @@ public final class CustomHttpServerExample extends Launcher {
 
 	@Provides
 	AsyncServlet servlet() {
-		return request -> Promise.of(
-				HttpResponse.ok200()
-						.withPlainText("Hello from HTTP server"));
+		return request -> HttpResponse.ok200()
+				.withPlainText("Hello from HTTP server");
 	}
 
 	@Provides

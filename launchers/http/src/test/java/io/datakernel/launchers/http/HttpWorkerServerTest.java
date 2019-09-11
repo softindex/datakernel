@@ -25,7 +25,6 @@ import io.datakernel.di.module.Module;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.net.PrimaryServer;
-import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
@@ -58,8 +57,9 @@ public final class HttpWorkerServerTest {
 			@Provides
 			@Worker
 			AsyncServlet servlet(@WorkerId int worker) {
-				return request -> Promise.of(
-						HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
+				return request ->
+						HttpResponse.ok200()
+								.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker)));
 			}
 
 			@Override

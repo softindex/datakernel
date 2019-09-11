@@ -4,7 +4,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.promise.Promise;
 
 import java.util.concurrent.Executor;
 
@@ -29,11 +28,9 @@ public final class ServletDecoratorExample extends HttpServerLauncher {
 						.map(POST, "/", request -> {
 							String text = request.getPostParameter("text");
 							if (text == null) {
-								return Promise.of(
-										HttpResponse.redirect302("/"));
+								return HttpResponse.redirect302("/");
 							}
-							return Promise.of(
-									HttpResponse.ok200().withPlainText("Message: " + text));
+							return HttpResponse.ok200().withPlainText("Message: " + text);
 						})
 						.map(GET, "/failPage", request -> {
 							throw new RuntimeException("fail");

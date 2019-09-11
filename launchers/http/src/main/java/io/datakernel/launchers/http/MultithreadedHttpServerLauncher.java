@@ -17,7 +17,6 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.net.PrimaryServer;
-import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.*;
 
@@ -124,7 +123,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					@Provides
 					@Worker
 					AsyncServlet servlet(@WorkerId int workerId) {
-						return req -> Promise.of(HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId))));
+						return request -> HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId)));
 					}
 				};
 

@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -45,7 +44,7 @@ public final class TestClientMultilineHeaders {
 				request -> {
 					HttpResponse response = HttpResponse.ok200();
 					response.addHeader(ALLOW, "GET,\r\n HEAD");
-					return Promise.of(response);
+					return response;
 				})
 				.withListenPort(PORT)
 				.withAcceptOnce()

@@ -48,7 +48,7 @@ public class AsyncServletTest {
 						ByteBuf.wrapForReading("Test2".getBytes(UTF_8)))
 				);
 
-		HttpResponse response = await(servlet.serve(testRequest));
+		HttpResponse response = await(servlet.serveAsync(testRequest));
 		testRequest.recycle();
 		ByteBuf body = await(response.loadBody(Integer.MAX_VALUE));
 
@@ -70,7 +70,7 @@ public class AsyncServletTest {
 						ChannelSupplier.ofException(exception)
 				));
 
-		Throwable e = awaitException(servlet.serve(testRequest));
+		Throwable e = awaitException(servlet.serveAsync(testRequest));
 
 		assertSame(exception, e);
 	}

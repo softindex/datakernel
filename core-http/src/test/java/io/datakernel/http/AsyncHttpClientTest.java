@@ -64,15 +64,15 @@ public final class AsyncHttpClientTest {
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static void startServer() throws IOException {
-		AsyncHttpServer.create(Eventloop.getCurrentEventloop(), request ->
-				Promise.of(HttpResponse.ok200()
+		AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
+				request -> HttpResponse.ok200()
 						.withBodyStream(ChannelSupplier.ofStream(
 								IntStream.range(0, HELLO_WORLD.length)
 										.mapToObj(idx -> {
 											ByteBuf buf = ByteBufPool.allocate(1);
 											buf.put(HELLO_WORLD[idx]);
 											return buf;
-										})))))
+										}))))
 				.withListenPort(PORT)
 				.withAcceptOnce()
 				.listen();

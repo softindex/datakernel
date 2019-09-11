@@ -50,8 +50,8 @@ public final class AsyncHttpServerTest {
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				request -> Promise.of(
-						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
+				request ->
+						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())))
 				.withListenPort(port);
 	}
 
@@ -332,8 +332,8 @@ public final class AsyncHttpServerTest {
 		buf.put(body);
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				req -> Promise.of(
-						HttpResponse.ok200().withBody(encodeAscii(req.getUrl().getPathAndQuery()))))
+				req -> HttpResponse.ok200()
+						.withBody(encodeAscii(req.getUrl().getPathAndQuery())))
 				.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);

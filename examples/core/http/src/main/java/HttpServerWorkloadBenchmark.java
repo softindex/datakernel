@@ -7,7 +7,10 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.promise.Promise;
@@ -66,7 +69,8 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	@Provides
 	AsyncHttpServer server() {
 		return AsyncHttpServer.create(serverEventloop,
-				AsyncServlet.of(req -> HttpResponse.ok200().withPlainText("Response!!")))
+				request ->
+						HttpResponse.ok200().withPlainText("Response!!"))
 				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "address"));
 	}
 
