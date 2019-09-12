@@ -9,7 +9,7 @@ import SignUpAbstractionImage from './signUp/SignUpAbstractionImage/SignUpAbstra
 import SignUp from './signUp/SignUp/SignUp';
 import OAuthCallback from './auth/OAuthCallback/OAuthCallback';
 import Avatar from './avatar/Avatar';
-import ContactsChip from './contactsChip/ContactsChip'
+import ContactChip from './contactChip/ContactChip'
 
 export * from './utils/utils';
 export * from './serviceHooks';
@@ -26,6 +26,6 @@ export {
   GlobalAppStoreAPI,
   OAuthCallback,
   Avatar,
-  ContactsChip
+  ContactChip
 }
 

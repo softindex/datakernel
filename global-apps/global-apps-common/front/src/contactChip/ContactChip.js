@@ -1,6 +1,6 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import contactChipStyles from './contactsChipStyles'
+import contactChipStyles from './contactChipStyles'
 import {getAvatarLetters} from "global-apps-common";
 import Avatar from "@material-ui/core/Avatar";
 import MuiChip from "@material-ui/core/Chip";

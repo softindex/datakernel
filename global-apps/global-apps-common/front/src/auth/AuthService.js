@@ -9,7 +9,8 @@ class AuthService extends Service {
       authorized: false,
       privateKey: null,
       publicKey: null,
-      loading: false
+      loading: false,
+      wasAuthorized: false
     });
     this._appStoreUrl = appStoreUrl;
     this._cookies = cookies;
@@ -60,7 +61,8 @@ class AuthService extends Service {
       error: null,
       loading: false,
       privateKey: null,
-      publicKey: null
+      publicKey: null,
+      wasAuthorized: true
     });
   }
 

@@ -69,8 +69,7 @@ class NamesService extends Service {
 
   _onStateChange = () => {
     const contacts = this._getContactsFromStateManager();
-
-    this._getNames(new Set(contacts))
+    this._getNames(contacts)
       .then(names => {
         this.setState({
           names,
@@ -90,10 +89,9 @@ class NamesService extends Service {
     return this._globalAppStoreAPI.getUserByPublicKey(publicKey);
   }
 
-  async _getNames(publicKeys, contacts) {
+  async _getNames(contacts) {
     const names = new Map(this.state.names);
-
-    for (const publicKey of publicKeys) {
+    for (const publicKey of contacts.keys()) {
       if (contacts.has(publicKey) && publicKey !== this._myPublicKey) {
         if (contacts.get(publicKey).name !== '') {
           names.set(publicKey, contacts.get(publicKey).name);

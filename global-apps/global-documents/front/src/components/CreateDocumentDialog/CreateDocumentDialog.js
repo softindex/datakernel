@@ -18,7 +18,7 @@ import NamesService from "../../modules/names/NamesService";
 import DocumentsService from "../../modules/documents/DocumentsService";
 import TextField from "@material-ui/core/TextField";
 
-function CreateChatDialogView({
+function CreateDocumentDialogView({
                                 classes,
                                 onClose,
                                 loading,
@@ -130,7 +130,7 @@ function CreateChatDialogView({
   );
 }
 
-function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar, closeSnackbar}) {
+function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnackbar, closeSnackbar}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
@@ -247,11 +247,11 @@ function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar
     }
   };
 
-  return <CreateChatDialogView {...props}/>;
+  return <CreateDocumentDialogView {...props}/>;
 }
 
 export default withRouter(
   withSnackbar(
-    withStyles(createDocumentStyles)(CreateChatDialog)
+    withStyles(createDocumentStyles)(CreateDocumentDialog)
   )
 );

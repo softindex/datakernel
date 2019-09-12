@@ -30,6 +30,7 @@ function DocumentEditor({classes, onInsert, onDelete, onReplace}) {
 
   const props = {
     classes,
+    content,
 
     onContentChange(event) {
       const difference = getDifference(content, event.target.value, event.target.selectionEnd);
