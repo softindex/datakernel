@@ -44,6 +44,14 @@ import static java.lang.Math.min;
 
 @SuppressWarnings({"WeakerAccess", "DefaultAnnotationParam", "unused"})
 public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
+	private static final boolean CHECK_RECYCLE;
+
+	static {
+		boolean assertsEnabled = false;
+		//noinspection AssertWithSideEffects
+		assert (assertsEnabled = true);
+		CHECK_RECYCLE = ByteBufPool.REGISTRY || assertsEnabled;
+	}
 
 	/**
 	 * Allows to create slices of {@link ByteBuf}, helper class.
@@ -91,13 +99,19 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		}
 	}
 
-	/** Stores bytes of this {@code ByteBuf}. */
+	/**
+	 * Stores bytes of this {@code ByteBuf}.
+	 */
 	@NotNull
 	protected final byte[] array;
 
-	/** Stores <i>head</i> of this {@code ByteBuf}. */
+	/**
+	 * Stores <i>head</i> of this {@code ByteBuf}.
+	 */
 	private int head;
-	/** Stores <i>tail</i> of this {@code ByteBuf}. */
+	/**
+	 * Stores <i>tail</i> of this {@code ByteBuf}.
+	 */
 	private int tail;
 
 	/**
@@ -120,12 +134,13 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	private static final ByteBuf EMPTY = wrap(new byte[0], 0, 0);
 
 	// creators
+
 	/**
 	 * Creates a {@code ByteBuf} with custom byte array, {@link #tail} and {@link #head}.
 	 *
 	 * @param array byte array to be wrapped into {@code ByteBuf}
-	 * @param head value of {@link #head} of {@code ByteBuf}
-	 * @param tail value of {@link #tail} of {@code ByteBuf}
+	 * @param head  value of {@link #head} of {@code ByteBuf}
+	 * @param tail  value of {@link #tail} of {@code ByteBuf}
 	 */
 	private ByteBuf(@NotNull byte[] array, int head, int tail) {
 		assert head >= 0 && head <= tail && tail <= array.length
@@ -152,7 +167,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Wraps provided byte array into {@code ByteBuf} with {@link #tail} equal to 0.
 	 *
 	 * @param bytes byte array to be wrapped into {@code ByteBuf}
-	 *
 	 * @return {@code ByteBuf} over underlying byte array that is ready for writing
 	 */
 	@NotNull
@@ -178,8 +192,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * specified {@link #tail} and {@link #head}.
 	 *
 	 * @param bytes byte array to be wrapped into {@code ByteBuf}
-	 * @param head {@link #head} of {@code ByteBuf}
-	 * @param tail {@link #tail} of {@code ByteBuf}
+	 * @param head  {@link #head} of {@code ByteBuf}
+	 * @param tail  {@link #tail} of {@code ByteBuf}
 	 * @return {@code ByteBuf} over underlying byte array with given {@link #tail} and {@link #head}
 	 */
 	@NotNull
@@ -189,10 +203,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	// slicing
+
 	/**
 	 * Creates a slice of this {@code ByteBuf} if it is not recycled.
 	 * Its {@link #head} and {@link #tail} won't change.
-	 *
+	 * <p>
 	 * {@link #refs} increases by 1.
 	 *
 	 * @return a {@link ByteBufSlice} of this {@code ByteBuf}
@@ -229,7 +244,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	@NotNull
 	@Contract("_, _ -> new")
 	public ByteBuf slice(int offset, int length) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		if (!isRecycleNeeded()) {
 			return ByteBuf.wrap(array, offset, offset + length);
 		}
@@ -238,15 +253,15 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	// recycling
+
 	/**
 	 * Recycles this {@code ByteBuf} by returning it to {@link ByteBufPool}.
 	 */
 	@Override
 	public void recycle() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		if (refs > 0 && --refs == 0) {
-			//noinspection AssertWithSideEffects
-			assert --refs == -1;
+			if (CHECK_RECYCLE) refs--;
 			ByteBufPool.recycle(this);
 		}
 	}
@@ -273,7 +288,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	protected boolean isRecycled() {
-		return refs == -1;
+		return refs < 0;
 	}
 
 	/**
@@ -281,7 +296,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Sets {@link #refs} to 1.
 	 */
 	void reset() {
-		assert isRecycled();
+		if (CHECK_RECYCLE && !isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		refs = 1;
 		rewind();
 	}
@@ -290,7 +305,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Sets {@link #tail} and {@link #head} of this {@code ByteBuf} to 0.
 	 */
 	public void rewind() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		tail = 0;
 		head = 0;
 	}
@@ -307,13 +322,14 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	// byte buffers
+
 	/**
 	 * Wraps this {@code ByteBuf} into Java's {@link ByteBuffer} ready to read.
 	 *
 	 * @return {@link ByteBuffer} ready to read
 	 */
 	public ByteBuffer toReadByteBuffer() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return ByteBuffer.wrap(array, head, readRemaining());
 	}
 
@@ -323,7 +339,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @return {@link ByteBuffer} ready to write
 	 */
 	public ByteBuffer toWriteByteBuffer() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return ByteBuffer.wrap(array, tail, writeRemaining());
 	}
 
@@ -333,7 +349,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @param byteBuffer {@link ByteBuffer} to be unwrapped
 	 */
 	public void ofReadByteBuffer(ByteBuffer byteBuffer) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == tail;
 		head = byteBuffer.position();
@@ -345,7 +361,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @param byteBuffer {@link ByteBuffer} to be unwrapped
 	 */
 	public void ofWriteByteBuffer(ByteBuffer byteBuffer) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert array == byteBuffer.array();
 		assert byteBuffer.limit() == array.length;
 		tail = byteBuffer.position();
@@ -381,7 +397,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public int head() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return head;
 	}
 
@@ -389,10 +405,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Sets {@link #head} if this {@code ByteBuf} is not recycled.
 	 *
 	 * @param pos the value which will be assigned to the {@link #head}.
-	 *               Must be smaller or equal to {@link #tail}
+	 *            Must be smaller or equal to {@link #tail}
 	 */
 	public void head(int pos) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert pos <= tail;
 		head = pos;
 	}
@@ -404,7 +420,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public int tail() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return tail;
 	}
 
@@ -412,11 +428,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Sets {@link #tail} if this {@code ByteBuf} is not recycled.
 	 *
 	 * @param pos the value which will be assigned to the {@link #tail}.
-	 *               Must be bigger or equal to {@link #head}
-	 *               and smaller than length of the {@link #array}
+	 *            Must be bigger or equal to {@link #head}
+	 *            and smaller than length of the {@link #array}
 	 */
 	public void tail(int pos) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert pos >= head && pos <= array.length;
 		tail = pos;
 	}
@@ -430,7 +446,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 *              and smaller or equal to {@link #tail}
 	 */
 	public void moveHead(int delta) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert head + delta >= 0;
 		assert head + delta <= tail;
 		head += delta;
@@ -445,7 +461,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 *              and smaller or equal to the length of the {@link #array}
 	 */
 	public void moveTail(int delta) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert tail + delta >= head;
 		assert tail + delta <= array.length;
 		tail += delta;
@@ -459,7 +475,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public int readRemaining() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return tail - head;
 	}
 
@@ -471,7 +487,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public int writeRemaining() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return array.length - tail;
 	}
 
@@ -484,7 +500,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public boolean canRead() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return head != tail;
 	}
 
@@ -497,7 +513,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public boolean canWrite() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return tail != array.length;
 	}
 
@@ -508,7 +524,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @return {@code byte} value at the {@link #head}
 	 */
 	public byte get() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert head < tail;
 		return array[head++];
 	}
@@ -517,12 +533,12 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Returns byte from this {@code ByteBuf} which index is equal
 	 * to the passed value. Then increases {@link #head} by 1.
 	 *
-	 * @param  index index of the byte to be returned.
+	 * @param index index of the byte to be returned.
 	 * @return the {@code byte} at the specified position.
 	 */
 	@Contract(pure = true)
 	public byte at(int index) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return array[index];
 	}
 
@@ -535,7 +551,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public byte peek() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return array[head];
 	}
 
@@ -552,7 +568,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public byte peek(int offset) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert (head + offset) < tail;
 		return array[head + offset];
 	}
@@ -560,10 +576,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	/**
 	 * Drains bytes from this {@code ByteBuf} starting from current {@link #head}
 	 * to a given byte array with specified offset and length.
-	 *
+	 * <p>
 	 * This {@code ByteBuf} must be not recycled.
 	 *
-	 * @param array array to which bytes will be drained to
+	 * @param array  array to which bytes will be drained to
 	 * @param offset starting position in the destination data.
 	 *               The sum of the value and the {@code length} parameter
 	 *               must be smaller or equal to {@link #array} length
@@ -574,7 +590,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @return number of bytes that were drained.
 	 */
 	public int drainTo(@NotNull byte[] array, int offset, int length) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert length >= 0 && (offset + length) <= array.length;
 		assert head + length <= tail;
 		System.arraycopy(this.array, head, array, offset, length);
@@ -588,7 +604,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @see #drainTo(byte[], int, int)
 	 */
 	public int drainTo(@NotNull ByteBuf buf, int length) {
-		assert !buf.isRecycled();
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert buf.tail + length <= buf.array.length;
 		drainTo(buf.array, buf.tail, length);
 		buf.tail += length;
@@ -600,11 +616,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * {@link #array} if this {@code ByteBuf} is not recycled.
 	 *
 	 * @param index the index of the {@link #array} where
-	 *                 the given {@code byte} will be set
-	 * @param b the byte to be set at the given index of the {@link #array}
+	 *              the given {@code byte} will be set
+	 * @param b     the byte to be set at the given index of the {@link #array}
 	 */
 	public void set(int index, byte b) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		array[index] = b;
 	}
 
@@ -623,7 +639,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * Puts given ByteBuf to this {@code ByteBuf} from the {@link #tail}
 	 * and increases the {@link #tail} by the length of the given ByteBuf.
 	 * Then equates ByteBuf's {@link #head} to {@link #tail}.
-	 *
+	 * <p>
 	 * Only those bytes which are located between {@link #head}
 	 * and {@link #tail} are put to the {@link #array}.
 	 *
@@ -633,7 +649,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		put(buf.array, buf.head, buf.tail - buf.head);
 		buf.head = buf.tail;
 	}
-
 
 	/**
 	 * Puts given byte array to the {@link #array} at the {@link #tail}
@@ -645,25 +660,24 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		put(bytes, 0, bytes.length);
 	}
 
-
 	/**
 	 * Puts given byte array to the {@link ByteBuf} from the {@link #tail}
 	 * with given offset.
 	 * Increases the {@link #tail} by the length of the given array.
-	 *
+	 * <p>
 	 * This {@link ByteBuf} must be not recycled.
 	 * Its length must be greater or equal to the sum of its {@link #tail}
 	 * and the length of the byte array which will be put in it.
 	 * Also, the sum of the provided offset and length of the byte array which will
 	 * be put to the {@link #array} must smaller or equal to the whole length of the byte array.
 	 *
-	 * @param bytes the byte array which will be put to the {@link #array}
+	 * @param bytes  the byte array which will be put to the {@link #array}
 	 * @param offset value of the offset in the byte array
 	 * @param length length of the byte array which
-	 *                  will be put to the {@link #array}
+	 *               will be put to the {@link #array}
 	 */
 	public void put(@NotNull byte[] bytes, int offset, int length) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert tail + length <= array.length;
 		assert offset + length <= bytes.length;
 		System.arraycopy(bytes, offset, array, tail, length);
@@ -672,7 +686,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	/**
 	 * Finds the given value in the {@link #array} and returns its position.
-	 *
+	 * <p>
 	 * This {@code ByteBuf} must be not recycled.
 	 *
 	 * @param b the {@code byte} which is to be found in the {@link #array}
@@ -680,13 +694,12 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * returns -1
 	 */
 	public int find(byte b) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		for (int i = head; i < tail; i++) {
 			if (array[i] == b) return i;
 		}
 		return -1;
 	}
-
 
 	/**
 	 * Finds the given byte array in the {@link #array} and returns its position.
@@ -705,13 +718,13 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * This {@link ByteBuf} must be not recycled.
 	 *
 	 * @param bytes the byte array which is to be found in the {@link #array}
-	 * @param off offset in the byte array
-	 * @param len amount of the bytes to be found
+	 * @param off   offset in the byte array
+	 * @param len   amount of the bytes to be found
 	 * @return the position of byte array in the {@link #array}. If the byte wasn't found,
 	 * returns -1
 	 */
 	public int find(@NotNull byte[] bytes, int off, int len) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		L:
 		for (int pos = head; pos <= tail - len; pos++) {
 			for (int i = 0; i < len; i++) {
@@ -727,7 +740,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	/**
 	 * Checks if provided array is equal to the readable bytes of the {@link #array}.
 	 *
-	 * @param array byte array to be compared with the {@link #array}
+	 * @param array  byte array to be compared with the {@link #array}
 	 * @param offset offset value for the provided byte array
 	 * @param length amount of the bytes to be compared
 	 * @return {@code true} if the byte array is equal to the array, otherwise {@code false}
@@ -815,21 +828,20 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		return string;
 	}
 
-
 	// region serialization input
 
 	public int read(@NotNull byte[] b) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return read(b, 0, b.length);
 	}
 
 	public int read(@NotNull byte[] b, int off, int len) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return drainTo(b, off, len);
 	}
 
 	public byte readByte() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return array[head++];
 	}
 
@@ -838,24 +850,24 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public char readChar() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		char c = (char) (((array[head] & 0xFF) << 8) | (array[head + 1] & 0xFF));
 		head += 2;
 		return c;
 	}
 
 	public double readDouble() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return Double.longBitsToDouble(readLong());
 	}
 
 	public float readFloat() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return Float.intBitsToFloat(readInt());
 	}
 
 	public int readInt() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		int result = ((array[head] & 0xFF) << 24)
 				| ((array[head + 1] & 0xFF) << 16)
 				| ((array[head + 2] & 0xFF) << 8)
@@ -865,7 +877,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public int readVarInt() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		int result;
 		byte b = array[head];
 		if (b >= 0) {
@@ -901,7 +913,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public long readLong() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		long result = ((long) array[head] << 56)
 				| ((long) (array[head + 1] & 0xFF) << 48)
 				| ((long) (array[head + 2] & 0xFF) << 40)
@@ -915,7 +927,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public short readShort() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		short result = (short) (((array[head] & 0xFF) << 8)
 				| (array[head + 1] & 0xFF));
 		head += 2;
@@ -923,7 +935,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public long readVarLong() {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		long result = 0;
 		for (int offset = 0; offset < 64; offset += 7) {
 			byte b = readByte();
@@ -937,46 +949,46 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	// region serialization output
 	public void write(@NotNull byte[] b) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		write(b, 0, b.length);
 	}
 
 	public void write(@NotNull byte[] b, int off, int len) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		System.arraycopy(b, off, array, tail, len);
 		tail = tail + len;
 	}
 
 	public void writeBoolean(boolean v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		writeByte(v ? (byte) 1 : 0);
 	}
 
 	public void writeByte(byte v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		array[tail] = v;
 		tail = tail + 1;
 	}
 
 	public void writeChar(char v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		array[tail] = (byte) (v >>> 8);
 		array[tail] = (byte) v;
 		tail = tail + 2;
 	}
 
 	public void writeDouble(double v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		writeLong(Double.doubleToLongBits(v));
 	}
 
 	public void writeFloat(float v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		writeInt(Float.floatToIntBits(v));
 	}
 
 	public void writeInt(int v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		array[tail] = (byte) (v >>> 24);
 		array[tail + 1] = (byte) (v >>> 16);
 		array[tail + 2] = (byte) (v >>> 8);
@@ -985,7 +997,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public void writeLong(long v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		int high = (int) (v >>> 32);
 		int low = (int) v;
 		array[tail] = (byte) (high >>> 24);
@@ -1000,14 +1012,14 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public void writeShort(short v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		array[tail] = (byte) (v >>> 8);
 		array[tail + 1] = (byte) v;
 		tail = tail + 2;
 	}
 
 	public void writeVarInt(int v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		if ((v & ~0x7F) == 0) {
 			array[tail] = (byte) v;
 			tail += 1;
@@ -1041,7 +1053,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	}
 
 	public void writeVarLong(long v) {
-		assert !isRecycled() : "Attempt to use recycled bytebuf";
+		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		if ((v & ~0x7F) == 0) {
 			array[tail] = (byte) v;
 			tail += 1;

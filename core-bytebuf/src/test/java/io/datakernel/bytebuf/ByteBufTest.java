@@ -21,7 +21,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -141,13 +140,10 @@ public class ByteBufTest {
 			assertEquals(AssertionError.class, e.getClass());
 		}
 
-		buf = ByteBufPool.allocate(300);
-		buf.tail(BYTES.length);
-		byte[] bytes = new byte[BYTES.length];
-		buf.drainTo(bytes, 0, bytes.length);
-		assertArrayEquals(bytes, BYTES);
+		ByteBuf buf2 = ByteBufPool.allocate(300);
+		assertNotEquals(buf, buf2);
 
-		buf.recycle();
+		ByteBufPool.clear();
 	}
 
 	@Test
