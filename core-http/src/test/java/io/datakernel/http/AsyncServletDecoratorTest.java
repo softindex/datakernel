@@ -137,7 +137,7 @@ public class AsyncServletDecoratorTest {
 	public void testOnException() {
 		AsyncServlet servlet = onException((request, throwable) -> assertEquals(throwable.getClass(), HttpException.class))
 				.serve(request -> Promise.ofException(new HttpException(202)));
-		awaitException(servlet.serveAsync(null));
+		awaitException(servlet.serveAsync(HttpRequest.get("http://test.com")));
 	}
 
 	@Test
@@ -147,7 +147,7 @@ public class AsyncServletDecoratorTest {
 				mapException(throwable -> HttpResponse.ofCode(200)))
 				.serve(request -> Promise.ofException(new HttpException(300)));
 
-		HttpResponse response = await(servlet.serveAsync(null));
+		HttpResponse response = await(servlet.serveAsync(HttpRequest.get("http://test.com")));
 		assertEquals(response.getCode(), 200);
 	}
 
@@ -169,7 +169,7 @@ public class AsyncServletDecoratorTest {
 					throw new UncheckedException(new NullPointerException());
 				});
 
-		NullPointerException throwable = awaitException(servlet.serveAsync(null));
+		NullPointerException throwable = awaitException(servlet.serveAsync(HttpRequest.get("http://test.com")));
 		assertNotNull(throwable);
 	}
 
@@ -179,7 +179,7 @@ public class AsyncServletDecoratorTest {
 		AsyncServlet servlet = mapException(e -> e == exception, $ -> HttpResponse.ok200().withBody("Test".getBytes(UTF_8)))
 				.serve($ -> Promise.ofException(exception));
 
-		HttpResponse response = await(servlet.serveAsync(null));
+		HttpResponse response = await(servlet.serveAsync(HttpRequest.get("http://test.com")));
 		assertEquals(200, response.getCode());
 
 		ByteBuf body = await(response.loadBody());
