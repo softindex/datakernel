@@ -23,7 +23,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Represents an asynchronous consumer that consumes data items.
@@ -43,7 +42,7 @@ public interface AsyncConsumer<T> {
 	 * Wraps standard Java's {@link Consumer} interface.
 	 *
 	 * @param consumer - Java's {@link Consumer} of Promises
-	 * @return {@link AsyncSupplier} that works on top of standard Java's {@link Supplier} interface
+	 * @return {@link AsyncConsumer} that works on top of standard Java's {@link Consumer} interface
 	 */
 	@NotNull
 	static <T> AsyncConsumer<T> of(@NotNull Consumer<? super T> consumer) {

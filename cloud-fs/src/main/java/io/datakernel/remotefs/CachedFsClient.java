@@ -43,7 +43,7 @@ import static io.datakernel.common.Preconditions.*;
 /**
  * Represents a cached filesystem client which is an implementation of {@link FsClient}.
  * Cached filesystem client works on top of two {@link FsClient}s.
- * First is main client, which is potentially slow, but contains nessesary data. Typically it's a {@link RemoteFsClient}
+ * First is main client, which is potentially slow, but contains necessary data. Typically it's a {@link RemoteFsClient}
  * which connects to a remote server.
  * It is backed up by second one, which acts as a cache folder, typically it is a local filesystem client ({@link LocalFsClient})
  * Cache replacement policy is defined by supplying a {@link Comparator} of {@link FullCacheStat}.
@@ -251,7 +251,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	/**
 	 * Deletes file both on server and in cache folder
 	 *
-	 * @return promise of {@link Void} that represents succesfull deletion
+	 * @return promise of {@link Void} that represents successfulll deletion
 	 */
 	@Override
 	public Promise<Void> delete(String name, long revision) {

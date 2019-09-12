@@ -348,7 +348,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 									.toTry();
 						}))
 				.then(tries -> {
-					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter succesfull connections
+					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter successfulll connections
 							.filter(Try::isSuccess)
 							.map(Try::get)
 							.collect(toList());

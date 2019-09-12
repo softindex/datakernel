@@ -232,7 +232,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	/**
-	 * This method is used for handling handshake routine as well as sending close_notify message to recepient
+	 * This method is used for handling handshake routine as well as sending close_notify message to recipient
 	 */
 	private void doHandshake() throws SSLException {
 		SSLEngineResult result = null;
@@ -364,7 +364,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		if (!isOpen()) return;
 		if (!engine.isOutboundDone()) {
 			engine.closeOutbound();
-			sync(); // sync is used here to send close_notify message to recepient (will be sent once)
+			sync(); // sync is used here to send close_notify message to recipient (will be sent once)
 		}
 		recycleByteBufs();
 		upstream.close(e);

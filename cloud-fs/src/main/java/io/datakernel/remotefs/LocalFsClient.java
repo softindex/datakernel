@@ -373,7 +373,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 	@Override
 	public Promise<Void> ping() {
-		return Promise.complete(); // local fs is always awailable
+		return Promise.complete(); // local fs is always available
 	}
 
 	@Override

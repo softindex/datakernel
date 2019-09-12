@@ -20,10 +20,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 /**
- * Adapter which creates a new ConcurrentServices from other instances for
+ * Adapter which creates a new CompletableFutures from other instances for
  * working with {@link ServiceGraph}
  *
- * @param <V> type of service from which you need create ConcurrentService
+ * @param <V> type of service from which you need create CompletableFuture
  */
 public interface ServiceAdapter<V> {
 	CompletableFuture<?> start(V instance, Executor executor);

@@ -46,7 +46,7 @@ import static java.lang.Short.reverseBytes;
 
 /**
  * This is a channel transformer, that converts channels of {@link ByteBuf ByteBufs}
- * decompressing the data using the DEFALTE algorithm with standard implementation from the java.util.zip package.
+ * decompressing the data using the DEFLATE algorithm with standard implementation from the java.util.zip package.
  * <p>
  * It is used in HTTP when {@link io.datakernel.http.HttpMessage#setBodyGzipCompression HttpMessage#setBodyGzipCompression}
  * method is used.

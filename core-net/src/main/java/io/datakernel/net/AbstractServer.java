@@ -55,7 +55,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 /**
  * This is an implementation of {@link EventloopServer}.
  * It is a non-blocking server which works on top of the eventloop.
- * Thus it runs in the eventlop thread, and all events are fired on that thread.
+ * Thus it runs in the eventloop thread, and all events are fired on that thread.
  * <p>
  * This is simply a higher-level wrapper around eventloop {@link Eventloop#listen} call.
  */
@@ -210,7 +210,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	}
 
 	/**
-	 * Begins listening asyncronously for incoming connections.
+	 * Begins listening asynchronously for incoming connections.
 	 * Creates an {@link ServerSocketChannel} for each listening address and registers them in
 	 * {@link Eventloop Eventloop} {@link java.nio.channels.Selector selector}.
 	 * Eventloop then asynchronously listens for network events and dispatches them to their listeners (us).

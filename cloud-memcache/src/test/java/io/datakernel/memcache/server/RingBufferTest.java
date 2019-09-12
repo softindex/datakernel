@@ -1,6 +1,6 @@
 package io.datakernel.memcache.server;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -105,7 +105,7 @@ public class RingBufferTest {
 		for (int i = 0; i < amountBuffers; i++) {
 			byte[] key = new byte[i];
 
-			ByteBuf byteBuf = ringBuffer.get(key);
+			Slice byteBuf = ringBuffer.get(key);
 			byte[] array = byteBuf != null ? byteBuf.array() : null;
 			if (array == null) {
 				fail();

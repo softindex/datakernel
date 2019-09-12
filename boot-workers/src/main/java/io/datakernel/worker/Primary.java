@@ -10,7 +10,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Annotation marker for binding one object which is 'primary' of its kind.
- * For example, primary evenloop among worker eventloops and so on.
+ * For example, primary eventloop among worker eventloops and so on.
  */
 @NameAnnotation
 @Target({FIELD, PARAMETER, METHOD})

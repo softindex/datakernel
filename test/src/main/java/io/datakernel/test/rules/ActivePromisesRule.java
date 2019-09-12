@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link TestRule} that fails if not all active promises have been completed either succesfully or exceptionally.
+ * {@link TestRule} that fails if not all active promises have been completed either successfullly or exceptionally.
  * Promises to be monitored should have either a {@link TestUtils#assertComplete()}
  * listener attached
  */

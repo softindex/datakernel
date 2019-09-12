@@ -232,7 +232,7 @@ public interface FsClient {
 	}
 
 	/**
-	 * Shrtcut to get {@link FileMetadata metadata} of a single file or tombstone.
+	 * Shortcut to get {@link FileMetadata metadata} of a single file or tombstone.
 	 *
 	 * @param name name of a file to fetch its metadata.
 	 * @return promise of file description or <code>null</code>

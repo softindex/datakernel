@@ -407,7 +407,6 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	 * returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return new {@code Promise}
 	 */
 	@Contract(" _ -> this")
 	@NotNull
@@ -419,7 +418,6 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	 * returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return new {@code Promise}
 	 */
 	@Contract(" _ -> this")
 	@NotNull
@@ -431,7 +429,6 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	 * and returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return new {@code Promise}
 	 */
 	@Contract(" _ -> this")
 	@NotNull
@@ -443,7 +440,6 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	 * and returns a new {@code Promise}.
 	 *
 	 * @param action to be executed
-	 * @return new {@code Promise}
 	 */
 	@Contract("_ -> this")
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);

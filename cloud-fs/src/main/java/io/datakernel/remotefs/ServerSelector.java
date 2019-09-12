@@ -8,7 +8,7 @@ import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Strategy interface, which desides what file goes on which server from given ones.
+ * Strategy interface, which decides what file goes on which server from given ones.
  */
 @FunctionalInterface
 public interface ServerSelector {

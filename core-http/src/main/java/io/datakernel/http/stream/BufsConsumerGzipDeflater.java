@@ -30,7 +30,7 @@ import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}
- * compressing the data using the DEFALTE algorithm with standard implementation from the java.util.zip package.
+ * compressing the data using the DEFLATE algorithm with standard implementation from the java.util.zip package.
  * <p>
  * It is used in HTTP when {@link io.datakernel.http.HttpMessage#setBodyGzipCompression HttpMessage#setBodyGzipCompression}
  * method is used.

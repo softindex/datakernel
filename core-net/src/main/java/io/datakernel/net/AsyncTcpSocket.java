@@ -41,24 +41,24 @@ import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
  */
 public interface AsyncTcpSocket extends Cancellable {
 	/**
-	 * Operation to read some data from network. Returns a promise of a bytebuf that represents some data recieved
+	 * Operation to read some data from network. Returns a promise of a bytebuf that represents some data received
 	 * from network.
 	 * <p>
 	 * It is allowed to call read before previous read was completed.
 	 * However, each consecutive call will cancel all of the previous calls (they will not be completed).
 	 *
-	 * @return promise of ByteBuf that represents data recieved from network
+	 * @return promise of ByteBuf that represents data received from network
 	 */
 	@NotNull
 	Promise<ByteBuf> read();
 
 	/**
-	 * Operation to write some data to network. Returns a promise of void that represents succesfull write.
+	 * Operation to write some data to network. Returns a promise of void that represents successfulll write.
 	 * <p>
-	 * Many write operations may be called. However, when some write is succesful, all of the promises received from write calls before it will be completed at once.
+	 * Many write operations may be called. However, when some write is successfull, all of the promises received from write calls before it will be completed at once.
 	 *
 	 * @param buf data to be sent to network
-	 * @return promise that represents succesful write operation
+	 * @return promise that represents successfull write operation
 	 */
 	@NotNull
 	Promise<Void> write(@Nullable ByteBuf buf);

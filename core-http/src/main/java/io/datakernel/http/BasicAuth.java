@@ -35,9 +35,9 @@ public final class BasicAuth implements AsyncServlet {
 	private final BiFunction<String, String, Promise<Boolean>> credentialsLookup;
 
 	private Function<HttpResponse, HttpResponse> failureResponse =
-			request -> request
+			response -> response
 					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8))
-					.withBody("Authentification is required".getBytes(UTF_8));
+					.withBody("Authentication is required".getBytes(UTF_8));
 
 	public BasicAuth(AsyncServlet next, String realm, BiFunction<String, String, Promise<Boolean>> credentialsLookup) {
 		this.next = next;
