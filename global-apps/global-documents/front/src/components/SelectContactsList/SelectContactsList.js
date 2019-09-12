@@ -13,24 +13,28 @@ function SelectContactsListView({
                                   participants,
                                   filteredContacts,
                                   onContactToggle,
+                                  onRemoveContact,
                                   search,
+                                  searchReady,
                                   searchContacts,
                                   publicKey
                                 }) {
-  return ( //TODO
+  return (
     <div className={classes.chatsList}>
       <List subheader={<li/>}>
         {filteredContacts.length > 0 && (
           <li>
             <List className={classes.innerUl}>
               <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
-              {filteredContacts.map(([publicKey]) =>
+              {filteredContacts
+                //.sort((a, b) => a[1].name.localeCompare(b[1].name))
+                .map(([publicKey]) =>
                 <ContactItem
                   selected={participants.has(publicKey)}
                   onClick={onContactToggle.bind(this, publicKey)}
-                  username={names.get(publicKey)}
-                  firstName=''
-                  lastName=''
+                  primaryName={names.get(publicKey)}
+                  showDeleteButton={true}
+                  onRemoveContact={onRemoveContact.bind(this, publicKey)}
                 />
               )}
             </List>
@@ -41,20 +45,21 @@ function SelectContactsListView({
             <List className={classes.innerUl}>
               <ListSubheader className={classes.listSubheader}>People</ListSubheader>
               {[...searchContacts]
+                //.sort((a, b) => a[1].name.localeCompare(b[1].name))
                 .map(([publicKey, contact]) => (
                   <ContactItem
-                    username={contact.username}
-                    firstName={contact.firstName}
-                    lastName={contact.lastName}
                     selected={participants.has(publicKey)}
                     onClick={onContactToggle.bind(this, publicKey)}
+                    primaryName={contact.firstName + ' ' + contact.lastName}
+                    username={contact.username}
+                    onRemoveContact={onRemoveContact.bind(this, publicKey)}
                   />
                 ))}
             </List>
           </li>
         )}
       </List>
-      {(searchContacts.size === 0 && search !== '') && (
+      {(searchContacts.size === 0 && search !== '' && searchReady) && (
         <InviteButton publicKey={publicKey}/>
       )}
     </div>
@@ -65,20 +70,24 @@ function SelectContactsList({
                               classes,
                               search,
                               searchContacts,
+                              searchReady,
                               contacts,
                               participants,
                               onContactToggle,
                               publicKey,
-                              names
+                              names,
+                              onRemoveContact
                             }) {
   const props = {
     classes,
     participants,
     search,
     searchContacts,
+    searchReady,
     onContactToggle,
     names,
     publicKey,
+    onRemoveContact,
 
     filteredContacts: [...contacts]
       .filter(([contactPublicKey]) => {

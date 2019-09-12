@@ -24,6 +24,7 @@ function CreateChatDialogView({
                                 loading,
                                 onSubmit,
                                 onContactToggle,
+                                onRemoveContact,
                                 contacts,
                                 names,
                                 name,
@@ -82,11 +83,13 @@ function CreateChatDialogView({
             <SelectContactsList
               search={search}
               searchContacts={searchContacts}
+              searchReady={searchReady}
               participants={participants}
               contacts={contacts}
               loading={loading}
               publicKey={publicKey}
               onContactToggle={onContactToggle}
+              onRemoveContact={onRemoveContact}
               names={names}
             />
           </DialogContent>
@@ -127,7 +130,7 @@ function CreateChatDialogView({
   );
 }
 
-function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar}) {
+function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar, closeSnackbar}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
@@ -229,6 +232,18 @@ function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar
       }
 
       setParticipants(participants);
+    },
+
+    onRemoveContact(publicKey) {
+      return contactsService.removeContact(publicKey)
+        .then(() => {
+          setTimeout(() => closeSnackbar(), 1000);
+        })
+        .catch(error => {
+          enqueueSnackbar(error.message, {
+            variant: 'error'
+          })
+        })
     }
   };
 

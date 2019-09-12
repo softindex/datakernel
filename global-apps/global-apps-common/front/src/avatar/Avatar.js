@@ -10,7 +10,7 @@ function Avatar({classes, name, selected}) {
   return (
     <ListItemAvatar className={classes.avatar}>
       <Badge
-        invisible={selected}
+        invisible={!selected}
         color="primary"
         variant="dot"
       >

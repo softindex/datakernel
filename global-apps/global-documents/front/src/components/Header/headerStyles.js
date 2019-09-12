@@ -5,18 +5,18 @@ const headerStyles = theme => ({
   },
   documentTitleContainer: {
     display: 'flex',
-    marginLeft: theme.spacing(14),
     flexGrow: 1,
-    flexDirection: 'row-reverse'
+    overflow: 'hidden'
   },
   title: {
     marginLeft: theme.spacing(3),
+    minWidth: theme.spacing(37)
   },
   documentTitle: {
-    fontSize: '1rem',
     flexGrow: 1,
-    display: 'flex',
-    alignItems: 'center'
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: 'flex'
   },
   iconButton: {
     '&:hover': {

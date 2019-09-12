@@ -8,10 +8,9 @@ function AfterAuthRedirect({history}) {
   useEffect(() => {
     if (redirectURI !== '/') {
       history.push(path.join(redirectURI));
+      localStorage.removeItem('redirectURI');
     }
   }, [redirectURI]);
-
-  localStorage.clear();
 
   return <Redirect to='/'/>;
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import path from 'path';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import Dialog from '../Dialog/Dialog'
@@ -10,6 +11,7 @@ import DialogContentText from "@material-ui/core/DialogContentText";
 import deleteDocumentStyles from "./deleteDocumentStyles";
 import {getInstance} from "global-apps-common";
 import DocumentsService from "../../modules/documents/DocumentsService";
+import {withRouter} from "react-router-dom";
 
 function DeleteDocumentDialogView({classes, onClose, onDelete}) {
   return (
@@ -40,7 +42,7 @@ function DeleteDocumentDialogView({classes, onClose, onDelete}) {
   );
 }
 
-function DeleteDocumentDialog({classes, documentId, onClose, enqueueSnackbar, closeSnackbar}) {
+function DeleteDocumentDialog({classes, documentId, onClose, history, match, enqueueSnackbar, closeSnackbar}) {
   const documentsService = getInstance(DocumentsService);
 
   const props = {
@@ -50,7 +52,11 @@ function DeleteDocumentDialog({classes, documentId, onClose, enqueueSnackbar, cl
     onDelete() {
       enqueueSnackbar('Deleting...');
       return documentsService.deleteDocument(documentId)
-        .then(() => {
+        .then((documentKey) => {
+          const {documentId} = match.params;
+          if (documentKey === documentId) {
+            history.push(path.join('/document', ''));
+          }
           setTimeout(() => closeSnackbar(), 1000);
         })
         .catch(error => {
@@ -65,4 +71,8 @@ function DeleteDocumentDialog({classes, documentId, onClose, enqueueSnackbar, cl
   return <DeleteDocumentDialogView {...props}/>
 }
 
-export default withSnackbar(withStyles(deleteDocumentStyles)(DeleteDocumentDialog));
+export default withRouter(
+  withSnackbar(
+    withStyles(deleteDocumentStyles)(DeleteDocumentDialog)
+  )
+);

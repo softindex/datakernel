@@ -5,9 +5,6 @@ import Typography from '@material-ui/core/Typography';
 import DocumentsList from "../DocumentsList/DocumentsList";
 import {getInstance, useService} from "global-apps-common";
 import DocumentsService from "../../modules/documents/DocumentsService";
-import TextField from "@material-ui/core/TextField";
-import SearchIcon from "@material-ui/icons/Search";
-import InputAdornment from "@material-ui/core/InputAdornment";
 import Search from "../Search/Search";
 
 function SideBarView({classes, documents, documentsReady, search, onSearchChange}) {

@@ -41,7 +41,7 @@ function DocumentItem({classes, document, documentId, match, showMenuIcon, onCli
           className={classes.link}
         >
           <Avatar
-            selected={true}
+            selected={false}
             name={document.name}
           />
           <ListItemText

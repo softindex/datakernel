@@ -1,5 +1,5 @@
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import {ROOT_COMMIT_ID, Service} from "global-apps-common";
+import {ROOT_COMMIT_ID, Service, delay} from "global-apps-common";
 import InsertOperation from "./ot/InsertOperation";
 import DeleteOperation from "./ot/DeleteOperation";
 import serializer from "./ot/serializer";
@@ -14,8 +14,8 @@ class DocumentService extends Service {
       ready: false,
     });
     this._documentOTStateManager = documentOTStateManager;
-    this._reconnectTimeout = null;
-    this._resyncTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
     this._isNew = isNew;
   }
 
@@ -38,9 +38,12 @@ class DocumentService extends Service {
     } catch (err) {
       console.log(err);
 
-      const delay = this._retryDelay();
-      this._reconnectTimeout = delay.timeoutId;
-      await delay.promise;
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
 
       await this.init();
       return;
@@ -52,8 +55,12 @@ class DocumentService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
-    clearTimeout(this._resyncTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._documentOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -85,14 +92,6 @@ class DocumentService extends Service {
     this._sync();
   }
 
-  _retryDelay() {
-    let timeoutId;
-    const promise = new Promise(resolve => {
-      timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-    return {timeoutId, promise};
-  }
-
   async _sync() {
     try {
       await this._documentOTStateManager.sync();
@@ -101,11 +100,12 @@ class DocumentService extends Service {
       }
     } catch (err) {
       console.log(err);
-
-      const delay = this._retryDelay();
-      this._resyncTimeout = delay.timeoutId;
-      await delay.promise;
-
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }
