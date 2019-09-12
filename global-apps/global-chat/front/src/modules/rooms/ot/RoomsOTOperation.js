@@ -11,8 +11,8 @@ class RoomsOTOperation {
   static EMPTY = new RoomsOTOperation(null, [], false);
 
   static createFromJson(json) {
-    const room = json['shared repo'];
-    return new RoomsOTOperation(room.id, room.participants, json.remove);
+    const room = json.value['shared repo'];
+    return new RoomsOTOperation(room.id, room.participants, json.value.remove);
   }
 
   apply(state) {
@@ -45,11 +45,15 @@ class RoomsOTOperation {
 
   toJSON() {
     return {
-      'shared repo': {
-        id: this._roomId,
-        participants: this._participants
-      },
-      remove: this._removed
+      type: 'CreateOrDropRepo',
+      value: {
+        'shared repo': {
+          id: this._roomId,
+          name: '', // TODO Add names to operation
+          participants: this._participants
+        },
+        remove: this._removed
+      }
     };
   }
 }

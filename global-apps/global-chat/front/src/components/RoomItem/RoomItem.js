@@ -61,7 +61,7 @@ class RoomItem extends React.Component {
             className={classes.link}
           >
             <Avatar
-              selected={!this.props.selected}
+              selected={this.props.selected}
               name={roomName}
             />
             <ListItemText

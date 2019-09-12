@@ -18,7 +18,6 @@ const documentsSerializer = {
       default:
         return value;
     }
-
   }
 };
 

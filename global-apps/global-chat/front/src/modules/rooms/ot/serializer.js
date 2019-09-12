@@ -6,7 +6,13 @@ const roomsSerializer = {
   },
 
   deserialize(value) {
-    return RoomsOTOperation.createFromJson(value);
+   switch (value.type) {
+      // TODO case 'RenameRepo':
+      case 'CreateOrDropRepo':
+        return RoomsOTOperation.createFromJson(value);
+    }
+
+    throw new Error('Unknown type');
   }
 };
 

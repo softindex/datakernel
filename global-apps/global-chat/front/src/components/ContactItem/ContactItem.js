@@ -15,7 +15,7 @@ function ContactItem({username, firstName, lastName, onClick, classes, selected}
       button
     >
       <Avatar
-        selected={!selected}
+        selected={selected}
         name={getAppStoreContactName({firstName, lastName, username})}
       />
       <ListItemText
