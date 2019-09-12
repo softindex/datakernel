@@ -70,7 +70,7 @@ public final class HelloWorldExample {
 public final class HttpHelloWorldExample extends HttpServerLauncher { 
     @Provides
     AsyncServlet servlet() { 
-        return request -> Promise.of(ok200().withPlainText("Hello World"));
+        return request -> HttpResponse.ok200().withPlainText("Hello World");
     }
 
     public static void main(String[] args) throws Exception {
