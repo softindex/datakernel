@@ -364,6 +364,7 @@ public abstract class AbstractHttpConnection {
 
 		process.getProcessCompletion()
 				.whenComplete(($, e) -> {
+					if (isClosed()) return;
 					if (e == null) {
 						flags |= BODY_RECEIVED;
 						onBodyReceived();
