@@ -4,7 +4,7 @@
 
   <groupId>io.datakernel</groupId>
   <artifactId>uikernel-integration</artifactId>
-  <version>3.0.0-SNAPSHOT</version>
+  <version>3.0.0-beta2</version>
 
   <name>Examples : Tutorials : UIKernel-Integration</name>
 
@@ -17,12 +17,12 @@
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>http-launchers</artifactId>
-      <version>3.0.0-SNAPSHOT</version>
+      <version>3.0.0-beta2</version>
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-uikernel</artifactId>
-      <version>3.0.0-SNAPSHOT</version>
+      <version>3.0.0-beta2</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
