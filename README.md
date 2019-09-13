@@ -15,7 +15,7 @@ DataKernel is a full-featured alternative Java framework, created from ground up
 
 ## Features
 
-- 💕 Fully **asynchronous** modular framework
+- 💕 Natively **asynchronous** modular framework
 - 🧩 Exceptionally fast, powerful, and simple **Dependency Injection**
 - ⏱ Magnificently **fast build** and **start-up times** for your applications with **extremely small** JAR sizes
 - 🚀 A wide selection of application launchers and **embedded servers**
@@ -29,13 +29,7 @@ DataKernel is a full-featured alternative Java framework, created from ground up
 Just insert this snippet to your terminal...
 
 ```
-mvn archetype:generate \
-        -DarchetypeGroupId=io.datakernel                  \
-        -DarchetypeArtifactId=datakernel-http-archetype   \
-        -DarchetypeVersion=3.0.0-beta1                    \
-        -DgroupId=org.example                             \
-        -DartifactId=dkapp                                \
-        -DmainClassName=MyFirstDkApp 
+mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=http-archetype -DarchetypeVersion=3.0.0-beta2
 ```
 
 ... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 
@@ -52,7 +46,7 @@ public final class HelloWorldExample {
         AsyncHttpServer server = AsyncHttpServer.create(eventloop,
                 request -> Promise.of(
                         HttpResponse.ok200()
-                                .withPlainText("Hello world!")))
+                                .withPlainText("Hello, World!")))
                 .withListenPort(8080);
         server.listen();
         eventloop.run();
@@ -61,16 +55,14 @@ public final class HelloWorldExample {
 ```
 `AsyncHttpServer` is a built-in implementation of an HTTP server which asynchronously runs in a Node.js-inspired Event Loop.
 
-📌 *The JAR file size of this example is only 723KB*
+📌 *`AsyncHttpServer` is up to 20% faster than [multithreaded Vert.x server](https://github.com/networknt/microservices-framework-benchmark/tree/master/vertx), with 1/2 of CPU usage, on a single core!*
 
-📌 *`AsyncHttpServer` handles ~170K requests per second on a single core*
-
-### Even simpler asynchronous HTTP server:
+### Full-featured embedded web application server, with Dependency Injection:
 ```java
 public final class HttpHelloWorldExample extends HttpServerLauncher { 
     @Provides
     AsyncServlet servlet() { 
-        return request -> HttpResponse.ok200().withPlainText("Hello World");
+        return request -> HttpResponse.ok200().withPlainText("Hello, World!");
     }
 
     public static void main(String[] args) throws Exception {
@@ -87,6 +79,8 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 
 `Promise` - Node.js-inspired async single-threaded Promises, an alternative to `CompletableFuture`
 
+📌 *The JAR file size of this example is only 723KB, with no extra dependencies*
+
 📌 *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
 
 📌 *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 5.5 times faster than Guice and 100s times faster than Spring.*
@@ -96,10 +90,9 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 ### Lightning-fast RPC server:
 ```java
 ...
-public RpcServer rpcServer(Eventloop eventloop, Config config) {
+public RpcServer rpcServer(Eventloop eventloop) {
     return RpcServer.create(eventloop)
             .withStreamProtocol(...)
-            .withListenPort(config.get(ofInteger(), "rpc.server.port"))
             .withMessageTypes(Integer.class)
             .withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
 }
