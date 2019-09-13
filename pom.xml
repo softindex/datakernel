@@ -366,6 +366,7 @@
         <module>global-pm</module>
         <module>global-launchers</module>
         <module>global-apps</module>
+        <module>global-comm</module>
       </modules>
     </profile>
   </profiles>

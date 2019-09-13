@@ -5,7 +5,8 @@
                 <div class="card-header">Log in to proceed:</div>
                 <div class="card-body">
                     <a class="btn btn-outline-success"
-                       href="{{appStoreUrl}}/oauth?redirectURI=http://192.168.1.217:8080/{{pubKey}}/authorize?origin="
+                       href="{{appStoreUrl}}/oauth?redirectURI=http%3A//{{url.host}}/{{pubKey}}/authorize%3Forigin={{origin}}
+                    "
                        id="login_button">
                         Log In
                     </a>

@@ -90,7 +90,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@NotNull
 	public static HttpResponse redirect302(@NotNull String url) {
-		HttpResponse response = HttpResponse.ofCode(302);
+		HttpResponse response = new HttpResponse(302);
 		// RFC-7231, section 6.4.3 (https://tools.ietf.org/html/rfc7231#section-6.4.3)
 		response.addHeader(LOCATION, url);
 		return response;
@@ -111,7 +111,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@NotNull
 	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader) {
-		HttpResponse response = rangeHeader == null ? HttpResponse.ok200() : HttpResponse.ok206();
+		HttpResponse response = new HttpResponse(rangeHeader == null ? 200 : 206);
 
 		String localName = name.substring(name.lastIndexOf('/') + 1);
 		MediaType mediaType = MediaTypes.getByExtension(localName.substring(localName.lastIndexOf('.') + 1));
@@ -129,12 +129,18 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 				return Promise.ofException(HttpException.ofCode(416, "Invalid range header (not in bytes)"));
 			}
 			rangeHeader = rangeHeader.substring(6);
-			if (!rangeHeader.matches("(\\d+)?-(\\d+)?")) {
+			if (!rangeHeader.matches("(?:\\d+)?-(?:\\d+)?")) {
 				return Promise.ofException(HttpException.ofCode(416, "Only single part ranges are allowed"));
 			}
 			String[] parts = rangeHeader.split("-", 2);
 			long endOffset;
-			if (!parts[0].isEmpty()) {
+			if (parts[0].isEmpty()) {
+				if (parts[1].isEmpty()) {
+					return Promise.ofException(HttpException.ofCode(416, "Invalid range"));
+				}
+				offset = size - Long.parseLong(parts[1]);
+				endOffset = size;
+			} else {
 				if (parts[1].isEmpty()) {
 					offset = Long.parseLong(parts[0]);
 					endOffset = size - 1;
@@ -142,12 +148,6 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 					offset = Long.parseLong(parts[0]);
 					endOffset = Long.parseLong(parts[1]);
 				}
-			} else {
-				if (parts[1].isEmpty()) {
-					return Promise.ofException(HttpException.ofCode(416, "Invalid range"));
-				}
-				offset = size - Long.parseLong(parts[1]);
-				endOffset = size;
 			}
 			if (endOffset != -1 && offset > endOffset) {
 				return Promise.ofException(HttpException.ofCode(416, "Invalid range"));

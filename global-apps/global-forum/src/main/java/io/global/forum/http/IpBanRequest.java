@@ -1,6 +1,6 @@
 package io.global.forum.http;
 
-import io.global.forum.pojo.IpRange;
+import io.global.comm.pojo.IpRange;
 
 import java.time.Instant;
 

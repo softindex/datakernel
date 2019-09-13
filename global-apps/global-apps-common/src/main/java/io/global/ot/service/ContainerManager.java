@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
 
@@ -126,6 +127,6 @@ public final class ContainerManager<C extends UserContainer> implements Eventloo
 									.map(Tuple2::getValue1)
 									.collect(Collectors.toSet())));
 				})
-				.whenComplete(toLogger(logger, thisMethod()));
+				.whenComplete(toLogger(logger, TRACE, "sync"));
 	}
 }

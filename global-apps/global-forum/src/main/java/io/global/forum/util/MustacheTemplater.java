@@ -3,6 +3,7 @@ package io.global.forum.util;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.util.ref.Ref;
 import io.datakernel.writer.ByteBufWriter;
 
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ public final class MustacheTemplater {
 		staticContext.clear();
 	}
 
+	@SuppressWarnings("SuspiciousMethodCalls")
 	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
 		Map<String, Object> context = new HashMap<>(scope);
 		context.putAll(staticContext);
@@ -39,6 +41,9 @@ public final class MustacheTemplater {
 
 		for (Map.Entry<String, Object> entry : context.entrySet()) {
 			Object value = entry.getValue();
+			if (value instanceof Ref) {
+				entry.setValue(context.get(((Ref<?>) value).get()));
+			}
 			if (!(value instanceof Promise)) {
 				continue;
 			}

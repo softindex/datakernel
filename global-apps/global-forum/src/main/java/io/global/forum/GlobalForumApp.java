@@ -13,7 +13,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.forum.container.ForumRepoNames;
+import io.global.comm.container.CommRepoNames;
 import io.global.forum.container.ForumUserContainer;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.server.CommitStorage;
@@ -36,7 +36,7 @@ public final class GlobalForumApp extends Launcher {
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 	public static final String DEFAULT_FORUM_FS_DIR = "global-forum";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
-	public static final ForumRepoNames DEFAULT_FORUM_REPO_NAMES = ForumRepoNames.ofDefault("global-forum");
+	public static final CommRepoNames DEFAULT_FORUM_REPO_NAMES = CommRepoNames.ofDefault("global-forum");
 
 	@Inject
 	AsyncHttpServer server;

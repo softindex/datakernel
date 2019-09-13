@@ -17,6 +17,11 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
+      <artifactId>global-comm</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
       <artifactId>global-apps-common</artifactId>
       <version>${project.version}</version>
     </dependency>

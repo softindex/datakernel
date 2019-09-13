@@ -4,9 +4,9 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
-import io.global.forum.dao.ThreadDao;
-import io.global.forum.pojo.Attachment;
-import io.global.forum.pojo.AttachmentType;
+import io.global.comm.dao.ThreadDao;
+import io.global.comm.pojo.Attachment;
+import io.global.comm.pojo.AttachmentType;
 
 import java.util.Arrays;
 import java.util.Map;

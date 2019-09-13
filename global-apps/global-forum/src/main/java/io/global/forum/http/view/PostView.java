@@ -2,9 +2,9 @@ package io.global.forum.http.view;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.global.comm.dao.CommDao;
+import io.global.comm.pojo.*;
 import io.global.common.CryptoUtils;
-import io.global.forum.dao.ForumDao;
-import io.global.forum.pojo.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
@@ -12,14 +12,10 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import static io.datakernel.util.CollectorsEx.toMultimap;
-import static io.global.forum.pojo.ForumPrivilege.*;
 
 public final class PostView {
 	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
@@ -35,8 +31,7 @@ public final class PostView {
 	private final List<PostView> children;
 	private final Map<String, Set<AttachmentView>> attachments;
 
-	@Nullable
-	private final String emailMd5;
+	private final String avatarUrl;
 
 	@Nullable
 	private final String deletedBy;
@@ -47,7 +42,7 @@ public final class PostView {
 	private final boolean editedNow;
 
 	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp,
-			List<PostView> children, Map<String, Set<AttachmentView>> attachments, @Nullable String emailMd5, @Nullable String deletedBy,
+			List<PostView> children, Map<String, Set<AttachmentView>> attachments, String avatarUrl, @Nullable String deletedBy,
 			boolean editable, boolean deletedVisible, boolean editedNow) {
 		this.postId = postId;
 		this.author = author;
@@ -56,7 +51,7 @@ public final class PostView {
 		this.lastEditTimestamp = lastEditTimestamp;
 		this.children = children;
 		this.attachments = attachments;
-		this.emailMd5 = emailMd5;
+		this.avatarUrl = avatarUrl;
 		this.deletedBy = deletedBy;
 		this.editable = editable;
 		this.deletedVisible = deletedVisible;
@@ -96,9 +91,8 @@ public final class PostView {
 		return deletedBy;
 	}
 
-	@Nullable
-	public String getEmailMd5() {
-		return emailMd5;
+	public String getAvatarUrl() {
+		return avatarUrl;
 	}
 
 	public boolean isEditable() {
@@ -118,19 +112,22 @@ public final class PostView {
 	}
 
 	// TODO anton: add recursion hard stop condition (like >100 child depth) and proper view/pagination
-	public static Promise<PostView> from(ForumDao forumDao, Post post, @Nullable UserId currentUser, @Nullable String editedPostId) {
-		return Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(forumDao, p, currentUser, editedPostId)))
+	public static Promise<PostView> from(CommDao commDao, Post post, @Nullable UserId currentUser, @Nullable String editedPostId, boolean includeChildren) {
+		Promise<List<PostView>> childrenPromise = includeChildren ?
+				Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(commDao, p, currentUser, editedPostId, true))) :
+				Promise.of(Collections.<PostView>emptyList());
+		return childrenPromise
 				.then(children -> {
 					UserId deleterId = post.getDeletedBy();
-					Promise<@Nullable UserData> authorPromise = forumDao.getUser(post.getAuthor());
-					Promise<@Nullable UserData> deleterPromise = deleterId != null ? forumDao.getUser(deleterId) : Promise.of(null);
-					Promise<@Nullable UserData> currentPromise = currentUser != null ? forumDao.getUser(currentUser) : Promise.of(null);
+					Promise<@Nullable UserData> authorPromise = commDao.getUser(post.getAuthor());
+					Promise<@Nullable UserData> deleterPromise = deleterId != null ? commDao.getUser(deleterId) : Promise.of(null);
+					Promise<@Nullable UserData> currentPromise = currentUser != null ? commDao.getUser(currentUser) : Promise.of(null);
 					return Promises.toTuple(authorPromise, deleterPromise, currentPromise)
 							.map(users -> {
 								UserData author = users.getValue1();
 								UserData deleter = users.getValue2();
 								UserData current = users.getValue3();
-								UserRole role = current != null ? current.getRole() : UserRole.NONE;
+								UserRole role = current != null ? current.getRole() : UserRole.GUEST;
 
 								boolean own = post.getAuthor().equals(currentUser);
 								return new PostView(
@@ -141,24 +138,45 @@ public final class PostView {
 										format(post.getLastEditTimestamp()),
 										children,
 										convert(post.getAttachments()),
-										author != null ? md5(author.getEmail()) : null,
+										avatarUrl(author),
 										deleter != null ? deleter.getUsername() : null,
-										role.has(EDIT_ANY_POST) || own && role.has(EDIT_OWN_POST) && (deleterId == null || post.getAuthor().equals(deleterId)),
-										role.has(SEE_ANY_DELETED_POSTS) || own && role.has(SEE_OWN_DELETED_POSTS),
+										role.isPrivileged() || own && role.isKnown() && (deleterId == null || post.getAuthor().equals(deleterId)),
+										role.isPrivileged() || own && role.isKnown(),
 										post.getId().equals(editedPostId));
 							});
 				});
 	}
 
-	private static String md5(String str) {
-		MessageDigest md;
+	private static final MessageDigest MD5;
+
+	static {
 		try {
-			md = MessageDigest.getInstance("MD5");
-		} catch (NoSuchAlgorithmException e) {
-			throw new AssertionError(e);
+			MD5 = MessageDigest.getInstance("MD5");
+		} catch (NoSuchAlgorithmException ignored) {
+			throw new AssertionError("Apparently, MD5 algorithm does not exist");
 		}
-		md.update(str.getBytes());
-		return CryptoUtils.toHexString(md.digest());
+	}
+
+	private static String md5(@Nullable String str) {
+		if (str == null) {
+			return null;
+		}
+		// we are single-threaded so far
+//		synchronized (MD5) {
+		MD5.update(str.getBytes());
+		return CryptoUtils.toHexString(MD5.digest());
+//		}
+	}
+
+	private static String avatarUrl(@Nullable UserData data) {
+		if (data == null) {
+			return "https://gravatar.com/avatar?d=mp";
+		}
+		String email = data.getEmail();
+		if (email == null) {
+			return "https://gravatar.com/avatar?d=mp";
+		}
+		return "https://gravatar.com/avatar/" + md5(email) + "?d=identicon";
 	}
 
 	private static Map<String, Set<AttachmentView>> convert(Map<String, Attachment> attachments) {

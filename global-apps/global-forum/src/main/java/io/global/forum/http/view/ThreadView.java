@@ -2,10 +2,10 @@ package io.global.forum.http.view;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
-import io.global.forum.dao.ForumDao;
-import io.global.forum.dao.ThreadDao;
-import io.global.forum.pojo.ThreadMetadata;
-import io.global.forum.pojo.UserId;
+import io.global.comm.dao.CommDao;
+import io.global.comm.dao.ThreadDao;
+import io.global.comm.pojo.ThreadMetadata;
+import io.global.comm.pojo.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -38,14 +38,14 @@ public class ThreadView {
 		return root;
 	}
 
-	public static Promise<List<ThreadView>> from(ForumDao forumDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
+	public static Promise<List<ThreadView>> from(CommDao commDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
 		return Promises.toList(threads.entrySet().stream()
 				.map(e -> {
-					ThreadDao dao = forumDao.getThreadDao(e.getKey());
+					ThreadDao dao = commDao.getThreadDao(e.getKey());
 					return dao != null ?
 							dao.getPost("root")
 									.then(rootPost ->
-											PostView.from(forumDao, rootPost, currentUser, null)
+											PostView.from(commDao, rootPost, currentUser, null, false)
 													.map(post -> new ThreadView(e.getKey(), e.getValue(), post))) :
 							null;
 				})

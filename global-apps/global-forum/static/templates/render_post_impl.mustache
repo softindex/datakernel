@@ -21,8 +21,7 @@
         <div class="row">
             <div class="col-auto mx-3 text-center">
                 <div class="row" style="width: 64px; height: 64px;">
-                    <img class="rounded" alt="avatar" width="64"
-                         src="https://gravatar.com/avatar/{{emailMd5}}{{^emailMd5}}none{{/emailMd5}}">
+                    <img class="rounded" alt="avatar" width="64" src="{{avatarUrl}}">
                 </div>
                 <span class="row badge badge-primary badge-light text-wrap text-break">
                     {{author}}{{^author}}<i>ghost</i>{{/author}}
@@ -100,14 +99,14 @@
                             </form>
                         </div>
                     {{/editable}}
-                    {{#privileges.create_post}}
+                    {{#user.role.known}}
 
                         <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
                                 data-target="#reply_{{postId}}">
                             reply
                         </button>
 
-                    {{/privileges.create_post}}
+                    {{/user.role.known}}
                 {{/user}}
             {{/deletedBy}}
         </div>

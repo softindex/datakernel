@@ -11,9 +11,6 @@ window.onload = () => {
     element.replaceWith(`<textarea class="form-control" rows="${lines}">${element.text()}</textarea><button class="btn btn-sm btn-primary">save</button>`);
   });
 
-  let $loginButton = $('#login_button');
-  $loginButton.attr('href', $loginButton.attr('href') + window.location.href);
-
   $(window).on('beforeunload', () => localStorage.setItem('scroll', $(document).scrollTop()));
   let scroll = localStorage.getItem('scroll');
   if (scroll) {

@@ -25,11 +25,11 @@
             <ul class="navbar-nav">
                 {{#user}}
                     {{^creatingNewThread}}
-                        {{#privileges.create_thread}}
+                        {{#user.role.known}}
                             <li class="nav-item">
                                 <a class="nav-link" href="/{{pubKey}}/new">New thread</a>
                             </li>
-                        {{/privileges.create_thread}}
+                        {{/user.role.known}}
                     {{/creatingNewThread}}
                 {{/user}}
             </ul>
@@ -37,7 +37,7 @@
                 {{^user}}
                     {{^loginScreen}}
                         <a class="btn btn-outline-success"
-                           href="{{appStoreUrl}}/oauth?redirectURI=http://192.168.1.217:8080/{{pubKey}}/authorize?origin="
+                           href="{{appStoreUrl}}/oauth?redirectURI=http%3A//{{url.host}}/{{pubKey}}/authorize%3Forigin=http%3A//{{url}}"
                            id="login_button">
                             Log In
                         </a>

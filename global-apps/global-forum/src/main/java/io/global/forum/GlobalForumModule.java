@@ -9,9 +9,9 @@ import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
+import io.global.comm.container.CommRepoNames;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
-import io.global.forum.container.ForumRepoNames;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.http.PublicServlet;
 import io.global.forum.util.MustacheTemplater;
@@ -30,6 +30,7 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.forum.util.Utils.renderErrors;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
 public final class GlobalForumModule extends AbstractModule {
@@ -37,9 +38,9 @@ public final class GlobalForumModule extends AbstractModule {
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
 	private final String forumFsDir;
-	private final ForumRepoNames forumRepoNames;
+	private final CommRepoNames forumRepoNames;
 
-	public GlobalForumModule(String forumFsDir, ForumRepoNames forumRepoNames) {
+	public GlobalForumModule(String forumFsDir, CommRepoNames forumRepoNames) {
 		this.forumFsDir = forumFsDir;
 		this.forumRepoNames = forumRepoNames;
 	}
@@ -59,7 +60,8 @@ public final class GlobalForumModule extends AbstractModule {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
-				.map("/static/*", StaticServlet.create(staticLoader));
+				.map("/static/*", StaticServlet.create(staticLoader))
+				.then(renderErrors(templater));
 	}
 
 	@Provides
