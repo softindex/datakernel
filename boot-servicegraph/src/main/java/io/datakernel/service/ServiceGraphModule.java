@@ -266,9 +266,11 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 	}
 
 	@ProvidesIntoSet
-	LauncherService service(Injector injector, ServiceGraph serviceGraph, @Optional Initializer<ServiceGraphModuleSettings> initializer) {
-		if (initializer != null) {
-			initializer.accept(this);
+	LauncherService service(Injector injector, ServiceGraph serviceGraph, @Optional Set<Initializer<ServiceGraphModuleSettings>> initializers) {
+		if (initializers != null) {
+			for (Initializer<ServiceGraphModuleSettings> initializer : initializers) {
+				initializer.accept(this);
+			}
 		}
 		return new LauncherService() {
 			@Override

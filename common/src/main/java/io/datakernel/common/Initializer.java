@@ -17,12 +17,12 @@ public interface Initializer<T> {
 		return $ -> {};
 	}
 
-	static <T extends Initializable<T>> Initializer<T> combine(Iterable<? extends Initializer<? super T>> initializers) {
+	static <T> Initializer<T> combine(Iterable<Initializer<T>> initializers) {
 		return target -> initializers.forEach(initializer -> initializer.accept(target));
 	}
 
 	@SafeVarargs
-	static <T extends Initializable<T>, S extends Initializer<? super T>> Initializer<T> combine(S... initializers) {
+	static <T> Initializer<T> combine(Initializer<T>... initializers) {
 		return combine(asList(initializers));
 	}
 }

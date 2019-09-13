@@ -197,9 +197,11 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 	}
 
 	@ProvidesIntoSet
-	LauncherService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Initializer<JmxModuleSettings> initializer) {
-		if (initializer != null) {
-			initializer.accept(this);
+	LauncherService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModuleSettings>> initializers) {
+		if (initializers != null) {
+			for (Initializer<JmxModuleSettings> initializer : initializers) {
+				initializer.accept(this);
+			}
 		}
 		return new LauncherService() {
 			@Override

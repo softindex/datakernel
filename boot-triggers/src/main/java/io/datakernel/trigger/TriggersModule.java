@@ -127,9 +127,11 @@ public final class TriggersModule extends AbstractModule implements TriggersModu
 	}
 
 	@ProvidesIntoSet
-	LauncherService service(Injector injector, Triggers triggers, @Optional Initializer<TriggersModuleSettings> initializer) {
-		if (initializer != null) {
-			initializer.accept(this);
+	LauncherService service(Injector injector, Triggers triggers, @Optional Set<Initializer<TriggersModuleSettings>> initializers) {
+		if (initializers != null) {
+			for (Initializer<TriggersModuleSettings> initializer : initializers) {
+				initializer.accept(this);
+			}
 		}
 		return new LauncherService() {
 			@Override
