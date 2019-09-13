@@ -18,7 +18,6 @@ import static java.util.stream.Collectors.toSet;
  * methods are pretty clean too so they are left public.
  */
 public final class Types {
-	private Types() {}
 
 	public static Class<?> getRawTypeOrNull(Type type) {
 		if (type instanceof Class) {

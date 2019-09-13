@@ -37,8 +37,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {
-	private FieldTypes() {
-	}
 
 	public static FieldType<Byte> ofByte() {
 		return new FieldType<>(byte.class, new SerializerGenByte(), BYTE_CODEC);

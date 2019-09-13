@@ -42,9 +42,6 @@ import static java.util.stream.Collectors.toSet;
 
 public final class ReflectionUtils {
 
-	private ReflectionUtils() {
-	}
-
 	public static boolean isPrimitiveType(Class<?> cls) {
 		return cls == boolean.class
 				|| cls == byte.class

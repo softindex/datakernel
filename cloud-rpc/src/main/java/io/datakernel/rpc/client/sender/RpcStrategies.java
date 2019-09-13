@@ -36,8 +36,6 @@ import static java.util.Arrays.asList;
  * </ul>
  */
 public final class RpcStrategies {
-	private RpcStrategies() {
-	}
 
 	public static RpcStrategySingleServer server(InetSocketAddress address) {
 		checkNotNull(address);

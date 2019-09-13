@@ -31,8 +31,6 @@ import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class StreamConsumers {
-	private StreamConsumers() {
-	}
 
 	static final class ClosingWithErrorImpl<T> implements StreamConsumer<T> {
 		private final Throwable exception;

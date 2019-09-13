@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.common.Utils.firstNonNull;
 import static io.datakernel.cube.ReportType.*;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -275,9 +276,5 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 			fieldStructuredCodecs[i] = firstNonNull(attributeCodecs.get(field), measureCodecs.get(field));
 		}
 		return fieldStructuredCodecs;
-	}
-
-	private static <T> T firstNonNull(T a, T b) {
-		return a != null ? a : b;
 	}
 }

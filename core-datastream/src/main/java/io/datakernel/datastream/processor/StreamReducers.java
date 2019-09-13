@@ -26,8 +26,6 @@ import java.util.function.Predicate;
  * Contains primary ready for use reducers.
  */
 public final class StreamReducers {
-	private StreamReducers() {
-	}
 
 	/**
 	 * Returns reducer which streams only one element from group of same keys.

@@ -36,8 +36,6 @@ public final class ByteBufStrings {
 	/** Same as String.valueOf(Integer.MIN_VALUE).getBytes() */
 	private static final byte[] MIN_INT_BYTES = new byte[]{45, 50, 49, 52, 55, 52, 56, 51, 54, 52, 56};
 
-	private ByteBufStrings() {}
-
 	// ASCII
 	public static void encodeAscii(byte[] array, int pos, String string) {
 		for (int i = 0; i < string.length(); i++) {

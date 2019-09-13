@@ -53,8 +53,6 @@ import static io.datakernel.common.Utils.nullify;
  * ChannelSupplierOfValue, ChannelSupplierEmpty.
  */
 public final class ChannelSuppliers {
-	private ChannelSuppliers() {
-	}
 
 	/**
 	 * @see #concat(Iterator)

@@ -22,9 +22,6 @@ import static java.util.stream.Collectors.*;
 public final class Modules {
 	static Module EMPTY = new SimpleModule(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
 
-	private Modules() {
-	}
-
 	/**
 	 * Combines multiple modules into one.
 	 */

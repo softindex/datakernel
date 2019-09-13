@@ -18,7 +18,6 @@ import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 
 public final class Utils {
-	private Utils() {}
 
 	private static final BiConsumer<Map<Object, Set<Object>>, Map<Object, Set<Object>>> MULTIMAP_MERGER =
 			(into, from) -> from.forEach((k, v) -> into.computeIfAbsent(k, $ -> new HashSet<>()).addAll(v));

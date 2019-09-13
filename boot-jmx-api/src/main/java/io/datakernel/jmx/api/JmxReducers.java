@@ -27,7 +27,6 @@ import java.util.stream.LongStream;
 import static java.util.stream.Collectors.toList;
 
 public final class JmxReducers {
-	private JmxReducers() {}
 
 	public static final class JmxReducerDistinct implements JmxReducer<Object> {
 		@Override

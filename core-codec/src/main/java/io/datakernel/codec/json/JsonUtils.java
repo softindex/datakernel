@@ -29,7 +29,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 public class JsonUtils {
-	private JsonUtils() {}
 
 	public static <T> T fromJson(StructuredDecoder<T> decoder, String string) throws ParseException {
 		JsonReader reader = new JsonReader(new StringReader(string));

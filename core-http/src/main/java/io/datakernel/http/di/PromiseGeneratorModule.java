@@ -9,11 +9,11 @@ import io.datakernel.promise.Promise;
  * @since 3.0.0
  */
 public class PromiseGeneratorModule extends AbstractModule {
-	public static PromiseGeneratorModule create() {
-		return new PromiseGeneratorModule();
+	private PromiseGeneratorModule() {
 	}
 
-	private PromiseGeneratorModule() {
+	public static PromiseGeneratorModule create() {
+		return new PromiseGeneratorModule();
 	}
 
 	@Override

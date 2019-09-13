@@ -20,7 +20,6 @@ import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.async.service.EventloopTaskScheduler.Schedule;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.StringFormatUtils;
-import io.datakernel.common.Utils;
 import io.datakernel.common.concurrent.SimpleThreadFactory;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.FatalErrorHandler;
@@ -29,6 +28,7 @@ import io.datakernel.eventloop.net.DatagramSocketSettings;
 import io.datakernel.eventloop.net.ServerSocketSettings;
 import io.datakernel.eventloop.net.SocketSettings;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -56,9 +56,6 @@ import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class ConfigConverters {
-
-	private ConfigConverters() {
-	}
 
 	public static ConfigConverter<LocalDate> ofLocalDate() {
 		return new SimpleConfigConverter<LocalDate>() {
@@ -648,7 +645,8 @@ public final class ConfigConverters {
 			@Override
 			protected SimpleThreadFactory provide(Config config, SimpleThreadFactory defaultValue) {
 				SimpleThreadFactory result = SimpleThreadFactory.create();
-				String threadGroupName = config.get(ofNullableString(), "threadGroup", Utils.transform(defaultValue.getThreadGroup(), ThreadGroup::getName));
+				@Nullable ThreadGroup threadGroup = defaultValue.getThreadGroup();
+				String threadGroupName = config.get(ofNullableString(), "threadGroup", threadGroup == null ? null : threadGroup.getName());
 				if (threadGroupName != null) {
 					result.withThreadGroup(new ThreadGroup(threadGroupName));
 				}

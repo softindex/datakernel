@@ -23,8 +23,6 @@ import java.nio.charset.StandardCharsets;
  * and Strings to byte arrays
  */
 public final class BinaryOutputUtils {
-	private BinaryOutputUtils() {
-	}
 
 	public static int write(byte[] buf, int off, byte[] bytes) {
 		return write(buf, off, bytes, 0, bytes.length);

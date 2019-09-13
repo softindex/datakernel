@@ -30,8 +30,6 @@ import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public final class StreamSuppliers {
-	private StreamSuppliers() {
-	}
 
 	/**
 	 * Represent supplier which sends specified exception to consumer.

@@ -31,8 +31,6 @@ import static java.util.stream.Collectors.toSet;
 public final class ReflectionUtils {
 	private static final String IDENT = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
 
-	private ReflectionUtils() {}
-
 	public static String getShortName(Type type) {
 		String defaultName = type.getTypeName()
 				.replaceAll("(?:" + IDENT + "\\.)*(?:" + IDENT + "\\$\\d*)?", "");

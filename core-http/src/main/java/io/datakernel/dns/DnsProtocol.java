@@ -38,9 +38,6 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 public final class DnsProtocol {
 	public static final ParseException QUESTION_COUNT_NOT_ONE = new ParseException(DnsProtocol.class, "Received DNS response has question count not equal to one");
 
-	/** This class is static */
-	private DnsProtocol() {}
-
 	private static final int MAX_SIZE = 512;
 
 	private static final byte[] STANDARD_QUERY_HEADER = {

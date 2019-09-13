@@ -6,7 +6,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.function.Predicate;
 
 public class AsyncPredicates {
-	private AsyncPredicates() {}
 
 	public static class AsyncPredicateWrapper<T> implements AsyncPredicate<T> {
 		@NotNull
@@ -24,4 +23,5 @@ public class AsyncPredicates {
 			return predicate;
 		}
 	}
+
 }

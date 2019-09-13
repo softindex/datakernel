@@ -23,7 +23,6 @@ import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.common.parse.ParseException;
 
 public final class BinaryUtils {
-	private BinaryUtils() {}
 
 	public static <T> T decode(StructuredDecoder<T> decoder, byte[] bytes) throws ParseException {
 		return decode(decoder, ByteBuf.wrapForReading(bytes));

@@ -33,8 +33,6 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
 
 public class CollectionUtils {
-	private CollectionUtils() {
-	}
 
 	public static <D> List<D> concat(Collection<? extends D> list1, Collection<? extends D> list2) {
 		List<D> result = new ArrayList<>(list1.size() + list2.size());

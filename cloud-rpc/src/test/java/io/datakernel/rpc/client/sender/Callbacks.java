@@ -5,7 +5,6 @@ import io.datakernel.async.callback.Callback;
 import java.util.concurrent.CompletableFuture;
 
 public final class Callbacks {
-	private Callbacks() {}
 
 	public static <T> Callback<T> forFuture(CompletableFuture<T> future) {
 		return (result, e) -> {

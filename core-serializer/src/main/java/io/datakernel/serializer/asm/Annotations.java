@@ -24,8 +24,6 @@ import java.lang.reflect.Method;
 
 @SuppressWarnings("unchecked")
 public final class Annotations {
-	private Annotations() {
-	}
 
 	@Nullable
 	public static <A extends Annotation> A findAnnotation(Class<A> type, Annotation[] annotations) {

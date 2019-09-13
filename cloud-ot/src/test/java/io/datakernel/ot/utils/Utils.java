@@ -41,10 +41,6 @@ public class Utils {
 
 	private static final Object INVALID_KEY = new Object();
 
-	private Utils() {
-
-	}
-
 	public static TestAdd add(int delta) {
 		return new TestAdd(delta);
 	}

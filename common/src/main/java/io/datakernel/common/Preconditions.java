@@ -24,8 +24,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public final class Preconditions {
-	private Preconditions() {
-	}
 
 	public static void check(boolean expression) {
 		if (!expression) {

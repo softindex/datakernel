@@ -30,8 +30,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 public final class Datasets {
-	private Datasets() {
-	}
 
 	public static <K, T> SortedDataset<K, T> castToSorted(Dataset<T> dataset, Class<K> keyType,
 			Function<T, K> keyFunction, Comparator<K> keyComparator) {

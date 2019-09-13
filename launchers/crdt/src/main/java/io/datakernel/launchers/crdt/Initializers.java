@@ -34,7 +34,6 @@ import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
 public final class Initializers {
-	private Initializers() {}
 
 	public static <K extends Comparable<K>, S> Initializer<CrdtStorageFs<K, S>> ofFsCrdtClient(Config config) {
 		return fsCrdtClient ->

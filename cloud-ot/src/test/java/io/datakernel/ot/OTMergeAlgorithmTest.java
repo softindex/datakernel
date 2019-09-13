@@ -12,7 +12,7 @@ import java.util.*;
 import java.util.function.Consumer;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Utils.coalesce;
+import static io.datakernel.common.Utils.firstNonNull;
 import static io.datakernel.common.collection.CollectionUtils.list;
 import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.ot.OTAlgorithms.loadForMerge;
@@ -37,7 +37,7 @@ public class OTMergeAlgorithmTest {
 		Map<K, Long> levels = new HashMap<>();
 		for (K commitId : graph.getTips()) {
 			Utils.calcLevels(commitId, levels,
-					parentId -> coalesce(graph.getParents(parentId), Collections.<K, List<D>>emptyMap()).keySet());
+					parentId -> firstNonNull(graph.getParents(parentId), Collections.<K, List<D>>emptyMap()).keySet());
 		}
 		levels.forEach(graph::setNodeLevel);
 

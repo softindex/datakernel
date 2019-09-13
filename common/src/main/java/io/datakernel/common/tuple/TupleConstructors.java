@@ -4,8 +4,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public final class TupleConstructors {
-	private TupleConstructors() {
-	}
 
 	public static <T1, R> TupleConstructor1<T1, R> toPojo(Supplier<R> pojoSupplier, Consumer<T1> setter1) {
 		return value1 -> {

@@ -4,7 +4,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.parse.ParseException;
 
 class Utils {
-	private Utils() {}
 
 	static ByteBufsParser<ByteBuf> parseUntilTerminatorByte(byte terminator, int maxSize) {
 		return bufs -> {

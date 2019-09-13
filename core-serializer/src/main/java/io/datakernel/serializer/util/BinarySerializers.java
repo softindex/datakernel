@@ -22,7 +22,6 @@ import java.util.*;
 import java.util.function.Supplier;
 
 public final class BinarySerializers {
-	private BinarySerializers() {}
 
 	public static final BinarySerializer<Byte> BYTE_SERIALIZER = new BinarySerializer<Byte>() {
 		@Override

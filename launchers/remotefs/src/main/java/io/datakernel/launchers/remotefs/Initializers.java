@@ -33,7 +33,6 @@ import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 
 public final class Initializers {
-	private Initializers() {}
 
 	public static Initializer<RemoteFsServer> ofRemoteFsServer(Config config) {
 		return server -> server

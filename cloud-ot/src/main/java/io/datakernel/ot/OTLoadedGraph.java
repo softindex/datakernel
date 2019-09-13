@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Utils.coalesce;
+import static io.datakernel.common.Utils.firstNonNull;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
@@ -41,8 +41,8 @@ public class OTLoadedGraph<K, D> {
 
 	public OTLoadedGraph(OTSystem<D> otSystem, @Nullable Function<K, String> idToString, @Nullable Function<D, String> diffToString) {
 		this.otSystem = otSystem;
-		this.idToString = coalesce(idToString, this.idToString);
-		this.diffToString = coalesce(diffToString, this.diffToString);
+		this.idToString = firstNonNull(idToString, this.idToString);
+		this.diffToString = firstNonNull(diffToString, this.diffToString);
 	}
 
 	private static final class MergeNode {

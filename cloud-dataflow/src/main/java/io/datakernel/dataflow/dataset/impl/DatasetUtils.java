@@ -32,8 +32,6 @@ import java.util.List;
 import java.util.function.Function;
 
 public class DatasetUtils {
-	private DatasetUtils() {
-	}
 
 	@SuppressWarnings("unchecked")
 	public static <K, I, O> List<StreamId> repartitionAndReduce(DataGraph graph, LocallySortedDataset<K, I> input,

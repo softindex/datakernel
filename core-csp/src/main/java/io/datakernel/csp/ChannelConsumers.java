@@ -39,8 +39,6 @@ import static io.datakernel.common.Recyclable.deepRecycle;
  */
 @SuppressWarnings("WeakerAccess")
 public final class ChannelConsumers {
-	private ChannelConsumers() {
-	}
 
 	/**
 	 * Passes iterator's values to the {@code output} until it {@code hasNext()},

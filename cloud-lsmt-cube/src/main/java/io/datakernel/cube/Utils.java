@@ -30,8 +30,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class Utils {
-	private Utils() {
-	}
 
 	public static <R> Class<R> createResultClass(Collection<String> attributes, Collection<String> measures,
 			Cube cube, DefiningClassLoader classLoader) {

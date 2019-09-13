@@ -64,8 +64,6 @@ final class HttpDate {
 		MONTHS_IN_YEAR[11] = encodeAscii("Dec");
 	}
 
-	private HttpDate() {}
-
 	static long parse(byte[] bytes, int start) throws ParseException {
 		try {
 			int day = trimAndDecodePositiveInt(bytes, start + 5, 2);

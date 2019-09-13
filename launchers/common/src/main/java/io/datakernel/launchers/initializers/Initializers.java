@@ -30,7 +30,6 @@ import java.time.Duration;
 import static io.datakernel.config.ConfigConverters.*;
 
 public class Initializers {
-	private Initializers() {}
 
 	public static <T extends AbstractServer<T>> Initializer<T> ofAbstractServer(Config config) {
 		return server -> server

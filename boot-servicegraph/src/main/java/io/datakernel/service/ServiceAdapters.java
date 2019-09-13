@@ -36,9 +36,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 public final class ServiceAdapters {
 	private static final Logger logger = getLogger(ServiceAdapters.class);
 
-	private ServiceAdapters() {
-	}
-
 	public static abstract class SimpleServiceAdapter<S> implements ServiceAdapter<S> {
 		private final boolean startConcurrently;
 		private final boolean stopConcurrently;

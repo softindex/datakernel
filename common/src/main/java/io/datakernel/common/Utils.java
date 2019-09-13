@@ -29,128 +29,29 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.*;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 
-@SuppressWarnings("UnnecessaryLocalVariable")
 public class Utils {
-	private Utils() {
+
+	public static <T> T firstNonNull(@Nullable T a, T b) {
+		return a != null ? a : b;
 	}
 
-	@Nullable
+	public static <T> T firstNonNull(@Nullable T a, @Nullable T b, T c) {
+		return a != null ? a : (b != null ? b : c);
+	}
+
 	@SafeVarargs
-	public static <T> T coalesce(T... values) {
+	public static <T> T firstNonNull(T... values) {
 		for (T value : values) {
 			if (value != null) {
 				return value;
 			}
 		}
 		return null;
-	}
-
-	public static <T> T coalesce(@Nullable T a, T b) {
-		return a != null ? a : b;
-	}
-
-	public static <T> T coalesce(@Nullable T a, @Nullable T b, T c) {
-		return a != null ? a : (b != null ? b : c);
-	}
-
-	@Nullable
-	public static <T, R> R apply(@Nullable T value, Function<? super T, ? extends R> fn) {
-		return value == null ? null : fn.apply(value);
-	}
-
-	public static <T> boolean test(@Nullable T value, Predicate<? super T> predicate) {
-		return value != null && predicate.test(value);
-	}
-
-	@Nullable
-	public static <T> T accept(@Nullable T value, Consumer<? super T> consumer) {
-		if (value == null) return null;
-		consumer.accept(value);
-		return value;
-	}
-
-	@Nullable
-	public static <T, R> R transform(@Nullable T seed, Function<T, R> fn) {
-		if (seed == null) return null;
-		R r = fn.apply(seed);
-		return r;
-	}
-
-	@Nullable
-	public static <T, R1, R2> R2 transform(@Nullable T seed, Function<T, R1> fn1, Function<R1, R2> fn2) {
-		if (seed == null) return null;
-		R1 r1 = fn1.apply(seed);
-		if (r1 == null) return null;
-		R2 r2 = fn2.apply(r1);
-		return r2;
-	}
-
-	@Nullable
-	public static <T, R1, R2, R3> R3 transform(@Nullable T seed, Function<T, R1> fn1, Function<R1, R2> fn2, Function<R2, R3> fn3) {
-		if (seed == null) return null;
-		R1 r1 = fn1.apply(seed);
-		if (r1 == null) return null;
-		R2 r2 = fn2.apply(r1);
-		if (r2 == null) return null;
-		R3 r3 = fn3.apply(r2);
-		return r3;
-	}
-
-	@Nullable
-	public static <T, R1, R2, R3, R4> R4 transform(@Nullable T seed, Function<T, R1> fn1, Function<R1, R2> fn2, Function<R2, R3> fn3, Function<R3, R4> fn4) {
-		if (seed == null) return null;
-		R1 r1 = fn1.apply(seed);
-		if (r1 == null) return null;
-		R2 r2 = fn2.apply(r1);
-		if (r2 == null) return null;
-		R3 r3 = fn3.apply(r2);
-		if (r3 == null) return null;
-		R4 r4 = fn4.apply(r3);
-		return r4;
-	}
-
-	@Nullable
-	public static <T> T transform(@Nullable T seed, List<? extends Function<? super T, ? extends T>> fns) {
-		for (Function<? super T, ? extends T> fn : fns) {
-			seed = fn.apply(seed);
-		}
-		return seed;
-	}
-
-	public static String nullToEmpty(@Nullable String string) {
-		return string != null ? string : "";
-	}
-
-	public static <V> void set(Consumer<? super V> op, V value) {
-		op.accept(value);
-	}
-
-	public static <V> void setIf(Consumer<? super V> op, V value, Predicate<? super V> predicate) {
-		if (!predicate.test(value)) return;
-		op.accept(value);
-	}
-
-	public static <V> void setIfNotNull(Consumer<? super V> op, V value) {
-		setIf(op, value, Objects::nonNull);
-	}
-
-	public static <T, V> void set(Function<? super V, T> setter, V value) {
-		setter.apply(value);
-	}
-
-	public static <T, V> void setIf(Function<? super V, T> setter, V value, Predicate<? super V> predicate) {
-		if (!predicate.test(value)) return;
-		setter.apply(value);
-	}
-
-	public static <T, V> void setIfNotNull(Function<? super V, T> setter, V value) {
-		setIf(setter, value, Objects::nonNull);
 	}
 
 	public static <T, V> UnaryOperator<T> apply(BiFunction<T, ? super V, T> modifier, V value) {
@@ -166,22 +67,6 @@ public class Utils {
 
 	public static <T, V> UnaryOperator<T> applyIfNotNull(BiFunction<T, ? super V, T> modifier, V value) {
 		return applyIf(modifier, value, Objects::nonNull);
-	}
-
-	public static Consumer<Boolean> ifTrue(Runnable runnable) {
-		return b -> {
-			if (b) {
-				runnable.run();
-			}
-		};
-	}
-
-	public static Consumer<Boolean> ifFalse(Runnable runnable) {
-		return b -> {
-			if (!b) {
-				runnable.run();
-			}
-		};
 	}
 
 	public static int deepHashCode(@Nullable Object value) {
@@ -207,14 +92,6 @@ public class Utils {
 			if (array1[pos1 + i] != array2[pos2 + i]) {
 				return false;
 			}
-		}
-		return true;
-	}
-
-	public static boolean arrayStartsWith(byte[] array, byte[] prefix) {
-		if (array.length < prefix.length) return false;
-		for (int i = 0; i < prefix.length; i++) {
-			if (array[i] != prefix[i]) return false;
 		}
 		return true;
 	}
@@ -277,23 +154,6 @@ public class Utils {
 	}
 
 	private static final boolean launchedByIntellij = System.getProperty("java.class.path", "").contains("idea_rt.jar");
-
-	/**
-	 * Debug method which outputs messages with file name and line where it was called,
-	 * formatted in a way so that IntelliJ would pick it up and make links in the console.
-	 *
-	 * @param message any data to be printed.
-	 * @throws AssertionError when called from an application that was not
-	 *                        launched by the IntelliJ Idea IDE
-	 */
-	@SuppressWarnings("UseOfSystemOutOrSystemErr")
-	public static void DEBUG(Object message) {
-		if (!launchedByIntellij) {
-			throw new AssertionError("Debug message call when not launched in an IDE!");
-		}
-		StackTraceElement caller = Thread.currentThread().getStackTrace()[2];
-		System.out.printf("DEBUG.(%s:%d).%s| %s%n", caller.getFileName(), caller.getLineNumber(), caller.getMethodName(), message);
-	}
 
 	@Nullable
 	@Contract("_, _ -> null")

@@ -2,9 +2,6 @@ package io.datakernel.common;
 
 public final class HashUtils {
 
-	private HashUtils() {
-	}
-
 	public static long murmur3hash(long k) {
 		k ^= k >>> 33;
 		k *= 0xff51afd7ed558ccdL;

@@ -13,7 +13,6 @@ import java.util.ArrayDeque;
 import java.util.function.Function;
 
 public final class AsyncSuppliers {
-	private AsyncSuppliers() {}
 
 	@Contract(pure = true)
 	@NotNull

@@ -49,10 +49,6 @@ import static java.util.Collections.emptyList;
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class Promises {
-
-	private Promises() {
-	}
-
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
 
 	/**

@@ -5,7 +5,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 public final class AsyncConsumers {
-	private AsyncConsumers() {}
 
 	@Contract(pure = true)
 	@NotNull

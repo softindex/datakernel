@@ -16,6 +16,7 @@
 
 package io.datakernel.common;
 
+import io.datakernel.common.ref.RefBoolean;
 import org.junit.Test;
 
 import java.util.stream.Collector;
@@ -43,14 +44,8 @@ public class CollectorsExTest {
 	}
 
 	@Test
-	public void testToArray() {
-		Integer[] collect = Stream.of(1, 2, 3).collect(CollectorsEx.toArray(Integer.class));
-		assertArrayEquals(new Integer[]{1, 2, 3}, collect);
-	}
-
-	@Test
 	public void testToAll() {
-		Collector<Boolean, boolean[], Boolean> collector = CollectorsEx.toAll();
+		Collector<Boolean, RefBoolean, Boolean> collector = CollectorsEx.toAll();
 		Boolean collect = Stream.of(true, true).collect(collector);
 		assertTrue(collect);
 
@@ -81,7 +76,7 @@ public class CollectorsExTest {
 
 	@Test
 	public void testToAny() {
-		Collector<Boolean, boolean[], Boolean> collector = CollectorsEx.toAny();
+		Collector<Boolean, RefBoolean, Boolean> collector = CollectorsEx.toAny();
 
 		Boolean collect = Stream.of(true, true).collect(collector);
 		assertTrue(collect);
@@ -113,7 +108,7 @@ public class CollectorsExTest {
 
 	@Test
 	public void testToNone() {
-		Collector<Boolean, boolean[], Boolean> collector = CollectorsEx.toNone();
+		Collector<Boolean, RefBoolean, Boolean> collector = CollectorsEx.toNone();
 
 		Boolean collect = Stream.of(true, true).collect(collector);
 		assertFalse(collect);

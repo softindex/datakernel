@@ -59,8 +59,6 @@ public final class GzipProcessorUtils {
 	private static final ConcurrentStack<Inflater> decompressors = new ConcurrentStack<>();
 	private static final ConcurrentStack<Deflater> compressors = new ConcurrentStack<>();
 
-	private GzipProcessorUtils() {}
-
 	public static ByteBuf fromGzip(ByteBuf src, int maxMessageSize) throws ParseException {
 		assert src.readRemaining() > 0;
 

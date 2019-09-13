@@ -20,8 +20,6 @@ package io.datakernel.datastream.processor;
  * Static utility methods pertaining to Sharders
  */
 public final class Sharders {
-	private Sharders() {
-	}
 
 	/**
 	 * Instance of this class shares objects by hashcode to shards

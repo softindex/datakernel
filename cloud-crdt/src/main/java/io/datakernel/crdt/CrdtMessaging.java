@@ -22,7 +22,6 @@ import io.datakernel.codec.StructuredCodec;
 import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class CrdtMessaging {
-	private CrdtMessaging() {}
 
 	public static final StructuredCodec<CrdtMessage> MESSAGE_CODEC = CodecSubtype.<CrdtMessage>create()
 			.with(Download.class, object(Download::new,

@@ -29,7 +29,6 @@ import java.util.concurrent.RejectedExecutionException;
 import static io.datakernel.common.Preconditions.checkArgument;
 
 public class AsyncExecutors {
-	private AsyncExecutors() {}
 
 	public static AsyncExecutor direct() {
 		return new AsyncExecutor() {

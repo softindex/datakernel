@@ -27,8 +27,6 @@ public final class Primitives {
 	private static final Map<Class<?>, Class<?>> PRIMITIVE;
 	private static final Map<Class<?>, Class<?>> WRAPPER;
 
-	private Primitives() {}
-
 	static {
 		Map<Class<?>, Class<?>> primToWrap = new HashMap<>();
 		Map<Class<?>, Class<?>> wrapToPrim = new HashMap<>();

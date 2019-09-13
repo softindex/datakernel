@@ -31,8 +31,6 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public final class MBeanFormat {
-	private MBeanFormat() {
-	}
 
 	public static String formatExceptionMultiline(@Nullable Throwable e) {
 		if (e == null)
