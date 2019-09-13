@@ -24,7 +24,8 @@
                     <img class="rounded" alt="avatar" width="64" src="{{avatarUrl}}">
                 </div>
                 <span class="row badge badge-primary badge-light text-wrap text-break">
-                    {{author}}{{^author}}<i>ghost</i>{{/author}}
+                    {{#author}} <a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a> {{/author}}{{^author}}
+                    <i>ghost</i>{{/author}}
                 </span>
             </div>
             <div class="col">

@@ -4,15 +4,17 @@
             <div class="list-group my-3">
                 {{#threads}}
                     <a href="/{{pubKey}}/{{id}}" class="list-group-item list-group-item-action">
-                        <span class="badge">{{root.initialTimestamp}}</span>
                         <div class="row">
-                            <h5 class="col ml-1 my-auto text-wrap text-break">
-                                {{meta.title}}
-                            </h5>
-                            <div class="col-4 text-right align-self-center">
-                                <span class="badge">{{root.author}}</span>
-                                <div style="display: inline-block; width: 32px; height: 32px;">
-                                    <img class="rounded" alt="avatar" width="32" src="{{avatarUrl}}">
+                            <div class="col">
+                                <span class="badge">{{root.initialTimestamp}}</span>
+                                <h5 class="ml-1 text-wrap text-break">{{meta.title}}</h5>
+                            </div>
+                            <div class="col-auto align-self-center mx-2">
+                                <div class="row">
+                                    <span class="badge align-self-center">{{root.author}}</span>
+                                    <div style="width: 32px; height: 32px;">
+                                        <img class="rounded" alt="avatar" width="32" src="{{root.avatarUrl}}">
+                                    </div>
                                 </div>
                             </div>
                         </div>

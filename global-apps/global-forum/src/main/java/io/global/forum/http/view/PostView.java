@@ -24,6 +24,7 @@ public final class PostView {
 
 	private final String postId;
 	private final String author;
+	private final String authorId;
 	private final String content;
 	private final String initialTimestamp;
 	private final String lastEditTimestamp;
@@ -41,11 +42,12 @@ public final class PostView {
 
 	private final boolean editedNow;
 
-	public PostView(String postId, String author, String content, String initialTimestamp, String lastEditTimestamp,
+	public PostView(String postId, String author, String authorId, String content, String initialTimestamp, String lastEditTimestamp,
 			List<PostView> children, Map<String, Set<AttachmentView>> attachments, String avatarUrl, @Nullable String deletedBy,
 			boolean editable, boolean deletedVisible, boolean editedNow) {
 		this.postId = postId;
 		this.author = author;
+		this.authorId = authorId;
 		this.content = content;
 		this.initialTimestamp = initialTimestamp;
 		this.lastEditTimestamp = lastEditTimestamp;
@@ -64,6 +66,10 @@ public final class PostView {
 
 	public String getAuthor() {
 		return author;
+	}
+
+	public String getAuthorId() {
+		return authorId;
 	}
 
 	public String getContent() {
@@ -133,6 +139,7 @@ public final class PostView {
 								return new PostView(
 										post.getId(),
 										author != null ? author.getUsername() : null,
+										post.getAuthor().getAuthId(),
 										post.getContent(),
 										format(post.getInitialTimestamp()),
 										format(post.getLastEditTimestamp()),
