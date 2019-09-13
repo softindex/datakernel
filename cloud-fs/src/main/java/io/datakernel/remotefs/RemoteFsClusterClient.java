@@ -217,7 +217,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 	private void markIfDead(Object partitionId, Throwable e) {
 		// marking as dead only on lower level connection and other I/O exceptions,
-		// remotefs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
+		// remote fs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
 		if (e.getClass() != StacklessException.class) {
 			markDead(partitionId, e);
 		}
@@ -337,13 +337,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				aliveClients.entrySet().stream()
 						.map(entry -> {
 							Object partitionId = entry.getKey();
-							return entry.getValue().getMetadata(name) //   ↓ use null's as file non-existense indicators
+							return entry.getValue().getMetadata(name) //   ↓ use null's as file non-existence indicators
 									.map(res -> res != null ? new Tuple2<>(partitionId, res) : null)
 									.thenEx(wrapDeath(partitionId))
 									.toTry();
 						}))
 				.then(tries -> {
-					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter successfulll connections
+					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter successful connections
 							.filter(Try::isSuccess)
 							.map(Try::get)
 							.collect(toList());

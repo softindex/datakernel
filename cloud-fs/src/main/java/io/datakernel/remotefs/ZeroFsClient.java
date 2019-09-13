@@ -18,7 +18,6 @@ package io.datakernel.remotefs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -30,15 +29,18 @@ import java.util.function.Predicate;
 
 import static java.util.Collections.emptyList;
 
-public final class EmptyFsClient implements FsClient {
-	public static final EmptyFsClient INSTANCE = new EmptyFsClient();
+/**
+ * This fs client simulates a situation in which all paths point outside root
+ */
+public final class ZeroFsClient implements FsClient {
+	public static final ZeroFsClient INSTANCE = new ZeroFsClient();
 
-	private EmptyFsClient() {
+	private ZeroFsClient() {
 	}
 
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
-		return Promise.of(ChannelConsumers.recycling());
+		return Promise.ofException(BAD_PATH);
 	}
 
 	@Override
@@ -48,12 +50,12 @@ public final class EmptyFsClient implements FsClient {
 
 	@Override
 	public Promise<Void> move(@NotNull String filename, @NotNull String target, long targetRevision, long tombstoneRevision) {
-		return Promise.complete();
+		return Promise.ofException(BAD_PATH);
 	}
 
 	@Override
 	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
-		return Promise.complete();
+		return Promise.ofException(BAD_PATH);
 	}
 
 	@Override
@@ -68,7 +70,7 @@ public final class EmptyFsClient implements FsClient {
 
 	@Override
 	public Promise<Void> delete(@NotNull String name, long revision) {
-		return Promise.complete();
+		return Promise.ofException(BAD_PATH);
 	}
 
 	@Override

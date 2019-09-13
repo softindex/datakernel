@@ -30,8 +30,7 @@ import org.jetbrains.annotations.NotNull;
 import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 
 /**
- * Represent the TCP connection which  processes received items with {@link ChannelSupplier} and {@link ChannelConsumer},
- * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
+ * Represents a simple binary protocol over for communication a TCP connection.
  */
 public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O> {
 	private final AsyncTcpSocket socket;

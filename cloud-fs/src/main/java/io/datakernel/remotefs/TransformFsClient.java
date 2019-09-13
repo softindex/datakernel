@@ -18,7 +18,6 @@ package io.datakernel.remotefs;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -48,7 +47,7 @@ final class TransformFsClient implements FsClient {
 	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
-			return Promise.of(ChannelConsumers.recycling());
+			return Promise.ofException(BAD_PATH);
 		}
 		return parent.upload(transformed.get(), offset, revision);
 	}
@@ -76,7 +75,7 @@ final class TransformFsClient implements FsClient {
 		Optional<String> transformed = into.apply(filename);
 		Optional<String> transformedNew = into.apply(newFilename);
 		if (!transformed.isPresent() || !transformedNew.isPresent()) {
-			return Promise.complete();
+			return Promise.ofException(BAD_PATH);
 		}
 		return original.get();
 	}

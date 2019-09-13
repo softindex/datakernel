@@ -482,7 +482,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			// try to create a hardlink
 			Files.createLink(targetPath, path);
 		} catch (UnsupportedOperationException | SecurityException e) {
-			// if couldnt, then just actually copy it
+			// if couldn't, then just actually copy it
 			Files.copy(path, targetPath);
 		}
 	}

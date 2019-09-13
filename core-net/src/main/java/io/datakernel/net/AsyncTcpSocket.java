@@ -53,7 +53,7 @@ public interface AsyncTcpSocket extends Cancellable {
 	Promise<ByteBuf> read();
 
 	/**
-	 * Operation to write some data to network. Returns a promise of void that represents successfulll write.
+	 * Operation to write some data to network. Returns a promise of void that represents successful write.
 	 * <p>
 	 * Many write operations may be called. However, when some write is successfull, all of the promises received from write calls before it will be completed at once.
 	 *

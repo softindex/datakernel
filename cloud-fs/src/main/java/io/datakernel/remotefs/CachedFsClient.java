@@ -251,7 +251,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	/**
 	 * Deletes file both on server and in cache folder
 	 *
-	 * @return promise of {@link Void} that represents successfulll deletion
+	 * @return promise of {@link Void} that represents successful deletion
 	 */
 	@Override
 	public Promise<Void> delete(@NotNull String name, long revision) {

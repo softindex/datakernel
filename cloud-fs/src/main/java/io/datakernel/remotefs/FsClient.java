@@ -253,8 +253,8 @@ public interface FsClient {
 		return listEntities("").toVoid();
 	}
 
-	static FsClient empty() {
-		return EmptyFsClient.INSTANCE;
+	static FsClient zero() {
+		return ZeroFsClient.INSTANCE;
 	}
 
 	default FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from, @NotNull Function<String, Optional<String>> globInto) {
@@ -278,6 +278,7 @@ public interface FsClient {
 		);
 	}
 
+	// similar to 'cd'
 	default FsClient subfolder(@NotNull String folder) {
 		if (folder.length() == 0) {
 			return this;
