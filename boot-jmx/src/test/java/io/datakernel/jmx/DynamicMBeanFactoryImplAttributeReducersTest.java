@@ -31,18 +31,18 @@ import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class JmxMBeansAttributeReducersTest {
+public class DynamicMBeanFactoryImplAttributeReducersTest {
 
 	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	// region simple type reducers
 	@Test
 	public void createdMBeanShouldUseSpecifiedReducerForAggregation() throws Exception {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(
-				asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
-				defaultSettings(),
-				false
-		);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(
+						asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
+						defaultSettings(),
+						false);
 
 		assertEquals(ConstantValueReducer.CONSTANT_VALUE, mbean.getAttribute("attr"));
 	}
@@ -81,11 +81,11 @@ public class JmxMBeansAttributeReducersTest {
 	public void properlyAggregatesPojosWithReducer() throws Exception {
 		MBeanWithPojoReducer mbean_1 = new MBeanWithPojoReducer(new PojoStub(10, "abc"));
 		MBeanWithPojoReducer mbean_2 = new MBeanWithPojoReducer(new PojoStub(15, "xz"));
-		DynamicMBean mbean = JmxMBeans.factory().createFor(
-				asList(mbean_1, mbean_2),
-				defaultSettings(),
-				false
-		);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(
+						asList(mbean_1, mbean_2),
+						defaultSettings(),
+						false);
 
 		assertEquals(25, mbean.getAttribute("pojo_count"));
 		assertEquals("abcxz", mbean.getAttribute("pojo_name"));

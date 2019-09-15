@@ -89,7 +89,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			FirstResultCallback<O> firstResultCallback = new FirstResultCallback<>(subSenders.length, (ResultValidator<O>) resultValidator, cb, noValidResultException);
 			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, firstResultCallback);

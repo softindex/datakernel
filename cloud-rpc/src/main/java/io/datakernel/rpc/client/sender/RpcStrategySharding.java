@@ -84,7 +84,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			int shardIndex = ((ShardingFunction<Object>) shardingFunction).getShard(request);
 			RpcSender sender = subSenders[shardIndex];
 			if (sender != null) {

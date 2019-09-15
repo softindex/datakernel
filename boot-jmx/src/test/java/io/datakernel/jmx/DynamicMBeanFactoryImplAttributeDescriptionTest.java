@@ -29,11 +29,12 @@ import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static junit.framework.TestCase.assertEquals;
 
-public class JmxMBeansAttributeDescriptionTest {
+public class DynamicMBeanFactoryImplAttributeDescriptionTest {
 
 	@Test
 	public void ifDescriptionIsNotSpecifiedItIsSameAsFullNameOfAttribute() {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanWithNoJmxDescription()), defaultSettings(), false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanWithNoJmxDescription()), defaultSettings(), false);
 
 		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
@@ -56,8 +57,8 @@ public class JmxMBeansAttributeDescriptionTest {
 
 	@Test
 	public void showsDescriptionWithoutChangesIfAttributeNameDoNotContainUnderscores() {
-		DynamicMBean mbean = JmxMBeans.factory()
-				.createFor(asList(new MBeanWithDescriptionInDirectNonPojoAttribute()), defaultSettings(), false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanWithDescriptionInDirectNonPojoAttribute()), defaultSettings(), false);
 
 		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
@@ -86,7 +87,8 @@ public class JmxMBeansAttributeDescriptionTest {
 
 	@Test
 	public void formatsDescriptionsProperlyIfAttributeNameContainsUnderscores() {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanWithPojoDescription()), defaultSettings(), false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanWithPojoDescription()), defaultSettings(), false);
 
 		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(mbean.getMBeanInfo().getAttributes());
 

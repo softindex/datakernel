@@ -35,12 +35,13 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class JmxMBeansAttributesBulkGettersTest {
+public class DynamicMBeanFactoryImplAttributesBulkGettersTest {
 	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
 	public void bulkGetOmitsAttributesWithExceptionButReturnsValidAttributes() {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(singletonList(new MBeanStub()), defaultSettings(), false);
 
 		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
 
@@ -61,7 +62,8 @@ public class JmxMBeansAttributesBulkGettersTest {
 
 	@Test(expected = MBeanException.class)
 	public void propagatesExceptionInCaseOfSingleAttributeGet() throws Exception {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(new MBeanStub()), defaultSettings(), false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(singletonList(new MBeanStub()), defaultSettings(), false);
 
 		mbean.getAttribute("value");
 	}

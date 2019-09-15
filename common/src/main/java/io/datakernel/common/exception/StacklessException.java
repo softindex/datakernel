@@ -16,6 +16,7 @@
 
 package io.datakernel.common.exception;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -34,30 +35,30 @@ public class StacklessException extends Exception {
 		super.fillInStackTrace();
 	}
 
-	public StacklessException(String message) {
+	public StacklessException(@NotNull String message) {
 		super(message);
 		this.component = null;
 		super.fillInStackTrace();
 	}
 
-	public StacklessException(String message, Throwable cause) {
+	public StacklessException(@NotNull String message, @NotNull Throwable cause) {
 		super(message, cause);
 		this.component = null;
 		super.fillInStackTrace();
 	}
 
-	public StacklessException(Throwable cause) {
+	public StacklessException(@NotNull Throwable cause) {
 		super(cause);
 		this.component = null;
 		super.fillInStackTrace();
 	}
 
-	public StacklessException(Class<?> component, String message) {
+	public StacklessException(@NotNull Class<?> component, @NotNull String message) {
 		super(message);
 		this.component = component;
 	}
 
-	public StacklessException(Class<?> component, String message, Throwable cause) {
+	public StacklessException(@NotNull Class<?> component, @NotNull String message, @NotNull Throwable cause) {
 		super(message, cause);
 		this.component = component;
 	}

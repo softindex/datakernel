@@ -30,7 +30,7 @@ import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 
-public class JmxMBeansAttributesArraysTest {
+public class DynamicMBeanFactoryImplAttributesArraysTest {
 	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
@@ -88,7 +88,8 @@ public class JmxMBeansAttributesArraysTest {
 
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
-		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
+		return DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(objects), defaultSettings(), false);
 	}
 	// endregion
 }

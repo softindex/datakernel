@@ -21,7 +21,7 @@ import io.datakernel.di.core.Name;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.UniqueNameImpl;
 import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.NotNull;
@@ -61,7 +61,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private int totallyRegisteredMBeans;
 
 	private JmxRegistry(@NotNull MBeanServer mbs,
-			@NotNull DynamicMBeanFactory mbeanFactory,
+			DynamicMBeanFactory mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.mbs = mbs;
@@ -91,12 +91,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		workerPoolKeys.put(workerPool, workerPoolKey);
 	}
 
-	public void registerSingleton(@NotNull Key<?> key, @NotNull Object singletonInstance, @Nullable MBeanSettings settings) {
+	public void registerSingleton(@NotNull Key<?> key, @NotNull Object singletonInstance, @NotNull MBeanSettings settings) {
 		Class<?> instanceClass = singletonInstance.getClass();
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			// this will throw exception if something happens during initialization
-			mbean = mbeanFactory.createFor(singletonList(singletonInstance), settings, true);
+			mbean = mbeanFactory.createDynamicMBean(singletonList(singletonInstance), settings, true);
 		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
 			mbean = singletonInstance;
 		} else {
@@ -191,7 +191,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, settings, true);
+			mbean = mbeanFactory.createDynamicMBean(poolInstances, settings, true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -285,7 +285,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(singletonList(worker), settings, false);
+			mbean = mbeanFactory.createDynamicMBean(singletonList(worker), settings, false);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());
@@ -470,28 +470,28 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public String getRefreshPeriod() {
-		return formatDuration(((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod());
+		return formatDuration(((DynamicMBeanFactoryImpl) mbeanFactory).getSpecifiedRefreshPeriod());
 	}
 
 	@Override
 	public void setRefreshPeriod(String refreshPeriod) {
-		((JmxMBeans) mbeanFactory).setRefreshPeriod(parseDuration(refreshPeriod));
+		((DynamicMBeanFactoryImpl) mbeanFactory).setRefreshPeriod(parseDuration(refreshPeriod));
 	}
 
 	@Override
 	public int getMaxRefreshesPerOneCycle() {
-		return ((JmxMBeans) mbeanFactory).getMaxJmxRefreshesPerOneCycle();
+		return ((DynamicMBeanFactoryImpl) mbeanFactory).getMaxJmxRefreshesPerOneCycle();
 	}
 
 	@Override
 	public void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle) {
-		((JmxMBeans) mbeanFactory).setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
+		((DynamicMBeanFactoryImpl) mbeanFactory).setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
 	}
 
 	@Override
 	public double[] getEffectiveRefreshPeriods() {
 		List<Integer> effectivePeriods =
-				new ArrayList<>(((JmxMBeans) mbeanFactory).getEffectiveRefreshPeriods().values());
+				new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getEffectiveRefreshPeriods().values());
 		double[] effectivePeriodsSeconds = new double[effectivePeriods.size()];
 		for (int i = 0; i < effectivePeriods.size(); i++) {
 			int periodMillis = effectivePeriods.get(i);
@@ -503,7 +503,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public int[] getRefreshableStatsCount() {
-		List<Integer> counts = new ArrayList<>(((JmxMBeans) mbeanFactory).getRefreshableStatsCounts().values());
+		List<Integer> counts = new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getRefreshableStatsCounts().values());
 		int[] refreshableStatsCountsArr = new int[counts.size()];
 		for (int i = 0; i < counts.size(); i++) {
 			Integer count = counts.get(i);

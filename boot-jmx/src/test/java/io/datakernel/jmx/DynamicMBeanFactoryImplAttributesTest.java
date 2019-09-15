@@ -42,7 +42,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
-public class JmxMBeansAttributesTest {
+public class DynamicMBeanFactoryImplAttributesTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 	public static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
@@ -295,7 +295,8 @@ public class JmxMBeansAttributesTest {
 
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
-		return JmxMBeans.factory().createFor(asList(objects), defaultSettings(), false);
+		return DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(objects), defaultSettings(), false);
 	}
 
 	public static Object[] keyForTabularData(String key) {

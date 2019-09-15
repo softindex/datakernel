@@ -144,7 +144,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			int hash = ((HashFunction<Object>) hashFunction).hashCode(request);
 			RpcSender sender = hashBuckets[hash & (hashBuckets.length - 1)];
 			sender.sendRequest(request, timeout, cb);

@@ -29,6 +29,7 @@ import java.util.Map;
  * This interface marks objects that need to be recycled at the end of their lifetime,
  * so that some generic abstraction (such as CSP) could try to recycle some object that it consumes.
  */
+@SuppressWarnings("JavadocReference")
 public interface Recyclable {
 
 	/**

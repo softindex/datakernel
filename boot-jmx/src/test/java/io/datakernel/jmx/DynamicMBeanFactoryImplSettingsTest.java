@@ -19,7 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.eventloop.jmx.JmxStats;
-import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 import io.datakernel.jmx.api.JmxAttribute;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
@@ -40,7 +40,7 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class JmxMBeansSettingsTest {
+public class DynamicMBeanFactoryImplSettingsTest {
 	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	private static final Set<String> NO_MONITORABLES = Collections.emptySet();
@@ -51,7 +51,8 @@ public class JmxMBeansSettingsTest {
 	@Test
 	public void includesOptionalAttributes_thatAreSpecifiedInSettings() {
 		MBeanSettings settings = MBeanSettings.of(singleton("stats_text"), NO_MODIFIERS, NO_CUSTOM_TYPES);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanStubOne()), settings, false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanStubOne()), settings, false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mBeanInfo.getAttributes());
@@ -106,7 +107,8 @@ public class JmxMBeansSettingsTest {
 		nameToModifier.put("stats", (AttributeModifier<ConfigurableStats>) attribute -> attribute.setConfigurableText("configurated"));
 		MBeanSettings settings = MBeanSettings.of(NO_MONITORABLES, nameToModifier, NO_CUSTOM_TYPES);
 		MBeanStubTwo mBeanStubTwo = new MBeanStubTwo();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanStubTwo), settings, false);
+		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(mBeanStubTwo), settings, false);
 
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}

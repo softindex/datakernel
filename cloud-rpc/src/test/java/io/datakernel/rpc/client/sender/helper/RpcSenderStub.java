@@ -18,6 +18,7 @@ package io.datakernel.rpc.client.sender.helper;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.sender.RpcSender;
+import org.jetbrains.annotations.NotNull;
 
 public final class RpcSenderStub implements RpcSender {
 	private int requests;
@@ -27,7 +28,7 @@ public final class RpcSenderStub implements RpcSender {
 	}
 
 	@Override
-	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+	public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 		requests++;
 	}
 }

@@ -485,7 +485,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private final class NoSenderAvailable implements RpcSender {
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			eventloop.post(() -> cb.accept(null, NO_SENDER_AVAILABLE_EXCEPTION));
 		}
 	}

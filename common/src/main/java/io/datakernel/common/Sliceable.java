@@ -6,6 +6,7 @@ package io.datakernel.common;
  * on all 'light clones' or 'slices' for the object to be actually recycled.
  * This is used to share the ownership between multiple consumers.
  */
+@SuppressWarnings("JavadocReference")
 public interface Sliceable<T> {
 	/**
 	 * Creates a 'light clone' of this object.

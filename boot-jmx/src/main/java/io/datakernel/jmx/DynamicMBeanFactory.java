@@ -22,5 +22,5 @@ import javax.management.DynamicMBean;
 import java.util.List;
 
 public interface DynamicMBeanFactory {
-	DynamicMBean createFor(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh);
+	DynamicMBean createDynamicMBean(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh);
 }

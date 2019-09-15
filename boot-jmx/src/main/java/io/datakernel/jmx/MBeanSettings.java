@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 
 import java.lang.reflect.Type;
 import java.util.*;

@@ -263,6 +263,7 @@ public class CollectionUtils {
 
 			@Override
 			public T next() {
+				if (it == null) throw new NoSuchElementException();
 				T next = it.next();
 				if (!it.hasNext()) {
 					it = iterators.hasNext() ? iterators.next() : null;

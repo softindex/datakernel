@@ -30,7 +30,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 
-public class JmxMBeansAttributeExceptionsTest {
+public class DynamicMBeanFactoryImplAttributeExceptionsTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
@@ -40,9 +40,10 @@ public class JmxMBeansAttributeExceptionsTest {
 		expectedException.expectMessage("ConcurrentJmxMBeans cannot be used in pool. " +
 				"Only EventloopJmxMBeans can be used in pool");
 
-		JmxMBeans.factory().createFor(
-				asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()),
-				defaultSettings(), false);
+		DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(
+						asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()),
+						defaultSettings(), false);
 	}
 
 	// test JmxRefreshableStats as @JmxAttribute, all returned stats should be concrete classes with public no-arg constructor
@@ -55,7 +56,8 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or static factory \"create()\" method " +
 				"or public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), defaultSettings(), false);
+		DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), defaultSettings(), false);
 	}
 
 	@Test
@@ -67,7 +69,8 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or static factory \"create()\" method " +
 				"or public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), defaultSettings(), false);
+		DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), defaultSettings(), false);
 	}
 
 	@Test
@@ -79,7 +82,8 @@ public class JmxMBeansAttributeExceptionsTest {
 				"or static factory \"create()\" method " +
 				"or public no-arg constructor");
 
-		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false);
+		DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false);
 	}
 
 	public static final class ConcurrentJmxMBeanWithSingleIntAttr implements ConcurrentJmxMBean {

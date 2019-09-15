@@ -56,7 +56,8 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
@@ -72,7 +73,8 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -90,7 +92,8 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,Group=major")));
@@ -107,7 +110,8 @@ public class JmxRegistryTest {
 		ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
@@ -144,17 +148,21 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory).createFor(with(singletonList(worker_1)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(worker_1)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(singletonList(worker_2)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(worker_2)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(with(singletonList(worker_3)), with(any(MBeanSettings.class)), with(false));
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(worker_3)), with(any(MBeanSettings.class)), with(false));
 			will(returnValue(dynamicMBean));
 
 			// creating DynamicMBean for worker pool
-			allowing(mbeanFactory).createFor(with(asList(worker_1, worker_2, worker_3)),
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(asList(worker_1, worker_2, worker_3)),
 					with(any(MBeanSettings.class)), with(true));
 			will(doAll());
 			will(returnValue(dynamicMBean));

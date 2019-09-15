@@ -28,12 +28,12 @@ import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import java.util.Map;
 
-import static io.datakernel.jmx.JmxMBeansAttributesTest.createDynamicMBeanFor;
+import static io.datakernel.jmx.DynamicMBeanFactoryImplAttributesTest.createDynamicMBeanFor;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class JmxMBeansAttributesSelectionTest {
+public class DynamicMBeanFactoryImplAttributesSelectionTest {
 
 	@Test
 	public void doNotConsiderOptionalAttributesByDefault() {

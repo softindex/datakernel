@@ -54,8 +54,8 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 
 @SuppressWarnings("rawtypes")
-public final class JmxMBeans implements DynamicMBeanFactory {
-	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
+public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
+	private static final Logger logger = LoggerFactory.getLogger(DynamicMBeanFactoryImpl.class);
 
 	// refreshing jmx
 	public static final Duration DEFAULT_REFRESH_PERIOD_IN_SECONDS = Duration.ofSeconds(1);
@@ -72,20 +72,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String CREATE = "create";
 	private static final String CREATE_ACCUMULATOR = "createAccumulator";
 
-	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new JmxMBeans(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
+	private static final DynamicMBeanFactoryImpl INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new DynamicMBeanFactoryImpl(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
 	// region constructor and factory methods
-	private JmxMBeans(@NotNull Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+	private DynamicMBeanFactoryImpl(@NotNull Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
 		this.specifiedRefreshPeriod = refreshPeriod;
 		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 	}
 
-	public static JmxMBeans factory() {
+	public static DynamicMBeanFactoryImpl create() {
 		return INSTANCE_WITH_DEFAULT_REFRESH_PERIOD;
 	}
 
-	public static JmxMBeans factory(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
-		return new JmxMBeans(refreshPeriod, maxJmxRefreshesPerOneCycle);
+	public static DynamicMBeanFactoryImpl create(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+		return new DynamicMBeanFactoryImpl(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
 	// endregion
 
@@ -119,7 +119,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	 * Creates Jmx MBean for monitorables with operations and attributes.
 	 */
 	@Override
-	public DynamicMBean createFor(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh) {
+	public DynamicMBean createDynamicMBean(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh) {
 		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
 		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
 		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables), "Monitorables should be of the same type");

@@ -28,7 +28,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.jmx.ValueStats;
-import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 import io.datakernel.launcher.LauncherService;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.Triggers.TriggerWithResult;
@@ -47,6 +47,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
@@ -193,7 +194,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 
 	@Provides
 	DynamicMBeanFactory mbeanFactory() {
-		return JmxMBeans.factory(refreshPeriod, maxJmxRefreshesPerOneCycle);
+		return DynamicMBeanFactoryImpl.create(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
 
 	@ProvidesIntoSet
@@ -267,8 +268,8 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 			List<Object> objects = globalMBeanObjects.get(type);
 			Key<?> key = globalMBeans.get(type);
 			DynamicMBean globalMBean =
-					mbeanFactory.createFor(objects, ensureSettingsFor(key), false);
-			jmxRegistry.registerSingleton(key, globalMBean, null);
+					mbeanFactory.createDynamicMBean(objects, ensureSettingsFor(key), false);
+			jmxRegistry.registerSingleton(key, globalMBean, defaultSettings());
 		}
 	}
 

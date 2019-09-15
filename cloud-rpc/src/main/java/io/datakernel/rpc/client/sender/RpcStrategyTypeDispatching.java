@@ -92,7 +92,7 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			RpcSender sender = typeToSender.get(request.getClass());
 			if (sender == null) {
 				sender = defaultSender;
