@@ -18,4 +18,5 @@ public final class HashUtils {
 	public static int murmur3hash(int k) {
 		return (int) murmur3hash((long) k);
 	}
+
 }

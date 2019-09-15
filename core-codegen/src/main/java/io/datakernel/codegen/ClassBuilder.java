@@ -34,6 +34,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.objectweb.asm.Opcodes.*;
@@ -251,7 +252,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 				}
 			}
 		}
-		Preconditions.check(foundMethod != null, "Could not find method '" + methodName + "'");
+		checkArgument(foundMethod != null, "Could not find method '" + methodName + "'");
 		return withMethod(foundMethod, expression);
 	}
 

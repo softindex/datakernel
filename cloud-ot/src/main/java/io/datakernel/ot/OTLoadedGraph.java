@@ -25,6 +25,7 @@ import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Utils.firstNonNull;
+import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;

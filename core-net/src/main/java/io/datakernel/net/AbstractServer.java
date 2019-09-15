@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.AsyncSslSocket.wrapServerSocket;
 import static io.datakernel.net.AsyncTcpSocketImpl.wrapChannel;
@@ -217,7 +217,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	 */
 	@Override
 	public final void listen() throws IOException {
-		check(eventloop.inEventloopThread(), "Not in eventloop thread");
+		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (running) {
 			return;
 		}
@@ -248,7 +248,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 
 	@Override
 	public final Promise<?> close() {
-		check(eventloop.inEventloopThread(), "Cannot close server from different thread");
+		checkState(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Promise.complete();
 		running = false;
 		closeServerSockets();

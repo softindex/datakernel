@@ -30,10 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.common.Utils.firstNonNull;
+import static io.datakernel.common.Utils.*;
 import static io.datakernel.cube.ReportType.*;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 
 final class QueryResultCodec implements StructuredCodec<QueryResult> {
 	private static final String MEASURES_FIELD = "measures";
@@ -124,11 +122,11 @@ final class QueryResultCodec implements StructuredCodec<QueryResult> {
 			}
 
 			return QueryResult.create(recordScheme, attributes, measures,
-					sortedBy != null ? sortedBy : emptyList(),
-					records != null ? records : emptyList(),
-					totals != null ? totals : Record.create(recordScheme),
+					nullToEmpty(sortedBy),
+					nullToEmpty(records),
+					nullToDefault(totals, Record.create(recordScheme)),
 					totalCount,
-					filterAttributes != null ? filterAttributes : emptyMap(),
+					nullToEmpty(filterAttributes),
 					totals != null ?
 							DATA_WITH_TOTALS :
 							records != null ?

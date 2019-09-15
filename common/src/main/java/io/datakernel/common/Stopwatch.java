@@ -18,7 +18,7 @@ package io.datakernel.common;
 
 import java.util.concurrent.TimeUnit;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.util.concurrent.TimeUnit.*;
 
 public final class Stopwatch {
@@ -33,7 +33,7 @@ public final class Stopwatch {
 	public static Stopwatch createStarted() {return new Stopwatch().start(); }
 
 	public Stopwatch start() {
-		check(!isRunning, "This stopwatch is already running.");
+		checkState(!isRunning, "This stopwatch is already running.");
 		isRunning = true;
 		start = System.nanoTime();
 		return this;
@@ -41,7 +41,7 @@ public final class Stopwatch {
 
 	public Stopwatch stop() {
 		long tick = System.nanoTime();
-		check(isRunning, "This stopwatch is already stopped.");
+		checkState(isRunning, "This stopwatch is already stopped.");
 		isRunning = false;
 		nanos += tick - start;
 		return this;

@@ -23,13 +23,13 @@ import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenNullable;
 import io.datakernel.serializer.asm.SerializerGenString;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, fallback) -> {
-			check(!type.isPrimitive(), "Type must not represent a primitive type");
+			checkArgument(!type.isPrimitive(), "Type must not represent a primitive type");
 			if (fallback instanceof SerializerGenString)
 				return ((SerializerGenString) fallback).nullable(true);
 			if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {

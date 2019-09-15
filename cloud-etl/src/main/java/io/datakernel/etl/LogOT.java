@@ -11,8 +11,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.singletonList;
 
@@ -35,7 +34,7 @@ public class LogOT {
 					for (String log : intersection) {
 						LogPositionDiff leftPosition = left.getPositions().get(log);
 						LogPositionDiff rightPosition = right.getPositions().get(log);
-						check(leftPosition.from.equals(rightPosition.from),
+						checkArgument(leftPosition.from.equals(rightPosition.from),
 								"'From' values should be equal for left and right log positions");
 						comparison += leftPosition.compareTo(rightPosition);
 					}

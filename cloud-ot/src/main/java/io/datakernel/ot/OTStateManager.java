@@ -40,9 +40,9 @@ import static io.datakernel.async.util.LogUtils.thisMethod;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.promise.Promises.sequence;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 public final class OTStateManager<K, D> implements EventloopService {
@@ -256,7 +256,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public void reset() {
 		checkState(!sync.isRunning());
 		apply(otSystem.invert(
-				concat(pendingCommitDiffs != null ? pendingCommitDiffs : emptyList(), workingDiffs)));
+				concat(nullToEmpty(pendingCommitDiffs), workingDiffs)));
 		workingDiffs.clear();
 		pendingCommit = null;
 		pendingCommitDiffs = null;

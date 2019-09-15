@@ -55,6 +55,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.async.callback.Callback.toAnotherEventloop;
 import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -295,7 +296,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			if (forceStart) {
 				startCallback.set(null);
 				RpcSender sender = strategy.createSender(pool);
-				requestSender = sender != null ? sender : new NoSenderAvailable();
+				requestSender = nullToDefault(sender, new NoSenderAvailable());
 				startCallback = null;
 			} else {
 				if (connectTimeoutMillis != 0) {
@@ -399,8 +400,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		if (isMonitoring()) {
 			connection.startMonitoring();
 		}
-		RpcSender sender = strategy.createSender(pool);
-		requestSender = sender != null ? sender : new NoSenderAvailable();
+		requestSender = nullToDefault(strategy.createSender(pool), new NoSenderAvailable());
 	}
 
 	boolean removeConnection(InetSocketAddress address) {
@@ -417,8 +417,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			});
 		}
 
-		RpcSender sender = strategy.createSender(pool);
-		requestSender = sender != null ? sender : new NoSenderAvailable();
+		requestSender = nullToDefault(strategy.createSender(pool), new NoSenderAvailable());
 
 		// jmx
 		generalConnectsStats.closedConnects++;

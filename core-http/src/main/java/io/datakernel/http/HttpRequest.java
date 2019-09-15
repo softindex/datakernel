@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
 import static java.util.Collections.emptyMap;
@@ -384,7 +385,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String toString() {
 		if (url.isRelativePath()) {
 			String host = getHeader(HOST);
-			return (host != null ? host : "") + url.getPathAndQuery();
+			return nullToEmpty(host) + url.getPathAndQuery();
 		}
 		return url.toString();
 	}

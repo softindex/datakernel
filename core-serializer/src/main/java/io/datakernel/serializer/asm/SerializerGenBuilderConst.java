@@ -16,8 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.*;
 
 public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 	private final SerializerGen serializer;
@@ -28,7 +27,7 @@ public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 
 	@Override
 	public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-		check(generics.length == 0, "Type should have no generics");
+		checkArgument(generics.length == 0, "Type should have no generics");
 		return serializer;
 	}
 }

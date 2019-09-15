@@ -20,14 +20,14 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
 import static io.datakernel.codegen.utils.Primitives.wrap;
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public abstract class SerializerGenPrimitive implements SerializerGen {
 
 	private final Class<?> primitiveType;
 
 	protected SerializerGenPrimitive(Class<?> primitiveType) {
-		check(primitiveType.isPrimitive(), "Not a primitive type");
+		checkArgument(primitiveType.isPrimitive(), "Not a primitive type");
 		this.primitiveType = primitiveType;
 	}
 

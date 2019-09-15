@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Character.toUpperCase;
 import static java.util.Arrays.asList;
 
@@ -113,16 +113,16 @@ public class SerializerBuilderUtils {
 
 	private static SerializerGenBuilder serializerGenMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
 		String prefix = capitalize(keyType.getSimpleName()) + capitalize(valueType.getSimpleName());
-		check(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
+		checkArgument(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
 		return (type, generics, fallback) -> {
 			SerializerGen keySerializer;
 			SerializerGen valueSerializer;
 			if (generics.length == 2) {
-				check((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
+				checkArgument((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
 				keySerializer = generics[0].serializer;
 				valueSerializer = generics[1].serializer;
 			} else if (generics.length == 1) {
-				check((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
+				checkArgument((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
 				if (keyType == Object.class) {
 					keySerializer = generics[0].serializer;
 					valueSerializer = primitiveSerializers.get(valueType);
@@ -140,11 +140,11 @@ public class SerializerBuilderUtils {
 
 	private static SerializerGenBuilder serializerGenCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
 		String prefix = capitalize(valueType.getSimpleName());
-		check(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
+		checkArgument(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
 		return (type, generics, fallback) -> {
 			SerializerGen valueSerializer;
 			if (generics.length == 1) {
-				check(valueType == Object.class, "valueType must be Object.class");
+				checkArgument(valueType == Object.class, "valueType must be Object.class");
 				valueSerializer = generics[0].serializer;
 			} else {
 				valueSerializer = primitiveSerializers.get(valueType);

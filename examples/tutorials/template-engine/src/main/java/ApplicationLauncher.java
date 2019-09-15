@@ -12,6 +12,7 @@ import io.datakernel.promise.Promise;
 
 import java.util.Map;
 
+import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.list;
 import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -71,8 +72,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 
 							question.vote(option);
 
-							String referer = request.getHeader(REFERER);
-							return HttpResponse.redirect302(referer != null ? referer : "/");
+							return HttpResponse.redirect302(nullToDefault(request.getHeader(REFERER), "/"));
 						}))
 				.map(POST, "/add", loadBody()
 						.serve(request -> {

@@ -28,11 +28,13 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.function.*;
+import java.util.*;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
+import static java.util.Collections.*;
 
 public class Utils {
 
@@ -54,19 +56,48 @@ public class Utils {
 		return null;
 	}
 
-	public static <T, V> UnaryOperator<T> apply(BiFunction<T, ? super V, T> modifier, V value) {
-		return instance -> modifier.apply(instance, value);
+	public static String nullToEmpty(@Nullable String value) {
+		return value != null ? value : "";
 	}
 
-	public static <T, V> UnaryOperator<T> applyIf(BiFunction<T, ? super V, T> modifier, V value, Predicate<? super V> predicate) {
-		return instance -> {
-			if (!predicate.test(value)) return instance;
-			return modifier.apply(instance, value);
-		};
+	public static <T> Set<T> nullToEmpty(@Nullable Set<T> set) {
+		return nullToDefault(set, emptySet());
 	}
 
-	public static <T, V> UnaryOperator<T> applyIfNotNull(BiFunction<T, ? super V, T> modifier, V value) {
-		return applyIf(modifier, value, Objects::nonNull);
+	public static <T> List<T> nullToEmpty(@Nullable List<T> list) {
+		return nullToDefault(list, emptyList());
+	}
+
+	public static <K, V> Map<K, V> nullToEmpty(@Nullable Map<K, V> map) {
+		return nullToDefault(map, emptyMap());
+	}
+
+	public static <T> Collection<T> nullToEmpty(@Nullable Collection<T> collection) {
+		return collection != null ? collection : emptyList();
+	}
+
+	public static <T> Iterable<T> nullToEmpty(@Nullable Iterable<T> iterable) {
+		return nullToDefault(iterable, emptyList());
+	}
+
+	public static <T> Iterator<T> nullToEmpty(@Nullable Iterator<T> iterator) {
+		return nullToDefault(iterator, emptyIterator());
+	}
+
+	public static <T> T nullToDefault(@Nullable T value, T defaultValue) {
+		return value != null ? value : defaultValue;
+	}
+
+	public static <T> T nullToSupplier(@Nullable T value, Supplier<? extends T> defaultValue) {
+		return value != null ? value : defaultValue.get();
+	}
+
+	@NotNull
+	public static <T, E extends Throwable> T nullToException(@Nullable T reference, Supplier<E> exceptionSupplier) throws E {
+		if (reference != null) {
+			return reference;
+		}
+		throw exceptionSupplier.get();
 	}
 
 	public static int deepHashCode(@Nullable Object value) {

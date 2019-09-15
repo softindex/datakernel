@@ -54,6 +54,7 @@ import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Utils.nullToSupplier;
 import static io.datakernel.eventloop.util.ReflectionUtils.isPrivateApiAvailable;
 import static io.datakernel.eventloop.util.Utils.tryToOptimizeSelector;
 import static java.util.Collections.emptyIterator;
@@ -259,7 +260,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private void openSelector() {
 		if (selector == null) {
 			try {
-				selector = (selectorProvider != null ? selectorProvider : SelectorProvider.provider()).openSelector();
+				selector = nullToSupplier(selectorProvider, SelectorProvider::provider).openSelector();
 			} catch (Exception e) {
 				logger.error("Could not open selector", e);
 				throw new RuntimeException(e);

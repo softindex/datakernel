@@ -16,8 +16,6 @@
 
 package io.datakernel.common.collection;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -27,7 +25,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyList;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toSet;
@@ -79,30 +77,6 @@ public class CollectionUtils {
 		return iterable.iterator().next();
 	}
 
-	public static <T> Set<T> nullToEmpty(@Nullable Set<T> set) {
-		return set != null ? set : emptySet();
-	}
-
-	public static <T> List<T> nullToEmpty(@Nullable List<T> list) {
-		return list != null ? list : emptyList();
-	}
-
-	public static <K, V> Map<K, V> nullToEmpty(@Nullable Map<K, V> map) {
-		return map != null ? map : emptyMap();
-	}
-
-	public static <T> Collection<T> nullToEmpty(@Nullable Collection<T> collection) {
-		return collection != null ? collection : emptyList();
-	}
-
-	public static <T> Iterable<T> nullToEmpty(@Nullable Iterable<T> iterable) {
-		return iterable != null ? iterable : emptyList();
-	}
-
-	public static <T> Iterator<T> nullToEmpty(@Nullable Iterator<T> iterator) {
-		return iterator != null ? iterator : Collections.emptyIterator();
-	}
-
 	public static <T> List<T> list() {
 		return emptyList();
 	}
@@ -141,22 +115,6 @@ public class CollectionUtils {
 				Spliterator.ORDERED | Spliterator.IMMUTABLE), false);
 	}
 
-	@SuppressWarnings("unchecked")
-	public static <T> boolean isShallowEquals(Iterable<? extends T> iterable1, Iterable<? extends T> iterable2) {
-		if (iterable1 instanceof Collection && iterable2 instanceof Collection &&
-				((Collection<T>) iterable1).size() != ((Collection<T>) iterable2).size()) {
-			return false;
-		}
-		Iterator<? extends T> it1 = iterable1.iterator();
-		Iterator<? extends T> it2 = iterable2.iterator();
-		while (it1.hasNext() && it2.hasNext()) {
-			if (it1.next() != it2.next()) {
-				return false;
-			}
-		}
-		return !it1.hasNext() && !it2.hasNext();
-	}
-
 	public static <T> String toLimitedString(Collection<T> collection, int limit) {
 		return collection.stream()
 				.limit(limit)
@@ -164,26 +122,35 @@ public class CollectionUtils {
 				.collect(joining(",", "[", collection.size() <= limit ? "]" : ", ..and " + (collection.size() - limit) + " more]"));
 	}
 
-	public static boolean allItemsHaveSameType(Collection<?> coll) {
-		if (coll.isEmpty()) {
-			return true;
+	public static boolean allItemsHaveSameType(Collection<?> collection) {
+		Class<?> c = null;
+		for (Object item : collection) {
+			if (c == null) {
+				c = item.getClass();
+			} else {
+				if (c != item.getClass()) {
+					return false;
+				}
+			}
 		}
-		Class<?> ref = coll.stream().findAny().get().getClass();
-		return coll.stream().allMatch(item -> item.getClass() == ref);
+		return true;
 	}
 
-	public static <T> Iterator<T> emptyIterator() {
-		return new Iterator<T>() {
-			@Override
-			public boolean hasNext() {
-				return false;
-			}
+	private static final Iterator<Object> EMPTY_ITERATOR = new Iterator<Object>() {
+		@Override
+		public boolean hasNext() {
+			return false;
+		}
 
-			@Override
-			public T next() {
-				throw new NoSuchElementException();
-			}
-		};
+		@Override
+		public Object next() {
+			throw new NoSuchElementException();
+		}
+	};
+
+	@SuppressWarnings("unchecked")
+	public static <T> Iterator<T> emptyIterator() {
+		return (Iterator<T>) EMPTY_ITERATOR;
 	}
 
 	public static <T> Iterator<T> asIterator(T item) {

@@ -25,30 +25,6 @@ import java.util.function.Supplier;
 
 public final class Preconditions {
 
-	public static void check(boolean expression) {
-		if (!expression) {
-			throw new RuntimeException();
-		}
-	}
-
-	public static void check(boolean expression, Object message) {
-		if (!expression) {
-			throw new RuntimeException(String.valueOf(message));
-		}
-	}
-
-	public static void check(boolean expression, Supplier<String> message) {
-		if (!expression) {
-			throw new RuntimeException(message.get());
-		}
-	}
-
-	public static void check(boolean expression, String template, Object... args) {
-		if (!expression) {
-			throw new RuntimeException(String.format(template, args));
-		}
-	}
-
 	@NotNull
 	public static <T> T checkNotNull(@Nullable T reference) {
 		if (reference != null) {
@@ -163,4 +139,5 @@ public final class Preconditions {
 		}
 		throw new IllegalArgumentException(String.format(template, args));
 	}
+
 }

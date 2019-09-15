@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.channels.DatagramChannel;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.net.StandardSocketOptions.*;
 
 /**
@@ -92,7 +92,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public int getReceiveBufferSizeBytes() {
-		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
+		checkState(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -101,7 +101,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress(), "No 'reuse address' setting is present");
+		checkState(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 
@@ -115,7 +115,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public int getSendBufferSizeBytes() {
-		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
+		checkState(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}
 
@@ -124,7 +124,7 @@ public final class DatagramSocketSettings {
 	}
 
 	public boolean getBroadcast() {
-		check(hasBroadcast(), "No 'broadcast' setting is present");
+		checkState(hasBroadcast(), "No 'broadcast' setting is present");
 		return broadcast != FALSE;
 	}
 }

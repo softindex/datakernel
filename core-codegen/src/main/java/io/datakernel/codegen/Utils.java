@@ -24,8 +24,7 @@ import org.objectweb.asm.commons.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.CHAR_TYPE;
@@ -125,7 +124,7 @@ public final class Utils {
 	}
 
 	public static Type unwrap(Type type) {
-		check(type.getSort() == Type.OBJECT, "Cannot unwrap type that is not an object reference");
+		checkArgument(type.getSort() == Type.OBJECT, "Cannot unwrap type that is not an object reference");
 		Type result = WRAPPER_TO_PRIMITIVE.get(type.getClassName());
 		return checkNotNull(result);
 	}

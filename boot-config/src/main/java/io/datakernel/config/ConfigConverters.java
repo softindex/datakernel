@@ -37,14 +37,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
-import static io.datakernel.common.Utils.*;
+import static io.datakernel.common.Utils.parseInetSocketAddress;
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
@@ -684,4 +688,20 @@ public final class ConfigConverters {
 			}
 		};
 	}
+
+	public static <T, V> UnaryOperator<T> apply(BiFunction<T, ? super V, T> modifier, V value) {
+		return instance -> modifier.apply(instance, value);
+	}
+
+	public static <T, V> UnaryOperator<T> applyIf(BiFunction<T, ? super V, T> modifier, V value, Predicate<? super V> predicate) {
+		return instance -> {
+			if (!predicate.test(value)) return instance;
+			return modifier.apply(instance, value);
+		};
+	}
+
+	public static <T, V> UnaryOperator<T> applyIfNotNull(BiFunction<T, ? super V, T> modifier, V value) {
+		return applyIf(modifier, value, Objects::nonNull);
+	}
+
 }

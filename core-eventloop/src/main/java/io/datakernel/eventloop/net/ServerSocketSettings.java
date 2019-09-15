@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import java.io.IOException;
 import java.nio.channels.ServerSocketChannel;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.net.StandardSocketOptions.SO_RCVBUF;
 import static java.net.StandardSocketOptions.SO_REUSEADDR;
 
@@ -87,7 +87,7 @@ public final class ServerSocketSettings {
 	}
 
 	public int getReceiveBufferSizeBytes() {
-		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
+		checkState(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -96,7 +96,7 @@ public final class ServerSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress(), "No 'reuse address' setting is present");
+		checkState(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 }

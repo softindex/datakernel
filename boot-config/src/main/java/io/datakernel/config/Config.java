@@ -36,6 +36,8 @@ import java.util.stream.Collectors;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Utils.nullToDefault;
+import static io.datakernel.common.Utils.nullToException;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.util.Collections.*;
 
@@ -272,7 +274,6 @@ public interface Config {
 		return ofProperties(Paths.get(fileName), optional);
 	}
 
-
 	static Config ofClassPathProperties(String fileName) {
 		return ofClassPathProperties(fileName, getSystemClassLoader(), false);
 	}
@@ -481,15 +482,12 @@ public interface Config {
 			@Nullable
 			@Override
 			public String getValue(@Nullable String defaultValue) {
-				return value != null ? value : defaultValue;
+				return nullToDefault(value, defaultValue);
 			}
 
 			@Override
 			public String getValue() throws NoSuchElementException {
-				if (value != null) {
-					return value;
-				}
-				throw new NoSuchElementException("No value at config node");
+				return nullToException(value, () -> new NoSuchElementException("No value at config node"));
 			}
 
 			@Override

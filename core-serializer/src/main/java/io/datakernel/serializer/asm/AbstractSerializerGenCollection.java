@@ -26,8 +26,7 @@ import io.datakernel.serializer.util.BinaryOutputUtils;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.*;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, NullableOptimization {
 	protected final SerializerGen valueSerializer;
@@ -89,7 +88,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 
 	@Override
 	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		check(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
+		checkArgument(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
 		return let(call(arg(0), "readVarInt"), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(

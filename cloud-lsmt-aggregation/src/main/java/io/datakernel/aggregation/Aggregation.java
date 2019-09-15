@@ -53,6 +53,7 @@ import static io.datakernel.aggregation.AggregationUtils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.nullToSupplier;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.datastream.StreamSupplierTransformer.identity;
 import static java.lang.Math.min;
@@ -294,7 +295,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		Comparator<T> keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
 		BinarySerializer<T> binarySerializer = createBinarySerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
-		Path sortDir = (temporarySortDir != null) ? temporarySortDir : createSortDir();
+		Path sortDir = nullToSupplier(temporarySortDir, this::createSortDir);
 		StreamSupplier<T> stream = unsortedStream
 				.transformWith(StreamSorter.create(
 						StreamSorterStorageImpl.create(executor, binarySerializer, sortDir),

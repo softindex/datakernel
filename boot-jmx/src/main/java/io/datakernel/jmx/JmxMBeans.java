@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.common.collection.CollectionUtils;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.eventloop.jmx.JmxRefreshable;
@@ -38,10 +39,10 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.eventloop.util.ReflectionUtils.*;
 import static java.lang.Math.ceil;
@@ -248,9 +249,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		if (nameToAttr.containsKey(name)) {
 			AttributeDescriptor previousDescriptor = nameToAttr.get(name);
 
-			check(previousDescriptor.getGetter() == null,
+			checkArgument(previousDescriptor.getGetter() == null,
 					"More that one getter with name" + getter.getName());
-			check(previousDescriptor.getType().equals(attrType),
+			checkArgument(previousDescriptor.getType().equals(attrType),
 					"Getter with name \"%s\" has different type than appropriate setter", getter.getName());
 
 			nameToAttr.put(name, new AttributeDescriptor(name, attrType, getter, previousDescriptor.getSetter()));
@@ -269,9 +270,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		if (nameToAttr.containsKey(name)) {
 			AttributeDescriptor previousDescriptor = nameToAttr.get(name);
 
-			check(previousDescriptor.getSetter() == null,
+			checkArgument(previousDescriptor.getSetter() == null,
 					"More that one setter with name" + setter.getName());
-			check(previousDescriptor.getType().equals(attrType),
+			checkArgument(previousDescriptor.getType().equals(attrType),
 					"Setter with name \"%s\" has different type than appropriate getter", setter.getName());
 
 			nameToAttr.put(name, new AttributeDescriptor(
@@ -846,7 +847,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			Object attrValue = attribute.getValue();
 
 			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
-			AtomicReference<Exception> exceptionReference = new AtomicReference<>();
+			Ref<Exception> exceptionRef = new Ref<>();
 
 			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
 				Object mbean = mbeanWrapper.getMBean();
@@ -855,7 +856,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						rootNode.setAttribute(attrName, attrValue, singletonList(mbean));
 						latch.countDown();
 					} catch (Exception e) {
-						exceptionReference.set(e);
+						exceptionRef.set(e);
 						latch.countDown();
 					}
 				});
@@ -867,7 +868,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(e);
 			}
 
-			Exception e = exceptionReference.get();
+			Exception e = exceptionRef.get();
 			if (e != null) {
 				Exception actualException = e;
 				if (e instanceof SetterException) {
@@ -918,8 +919,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		public Object invoke(String actionName, Object[] params, String[] signature)
 				throws MBeanException {
 
-			String[] argTypes = signature != null ? signature : new String[0];
-			Object[] args = params != null ? params : new Object[0];
+			Object[] args = nullToDefault(params, new Object[0]);
+			String[] argTypes = nullToDefault(signature, new String[0]);
 			OperationKey opkey = new OperationKey(actionName, argTypes);
 			Method opMethod = opkeyToMethod.get(opkey);
 			if (opMethod == null) {
@@ -929,9 +930,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 
 			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
-			AtomicReference<Exception> exceptionReference = new AtomicReference<>();
+			Ref<Exception> exceptionRef = new Ref<>();
 
-			AtomicReference<Object> lastValue = new AtomicReference<>();
+			Ref<Object> lastValue = new Ref<>();
 			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
 				Object mbean = mbeanWrapper.getMBean();
 				mbeanWrapper.execute(() -> {
@@ -940,7 +941,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						lastValue.set(result);
 						latch.countDown();
 					} catch (Exception e) {
-						exceptionReference.set(e);
+						exceptionRef.set(e);
 						latch.countDown();
 					}
 				});
@@ -952,7 +953,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(e);
 			}
 
-			Exception e = exceptionReference.get();
+			Exception e = exceptionRef.get();
 			if (e != null) {
 				propagate(e);
 			}

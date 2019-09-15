@@ -20,9 +20,6 @@ import java.time.Duration;
 import java.util.function.Function;
 
 public final class ApplicationSettings {
-	private ApplicationSettings() {
-		throw new AssertionError();
-	}
 
 	public static String getString(Class<?> type, String name, String defValue) {
 		String property;
@@ -64,4 +61,5 @@ public final class ApplicationSettings {
 	public static MemSize getMemSize(Class<?> type, String name, MemSize defValue) {
 		return get(MemSize::valueOf, type, name, defValue);
 	}
+
 }

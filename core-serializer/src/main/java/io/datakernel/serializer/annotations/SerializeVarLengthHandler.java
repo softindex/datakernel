@@ -22,13 +22,13 @@ import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import io.datakernel.serializer.asm.SerializerGenLong;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, fallback) -> {
-			check(generics.length == 0, "Type should have no generics");
+			checkArgument(generics.length == 0, "Type should have no generics");
 			if (type == Integer.TYPE) {
 				return new SerializerGenInt(true);
 			}

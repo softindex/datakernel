@@ -33,8 +33,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.StringFormatUtils.parseDuration;
 import static io.datakernel.eventloop.util.ReflectionUtils.getAnnotationString;
@@ -87,7 +86,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	public void addWorkerPoolKey(WorkerPool workerPool, Key<?> workerPoolKey) {
-		check(!workerPoolKeys.containsKey(workerPool), "Key already added");
+		checkArgument(!workerPoolKeys.containsKey(workerPool), "Key already added");
 		workerPoolKeys.put(workerPool, workerPoolKey);
 	}
 

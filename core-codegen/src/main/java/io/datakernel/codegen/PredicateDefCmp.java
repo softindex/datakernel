@@ -25,7 +25,7 @@ import java.util.Objects;
 
 import static io.datakernel.codegen.CompareOperation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
 
@@ -53,7 +53,7 @@ final class PredicateDefCmp implements PredicateDef {
 
 		Type leftType = left.load(ctx);
 		Type rightType = right.load(ctx);
-		check(Objects.equals(leftType, rightType), "Types of compared values should match");
+		checkArgument(Objects.equals(leftType, rightType), "Types of compared values should match");
 
 		if (isPrimitiveType(leftType)) {
 			g.ifCmp(leftType, operation.opCode, labelTrue);

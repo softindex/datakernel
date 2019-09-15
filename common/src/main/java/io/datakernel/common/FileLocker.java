@@ -25,7 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.channels.FileLock;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkState;
 
 public final class FileLocker {
 	private static final Logger logger = LoggerFactory.getLogger(FileLocker.class);
@@ -65,7 +65,7 @@ public final class FileLocker {
 		try {
 			File parentDir = lockFile.getCanonicalFile().getParentFile();
 			if (parentDir != null) {
-				check(parentDir.mkdirs(), "Cannot create directory %s", parentDir);
+				checkState(parentDir.mkdirs(), "Cannot create directory %s", parentDir);
 			}
 			lockStream = new FileOutputStream(lockFile);
 			lockStream.write(0);

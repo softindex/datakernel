@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 public final class RecursiveType {
@@ -78,7 +79,7 @@ public final class RecursiveType {
 							.toArray(RecursiveType[]::new));
 		} else if (type instanceof WildcardType) {
 			Type[] upperBounds = ((WildcardType) type).getUpperBounds();
-			Preconditions.check(upperBounds.length == 1, type);
+			checkArgument(upperBounds.length == 1, type);
 			return of(upperBounds[0]);
 		} else if (type instanceof GenericArrayType) {
 			RecursiveType component = of(((GenericArrayType) type).getGenericComponentType());

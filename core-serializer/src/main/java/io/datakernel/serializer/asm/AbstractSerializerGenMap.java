@@ -26,8 +26,7 @@ import io.datakernel.serializer.util.BinaryOutputUtils;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.check;
-import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.*;
 
 public abstract class AbstractSerializerGenMap implements SerializerGen, NullableOptimization {
 	protected final SerializerGen keySerializer;
@@ -94,7 +93,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 
 	@Override
 	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		check(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
+		checkArgument(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
 		return let(call(arg(0), "readVarInt"), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(

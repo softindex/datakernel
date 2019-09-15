@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
 
-import static io.datakernel.common.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.net.StandardSocketOptions.*;
 
 /**
@@ -122,7 +122,7 @@ public final class SocketSettings {
 	}
 
 	public int getSendBufferSizeBytes() {
-		check(hasSendBufferSize(), "No 'send buffer size' setting is present");
+		checkState(hasSendBufferSize(), "No 'send buffer size' setting is present");
 		return sendBufferSize;
 	}
 
@@ -136,7 +136,7 @@ public final class SocketSettings {
 	}
 
 	public int getReceiveBufferSizeBytes() {
-		check(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
+		checkState(hasReceiveBufferSize(), "No 'receive buffer size' setting is present");
 		return receiveBufferSize;
 	}
 
@@ -145,7 +145,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getKeepAlive() {
-		check(hasKeepAlive(), "No 'keep alive' setting is present");
+		checkState(hasKeepAlive(), "No 'keep alive' setting is present");
 		return keepAlive != FALSE;
 	}
 
@@ -154,7 +154,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		check(hasReuseAddress(), "No 'reuse address' setting is present");
+		checkState(hasReuseAddress(), "No 'reuse address' setting is present");
 		return reuseAddress != FALSE;
 	}
 
@@ -163,7 +163,7 @@ public final class SocketSettings {
 	}
 
 	public boolean getTcpNoDelay() {
-		check(hasTcpNoDelay(), "No 'TCP no delay' setting is present");
+		checkState(hasTcpNoDelay(), "No 'TCP no delay' setting is present");
 		return tcpNoDelay != FALSE;
 	}
 
