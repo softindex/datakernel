@@ -1,8 +1,8 @@
 package io.datakernel.async.file;
 
-import io.datakernel.common.Preconditions;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -14,8 +14,8 @@ import static io.datakernel.promise.Promise.ofBlockingCallable;
 public final class ExecutorAsyncFileService implements AsyncFileService {
 	private final Executor executor;
 
-	public ExecutorAsyncFileService(Executor executor) {
-		this.executor = Preconditions.checkNotNull(executor);
+	public ExecutorAsyncFileService(@NotNull Executor executor) {
+		this.executor = executor;
 	}
 
 	@Override

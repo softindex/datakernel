@@ -19,6 +19,7 @@ package io.datakernel.datastream.processor;
 import io.datakernel.datastream.*;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -61,7 +62,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 	 *
 	 * @param keyComparator comparator for compare keys
 	 */
-	public AbstractStreamReducer(Comparator<K> keyComparator) {
+	public AbstractStreamReducer(@NotNull Comparator<K> keyComparator) {
 		this.output = new Output();
 		this.priorityQueue = new PriorityQueue<>(1, (o1, o2) -> {
 			int compare = ((Comparator) keyComparator).compare(o1.headKey, o2.headKey);

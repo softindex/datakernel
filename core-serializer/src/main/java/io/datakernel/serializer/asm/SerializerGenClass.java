@@ -19,10 +19,10 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.common.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 
 import java.lang.reflect.Constructor;
@@ -32,7 +32,6 @@ import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.*;
-import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.*;
@@ -91,18 +90,18 @@ public class SerializerGenClass implements SerializerGen {
 	private List<String> factoryParams;
 	private final Map<Method, List<String>> setters = new LinkedHashMap<>();
 
-	public SerializerGenClass(Class<?> type) {
-		this.dataTypeIn = checkNotNull(type);
+	public SerializerGenClass(@NotNull Class<?> type) {
+		this.dataTypeIn = type;
 		if (!dataTypeIn.isInterface()) {
 			this.dataTypeOut = dataTypeIn;
 		}
 	}
 
-	public SerializerGenClass(Class<?> type, Class<?> typeImpl) {
+	public SerializerGenClass(@NotNull Class<?> type, @NotNull Class<?> typeImpl) {
 		checkArgument(type.isInterface(), "Class should be an interface");
 		checkArgument(type.isAssignableFrom(typeImpl), "Class should be assignable from %s", typeImpl);
-		this.dataTypeIn = checkNotNull(type);
-		this.dataTypeOut = checkNotNull(typeImpl);
+		this.dataTypeIn = type;
+		this.dataTypeOut = typeImpl;
 		this.implInterface = true;
 	}
 
@@ -116,20 +115,16 @@ public class SerializerGenClass implements SerializerGen {
 		this.generics = asList(generics);
 	}
 
-	public void addSetter(Method method, List<String> fields) {
+	public void addSetter(@NotNull Method method, @NotNull List<String> fields) {
 		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
-		checkNotNull(method);
-		checkNotNull(fields);
 		checkArgument(!isPrivate(method.getModifiers()), "Setter cannot be private: %s", method);
 		checkArgument(method.getGenericParameterTypes().length == fields.size(), "Number of arguments of a method should match a size of list of fields");
 		checkArgument(!setters.containsKey(method), "Setter has already been added");
 		setters.put(method, fields);
 	}
 
-	public void setFactory(Method methodFactory, List<String> fields) {
+	public void setFactory(@NotNull Method methodFactory, @NotNull List<String> fields) {
 		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
-		checkNotNull(methodFactory);
-		checkNotNull(fields);
 		checkArgument(this.factory == null, "Factory is already set: %s", this.factory);
 		checkArgument(!isPrivate(methodFactory.getModifiers()), "Factory cannot be private: %s", methodFactory);
 		checkArgument(isStatic(methodFactory.getModifiers()), "Factory must be static: %s", methodFactory);
@@ -138,10 +133,8 @@ public class SerializerGenClass implements SerializerGen {
 		this.factoryParams = fields;
 	}
 
-	public void setConstructor(Constructor<?> constructor, List<String> fields) {
+	public void setConstructor(@NotNull Constructor<?> constructor, @NotNull List<String> fields) {
 		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
-		checkNotNull(constructor);
-		checkNotNull(fields);
 		checkArgument(this.constructor == null, "Constructor is already set: %s", this.constructor);
 		checkArgument(!isPrivate(constructor.getModifiers()), "Constructor cannot be private: %s", constructor);
 		checkArgument(constructor.getGenericParameterTypes().length == fields.size(), "Number of arguments of a constructor should match a size of list of fields");
@@ -349,7 +342,7 @@ public class SerializerGenClass implements SerializerGen {
 			boolean found = false;
 			for (String fieldName : setters.get(method)) {
 				FieldGen fieldGen = fields.get(fieldName);
-				Preconditions.checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, method);
+				checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, method);
 				if (fieldGen.hasVersion(version)) {
 					found = true;
 					break;

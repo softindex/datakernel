@@ -65,6 +65,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private final InetAddress remoteAddress;
 
+	@Nullable
 	private HttpRequest request;
 	private final AsyncHttpServer server;
 	@Nullable

@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.List;
@@ -50,29 +51,29 @@ final class MountingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		return findMount(name).upload(name, offset, revision);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		return findMount(name).download(name, offset, length);
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return Promises.toList(Stream.concat(Stream.of(root), mounts.values().stream()).map(f -> f.listEntities(glob)))
 				.map(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return Promises.toList(Stream.concat(Stream.of(root), mounts.values().stream()).map(f -> f.list(glob)))
 				.map(listOfLists -> FileMetadata.flatten(listOfLists.stream()));
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		FsClient first = findMount(name);
 		FsClient second = findMount(target);
 		if (first == second) {
@@ -86,7 +87,7 @@ final class MountingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		FsClient first = findMount(name);
 		FsClient second = findMount(target);
 		if (first == second) {
@@ -99,12 +100,12 @@ final class MountingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		return findMount(name).delete(name, revision);
 	}
 
 	@Override
-	public FsClient mount(String mountpoint, FsClient client) {
+	public FsClient mount(@NotNull String mountpoint, @NotNull FsClient client) {
 		Map<String, FsClient> map = new HashMap<>(mounts);
 		map.put(mountpoint, client.strippingPrefix(mountpoint + '/'));
 		return new MountingFsClient(root, map);

@@ -65,8 +65,8 @@ public abstract class HttpMessage {
 	byte flags;
 
 	final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
-	ByteBuf body;
-	ChannelSupplier<ByteBuf> bodyStream;
+	@Nullable ByteBuf body;
+	@Nullable ChannelSupplier<ByteBuf> bodyStream;
 	Recyclable bufs;
 
 	protected int maxBodySize;

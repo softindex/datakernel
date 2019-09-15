@@ -18,6 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
@@ -26,7 +27,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
 
 public final class RpcStrategyTypeDispatching implements RpcStrategy {
@@ -37,12 +37,9 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 
 	public static RpcStrategyTypeDispatching create() {return new RpcStrategyTypeDispatching();}
 
-	public RpcStrategyTypeDispatching on(Class<?> dataType,
-	                                     RpcStrategy strategy) {
-		checkNotNull(dataType);
-		checkNotNull(strategy);
+	public RpcStrategyTypeDispatching on(@NotNull Class<?> dataType, @NotNull RpcStrategy strategy) {
 		checkState(!dataTypeToStrategy.containsKey(dataType),
-				"Strategy for type " + dataType.toString() + " is already set");
+				() -> "Strategy for type " + dataType.toString() + " is already set");
 		dataTypeToStrategy.put(dataType, strategy);
 		return this;
 	}
@@ -87,12 +84,9 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 
 	static final class Sender implements RpcSender {
 		private final HashMap<Class<?>, RpcSender> typeToSender;
-		private final RpcSender defaultSender;
+		private final @Nullable RpcSender defaultSender;
 
-		public Sender(HashMap<Class<?>, RpcSender> typeToSender,
-		              RpcSender defaultSender) {
-			checkNotNull(typeToSender);
-
+		Sender(@NotNull HashMap<Class<?>, RpcSender> typeToSender, @Nullable RpcSender defaultSender) {
 			this.typeToSender = typeToSender;
 			this.defaultSender = defaultSender;
 		}

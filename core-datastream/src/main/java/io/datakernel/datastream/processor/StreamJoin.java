@@ -18,6 +18,7 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
@@ -25,7 +26,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 /**
@@ -155,15 +155,15 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 	private final Joiner<K, L, R, V> joiner;
 
 	// region creators
-	private StreamJoin(Comparator<K> keyComparator,
-	                   Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-	                   Joiner<K, L, R, V> joiner) {
-		this.keyComparator = checkNotNull(keyComparator);
-		this.joiner = checkNotNull(joiner);
+	private StreamJoin(@NotNull Comparator<K> keyComparator,
+			@NotNull Function<L, K> leftKeyFunction, @NotNull Function<R, K> rightKeyFunction,
+			@NotNull Joiner<K, L, R, V> joiner) {
+		this.keyComparator = keyComparator;
+		this.joiner = joiner;
 		this.left = new Input<>(leftDeque);
 		this.right = new Input<>(rightDeque);
-		this.leftKeyFunction = checkNotNull(leftKeyFunction);
-		this.rightKeyFunction = checkNotNull(rightKeyFunction);
+		this.leftKeyFunction = leftKeyFunction;
+		this.rightKeyFunction = rightKeyFunction;
 		this.output = new Output();
 	}
 
@@ -176,8 +176,8 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 	 * @param joiner           joiner which will join streams
 	 */
 	public static <K, L, R, V> StreamJoin<K, L, R, V> create(Comparator<K> keyComparator,
-	                                                         Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-	                                                         Joiner<K, L, R, V> joiner) {
+			Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+			Joiner<K, L, R, V> joiner) {
 		return new StreamJoin<>(keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
 	// endregion

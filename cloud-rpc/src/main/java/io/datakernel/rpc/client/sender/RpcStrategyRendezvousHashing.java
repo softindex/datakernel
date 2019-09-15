@@ -21,13 +21,13 @@ import io.datakernel.common.HashUtils;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashBucketFunction;
 import io.datakernel.rpc.hash.HashFunction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.*;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.collection.CollectionUtils.first;
 
 public final class RpcStrategyRendezvousHashing implements RpcStrategy {
@@ -41,10 +41,10 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	private final HashBucketFunction hashBucketFunction;
 	private final int buckets;
 
-	private RpcStrategyRendezvousHashing(HashFunction<?> hashFunction, int minShards,
-										 HashBucketFunction hashBucketFunction, int buckets,
-										 Map<Object, RpcStrategy> shards) {
-		this.hashFunction = checkNotNull(hashFunction);
+	private RpcStrategyRendezvousHashing(@NotNull HashFunction<?> hashFunction, int minShards,
+			@NotNull HashBucketFunction hashBucketFunction, int buckets,
+			Map<Object, RpcStrategy> shards) {
+		this.hashFunction = hashFunction;
 		this.minShards = minShards;
 		this.hashBucketFunction = hashBucketFunction;
 		this.buckets = buckets;
@@ -70,8 +70,7 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 		return new RpcStrategyRendezvousHashing(hashFunction, minShards, hashBucketFunction, buckets, shards);
 	}
 
-	public RpcStrategyRendezvousHashing withShard(Object shardId, RpcStrategy strategy) {
-		checkNotNull(strategy);
+	public RpcStrategyRendezvousHashing withShard(Object shardId, @NotNull RpcStrategy strategy) {
 		shards.put(shardId, strategy);
 		return this;
 	}
@@ -115,7 +114,6 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 			return first(shardsSenders.values());
 		}
 
-		checkNotNull(hashBucketFunction);
 		RpcSender[] sendersBuckets = new RpcSender[buckets];
 		for (int n = 0; n < sendersBuckets.length; n++) {
 			RpcSender chosenSender = null;
@@ -139,9 +137,9 @@ public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 		private final HashFunction<?> hashFunction;
 		private final RpcSender[] hashBuckets;
 
-		Sender(HashFunction<?> hashFunction, RpcSender[] hashBuckets) {
-			this.hashFunction = checkNotNull(hashFunction);
-			this.hashBuckets = checkNotNull(hashBuckets);
+		Sender(@NotNull HashFunction<?> hashFunction, @NotNull RpcSender[] hashBuckets) {
+			this.hashFunction = hashFunction;
+			this.hashBuckets = hashBuckets;
 		}
 
 		@SuppressWarnings("unchecked")

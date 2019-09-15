@@ -25,7 +25,6 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
@@ -46,7 +45,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void setConsumer(StreamConsumer<T> consumer) {
+		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
 			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
 		}
 
@@ -85,7 +84,7 @@ public final class StreamSuppliers {
 		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void setConsumer(StreamConsumer<T> consumer) {
+		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
 			getCurrentEventloop().post(() -> endOfStream.trySet(null));
 		}
 
@@ -119,7 +118,7 @@ public final class StreamSuppliers {
 		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void setConsumer(StreamConsumer<T> consumer) {
+		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
 			consumer.getAcknowledgement()
 					.whenException(endOfStream::trySetException);
 		}
@@ -161,8 +160,8 @@ public final class StreamSuppliers {
 		 *
 		 * @param iterator iterator with object which need to send
 		 */
-		public OfIteratorImpl(Iterator<T> iterator) {
-			this.iterator = checkNotNull(iterator);
+		public OfIteratorImpl(@NotNull Iterator<T> iterator) {
+			this.iterator = iterator;
 		}
 
 		@Override

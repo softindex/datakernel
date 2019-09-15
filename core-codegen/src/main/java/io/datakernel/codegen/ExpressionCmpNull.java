@@ -16,17 +16,16 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
-
 final class ExpressionCmpNull implements PredicateDef {
 	private final Expression value;
 
-	ExpressionCmpNull(Expression value) {
-		this.value = checkNotNull(value);
+	ExpressionCmpNull(@NotNull Expression value) {
+		this.value = value;
 	}
 
 	@Override

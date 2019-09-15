@@ -38,7 +38,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * Represents a cached filesystem client which is an implementation of {@link FsClient}.
@@ -73,19 +74,19 @@ public final class CachedFsClient implements FsClient, EventloopService {
 		return new CachedFsClient(Eventloop.getCurrentEventloop(), mainClient, cacheClient, comparator);
 	}
 
-	public CachedFsClient with(MemSize cacheSizeLimit) {
-		this.cacheSizeLimit = checkNotNull(cacheSizeLimit);
+	public CachedFsClient with(@NotNull MemSize cacheSizeLimit) {
+		this.cacheSizeLimit = cacheSizeLimit;
 		return this;
 	}
 
-	public CachedFsClient with(CurrentTimeProvider timeProvider) {
-		this.timeProvider = checkNotNull(timeProvider);
+	public CachedFsClient with(@NotNull CurrentTimeProvider timeProvider) {
+		this.timeProvider = timeProvider;
 		return this;
 	}
 	// endregion
 
-	public Promise<Void> setCacheSizeLimit(MemSize cacheSizeLimit) {
-		this.cacheSizeLimit = checkNotNull(cacheSizeLimit);
+	public Promise<Void> setCacheSizeLimit(@NotNull MemSize cacheSizeLimit) {
+		this.cacheSizeLimit = cacheSizeLimit;
 		return ensureSpace();
 	}
 
@@ -116,12 +117,12 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset) {
 		return mainClient.upload(name, offset);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		return mainClient.upload(name, offset, revision);
 	}
 
@@ -134,8 +135,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise for stream supplier of byte buffers
 	 */
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
-		checkNotNull(name, "fileName");
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
@@ -221,12 +221,12 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return mainClient.move(name, target, targetRevision, tombstoneRevision);
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return mainClient.copy(name, target, targetRevision);
 	}
 
@@ -237,13 +237,13 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise that is a union of the most actual files from cache folder and server
 	 */
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return Promises.toList(cacheClient.listEntities(glob), mainClient.listEntities(glob))
 				.map(lists -> FileMetadata.flatten(lists.stream()));
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return Promises.toList(cacheClient.list(glob), mainClient.list(glob))
 				.map(lists -> FileMetadata.flatten(lists.stream()));
 	}
@@ -254,7 +254,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise of {@link Void} that represents successfulll deletion
 	 */
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		cacheStats.remove(name);
 		return Promises.all(cacheClient.delete(name, revision), mainClient.delete(name, revision));
 	}

@@ -26,8 +26,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
-
 public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	@FunctionalInterface
 	public interface ResultValidator<T> {
@@ -85,7 +83,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 				@Nullable StacklessException noValidResultException) {
 			assert senders.size() > 0;
 			this.subSenders = senders.toArray(new RpcSender[0]);
-			this.resultValidator = checkNotNull(resultValidator);
+			this.resultValidator = resultValidator;
 			this.noValidResultException = noValidResultException;
 		}
 

@@ -18,20 +18,19 @@ package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
-
 public final class CreateResponse<K> {
 	private final K id;
 	private final Map<String, List<String>> errors;
 
-	private CreateResponse(K id, Map<String, List<String>> errors) {
-		this.id = checkNotNull(id, "Id cannot be null in CreateResponse");
-		this.errors = checkNotNull(errors, "Errors cannot be null in CreateResponse");
+	private CreateResponse(@NotNull K id, @NotNull Map<String, List<String>> errors) {
+		this.id = id;
+		this.errors = errors;
 	}
 
 	public static <K> CreateResponse<K> of(K id) {

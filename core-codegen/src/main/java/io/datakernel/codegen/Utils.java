@@ -17,6 +17,7 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -24,7 +25,8 @@ import org.objectweb.asm.commons.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.ClassLoader.getSystemClassLoader;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.CHAR_TYPE;
@@ -123,10 +125,9 @@ public final class Utils {
 		throw new IllegalArgumentException(format("%s is not primitive", type.getClassName()));
 	}
 
-	public static Type unwrap(Type type) {
+	public static Type unwrap(@NotNull Type type) {
 		checkArgument(type.getSort() == Type.OBJECT, "Cannot unwrap type that is not an object reference");
-		Type result = WRAPPER_TO_PRIMITIVE.get(type.getClassName());
-		return checkNotNull(result);
+		return checkNotNull(WRAPPER_TO_PRIMITIVE.get(type.getClassName()));
 	}
 
 	public static Class<?> getJavaType(ClassLoader classLoader, Type type) {

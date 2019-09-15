@@ -22,11 +22,11 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class SerializerGenArray implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
@@ -34,15 +34,15 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	private final Class<?> type;
 	private final boolean nullable;
 
-	public SerializerGenArray(SerializerGen serializer, int fixedSize, Class<?> type, boolean nullable) {
-		this.valueSerializer = checkNotNull(serializer);
+	public SerializerGenArray(@NotNull SerializerGen serializer, int fixedSize, Class<?> type, boolean nullable) {
+		this.valueSerializer = serializer;
 		this.fixedSize = fixedSize;
 		this.type = type;
 		this.nullable = nullable;
 	}
 
-	public SerializerGenArray(SerializerGen serializer, int fixedSize, Class<?> type) {
-		this.valueSerializer = checkNotNull(serializer);
+	public SerializerGenArray(@NotNull SerializerGen serializer, int fixedSize, Class<?> type) {
+		this.valueSerializer = serializer;
 		this.fixedSize = fixedSize;
 		this.type = type;
 		this.nullable = false;

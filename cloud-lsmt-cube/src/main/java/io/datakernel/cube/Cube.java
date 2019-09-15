@@ -165,12 +165,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		this.aggregationChunkStorage = aggregationChunkStorage;
 	}
 
-	public static Cube create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
-			AggregationChunkStorage aggregationChunkStorage) {
-		checkArgument(eventloop != null, "Cannot create Cube with Eventloop that is null");
-		checkArgument(executor != null, "Cannot create Cube with Executor that is null");
-		checkArgument(classLoader != null, "Cannot create Cube with ClassLoader that is null");
-		checkArgument(aggregationChunkStorage != null, "Cannot create Cube with AggregationChunkStorage that is null");
+	public static Cube create(@NotNull Eventloop eventloop, @NotNull Executor executor, @NotNull DefiningClassLoader classLoader,
+			@NotNull AggregationChunkStorage aggregationChunkStorage) {
 		return new Cube(eventloop, executor, classLoader, aggregationChunkStorage);
 	}
 

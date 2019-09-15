@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -43,7 +44,7 @@ public class JmxMBeansAttributesHidingTest {
 	@Test
 	public void omitsNullPojoAttributesInSingleton() {
 		MBeanStubOne singletonWithNullPojo = new MBeanStubOne(null);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(singletonWithNullPojo), MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(singletonWithNullPojo), defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -56,7 +57,7 @@ public class JmxMBeansAttributesHidingTest {
 		MBeanStubOne mbean_1 = new MBeanStubOne(null);
 		MBeanStubOne mbean_2 = new MBeanStubOne(null);
 		List<MBeanStubOne> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -69,7 +70,7 @@ public class JmxMBeansAttributesHidingTest {
 		MBeanStubOne mbean_1 = new MBeanStubOne(null);
 		MBeanStubOne mbean_2 = new MBeanStubOne(new PojoStub());
 		List<MBeanStubOne> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -115,7 +116,7 @@ public class JmxMBeansAttributesHidingTest {
 	@Test
 	public void omitsNullJmxStatsAttributesInSingleton() {
 		MBeanStubTwo singletonWithNullJmxStats = new MBeanStubTwo(null);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(singletonWithNullJmxStats), MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(singletonWithNullJmxStats), defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -128,7 +129,7 @@ public class JmxMBeansAttributesHidingTest {
 		MBeanStubTwo mbean_1 = new MBeanStubTwo(null);
 		MBeanStubTwo mbean_2 = new MBeanStubTwo(null);
 		List<MBeanStubTwo> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -141,7 +142,7 @@ public class JmxMBeansAttributesHidingTest {
 		MBeanStubTwo mbean_1 = new MBeanStubTwo(null);
 		MBeanStubTwo mbean_2 = new MBeanStubTwo(new JmxStatsStub());
 		List<MBeanStubTwo> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -189,7 +190,7 @@ public class JmxMBeansAttributesHidingTest {
 	@Test
 	public void omitsNullPojosInNonNullPojos() {
 		MBeanStubThree monitorable = new MBeanStubThree(new PojoStubThree(null));
-		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(monitorable), MBeanSettings.defaultSettings(), false);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(singletonList(monitorable), defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());

@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,52 +37,52 @@ public final class EmptyFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		return Promise.of(ChannelConsumers.recycling());
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		return Promise.ofException(FILE_NOT_FOUND);
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String filename, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return Promise.complete();
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return Promise.complete();
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return Promise.of(emptyList());
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return Promise.of(emptyList());
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		return Promise.complete();
 	}
 
 	@Override
-	public FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from) {
+	public FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from) {
 		return this;
 	}
 
 	@Override
-	public FsClient strippingPrefix(String prefix) {
+	public FsClient strippingPrefix(@NotNull String prefix) {
 		return this;
 	}
 
 	@Override
-	public FsClient filter(Predicate<String> predicate) {
+	public FsClient filter(@NotNull Predicate<String> predicate) {
 		return this;
 	}
 }

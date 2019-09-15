@@ -51,7 +51,6 @@ import java.util.function.Function;
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
@@ -220,8 +219,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
-		checkNotNull(name, "name");
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		checkArgument(offset >= 0, "offset < 0");
 		checkArgument(defaultRevision == null || revision == defaultRevision, "unsupported revision");
 
@@ -263,8 +261,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
-		checkNotNull(name, "name");
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		checkArgument(offset >= 0, "offset < 0");
 		checkArgument(length >= -1, "length < -1");
 
@@ -288,21 +285,21 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return Promise.ofBlockingCallable(executor, () -> doList(glob, true))
 				.whenComplete(toLogger(logger, TRACE, "listEntities", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return Promise.ofBlockingCallable(executor, () -> doList(glob, false))
 				.whenComplete(toLogger(logger, TRACE, "list", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		checkArgument(defaultRevision == null || targetRevision == defaultRevision, "unsupported revision");
 		checkArgument(defaultRevision == null || tombstoneRevision == defaultRevision, "unsupported revision");
 
@@ -346,7 +343,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		checkArgument(defaultRevision == null || targetRevision == defaultRevision, "unsupported revision");
 
 		return Promise.ofBlockingCallable(executor,
@@ -359,7 +356,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		checkArgument(defaultRevision == null || revision == defaultRevision, "unsupported revision");
 
 		return Promise.ofBlockingCallable(executor,
@@ -377,7 +374,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<FileMetadata> getMetadata(String name) {
+	public Promise<FileMetadata> getMetadata(@NotNull String name) {
 		return Promise.ofBlockingCallable(executor, () -> {
 			FilenameInfo info = getInfo(name);
 			return info != null ? toFileMetadata(info) : null;
@@ -385,7 +382,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public FsClient subfolder(String folder) {
+	public FsClient subfolder(@NotNull String folder) {
 		if (folder.length() == 0) {
 			return this;
 		}

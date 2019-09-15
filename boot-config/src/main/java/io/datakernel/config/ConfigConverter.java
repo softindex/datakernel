@@ -71,16 +71,14 @@ public interface ConfigConverter<T> {
 			@Override
 			public T get(Config config, T defaultValue) {
 				T value = thisConverter.get(config, defaultValue);
-				checkArgument(predicate.test(value), "Predicate has returned false");
-				return value;
+				return checkArgument(value, predicate, () -> "Constraint violation: " + value);
 			}
 
 			@NotNull
 			@Override
 			public T get(Config config) {
-				T t = thisConverter.get(config);
-				checkArgument(predicate.test(t), "Predicate has returned false");
-				return t;
+				T value = thisConverter.get(config);
+				return checkArgument(value, predicate, () -> "Constraint violation: " + value);
 			}
 		};
 	}

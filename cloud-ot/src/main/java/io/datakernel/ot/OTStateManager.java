@@ -62,6 +62,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@Nullable
 	private Object pendingCommit;
+	@Nullable
 	private List<D> pendingCommitDiffs;
 
 	private final AsyncSupplierWithStatus<Void> sync = new AsyncSupplierWithStatus<>(coalesce(this::doSync));

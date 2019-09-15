@@ -127,7 +127,7 @@ public class Utils {
 		return true;
 	}
 
-	private static byte[] loadResource(InputStream stream) throws IOException {
+	private static byte[] loadResource(@NotNull InputStream stream) throws IOException {
 		// reading file as resource
 		try {
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -147,9 +147,7 @@ public class Utils {
 	}
 
 	public static byte[] loadResource(String name) throws IOException {
-		InputStream resource = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
-		checkNotNull(resource);
-		return loadResource(resource);
+		return loadResource(checkNotNull(Thread.currentThread().getContextClassLoader().getResourceAsStream(name)));
 	}
 
 	public static InetSocketAddress parseInetSocketAddress(String addressAndPort) throws ParseException {

@@ -16,10 +16,10 @@
 
 package io.datakernel.cube;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.lang.reflect.Type;
 import java.util.*;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RecordScheme {
 	private final LinkedHashMap<String, Type> fieldTypes = new LinkedHashMap<>();
@@ -42,13 +42,12 @@ public final class RecordScheme {
 		return new RecordScheme();
 	}
 
-	public RecordScheme withField(String field, Type type) {
+	public RecordScheme withField(@NotNull String field, @NotNull Type type) {
 		addField(field, type);
 		return this;
 	}
 
-	public void addField(String field, Type type) {
-		checkNotNull(type);
+	public void addField(@NotNull String field, @NotNull Type type) {
 		fieldTypes.put(field, type);
 		fields = Arrays.copyOf(fields, fields.length + 1);
 		fields[fields.length - 1] = field;

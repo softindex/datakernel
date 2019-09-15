@@ -24,7 +24,7 @@ public class TestStreamConsumers {
 			}
 
 			@Override
-			public void setSupplier(StreamSupplier<T> supplier) {
+			public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 				super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
 					@SuppressWarnings("unchecked")
 					@Override

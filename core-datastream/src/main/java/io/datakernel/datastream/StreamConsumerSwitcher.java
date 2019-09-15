@@ -106,7 +106,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void setConsumer(StreamConsumer<T> consumer) {
+		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
 			assert consumer == this.consumer;
 			consumer.getAcknowledgement()
 					.whenException(this::close)

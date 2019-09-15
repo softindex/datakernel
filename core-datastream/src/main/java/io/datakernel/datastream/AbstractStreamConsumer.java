@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import java.util.EnumSet;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static java.util.Collections.emptySet;
@@ -56,8 +55,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 */
 
 	@Override
-	public final void setSupplier(StreamSupplier<T> supplier) {
-		checkNotNull(supplier);
+	public final void setSupplier(@NotNull StreamSupplier<T> supplier) {
 		checkState(this.supplier == null, "Supplier has already been set");
 		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
 				LATE_BINDING_ERROR_MESSAGE, this);

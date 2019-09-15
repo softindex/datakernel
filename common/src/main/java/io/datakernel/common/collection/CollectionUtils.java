@@ -16,6 +16,8 @@
 
 package io.datakernel.common.collection;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -252,7 +254,7 @@ public class CollectionUtils {
 
 	public static <T> Iterator<T> concatIterators(Iterator<? extends Iterator<? extends T>> iterators) {
 		return new Iterator<T>() {
-			Iterator<? extends T> it = iterators.hasNext() ? iterators.next() : null;
+			@Nullable Iterator<? extends T> it = iterators.hasNext() ? iterators.next() : null;
 
 			@Override
 			public boolean hasNext() {

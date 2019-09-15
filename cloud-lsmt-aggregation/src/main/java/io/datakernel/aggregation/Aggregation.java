@@ -126,8 +126,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @param aggregationChunkStorage storage for data chunks
 	 */
 	public static Aggregation create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
-			AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
-		checkArgument(structure != null, "Cannot create Aggregation with AggregationStructure that is null");
+			AggregationChunkStorage aggregationChunkStorage, @NotNull AggregationStructure structure) {
 		return new Aggregation(eventloop, executor, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 

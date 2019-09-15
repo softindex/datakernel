@@ -16,9 +16,8 @@
 
 package io.datakernel.dns;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import static io.datakernel.common.Preconditions.checkArgument;
 
 /***
  * A simple DNS query, which specifies a domain name and record type (one of A or AAAA).
@@ -27,9 +26,7 @@ public final class DnsQuery {
 	private final String domainName;
 	private final DnsProtocol.RecordType recordType;
 
-	private DnsQuery(String domainName, DnsProtocol.RecordType recordType) {
-		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
-		checkArgument(recordType != null, "Record type cannot be null");
+	private DnsQuery(@NotNull String domainName, @NotNull DnsProtocol.RecordType recordType) {
 		this.domainName = domainName;
 		this.recordType = recordType;
 	}

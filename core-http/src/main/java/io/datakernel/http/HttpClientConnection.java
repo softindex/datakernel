@@ -83,14 +83,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
 	public static final ParseException CONNECTION_CLOSED = new ParseException(HttpClientConnection.class, "Connection closed");
 
+	@Nullable
 	private SettablePromise<HttpResponse> promise;
+	@Nullable
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	@Nullable
 	private final Inspector inspector;
 
 	final InetSocketAddress remoteAddress;
-	HttpClientConnection addressPrev;
+	@Nullable HttpClientConnection addressPrev;
 	HttpClientConnection addressNext;
 	final int maxBodySize;
 

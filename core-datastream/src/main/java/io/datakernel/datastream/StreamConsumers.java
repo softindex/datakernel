@@ -41,7 +41,7 @@ public final class StreamConsumers {
 		}
 
 		@Override
-		public void setSupplier(StreamSupplier<T> supplier) {
+		public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 			getCurrentEventloop().post(() -> acknowledgement.trySetException(exception));
 		}
 
@@ -176,7 +176,7 @@ public final class StreamConsumers {
 		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void setSupplier(StreamSupplier<T> supplier) {
+		public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 			supplier.getEndOfStream().whenComplete(acknowledgement::trySet);
 		}
 
@@ -200,7 +200,7 @@ public final class StreamConsumers {
 		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void setSupplier(StreamSupplier<T> supplier) {
+		public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 			supplier.getEndOfStream().whenComplete(acknowledgement::trySet);
 			supplier.resume($ -> {});
 		}

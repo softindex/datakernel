@@ -19,7 +19,6 @@ package io.datakernel.serializer;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
-import io.datakernel.common.Preconditions;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
@@ -28,6 +27,7 @@ import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
 import io.datakernel.serializer.util.BinaryOutputUtils;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -41,7 +41,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
@@ -314,8 +315,7 @@ public final class SerializerBuilder {
 			throw new IllegalArgumentException("No builder for type " + key);
 		}
 		SerializerGen serializer = builder.serializer(type, generics, null);
-		checkNotNull(serializer);
-		return serializer;
+		return checkNotNull(serializer);
 	}
 
 	private SerializerGen createSubclassesSerializer(Class<?> type, SerializeSubclasses serializeSubclasses) {
@@ -331,9 +331,8 @@ public final class SerializerBuilder {
 		return createSubclassesSerializer(type, subclassesSet, serializeSubclasses.startIndex());
 	}
 
-	private SerializerGen createSubclassesSerializer(Class<?> type, LinkedHashSet<Class<?>> subclassesSet,
+	private SerializerGen createSubclassesSerializer(Class<?> type, @NotNull LinkedHashSet<Class<?>> subclassesSet,
 			int startIndex) {
-		checkNotNull(subclassesSet);
 		checkArgument(!subclassesSet.isEmpty(), "Set of subclasses should not be empty");
 		LinkedHashMap<Class<?>, SerializerGen> subclasses = new LinkedHashMap<>();
 		for (Class<?> subclass : subclassesSet) {
@@ -1000,10 +999,10 @@ public final class SerializerBuilder {
 		final SerializerForType[] generics;
 		final List<SerializerGenBuilder> mods;
 
-		private Key(Class<?> type, SerializerForType[] generics, List<SerializerGenBuilder> mods) {
-			this.type = checkNotNull(type);
-			this.generics = checkNotNull(generics);
-			this.mods = checkNotNull(mods);
+		private Key(@NotNull Class<?> type, @NotNull SerializerForType[] generics, @NotNull List<SerializerGenBuilder> mods) {
+			this.type = type;
+			this.generics = generics;
+			this.mods = mods;
 		}
 
 		@Override

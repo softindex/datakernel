@@ -89,7 +89,9 @@ public abstract class AbstractHttpConnection {
 
 	private final Consumer<ByteBuf> onHeaderBuf = this::onHeaderBuf;
 
+	@Nullable
 	protected ConnectionsLinkedList pool;
+	@Nullable
 	protected AbstractHttpConnection prev;
 	protected AbstractHttpConnection next;
 	protected long poolTimestamp;

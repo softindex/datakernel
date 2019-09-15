@@ -22,13 +22,13 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
@@ -42,16 +42,16 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 	private final boolean nullable;
 	private final int startIndex;
 
-	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, int startIndex) {
+	public SerializerGenSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, int startIndex) {
 		this.startIndex = startIndex;
-		this.dataType = checkNotNull(dataType);
+		this.dataType = dataType;
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 		this.nullable = false;
 	}
 
-	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable, int startIndex) {
+	public SerializerGenSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable, int startIndex) {
 		this.startIndex = startIndex;
-		this.dataType = checkNotNull(dataType);
+		this.dataType = dataType;
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 		this.nullable = nullable;
 	}

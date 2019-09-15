@@ -18,12 +18,12 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.hash.ShardingFunction;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 /**
@@ -37,8 +37,7 @@ import static java.util.Arrays.asList;
  */
 public final class RpcStrategies {
 
-	public static RpcStrategySingleServer server(InetSocketAddress address) {
-		checkNotNull(address);
+	public static RpcStrategySingleServer server(@NotNull InetSocketAddress address) {
 		return RpcStrategySingleServer.create(address);
 	}
 
@@ -91,23 +90,18 @@ public final class RpcStrategies {
 		return sharding(hashFunction, asList(senders));
 	}
 
-	public static RpcStrategySharding sharding(ShardingFunction<?> hashFunction,
-	                                           List<RpcStrategy> senders) {
-		checkNotNull(senders);
+	public static RpcStrategySharding sharding(@NotNull ShardingFunction<?> hashFunction,
+	                                           @NotNull List<RpcStrategy> senders) {
 		checkArgument(senders.size() > 0, "At least one sender must be present");
-		checkNotNull(hashFunction);
 		return RpcStrategySharding.create(hashFunction, RpcStrategyList.ofStrategies(senders));
 	}
 
-	public static RpcStrategySharding sharding(ShardingFunction<?> hashFunction,
-	                                           RpcStrategyList list) {
-		checkNotNull(list);
-		checkNotNull(hashFunction);
+	public static RpcStrategySharding sharding(@NotNull ShardingFunction<?> hashFunction,
+	                                           @NotNull RpcStrategyList list) {
 		return RpcStrategySharding.create(hashFunction, list);
 	}
 
-	public static RpcStrategyRendezvousHashing rendezvousHashing(HashFunction<?> hashFunction) {
-		checkNotNull(hashFunction);
+	public static RpcStrategyRendezvousHashing rendezvousHashing(@NotNull HashFunction<?> hashFunction) {
 		return RpcStrategyRendezvousHashing.create(hashFunction);
 	}
 

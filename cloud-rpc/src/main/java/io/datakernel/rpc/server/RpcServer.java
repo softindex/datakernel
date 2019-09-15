@@ -35,12 +35,14 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.*;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 /**
@@ -134,8 +136,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	 * @param messageTypes classes of messages processed by a server
 	 * @return server instance capable for handling provided message types
 	 */
-	public RpcServer withMessageTypes(Class<?>... messageTypes) {
-		checkNotNull(messageTypes);
+	public RpcServer withMessageTypes(@NotNull Class<?>... messageTypes) {
 		return withMessageTypes(asList(messageTypes));
 	}
 
@@ -145,8 +146,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	 * @param messageTypes a list of message types processed by a server
 	 * @return server instance capable for handling provided message types
 	 */
-	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
-		checkNotNull(messageTypes, "Message types should not be null");
+	public RpcServer withMessageTypes(@NotNull List<Class<?>> messageTypes) {
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
 		return this;

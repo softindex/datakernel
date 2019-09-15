@@ -16,10 +16,10 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArraySet implements Expression {
@@ -27,10 +27,10 @@ final class ExpressionArraySet implements Expression {
 	private final Expression position;
 	private final Expression newElement;
 
-	ExpressionArraySet(Expression array, Expression position, Expression newElement) {
-		this.array = checkNotNull(array);
-		this.position = checkNotNull(position);
-		this.newElement = checkNotNull(newElement);
+	ExpressionArraySet(@NotNull Expression array, @NotNull Expression position, @NotNull Expression newElement) {
+		this.array = array;
+		this.position = position;
+		this.newElement = newElement;
 	}
 
 	@Override

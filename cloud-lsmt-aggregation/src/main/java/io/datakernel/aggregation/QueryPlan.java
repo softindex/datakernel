@@ -16,21 +16,22 @@
 
 package io.datakernel.aggregation;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableSet;
 
 public final class QueryPlan {
 	private final List<Sequence> sequences;
 
-	public QueryPlan(List<Sequence> sequences) {
-		this.sequences = checkNotNull(sequences, "Cannot create QueryPlan with sequences that is null");
+	public QueryPlan(@NotNull List<Sequence> sequences) {
+		this.sequences = sequences;
 	}
 
 	public static class Sequence {

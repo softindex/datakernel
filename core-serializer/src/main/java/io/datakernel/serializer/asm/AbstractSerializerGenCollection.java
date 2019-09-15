@@ -22,11 +22,12 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, NullableOptimization {
 	protected final SerializerGen valueSerializer;
@@ -35,11 +36,11 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	protected final Class<?> elementType;
 	protected final boolean nullable;
 
-	protected AbstractSerializerGenCollection(SerializerGen valueSerializer, Class<?> collectionType, Class<?> collectionImplType, Class<?> elementType, boolean nullable) {
-		this.valueSerializer = checkNotNull(valueSerializer);
-		this.collectionType = checkNotNull(collectionType);
-		this.collectionImplType = checkNotNull(collectionImplType);
-		this.elementType = checkNotNull(elementType);
+	protected AbstractSerializerGenCollection(@NotNull SerializerGen valueSerializer, @NotNull Class<?> collectionType, @NotNull Class<?> collectionImplType, @NotNull Class<?> elementType, boolean nullable) {
+		this.valueSerializer = valueSerializer;
+		this.collectionType = collectionType;
+		this.collectionImplType = collectionImplType;
+		this.elementType = elementType;
 		this.nullable = nullable;
 	}
 

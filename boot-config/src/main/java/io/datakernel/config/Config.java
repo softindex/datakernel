@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.Utils.nullToException;
 import static java.lang.ClassLoader.getSystemClassLoader;
@@ -405,9 +405,8 @@ public interface Config {
 	 * @param path path
 	 * @return new {@code Config} with value in path
 	 */
-	default Config with(String path, String value) {
+	default Config with(@NotNull String path, @NotNull String value) {
 		checkPath(path);
-		checkNotNull(value);
 		return with(path, new Config() {
 			@Override
 			public String getValue(@Nullable String defaultValue) {
@@ -432,9 +431,8 @@ public interface Config {
 	 * @return new {@code Config} with overridden value in path
 	 * this method returns new config instead of changing the old one.
 	 */
-	default Config with(String path, Config config) {
+	default Config with(@NotNull String path, @NotNull Config config) {
 		checkPath(path);
-		checkNotNull(config);
 		String[] keys = path.split(Pattern.quote(DELIMITER));
 		for (int i = keys.length - 1; i >= 0; i--) {
 			String key = keys[i];

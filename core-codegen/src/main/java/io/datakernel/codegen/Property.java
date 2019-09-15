@@ -17,6 +17,7 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -26,7 +27,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.Character.toUpperCase;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
@@ -41,9 +41,9 @@ final class Property implements Variable {
 	private final Expression owner;
 	private final String property;
 
-	Property(Expression owner, String property) {
-		this.owner = checkNotNull(owner);
-		this.property = checkNotNull(property);
+	Property(@NotNull Expression owner, @NotNull String property) {
+		this.owner = owner;
+		this.property = property;
 	}
 
 	@Override

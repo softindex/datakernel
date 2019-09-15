@@ -25,9 +25,7 @@ public abstract class SimpleConfigConverter<T> implements ConfigConverter<T> {
 	@NotNull
 	@Override
 	public final T get(Config config) {
-		String string = config.getValue();
-		checkNotNull(string);
-		return fromString(string);
+		return fromString(checkNotNull(config.getValue()));
 	}
 
 	@Override

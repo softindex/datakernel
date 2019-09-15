@@ -29,6 +29,7 @@ import io.datakernel.eventloop.jmx.ValueStats;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -41,7 +42,6 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 
 import static io.datakernel.async.process.Cancellable.CLOSE_EXCEPTION;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Recyclable.deepRecycle;
 
 public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
@@ -133,9 +133,9 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	}
 	// endregion
 
-	private AsyncUdpSocketImpl(Eventloop eventloop, DatagramChannel channel) throws IOException {
-		this.eventloop = checkNotNull(eventloop);
-		this.channel = checkNotNull(channel);
+	private AsyncUdpSocketImpl(@NotNull Eventloop eventloop, @NotNull DatagramChannel channel) throws IOException {
+		this.eventloop = eventloop;
+		this.channel = channel;
 		this.key = channel.register(eventloop.ensureSelector(), 0, this);
 	}
 

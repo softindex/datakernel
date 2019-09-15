@@ -31,13 +31,13 @@ import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
-import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.binary.ByteBufsParser.ofFixedSize;
 import static java.lang.Integer.reverseBytes;
@@ -88,8 +88,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		return new BufsConsumerGzipInflater();
 	}
 
-	public BufsConsumerGzipInflater withInflater(Inflater inflater) {
-		checkArgument(inflater != null, "Cannot use null Inflater");
+	public BufsConsumerGzipInflater withInflater(@NotNull Inflater inflater) {
 		this.inflater = inflater;
 		return this;
 	}

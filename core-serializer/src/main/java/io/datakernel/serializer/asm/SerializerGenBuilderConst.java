@@ -16,13 +16,15 @@
 
 package io.datakernel.serializer.asm;
 
-import static io.datakernel.common.Preconditions.*;
+import org.jetbrains.annotations.NotNull;
+
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 	private final SerializerGen serializer;
 
-	public SerializerGenBuilderConst(SerializerGen serializer) {
-		this.serializer = checkNotNull(serializer);
+	public SerializerGenBuilderConst(@NotNull SerializerGen serializer) {
+		this.serializer = serializer;
 	}
 
 	@Override

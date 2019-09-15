@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.jmx.JmxRefreshable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.*;
@@ -171,7 +172,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public List<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(@NotNull Object source) {
 		if (!isMapOfJmxRefreshable) {
 			return emptyList();
 		}
@@ -185,12 +186,12 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 	}
 
 	@Override
-	public boolean isSettable(String attrName) {
+	public boolean isSettable(@NotNull String attrName) {
 		return false;
 	}
 
 	@Override
-	public void setAttribute(String attrName, Object value, List<?> targets) {
+	public void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) {
 		throw new UnsupportedOperationException("Cannot set attributes for map attribute node");
 	}
 }

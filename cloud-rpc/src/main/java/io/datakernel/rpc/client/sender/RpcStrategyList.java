@@ -17,12 +17,12 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.*;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
@@ -33,8 +33,7 @@ public final class RpcStrategyList {
 		this.strategies = strategies;
 	}
 
-	public static RpcStrategyList ofAddresses(List<InetSocketAddress> addresses) {
-		checkNotNull(addresses);
+	public static RpcStrategyList ofAddresses(@NotNull List<InetSocketAddress> addresses) {
 		checkArgument(addresses.size() > 0, "At least one address must be present");
 		return new RpcStrategyList(addresses.stream()
 				.map(RpcStrategySingleServer::create)

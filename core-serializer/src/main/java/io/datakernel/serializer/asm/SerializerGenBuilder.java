@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
+import org.jetbrains.annotations.NotNull;
 
 @FunctionalInterface
 public interface SerializerGenBuilder {
@@ -25,9 +25,9 @@ public interface SerializerGenBuilder {
 		public final Class<?> rawType;
 		public final SerializerGen serializer;
 
-		public SerializerForType(Class<?> rawType, SerializerGen serializer) {
-			this.rawType = checkNotNull(rawType);
-			this.serializer = checkNotNull(serializer);
+		public SerializerForType(@NotNull Class<?> rawType, @NotNull SerializerGen serializer) {
+			this.rawType = rawType;
+			this.serializer = serializer;
 		}
 
 		@SuppressWarnings("RedundantIfStatement")

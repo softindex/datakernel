@@ -18,11 +18,10 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
 import java.util.function.Function;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 /**
  * Merges sorted by keys streams and streams its sorted union. It is simple
@@ -38,10 +37,10 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	private final Reducer<K, T, T, Void> reducer;
 
 	// region creators
-	private StreamMerger(Function<T, K> keyFunction, Comparator<K> keyComparator,
+	private StreamMerger(@NotNull Function<T, K> keyFunction, @NotNull Comparator<K> keyComparator,
 			boolean distinct) {
 		super(keyComparator);
-		this.keyFunction = checkNotNull(keyFunction);
+		this.keyFunction = keyFunction;
 		this.reducer = distinct ? StreamReducers.mergeDistinctReducer() : StreamReducers.mergeSortReducer();
 	}
 

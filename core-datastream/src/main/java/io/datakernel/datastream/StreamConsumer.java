@@ -26,6 +26,7 @@ import io.datakernel.datastream.StreamConsumers.Skip;
 import io.datakernel.datastream.processor.StreamLateBinder;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 import java.util.function.Consumer;
@@ -46,7 +47,7 @@ public interface StreamConsumer<T> extends Cancellable {
 	 *
 	 * @param supplier stream supplier for setting
 	 */
-	void setSupplier(StreamSupplier<T> supplier);
+	void setSupplier(@NotNull StreamSupplier<T> supplier);
 
 	Promise<Void> getAcknowledgement();
 

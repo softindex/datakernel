@@ -19,6 +19,7 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.ShardingFunction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
@@ -26,16 +27,15 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RpcStrategySharding implements RpcStrategy {
 	private final RpcStrategyList list;
 	private final ShardingFunction<?> shardingFunction;
 	private int minActiveSubStrategies;
 
-	private RpcStrategySharding(ShardingFunction<?> shardingFunction, RpcStrategyList list,
+	private RpcStrategySharding(@NotNull ShardingFunction<?> shardingFunction, @NotNull RpcStrategyList list,
 	                            int minActiveSubStrategies) {
-		this.shardingFunction = checkNotNull(shardingFunction);
+		this.shardingFunction = shardingFunction;
 		this.list = list;
 		this.minActiveSubStrategies = minActiveSubStrategies;
 	}
@@ -76,11 +76,9 @@ public final class RpcStrategySharding implements RpcStrategy {
 		private final ShardingFunction<?> shardingFunction;
 		private final RpcSender[] subSenders;
 
-		Sender(ShardingFunction<?> shardingFunction, List<RpcSender> senders) {
-			// null values are allowed in senders list
-			checkArgument(senders != null && senders.size() > 0,
-					"List of senders should not be null and should contain at least one sender");
-			this.shardingFunction = checkNotNull(shardingFunction);
+		Sender(@NotNull ShardingFunction<?> shardingFunction, @NotNull List<RpcSender> senders) {
+			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");
+			this.shardingFunction = shardingFunction;
 			this.subSenders = senders.toArray(new RpcSender[0]);
 		}
 

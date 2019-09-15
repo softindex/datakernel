@@ -59,6 +59,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private static final AtomicInteger CONNECTION_COUNT = new AtomicInteger(0);
 
 	private final Eventloop eventloop;
+	@Nullable
 	private SocketChannel channel;
 	@Nullable
 	private ByteBuf readBuf;

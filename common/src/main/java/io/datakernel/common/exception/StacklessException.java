@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
  */
 
 public class StacklessException extends Exception {
+	@Nullable
 	private final Class<?> component;
 
 	public StacklessException() {

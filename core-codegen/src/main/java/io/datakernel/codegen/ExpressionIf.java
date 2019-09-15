@@ -16,21 +16,20 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 final class ExpressionIf implements Expression {
 	private final PredicateDef condition;
 	private final Expression left;
 	private final Expression right;
 
-	ExpressionIf(PredicateDef condition, Expression left, Expression right) {
-		this.condition = checkNotNull(condition);
-		this.left = checkNotNull(left);
-		this.right = checkNotNull(right);
+	ExpressionIf(@NotNull PredicateDef condition, @NotNull Expression left, @NotNull Expression right) {
+		this.condition = condition;
+		this.left = left;
+		this.right = right;
 	}
 
 	@Override

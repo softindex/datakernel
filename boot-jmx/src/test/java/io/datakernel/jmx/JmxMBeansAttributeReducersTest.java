@@ -27,6 +27,7 @@ import javax.management.DynamicMBean;
 import java.util.List;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -39,7 +40,7 @@ public class JmxMBeansAttributeReducersTest {
 	public void createdMBeanShouldUseSpecifiedReducerForAggregation() throws Exception {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
-				MBeanSettings.defaultSettings(),
+				defaultSettings(),
 				false
 		);
 
@@ -82,7 +83,7 @@ public class JmxMBeansAttributeReducersTest {
 		MBeanWithPojoReducer mbean_2 = new MBeanWithPojoReducer(new PojoStub(15, "xz"));
 		DynamicMBean mbean = JmxMBeans.factory().createFor(
 				asList(mbean_1, mbean_2),
-				MBeanSettings.defaultSettings(),
+				defaultSettings(),
 				false
 		);
 

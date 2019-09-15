@@ -47,7 +47,6 @@ import java.util.stream.Stream;
 
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
@@ -97,13 +96,13 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				cluster.getServerSelector(), cluster.getAliveClients(), cluster.getReplicationCount());
 	}
 
-	public RemoteFsRepartitionController withGlob(String glob) {
-		this.glob = checkNotNull(glob, "glob");
+	public RemoteFsRepartitionController withGlob(@NotNull String glob) {
+		this.glob = glob;
 		return this;
 	}
 
-	public RemoteFsRepartitionController withNegativeGlob(String negativeGlob) {
-		this.negativeGlob = checkNotNull(negativeGlob, "negativeGlob");
+	public RemoteFsRepartitionController withNegativeGlob(@NotNull String negativeGlob) {
+		this.negativeGlob = negativeGlob;
 		return this;
 	}
 

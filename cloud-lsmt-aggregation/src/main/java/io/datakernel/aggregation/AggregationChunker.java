@@ -23,6 +23,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -108,7 +109,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		}
 
 		@Override
-		public void setSupplier(StreamSupplier<T> supplier) {
+		public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 			super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
 				@Override
 				public void resume(StreamDataAcceptor<T> dataAcceptor) {

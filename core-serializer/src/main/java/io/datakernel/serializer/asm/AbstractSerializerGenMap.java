@@ -22,11 +22,12 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public abstract class AbstractSerializerGenMap implements SerializerGen, NullableOptimization {
 	protected final SerializerGen keySerializer;
@@ -37,13 +38,13 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	protected final Class<?> valueType;
 	protected final boolean nullable;
 
-	protected AbstractSerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType, boolean nullable) {
-		this.keySerializer = checkNotNull(keySerializer);
-		this.valueSerializer = checkNotNull(valueSerializer);
-		this.mapType = checkNotNull(mapType);
-		this.mapImplType = checkNotNull(mapImplType);
-		this.keyType = checkNotNull(keyType);
-		this.valueType = checkNotNull(valueType);
+	protected AbstractSerializerGenMap(@NotNull SerializerGen keySerializer, @NotNull SerializerGen valueSerializer, @NotNull Class<?> mapType, @NotNull Class<?> mapImplType, @NotNull Class<?> keyType, @NotNull Class<?> valueType, boolean nullable) {
+		this.keySerializer = keySerializer;
+		this.valueSerializer = valueSerializer;
+		this.mapType = mapType;
+		this.mapImplType = mapImplType;
+		this.keyType = keyType;
+		this.valueType = valueType;
 		this.nullable = nullable;
 	}
 

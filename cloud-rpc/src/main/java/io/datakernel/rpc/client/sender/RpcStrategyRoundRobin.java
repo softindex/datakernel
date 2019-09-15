@@ -18,6 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
@@ -65,8 +66,8 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		private int nextSender;
 		private RpcSender[] subSenders;
 
-		Sender(List<RpcSender> senders) {
-			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
+		Sender(@NotNull List<RpcSender> senders) {
+			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.nextSender = 0;
 		}

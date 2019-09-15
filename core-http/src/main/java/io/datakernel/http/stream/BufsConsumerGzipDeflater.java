@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
@@ -57,8 +58,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		return new BufsConsumerGzipDeflater();
 	}
 
-	public BufsConsumerGzipDeflater withDeflater(Deflater deflater) {
-		checkArgument(deflater != null, "Cannot use null Deflater");
+	public BufsConsumerGzipDeflater withDeflater(@NotNull Deflater deflater) {
 		this.deflater = deflater;
 		return this;
 	}

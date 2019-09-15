@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
+import org.jetbrains.annotations.Nullable;
 
 final class LogStreamChunker extends AbstractCommunicatingProcess implements ChannelInput<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
@@ -32,6 +33,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 	private final String logPartition;
 
 	private ChannelSupplier<ByteBuf> input;
+	@Nullable
 	private ChannelConsumer<ByteBuf> currentConsumer;
 
 	private LogFile currentChunk;

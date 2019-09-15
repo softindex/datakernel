@@ -20,10 +20,13 @@ import io.datakernel.rpc.server.RpcServerConnection;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
+import org.jetbrains.annotations.Nullable;
 
 public class RpcRemoteException extends RpcException implements RpcMandatoryData {
 	private static final long serialVersionUID = 769022174067373741L;
+	@Nullable
 	private final String causeMessage;
+	@Nullable
 	private final String causeClassName;
 
 	public RpcRemoteException(String message, Throwable cause) {

@@ -29,7 +29,7 @@ public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void setSupplier(StreamSupplier<T> supplier) {
+	public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 		consumer.setSupplier(supplier);
 	}
 

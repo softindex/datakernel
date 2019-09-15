@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,7 +45,7 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
 			return Promise.of(ChannelConsumers.recycling());
@@ -53,7 +54,7 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
 			return Promise.ofException(FILE_NOT_FOUND);
@@ -62,12 +63,12 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return renamingOp(name, target, () -> parent.move(name, target, targetRevision, tombstoneRevision));
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return renamingOp(name, target, () -> parent.copy(name, target, targetRevision));
 	}
 
@@ -81,13 +82,13 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return parent.listEntities(globInto.apply(glob).orElse("**"))
 				.map(transformList(glob));
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return parent.list(globInto.apply(glob).orElse("**"))
 				.map(transformList(glob));
 	}
@@ -104,7 +105,7 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<FileMetadata> getMetadata(String name) {
+	public Promise<FileMetadata> getMetadata(@NotNull String name) {
 		Optional<String> transformed = into.apply(name);
 		return transformed.map(s ->
 				parent.getMetadata(s)
@@ -124,7 +125,7 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		Optional<String> transformed = into.apply(name);
 		if (!transformed.isPresent()) {
 			return Promise.complete();
@@ -133,7 +134,7 @@ final class TransformFsClient implements FsClient {
 	}
 
 	@Override
-	public FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from, Function<String, Optional<String>> globInto) {
+	public FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from, @NotNull Function<String, Optional<String>> globInto) {
 		if (into == this.from && from == this.into) { // huh
 			return parent;
 		}

@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -25,7 +26,6 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 
@@ -33,9 +33,9 @@ final class ExpressionCallStaticSelf implements Expression {
 	private final String methodName;
 	private final List<Expression> arguments;
 
-	public ExpressionCallStaticSelf(String methodName, List<Expression> expressions) {
-		this.methodName = checkNotNull(methodName);
-		this.arguments = checkNotNull(expressions);
+	public ExpressionCallStaticSelf(@NotNull String methodName, @NotNull List<Expression> expressions) {
+		this.methodName = methodName;
+		this.arguments = expressions;
 	}
 
 	public Type type(Type[] argumentTypes, Context ctx) {

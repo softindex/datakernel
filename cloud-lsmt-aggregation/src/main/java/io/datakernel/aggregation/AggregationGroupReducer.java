@@ -24,6 +24,7 @@ import io.datakernel.datastream.AbstractStreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,8 +33,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class AggregationGroupReducer<C, T, K extends Comparable> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
@@ -51,21 +50,21 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 
 	private final HashMap<K, Object> map = new HashMap<>();
 
-	public AggregationGroupReducer(AggregationChunkStorage<C> storage,
-			AggregationStructure aggregation, List<String> measures,
-			Class<T> recordClass, PartitionPredicate<T> partitionPredicate,
-			Function<T, K> keyFunction, Aggregate<T, Object> aggregate,
-			int chunkSize, DefiningClassLoader classLoader) {
-		this.storage = checkNotNull(storage, "Cannot create AggregationGroupReducer with AggregationChunkStorage that is null");
-		this.measures = checkNotNull(measures, "Cannot create AggregationGroupReducer with measures that is null");
-		this.partitionPredicate = checkNotNull(partitionPredicate, "Cannot create AggregationGroupReducer with PartitionPredicate that is null");
-		this.recordClass = checkNotNull(recordClass, "Cannot create AggregationGroupReducer with recordClass that is null");
-		this.keyFunction = checkNotNull(keyFunction, "Cannot create AggregationGroupReducer with keyFunction that is null");
-		this.aggregate = checkNotNull(aggregate, "Cannot create AggregationGroupReducer with Aggregate that is null");
+	public AggregationGroupReducer(@NotNull AggregationChunkStorage<C> storage,
+			@NotNull AggregationStructure aggregation, @NotNull List<String> measures,
+			@NotNull Class<T> recordClass, @NotNull PartitionPredicate<T> partitionPredicate,
+			@NotNull Function<T, K> keyFunction, @NotNull Aggregate<T, Object> aggregate,
+			int chunkSize, @NotNull DefiningClassLoader classLoader) {
+		this.storage = storage;
+		this.measures = measures;
+		this.partitionPredicate = partitionPredicate;
+		this.recordClass = recordClass;
+		this.keyFunction = keyFunction;
+		this.aggregate = aggregate;
 		this.chunkSize = chunkSize;
-		this.aggregation = checkNotNull(aggregation, "Cannot create AggregationGroupReducer with AggregationStructure that is null");
+		this.aggregation = aggregation;
 		this.chunksCollector = AsyncCollector.create(new ArrayList<>());
-		this.classLoader = checkNotNull(classLoader, "Cannot create AggregationGroupReducer with ClassLoader that is null");
+		this.classLoader = classLoader;
 	}
 
 	public Promise<List<AggregationChunk>> getResult() {

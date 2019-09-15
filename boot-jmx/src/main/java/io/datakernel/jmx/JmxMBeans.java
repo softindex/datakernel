@@ -26,6 +26,7 @@ import io.datakernel.eventloop.jmx.JmxStats;
 import io.datakernel.eventloop.util.ReflectionUtils;
 import io.datakernel.jmx.api.*;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerDistinct;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.eventloop.util.ReflectionUtils.*;
@@ -73,8 +75,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new JmxMBeans(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
 	// region constructor and factory methods
-	private JmxMBeans(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
-		this.specifiedRefreshPeriod = checkNotNull(refreshPeriod);
+	private JmxMBeans(@NotNull Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+		this.specifiedRefreshPeriod = refreshPeriod;
 		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 	}
 
@@ -117,8 +119,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	 * Creates Jmx MBean for monitorables with operations and attributes.
 	 */
 	@Override
-	public DynamicMBean createFor(List<?> monitorables, MBeanSettings setting, boolean enableRefresh) {
-		checkNotNull(monitorables);
+	public DynamicMBean createFor(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh) {
 		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
 		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
 		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables), "Monitorables should be of the same type");
@@ -776,10 +777,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final String name;
 		private final String[] argTypes;
 
-		public OperationKey(String name, String[] argTypes) {
-			checkNotNull(name);
-			checkNotNull(argTypes);
-
+		public OperationKey(@NotNull String name, @NotNull String[] argTypes) {
 			this.name = name;
 			this.argTypes = argTypes;
 		}
@@ -880,9 +878,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public AttributeList getAttributes(String[] attributes) {
-			checkNotNull(attributes);
-
+		public AttributeList getAttributes(@NotNull String[] attributes) {
 			AttributeList attrList = new AttributeList();
 			Set<String> attrNames = new HashSet<>(Arrays.asList(attributes));
 			try {

@@ -16,9 +16,9 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -30,9 +30,9 @@ final class ExpressionCast implements Expression {
 	private final Expression expression;
 	private final Type targetType;
 
-	ExpressionCast(Expression expression, Type type) {
-		this.expression = checkNotNull(expression);
-		this.targetType = checkNotNull(type);
+	ExpressionCast(@NotNull Expression expression, @NotNull Type type) {
+		this.expression = expression;
+		this.targetType = type;
 	}
 
 	@Override

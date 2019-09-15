@@ -23,6 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -67,11 +68,11 @@ public interface FsClient {
 	 * @param offset from which byte to write the uploaded data
 	 * @return promise for stream consumer of byte buffers
 	 */
-	Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision);
+	Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision);
 
 	// region upload shortcuts
 
-	default Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+	default Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset) {
 		return upload(name, offset, DEFAULT_REVISION);
 	}
 
@@ -81,18 +82,18 @@ public interface FsClient {
 	 * @param name name of the file to upload
 	 * @return promise for stream consumer of byte buffers
 	 */
-	default Promise<ChannelConsumer<ByteBuf>> upload(String name) {
+	default Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name) {
 		return upload(name, 0);
 	}
 
-	default Promise<ChannelConsumer<ByteBuf>> append(String name) {
+	default Promise<ChannelConsumer<ByteBuf>> append(@NotNull String name) {
 		return getMetadata(name)
 				.then(m -> m != null ?
 						upload(name, m.isTombstone() ? 0 : m.getSize(), m.getRevision()) :
 						upload(name, 0, DEFAULT_REVISION));
 	}
 
-	default Promise<Void> truncate(String name, long revision) {
+	default Promise<Void> truncate(@NotNull String name, long revision) {
 		return upload(name, 0, revision)
 				.then(consumer -> consumer.accept(null));
 	}
@@ -113,7 +114,7 @@ public interface FsClient {
 	 * @see #download(String, long)
 	 * @see #download(String)
 	 */
-	Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length);
+	Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length);
 
 	// region download shortcuts
 
@@ -124,7 +125,7 @@ public interface FsClient {
 	 * @see #download(String, long, long)
 	 * @see #download(String)
 	 */
-	default Promise<ChannelSupplier<ByteBuf>> download(String name, long offset) {
+	default Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset) {
 		return download(name, offset, -1);
 	}
 
@@ -136,7 +137,7 @@ public interface FsClient {
 	 * @see #download(String, long)
 	 * @see #download(String, long, long)
 	 */
-	default Promise<ChannelSupplier<ByteBuf>> download(String name) {
+	default Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name) {
 		return download(name, 0, -1);
 	}
 
@@ -148,9 +149,9 @@ public interface FsClient {
 	 * @param name name of the file to be deleted
 	 * @return marker promise that completes when deletion completes
 	 */
-	Promise<Void> delete(String name, long revision);
+	Promise<Void> delete(@NotNull String name, long revision);
 
-	default Promise<Void> delete(String name) {
+	default Promise<Void> delete(@NotNull String name) {
 		return delete(name, DEFAULT_REVISION);
 	}
 
@@ -160,11 +161,11 @@ public interface FsClient {
 	 * @param name   file to be copied
 	 * @param target new file name
 	 */
-	default Promise<Void> copy(String name, String target, long targetRevision) {
+	default Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return ChannelSuppliers.streamTo(download(name), upload(target, targetRevision));
 	}
 
-	default Promise<Void> copy(String name, String target) {
+	default Promise<Void> copy(@NotNull String name, @NotNull String target) {
 		return copy(name, target, DEFAULT_REVISION);
 	}
 
@@ -176,16 +177,16 @@ public interface FsClient {
 	 * @param name   file to be moved
 	 * @param target new file name
 	 */
-	default Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	default Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return copy(name, target, targetRevision)
 				.then($ -> delete(name, tombstoneRevision));
 	}
 
-	default Promise<Void> move(String name, String target) {
+	default Promise<Void> move(@NotNull String name, @NotNull String target) {
 		return move(name, target, DEFAULT_REVISION, DEFAULT_REVISION);
 	}
 
-	default Promise<Void> moveDir(String name, String target, long targetRevision, long removeRevision) {
+	default Promise<Void> moveDir(@NotNull String name, @NotNull String target, long targetRevision, long removeRevision) {
 		String finalName = name.endsWith("/") ? name : name + '/';
 		String finalTarget = target.endsWith("/") ? target : target + '/';
 		return list(finalName + "**")
@@ -196,7 +197,7 @@ public interface FsClient {
 						})));
 	}
 
-	default Promise<Void> moveDir(String name, String target) {
+	default Promise<Void> moveDir(@NotNull String name, @NotNull String target) {
 		return moveDir(name, target, DEFAULT_REVISION, DEFAULT_REVISION);
 	}
 
@@ -213,7 +214,7 @@ public interface FsClient {
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
 	 * @return list of {@link FileMetadata file metadata}
 	 */
-	Promise<List<FileMetadata>> listEntities(String glob);
+	Promise<List<FileMetadata>> listEntities(@NotNull String glob);
 
 	/**
 	 * Lists files that are matched by glob.
@@ -224,7 +225,7 @@ public interface FsClient {
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
 	 * @return list of {@link FileMetadata file metadata}
 	 */
-	default Promise<List<FileMetadata>> list(String glob) {
+	default Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return listEntities(glob)
 				.map(list -> list.stream()
 						.filter(m -> !m.isTombstone())
@@ -237,7 +238,7 @@ public interface FsClient {
 	 * @param name name of a file to fetch its metadata.
 	 * @return promise of file description or <code>null</code>
 	 */
-	default Promise<@Nullable FileMetadata> getMetadata(String name) {
+	default Promise<@Nullable FileMetadata> getMetadata(@NotNull String name) {
 		return listEntities(escapeGlob(name))
 				.map(list -> list.isEmpty() ? null : list.get(0));
 	}
@@ -256,16 +257,16 @@ public interface FsClient {
 		return EmptyFsClient.INSTANCE;
 	}
 
-	default FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from, Function<String, Optional<String>> globInto) {
+	default FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from, @NotNull Function<String, Optional<String>> globInto) {
 		return new TransformFsClient(this, into, from, globInto);
 	}
 
-	default FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from) {
+	default FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from) {
 		return new TransformFsClient(this, into, from, $ -> Optional.of("**"));
 	}
 
 	// similar to 'chroot'
-	default FsClient addingPrefix(String prefix) {
+	default FsClient addingPrefix(@NotNull String prefix) {
 		if (prefix.length() == 0) {
 			return this;
 		}
@@ -277,14 +278,14 @@ public interface FsClient {
 		);
 	}
 
-	default FsClient subfolder(String folder) {
+	default FsClient subfolder(@NotNull String folder) {
 		if (folder.length() == 0) {
 			return this;
 		}
 		return addingPrefix(folder.endsWith("/") ? folder : folder + '/');
 	}
 
-	default FsClient strippingPrefix(String prefix) {
+	default FsClient strippingPrefix(@NotNull String prefix) {
 		if (prefix.length() == 0) {
 			return this;
 		}
@@ -296,11 +297,11 @@ public interface FsClient {
 		);
 	}
 
-	default FsClient filter(Predicate<String> predicate) {
+	default FsClient filter(@NotNull Predicate<String> predicate) {
 		return new FilterFsClient(this, predicate);
 	}
 
-	default FsClient mount(String mountpoint, FsClient client) {
+	default FsClient mount(@NotNull String mountpoint, @NotNull FsClient client) {
 		return new MountingFsClient(this, map(mountpoint, client.strippingPrefix(mountpoint + '/')));
 	}
 }

@@ -21,6 +21,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -37,7 +38,7 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset) {
 		if (!predicate.test(name)) {
 			return Promise.of(ChannelConsumers.recycling());
 		}
@@ -45,7 +46,7 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		if (!predicate.test(name)) {
 			return Promise.of(ChannelConsumers.recycling());
 		}
@@ -53,7 +54,7 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		if (!predicate.test(name)) {
 			return Promise.ofException(FILE_NOT_FOUND);
 		}
@@ -61,7 +62,7 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target) {
 		if (!predicate.test(name) || !predicate.test(target)) {
 			return Promise.complete();
 		}
@@ -70,7 +71,7 @@ final class FilterFsClient implements FsClient {
 
 
 	@Override
-	public Promise<Void> copy(String name, String target) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target) {
 		if (!predicate.test(name) || !predicate.test(target)) {
 			return Promise.complete();
 		}
@@ -78,7 +79,7 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return parent.listEntities(glob)
 				.map(list -> list.stream()
 						.filter(meta -> predicate.test(meta.getName()))
@@ -91,7 +92,7 @@ final class FilterFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		if (!predicate.test(name)) {
 			return Promise.complete();
 		}

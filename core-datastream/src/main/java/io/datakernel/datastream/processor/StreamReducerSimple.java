@@ -18,11 +18,10 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
 import java.util.function.Function;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 /**
  * Perform a reduction on the elements of input streams using the  key function.
@@ -39,10 +38,10 @@ public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer
 	private final Reducer<K, I, O, A> reducer;
 
 	// region creators
-	private StreamReducerSimple(Function<I, K> keyFunction, Comparator<K> keyComparator, Reducer<K, I, O, A> reducer) {
+	private StreamReducerSimple(@NotNull Function<I, K> keyFunction, @NotNull Comparator<K> keyComparator, @NotNull Reducer<K, I, O, A> reducer) {
 		super(keyComparator);
-		this.reducer = checkNotNull(reducer);
-		this.keyFunction = checkNotNull(keyFunction);
+		this.reducer = reducer;
+		this.keyFunction = keyFunction;
 	}
 
 	/**

@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.jmx.JmxRefreshable;
 import io.datakernel.eventloop.jmx.MBeanFormat;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.*;
@@ -97,17 +98,17 @@ final class AttributeNodeForThrowable extends AttributeNodeForLeafAbstract {
 	}
 
 	@Override
-	public List<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(@NotNull Object source) {
 		return emptyList();
 	}
 
 	@Override
-	public boolean isSettable(String attrName) {
+	public boolean isSettable(@NotNull String attrName) {
 		return false;
 	}
 
 	@Override
-	public void setAttribute(String attrName, Object value, List<?> targets) {
+	public void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) {
 		throw new UnsupportedOperationException("Cannot set attributes for throwable attribute node");
 	}
 }

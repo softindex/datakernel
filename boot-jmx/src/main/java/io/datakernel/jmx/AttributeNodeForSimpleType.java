@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.jmx.JmxRefreshable;
 import io.datakernel.jmx.api.JmxReducer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
@@ -31,7 +32,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
 
@@ -43,11 +43,11 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 
 	public AttributeNodeForSimpleType(String name, @Nullable String description, boolean visible,
 			ValueFetcher fetcher, @Nullable Method setter,
-			Class<?> attributeType, JmxReducer reducer) {
+			Class<?> attributeType, @NotNull JmxReducer reducer) {
 		super(name, description, fetcher, visible);
 		this.setter = setter;
 		this.type = attributeType;
-		this.reducer = checkNotNull(reducer);
+		this.reducer = reducer;
 	}
 
 	@Override
@@ -68,20 +68,19 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	}
 
 	@Override
-	public List<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(@NotNull Object source) {
 		return emptyList();
 	}
 
 	@Override
-	public boolean isSettable(String attrName) {
+	public boolean isSettable(@NotNull String attrName) {
 		checkArgument(attrName.equals(name), "Attribute names do not match");
 		return setter != null;
 	}
 
 	@Override
-	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
+	public void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) throws SetterException {
 		checkArgument(attrName.equals(name), "Attribute names do not match");
-		checkNotNull(targets);
 		List<?> notNullTargets = targets.stream().filter(Objects::nonNull).collect(Collectors.toList());
 		if (notNullTargets.size() == 0) {
 			return;

@@ -40,8 +40,12 @@ public final class MBeanSettings {
 		return new MBeanSettings(includedOptionals, modifiers, customTypes);
 	}
 
+	public static MBeanSettings create() {
+		return new MBeanSettings(new HashSet<>(), new HashMap<>(), new HashMap<>());
+	}
+
 	public static MBeanSettings defaultSettings() {
-		return new MBeanSettings(new HashSet<>(), new HashMap<>(), Collections.emptyMap());
+		return new MBeanSettings(Collections.emptySet(), Collections.emptyMap(), Collections.emptyMap());
 	}
 
 	public void merge(MBeanSettings otherSettings) {

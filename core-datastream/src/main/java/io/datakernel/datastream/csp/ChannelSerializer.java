@@ -25,6 +25,7 @@ import io.datakernel.datastream.AbstractStreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayDeque;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullify;
 import static java.lang.Math.max;
 
@@ -169,9 +169,9 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		private boolean flushPosted;
 		private final boolean skipSerializationErrors;
 
-		public Input(BinarySerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, boolean skipSerializationErrors) {
+		public Input(@NotNull BinarySerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, boolean skipSerializationErrors) {
 			this.skipSerializationErrors = skipSerializationErrors;
-			this.serializer = checkNotNull(serializer);
+			this.serializer = serializer;
 			this.maxMessageSize = maxMessageSize;
 			this.headerSize = varint32Size(maxMessageSize - 1);
 			this.estimatedMessageSize = 1;

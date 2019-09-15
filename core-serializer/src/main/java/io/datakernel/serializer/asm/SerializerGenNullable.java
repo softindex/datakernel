@@ -21,15 +21,15 @@ import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 public class SerializerGenNullable implements SerializerGen {
 	private final SerializerGen serializer;
 
-	public SerializerGenNullable(SerializerGen serializer) {
-		this.serializer = checkNotNull(serializer);
+	public SerializerGenNullable(@NotNull SerializerGen serializer) {
+		this.serializer = serializer;
 	}
 
 	@Override

@@ -248,6 +248,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private final SettablePromise<@Nullable Void> closeNotification = new SettablePromise<>();
 
+	@Nullable
 	private SettablePromise<Void> closeCallback;
 
 	void onConnectionClosed() {

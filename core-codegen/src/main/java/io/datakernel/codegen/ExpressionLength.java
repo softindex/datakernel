@@ -16,16 +16,15 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 final class ExpressionLength implements Expression {
 	private final Expression value;
 
-	ExpressionLength(Expression value) {
-		this.value = checkNotNull(value);
+	ExpressionLength(@NotNull Expression value) {
+		this.value = value;
 	}
 
 	@Override

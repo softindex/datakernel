@@ -44,7 +44,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.common.collection.CollectionUtils.intersection;
@@ -498,8 +497,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 
 	@Nullable
 	@SuppressWarnings("unchecked")
-	private <T> Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, Key<T> key, T instance) {
-		checkNotNull(instance);
+	private <T> Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, Key<T> key, @NotNull T instance) {
 		CachedService service = cache.get(instance);
 		if (service != null) {
 			return service;

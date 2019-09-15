@@ -27,6 +27,7 @@ import io.datakernel.datastream.processor.StreamLateBinder;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 import java.util.List;
@@ -57,7 +58,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	 *
 	 * @param consumer consumer for streaming
 	 */
-	void setConsumer(StreamConsumer<T> consumer);
+	void setConsumer(@NotNull StreamConsumer<T> consumer);
 
 	/**
 	 * This method is called for restore streaming of this supplier

@@ -19,12 +19,11 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.List;
-
-import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class ReadResponse<K, R extends AbstractRecord<K>> {
 	private final List<R> records;
@@ -33,10 +32,10 @@ public final class ReadResponse<K, R extends AbstractRecord<K>> {
 	@Nullable
 	private R totals;
 
-	private ReadResponse(List<R> records, int count, List<R> extra, @Nullable R totals) {
-		this.records = checkNotNull(records, "Records cannot be null in ReadResponse");
+	private ReadResponse(@NotNull List<R> records, int count, @NotNull List<R> extra, @Nullable R totals) {
+		this.records = records;
 		this.count = count;
-		this.extra = checkNotNull(extra, "Extras cannot be null in ReadResponse");
+		this.extra = extra;
 		this.totals = totals;
 	}
 

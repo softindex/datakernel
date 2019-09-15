@@ -19,6 +19,7 @@ package io.datakernel.datastream.processor;
 import io.datakernel.async.process.AsyncCollector;
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -88,7 +89,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 						})
 		)) {
 			@Override
-			public void setConsumer(StreamConsumer<T> consumer) {
+			public void setConsumer(@NotNull StreamConsumer<T> consumer) {
 				super.setConsumer(consumer);
 				outputConsumer = consumer;
 			}

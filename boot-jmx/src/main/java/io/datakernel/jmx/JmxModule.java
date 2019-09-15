@@ -102,28 +102,28 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 
 	@Override
 	public <T> JmxModule withModifier(Key<?> key, String attrName, AttributeModifier<T> modifier) {
-		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.defaultSettings())
+		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.create())
 				.withModifier(attrName, modifier);
 		return this;
 	}
 
 	@Override
 	public <T> JmxModule withModifier(Type type, String attrName, AttributeModifier<T> modifier) {
-		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.defaultSettings())
+		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.create())
 				.withModifier(attrName, modifier);
 		return this;
 	}
 
 	@Override
 	public JmxModule withOptional(Key<?> key, String attrName) {
-		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.defaultSettings())
+		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.create())
 				.withIncludedOptional(attrName);
 		return this;
 	}
 
 	@Override
 	public JmxModule withOptional(Type type, String attrName) {
-		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.defaultSettings())
+		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.create())
 				.withIncludedOptional(attrName);
 		return this;
 	}
@@ -223,7 +223,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 		// register global singletons
 		for (Object globalSingleton : globalSingletons) {
 			Key<?> globalKey = Key.of(globalSingleton.getClass());
-			jmxRegistry.registerSingleton(globalKey, globalSingleton, MBeanSettings.defaultSettings().withCustomTypes(customTypes));
+			jmxRegistry.registerSingleton(globalKey, globalSingleton, MBeanSettings.create().withCustomTypes(customTypes));
 		}
 
 		// register singletons
@@ -273,7 +273,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 	}
 
 	private MBeanSettings ensureSettingsFor(Key<?> key) {
-		MBeanSettings settings = MBeanSettings.defaultSettings()
+		MBeanSettings settings = MBeanSettings.create()
 				.withCustomTypes(customTypes);
 		if (keyToSettings.containsKey(key)) {
 			settings.merge(keyToSettings.get(key));

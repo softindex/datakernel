@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -65,7 +66,7 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 	}
 
 	@Override
-	public final Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources) {
+	public final Map<String, Object> aggregateAttributes(@NotNull Set<String> attrNames, @NotNull List<?> sources) {
 		assert attrNames.size() == 1;
 		String attrName = first(attrNames);
 		assert name.equals(attrName);
@@ -94,17 +95,17 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 	}
 
 	@Override
-	public final void setVisible(String attrName) {
+	public final void setVisible(@NotNull String attrName) {
 		assert name.equals(attrName);
 		this.visible = true;
 	}
 
 	@Override
-	public final void hideNullPojos(List<?> sources) {
+	public final void hideNullPojos(@NotNull List<?> sources) {
 	}
 
 	@Override
-	public final void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+	public final void applyModifier(@NotNull String attrName, @NotNull AttributeModifier<?> modifier, @NotNull List<?> target) {
 		assert name.equals(attrName);
 		throw new UnsupportedOperationException(String.format(
 				"AttributeModifier can be applied only to POJO. Attribute \"%s\" is not a POJO.", attrName

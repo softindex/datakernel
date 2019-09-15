@@ -17,19 +17,17 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
-
 public final class RpcStrategySingleServer implements RpcStrategy {
 
 	private final InetSocketAddress address;
 
-	private RpcStrategySingleServer(InetSocketAddress address) {
-		checkNotNull(address);
+	private RpcStrategySingleServer(@NotNull InetSocketAddress address) {
 		this.address = address;
 	}
 

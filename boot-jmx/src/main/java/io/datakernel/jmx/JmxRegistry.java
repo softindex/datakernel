@@ -24,6 +24,7 @@ import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.worker.WorkerPool;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.StringFormatUtils.parseDuration;
 import static io.datakernel.eventloop.util.ReflectionUtils.getAnnotationString;
@@ -59,12 +60,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private int registeredPools;
 	private int totallyRegisteredMBeans;
 
-	private JmxRegistry(MBeanServer mbs,
-			DynamicMBeanFactory mbeanFactory,
+	private JmxRegistry(@NotNull MBeanServer mbs,
+			@NotNull DynamicMBeanFactory mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
-		this.mbs = checkNotNull(mbs);
-		this.mbeanFactory = checkNotNull(mbeanFactory);
+		this.mbs = mbs;
+		this.mbeanFactory = mbeanFactory;
 		this.keyToObjectNames = keyToObjectNames;
 		this.customTypes = customTypes;
 	}
@@ -90,10 +91,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		workerPoolKeys.put(workerPool, workerPoolKey);
 	}
 
-	public void registerSingleton(Key<?> key, Object singletonInstance, @Nullable MBeanSettings settings) {
-		checkNotNull(singletonInstance);
-		checkNotNull(key);
-
+	public void registerSingleton(@NotNull Key<?> key, @NotNull Object singletonInstance, @Nullable MBeanSettings settings) {
 		Class<?> instanceClass = singletonInstance.getClass();
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
@@ -142,9 +140,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void unregisterSingleton(Key<?> key, Object singletonInstance) {
-		checkNotNull(key);
-
+	public void unregisterSingleton(@NotNull Key<?> key, Object singletonInstance) {
 		if (isMBean(singletonInstance.getClass())) {
 			try {
 				String name = createNameForKey(key);
@@ -158,10 +154,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void registerWorkers(WorkerPool pool, Key<?> key, List<?> poolInstances, MBeanSettings settings) {
-		checkNotNull(poolInstances);
-		checkNotNull(key);
-
+	public void registerWorkers(@NotNull WorkerPool pool, Key<?> key, @NotNull List<?> poolInstances, MBeanSettings settings) {
 		if (poolInstances.size() == 0) {
 			logger.info(format("Pool of instances with key %s is empty", key.toString()));
 			return;
@@ -231,9 +224,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void unregisterWorkers(WorkerPool pool, Key<?> key, List<?> poolInstances) {
-		checkNotNull(key);
-
+	public void unregisterWorkers(WorkerPool pool, @NotNull Key<?> key, List<?> poolInstances) {
 		if (poolInstances.size() == 0) {
 			return;
 		}

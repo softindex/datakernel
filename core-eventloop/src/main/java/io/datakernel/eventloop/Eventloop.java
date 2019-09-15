@@ -53,7 +53,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToSupplier;
 import static io.datakernel.eventloop.util.ReflectionUtils.isPrivateApiAvailable;
 import static io.datakernel.eventloop.util.Utils.tryToOptimizeSelector;
@@ -1089,7 +1088,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public static void setGlobalFatalErrorHandler(@NotNull FatalErrorHandler handler) {
-		globalFatalErrorHandler = checkNotNull(handler);
+		globalFatalErrorHandler = handler;
 	}
 
 	// JMX

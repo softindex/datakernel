@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -26,7 +27,6 @@ import java.util.Objects;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
-import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static org.objectweb.asm.Type.getType;
@@ -36,10 +36,10 @@ final class ExpressionCallStatic implements Expression {
 	private final String name;
 	private final List<Expression> arguments;
 
-	ExpressionCallStatic(Class<?> owner, String name, List<Expression> arguments) {
-		this.owner = checkNotNull(owner);
-		this.name = checkNotNull(name);
-		this.arguments = checkNotNull(arguments);
+	ExpressionCallStatic(@NotNull Class<?> owner, @NotNull String name, @NotNull List<Expression> arguments) {
+		this.owner = owner;
+		this.name = name;
+		this.arguments = arguments;
 	}
 
 	@Override
