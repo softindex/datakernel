@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-uikernel</artifactId>
 
-  <name>DataKernel: UiKernel</name>
+  <name>DataKernel : UiKernel</name>
   <description>
     Package provides integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
   </description>

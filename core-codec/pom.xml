@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-codec</artifactId>
 
-  <name>DataKernel: Json</name>
+  <name>DataKernel : Json</name>
   <description>
     Tools for encoding/decoding of primitives and objects.
   </description>

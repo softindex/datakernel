@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-servicegraph</artifactId>
 
-  <name>DataKernel: Boot : ServiceGraph</name>
+  <name>DataKernel : Boot : ServiceGraph</name>
 
   <dependencies>
     <dependency>

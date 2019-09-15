@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-memcache</artifactId>
 
-  <name>DataKernel: Memcache</name>
+  <name>DataKernel : Memcache</name>
   <description>
     Package provides client and server for creation of memcached RPC messaging.
   </description>

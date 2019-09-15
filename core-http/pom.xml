@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-http</artifactId>
 
-  <name>DataKernel: HTTP</name>
+  <name>DataKernel : HTTP</name>
   <description>
     High-performance asynchronous HTTP clients and servers collection.
     Package contains a bunch of different built-in servlets for request dispatching, loading of a static content, etc.

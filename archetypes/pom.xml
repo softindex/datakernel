@@ -16,8 +16,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>http-archetype</module>
-        <module>rpc-archetype</module>
+        <module>http</module>
+        <module>rpc</module>
     </modules>
 
 </project>

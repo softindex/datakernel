@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-datastream</artifactId>
 
-  <name>DataKernel: DataStreams</name>
+  <name>DataKernel : DataStreams</name>
   <description>
     Composable asynchronous/reactive streams with powerful data processing capabilities.
     They are useful for transferring big volumes of lightweight values or objects.

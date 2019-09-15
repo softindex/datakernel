@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-bytebuf</artifactId>
 
-  <name>DataKernel: ByteBuf</name>
+  <name>DataKernel : ByteBuf</name>
   <description>
     Fast and memory-efficient byte buffer, an optimized version of Java's ByteBuffer class.
     Useful for fast low-level I/O operations like working with files or transferring data over the internet.

@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-serializer</artifactId>
 
-  <name>DataKernel: Serializer</name>
+  <name>DataKernel : Serializer</name>
   <description>
     Extremely fast and space-efficient serializers. It was crafted using bytecode engineering.
   </description>

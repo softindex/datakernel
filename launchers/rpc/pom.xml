@@ -9,9 +9,9 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>rpc-launchers</artifactId>
+  <artifactId>datakernel-launchers-rpc</artifactId>
 
-  <name>Datakernel Launchers: RPC</name>
+  <name>Launchers : RPC</name>
 
   <dependencies>
     <dependency>
@@ -21,7 +21,7 @@
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>common-launchers</artifactId>
+      <artifactId>datakernel-launchers-common</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

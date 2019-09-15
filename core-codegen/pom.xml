@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-codegen</artifactId>
 
-  <name>DataKernel: Codegen</name>
+  <name>DataKernel : Codegen</name>
   <description>
     Dynamic class and method bytecode generator on top of ObjectWeb ASM.
     An expression-based fluent API abstracts the complexity of direct bytecode manipulation.

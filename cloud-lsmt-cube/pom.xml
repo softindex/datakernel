@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-cube</artifactId>
 
-  <name>DataKernel: LSMT OLAP Cube</name>
+  <name>DataKernel : LSMT OLAP Cube</name>
   <description>
     Multidimensional OLAP database with predefined set of dimensions, measures,
     and log-structured merge-tree tables containing pre-aggregated data.

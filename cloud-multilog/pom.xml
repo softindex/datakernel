@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-multilog</artifactId>
 
-  <name>DataKernel: Multilog</name>
+  <name>DataKernel : Multilog</name>
   <description>
     Package provides tools for working with logs stored on different partitions.
   </description>

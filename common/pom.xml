@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-common</artifactId>
 
-  <name>DataKernel: Common</name>
+  <name>DataKernel : Common</name>
   <description>
     Module containing various general utilities for DataKernel project.
   </description>

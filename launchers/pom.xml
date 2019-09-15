@@ -12,7 +12,7 @@
   <artifactId>datakernel-launchers</artifactId>
   <packaging>pom</packaging>
 
-  <name>DataKernel: Launchers</name>
+  <name>Launchers</name>
   <description>
     Package provides a set of predefined launchers for different services as HTTP servers, RPC endpoints, etc.
   </description>

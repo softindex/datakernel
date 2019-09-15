@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-triggers</artifactId>
 
-  <name>DataKernel: Boot : Triggers</name>
+  <name>DataKernel : Boot : Triggers</name>
 
   <dependencies>
     <dependency>

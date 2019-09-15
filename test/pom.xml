@@ -11,9 +11,9 @@
 
   <artifactId>datakernel-test</artifactId>
 
-  <name>DataKernel: Test utils</name>
+  <name>DataKernel : Test utils</name>
   <description>
-    Utils for test purposes, custom DatakernelRunner and custom JUnit rules.
+    Utils for test purposes, custom DataKernelRunner and custom JUnit rules.
   </description>
 
   <dependencies>

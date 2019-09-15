@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-aggregation</artifactId>
 
-  <name>DataKernel: LSMT Aggregation</name>
+  <name>DataKernel : LSMT Aggregation</name>
   <description>
     Log-structured merge-tree table with fields representing aggregate functions, designed for OLAP workload.
   </description>

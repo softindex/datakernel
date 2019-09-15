@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-fs</artifactId>
 
-  <name>DataKernel: FS</name>
+  <name>DataKernel : FS</name>
   <description>
     Package provides tools for building efficient, scalable remote file servers.
     It utilizes CSP for fast and reliable file transfer.

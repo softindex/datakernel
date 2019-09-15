@@ -9,9 +9,9 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>common-launchers</artifactId>
+  <artifactId>datakernel-launchers-common</artifactId>
 
-  <name>Datakernel Launchers: Common</name>
+  <name>Launchers : Common</name>
 
   <dependencies>
     <dependency>

@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-launcher</artifactId>
 
-  <name>DataKernel: Launcher</name>
+  <name>DataKernel : Launcher</name>
   <description>
     An intelligent way of launching complex applications and services according to their dependencies
   </description>

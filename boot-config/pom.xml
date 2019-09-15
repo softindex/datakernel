@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-config</artifactId>
 
-  <name>DataKernel: Boot : Config</name>
+  <name>DataKernel : Boot : Config</name>
 
   <dependencies>
     <dependency>

@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-crdt</artifactId>
 
-  <name>DataKernel: CRDT</name>
+  <name>DataKernel : CRDT</name>
   <description>
     Conflict-free replicated data type implementation for DataKernel Framework.
   </description>

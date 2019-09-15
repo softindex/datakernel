@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-net</artifactId>
 
-  <name>DataKernel: Net</name>
+  <name>DataKernel : Net</name>
   <description>
     Net module handles low-level asynchronous socket I/O (TCP/UDP).
     Package provides a tools for TCP/UDP servers creation

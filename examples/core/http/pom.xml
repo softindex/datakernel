@@ -15,7 +15,7 @@
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>http-launchers</artifactId>
+      <artifactId>datakernel-launchers-http</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-etl</artifactId>
 
-  <name>DataKernel: ETL</name>
+  <name>DataKernel : ETL</name>
 
   <dependencies>
     <dependency>

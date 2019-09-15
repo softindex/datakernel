@@ -11,7 +11,7 @@
 
   <artifactId>benchmarks</artifactId>
 
-  <name>JMH benchmark: DataKernel DI</name>
+  <name>Examples : Benchmarks</name>
 
   <dependencies>
     <dependency>

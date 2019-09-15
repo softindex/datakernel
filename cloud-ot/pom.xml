@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-ot</artifactId>
 
-  <name>DataKernel: OT</name>
+  <name>DataKernel : OT</name>
   <description>
     Implementation of operational transformation technology which allows to build collaborative software systems.
   </description>

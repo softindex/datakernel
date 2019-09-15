@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-jmx</artifactId>
 
-  <name>DataKernel: Boot : JMX</name>
+  <name>DataKernel : Boot : JMX</name>
 
   <dependencies>
     <dependency>

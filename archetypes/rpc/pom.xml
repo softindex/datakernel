@@ -11,8 +11,8 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <name>Simple HTTP DataKernel App Archetype</name>
-    <artifactId>http-archetype</artifactId>
+    <name>Archetypes : Simple RPC application</name>
+    <artifactId>archetype-rpc</artifactId>
     <packaging>maven-archetype</packaging>
 
     <build>

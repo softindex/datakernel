@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-workers</artifactId>
 
-  <name>DataKernel: Boot : Workers</name>
+  <name>DataKernel : Boot : Workers</name>
 
   <dependencies>
     <dependency>

@@ -11,7 +11,7 @@
 
   <artifactId>datakernel-di</artifactId>
 
-  <name>DataKernel: DI</name>
+  <name>DataKernel : DI</name>
   <description>
     DataKernel has an extremely lightweight DI with ground-breaking design principles.
     It supports nested scopes, singletons, object factories, modules and plugins which
