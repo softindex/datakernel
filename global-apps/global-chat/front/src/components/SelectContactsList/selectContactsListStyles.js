@@ -6,12 +6,12 @@ const selectContactsListStyles = theme => {
         overflow: 'overlay'
       },
       overflow: 'hidden',
-      height: theme.spacing.unit * 37,
-      marginTop: theme.spacing.unit
+      height: theme.spacing(37),
+      marginTop: theme.spacing(1)
     },
     secondaryDividerText: {
       textAlign: 'center',
-      margin: `${theme.spacing.unit * 2}px 0px`
+      margin: `${theme.spacing(2)}px 0px`
     },
     innerUl: {
       padding: 0

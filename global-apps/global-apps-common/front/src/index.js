@@ -9,7 +9,7 @@ import SignUpAbstractionImage from './signUp/SignUpAbstractionImage/SignUpAbstra
 import SignUp from './signUp/SignUp/SignUp';
 import OAuthCallback from './auth/OAuthCallback/OAuthCallback';
 import Avatar from './avatar/Avatar';
-import ContactChip from './contactChip/ContactChip'
+import ContactChip from './contactChip/ContactChip';
 
 export * from './utils/utils';
 export * from './serviceHooks';

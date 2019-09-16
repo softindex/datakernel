@@ -4,6 +4,8 @@ import MainScreen from "./MainScreen/MainScreen";
 import {SignUp} from "global-apps-common";
 import {withSnackbar} from 'notistack';
 import {OAuthCallback} from "global-apps-common";
+import InviteScreen from "./InviteScreen/InviteScreen";
+import InitAuthorizedServices from './InitAuthorizedServices/InitAuthorizedServices';
 
 function Router() {
   return (
@@ -21,8 +23,15 @@ function Router() {
           )}
         />
         <Route path="/sign-up/auth" component={OAuthCallback}/>
-        <Route path="/room/:roomId" component={MainScreen}/>
-        <Route path="/" component={MainScreen}/>
+        <Route path="/*" component={() => (
+          <InitAuthorizedServices>
+            <Switch>
+              <Route path="/room/:roomId" component={MainScreen}/>
+              <Route path="/invite" component={InviteScreen}/>
+              <Route path="/" component={MainScreen}/>
+            </Switch>
+          </InitAuthorizedServices>
+        )}/>
       </Switch>
     </ReactRouter>
   );

@@ -6,7 +6,7 @@ import CircularProgress from "@material-ui/core/CircularProgress";
 import ContactItem from "../ContactItem/ContactItem";
 import {withSnackbar} from "notistack";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
-import {getInstance} from "global-apps-common/lib";
+import {getInstance} from "global-apps-common";
 import ContactsService from "../../modules/contacts/ContactsService";
 import {withRouter} from "react-router-dom";
 

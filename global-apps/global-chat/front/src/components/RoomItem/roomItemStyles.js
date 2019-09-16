@@ -1,8 +1,8 @@
 const roomItemStyles = theme => ({
   listItem: {
     borderRadius: 4,
-    paddingTop: theme.spacing.unit * 0.5,
-    paddingBottom: theme.spacing.unit * 0.5,
+    paddingTop: theme.spacing(0.5),
+    paddingBottom: theme.spacing(0.5),
     '& > div' : {
       visibility: 'hidden'
     },
@@ -16,19 +16,15 @@ const roomItemStyles = theme => ({
   link: {
     display: 'flex',
     flexGrow: 1,
-    minWidth: theme.spacing.unit * 34,
+    minWidth: theme.spacing(34),
     textDecoration: 'none',
-    height: theme.spacing.unit * 8,
+    height: theme.spacing(8),
     alignItems: 'center'
   },
   itemText: {
     overflow: 'hidden',
     color: theme.palette.secondary.contrastText,
-    textOverflow: 'ellipsis'
-  },
-  itemTextPrimary: {
     textOverflow: 'ellipsis',
-    overflow: 'hidden',
     whiteSpace: 'nowrap'
   },
   deleteIcon: {

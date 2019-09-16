@@ -6,6 +6,7 @@ import selectContactsListStyles from "./selectContactsListStyles";
 import ContactItem from "../ContactItem/ContactItem";
 import ListSubheader from "@material-ui/core/ListSubheader";
 import InviteButton from "../InviteButton/InviteButton";
+import EmptySelectScreen from "../EmptySelectScreen/EmptySelectScreen";
 
 function SelectContactsListView({
                                   classes,
@@ -21,13 +22,15 @@ function SelectContactsListView({
                                 }) {
   return (
     <div className={classes.chatsList}>
+      {search === '' && filteredContacts.length === 0 && (
+        <EmptySelectScreen/>
+      )}
       <List subheader={<li/>}>
         {filteredContacts.length > 0 && (
           <li>
             <List className={classes.innerUl}>
               <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
               {filteredContacts
-                //.sort((a, b) => a[1].name.localeCompare(b[1].name))
                 .map(([publicKey]) =>
                 <ContactItem
                   selected={participants.has(publicKey)}
@@ -45,7 +48,7 @@ function SelectContactsListView({
             <List className={classes.innerUl}>
               <ListSubheader className={classes.listSubheader}>People</ListSubheader>
               {[...searchContacts]
-                //.sort((a, b) => a[1].name.localeCompare(b[1].name))
+                .sort(([, left], [, right]) => left.lastName.localeCompare(right.lastName))
                 .map(([publicKey, contact]) => (
                   <ContactItem
                     selected={participants.has(publicKey)}
@@ -59,7 +62,7 @@ function SelectContactsListView({
           </li>
         )}
       </List>
-      {(searchContacts.size === 0 && search !== '' && searchReady) && (
+      {searchContacts.size === 0 && search !== '' && searchReady && (
         <InviteButton publicKey={publicKey}/>
       )}
     </div>

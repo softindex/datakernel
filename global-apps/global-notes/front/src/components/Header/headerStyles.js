@@ -1,7 +1,7 @@
 const headerStyles = theme => ({
   appBar: {
     zIndex: theme.zIndex.drawer + 1,
-    height: theme.spacing.unit * 8
+    height: theme.spacing(8)
   },
   noteTitleContainer: {
     display: 'flex',
@@ -9,8 +9,8 @@ const headerStyles = theme => ({
     overflow: 'hidden'
   },
   title: {
-    marginLeft: theme.spacing.unit * 3,
-    minWidth: theme.spacing.unit * 37
+    marginLeft: theme.spacing(3),
+    minWidth: theme.spacing(37)
   },
   noteTitle: {
     fontSize: theme.typography.body1.fontSize,
@@ -24,10 +24,10 @@ const headerStyles = theme => ({
     fontSize: theme.typography.h6.fontsize
   },
   accountIcon: {
-    fontSize: theme.spacing.unit * 3
+    fontSize: theme.spacing(3)
   },
   logout: {
-    marginLeft: theme.spacing.unit * 2,
+    marginLeft: theme.spacing(2),
     '&:hover': {
       cursor: 'pointer'
     }

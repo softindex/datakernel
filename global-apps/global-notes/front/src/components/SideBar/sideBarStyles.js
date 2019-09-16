@@ -18,28 +18,28 @@ const sideBarStyles = theme => ({
     },
     overflowX: 'hidden',
     background: theme.palette.primary.contrastText,
-    marginBottom: theme.spacing.unit
+    marginBottom: theme.spacing(1)
   },
   button: {
-    width: theme.spacing.unit * 41,
-    margin:  `${theme.spacing.unit * 2}px auto`,
-    borderRadius: theme.spacing.unit * 9,
-    marginTop: theme.spacing.unit * 2
+    width: theme.spacing(41),
+    margin:  `${theme.spacing(2)}px auto`,
+    borderRadius: theme.spacing(9),
+    marginTop: theme.spacing(2)
   },
   search: {
-    padding: `${theme.spacing.unit}px 0px`,
+    padding: `${theme.spacing(1)}px 0px`,
     boxShadow: 'none',
     background: theme.palette.secondary.lightBlue,
     display: 'flex',
     alignItems: 'center',
     border: 'none',
     flexGrow: 0,
-    paddingBottom: theme.spacing.unit,
-    marginTop: theme.spacing.unit * 8
+    paddingBottom: theme.spacing(1),
+    marginTop: theme.spacing(8)
   },
   inputDiv: {
-    marginLeft: theme.spacing.unit,
-    marginRight: theme.spacing.unit * 3,
+    marginLeft: theme.spacing(1),
+    marginRight: theme.spacing(3),
     flex: 1
   },
   input: {
@@ -48,11 +48,11 @@ const sideBarStyles = theme => ({
     whiteSpace: 'nowrap'
   },
   iconButton: {
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`
+    padding: `${theme.spacing(1)}px ${theme.spacing(1)}px`
   },
   secondaryText: {
     textAlign: 'center',
-    marginTop: theme.spacing.unit
+    marginTop: theme.spacing(1)
   }
 });
 

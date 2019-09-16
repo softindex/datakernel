@@ -1,8 +1,8 @@
 const dialogStyles = theme => ({
   closeButton: {
     position: 'absolute',
-    right: theme.spacing.unit * 2,
-    top: theme.spacing.unit,
+    right: theme.spacing(2),
+    top: theme.spacing(1),
     color: theme.palette.grey[500]
   },
   circularProgress: {

@@ -2,6 +2,8 @@ import React from 'react';
 import {BrowserRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from "./MainScreen/MainScreen";
 import {OAuthCallback, SignUp} from "global-apps-common";
+import InitAuthorizedServices from "./InitAuthorizedServices/InitAuthorizedServices";
+import InviteScreen from "./InviteScreen/InviteScreen";
 
 function Router() {
   return (
@@ -19,8 +21,15 @@ function Router() {
           )}
         />
         <Route exact={true} path="/sign-up/auth" component={OAuthCallback}/>
-        <Route exact={true} path="/document/:documentId" component={MainScreen}/>
-        <Route path="/" component={MainScreen}/>
+        <Route path="/*" component={() => (
+          <InitAuthorizedServices>
+            <Switch>
+              <Route path="/document/:documentId" component={MainScreen}/>
+              <Route path="/invite" component={InviteScreen}/>
+              <Route path="/" component={MainScreen}/>
+            </Switch>
+          </InitAuthorizedServices>
+        )}/>
       </Switch>
     </BrowserRouter>
   );

@@ -1,10 +1,9 @@
-const emptyDocumentStyles = theme => {
+const emptyDocumentScreenStyles = theme => {
   return {
     root: {
       display: 'flex',
       flexDirection: 'column',
       flexGrow: 1,
-      height: '100vh',
       alignItems: 'center',
       justifyContent: 'center'
     },
@@ -14,18 +13,16 @@ const emptyDocumentStyles = theme => {
     },
     paper: {
       display: 'flex',
-      backgroundColor: theme.palette.grey[600],
-      padding: 6,
-      paddingLeft: theme.spacing(2),
-      paddingRight: theme.spacing(2),
+      backgroundColor: theme.palette.secondary.darkGrey,
+      padding: `${theme.spacing(1)}px ${theme.spacing(2)}px`,
       borderRadius: 30,
       boxShadow: 'none'
     },
-    startDocument: {
+    startMessage: {
       fontSize: '1rem',
       textAlign: 'center',
     }
   }
 };
 
-export default emptyDocumentStyles;
+export default emptyDocumentScreenStyles;

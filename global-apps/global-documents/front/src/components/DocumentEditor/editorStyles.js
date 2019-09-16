@@ -8,7 +8,11 @@ const editorStyles = theme => ({
     width: '100%',
     height: '100%',
     resize: 'none',
-    borderStyle: 'none'
+    borderStyle: 'none',
+    overflow: 'hidden',
+    '&:hover': {
+      overflow: 'overlay'
+    }
   },
   paper: {
     flexGrow: 1,

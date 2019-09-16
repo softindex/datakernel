@@ -16,10 +16,10 @@ const noteEditorStyles = theme => ({
   },
   paper: {
     flexGrow: 1,
-    margin: theme.spacing.unit * 3,
-    marginTop: theme.spacing.unit * 11,
-    padding: theme.spacing.unit * 3,
-    paddingRight: theme.spacing.unit * 2
+    margin: theme.spacing(3),
+    marginTop: theme.spacing(11),
+    padding: theme.spacing(3),
+    paddingRight: theme.spacing(2)
   }
 });
 

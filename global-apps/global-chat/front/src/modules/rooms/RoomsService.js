@@ -1,7 +1,6 @@
 import RoomsOTOperation from "./ot/RoomsOTOperation";
-import {randomString, Service} from 'global-apps-common';
+import {randomString, Service, delay} from 'global-apps-common';
 import {createDialogRoomId, RETRY_TIMEOUT} from '../../common/utils';
-import {delay} from "global-apps-common/lib";
 
 const ROOM_ID_LENGTH = 32;
 

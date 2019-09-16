@@ -11,14 +11,14 @@ const sideBarStyles = theme => {
       flexShrink: 0
     },
     search: {
-      padding: `${theme.spacing.unit}px 0px`,
+      padding: `${theme.spacing(1)}px 0px`,
       display: 'flex',
       alignItems: 'center',
       boxShadow: 'none',
       border: 'none',
       flexGrow: 0,
-      paddingBottom: theme.spacing.unit,
-      marginTop: theme.spacing.unit * 8
+      paddingBottom: theme.spacing(1),
+      marginTop: theme.spacing(8)
     }
   }
 };

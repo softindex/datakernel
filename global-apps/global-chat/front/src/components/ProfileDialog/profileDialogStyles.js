@@ -1,13 +1,13 @@
 const profileDialogStyles = theme => ({
   iconButton: {
     borderRadius: '100%',
-    marginLeft: theme.spacing.unit * 2
+    marginLeft: theme.spacing(2)
   },
   saveButton: {
-    right: theme.spacing.unit * 2
+    right: theme.spacing(2)
   },
   input: {
-    width: theme.spacing.unit * 85
+    width: theme.spacing(85)
   },
   progressWrapper: {
     margin: 'auto',

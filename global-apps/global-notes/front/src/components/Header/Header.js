@@ -7,10 +7,8 @@ import ArrowIcon from '@material-ui/icons/KeyboardArrowRight';
 import Icon from '@material-ui/core/Icon';
 import headerStyles from './headerStyles';
 import {connectService, AuthContext} from 'global-apps-common';
-import {getInstance, useService} from "global-apps-common";
-import NotesService from "../../modules/notes/NotesService";
 
-function HeaderView({classes, note, onLogout}) {
+function Header({classes, title, onLogout}) {
   return (
     <AppBar className={classes.appBar} position="fixed">
       <Toolbar>
@@ -22,19 +20,18 @@ function HeaderView({classes, note, onLogout}) {
           Global Notes
         </Typography>
         <div className={classes.noteTitleContainer}>
-          {note !== undefined && (
-            <>
-              <ListItemIcon className={classes.listItemIcon}>
-                <ArrowIcon className={classes.arrowIcon}/>
-              </ListItemIcon>
+          {title !== '' && (
+            <ListItemIcon className={classes.listItemIcon}>
+              <ArrowIcon className={classes.arrowIcon}/>
+            </ListItemIcon>
+          )}
+
               <Typography
                 className={classes.noteTitle}
                 color="inherit"
               >
-                {note}
+                {title}
               </Typography>
-            </>
-          )}
         </div>
         <div
           color="inherit"
@@ -46,19 +43,6 @@ function HeaderView({classes, note, onLogout}) {
       </Toolbar>
     </AppBar>
   );
-}
-
-function Header({classes, noteId, onLogout}) {
-  const notesService = getInstance(NotesService);
-  const {notes} = useService(notesService);
-  const note = notes[noteId];
-  const props = {
-    classes,
-    note,
-    onLogout
-  };
-
-  return <HeaderView {...props}/>
 }
 
 export default connectService(

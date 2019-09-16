@@ -6,6 +6,7 @@ import selectContactsListStyles from "./selectContactsListStyles";
 import ContactItem from "../ContactItem/ContactItem";
 import ListSubheader from "@material-ui/core/ListSubheader";
 import InviteButton from "../InviteButton/InviteButton";
+import EmptySelectScreen from "../EmptySelectScreen/EmptySelectScreen";
 
 function SelectContactsListView({
                                   classes,
@@ -15,10 +16,14 @@ function SelectContactsListView({
                                   onContactToggle,
                                   search,
                                   searchContacts,
+                                  searchReady,
                                   publicKey
                                 }) {
   return (
     <div className={classes.chatsList}>
+      {search === '' && filteredContacts.length === 0 && (
+        <EmptySelectScreen/>
+      )}
       <List subheader={<li/>}>
         {filteredContacts.length > 0 && (
           <li>
@@ -54,7 +59,7 @@ function SelectContactsListView({
           </li>
         )}
       </List>
-      {(searchContacts.size === 0 && search !== '') && (
+      {searchContacts.size === 0 && search !== '' && searchReady && (
         <InviteButton publicKey={publicKey}/>
       )}
     </div>
@@ -65,6 +70,7 @@ function SelectContactsList({
                               classes,
                               search,
                               searchContacts,
+                              searchReady,
                               contacts,
                               participants,
                               onContactToggle,
@@ -76,6 +82,7 @@ function SelectContactsList({
     participants,
     search,
     searchContacts,
+    searchReady,
     onContactToggle,
     names,
     publicKey,

@@ -67,7 +67,6 @@ class RoomItem extends React.Component {
             <ListItemText
               primary={roomName}
               className={classes.itemText}
-              classes={{primary: classes.itemTextPrimary}}
             />
           </Link>
           {this.props.showAddContactButton && !this.props.showDeleteButton && (

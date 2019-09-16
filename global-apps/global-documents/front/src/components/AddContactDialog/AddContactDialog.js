@@ -1,5 +1,4 @@
 import React, {useState} from "react";
-import path from 'path';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import Dialog from '../Dialog/Dialog';
@@ -24,7 +23,7 @@ function AddContactDialogView({classes, onClose, name, loading, onSubmit, onName
         <DialogTitle>Add Contact</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Enter contact name to start chat
+            Enter contact name to start editing documents
           </DialogContentText>
           <TextField
             required={true}
@@ -64,7 +63,7 @@ function AddContactDialogView({classes, onClose, name, loading, onSubmit, onName
   );
 }
 
-function AddContactDialog({classes, history, enqueueSnackbar, contactPublicKey, onClose}) {
+function AddContactDialog({classes, enqueueSnackbar, contactPublicKey, onClose}) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const contactsService = getInstance(ContactsService);
@@ -83,8 +82,7 @@ function AddContactDialog({classes, history, enqueueSnackbar, contactPublicKey, 
       event.preventDefault();
       setLoading(true);
       return contactsService.addContact(contactPublicKey, name)
-        .then(({dialogRoomId}) => {
-          history.push(path.join('/room', dialogRoomId));
+        .then(() => {
           onClose();
         })
         .catch(err => {

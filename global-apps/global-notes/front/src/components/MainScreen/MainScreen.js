@@ -5,7 +5,6 @@ import Header from '../Header/Header';
 import SideBar from '../SideBar/SideBar';
 import mainScreenStyles from './mainScreenStyles';
 import NotesService from '../../modules/notes/NotesService';
-import EmptyNote from '../EmptyNote/EmptyNote';
 import Note from '../Note/Note';
 import {
   checkAuth,
@@ -13,7 +12,8 @@ import {
   AuthContext,
   connectService,
   RegisterDependency,
-  useService
+  useService,
+  EmptyScreenTitle
 } from 'global-apps-common';
 
 function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
@@ -36,11 +36,11 @@ function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
 
   return (
     <RegisterDependency name={NotesService} value={notesService}>
-      <Header noteId={noteId}/>
+      <Header title={notes[noteId] || ''}/>
       <div className={classes.note}>
         <SideBar/>
         {!noteId && (
-          <EmptyNote/>
+          <EmptyScreenTitle title='Please select note to start editing'/>
         )}
         {noteId && (
           <Note noteId={noteId}/>

@@ -1,10 +1,9 @@
-const emptyChatRoomStyles = theme => {
+const emptyChatScreenStyles = theme => {
   return {
     root: {
       display: 'flex',
       flexDirection: 'column',
       flexGrow: 1,
-      height: '100vh',
       alignItems: 'center',
       justifyContent: 'center'
     },
@@ -15,7 +14,7 @@ const emptyChatRoomStyles = theme => {
     paper: {
       display: 'flex',
       backgroundColor: theme.palette.secondary.darkGrey,
-      padding: `${theme.spacing.unit}px ${theme.spacing.unit * 2}px`,
+      padding: `${theme.spacing(1)}px ${theme.spacing(2)}px`,
       borderRadius: 30,
       boxShadow: 'none'
     },
@@ -26,4 +25,4 @@ const emptyChatRoomStyles = theme => {
   }
 };
 
-export default emptyChatRoomStyles;
+export default emptyChatScreenStyles;

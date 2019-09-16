@@ -31,9 +31,6 @@ function ContactItem({
         primary={primaryName}
         secondary={username}
         className={classes.itemText}
-        classes={{
-          primary: classes.itemTextPrimary
-        }}
       />
       {showDeleteButton && (
         <IconButton className={classes.deleteIcon}>

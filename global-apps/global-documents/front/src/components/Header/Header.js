@@ -42,9 +42,11 @@ function Header({classes, title}) {
               className={classes.documentTitle}
               color="inherit"
             >
-              <ListItemIcon className={classes.listItemIcon}>
-                <ArrowIcon className={classes.arrowIcon}/>
-              </ListItemIcon>
+              {title !== '' && (
+                <ListItemIcon className={classes.listItemIcon}>
+                  <ArrowIcon className={classes.arrowIcon}/>
+                </ListItemIcon>
+              )}
               {title}
             </Typography>
           </div>

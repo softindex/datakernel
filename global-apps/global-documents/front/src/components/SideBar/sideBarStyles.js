@@ -23,8 +23,10 @@ const sideBarStyles = theme => {
     },
     documentsList: {
       flexGrow: 1,
-      overflowY: 'overlay',
-      overflowX: 'hidden',
+      overflow: 'hidden',
+      '&:hover': {
+        overflowY: 'overlay'
+      },
       background: theme.palette.primary.contrastText,
       marginBottom: theme.spacing(1)
     },

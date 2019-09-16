@@ -25,8 +25,8 @@ function DocumentsList({classes, ready, documents, onDeleteDocument}) {
       {ready && (
         <div className={classes.documentsList}>
           <List>
-            {[...documents].sort((document1, document2) =>
-              document1[1].name.localeCompare(document2[1].name))
+            {[...documents].sort(([,leftDocument], [,rightDocument]) =>
+              leftDocument.name.localeCompare(rightDocument.name))
               .map(([documentId, document]) => (
                   <DocumentItem
                     documentId={documentId}

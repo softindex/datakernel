@@ -37,11 +37,9 @@ function ProfileDialogView({
         My Profile
       </DialogTitle>
       {!profileReady && (
-        <Grow in={!profileReady}>
-          <div className={classes.progressWrapper}>
-            <CircularProgress/>
-          </div>
-        </Grow>
+        <div className={classes.progressWrapper}>
+          <CircularProgress/>
+        </div>
       )}
       {profileReady && (
         <form onSubmit={onSubmit}>

@@ -97,7 +97,7 @@ function CreateDocumentDialogView({
         <DialogActions>
           <Button
             className={classes.actionButton}
-            disabled={activeStep === 0}
+            disabled={activeStep === 0 || loading}
             onClick={gotoStep.bind(this, activeStep - 1)}
           >
             Back
@@ -118,6 +118,7 @@ function CreateDocumentDialogView({
               className={classes.actionButton}
               loading={loading}
               type="submit"
+              disabled={loading}
               color="primary"
               variant="contained"
             >
@@ -234,7 +235,15 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
       setParticipants(participants);
     },
 
-    onRemoveContact(publicKey) {
+    onRemoveContact(publicKey, event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (participants.has(publicKey)) {
+        const participants = new Map(props.participants);
+        participants.delete(publicKey);
+        setParticipants(participants);
+      }
+      enqueueSnackbar('Deleting...');
       return contactsService.removeContact(publicKey)
         .then(() => {
           setTimeout(() => closeSnackbar(), 1000);

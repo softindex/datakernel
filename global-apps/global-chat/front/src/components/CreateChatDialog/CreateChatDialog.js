@@ -6,8 +6,7 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {getInstance, useService, getAppStoreContactName, initService} from "global-apps-common";
-import ContactChip from '../ContactChip/ContactChip';
+import {getInstance, useService, getAppStoreContactName, initService, ContactChip} from "global-apps-common";
 import createChatDialogStyles from "./createChatDialogStyles";
 import {withRouter} from "react-router-dom";
 import Search from "../Search/Search";
@@ -63,6 +62,7 @@ function CreateChatDialogView({
           <SelectContactsList
             search={search}
             searchContacts={searchContacts}
+            searchReady={searchReady}
             participants={participants}
             contacts={contacts}
             loading={loading}

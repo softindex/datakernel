@@ -14,7 +14,7 @@ const notesListStyles = theme => ({
   },
   progressWrapper: {
     margin: 'auto',
-    marginTop: theme.spacing.unit * 3,
+    marginTop: theme.spacing(3),
     textAlign: 'center'
   },
 });

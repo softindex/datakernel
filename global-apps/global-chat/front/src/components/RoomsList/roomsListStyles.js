@@ -2,7 +2,7 @@ const roomsListStyles = theme => {
   return {
     progressWrapper: {
       textAlign: 'center',
-      marginTop: theme.spacing.unit * 2
+      marginTop: theme.spacing(2)
     }
   }
 };
