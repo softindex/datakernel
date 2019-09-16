@@ -12,9 +12,8 @@
                             <div class="col-auto align-self-center mx-2">
                                 <div class="row">
                                     <span class="badge align-self-center">{{root.author}}</span>
-                                    <div style="width: 32px; height: 32px;">
-                                        <img class="rounded" alt="avatar" width="32" src="{{root.avatarUrl}}">
-                                    </div>
+
+                                    {{#root}}{{<avatar}}{{$size}}32{{/size}}{{/avatar}}{{/root}}
                                 </div>
                             </div>
                         </div>

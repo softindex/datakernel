@@ -45,7 +45,7 @@ public class ThreadView {
 					return dao != null ?
 							dao.getPost("root")
 									.then(rootPost ->
-											PostView.from(commDao, rootPost, currentUser, null, false)
+											PostView.from(commDao, rootPost, currentUser, false)
 													.map(post -> new ThreadView(e.getKey(), e.getValue(), post))) :
 							null;
 				})

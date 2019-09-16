@@ -18,8 +18,10 @@ import io.global.forum.util.MustacheTemplater;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
@@ -28,10 +30,12 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.util.Utils.nullToEmpty;
 import static io.global.Utils.generateString;
 import static io.global.comm.pojo.AuthService.DK_APP_STORE;
 import static io.global.forum.util.Utils.redirectToReferer;
 import static io.global.forum.util.Utils.revertIfException;
+import static java.util.stream.Collectors.toSet;
 
 public final class PublicServlet {
 	private static final String SESSION_ID = "FORUM_SID";
@@ -172,19 +176,35 @@ public final class PublicServlet {
 				})
 				.map(GET, "/profile/:userId", request -> {
 					UserId userId = request.getAttachment(UserId.class);
-					if (userId == null) {
+					UserData user = request.getAttachment(UserData.class);
+					if (userId == null || user == null) {
 						return Promise.of(redirectToLogin(request));
 					}
-					return request.getAttachment(CommDao.class)
-							.getUser(userId)
-							.then(user -> templater.render("profile", map("shownUser", user)));
+					CommDao commDao = request.getAttachment(CommDao.class);
+					if (!user.getRole().isPrivileged()) {
+						return Promise.ofException(HttpException.ofCode(403, "Not privileged"));
+					}
+					UserId shownUserId = new UserId(DK_APP_STORE, request.getPathParameter("userId"));
+					return commDao
+							.getUser(shownUserId)
+							.then(shownUser -> {
+								if (shownUser == null) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
+								}
+								return templater.render("profile", map("shownUser", shownUser, "userId", shownUserId.getAuthId()));
+							});
 				})
-				.map(POST, "/profile", request -> {
+				.map(POST, "/profile/:userId", request -> {
 					UserId userId = request.getAttachment(UserId.class);
-					UserData oldData = request.getAttachment(UserData.class);
-					if (userId == null || oldData == null) {
+					UserData user = request.getAttachment(UserData.class);
+					if (userId == null || user == null) {
 						return Promise.ofException(HttpException.ofCode(401, "Not authorized"));
 					}
+					UserId updatingUserId = new UserId(DK_APP_STORE, request.getPathParameter("userId"));
+					if (!(userId.equals(updatingUserId) || user.getRole().isPrivileged())) {
+						return Promise.ofException(HttpException.ofCode(403, "Not privileged"));
+					}
+
 					Map<String, String> params = request.getPostParameters();
 					String email = params.get("email");
 					String username = params.get("username");
@@ -197,8 +217,15 @@ public final class PublicServlet {
 						return Promise.ofException(HttpException.ofCode(401, "Username POST parameter is required"));
 					}
 					CommDao commDao = request.getAttachment(CommDao.class);
-					return commDao.updateUser(userId, new UserData(oldData.getRole(), email, username, firstName, lastName))
-							.map($ -> redirectToReferer(request, "/" + commDao.getKeys().getPubKey().asString() + "/profile"));
+
+					return commDao.getUser(updatingUserId)
+							.then(oldData -> {
+								if (oldData == null) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
+								}
+								return commDao.updateUser(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
+										.map($ -> redirectToReferer(request, "/" + commDao.getKeys().getPubKey().asString()));
+							});
 				})
 				.map("/:threadID/*", RoutingServlet.create()
 						.map(GET, "/", postViewServlet(templater))
@@ -216,8 +243,8 @@ public final class PublicServlet {
 	private static HttpResponse postOpRedirect(HttpRequest request) {
 		String tid = request.getPathParameter("threadID");
 		String pid = request.getPathParameter("postID");
-		ForumDao forumDao = request.getAttachment(ForumDao.class);
-		return redirectToReferer(request, "/" + forumDao.getKeys().getPubKey().asString() + "/" + tid + "/" + pid);
+		PubKey pubKey = request.getAttachment(PubKey.class);
+		return redirectToReferer(request, "/" + pubKey.asString() + "/" + tid + "/" + pid);
 	}
 
 	@NotNull
@@ -249,6 +276,29 @@ public final class PublicServlet {
 				.map(POST, "/restore", request ->
 						request.getAttachment(ThreadDao.class).restorePost(request.getPathParameter("postID"))
 								.map($ -> postOpRedirect(request)))
+				.map(POST, "/edit", request -> {
+					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
+
+					String pid = request.getPathParameter("postID");
+
+					Map<String, Attachment> attachmentMap = new HashMap<>();
+					Map<String, String> paramsMap = new HashMap<>();
+
+					return request.handleMultipart(AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap))
+							.then($ -> {
+								String content = paramsMap.get("content");
+								if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
+									return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
+								}
+								Set<String> removed = Arrays.stream(nullToEmpty(paramsMap.get("removeAttachments")).split(","))
+										.map(String::trim)
+										.collect(toSet());
+
+								return threadDao.updatePost(pid, content, attachmentMap, removed)
+										.map($2 -> postOpRedirect(request));
+							})
+							.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())));
+				})
 				.map(GET, "/download/:tag", request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 					String pid = request.getPathParameter("postID");
@@ -286,7 +336,7 @@ public final class PublicServlet {
 			return templater.render(pid != null ? "subthread" : "thread", map(
 					"threadId", tid,
 					"thread", threadDao.getThreadMetadata(),
-					"post", threadDao.getPost(pid != null ? pid : "root").then(post -> PostView.from(commDao, post, userId, null, true))
+					"post", threadDao.getPost(pid != null ? pid : "root").then(post -> PostView.from(commDao, post, userId, true))
 			));
 		};
 	}

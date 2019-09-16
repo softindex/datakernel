@@ -10,22 +10,29 @@
                 </span>
             </div>
 
+            {{^deletedBy}}
+                {{#lastEditTimestamp}}
+                    <div class="col-auto small px-0 mx-1">
+                        <i>edited at: <b>{{.}}</b></i>
+                    </div>
+                {{/lastEditTimestamp}}
+            {{/deletedBy}}
             {{#deletedBy}}
-                <div class="col text-right">
-                    <span class="badge badge-secondary badge-info">
-                        <i>deleted by: <b>{{.}}</b></i>
-                    </span>
+                <div class="col-auto small px-0 mx-1">
+                    <i>deleted by: <b>{{.}}</b></i>
                 </div>
             {{/deletedBy}}
         </div>
         <div class="row">
             <div class="col-auto mx-3 text-center">
-                <div class="row" style="width: 64px; height: 64px;">
-                    <img class="rounded" alt="avatar" width="64" src="{{avatarUrl}}">
-                </div>
+
+                {{<avatar}}{{$classes}}row{{/classes}}{{$size}}64{{/size}}{{/avatar}}
+
                 <span class="row badge badge-primary badge-light text-wrap text-break">
-                    {{#author}} <a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a> {{/author}}{{^author}}
-                    <i>ghost</i>{{/author}}
+                    {{#user.role.privileged}}{{#author}}
+                        <a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a>{{/author}}{{/user.role.privileged}}
+                    {{^user.role.privileged}}{{author}}{{/user.role.privileged}}
+                    {{^author}}<i>ghost</i>{{/author}}
                 </span>
             </div>
             <div class="col">
@@ -34,7 +41,8 @@
                     <details>
                         <summary>show</summary>
                     {{/deletedBy}}
-                    <p id="content_{{postId}}">{{content}}</p>
+                    <p id="content_{{postId}}" class="{{^deletedBy}}form-control{{/deletedBy}}"
+                       style="border: 1px solid transparent; height: initial; {{^deletedBy}}color: initial; {{/deletedBy}}white-space: pre-line">{{content}}</p>
                     {{#deletedBy}}
                     </details>
                     {{/deletedBy}}
@@ -46,6 +54,7 @@
                 {{#image}}
                     <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}">
                         <img src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                             alt="attachment"
                              class="img-thumbnail m-2">
                     </a>
                 {{/image}}
@@ -75,41 +84,45 @@
         {{/attachments}}
         <div class="row">
             <div class="col"></div>
-            {{#deletedBy}}{{#editable}}
-                <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
-                    <button class="btn btn-outline-primary btn-sm mx-1">restore</button>
-                </form>
-            {{/editable}}{{/deletedBy}}
-            {{^deletedBy}}
-                {{#user}}
-                    {{#editable}}
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
-                                    type="button"
-                                    id="change_menu_{{postId}}"
-                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                change
-                            </button>
-                            <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
-                                  action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+            <div class="col-auto mx-2 mb-2">
+                <div class="row">
+                    {{#deletedBy}}{{#editable}}
+                        <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                            <button class="btn btn-outline-primary btn-sm">restore</button>
+                        </form>
+                    {{/editable}}{{/deletedBy}}
+                    {{^deletedBy}}
+                        {{#user}}
+                            {{#editable}}
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
+                                            type="button"
+                                            id="change_menu_{{postId}}"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        change
+                                    </button>
+                                    <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                                          action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
 
-                                <button class="edit-button dropdown-item" type="button"
-                                        data-post-content="#content_{{postId}}">edit
+                                        <button class="edit-button dropdown-item" type="button"
+                                                data-edit="#content_{{postId}}"
+                                                data-edit-action="/{{pubKey}}/{{threadId}}/{{postId}}/edit">
+                                            edit
+                                        </button>
+                                        <button class="dropdown-item" type="submit">delete</button>
+                                    </form>
+                                </div>
+                            {{/editable}}
+                            {{#user.role.known}}
+                                <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
+                                        data-target="#reply_{{postId}}">
+                                    reply
                                 </button>
-                                <button class="dropdown-item" type="submit">delete</button>
-                            </form>
-                        </div>
-                    {{/editable}}
-                    {{#user.role.known}}
-
-                        <button class="btn btn-outline-primary btn-sm mx-1" data-toggle="collapse"
-                                data-target="#reply_{{postId}}">
-                            reply
-                        </button>
-
-                    {{/user.role.known}}
-                {{/user}}
-            {{/deletedBy}}
+                            {{/user.role.known}}
+                        {{/user}}
+                    {{/deletedBy}}
+                </div>
+            </div>
         </div>
     </div>
 </div>

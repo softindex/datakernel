@@ -3,15 +3,21 @@ package io.global.forum.util;
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
 import io.datakernel.codec.registry.CodecRegistry;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.global.comm.pojo.IpRange;
+import io.global.common.CryptoUtils;
+import io.global.common.PubKey;
 import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
+import org.spongycastle.math.ec.ECPoint;
 
+import java.math.BigInteger;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
@@ -71,5 +77,33 @@ public final class Utils {
 						return Promise.ofException(e);
 					});
 		};
+	}
+
+	private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
+	private static final Base64.Decoder BASE64_DECODER = Base64.getUrlDecoder();
+
+	public static String pubKeyToBase64(PubKey pubKey) {
+		ECPoint point = pubKey.getEcPublicKey().getQ();
+		byte[] first = point.getXCoord().toBigInteger().toByteArray();
+		byte[] second = point.getYCoord().toBigInteger().toByteArray();
+		return BASE64_ENCODER.encodeToString(first) + ':' + BASE64_ENCODER.encodeToString(second);
+	}
+
+	public static PubKey base64ToPubKey(String string) throws ParseException {
+		String[] parts = string.split(":");
+		if (parts.length != 2) {
+			throw new ParseException(PubKey.class, "No or more than one ':' delimiters in public key string");
+		}
+		try {
+			BigInteger x = new BigInteger(BASE64_DECODER.decode(parts[0]));
+			BigInteger y = new BigInteger(BASE64_DECODER.decode(parts[1]));
+			try {
+				return PubKey.of(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
+			} catch (IllegalArgumentException | ArithmeticException e) {
+				throw new ParseException(PubKey.class, "Failed to read a point on elliptic curve", e);
+			}
+		} catch (NumberFormatException e) {
+			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
+		}
 	}
 }

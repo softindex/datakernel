@@ -18,12 +18,12 @@ public final class ContainerServlet implements AsyncServlet {
 					PubKey pubKey;
 					try {
 						pubKey = PubKey.fromString(request.getPathParameter("pubKey"));
-					} catch (ParseException ignored) {
-						return Promise.of(HttpResponse.notFound404());
+					} catch (ParseException e) {
+						return Promise.of(HttpResponse.notFound404().withPlainText("Public key parsing failed with message: " + e.getMessage()));
 					}
 					UserContainer container = containerManager.getUserContainer(pubKey);
 					if (container == null) {
-						return Promise.of(HttpResponse.notFound404());
+						return Promise.of(HttpResponse.notFound404().withPlainText("No container is running for given key"));
 					}
 					request.attach(container);
 					return next.serve(request);
