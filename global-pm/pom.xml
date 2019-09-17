@@ -20,14 +20,9 @@
 	<dependencies>
 		<dependency>
 			<groupId>io.datakernel</groupId>
-			<artifactId>global-common</artifactId>
+      <artifactId>global-kv</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-		<!--<dependency>-->
-			<!--<groupId>org.rocksdb</groupId>-->
-			<!--<artifactId>rocksdbjni</artifactId>-->
-		<!--</dependency>-->
-
 		<dependency>
 			<groupId>io.datakernel</groupId>
 			<artifactId>datakernel-test</artifactId>

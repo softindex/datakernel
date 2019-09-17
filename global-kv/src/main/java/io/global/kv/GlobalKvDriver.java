@@ -103,7 +103,7 @@ public final class GlobalKvDriver<K, V> {
 								return false;
 							}
 							RawKvItem raw = signedItem.getValue();
-							return !raw.isRemoved() && Objects.equals(raw.getSimKeyHash(), simKeyHash);
+							return !raw.isTombstone() && Objects.equals(raw.getSimKeyHash(), simKeyHash);
 						})
 						.mapAsync(signedRawKvItem -> decrypt(signedRawKvItem, simKey)));
 	}
@@ -112,7 +112,7 @@ public final class GlobalKvDriver<K, V> {
 		PrivKey privKey = keys.getPrivKey();
 		return node.upload(keys.getPubKey(), table)
 				.map(consumer -> consumer
-						.map(key -> SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.ofRemoved(key, now.currentTimeMillis()), privKey)));
+						.map(key -> SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(key, now.currentTimeMillis()), privKey)));
 	}
 
 	public Promise<KvItem<K, V>> get(PubKey space, String table, byte[] key, @Nullable SimKey simKey) {
@@ -125,7 +125,7 @@ public final class GlobalKvDriver<K, V> {
 	}
 
 	public Promise<Void> remove(KeyPair keys, String table, byte[] key) {
-		return node.put(keys.getPubKey(), table, SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.ofRemoved(key, now.currentTimeMillis()), keys.getPrivKey()));
+		return node.put(keys.getPubKey(), table, SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(key, now.currentTimeMillis()), keys.getPrivKey()));
 	}
 
 	public Promise<Set<String>> list(PubKey space) {

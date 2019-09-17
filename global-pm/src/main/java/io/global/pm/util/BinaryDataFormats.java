@@ -17,36 +17,25 @@
 package io.global.pm.util;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.util.TypeT;
 import io.global.common.PubKey;
 import io.global.common.Signature;
 import io.global.common.SignedData;
-import io.global.pm.api.RawMessage;
 
-import static io.datakernel.codec.StructuredCodecs.*;
-import static io.global.common.BinaryDataFormats.createGlobal;
+import static io.datakernel.codec.StructuredCodecs.LONG64_CODEC;
+import static io.datakernel.codec.StructuredCodecs.tuple;
+import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public final class BinaryDataFormats {
 	private BinaryDataFormats() {
 		throw new AssertionError("nope.");
 	}
 
-	public static final CodecFactory REGISTRY = createGlobal()
-			.with(RawMessage.class, tuple(RawMessage::new,
-					RawMessage::getId, LONG64_CODEC,
-					RawMessage::getTimestamp, LONG_CODEC,
-					RawMessage::getEncrypted, BYTES_CODEC));
-
-	public static final StructuredCodec<SignedData<RawMessage>> SIGNED_RAW_MSG_CODEC = REGISTRY.get(new TypeT<SignedData<RawMessage>>() {});
 	public static final StructuredCodec<SignedData<Long>> SIGNED_LONG_CODEC =
 			tuple((bytes, signature) -> SignedData.parse(LONG64_CODEC, bytes, signature),
 					SignedData::getBytes, REGISTRY.get(byte[].class),
 					SignedData::getSignature, REGISTRY.get(Signature.class));
-	public static final StructuredCodec<RawMessage> RAW_MESSAGE_CODEC = REGISTRY.get(RawMessage.class);
 	public static final StructuredCodec<PubKey> PUB_KEY_CODEC = REGISTRY.get(PubKey.class);
 
-	public static final ByteBufsParser<SignedData<RawMessage>> SIGNED_RAW_MSG_PARSER = ByteBufsParser.ofDecoder(SIGNED_RAW_MSG_CODEC);
 	public static final ByteBufsParser<SignedData<Long>> SIGNED_LONG_PARSER = ByteBufsParser.ofDecoder(SIGNED_LONG_CODEC);
 }

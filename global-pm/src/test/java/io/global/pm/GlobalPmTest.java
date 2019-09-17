@@ -16,12 +16,10 @@
 
 package io.global.pm;
 
+import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.RoutingServlet;
-import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
@@ -30,11 +28,11 @@ import io.global.common.KeyPair;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.pm.api.GlobalPmNode;
+import io.global.kv.GlobalKvNodeImpl;
+import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.StorageFactory;
+import io.global.kv.stub.RuntimeKvStorageStub;
 import io.global.pm.api.Message;
-import io.global.pm.api.MessageStorage;
-import io.global.pm.http.GlobalPmNodeServlet;
-import io.global.pm.http.HttpGlobalPmNode;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -50,7 +48,6 @@ import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static org.junit.Assert.assertEquals;
 
 public final class GlobalPmTest {
@@ -72,35 +69,31 @@ public final class GlobalPmTest {
 	private KeyPair alice = KeyPair.generate();
 	private KeyPair bob = KeyPair.generate();
 
-	private static Function<RawServerId, GlobalPmNode> clientFactory;
-	private FsClient storage;
-	private Path dir;
+	private static Function<RawServerId, GlobalKvNode> clientFactory;
+	private StorageFactory storageFactory;
 
 	@Before
 	public void setUp() throws IOException {
-		dir = temporaryFolder.newFolder().toPath();
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
+		Path dir = temporaryFolder.newFolder().toPath();
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		FsClient storage = LocalFsClient.create(eventloop, dir).withRevisions();
 
-		discovery = LocalDiscoveryService.create(getCurrentEventloop(), storage.subfolder("discovery"));
+		discovery = LocalDiscoveryService.create(eventloop, storage.subfolder("discovery"));
+		this.storageFactory = ($1, $2) -> Promise.of(new RuntimeKvStorageStub());
 
-		MessageStorage messageStorage = FsMessageStorage.create(storage.subfolder("messages"));
-		Map<RawServerId, GlobalPmNode> nodes = new HashMap<>();
+		Map<RawServerId, GlobalKvNode> nodes = new HashMap<>();
 
-		clientFactory = new Function<RawServerId, GlobalPmNode>() {
+		clientFactory = new Function<RawServerId, GlobalKvNode>() {
 			@Override
-			public GlobalPmNode apply(RawServerId serverId) {
-				GlobalPmNode node = nodes.computeIfAbsent(serverId, id -> GlobalPmNodeImpl.create(serverId, discovery, this, messageStorage));
-
-				AsyncServlet servlet = GlobalPmNodeServlet.create(node);
-				StubHttpClient client = StubHttpClient.of(RoutingServlet.create().map("/pm/*", servlet));
-				return HttpGlobalPmNode.create(serverId.getServerIdString(), client);
+			public GlobalKvNode apply(RawServerId serverId) {
+				return nodes.computeIfAbsent(serverId, id -> GlobalKvNodeImpl.create(serverId, discovery, this, GlobalPmTest.this.storageFactory));
 			}
 		};
 	}
 
 	@Test
 	public void test() {
-		GlobalPmNode node = clientFactory.apply(FIRST_ID);
+		GlobalKvNode node = clientFactory.apply(FIRST_ID);
 		GlobalPmDriver<String> driver = new GlobalPmDriver<>(node, STRING_CODEC);
 
 		Set<Message<String>> sent = new HashSet<>();

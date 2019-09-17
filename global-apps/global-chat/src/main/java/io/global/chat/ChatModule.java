@@ -18,6 +18,7 @@ import io.datakernel.ot.OTSystem;
 import io.global.chat.chatroom.operation.ChatRoomOperation;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
+import io.global.kv.api.GlobalKvNode;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
@@ -26,7 +27,6 @@ import io.global.ot.map.MapOperation;
 import io.global.ot.service.ServiceEnsuringServlet;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.GlobalPmDriver;
-import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.PmClient;
 import io.global.pm.http.PmClientServlet;
 
@@ -98,7 +98,7 @@ public final class ChatModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalPmDriver<String> callsPMDriver(GlobalPmNode node) {
+	GlobalPmDriver<String> callsPMDriver(GlobalKvNode node) {
 		return new GlobalPmDriver<>(node, STRING_CODEC);
 	}
 

@@ -16,6 +16,7 @@
 
 package io.global.kv;
 
+import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.RoutingServlet;
@@ -24,18 +25,24 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.global.common.*;
+import io.global.common.KeyPair;
+import io.global.common.RawServerId;
+import io.global.common.SignedData;
+import io.global.common.SimKey;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.kv.api.GlobalKvNode;
 import io.global.kv.api.KvClient;
 import io.global.kv.api.KvItem;
-import io.global.kv.api.KvStorage;
+import io.global.kv.api.StorageFactory;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
-import org.junit.*;
+import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
@@ -44,7 +51,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
@@ -81,7 +87,7 @@ public final class GlobalKvTest {
 	private GlobalKvAdapter<String, String> secondAliceAdapter;
 
 	private Function<RawServerId, GlobalKvNode> nodeFactory;
-	private BiFunction<PubKey, String, KvStorage> storageFactory;
+	private StorageFactory storageFactory;
 
 	private KvClient<String, String> cachingAliceGateway;
 
@@ -93,7 +99,7 @@ public final class GlobalKvTest {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
 		discoveryService = LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage.subfolder("discovery"));
 
-		storageFactory = ($1, $2) -> new RuntimeKvStorageStub();
+		storageFactory = ($1, $2) -> Promise.of(new RuntimeKvStorageStub());
 
 		Map<RawServerId, GlobalKvNode> nodes = new HashMap<>();
 

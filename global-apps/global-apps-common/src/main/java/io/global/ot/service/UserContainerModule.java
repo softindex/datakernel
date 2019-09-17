@@ -6,10 +6,10 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.ot.OTSystem;
+import io.global.kv.api.GlobalKvNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.pm.GlobalPmDriver;
-import io.global.pm.api.GlobalPmNode;
 
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
@@ -34,7 +34,7 @@ public class UserContainerModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode pmNode) {
-		return new GlobalPmDriver<>(pmNode, SHARED_REPO_MESSAGE_CODEC);
+	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalKvNode kvNode) {
+		return new GlobalPmDriver<>(kvNode, SHARED_REPO_MESSAGE_CODEC);
 	}
 }

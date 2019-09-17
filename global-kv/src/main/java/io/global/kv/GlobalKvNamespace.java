@@ -14,7 +14,6 @@ import io.global.kv.api.RawKvItem;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNamespace, GlobalKvNodeImpl, GlobalKvNode> {
 	private final Map<String, Repo> repos = new HashMap<>();
@@ -27,8 +26,9 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 		return repos.keySet();
 	}
 
-	public Repo ensureRepository(String table) {
-		return repos.computeIfAbsent(table, t -> new Repo(node.getStorageFactory().apply(space, t), t));
+	public Promise<Repo> ensureRepository(String table) {
+		return node.getStorageFactory().create(space, table)
+				.map(storage -> repos.computeIfAbsent(table, t -> new Repo(storage, t)));
 	}
 
 	public Promise<Void> fetch() {
@@ -41,7 +41,7 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 												Promises.all(tables.stream()
 														.map(table ->
 																ensureRepository(table)
-																		.fetch(node)))))));
+																		.then(repo -> repo.fetch(node))))))));
 	}
 
 	public Promise<Void> push() {
@@ -72,7 +72,7 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 			return storage.upload()
 					.map(consumer -> consumer
 							.withAcknowledgement(ack -> ack
-									.whenResult((Consumer<? super Void>) $ -> cacheTimestamp = node.getCurrentTimeProvider().currentTimeMillis())));
+									.whenResult($ -> cacheTimestamp = node.getCurrentTimeProvider().currentTimeMillis())));
 		}
 
 		public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(long timestamp) {
@@ -85,7 +85,7 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 			long timestamp = node.getCurrentTimeProvider().currentTimeMillis();
 			return Promises.toTuple(from.download(space, table, lastFetchTimestamp), storage.upload())
 					.then(tuple -> tuple.getValue1().streamTo(tuple.getValue2()))
-					.whenResult((Consumer<? super Void>) $ -> lastFetchTimestamp = timestamp);
+					.whenResult($ -> lastFetchTimestamp = timestamp);
 		}
 
 		public Promise<Void> push(GlobalKvNode into) {

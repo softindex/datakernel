@@ -122,6 +122,9 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 					} catch (RocksDBException e) {
 						throw new UncheckedException(e);
 					}
+					for (ColumnFamilyHandle handle : handles) {
+						handle.close();
+					}
 
 					db.close();
 				});

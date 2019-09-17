@@ -45,10 +45,11 @@ import io.global.fs.local.GlobalFsDriver;
 import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.GlobalKvNodeImpl;
+import io.global.kv.RocksDbStorageFactory;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.StorageFactory;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
-import io.global.kv.stub.RuntimeKvStorageStub;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.http.HttpGlobalOTNode;
 import io.global.ot.http.RawServerServlet;
@@ -56,12 +57,6 @@ import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
-import io.global.pm.FsMessageStorage;
-import io.global.pm.GlobalPmNodeImpl;
-import io.global.pm.api.GlobalPmNode;
-import io.global.pm.api.MessageStorage;
-import io.global.pm.http.GlobalPmNodeServlet;
-import io.global.pm.http.HttpGlobalPmNode;
 
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -106,15 +101,10 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory) {
-		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, ($1, $2) -> new RuntimeKvStorageStub())
+	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory,
+			StorageFactory storageFactory) {
+		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, storageFactory)
 				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
-	}
-
-	@Provides
-	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
-		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
-				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
 
 	@Provides
@@ -170,12 +160,11 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Named("Nodes")
 	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet,
-			@Named("kv") AsyncServlet kvServlet, @Named("pm") AsyncServlet pmServlet) {
+			@Named("kv") AsyncServlet kvServlet) {
 		return RoutingServlet.create()
 				.map("/ot/*", otServlet)
 				.map("/fs/*", fsServlet)
-				.map("/kv/*", kvServlet)
-				.map("/pm/*", pmServlet);
+				.map("/kv/*", kvServlet);
 	}
 
 	@Provides
@@ -196,14 +185,13 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Named("pm")
-	AsyncServlet pmServlet(GlobalPmNode node) {
-		return GlobalPmNodeServlet.create(node);
+	CommitStorage commitStorage(Eventloop eventloop, Config config, Executor executor) {
+		return CommitStorageRocksDb.create(executor, eventloop, config.get("ot.storage"));
 	}
 
 	@Provides
-	CommitStorage commitStorage(Eventloop eventloop, Config config, Executor executor) {
-		return CommitStorageRocksDb.create(executor, eventloop, config.get("ot.storage"));
+	StorageFactory kvStorageFactory(Eventloop eventloop, Config config, Executor executor) {
+		return RocksDbStorageFactory.create(eventloop, executor, config.get("kv.storage"));
 	}
 
 	@Provides
@@ -221,11 +209,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	MessageStorage messageStorage(@Named("PM") FsClient fsClient) {
-		return FsMessageStorage.create(fsClient);
-	}
-
-	@Provides
 	Function<RawServerId, GlobalFsNode> fsNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalFsNode.create(id.getServerIdString(), client);
 	}
@@ -238,11 +221,6 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
-	}
-
-	@Provides
-	Function<RawServerId, GlobalPmNode> pmNodeFactory(IAsyncHttpClient client) {
-		return id -> HttpGlobalPmNode.create(id.getServerIdString(), client);
 	}
 
 	// region schedulers

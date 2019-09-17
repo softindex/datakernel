@@ -43,7 +43,7 @@ public final class RawKvItem {
 		return new RawKvItem(key, value, timestamp, null);
 	}
 
-	public static RawKvItem ofRemoved(byte[] key, long timestamp) {
+	public static RawKvItem tombstone(byte[] key, long timestamp) {
 		return new RawKvItem(key, null, timestamp, null);
 	}
 
@@ -64,7 +64,7 @@ public final class RawKvItem {
 		return timestamp;
 	}
 
-	public boolean isRemoved() {
+	public boolean isTombstone() {
 		return value == null;
 	}
 

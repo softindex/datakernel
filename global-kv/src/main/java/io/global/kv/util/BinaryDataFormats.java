@@ -33,7 +33,7 @@ public final class BinaryDataFormats {
 			.with(RawKvItem.class, registry ->
 					tuple(RawKvItem::parse,
 							RawKvItem::getKey, registry.get(byte[].class),
-							RawKvItem::getValue, registry.get(byte[].class).nullable(),
+							rawKvItem -> rawKvItem.isTombstone() ? null : rawKvItem.getValue(), registry.get(byte[].class).nullable(),
 							RawKvItem::getTimestamp, registry.get(long.class),
 							RawKvItem::getSimKeyHash, registry.get(Hash.class).nullable()))
 

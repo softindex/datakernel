@@ -17,10 +17,10 @@ import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.common.stub.InMemorySharedKeyStorage;
+import io.global.kv.api.StorageFactory;
+import io.global.kv.stub.RuntimeKvStorageStub;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.stub.CommitStorageStub;
-import io.global.pm.MapMessageStorage;
-import io.global.pm.api.MessageStorage;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,8 +74,8 @@ public final class LocalNodeCommonModule extends AbstractModule {
 	}
 
 	@Provides
-	MessageStorage provideMessageStorage() {
-		return new MapMessageStorage();
+	StorageFactory kvStorageFactory() {
+		return (pubKey, s) -> Promise.of(new RuntimeKvStorageStub());
 	}
 
 }

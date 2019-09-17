@@ -4,71 +4,50 @@ import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.global.common.SignedData;
 import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
-import io.global.kv.util.Utils;
 import org.rocksdb.*;
 
 import java.util.concurrent.Executor;
 
+import static io.global.kv.util.Utils.packValue;
+import static io.global.kv.util.Utils.unpackValue;
+
 public class RocksDbKvStorage implements KvStorage {
 	private final Executor executor;
 	private final RocksDB db;
+	private final ColumnFamilyHandle handle;
 
 	private final FlushOptions flushOptions;
 	private final WriteOptions writeOptions;
 
-	public RocksDbKvStorage(Executor executor, RocksDB db) {
+	public RocksDbKvStorage(Executor executor, RocksDB db, ColumnFamilyHandle handle) {
+		this.handle = handle;
 		this.executor = executor;
 		this.db = db;
 		flushOptions = new FlushOptions();
 		writeOptions = new WriteOptions().setDisableWAL(true);
 	}
 
-	public Promise<Void> flush() {
-		return Promise.ofBlockingRunnable(executor, () -> {
-			try {
-				db.flush(flushOptions);
-			} catch (RocksDBException e) {
-				throw new UncheckedException(e);
-			}
-		});
+	public ColumnFamilyHandle getHandle() {
+		return handle;
 	}
 
-	private void doPut(SignedData<RawKvItem> signedDbItem) {
+	public Promise<Void> flush() {
+		return Promise.ofBlockingRunnable(executor, () -> db.flush(flushOptions, handle));
+	}
+
+	private void doPut(SignedData<RawKvItem> signedDbItem) throws RocksDBException, ParseException {
 		byte[] key = signedDbItem.getValue().getKey();
-		byte[] value;
-		try {
-			value = db.get(key);
-		} catch (RocksDBException e) {
-			throw new UncheckedException(e);
-		}
+		byte[] value = db.get(handle, key);
 		if (value != null) {
-			SignedData<RawKvItem> old;
-			try {
-				old = Utils.unpackValue(key, value);
-			} catch (ParseException e) {
-				throw new UncheckedException(e);
-			}
+			SignedData<RawKvItem> old = unpackValue(key, value);
 			if (old.getValue().getTimestamp() > signedDbItem.getValue().getTimestamp()) {
 				return;
 			}
 		}
-		try {
-			db.put(writeOptions, key, Utils.packValue(signedDbItem));
-		} catch (RocksDBException e) {
-			throw new UncheckedException(e);
-		}
-	}
-
-	private SignedData<RawKvItem> doGet(byte[] key) {
-		try {
-			return Utils.unpackValue(key, db.get(key));
-		} catch (RocksDBException | ParseException e) {
-			throw new UncheckedException(e);
-		}
+		db.put(handle, writeOptions, key, packValue(signedDbItem));
 	}
 
 	@Override
@@ -79,7 +58,7 @@ public class RocksDbKvStorage implements KvStorage {
 
 	private Promise<RocksIterator> iterator() {
 		return Promise.ofBlockingCallable(executor, () -> {
-			RocksIterator iterator = db.newIterator();
+			RocksIterator iterator = db.newIterator(handle);
 			iterator.seekToFirst();
 			return iterator;
 		});
@@ -91,8 +70,7 @@ public class RocksDbKvStorage implements KvStorage {
 				ChannelSupplier.of(() ->
 						Promise.ofBlockingCallable(executor, () -> {
 							while (iterator.isValid()) {
-								byte[] key = iterator.key();
-								SignedData<RawKvItem> signedDbItem = doGet(key);
+								SignedData<RawKvItem> signedDbItem = unpackValue(iterator.key(), iterator.value());
 								iterator.next();
 								if (signedDbItem.getValue().getTimestamp() > timestamp) {
 									return signedDbItem;
@@ -110,7 +88,7 @@ public class RocksDbKvStorage implements KvStorage {
 							if (!iterator.isValid()) {
 								return null;
 							}
-							SignedData<RawKvItem> signedDbItem = doGet(iterator.key());
+							SignedData<RawKvItem> signedDbItem = unpackValue(iterator.key(), iterator.value());
 							iterator.next();
 							return signedDbItem;
 						})));
@@ -118,22 +96,13 @@ public class RocksDbKvStorage implements KvStorage {
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<byte[]>>> remove() {
-		return Promise.of(
-				ChannelConsumer.of(
-						(SignedData<byte[]> key) -> Promise.ofBlockingRunnable(executor,
-								() -> {
-									try {
-										db.delete(key.getValue());
-									} catch (RocksDBException e) {
-										throw new UncheckedException(e);
-									}
-								}))
-						.withAcknowledgement(ack -> ack.then($ -> flush())));
+		return Promise.of(ChannelConsumer.<SignedData<byte[]>>of(this::remove)
+				.withAcknowledgement(ack -> ack.then($ -> flush())));
 	}
 
 	@Override
 	public Promise<SignedData<RawKvItem>> get(byte[] key) {
-		return Promise.ofBlockingCallable(executor, () -> doGet(key));
+		return Promise.ofBlockingCallable(executor, () -> unpackValue(key, db.get(handle, key)));
 	}
 
 	@Override
@@ -143,13 +112,6 @@ public class RocksDbKvStorage implements KvStorage {
 
 	@Override
 	public Promise<Void> remove(SignedData<byte[]> key) {
-		return Promise.ofBlockingRunnable(executor,
-				() -> {
-					try {
-						db.delete(key.getValue());
-					} catch (RocksDBException e) {
-						throw new UncheckedException(e);
-					}
-				});
+		return Promise.ofBlockingRunnable(executor, () -> db.delete(handle, key.getValue()));
 	}
 }

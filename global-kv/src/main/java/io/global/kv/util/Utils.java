@@ -42,8 +42,9 @@ public final class Utils {
 
 		ByteBuf buf = ByteBufPool.allocate(5 + value.length + 4 + 5 + (hash == null ? 1 : 1 + hash.getBytes().length) + 5 + r.length + 5 + s.length);
 
+		buf.writeVarInt(value.length);
 		buf.write(value);
-		buf.writeLong(timestamp);
+		buf.writeVarLong(timestamp);
 		if (hash != null) {
 			buf.writeByte((byte) 1);
 			buf.writeVarInt(hash.getBytes().length);
@@ -58,15 +59,15 @@ public final class Utils {
 		return buf.asArray();
 	}
 
-	public static SignedData<RawKvItem> unpackValue(byte[] key, byte[] value) throws ParseException {
-		if (value == null) {
+	public static SignedData<RawKvItem> unpackValue(byte[] key, byte[] bytes) throws ParseException {
+		if (bytes == null) {
 			return null;
 		}
-		ByteBuf buf = ByteBuf.wrapForReading(value);
+		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 
-		byte[] theValue = new byte[buf.readVarInt()];
-		buf.read(theValue);
-		long timestamp = buf.readLong();
+		byte[] value = new byte[buf.readVarInt()];
+		buf.read(value);
+		long timestamp = buf.readVarLong();
 		Hash simKeyHash = null;
 		if (buf.readByte() == 1) {
 			byte[] h = new byte[buf.readVarInt()];
