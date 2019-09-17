@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.Async;
+
 /**
  * An interface for channel attachments used in {@link Eventloop eventloop}.
  * It is a callback which executes code asynchronously (in eventloop context) when a read or a write is ready.
@@ -24,10 +26,12 @@ public interface NioChannelEventHandler {
 	/**
 	 * Callback which is called when NIO channel is ready for reading.
 	 */
+	@Async.Execute
 	void onReadReady();
 
 	/**
 	 * Callback which is called when NIO channel is ready for writing.
 	 */
+	@Async.Execute
 	void onWriteReady();
 }

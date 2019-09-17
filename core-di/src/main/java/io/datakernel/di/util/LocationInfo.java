@@ -5,8 +5,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 
-import static io.datakernel.di.util.ReflectionUtils.getShortName;
-
 /**
  * LocationInfo is a transient field in {@link io.datakernel.di.core.Binding binding} that is set
  * where possible by the DSL so that error messages can show where a binding was made.
@@ -44,8 +42,7 @@ public final class LocationInfo {
 		if (provider == null) {
 			return "module " + module;
 		}
-		Class<?> declaringClass = provider.getDeclaringClass();
-		String shortName = getShortName(declaringClass.getName());
-		return "module " + module + ", provider method "+shortName+"." + provider.getName() + "(" + shortName + ".java:0)";
+		String shortName = ReflectionUtils.getShortName(provider.getDeclaringClass());
+		return "module " + module + ", provider method " + shortName + "." + provider.getName() + "(" + shortName + ".java:0)";
 	}
 }

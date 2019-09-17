@@ -6,6 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
+import java.util.Objects;
 
 /**
  * This is a helper class for making tag-like objects that are identified by stateless or stateful annotations.
@@ -47,9 +48,11 @@ public abstract class AbstractAnnotation {
 
 	public String getDisplayString() {
 		if (annotation == null) {
-			return "@" + ReflectionUtils.getShortName(annotationType.getName()) + "()";
+			return ReflectionUtils.getShortName(annotationType);
 		}
-		return ReflectionUtils.getShortName(annotation.toString());
+		String typeName = annotationType.getName();
+		String str = annotation.toString();
+		return str.startsWith(typeName) ? "@" + ReflectionUtils.getShortName(annotationType) + str.substring(typeName.length() + 1) : str;
 	}
 
 	@Override
@@ -57,9 +60,7 @@ public abstract class AbstractAnnotation {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		AbstractAnnotation other = (AbstractAnnotation) o;
-		return annotationType == other.annotationType &&
-				((this.annotation == other.annotation) ||
-						(this.annotation != null && this.annotation.equals(other.annotation)));
+		return annotationType == other.annotationType && Objects.equals(this.annotation, other.annotation);
 	}
 
 	@Override

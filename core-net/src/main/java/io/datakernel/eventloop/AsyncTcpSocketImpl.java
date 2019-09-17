@@ -28,12 +28,14 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ApplicationSettings;
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.time.Duration;
@@ -268,15 +270,22 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
+	// this exists as a separate method for so that the @Async.Schedule remembers
+	// it separately once and does not reset when updateInterests() is called next times
+	@Async.Schedule
+	private SelectionKey registerHandler() throws ClosedChannelException {
+		return channel.register(eventloop.ensureSelector(), ops, this);
+	}
+
 	private void updateInterests() {
 		if (ops < 0 || channel == null) return;
 		byte newOps = (byte) (((readBuf == null && !readEndOfStream) ? SelectionKey.OP_READ : 0) | (writeBuf == null || writeEndOfStream ? 0 : SelectionKey.OP_WRITE));
 		if (key == null) {
 			ops = newOps;
 			try {
-				key = channel.register(eventloop.ensureSelector(), ops, this);
+				key = registerHandler();
 				CONNECTION_COUNT.incrementAndGet();
-			} catch (IOException e) {
+			} catch (ClosedChannelException e) {
 				close(e);
 			}
 		} else {

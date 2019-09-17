@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.channels.ServerSocketChannel;
@@ -33,5 +34,6 @@ public interface AcceptCallback {
 	 *
 	 * @param socketChannel accepted connection.
 	 */
+	@Async.Execute
 	void onAccept(@NotNull SocketChannel socketChannel);
 }

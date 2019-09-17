@@ -20,6 +20,7 @@
     <module>global-chat</module>
     <module>global-documents</module>
     <module>global-notes</module>
+    <module>global-todo</module>
     <module>global-apps-common</module>
   </modules>
 

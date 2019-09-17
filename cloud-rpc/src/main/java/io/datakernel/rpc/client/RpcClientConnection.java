@@ -18,7 +18,6 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.Callback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.exception.AsyncTimeoutException;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -34,17 +33,14 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
-import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Utils.nullify;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
@@ -54,41 +50,24 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private boolean overloaded = false;
 
 	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
-	public static final Duration DEFAULT_TIMEOUT_PRECISION = Duration.ofMillis(10);
-
-	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
-		private final long timestamp;
-		private final int cookie;
-
-		public TimeoutCookie(int cookie, int timeout) {
-			this.timestamp = eventloop.currentTimeMillis() + timeout;
-			this.cookie = cookie;
-		}
-
-		public boolean isExpired() {
-			return timestamp < eventloop.currentTimeMillis();
-		}
-
-		public int getCookie() {
-			return cookie;
-		}
-
-		@Override
-		public int compareTo(TimeoutCookie o) {
-			return Long.compare(timestamp, o.timestamp);
-		}
-	}
 
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
 	private final RpcStream stream;
 	private final InetSocketAddress address;
 	private final Map<Integer, Callback<?>> activeRequests = new HashMap<>();
-	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
+	private final Map<Long, ExpirationList> expirationLists = new HashMap<>();
 
-	private ScheduledRunnable scheduleExpiredResponsesTask;
+	private static final class ExpirationList {
+		private int size;
+		private int[] cookies;
+
+		ExpirationList(int[] cookies) {
+			this.cookies = cookies;
+		}
+	}
+
 	private int cookie = 0;
-	private Duration timeoutPrecision = DEFAULT_TIMEOUT_PRECISION;
 	private boolean serverClosing;
 
 	// JMX
@@ -112,12 +91,6 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		this.totalRequests = rpcClient.getGeneralRequestsStats().getTotalRequests();
 	}
 
-	public RpcClientConnection withTimeoutPrecision(Duration timeoutPrecision) {
-		checkArgument(timeoutPrecision.toMillis() > 0, "Timeout precision cannot be zero or less");
-		this.timeoutPrecision = timeoutPrecision;
-		return this;
-	}
-
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 		assert eventloop.inEventloopThread();
@@ -129,61 +102,86 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		if (!overloaded || request instanceof RpcMandatoryData) {
 			cookie++;
 
-			Callback<?> requestCallback = cb;
-
 			// jmx
-			if (isMonitoring()) {
-				RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(((Object) request).getClass());
-				requestStatsPerClass.getTotalRequests().recordEvent();
-				requestCallback = new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, (Callback<?>) cb, timeout);
+			if (monitoring) {
+				cb = doJmxMonitoring(request, timeout, cb);
 			}
 
-			TimeoutCookie timeoutCookie = new TimeoutCookie(cookie, timeout);
-			if (timeoutCookies.isEmpty()) {
-				scheduleExpiredResponsesTask();
+			if (timeout != Integer.MAX_VALUE) {
+				ExpirationList list = expirationLists.computeIfAbsent(eventloop.currentTimeMillis() + timeout, t -> {
+					ExpirationList l = new ExpirationList(new int[16]);
+					eventloop.scheduleBackground(t, () -> {
+						expirationLists.remove(t);
+
+						for (int i = 0; i < l.size; i++) {
+							Callback<?> expiredCb = activeRequests.remove(l.cookies[i]);
+							if (expiredCb != null) {
+								// jmx
+								connectionStats.getExpiredRequests().recordEvent();
+								rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
+
+								expiredCb.accept(null, RPC_TIMEOUT_EXCEPTION);
+							}
+						}
+
+						if (serverClosing && activeRequests.size() == 0) {
+							shutdown();
+						}
+					});
+					return l;
+				});
+
+				if (list.size >= list.cookies.length) {
+					list.cookies = Arrays.copyOf(list.cookies, list.cookies.length * 2);
+				}
+				list.cookies[list.size++] = cookie;
 			}
-			timeoutCookies.add(timeoutCookie);
-			activeRequests.put(cookie, requestCallback);
+
+			activeRequests.put(cookie, cb);
 
 			downstreamDataAcceptor.accept(RpcMessage.of(cookie, request));
 		} else {
+			doProcessOverloaded(cb);
+		}
+	}
+
+	@Override
+	public <I, O> void sendRequest(I request, @NotNull Callback<O> cb) {
+		assert eventloop.inEventloopThread();
+
+		// jmx
+		totalRequests.recordEvent();
+		connectionRequests.recordEvent();
+
+		if (!overloaded || request instanceof RpcMandatoryData) {
+			cookie++;
+
 			// jmx
-			rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
-			connectionStats.getRejectedRequests().recordEvent();
-			if (logger.isTraceEnabled()) logger.trace("RPC client uplink is overloaded");
-
-			cb.accept(null, RPC_OVERLOAD_EXCEPTION);
-		}
-	}
-
-	private void scheduleExpiredResponsesTask() {
-		scheduleExpiredResponsesTask = eventloop.delayBackground(timeoutPrecision, this::checkExpiredResponses);
-	}
-
-	private void checkExpiredResponses() {
-		scheduleExpiredResponsesTask = null;
-		while (!timeoutCookies.isEmpty()) {
-			TimeoutCookie timeoutCookie = timeoutCookies.peek();
-			if (timeoutCookie == null)
-				break;
-			if (!timeoutCookie.isExpired())
-				break;
-			timeoutCookies.remove();
-			Callback<?> cb = activeRequests.remove(timeoutCookie.getCookie());
-			if (cb != null) {
-				// jmx
-				connectionStats.getExpiredRequests().recordEvent();
-				rpcClient.getGeneralRequestsStats().getExpiredRequests().recordEvent();
-
-				cb.accept(null, RPC_TIMEOUT_EXCEPTION);
+			if (monitoring) {
+				cb = doJmxMonitoring(request, Integer.MAX_VALUE, cb);
 			}
+
+			activeRequests.put(cookie, cb);
+
+			downstreamDataAcceptor.accept(RpcMessage.of(cookie, request));
+		} else {
+			doProcessOverloaded(cb);
 		}
-		if (serverClosing && activeRequests.size() == 0) {
-			shutdown();
-		}
-		if (!timeoutCookies.isEmpty()) {
-			scheduleExpiredResponsesTask();
-		}
+	}
+
+	private <I, O> Callback<O> doJmxMonitoring(I request, int timeout, @NotNull Callback<O> cb) {
+		RpcRequestStats requestStatsPerClass = rpcClient.ensureRequestStatsPerClass(request.getClass());
+		requestStatsPerClass.getTotalRequests().recordEvent();
+		return new JmxConnectionMonitoringResultCallback<>(requestStatsPerClass, cb, timeout);
+	}
+
+	private <O> void doProcessOverloaded(@NotNull Callback<O> cb) {
+		// jmx
+		rpcClient.getGeneralRequestsStats().getRejectedRequests().recordEvent();
+		connectionStats.getRejectedRequests().recordEvent();
+		if (logger.isTraceEnabled()) logger.trace("RPC client uplink is overloaded");
+
+		cb.accept(null, RPC_OVERLOAD_EXCEPTION);
 	}
 
 	@Override
@@ -266,8 +264,6 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private void doClose() {
 		rpcClient.removeConnection(address);
-
-		scheduleExpiredResponsesTask = nullify(scheduleExpiredResponsesTask, ScheduledRunnable::cancel);
 
 		while (!activeRequests.isEmpty()) {
 			for (Integer cookie : new HashSet<>(activeRequests.keySet())) {

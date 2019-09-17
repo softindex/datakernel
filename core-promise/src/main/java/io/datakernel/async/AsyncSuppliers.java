@@ -129,7 +129,7 @@ public final class AsyncSuppliers {
 		public @NotNull Promise<T> get() {
 			running++;
 			return asyncSupplier.get()
-					.whenComplete((v, e) -> running--);
+					.whenComplete(() -> running--);
 		}
 
 		public int getRunning() {

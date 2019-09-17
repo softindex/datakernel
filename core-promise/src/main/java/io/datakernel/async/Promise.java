@@ -27,7 +27,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Replacement of default Java {@link CompletionStage} interface with
@@ -165,22 +168,15 @@ public interface Promise<T> extends Completable<T> {
 	 * @return result of the given completionStage wrapped in a {@code Promise}
 	 */
 	@NotNull
-	static <T> Promise<T> ofCompletionStage(@Async.Schedule @NotNull CompletionStage<? extends T> completionStage) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		eventloop.startExternalTask();
-		SettablePromise<T> promise = new SettablePromise<>();
-		completionStage.whenCompleteAsync(new BiConsumer<T, Throwable>() {
-			private void complete(@SuppressWarnings("unused") @Async.Execute CompletionStage<? extends T> $, T result, Throwable e) {
-				promise.accept(result, e);
+	static <T> Promise<T> ofCompletionStage(CompletionStage<? extends T> completionStage) {
+		return ofCallback(cb -> {
+			Eventloop eventloop = Eventloop.getCurrentEventloop();
+			eventloop.startExternalTask();
+			completionStage.whenCompleteAsync((result, e) -> {
+				eventloop.execute(() -> cb.accept(result, e));
 				eventloop.completeExternalTask();
-			}
-
-			@Override
-			public void accept(T result, Throwable e) {
-				complete(completionStage, result, e);
-			}
-		}, eventloop);
-		return promise;
+			});
+		});
 	}
 
 	/**
@@ -191,37 +187,37 @@ public interface Promise<T> extends Completable<T> {
 	 * @return a new {@code Promise} of the future result
 	 */
 	@NotNull
-	static <T> Promise<T> ofFuture(@NotNull Executor executor, @Async.Schedule @NotNull Future<? extends T> future) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		eventloop.startExternalTask();
-		SettablePromise<T> promise = new SettablePromise<>();
-		try {
-			executor.execute(new Runnable() {
-				private void run(@Async.Execute Future<? extends T> future) {
+	static <T> Promise<T> ofFuture(@NotNull Executor executor, @NotNull Future<? extends T> future) {
+		return ofCallback(cb -> {
+			Eventloop eventloop = Eventloop.getCurrentEventloop();
+			eventloop.startExternalTask();
+			try {
+				executor.execute(() -> {
 					try {
 						T value = future.get();
-						eventloop.execute(() -> promise.set(value));
+						eventloop.execute(() -> cb.set(value));
 					} catch (ExecutionException e) {
-						eventloop.execute(() -> promise.setException(e.getCause()));
+						eventloop.execute(() -> cb.setException(e.getCause()));
 					} catch (InterruptedException e) {
-						eventloop.execute(() -> promise.setException(e));
+						eventloop.execute(() -> cb.setException(e));
 					} catch (Throwable e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, future));
 					} finally {
 						eventloop.completeExternalTask();
 					}
-				}
+				});
+			} catch (RejectedExecutionException e) {
+				eventloop.completeExternalTask();
+				cb.setException(e);
+			}
+		});
+	}
 
-				@Override
-				public void run() {
-					run(future);
-				}
-			});
-		} catch (RejectedExecutionException e) {
-			eventloop.completeExternalTask();
-			promise.setException(e);
-		}
-		return promise;
+	@FunctionalInterface
+	interface BlockingCallable<V> {
+
+		@Async.Execute
+		V call() throws Exception;
 	}
 
 	/**
@@ -233,75 +229,72 @@ public interface Promise<T> extends Completable<T> {
 	 * @param callable the task itself
 	 * @return {@code Promise} for the given task
 	 */
-	static <T> Promise<T> ofBlockingCallable(@NotNull Executor executor, @Async.Schedule @NotNull Callable<? extends T> callable) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		eventloop.startExternalTask();
-		SettablePromise<T> promise = new SettablePromise<>();
-		try {
-			executor.execute(new Runnable() {
-				private void run(@Async.Execute Callable<? extends T> callable) {
+	static <T> Promise<T> ofBlockingCallable(@NotNull Executor executor, @Async.Schedule @NotNull BlockingCallable<? extends T> callable) {
+		return ofCallback(cb -> {
+			Eventloop eventloop = Eventloop.getCurrentEventloop();
+			eventloop.startExternalTask();
+			try {
+				executor.execute(() -> {
 					try {
 						T result = callable.call();
-						eventloop.execute(() -> promise.set(result));
+						eventloop.execute(() -> cb.set(result));
 					} catch (UncheckedException u) {
-						eventloop.execute(() -> promise.setException(u.getCause()));
+						eventloop.execute(() -> cb.setException(u.getCause()));
 					} catch (RuntimeException e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, callable));
 					} catch (Exception e) {
-						eventloop.execute(() -> promise.setException(e));
+						eventloop.execute(() -> cb.setException(e));
 					} catch (Throwable e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, callable));
 					} finally {
 						eventloop.completeExternalTask();
 					}
-				}
+				});
+			} catch (RejectedExecutionException e) {
+				eventloop.completeExternalTask();
+				cb.setException(e);
+			}
+		});
+	}
 
-				@Override
-				public void run() {
-					run(callable);
-				}
-			});
-		} catch (RejectedExecutionException e) {
-			eventloop.completeExternalTask();
-			promise.setException(e);
-		}
-		return promise;
+	@FunctionalInterface
+	interface BlockingRunnable {
+
+		@Async.Execute
+		void run() throws Exception;
 	}
 
 	/**
-	 * Same as {@link #ofBlockingCallable(Executor, Callable)}, but without a result
+	 * Same as {@link #ofBlockingCallable(Executor, BlockingCallable)}, but without a result
 	 * (returned {@code Promise} is only a marker of completion).
 	 */
 	@NotNull
-	static Promise<Void> ofBlockingRunnable(@NotNull Executor executor, @Async.Schedule @NotNull Runnable runnable) {
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		eventloop.startExternalTask();
-		SettablePromise<Void> promise = new SettablePromise<>();
-		try {
-			executor.execute(new Runnable() {
-				private void run(@Async.Execute Runnable runnable) {
+	static Promise<Void> ofBlockingRunnable(@NotNull Executor executor, @Async.Schedule @NotNull BlockingRunnable runnable) {
+		return ofCallback(cb -> {
+			Eventloop eventloop = Eventloop.getCurrentEventloop();
+			eventloop.startExternalTask();
+			try {
+				executor.execute(() -> {
 					try {
 						runnable.run();
-						eventloop.execute(() -> promise.set(null));
+						eventloop.execute(() -> cb.set(null));
 					} catch (UncheckedException u) {
-						eventloop.execute(() -> promise.setException(u.getCause()));
+						eventloop.execute(() -> cb.setException(u.getCause()));
+					} catch (RuntimeException e) {
+						eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
+					} catch (Exception e) {
+						eventloop.execute(() -> cb.setException(e));
 					} catch (Throwable e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
 					} finally {
 						eventloop.completeExternalTask();
 					}
-				}
-
-				@Override
-				public void run() {
-					run(runnable);
-				}
-			});
-		} catch (RejectedExecutionException e) {
-			eventloop.completeExternalTask();
-			promise.setException(e);
-		}
-		return promise;
+				});
+			} catch (RejectedExecutionException e) {
+				eventloop.completeExternalTask();
+				cb.setException(e);
+			}
+		});
 	}
 
 	@Contract(pure = true)
@@ -415,7 +408,7 @@ public interface Promise<T> extends Completable<T> {
 	 */
 	@Contract(" _ -> this")
 	@NotNull
-	Promise<T> whenComplete(@NotNull Callback<? super T> action);
+	Promise<T> whenComplete(@Async.Schedule @NotNull Callback<? super T> action);
 
 	/**
 	 * Subscribes given action to be executed

@@ -23,11 +23,17 @@ import io.datakernel.serializer.util.BinaryOutput;
  * Represents a serializer which encodes and decodes &lt;T&gt; values to byte arrays
  */
 public interface BinarySerializer<T> {
-	int encode(byte[] array, int pos, T item);
+	default int encode(byte[] array, int pos, T item) {
+		BinaryOutput out = new BinaryOutput(array, pos);
+		encode(out, item);
+		return out.pos();
+	}
+
+	default T decode(byte[] array, int pos) {
+		return decode(new BinaryInput(array, pos));
+	}
 
 	void encode(BinaryOutput out, T item);
-
-	T decode(byte[] array, int pos);
 
 	T decode(BinaryInput in);
 }

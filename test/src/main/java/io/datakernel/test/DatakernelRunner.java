@@ -2,9 +2,7 @@ package io.datakernel.test;
 
 import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.InstanceInjector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.ReflectionUtils;
@@ -20,23 +18,14 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.MultipleFailureException;
 import org.junit.runners.model.Statement;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Annotation;
 import java.util.*;
 
 import static io.datakernel.di.util.ReflectionUtils.keyOf;
-import static io.datakernel.di.util.Types.parameterized;
-import static io.datakernel.util.CollectionUtils.union;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
 
 public class DatakernelRunner extends BlockJUnit4ClassRunner {
-
-	@Retention(RetentionPolicy.RUNTIME)
-	@Target({ElementType.TYPE, ElementType.METHOD})
-	public @interface UseModules {
-		Class<? extends Module>[] value();
-	}
-
 	private final List<FrameworkMethod> beforesAndAfters = new ArrayList<>();
 	private final Set<Dependency> staticDependencies;
 
@@ -123,23 +112,20 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 		Object instance = super.createTest();
 
 		Key<Object> self = Key.ofType(getTestClass().getJavaClass());
-		Key<InstanceInjector<Object>> injectorKey = Key.ofType(parameterized(InstanceInjector.class, self.getType()));
 
-		currentInjector = Injector.of(currentModule, new AbstractModule() {
-			@Override
-			protected void configure() {
-				addDeclarativeBindingsFrom(instance);
+		currentInjector = Injector.of(currentModule,
+				Module.create()
+						.scan(instance)
+						.bind(self).toInstance(instance)
+						// and also have all the dependencies from methods in binding for the test class instance
+						.withExtraDependencies(currentDependencies)
+						.withExtraDependencies(staticDependencies)
+						.postInjectInto(self));
 
-				// have all the dependencies from methods in binding for the test class instance
-				bind(self).to($ -> instance, union(currentDependencies, staticDependencies).toArray(new Dependency[0]));
-
-				bind(injectorKey);
-			}
-		});
+		currentInjector.getInstance(self);
 		currentInjector.createEagerSingletons();
 		currentInjector.postInjectInstances();
-		currentInjector.getInstance(injectorKey).injectInto(instance);
-		return currentInjector.getInstance(self); // eagerly trigger all the dependencies for fail-fast testing
+		return instance;
 	}
 
 	@Override

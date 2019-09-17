@@ -8,10 +8,6 @@ import java.lang.annotation.Target;
 
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-/**
- * @Author is Alex Syrotenko (@pantokrator)
- * Created on 12.07.19.
- */
 //[START EXAMPLE]
 @ScopeAnnotation(threadsafe = false)
 @Target({ElementType.METHOD})

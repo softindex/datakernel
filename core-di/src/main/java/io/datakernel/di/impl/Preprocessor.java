@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toSet;
 public final class Preprocessor {
 	/**
 	 * This is a special marker {@link BindingCompiler} for phantom bindings that will to be replaced by a generated ones.
+	 *
 	 * @see #completeBindingGraph
 	 */
 	public static final BindingCompiler<?> TO_BE_GENERATED = (compiledBindings, threadsafe, synchronizedScope, index) -> {
@@ -154,12 +155,12 @@ public final class Preprocessor {
 	 * It returns a mapping from unsatisfied keys to a set of key-binding pairs that require them.
 	 * If that mapping is empty then the graph trie is valid.
 	 */
-	public static Map<Key<?>, Set<Entry<Key<?>, Binding<?>>>> getUnsatisfiedDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
-		return getUnsatisfiedDependencies(new HashSet<>(bindings.get().keySet()), bindings)
+	public static Map<Key<?>, Set<Entry<Key<?>, Binding<?>>>> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+		return getUnsatisfiedDependenciesStream(new HashSet<>(known), bindings)
 				.collect(toMultimap(dtb -> dtb.dependency, dtb -> dtb.keybinding));
 	}
 
-	private static Stream<DependencyToBinding> getUnsatisfiedDependencies(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
+	private static Stream<DependencyToBinding> getUnsatisfiedDependenciesStream(Set<Key<?>> known, Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return Stream.concat(
 				bindings.get().entrySet().stream()
 						.flatMap(e -> e.getValue().getDependencies().stream()
@@ -168,7 +169,7 @@ public final class Preprocessor {
 				bindings.getChildren()
 						.values()
 						.stream()
-						.flatMap(scopeBindings -> getUnsatisfiedDependencies(union(known, scopeBindings.get().keySet()), scopeBindings))
+						.flatMap(scopeBindings -> getUnsatisfiedDependenciesStream(union(known, scopeBindings.get().keySet()), scopeBindings))
 		);
 	}
 
@@ -188,7 +189,7 @@ public final class Preprocessor {
 	 * It does so by performing a simple DFS on each graph that ignores unsatisfied dependencies (dependency keys that have no associated binding).
 	 * <p>
 	 * It returns a set of key arrays that represent cycles.
-	 * If that set is empty then no graphs in given trie contain cycles.
+	 * If that set is empty then no graphs in given trie contains cycles.
 	 */
 	public static Set<Key<?>[]> getCyclicDependencies(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return getCyclicDependenciesStream(bindings).collect(toSet());
@@ -196,7 +197,7 @@ public final class Preprocessor {
 
 	private static Stream<Key<?>[]> getCyclicDependenciesStream(Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		// since no cycles are possible between scopes,
-		// we just run simple dfs that ignores unsatisfied
+		// we just run a simple dfs that ignores unsatisfied
 		// dependencies for each scope independently
 		return Stream.concat(
 				dfs(bindings.get()).stream(),
@@ -208,11 +209,11 @@ public final class Preprocessor {
 		Set<Key<?>> visited = new HashSet<>();
 		LinkedHashSet<Key<?>> visiting = new LinkedHashSet<>();
 		Set<Key<?>[]> cycles = new HashSet<>();
+		// the DAG is not necessarily connected, so we go through any possibly disconnected part
 		for (Key<?> key : bindings.keySet()) {
-			if (visited.contains(key)) {
-				continue;
+			if (!visited.contains(key)) {
+				dfs(bindings, visited, visiting, cycles, key);
 			}
-			dfs(bindings, visited, visiting, cycles, key);
 		}
 		return cycles;
 	}
@@ -225,6 +226,7 @@ public final class Preprocessor {
 			visited.add(key); // add to visited as a tiny optimization
 			return;
 		}
+		// standard dfs with visited (black) and visiting (grey) sets
 		if (visiting.add(key)) {
 			for (Dependency dependency : binding.getDependencies()) {
 				if (!visited.contains(dependency.getKey())) {
@@ -235,17 +237,25 @@ public final class Preprocessor {
 			visited.add(key);
 			return;
 		}
-		// so at this point visiting set looks something like a -> b -> c -> d -> e -> g -> c,
+
+		// so at this point visiting set looks something like a -> b -> c -> d -> e -> g (-> c),
 		// and in the code below we just get d -> e -> g -> c out of it
+
 		Iterator<Key<?>> backtracked = visiting.iterator();
 		int skipped = 0;
-		while (backtracked.hasNext() && !backtracked.next().equals(key)) {
+
+		// no .hasNext check since the the set must contain the key because above .add call returned false
+		while (!backtracked.next().equals(key)) {
 			skipped++;
 		}
 		Key<?>[] cycle = new Key[visiting.size() - skipped];
 		for (int i = 0; i < cycle.length - 1; i++) {
-			cycle[i] = backtracked.next(); // call to next() without hasNext() should be ok here
+			// no .hasNext check either because this happens exactly (size - previous .next calls - 1) times
+			cycle[i] = backtracked.next();
 		}
+		// no key was added to the set because it already was there
+		// and that one was consumed by the skipping while loop above
+		// so we just add it manually at the end
 		cycle[cycle.length - 1] = key;
 		cycles.add(cycle);
 	}

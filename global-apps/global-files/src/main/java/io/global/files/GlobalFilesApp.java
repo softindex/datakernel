@@ -82,7 +82,7 @@ public final class GlobalFilesApp extends Launcher {
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				override(
 						new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID))

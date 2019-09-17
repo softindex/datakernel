@@ -16,12 +16,11 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
 
-public final class CrdtDataSerializer<K extends Comparable<K>, S> extends AbstractBinarySerializer<CrdtData<K, S>> {
+public final class CrdtDataSerializer<K extends Comparable<K>, S> implements BinarySerializer<CrdtData<K, S>> {
 	private final BinarySerializer<K> keySerializer;
 	private final BinarySerializer<S> stateSerializer;
 

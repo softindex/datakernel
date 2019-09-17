@@ -528,7 +528,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		String keyIndex = key.getIndex();
 		NodeStatus status = nodeStatuses.get(key);
 		String label = (name != null ? name.getDisplayString() + "\\n" : "") +
-				getShortName(key.getType().getTypeName()) +
+				getShortName(key.getType()) +
 				(keySuffix == null ? "" :
 						"[" + keySuffix + "]") +
 				(keyIndex == null ? "" :

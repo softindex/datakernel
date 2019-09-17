@@ -7,7 +7,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.test.DatakernelRunner.UseModules;
+import io.datakernel.di.util.Utils;
 import io.datakernel.test.DatakernelRunnerTest.ClassModule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -19,7 +19,7 @@ import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 @RunWith(DatakernelRunner.class)
-@DatakernelRunner.UseModules({ClassModule.class})
+@UseModules({ClassModule.class})
 public class DatakernelRunnerTest {
 	private static final String HELLO = "hello";
 	private static final String CUSTOM = "custom";
@@ -58,7 +58,9 @@ public class DatakernelRunnerTest {
 	Injector injector;
 
 	@Test
-	public void testCommon() {
+	public void testCommon(Injector injector) {
+		Utils.printGraphVizGraph(injector.getBindingsTrie());
+
 		assertEquals(asList(HELLO, HELLO, HELLO), hellos);
 		assertEquals(asList(42, 42, 42), numbers);
 

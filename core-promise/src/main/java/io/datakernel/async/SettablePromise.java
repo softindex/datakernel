@@ -16,6 +16,7 @@
 
 package io.datakernel.async;
 
+import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,6 +61,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * completes it. {@code AssertionError} is thrown when you
 	 * try to set result for an already completed {@code Promise}.
 	 */
+	@Async.Execute
 	public void set(T result) {
 		complete(result);
 	}
@@ -71,6 +73,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 *
 	 * @param e exception
 	 */
+	@Async.Execute
 	public void setException(@NotNull Throwable e) {
 		completeExceptionally(e);
 	}
@@ -80,6 +83,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * {@code SettablePromise} if it is not completed yet.
 	 * Otherwise does nothing.
 	 */
+	@Async.Execute
 	public void trySet(T result) {
 		if (!isComplete()) {
 			set(result);
@@ -91,6 +95,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * {@code SettablePromise} if it is not completed yet.
 	 * Otherwise does nothing.
 	 */
+	@Async.Execute
 	public void trySetException(@NotNull Throwable e) {
 		if (!isComplete()) {
 			setException(e);
@@ -101,6 +106,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * Tries to set result or exception for this {@code SettablePromise}
 	 * if it not completed yet. Otherwise does nothing.
 	 */
+	@Async.Execute
 	public void trySet(T result, @Nullable Throwable e) {
 		if (!isComplete()) {
 			if (e == null) {

@@ -621,7 +621,28 @@ public final class Binding<T> {
 	public Binding<T> addDependencies(@NotNull Set<Dependency> extraDependencies) {
 		return extraDependencies.isEmpty() ?
 				this :
-				new Binding<>(union(dependencies, extraDependencies), location, compiler);
+				new Binding<>(union(dependencies, extraDependencies), location,
+						(compiledBindings, threadsafe, scope, index) -> {
+							CompiledBinding<T> compiledBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
+							CompiledBinding<?>[] compiledExtraBindings = extraDependencies.stream().map(d -> compiledBindings.get(d.getKey())).toArray(CompiledBinding[]::new);
+							return new CompiledBinding<T>() {
+								@Override
+								public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+									for (CompiledBinding<?> compiledExtraBinding : compiledExtraBindings) {
+										compiledExtraBinding.getInstance(scopedInstances, synchronizedScope);
+									}
+									return compiledBinding.getInstance(scopedInstances, synchronizedScope);
+								}
+
+								@Override
+								public T createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+									for (CompiledBinding<?> compiledExtraBinding : compiledExtraBindings) {
+										compiledExtraBinding.getInstance(scopedInstances, synchronizedScope);
+									}
+									return compiledBinding.createInstance(scopedInstances, synchronizedScope);
+								}
+							};
+						});
 	}
 
 	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {

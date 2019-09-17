@@ -28,5 +28,6 @@
     <module>http</module>
     <module>eventloop</module>
     <module>di</module>
+    <module>advanced-di</module>
   </modules>
 </project>

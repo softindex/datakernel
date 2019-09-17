@@ -1,6 +1,6 @@
 package io.global.documents.document;
 
-import io.global.documents.document.edit.EditOperation;
+import io.global.ot.edit.EditOperation;
 import io.global.ot.name.ChangeName;
 
 import java.util.ArrayList;

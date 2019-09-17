@@ -1,6 +1,7 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
@@ -10,7 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static io.datakernel.di.util.Utils.checkState;
 
@@ -28,6 +29,29 @@ public abstract class AbstractModule implements Module {
 
 	@Nullable
 	private BuilderModuleBindingStage builder = null;
+
+	@Nullable
+	private final StackTraceElement location;
+
+	public AbstractModule() {
+		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
+		StackTraceElement found = null;
+		Class<?> cls = getClass();
+		for (int i = 2; i < trace.length; i++) {
+			StackTraceElement element = trace[i];
+			try {
+				String className = element.getClassName();
+				Class<?> traceCls = Class.forName(className);
+				if (!traceCls.isAssignableFrom(cls) && !className.startsWith("sun.reflect") && !className.startsWith("java.lang")) {
+					found = element;
+					break;
+				}
+			} catch (ClassNotFoundException ignored) {
+				break;
+			}
+		}
+		location = found;
+	}
 
 	/**
 	 * This method is meant to be overridden to call all the <code>bind(...)</code> methods.
@@ -122,12 +146,12 @@ public abstract class AbstractModule implements Module {
 		postInjectInto(Key.of(type));
 	}
 
-	protected final void addDeclarativeBindingsFrom(Object object) {
+	protected final void scan(Object object) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
 		builder.scan(object);
 	}
 
-	protected final void addDeclarativeBindingsFromStatics(Class<?> cls) {
+	protected final void scan(Class<?> cls) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
 		builder.scanStatics(cls);
 	}
@@ -185,7 +209,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public final Module transformWith(Function<Module, Module> fn) {
+	public final Module transformWith(UnaryOperator<Module> fn) {
 		return Module.super.transformWith(fn);
 	}
 
@@ -195,8 +219,8 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public <V> Module rebindExports(Key<V> from, Key<? extends V> to) {
-		return Module.super.rebindExports(from, to);
+	public <V> Module rebindExport(Key<V> from, Key<? extends V> to) {
+		return Module.super.rebindExport(from, to);
 	}
 
 	@Override
@@ -205,8 +229,8 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public <V> Module rebindImports(Key<V> from, Key<? extends V> to) {
-		return Module.super.rebindImports(from, to);
+	public <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
+		return Module.super.rebindImport(from, to);
 	}
 
 	@Override
@@ -216,7 +240,7 @@ public abstract class AbstractModule implements Module {
 
 	@Override
 	public <T, V> Module rebindImports(Key<T> componentKey, Key<V> from, Key<? extends V> to) {
-		return Module.super.rebindImports(from, to);
+		return Module.super.rebindImport(from, to);
 	}
 
 	@Override
@@ -239,4 +263,11 @@ public abstract class AbstractModule implements Module {
 		return Module.super.export(keys);
 	}
 	// endregion
+
+	@Override
+	public String toString() {
+		Class<?> cls = getClass();
+		return ReflectionUtils.getShortName(cls.isAnonymousClass() ? cls.getGenericSuperclass() : cls) +
+				"(at " + (location != null ? location : "<unknown module location>") + ')';
+	}
 }

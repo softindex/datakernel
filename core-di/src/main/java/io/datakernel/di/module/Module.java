@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static java.util.Collections.emptyMap;
@@ -42,7 +42,7 @@ public interface Module {
 		return Modules.override(this, another);
 	}
 
-	default Module transformWith(Function<Module, Module> fn) {
+	default Module transformWith(UnaryOperator<Module> fn) {
 		return fn.apply(this);
 	}
 
@@ -54,7 +54,7 @@ public interface Module {
 		return Modules.export(this, keys);
 	}
 
-	default <V> Module rebindExports(Key<V> from, Key<? extends V> to) {
+	default <V> Module rebindExport(Key<V> from, Key<? extends V> to) {
 		return rebindExports(singletonMap(from, to));
 	}
 
@@ -62,7 +62,7 @@ public interface Module {
 		return Modules.rebindExports(this, map);
 	}
 
-	default <V> Module rebindImports(Key<V> from, Key<? extends V> to) {
+	default <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
 		return rebindImports(singletonMap(from, to));
 	}
 

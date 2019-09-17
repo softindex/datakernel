@@ -1,7 +1,6 @@
 package io.datakernel.crdt;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
@@ -73,7 +72,7 @@ public final class TimestampContainer<S> {
 	}
 
 	public static <S> BinarySerializer<TimestampContainer<S>> createSerializer(BinarySerializer<S> stateSerializer) {
-		return new AbstractBinarySerializer<TimestampContainer<S>>() {
+		return new BinarySerializer<TimestampContainer<S>>() {
 			@Override
 			public void encode(BinaryOutput out, TimestampContainer<S> item) {
 				out.writeLong(item.getTimestamp());

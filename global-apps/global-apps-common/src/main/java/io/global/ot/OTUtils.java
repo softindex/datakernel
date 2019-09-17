@@ -3,8 +3,13 @@ package io.global.ot;
 import io.datakernel.async.RetryPolicy;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
-import io.global.ot.dictionary.DictionaryOperation;
-import io.global.ot.dictionary.SetOperation;
+import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.exception.ParseException;
+import io.global.ot.edit.DeleteOperation;
+import io.global.ot.edit.EditOperation;
+import io.global.ot.edit.InsertOperation;
+import io.global.ot.map.MapOperation;
+import io.global.ot.map.SetValue;
 import io.global.ot.name.ChangeName;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.CreateOrDropRepo;
@@ -14,6 +19,8 @@ import io.global.ot.shared.SharedReposOperation;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.Utils.PUB_KEY_HEX_CODEC;
+import static io.global.ot.edit.DeleteOperation.DELETE_CODEC;
+import static io.global.ot.edit.InsertOperation.INSERT_CODEC;
 
 public final class OTUtils {
 	private OTUtils() {
@@ -43,16 +50,46 @@ public final class OTUtils {
 	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = SHARED_REPO_CODEC
 			.transform(CreateSharedRepo::new, CreateSharedRepo::getSharedRepo);
 
-	public static final StructuredCodec<SetOperation> SET_OPERATION_CODEC = object(SetOperation::set,
-			"prev", SetOperation::getPrev, STRING_CODEC.nullable(),
-			"next", SetOperation::getNext, STRING_CODEC.nullable()
-	);
-
-	public static final StructuredCodec<DictionaryOperation> DICTIONARY_OPERATION_CODEC = ofMap(STRING_CODEC, SET_OPERATION_CODEC)
-			.transform(DictionaryOperation::of, DictionaryOperation::getOperations);
-
 	public static final StructuredCodec<SharedReposOperation> SHARED_REPOS_OPERATION_CODEC = CodecSubtype.<SharedReposOperation>create()
 			.with(CreateOrDropRepo.class, "CreateOrDropRepo", CREATE_OR_DROP_REPO_CODEC)
 			.with(RenameRepo.class, "RenameRepo", RENAME_REPO_CODEC)
 			.withTagName("type", "value");
+
+	@SuppressWarnings("unchecked")
+	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(
+		StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {
+		StructuredCodec<SetValue<V>> setValueCodec = StructuredCodecs.object(SetValue::set,
+			"prev", SetValue::getPrev, valueCodec.nullable(),
+			"next", SetValue::getNext, valueCodec.nullable()
+		);
+		return ofMap(keyCodec, setValueCodec)
+			.transform(MapOperation::of, MapOperation::getOperations);
+	}
+
+	public static final StructuredCodec<EditOperation> EDIT_OPERATION_CODEC = StructuredCodec.ofObject(
+			in -> {
+				in.readKey("type");
+				String type = in.readString();
+				in.readKey("value");
+				switch (type) {
+					case "Insert":
+						return INSERT_CODEC.decode(in);
+					case "Delete":
+						return DELETE_CODEC.decode(in);
+					default:
+						throw new ParseException("Either Insert or Delete is expected");
+				}
+			}, (out, item) -> {
+				out.writeKey("type");
+				if (item instanceof InsertOperation) {
+					out.writeString("Insert");
+					out.writeKey("value", INSERT_CODEC, (InsertOperation) item);
+				} else if (item instanceof DeleteOperation) {
+					out.writeString("Delete");
+					out.writeKey("value", DELETE_CODEC, (DeleteOperation) item);
+				} else {
+					throw new IllegalArgumentException("Item should be either InsertOperation or DeleteOperation");
+				}
+			}
+	);
 }

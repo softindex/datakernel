@@ -29,6 +29,5 @@ public interface RpcClientConnectionPool {
 	 * @param address address
 	 * @return connection for specified address or null if there is no such connection
 	 */
-	@NotNull
 	RpcSender get(@NotNull InetSocketAddress address);
 }

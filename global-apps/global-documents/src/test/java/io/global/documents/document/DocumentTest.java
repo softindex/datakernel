@@ -34,7 +34,7 @@ import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.SignedData.sign;
 import static io.global.documents.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
 import static io.global.documents.Utils.createMergedOTSystem;
-import static io.global.documents.document.edit.InsertOperation.insert;
+import static io.global.ot.edit.InsertOperation.insert;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;

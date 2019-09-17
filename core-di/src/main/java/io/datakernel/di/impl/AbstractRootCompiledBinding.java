@@ -16,7 +16,10 @@ public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<
 		R localInstance = instance;
 		if (localInstance != null) return localInstance;
 		synchronized (this) {
-			if (instance != null) return instance;
+			localInstance = instance;
+			if (localInstance != null) return localInstance;
+			localInstance = (R) scopedInstances[0].get(index);
+			if (localInstance != null) return instance = localInstance;
 			instance = doCreateInstance(scopedInstances, synchronizedScope);
 		}
 		scopedInstances[0].lazySet(index, instance);

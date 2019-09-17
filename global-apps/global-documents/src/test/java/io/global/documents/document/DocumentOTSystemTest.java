@@ -25,7 +25,7 @@ import org.junit.Test;
 import static io.datakernel.async.TestUtils.await;
 import static io.global.documents.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
 import static io.global.documents.Utils.createMergedOTSystem;
-import static io.global.documents.document.edit.InsertOperation.insert;
+import static io.global.ot.edit.InsertOperation.insert;
 import static io.global.ot.name.ChangeName.changeName;
 import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;

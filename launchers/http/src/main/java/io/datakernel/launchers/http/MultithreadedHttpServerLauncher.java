@@ -97,7 +97,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 						.initialize(ofGlobalEventloopStats()),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebindImports(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				getBusinessLogicModule()
 		);
 	}

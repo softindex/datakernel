@@ -1,7 +1,5 @@
 package io.datakernel.util;
 
-import java.util.List;
-
 import static java.util.Arrays.asList;
 
 @FunctionalInterface
@@ -19,7 +17,7 @@ public interface Initializer<T extends Initializable<T>> {
 		return $ -> {};
 	}
 
-	static <T extends Initializable<T>> Initializer<T> combine(List<? extends Initializer<? super T>> initializers) {
+	static <T extends Initializable<T>> Initializer<T> combine(Iterable<? extends Initializer<? super T>> initializers) {
 		return target -> initializers.forEach(initializer -> initializer.accept(target));
 	}
 

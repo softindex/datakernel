@@ -14,10 +14,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static io.datakernel.di.core.BindingGenerator.REFUSING;
@@ -138,11 +135,13 @@ public final class Injector {
 
 		Preprocessor.completeBindingGraph(bindings, transformer, generator);
 
-		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = Preprocessor.getUnsatisfiedDependencies(bindings);
-		unsatisfied.remove(Key.of(Injector.class));
+		Set<Key<?>> known = new HashSet<>(bindings.get().keySet());
+		known.add(Key.of(Injector.class)); // injector is hardcoded in and will always be present
 		if (parent != null) {
-			unsatisfied.keySet().removeIf(parent.compiledBindings::containsKey);
+			known.addAll(parent.compiledBindings.keySet());
 		}
+
+		Map<Key<?>, Set<Map.Entry<Key<?>, Binding<?>>>> unsatisfied = Preprocessor.getUnsatisfiedDependencies(known, bindings);
 
 		if (!unsatisfied.isEmpty()) {
 			throw new DIException(unsatisfied.entrySet().stream()
@@ -168,13 +167,7 @@ public final class Injector {
 		Set<Key<?>[]> cycles = Preprocessor.getCyclicDependencies(bindings);
 		if (!cycles.isEmpty()) {
 			throw new DIException(cycles.stream()
-					.map(cycle -> {
-						int offset = Utils.getKeyDisplayCenter(cycle[0]);
-						String cycleString = Arrays.stream(cycle).map(Key::getDisplayString).collect(joining(" -> ", "\t", ""));
-						String indent = new String(new char[offset]).replace('\0', ' ');
-						String line = new String(new char[cycleString.length() - offset]).replace('\0', '-');
-						return cycleString + " -,\n\t" + indent + "^" + line + "'";
-					})
+					.map(Utils::drawCycle)
 					.collect(joining("\n\n", "Cyclic dependencies detected:\n\n", "\n")));
 		}
 
@@ -245,11 +238,14 @@ public final class Injector {
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent,
 			Map<Key<?>, CompiledBinding<?>> compiledBindings,
 			Map<Key<?>, Integer> compiledIndexes) {
-		if (compiledBindings.containsKey(key)) return compiledBindings.get(key);
+		if (compiledBindings.containsKey(key)) {
+			return compiledBindings.get(key);
+		}
 		Binding<?> binding = bindings.get(key);
 		if (binding == null) {
-			if (compiledBindingsOfParent.containsKey(key)) return compiledBindingsOfParent.get(key);
-			return missingOptionalBinding();
+			return compiledBindingsOfParent.containsKey(key) ?
+					compiledBindingsOfParent.get(key) :
+					missingOptionalBinding();
 		}
 		int index = compiledIndexes.size();
 		compiledIndexes.put(key, index);

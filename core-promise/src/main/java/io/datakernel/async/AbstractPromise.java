@@ -73,7 +73,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return null;
 	}
 
-	@Async.Execute
 	protected void complete(@Nullable T value, @Nullable Throwable e) {
 		assert !isComplete();
 		if (e == null) {
@@ -122,7 +121,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@NotNull
 	@Override
-	public <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@NotNull P promise) {
+	public <U, P extends Callback<? super T> & Promise<U>> Promise<U> next(@Async.Schedule @NotNull P promise) {
 		if (isComplete()) {
 			promise.accept(result, exception);
 			return promise;
@@ -131,7 +130,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return promise;
 	}
 
-	protected void subscribe(@NotNull Callback<? super T> consumer) {
+	protected void subscribe(@Async.Schedule @NotNull Callback<? super T> consumer) {
 		assert !isComplete();
 		if (next == null) {
 			next = consumer;

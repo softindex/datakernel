@@ -48,11 +48,11 @@ public final class ScopedValue<T> {
 	}
 
 	public boolean isScoped() {
-		return scope != UNSCOPED;
+		return scope.length != 0;
 	}
 
 	public boolean isUnscoped() {
-		return scope == UNSCOPED;
+		return scope.length == 0;
 	}
 
 	@Override

@@ -273,7 +273,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				bind(completionStage.named(OnRun.class)).toInstance(onRunFuture);
 				bind(completionStage.named(OnComplete.class)).toInstance(onCompleteFuture);
 
-				addDeclarativeBindingsFrom(Launcher.this);
+				scan(Launcher.this);
 			}
 		};
 	}

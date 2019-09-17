@@ -1,6 +1,5 @@
 package io.datakernel.crdt.primitives;
 
-import io.datakernel.serializer.AbstractBinarySerializer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
@@ -40,7 +39,7 @@ public class LWWObject<T> implements CrdtType<LWWObject<T>> {
 		return this;
 	}
 
-	public static class Serializer<T> extends AbstractBinarySerializer<LWWObject<T>> {
+	public static class Serializer<T> implements BinarySerializer<LWWObject<T>> {
 		private final BinarySerializer<T> valueSerializer;
 
 		public Serializer(BinarySerializer<T> valueSerializer) {
