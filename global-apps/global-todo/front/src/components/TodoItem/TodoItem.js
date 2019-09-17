@@ -6,38 +6,35 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import {withStyles} from "@material-ui/core";
 import todoItemStyles from "./todoItemStyles";
 
-function TodoItem(props) {
-
-  const onDelete = () => props
-    .onDeleteItem(props.name);
-
+function TodoItem({classes, name, isDone, onDeleteItem, onRenameItem, onToggleItemStatus}) {
   const onStatusChange = () => {
-    props.onToggleItemStatus(props.name);
+    onToggleItemStatus(name);
   };
 
-  const onNameChange = event => props
-    .onRenameItem(props.name, event.target.value);
+  const onDelete = () => onDeleteItem(name);
+
+  const onNameChange = event => onRenameItem(name, event.target.value);
 
   return (
     <TextField
-      value={props.name}
+      value={name}
       fullWidth
       onChange={event => onNameChange(event)}
-      className={props.isDone ? props.classes.textField : null}
+      className={isDone ? classes.textField : null}
       InputProps={{
         classes: {
-          root: props.classes.itemInput,
+          root: classes.itemInput,
         },
         startAdornment: (
           <Checkbox
-            checked={props.isDone}
-            className={props.classes.checkbox}
+            checked={isDone}
+            className={classes.checkbox}
             onChange={onStatusChange}
           />
         ),
         endAdornment: (
           <IconButton
-            className={props.classes.deleteIconButton}
+            className={classes.deleteIconButton}
             onClick={onDelete}
           >
             <DeleteIcon/>

@@ -1,4 +1,4 @@
-import Service from '../../common/Service';
+import {Service, delay} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core";
 import serializer from "./ot/serializer";
 import mapOTSystem from "./ot/mapOTSystem";
@@ -14,8 +14,8 @@ class ListService extends Service {
     });
 
     this._listOTStateManager = listOTStateManager;
-    this._reconnectTimeout = null;
-    this._resyncTimeout = null;
+    this._reconnectDelay = null;
+    this._resyncDelay = null;
   }
 
   static create() {
@@ -31,11 +31,14 @@ class ListService extends Service {
     try {
       await this._listOTStateManager.checkout();
     } catch (err) {
-      console.error(err);
+      console.log(err);
 
-      const delay = this._retryDelay();
-      this._reconnectTimeout = delay.timeoutId;
-      await delay.promise;
+      this._reconnectDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._reconnectDelay.promise;
+      } catch (err) {
+        return;
+      }
 
       await this.init();
       return;
@@ -47,22 +50,26 @@ class ListService extends Service {
   }
 
   stop() {
-    clearTimeout(this._reconnectTimeout);
-    clearTimeout(this._resyncTimeout);
+    if (this._reconnectDelay) {
+      this._reconnectDelay.cancel();
+    }
+    if (this._resyncDelay) {
+      this._resyncDelay.cancel();
+    }
     this._listOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  createItem(name) {
+  async createItem(name) {
     if (name !== ' ' && name) {
-      this._sendOperation(name, false);
+      return this._sendOperation(name, false);
     }
   };
 
-  deleteItem(name) {
+  async deleteItem(name) {
     return this._sendOperation(name, null);
   };
 
-  renameItem(name, newName) {
+  async renameItem(name, newName) {
     if (name === newName) {
       return;
     }
@@ -79,18 +86,18 @@ class ListService extends Service {
       }
     });
     this._listOTStateManager.add([operation]);
-    this._sync();
+    await this._sync();
   }
 
-  toggleItemStatus(name) {
+  async toggleItemStatus(name) {
     return this._sendOperation(name, !this.state.items[name]);
   };
 
-  toggleAllItemsStatus() {
+  async toggleAllItemsStatus() {
     return this._sendAllOperation();
   };
 
-  _sendOperation(name, nextValue) {
+  async _sendOperation(name, nextValue) {
     const operation = new MapOTOperation({
       [name]: {
         prev: name in this.state.items ? this.state.items[name] : null,
@@ -98,10 +105,10 @@ class ListService extends Service {
       }
     });
     this._listOTStateManager.add([operation]);
-    this._sync();
+    await this._sync();
   };
 
-  _sendAllOperation() {
+  async _sendAllOperation() {
     let operations = [];
     let counterDone = 0;
     Object.entries(this.state.items).map(([, isDone]) => {
@@ -123,7 +130,7 @@ class ListService extends Service {
     for (let i=0; i<operations.length; i++) {
       this._listOTStateManager.add([operations[i]]);
     }
-    this._sync();
+    await this._sync();
   };
 
   _onStateChange = () => {
@@ -133,26 +140,17 @@ class ListService extends Service {
     });
   };
 
-  _retryDelay() {
-    let timeoutId;
-    const promise = new Promise(resolve => {
-      timeoutId = setTimeout(resolve, RETRY_TIMEOUT);
-    });
-    return {timeoutId, promise};
-  }
-
-  _itemExists = name => typeof this.state.items[name] === 'boolean';
-
   async _sync() {
     try {
       await this._listOTStateManager.sync();
     } catch (err) {
-      console.error(err);
-
-      const delay = this._retryDelay();
-      this._resyncTimeout = delay.timeoutId;
-      await delay.promise;
-
+      console.log(err);
+      this._resyncDelay = delay(RETRY_TIMEOUT);
+      try {
+        await this._resyncDelay.promise;
+      } catch (err) {
+        return;
+      }
       await this._sync();
     }
   }

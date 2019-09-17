@@ -27,16 +27,9 @@ const todoListStyles = theme => ({
       borderColor: theme.palette.primary.main
     }
   },
-  listCaption: {
-    padding: theme.spacing(1),
-    display: 'inline-flex'
-  },
-  captionCounter: {
-    margin: theme.spacing(2)
-  },
-  captionButton: {
-    margin: theme.spacing(1),
-    color: theme.palette.secondary.grey
+  progressWrapper: {
+    display: 'flex',
+    padding: theme.spacing(2)
   }
 });
 

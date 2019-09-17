@@ -1,168 +1,183 @@
-import ListContext from "../../modules/list/ListContext";
-import connectService from "../../common/connectService";
 import todoListStyles from "./todoListStyles";
 import * as React from "react";
 import withStyles from "@material-ui/core/es/styles/withStyles";
 import TextField from "@material-ui/core/TextField";
 import TodoItem from "../TodoItem/TodoItem";
-import {Paper, Button} from "@material-ui/core";
-import Typography from "@material-ui/core/Typography";
+import {Paper} from "@material-ui/core";
 import DoneAllIcon from '@material-ui/icons/DoneAll';
+import {getInstance, useService} from "global-apps-common";
+import ListService from "../../modules/list/ListService";
+import {useState} from "react";
+import TodoFooter from "../TodoFooter/TodoFooter";
+import {withSnackbar} from "notistack";
+import CircularProgress from "@material-ui/core/CircularProgress";
+import Grow from "@material-ui/core/Grow";
 
-class TodoList extends React.Component {
-  state = {
-    newItemName: '',
-    doneAll: false,
-    selected: 'all'
-  };
-
-  onSubmit = e => {
-    e.preventDefault();
-    this.props.onCreateItem(this.state.newItemName);
-    this.setState({newItemName: ''});
-  };
-
-  onItemChange = e => {
-    this.setState({
-      newItemName: e.target.value
-    });
-  };
-
-  toggleDoneAll = () => {
-    this.props.onToggleAllItemsStatus();
-  };
-
-  getAmountUncompletedTodo() {
-    let counter = 0;
-    Object.entries(this.props.items).map(([, isDone]) => {
-      if (!isDone) {
-        counter++;
-      }
-    });
-    return counter;
-  }
-
-  onClearCompleted = () => {
-    Object.entries(this.props.items).map(([name, isDone]) => {
-      if (isDone) {
-        return this.props.onDeleteItem(name);
-      }
-    })
-  };
-
-  onSelectedChange(selected) {
-    this.setState({selected});
-  }
-
-  getFilteredTodo() {
-    return Object.entries(this.props.items).filter(([, isDone]) => {
-      if (this.state.selected === 'active') {
-        return isDone === false;
-      }
-      if (this.state.selected === 'completed') {
-        return isDone === true;
-      }
-      return true;
-    })
-  }
-
-  render() {
-    const {classes} = this.props;
-    return (
-      <Paper className={classes.paper}>
-        <form onSubmit={this.onSubmit}>
-          <TextField
-            className={classes.textField}
-            autoFocus
-            placeholder="What needs to be done?"
-            value={this.state.newItemName}
-            onChange={this.onItemChange}
-            variant="outlined"
-            InputProps={{
-              classes: {
-                root: this.props.classes.itemInput,
-              },
-              startAdornment: (
-                <div className={classes.iconButton} onClick={this.toggleDoneAll}>
-                  <DoneAllIcon/>
-                </div>
-              )
-            }}
-          />
-        </form>
-        {this.getFilteredTodo(this.state.selected).map(([itemName, isDone]) => (
-            <TodoItem
-              name={itemName}
-              isDone={isDone}
-              onToggleItemStatus={this.props.onToggleItemStatus}
-              onDeleteItem={this.props.onDeleteItem}
-              onRenameItem={this.props.onRenameItem}
+function TodoListView({
+                        classes,
+                        items,
+                        ready,
+                        selected,
+                        loading,
+                        onSubmit,
+                        newItemName,
+                        onItemChange,
+                        onToggleAllItemsStatus,
+                        onToggleItemStatus,
+                        onDeleteItem,
+                        onRenameItem,
+                        getFilteredTodo,
+                        getAmountUncompletedTodo,
+                        onSelectedChange,
+                        onClearCompleted,
+                      }) {
+  return (
+    <>
+      {!ready && (
+        <div className={classes.progressWrapper}>
+          <CircularProgress/>
+        </div>
+      )}
+      {ready && (
+        <Paper className={classes.paper}>
+          <form onSubmit={onSubmit}>
+            <TextField
+              className={classes.textField}
+              autoFocus
+              placeholder="What needs to be done?"
+              value={newItemName}
+              onChange={onItemChange}
+              variant="outlined"
+              InputProps={{
+                classes: {
+                  root: classes.itemInput,
+                },
+                startAdornment: (
+                  <div className={classes.iconButton} onClick={onToggleAllItemsStatus}>
+                    <DoneAllIcon/>
+                  </div>
+                ),
+                endAdornment: (
+                  <Grow in={loading}>
+                    <div className={classes.progressWrapper}>
+                      <CircularProgress size={28}/>
+                    </div>
+                  </Grow>
+                )
+              }}
             />
-          )
-        )}
-        {Object.entries(this.props.items).length !== 0 && (
-          <div className={classes.listCaption}>
-            <Typography
-              variant="subtitle2"
-              className={classes.captionCounter}
-              color="textSecondary"
-            >
-              {this.getAmountUncompletedTodo()} items left
-            </Typography>
-            <Button
-              className={classes.captionButton}
-              variant={this.state.selected === 'all' ? "outlined" : null}
-              onClick={this.onSelectedChange.bind(this, 'all')}
-            >
-              All
-            </Button>
-            <Button
-              className={classes.captionButton}
-              variant={this.state.selected === 'active' ? "outlined" : null}
-              onClick={this.onSelectedChange.bind(this, 'active')}
-            >
-              Active
-            </Button>
-            <Button
-              className={classes.captionButton}
-              variant={this.state.selected === 'completed' ? "outlined" : null}
-              onClick={this.onSelectedChange.bind(this, 'completed')}
-            >
-              Completed
-            </Button>
-            <Button className={classes.captionButton} onClick={this.onClearCompleted}>Clear completed</Button>
-          </div>
-        )}
-      </Paper>
-    );
-  }
+          </form>
+          {getFilteredTodo(selected).map(([itemName, isDone]) => (
+              <TodoItem
+                name={itemName}
+                isDone={isDone}
+                onToggleItemStatus={onToggleItemStatus}
+                onDeleteItem={onDeleteItem}
+                onRenameItem={onRenameItem}
+              />
+            )
+          )}
+          <TodoFooter
+            items={items}
+            selected={selected}
+            getAmountUncompletedTodo={getAmountUncompletedTodo}
+            onSelectedChange={onSelectedChange}
+            onClearCompleted={onClearCompleted}
+          />
+        </Paper>
+      )}
+    </>
+  );
 }
 
-export default connectService(ListContext,
-  ({items, ready}, listService) => ({
-    ready,
-    items,
+function TodoList({classes, enqueueSnackbar}) {
+  const [newItemName, setNewItemName] = useState('');
+  const [selected, setSelected] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const listService = getInstance(ListService);
+  const {items, ready} = useService(listService);
 
-    onCreateItem(name) {
-      listService.createItem(name);
-    },
+  function errorHandler(err) {
+    enqueueSnackbar(err.message, {
+      variant: 'error'
+    });
+  }
+
+  const props = {
+    items,
+    ready,
+    classes,
+    selected,
+    loading,
+    newItemName,
 
     onDeleteItem(name) {
-      listService.deleteItem(name);
+      listService.deleteItem(name).catch(errorHandler);
     },
 
     onRenameItem(name, newName) {
-      listService.renameItem(name, newName);
+      listService.renameItem(name, newName).catch(errorHandler);
     },
 
     onToggleItemStatus(name) {
-      listService.toggleItemStatus(name);
+      listService.toggleItemStatus(name).catch(errorHandler);
+    },
+
+    onSubmit(e) {
+      e.preventDefault();
+      setLoading(true);
+      listService.createItem(newItemName)
+        .catch(errorHandler)
+        .finally(() => {
+          setNewItemName('');
+          setLoading(false);
+        })
+    },
+
+    onItemChange(e) {
+      setNewItemName(e.target.value);
     },
 
     onToggleAllItemsStatus() {
-      listService.toggleAllItemsStatus();
-    }
+      listService.toggleAllItemsStatus().catch(errorHandler);
+    },
 
-  }))(
-  withStyles(todoListStyles)(TodoList)
-);
+    getAmountUncompletedTodo() {
+      let counter = 0;
+      Object.entries(items).map(([, isDone]) => {
+        if (!isDone) {
+          counter++;
+        }
+      });
+      return counter;
+    },
+
+    onClearCompleted() {
+      Object.entries(items).map(([name, isDone]) => {
+        if (isDone) {
+          return props.onDeleteItem(name);
+        }
+      })
+    },
+
+    onSelectedChange(selected) {
+      setSelected(selected);
+    },
+
+    getFilteredTodo() {
+      return Object.entries(items).filter(([, isDone]) => {
+        if (selected === 'active') {
+          return isDone === false;
+        }
+        if (selected === 'completed') {
+          return isDone === true;
+        }
+        return true;
+      })
+    }
+  };
+
+  return <TodoListView {...props}/>
+}
+
+export default withSnackbar(withStyles(todoListStyles)(TodoList));

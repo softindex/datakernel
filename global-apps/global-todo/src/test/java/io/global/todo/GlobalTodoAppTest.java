@@ -1,9 +1,8 @@
-package io.global.chat;
+package io.global.todo;
 
-import io.global.todo.GlobalTodoApp;
 import org.junit.Test;
 
-public class GlobalChatAppTest {
+public class GlobalTodoAppTest {
 	@Test
 	public void testInjector() {
 		new GlobalTodoApp().testInjector();
