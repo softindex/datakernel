@@ -44,7 +44,7 @@ import static java.lang.Math.min;
 
 @SuppressWarnings({"WeakerAccess", "DefaultAnnotationParam", "unused"})
 public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
-	private static final boolean CHECK_RECYCLE;
+	static final boolean CHECK_RECYCLE;
 
 	static {
 		boolean assertsEnabled = false;
@@ -108,11 +108,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	/**
 	 * Stores <i>head</i> of this {@code ByteBuf}.
 	 */
-	private int head;
+	int head;
 	/**
 	 * Stores <i>tail</i> of this {@code ByteBuf}.
 	 */
-	private int tail;
+	int tail;
 
 	/**
 	 * Shows whether this {@code ByteBuf} needs to be recycled.
@@ -126,7 +126,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 
 	@Nullable
 	ByteBuf next;
-
 	/**
 	 * Represents an empty ByteBuf with {@link #head} and
 	 * {@link #tail} set at value 0.
@@ -261,7 +260,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	public void recycle() {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		if (refs > 0 && --refs == 0) {
-			if (CHECK_RECYCLE) refs--;
+			if (CHECK_RECYCLE) refs = -1;
 			ByteBufPool.recycle(this);
 		}
 	}
@@ -289,16 +288,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	@Contract(pure = true)
 	protected boolean isRecycled() {
 		return refs < 0;
-	}
-
-	/**
-	 * Sets {@link #tail} and {@link #head} of this {@code ByteBuf} to 0 if it is recycled.
-	 * Sets {@link #refs} to 1.
-	 */
-	void reset() {
-		if (CHECK_RECYCLE && !isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		refs = 1;
-		rewind();
 	}
 
 	/**

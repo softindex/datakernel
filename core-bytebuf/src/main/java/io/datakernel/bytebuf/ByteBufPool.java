@@ -182,12 +182,15 @@ public final class ByteBufPool {
 		ByteBufConcurrentStack stack = slabs[index];
 		ByteBuf buf = stack.pop();
 		if (buf != null) {
-			buf.reset();
+			if (ByteBuf.CHECK_RECYCLE && buf.refs != -1) throw onByteBufRecycled(buf);
+			buf.tail = 0;
+			buf.head = 0;
+			buf.refs = 1;
 			if (STATS) recordReuse(index);
 			if (REGISTRY) registerAllocate(buf);
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
-			buf.refs++;
+			buf.refs = 1;
 			if (STATS) recordNew(index);
 			if (REGISTRY) registerAllocate(buf);
 		}
