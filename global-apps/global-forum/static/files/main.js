@@ -12,34 +12,39 @@ window.onload = () => {
       if (e.keyCode === 13 && e.ctrlKey) {
         e.preventDefault();
         save.click();
-      }
-      if (e.keyCode === 27) {
+      } else if (e.keyCode === 27) {
         cancel.click();
       }
     });
-    save.click(() => {
-      let formData = new FormData();
-      formData.append('content', textarea.val());
-      fetch(e.target.dataset.editAction, {
-        method: 'POST',
-        body: formData
-      }).then(() => location.reload(), console.error);
+    textarea.on('input', () => {
+      let lines = textarea.val().split('\n').length;
+      textarea.attr('rows', lines);
     });
 
-    element.after(textarea);
-    textarea.focus();
-    textarea.val(element.text());
-    element.addClass('d-none');
-
-    let dropdown = $(e.target.parentElement);
-    dropdown.removeClass('show');
-
+    let dropdown = $(e.target.parentElement).removeClass('show');
     let row = dropdown.parent().parent();
     row.children().addClass('d-none');
     row.append(cancel);
     row.append(save);
 
+    save.click(() => {
+      let formData = new FormData();
+      let content = textarea.val();
+      formData.append('content', content);
+      fetch(e.target.dataset.editAction, {
+        method: 'POST',
+        body: formData
+      }).then(() => location.reload(), e => {
+        console.error(e);
+        cancel.click();
+      });
+    });
+
+    element.addClass('d-none').after(textarea);
+    textarea.focus().val(element.text());
+
     cancel.click(() => {
+      $(document).focus();
       textarea.remove();
       cancel.remove();
       save.remove();
@@ -98,7 +103,7 @@ window.onload = () => {
 
   // handle textarea focus when reply button is pressed
   $('.collapse').on('show.bs.collapse', e => {
-    let textarea = $(e.target).find('textarea')
+    let textarea = $(e.target).find('textarea');
     if (textarea.length) {
       setTimeout(() => textarea.focus(), 0);
     }
