@@ -7,7 +7,7 @@ import io.datakernel.launcher.Launcher;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
 
-public class ByteBufMultithreadedBenchmark extends Launcher {
+public class ByteBufPoolMultithreadedBenchmark extends Launcher {
 
 	final class ByteBufPoolAbuser implements Runnable {
 		int number;
@@ -65,7 +65,7 @@ public class ByteBufMultithreadedBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		benchmark("ByteBuf ABA Test & Benchmark");
+		benchmark("ByteBuf Benchmark");
 	}
 
 	private void benchmark(String nameBenchmark) throws InterruptedException {
@@ -125,7 +125,7 @@ public class ByteBufMultithreadedBenchmark extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher benchmark = new ByteBufMultithreadedBenchmark();
+		Launcher benchmark = new ByteBufPoolMultithreadedBenchmark();
 		benchmark.launch(args);
 	}
 }
