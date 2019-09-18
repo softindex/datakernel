@@ -69,6 +69,10 @@ public interface AsyncDnsClient {
 	 */
 	@Nullable
 	static DnsResponse resolveFromQuery(DnsQuery query) {
+		if ("localhost".equals(query.getDomainName())) {
+			InetAddress[] ips = {InetAddress.getLoopbackAddress()};
+			return DnsResponse.of(DnsTransaction.of((short) 0, query), DnsResourceRecord.of(ips, 0));
+		}
 		if (HttpUtils.isInetAddress(query.getDomainName())) {
 			InetAddress[] ips = {HttpUtils.inetAddress(query.getDomainName())};
 			return DnsResponse.of(DnsTransaction.of((short) 0, query), DnsResourceRecord.of(ips, 0));

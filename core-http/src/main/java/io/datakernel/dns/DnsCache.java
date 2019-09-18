@@ -142,7 +142,7 @@ public final class DnsCache {
 		assert eventloop.inEventloopThread() : "Concurrent cache adds are not allowed";
 		long expirationTime = now.currentTimeMillis();
 		if (response.isSuccessful()) {
-			assert response.getRecord() != null; // where are my advanced contracts so that Intellj would know it's true here without an assert?
+			assert response.getRecord() != null; // where are my advanced contracts so that the IDE would know it's true here without an assert?
 			long minTtl = response.getRecord().getMinTtl() * 1000;
 			if (minTtl == 0) {
 				return;
