@@ -165,7 +165,11 @@ function TodoList({classes, enqueueSnackbar}) {
     },
 
     getFilteredTodo() {
-      return Object.entries(items).filter(([, isDone]) => {
+      return Object.entries(items)
+        .sort(([leftName], [rightName]) => (
+          Number(rightName.split(';')[0]) - Number(leftName.split(';')[0])
+        ))
+        .filter(([, isDone]) => {
         if (selected === 'active') {
           return isDone === false;
         }

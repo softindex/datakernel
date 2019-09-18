@@ -59,8 +59,9 @@ class ListService extends Service {
     this._listOTStateManager.removeChangeListener(this._onStateChange);
   }
 
-  async createItem(name) {
-    if (name !== ' ' && name) {
+  async createItem(todoName) {
+    const name = Date.now() + ';' + todoName;
+    if (todoName !== ' ' && todoName) {
       return this._sendOperation(name, false);
     }
   };

@@ -13,11 +13,13 @@ function TodoItem({classes, name, isDone, onDeleteItem, onRenameItem, onToggleIt
 
   const onDelete = () => onDeleteItem(name);
 
-  const onNameChange = event => onRenameItem(name, event.target.value);
+  const onNameChange = event => {
+    onRenameItem(name, Date.now() + ';' + event.target.value);
+  };
 
   return (
     <TextField
-      value={name}
+      value={name.split(';')[1]}
       fullWidth
       onChange={event => onNameChange(event)}
       className={isDone ? classes.textField : null}
