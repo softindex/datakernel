@@ -137,15 +137,16 @@ public final class CodecRegistry implements CodecFactory {
 	@Override
 	@SuppressWarnings("unchecked")
 	public <T> StructuredCodec<T> get(Type type) {
-		if (type instanceof Class && (Enum.class.isAssignableFrom((Class) type))) {
-			return ofEnum((Class) type);
-		}
 		return doGet(RecursiveType.of(type));
 	}
 
 	@SuppressWarnings("unchecked")
 	private <T> StructuredCodec<T> doGet(RecursiveType type) {
 		Class clazz = type.getRawType();
+		if (Enum.class.isAssignableFrom(clazz)) {
+			return ofEnum(clazz);
+		}
+
 		BiFunction<CodecFactory, StructuredCodec<?>[], StructuredCodec<?>> fn = checkNotNull(map.get(clazz));
 
 		StructuredCodec<Object>[] subCodecs = new StructuredCodec[type.getTypeParams().length];
