@@ -351,8 +351,15 @@ public final class PublicServlet {
 			templater.clear();
 			templater.put("appStoreUrl", appStoreUrl);
 			templater.put("pubKey", pubKey.asString());
-			templater.put("url", request.toString());
-			templater.put("url.host", request.getHeader(HOST));
+
+			String host = request.getHeader(HOST);
+			if (host == null) {
+				host = request.getHostAndPort();
+			}
+			assert host != null : "host should not be null here";
+
+			templater.put("url", host + request.getPathAndQuery());
+			templater.put("url.host", host);
 			templater.put("forum", forumDao.getForumMetadata());
 		});
 	}

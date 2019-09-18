@@ -21,7 +21,11 @@ RUN mvn package
 FROM openjdk:8-jre-alpine
 WORKDIR /app
 
+# rocksdb dependency
+RUN apk --update add --no-cache gcompat
+
 COPY --from=build-java /build/target/app.jar ./
+COPY static static
 
 EXPOSE 8080
 
