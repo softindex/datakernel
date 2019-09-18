@@ -1,11 +1,11 @@
 'use strict';
 
-var React = require('react');
-var GridComponent = require('./Grid');
-var Popups = require('../common/popup/Popups');
-var createClass = require('create-react-class');
+const React = require('react');
+const GridComponent = require('./Grid');
+const Popups = require('../common/popup/Popups');
+const createClass = require('create-react-class');
 
-var AppComponent = createClass({
+const AppComponent = createClass({
   render: function () {
     return (
       <div>

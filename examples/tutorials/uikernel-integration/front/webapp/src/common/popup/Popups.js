@@ -1,10 +1,10 @@
 'use strict';
 
-var React = require('react');
-var popupManager = require('./');
-var createClass = require('create-react-class');
+const React = require('react');
+const popupManager = require('./');
+const createClass = require('create-react-class');
 
-var Popups = createClass({
+const Popups = createClass({
   getInitialState: function () {
     return {
       popups: popupManager.getAll()
@@ -24,7 +24,7 @@ var Popups = createClass({
   },
 
   render: function () {
-    var popups = this.state.popups.map(function (popup, key) {
+    const popups = this.state.popups.map(function (popup, key) {
       return (
         <div
           key={key}

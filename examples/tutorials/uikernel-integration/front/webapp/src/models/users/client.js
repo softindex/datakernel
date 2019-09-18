@@ -1,12 +1,12 @@
 'use strict';
 
-var UIKernel = require('uikernel');
-var validator = require('./validator');
-var xhr = require('xhr');
+const UIKernel = require('uikernel');
+const validator = require('./validator');
+const xhr = require('xhr');
 
-var API_URL = '/api/users';
+const API_URL = '/api/users';
 
-var users = new UIKernel.Models.Grid.Xhr({
+const users = new UIKernel.Models.Grid.Xhr({
   api: API_URL,
   validator: validator
 });

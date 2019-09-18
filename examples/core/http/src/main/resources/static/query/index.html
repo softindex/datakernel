@@ -1,29 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <title>Index page</title>
 </head>
 
 <body>
 
-<center>
+<div style="text-align: center;">
   <h3>POST request</h3>
   <form method="post" action="/hello">
-    Enter your name:<br>
-    <input type="text" name="name">
+    <label for="postName">Enter your name:</label><br/>
+    <input type="text" id="postName" name="name">
+
     <br>
     <input type="submit" value="Submit">
   </form>
-</center>
+</div>
 <br>
-<center>
+<div style="text-align: center;">
   <h3>GET request</h3>
   <form method="get" action="/hello">
-    Enter your name:<br>
-    <input type="text" name="name">
+    <label for="getName">Enter your name:</label><br/>
+    <input type="text" name="name" id="getName">
     <br>
     <input type="submit" value="Submit">
   </form>
-</center>
+</div>
 </body>
 </html>

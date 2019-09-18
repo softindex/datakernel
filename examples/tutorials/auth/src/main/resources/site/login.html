@@ -8,10 +8,13 @@
 <label>Authorization form</label>
 <hr>
 <form action="/login" method="post">
-  Login: <input type="text" name="username">
-  Password: <input type="password" name="password">
-  <button>Log in</button>
+  <label for="username">Login:</label>
+  <input type="text" id="username" name="username">
 
+  <label for="password">Password:</label>
+  <input type="password" id="password" name="password">
+
+  <button>Log in</button>
   <p><a href="/signup">Sign up</a></p>
 </form>
 

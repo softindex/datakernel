@@ -7,7 +7,6 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +36,6 @@ public class SpringDiBenchmark {
 		private final String name;
 		private final float weight;
 
-		@Autowired
 		public Sugar() {
 			this.name = "WhiteSugar";
 			this.weight = 10.f;
@@ -57,7 +55,6 @@ public class SpringDiBenchmark {
 		private float weight;
 		private String name;
 
-		@Autowired
 		public Butter() {
 			this.weight = 10.f;
 			this.name = "Butter";
@@ -76,7 +73,6 @@ public class SpringDiBenchmark {
 		private float weight;
 		private String name;
 
-		@Autowired
 		public Flour() {
 			this.name = "GoodFlour";
 			this.weight =  100.0f;
@@ -101,7 +97,6 @@ public class SpringDiBenchmark {
 		private final Butter butter;
 		private final Flour flour;
 
-		@Autowired
 		Pastry(Sugar sugar, Butter butter, Flour flour) {
 			this.sugar = sugar;
 			this.butter = butter;
@@ -124,7 +119,6 @@ public class SpringDiBenchmark {
 	static class Cookie1 {
 		private final Pastry pastry;
 
-		@Autowired
 		Cookie1(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -137,7 +131,6 @@ public class SpringDiBenchmark {
 	static class Cookie2 {
 		private final Pastry pastry;
 
-		@Autowired
 		Cookie2(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -150,7 +143,6 @@ public class SpringDiBenchmark {
 	static class Cookie3 {
 		private final Pastry pastry;
 
-		@Autowired
 		Cookie3(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -163,7 +155,6 @@ public class SpringDiBenchmark {
 	static class Cookie4 {
 		private final Pastry pastry;
 
-		@Autowired
 		Cookie4(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -176,7 +167,6 @@ public class SpringDiBenchmark {
 	static class Cookie5 {
 		private final Pastry pastry;
 
-		@Autowired
 		Cookie5(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -189,7 +179,6 @@ public class SpringDiBenchmark {
 	static class Cookie6 {
 		private final Pastry pastry;
 
-		@Autowired
 		Cookie6(Pastry pastry) {
 			this.pastry = pastry;
 		}
@@ -211,7 +200,6 @@ public class SpringDiBenchmark {
 			return c4;
 		}
 
-		@Autowired
 		CookieBucket(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
 			this.c1 = c1;
 			this.c2 = c2;

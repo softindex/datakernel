@@ -136,9 +136,7 @@ public class AdvancedServiceExample extends Launcher {
 		@Override
 		public CompletableFuture<?> stop() {
 			System.out.println("EmailService is stopping");
-			return CompletableFuture.runAsync(() -> {
-				System.out.println("EmailService is stopped");
-			});
+			return CompletableFuture.runAsync(() -> System.out.println("EmailService is stopped"));
 		}
 	}
 

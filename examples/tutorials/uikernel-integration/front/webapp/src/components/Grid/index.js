@@ -1,15 +1,15 @@
 'use strict';
 
-var UIKernel = require('uikernel');
-var React = require('react');
-var model = require('../../models/users/client');
-var columns = require('./columns');
-var FiltersForm = require('../FiltersForm');
-var RecordForm = require('../RecordForm');
-var Popups = require('../../common/popup');
-var createClass = require('create-react-class');
+const UIKernel = require('uikernel');
+const React = require('react');
+const model = require('../../models/users/client');
+const columns = require('./columns');
+const FiltersForm = require('../FiltersForm');
+const RecordForm = require('../RecordForm');
+const Popups = require('../../common/popup');
+const createClass = require('create-react-class');
 
-var GridComponent = createClass({
+const GridComponent = createClass({
   getInitialState: function () {
     return {model: model};
   },
@@ -17,7 +17,7 @@ var GridComponent = createClass({
     this.setState({model: UIKernel.applyGridFilters(model, filters)});
   },
   onAdd: function () {
-    var popup = Popups.open(RecordForm, {
+    const popup = Popups.open(RecordForm, {
       model: new UIKernel.Adapters.Grid.ToFormCreate(this.refs.grid.getModel(), {
         name: '',
         phone: '',

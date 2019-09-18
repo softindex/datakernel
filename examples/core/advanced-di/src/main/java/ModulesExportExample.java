@@ -6,12 +6,7 @@ import io.datakernel.di.module.AbstractModule;
 
 //[START EXAMPLE]
 public class ModulesExportExample {
-	static AbstractModule module = new AbstractModule() {
-		@Override
-		protected void configure() {
-			super.configure();
-		}
-
+	final static AbstractModule module = new AbstractModule() {
 		@Provides
 		String secretValue() { return "420"; }
 

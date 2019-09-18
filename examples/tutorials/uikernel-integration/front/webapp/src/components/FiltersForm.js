@@ -1,17 +1,17 @@
 'use strict';
 
-var _ = require('lodash');
-var React = require('react');
-var UIKernel = require('uikernel');
-var createClass = require('create-react-class');
+const _ = require('lodash');
+const React = require('react');
+const UIKernel = require('uikernel');
+const createClass = require('create-react-class');
 
-var defaultFilters = {
+const defaultFilters = {
   search: '',
   age: null,
   gender: 0
 };
 
-var FiltersForm = createClass({
+const FiltersForm = createClass({
   getInitialState: function () {
     return {
       filters: _.clone(defaultFilters)

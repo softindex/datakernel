@@ -64,9 +64,7 @@ public class EventloopServiceExample extends Launcher {
 		public @NotNull Promise<?> stop() {
 			System.out.println(String.format("|%s|", "Eventloop-Service stopping".toUpperCase()));
 			return Promise.ofBlockingRunnable(executor,
-						() -> {
-							System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase()));
-						});
+						() -> System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase())));
 		}
 	}
 

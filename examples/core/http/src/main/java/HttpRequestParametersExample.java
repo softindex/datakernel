@@ -15,7 +15,7 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class HttpRequestParametersExample extends HttpServerLauncher {
 	private static final String RESOURCE_DIR = "static/query";
-
+	private static final String HTML_TEXT_CENTER = "<h1><div style=\"text-align: center;\"> Hello from %s, %s!</div></h1>";
 	@Provides
 	Executor executor() {
 		return newSingleThreadExecutor();
@@ -29,12 +29,12 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 						.serve(request -> {
 							String name = request.getPostParameters().get("name");
 							return HttpResponse.ok200()
-									.withHtml("<h1><center>Hello from POST, " + name + "!</center></h1>");
+									.withHtml(String.format(HTML_TEXT_CENTER, "POST", name));
 						}))
 				.map(GET, "/hello", request -> {
 					String name = request.getQueryParameter("name");
 					return HttpResponse.ok200()
-							.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>");
+							.withHtml(String.format(HTML_TEXT_CENTER, "GET", name));
 				})
 				.map("/*", StaticServlet.ofClassPath(executor, RESOURCE_DIR)
 						.withIndexHtml());

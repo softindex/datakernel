@@ -40,7 +40,6 @@ public class CollectorsEx {
 		return (Collector<T, Void, Void>) TO_VOID;
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> Collector<T, Ref<T>, T> toFirst() {
 		return Collector.of(
 				Ref::new,
@@ -49,7 +48,6 @@ public class CollectorsEx {
 				a -> a.value);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static <T> Collector<T, Ref<T>, T> toLast() {
 		return Collector.of(
 				Ref::new,

@@ -1,7 +1,7 @@
 'use strict';
 
-var ReactDOM = require('react-dom');
-var React = require('react');
-var AppComponent = require('./components/App');
+const ReactDOM = require('react-dom');
+const React = require('react');
+const AppComponent = require('./components/App');
 
 ReactDOM.render(<AppComponent/>, document.getElementById('example'));

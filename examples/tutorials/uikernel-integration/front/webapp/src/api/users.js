@@ -1,7 +1,7 @@
 'use strict';
 
-var UIKernel = require('uikernel');
-var usersModel = require('../models/users');
+const UIKernel = require('uikernel');
+const usersModel = require('../models/users/client');
 
 function userApi(router) {
   // Pass a model instance to Express API

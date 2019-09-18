@@ -1,7 +1,7 @@
 'use strict';
 
-var _ = require('lodash');
-var EventEmitter = require('events').EventEmitter;
+const _ = require('lodash');
+const EventEmitter = require('events').EventEmitter;
 
 function Popup() {
   this._popups = [];
@@ -13,7 +13,7 @@ Popup.prototype = Object.create(EventEmitter.prototype);
 Popup.prototype.constructor = Popup;
 
 Popup.prototype.open = function (Component, props) {
-  var popup = {
+  const popup = {
     Component: Component,
     props: props
   };

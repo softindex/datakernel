@@ -1,26 +1,26 @@
 'use strict';
 
-var UIKernel = require('uikernel');
-var React = require('react');
-var Popups = require('../../common/popup');
-var RecordForm = require('../RecordForm');
+const UIKernel = require('uikernel');
+const React = require('react');
+const Popups = require('../../common/popup');
+const RecordForm = require('../RecordForm');
 
-var columns = {
+const columns = {
   tools: {
     width: 90,
     render: [function () {
       return '<div class="text-center">\n' +
-        '<a href="javascript:void(0)" ref="edit" class="text-info action">\n' +
-        '<span class="glyphicon glyphicon-pencil"></span></a>\n' +
-        '<a href="javascript:void(0)" ref="remove" class="text-danger action">\n' +
-        '<span class="glyphicon glyphicon-remove"></span></a>\n' +
+        '<a href="javascript:void(0)" href="edit" class="text-info action">\n' +
+        '<span class="glyphicon glyphicon-pencil"> </span></a>\n' +
+        '<a href="javascript:void(0)" href="remove" class="text-danger action">\n' +
+        '<span class="glyphicon glyphicon-remove"> </span></a>\n' +
       '</div>';
     }],
     onClickRefs: {
       // ref="edit" click handler
       edit: function (event, recordId, record, grid) {
         // Create a pop-up form for editing existing records in a grid
-        var popup = Popups.open(RecordForm, {
+        const popup = Popups.open(RecordForm, {
           model: new UIKernel.Adapters.Grid.ToFormUpdate(grid.getModel(), recordId),
           mode: 'edit',
           changes: grid.getRecordChanges(recordId),

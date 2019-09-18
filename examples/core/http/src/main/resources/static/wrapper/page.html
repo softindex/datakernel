@@ -2,13 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <title>Failed request example</title>
 </head>
 <body>
 <a href="failPage">Make fail request</a>
 
 <form method="post" action="/">
-  Text: <input type="text" name="text">
-  <input type="submit" value="Send">
+  <label for="text">Text: </label>
+  <input type="text" id="text" name="text"/>
+
+  <input type="submit" value="Send"/>
 </form>
 </body>
 </html>

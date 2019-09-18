@@ -24,7 +24,8 @@ public class OptionalGeneratorModuleExample extends AbstractModule {
 
 		Injector injector = Injector.of(module);
 		Optional<String> instance = injector.getInstance(new Key<Optional<String>>() {});
-		System.out.println(instance.get());
+		System.out.println(instance.orElseThrow(
+				() -> new IllegalStateException("Param is not found")));
 	}
 }
 //[END REGION_1]

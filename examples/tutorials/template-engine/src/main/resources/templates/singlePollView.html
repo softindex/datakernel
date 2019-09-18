@@ -28,7 +28,8 @@
 <form method="post" action="/vote">
   <table>
     <tr>
-      <input name="id" value="{{id}}" hidden>
+      <label for="{{id}}" hidden>Id</label>
+      <input name="id" id="{{id}}" value="{{id}}" hidden/>
       <th colspan="2" style="text-align: center"><h3>Title: {{title}}</h3></th>
     </tr>
     <tr>
@@ -36,15 +37,16 @@
     </tr>
     <tr>
       <th>
-        <center>
-          <select name="option">
-            {{#options}}
-            <option value="{{key}}">{{key}}</option>
-            {{/options}}
-          </select>
-        </center>
+        <div style="text-align: center;">
+          <label for="option">Options: </label>
+            <select name="option" id="option">
+              {{#options}}
+              <option value="{{key}}">{{key}}</option>
+              {{/options}}
+            </select>
+        </div>
       </th>
-      <th style="text-align: center"></th>
+      <th> </th>
     </tr>
     {{#options}}
     <tr>
@@ -53,7 +55,7 @@
     </tr>
     {{/options}}
     <tr>
-      <th style="text-align: center"></th>
+      <th> </th>
       <th style="text-align: center">
         <button>Vote</button>
       </th>
@@ -62,7 +64,8 @@
 </form>
 
 <form method="post" action="/delete">
-  <input name="id" value="{{id}}" hidden>
+  <label for="id" hidden>id</label>
+  <input name="id" id="id" value="{{id}}" hidden>
   <button>Delete</button>
 </form>
 {{/poll}}

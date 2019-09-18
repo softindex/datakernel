@@ -33,8 +33,8 @@ public class BindingGeneratorExample {
 	}
 
 	static class Butter {
-		private float weight;
-		private String name;
+		private final float weight;
+		private final String name;
 
 		@Inject
 		public Butter() {
@@ -158,7 +158,11 @@ public class BindingGeneratorExample {
 
 		//[START REGION_3]
 		Injector injector = Injector.of(cookbook);
-		System.out.println(injector.getInstance(new Key<Cookie<Pastry>>() {}).getPastry().get().getButter().getName());
+		System.out.println(injector.getInstance(new Key<Cookie<Pastry>>() {})
+				.getPastry()
+				.orElseThrow(IllegalStateException::new)
+				.getButter()
+				.getName());
 		//[END REGION_3]
 	}
 

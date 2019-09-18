@@ -1,10 +1,10 @@
 'use strict';
 
-var React = require('react');
-var UIKernel = require('uikernel');
-var createClass = require('create-react-class');
+const React = require('react');
+const UIKernel = require('uikernel');
+const createClass = require('create-react-class');
 
-var RecordForm = createClass({
+const RecordForm = createClass({
   mixins: [UIKernel.Mixins.Form],
 
   componentDidMount: function () {
@@ -31,8 +31,8 @@ var RecordForm = createClass({
       return <span>Loading...</span>
     }
 
-    var data = this.getData();
-    var globalError = this.getGlobalError();
+    const data = this.getData();
+    const globalError = this.getGlobalError();
 
     return (
       <div className='modal-dialog modal-lg'>

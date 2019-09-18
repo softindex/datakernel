@@ -3,6 +3,8 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.ExpressionToString;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.reflect.InvocationTargetException;
+
 import static io.datakernel.codegen.Expressions.*;
 
 /**
@@ -11,7 +13,7 @@ import static io.datakernel.codegen.Expressions.*;
  */
 public class DynamicClassCreationExample {
 	//[START REGION_1]
-	public static void main(String[] args) throws IllegalAccessException, InstantiationException {
+	public static void main(String[] args) throws IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException {
 		// Construct a Class that implements Person interface
 		Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Person.class)
 				// declare fields
@@ -35,8 +37,8 @@ public class DynamicClassCreationExample {
 				.build();
 
 		// Instantiate two objects of dynamically defined class
-		Person jack = personClass.newInstance();
-		Person martha = personClass.newInstance();
+		Person jack = personClass.getConstructor().newInstance();
+		Person martha = personClass.getConstructor().newInstance();
 
 		jack.setIdAndName(5, "Jack");
 		martha.setIdAndName(jack.getId() * 2, "Martha");
@@ -77,8 +79,8 @@ public class DynamicClassCreationExample {
 	}
 
 	public static class ExamplePojo {
-		int id;
-		String name;
+		private final int id;
+		private final String name;
 
 		ExamplePojo(int id, String name) {
 			this.id = id;

@@ -1,10 +1,9 @@
 'use strict';
 
-var gulp = require('gulp');
-var sync = require('gulp-sync')(gulp).sync;
-var shell = require('gulp-shell');
+const gulp = require('gulp');
+const shell = require('gulp-shell');
 
-var jsTasks = require('./webapp/gulp/javascript');
+const jsTasks = require('./webapp/gulp/javascript');
 
 // Javascript tasks
 gulp.task('js:clean', gulp.series(jsTasks.jsClean));
