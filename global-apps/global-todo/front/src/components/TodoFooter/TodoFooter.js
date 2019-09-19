@@ -6,7 +6,7 @@ import todoFooterStyles from "./todoFooterStyles";
 function TodoFooter({classes, selected, items, getAmountUncompletedTodo, onSelectedChange, onClearCompleted}) {
   return (
     <>
-      {Object.entries(items).length !== 0 && (
+      {items.size !== 0 && (
         <div className={classes.listCaption}>
           <Typography
             variant="subtitle2"

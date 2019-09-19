@@ -20,15 +20,15 @@ class MessagesView extends React.Component {
   }
 
   render() {
-    const {classes, chatReady, messages, publicKey} = this.props;
+    const {classes, chatReady, namesReady, messages, publicKey} = this.props;
     return (
       <div className={classes.root}>
-        {!chatReady && (
+        {(!chatReady || !namesReady) && (
           <div className={classes.progressWrapper}>
             <CircularProgress/>
           </div>
         )}
-        {chatReady && (
+        {chatReady && namesReady && (
           <div ref={this.wrapper} className={classes.wrapper}>
             {messages.map((message, index) => {
               const previousMessageAuthor = messages[index - 1] && messages[index - 1].authorPublicKey;
@@ -60,7 +60,7 @@ class MessagesView extends React.Component {
 
 function Messages({classes, publicKey}) {
   const namesService = getInstance(NamesService);
-  const {names} = useService(namesService);
+  const {names, namesReady} = useService(namesService);
   const chatRoomService = getInstance(ChatRoomService);
   const {messages, chatReady} = useService(chatRoomService);
 
@@ -68,6 +68,7 @@ function Messages({classes, publicKey}) {
     classes,
     publicKey,
     names,
+    namesReady,
     messages,
     chatReady
   };

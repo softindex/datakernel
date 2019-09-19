@@ -16,6 +16,7 @@ function SideBarView({
                        searchReady,
                        searchContacts,
                        onSearchChange,
+                       onSearchClear,
                        publicKey
                      }) {
   return (
@@ -30,6 +31,7 @@ function SideBarView({
         searchContacts={searchContacts}
         searchReady={searchReady}
         search={search}
+        onSearchClear={onSearchClear}
         publicKey={publicKey}
       />
       {showAddDialog && (
@@ -76,6 +78,11 @@ function SideBar({classes, publicKey, enqueueSnackbar}) {
 
     onSearchChange(event) {
       return onSearchChange(event.target.value);
+    },
+
+    onSearchClear() {
+      console.log('Hello!');
+      onSearchChange('');
     }
   };
 

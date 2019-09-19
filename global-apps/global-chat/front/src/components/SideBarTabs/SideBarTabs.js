@@ -25,11 +25,13 @@ function SideBarTabsView({
                            search,
                            searchReady,
                            searchContacts,
+                           onSearchClear,
                            tabId,
                            onTabChange,
                            rooms,
                            contacts,
                            names,
+                           namesReady,
                            roomsReady,
                            publicKey,
                            onRemoveContact
@@ -53,6 +55,7 @@ function SideBarTabsView({
           rooms={rooms}
           contacts={contacts}
           names={names}
+          namesReady={namesReady}
           roomsReady={roomsReady}
           onRemoveContact={onRemoveContact}
           publicKey={publicKey}
@@ -69,6 +72,7 @@ function SideBarTabsView({
             <ContactsList
               searchReady={searchReady}
               searchContacts={searchContacts}
+              onSearchClear={onSearchClear}
             />
             {searchContacts.size === 0 && searchReady && (
               <InviteButton publicKey={publicKey}/>
@@ -86,6 +90,7 @@ function SideBarTabs({
                        searchContacts,
                        searchReady,
                        search,
+                       onSearchClear,
                        onAddContact,
                        history,
                        match,
@@ -98,7 +103,7 @@ function SideBarTabs({
   const roomsService = getInstance(RoomsService);
   const {roomsReady, rooms} = useService(roomsService);
   const namesService = getInstance(NamesService);
-  const {names} = useService(namesService);
+  const {names, namesReady} = useService(namesService);
 
   const props = {
     classes,
@@ -107,9 +112,11 @@ function SideBarTabs({
     searchReady,
     search,
     onAddContact,
+    onSearchClear,
     contacts,
     roomsReady,
     names,
+    namesReady,
     tabId,
 
     rooms: new Map(

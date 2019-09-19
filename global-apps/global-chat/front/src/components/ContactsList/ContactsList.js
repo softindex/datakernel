@@ -16,7 +16,7 @@ function ContactsListView({
                             searchContacts,
                             onContactClick,
                             addContactId,
-                            closeAddDialog,
+                            onCloseAddDialog,
                             onConfirmAddContact
                           }) {
   return (
@@ -43,7 +43,7 @@ function ContactsListView({
       )}
       {addContactId && (
         <ConfirmDialog
-          onClose={closeAddDialog.bind(this)}
+          onClose={onCloseAddDialog.bind(this)}
           title="Add Contact"
           subtitle="Do you want to add this contact?"
           onConfirm={onConfirmAddContact}
@@ -53,7 +53,7 @@ function ContactsListView({
   );
 }
 
-function ContactsList({classes, history, enqueueSnackbar, searchReady, searchContacts}) {
+function ContactsList({classes, history, enqueueSnackbar, onSearchClear, searchReady, searchContacts}) {
   const contactsService = getInstance(ContactsService);
   const [addContactId, setContactId] = useState(null);
 
@@ -67,7 +67,7 @@ function ContactsList({classes, history, enqueueSnackbar, searchReady, searchCon
       setContactId(publicKey);
     },
 
-    closeAddDialog() {
+    onCloseAddDialog() {
       setContactId(null);
     },
 
@@ -75,7 +75,8 @@ function ContactsList({classes, history, enqueueSnackbar, searchReady, searchCon
       return contactsService.addContact(addContactId)
         .then(({dialogRoomId}) => {
           history.push(path.join('/room', dialogRoomId));
-          props.closeAddDialog();
+          onSearchClear();
+          props.onCloseAddDialog();
         })
         .catch(err => {
           enqueueSnackbar(err.message, {

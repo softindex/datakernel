@@ -47,16 +47,13 @@ function MessageForm({classes, enqueueSnackbar}) {
       if (!message) {
         return;
       }
-
+      setMessage('');
       chatRoomService.sendMessage(message)
         .catch((err) => {
           enqueueSnackbar(err.message, {
             variant: 'error'
           });
         })
-        .finally(() => {
-          setMessage('');
-        });
     }
   };
 

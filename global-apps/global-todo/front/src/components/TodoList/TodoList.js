@@ -67,10 +67,11 @@ function TodoListView({
               }}
             />
           </form>
-          {getFilteredTodo(selected).map(([itemName, isDone]) => (
+          {getFilteredTodo(selected).map(([todoId, todo]) => (
               <TodoItem
-                name={itemName}
-                isDone={isDone}
+                todoId={todoId}
+                name={todo.name}
+                isDone={todo.isDone}
                 onToggleItemStatus={onToggleItemStatus}
                 onDeleteItem={onDeleteItem}
                 onRenameItem={onRenameItem}
@@ -111,16 +112,16 @@ function TodoList({classes, enqueueSnackbar}) {
     loading,
     newItemName,
 
-    onDeleteItem(name) {
-      listService.deleteItem(name).catch(errorHandler);
+    onDeleteItem(todoId) {
+      listService.deleteItem(todoId).catch(errorHandler);
     },
 
-    onRenameItem(name, newName) {
-      listService.renameItem(name, newName).catch(errorHandler);
+    onRenameItem(todoId, newName) {
+      listService.renameItem(todoId, newName).catch(errorHandler);
     },
 
-    onToggleItemStatus(name) {
-      listService.toggleItemStatus(name).catch(errorHandler);
+    onToggleItemStatus(todoId) {
+      listService.toggleItemStatus(todoId).catch(errorHandler);
     },
 
     onSubmit(e) {
@@ -144,7 +145,7 @@ function TodoList({classes, enqueueSnackbar}) {
 
     getAmountUncompletedTodo() {
       let counter = 0;
-      Object.entries(items).map(([, isDone]) => {
+      [...items].map(([, {isDone}]) => {
         if (!isDone) {
           counter++;
         }
@@ -153,9 +154,9 @@ function TodoList({classes, enqueueSnackbar}) {
     },
 
     onClearCompleted() {
-      Object.entries(items).map(([name, isDone]) => {
+      [...items].map(([todoId, {isDone}]) => {
         if (isDone) {
-          return props.onDeleteItem(name);
+          return props.onDeleteItem(todoId);
         }
       })
     },
@@ -165,11 +166,9 @@ function TodoList({classes, enqueueSnackbar}) {
     },
 
     getFilteredTodo() {
-      return Object.entries(items)
-        .sort(([leftName], [rightName]) => (
-          Number(rightName.split(';')[0]) - Number(leftName.split(';')[0])
-        ))
-        .filter(([, isDone]) => {
+      return [...items]
+        .sort(([leftTodoId], [rightTodoId]) => Number(rightTodoId) - Number(leftTodoId))
+        .filter(([, {isDone}]) => {
         if (selected === 'active') {
           return isDone === false;
         }

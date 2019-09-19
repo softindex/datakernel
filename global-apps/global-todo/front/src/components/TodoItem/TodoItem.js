@@ -6,20 +6,20 @@ import DeleteIcon from "@material-ui/icons/Delete";
 import {withStyles} from "@material-ui/core";
 import todoItemStyles from "./todoItemStyles";
 
-function TodoItem({classes, name, isDone, onDeleteItem, onRenameItem, onToggleItemStatus}) {
+function TodoItem({classes, todoId, name, isDone, onDeleteItem, onRenameItem, onToggleItemStatus}) {
   const onStatusChange = () => {
-    onToggleItemStatus(name);
+    onToggleItemStatus(todoId);
   };
 
-  const onDelete = () => onDeleteItem(name);
+  const onDelete = () => onDeleteItem(todoId);
 
   const onNameChange = event => {
-    onRenameItem(name, Date.now() + ';' + event.target.value);
+    onRenameItem(todoId, event.target.value);
   };
 
   return (
     <TextField
-      value={name.split(';')[1]}
+      value={name}
       fullWidth
       onChange={event => onNameChange(event)}
       className={isDone ? classes.textField : null}

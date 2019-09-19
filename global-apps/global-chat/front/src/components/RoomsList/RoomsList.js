@@ -6,36 +6,46 @@ import List from "@material-ui/core/List";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import {withRouter} from "react-router-dom";
 
-function RoomsList(props) {
+function RoomsList({
+                     classes,
+                     publicKey,
+                     roomsReady,
+                     rooms,
+                     showDeleteButton,
+                     onRemoveContact,
+                     names,
+                     namesReady,
+                     contacts
+                   }) {
   function checkContactExists(room) {
     if (!room.dialog) {
       return false;
     }
     const participantPublicKey = room.participants.find(participantPublicKey => {
-      return participantPublicKey !== props.publicKey;
+      return participantPublicKey !== publicKey;
     });
-    return !props.contacts.has(participantPublicKey);
+    return !contacts.has(participantPublicKey);
   }
 
   return (
     <>
-      {!props.roomsReady && (
-        <div className={props.classes.progressWrapper}>
+      {(!roomsReady || !namesReady) && (
+        <div className={classes.progressWrapper}>
           <CircularProgress/>
         </div>
       )}
-      {props.roomsReady && (
+      {roomsReady && namesReady && (
         <List>
-          {[...props.rooms].map(([roomId, room]) =>
+          {[...rooms].map(([roomId, room]) =>
             (
               <RoomItem
                 roomId={roomId}
                 room={room}
-                showDeleteButton={props.showDeleteButton}
+                showDeleteButton={showDeleteButton}
                 showAddContactButton={checkContactExists(room)}
-                names={props.names}
-                publicKey={props.publicKey}
-                onRemoveContact={props.onRemoveContact}
+                names={names}
+                publicKey={publicKey}
+                onRemoveContact={onRemoveContact}
               />
             )
           )}

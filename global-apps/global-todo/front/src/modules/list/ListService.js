@@ -9,7 +9,7 @@ const RETRY_TIMEOUT = 1000;
 class ListService extends Service {
   constructor(listOTStateManager) {
     super({
-      items: {},
+      items: new Map(),
       ready: false
     });
 
@@ -60,28 +60,29 @@ class ListService extends Service {
   }
 
   async createItem(todoName) {
-    const name = Date.now() + ';' + todoName;
+    const newName = Date.now() + Math.random().toFixed(10).substr(2) + todoName;
     if (todoName !== ' ' && todoName) {
-      return this._sendOperation(name, false);
+      return this._sendOperationOnCreate(newName);
     }
   };
 
-  async deleteItem(name) {
-    return this._sendOperation(name, null);
+  async deleteItem(itemId) {
+    return this._sendOperation(itemId,  null);
   };
 
-  async renameItem(name, newName) {
+  async renameItem(itemId, newName) {
+    const name = this.state.items.get(itemId).name;
     if (name === newName) {
       return;
     }
 
-    const value = this.state.items[name];
+    const value = this.state.items.get(itemId).isDone;
     const operation = new MapOTOperation({
-      [name]: {
+      [itemId + name]: {
         prev: value,
         next: null
       },
-      [newName]: {
+      [itemId + newName]: {
         prev: null,
         next: value
       }
@@ -90,19 +91,30 @@ class ListService extends Service {
     await this._sync();
   }
 
-  async toggleItemStatus(name) {
-    return this._sendOperation(name, !this.state.items[name]);
+  async toggleItemStatus(itemId) {
+    return this._sendOperation(itemId, !this.state.items.get(itemId).isDone);
   };
 
   async toggleAllItemsStatus() {
     return this._sendAllOperation();
   };
 
-  async _sendOperation(name, nextValue) {
+  async _sendOperation(itemId, nextValue) {
     const operation = new MapOTOperation({
-      [name]: {
-        prev: name in this.state.items ? this.state.items[name] : null,
+      [itemId + this.state.items.get(itemId).name]: {
+        prev: this.state.items.has(itemId) ? this.state.items.get(itemId).isDone : null,
         next: nextValue
+      }
+    });
+    this._listOTStateManager.add([operation]);
+    await this._sync();
+  };
+
+  async _sendOperationOnCreate(newName) {
+    const operation = new MapOTOperation({
+      [newName]: {
+        prev: null,
+        next: false
       }
     });
     this._listOTStateManager.add([operation]);
@@ -112,31 +124,38 @@ class ListService extends Service {
   async _sendAllOperation() {
     let operations = [];
     let counterDone = 0;
-    Object.entries(this.state.items).map(([, isDone]) => {
-     if (isDone) {
-       counterDone++;
-     }
+    [...this.state.items].map(([, {isDone}]) => {
+      if (isDone) {
+        counterDone++;
+      }
     });
 
-    Object.entries(this.state.items).map(([name,]) => {
+    [...this.state.items].map(([itemId, {name}]) => {
       const operation = new MapOTOperation({
-        [name]: {
-          prev: name in this.state.items ? this.state.items[name] : null,
-          next: !(Object.keys(this.state.items).length === counterDone)
+        [itemId + name]: {
+          prev: this.state.items.has(itemId) ? this.state.items.get(itemId).isDone : null,
+          next: this.state.items.size !== counterDone
         }
       });
       operations.push(operation);
     });
 
-    for (let i=0; i<operations.length; i++) {
+    for (let i = 0; i < operations.length; i++) {
       this._listOTStateManager.add([operations[i]]);
     }
     await this._sync();
   };
 
   _onStateChange = () => {
+    const items = Object.entries(this._listOTStateManager.getState())
+      .map(([name, isDone]) => (
+        [name.slice(0, 23), {
+          name: name.slice(23),
+          isDone: isDone
+        }]
+      ));
     this.setState({
-      items: this._listOTStateManager.getState(),
+      items: new Map(items),
       ready: true
     });
   };
