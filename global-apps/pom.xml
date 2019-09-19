@@ -22,6 +22,7 @@
     <module>global-notes</module>
     <module>global-todo</module>
     <module>global-apps-common</module>
+    <module>global-forum</module>
   </modules>
 
   <dependencies>

@@ -7,9 +7,11 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
@@ -20,7 +22,6 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.chat.chatroom.ChatRoomOTSystem;
 import io.global.chat.chatroom.operation.ChatRoomOperation;
 import io.global.common.BinaryDataFormats;
 import io.global.common.PrivKey;
@@ -30,23 +31,34 @@ import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.MapModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.SharedRepoModule;
+import io.global.ot.api.RepoID;
+import io.global.ot.client.MyRepositoryId;
+import io.global.ot.client.OTDriver;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.map.MapOperation;
-import io.global.ot.service.UserContainerModule;
+import io.global.ot.service.CommonUserContainer;
+import io.global.ot.service.ContainerModule;
+import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.GlobalPmDriver;
 import io.global.pm.api.PmClient;
 import io.global.pm.http.PmClientServlet;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
+import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
+import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
 public final class GlobalChatApp extends Launcher {
 	private static final String PROPERTIES_FILE = "chat.properties";
@@ -55,6 +67,7 @@ public final class GlobalChatApp extends Launcher {
 	private static final String CHAT_REPO_PREFIX = "chat/room";
 	private static final String CHAT_INDEX_REPO = "chat/index";
 	private static final String PROFILE_REPO_NAME = "profile";
+	private static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
 	@Inject
 	AsyncHttpServer server;
@@ -75,7 +88,7 @@ public final class GlobalChatApp extends Launcher {
 
 	@Provides
 	OTSystem<ChatRoomOperation> chatRoomOTSystem() {
-		return ChatRoomOTSystem.createOTSystem();
+		return CHAT_ROOM_OT_SYSTEM;
 	}
 
 	@Provides
@@ -85,7 +98,7 @@ public final class GlobalChatApp extends Launcher {
 	}
 
 	@Provides
-	RoutingServlet provideMainServlet(
+	AsyncServlet provideMainServlet(
 			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
 			DynamicOTNodeServlet<ChatRoomOperation> roomServlet,
@@ -109,6 +122,11 @@ public final class GlobalChatApp extends Launcher {
 	}
 
 	@Provides
+	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalKvNode node) {
+		return new GlobalPmDriver<>(node, SHARED_REPO_MESSAGE_CODEC);
+	}
+
+	@Provides
 	@Named("Calls")
 	AsyncServlet callsPMServlet(GlobalPmDriver<String> driver) {
 		return request -> {
@@ -127,6 +145,16 @@ public final class GlobalChatApp extends Launcher {
 		};
 	}
 
+	@Provides
+	BiFunction<Eventloop, PrivKey, CommonUserContainer<ChatRoomOperation>> factory(OTDriver driver,
+			GlobalPmDriver<CreateSharedRepo> pmDriver) {
+		return (eventloop, privKey) -> {
+			RepoID repoID = RepoID.of(privKey, CHAT_REPO_PREFIX);
+			MyRepositoryId<ChatRoomOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, CHAT_ROOM_OPERATION_CODEC);
+			return CommonUserContainer.create(eventloop, driver, CHAT_ROOM_OT_SYSTEM, myRepositoryId, pmDriver, CHAT_INDEX_REPO);
+		};
+	}
+
 	@Override
 	public Module getModule() {
 		return Modules.combine(
@@ -138,7 +166,8 @@ public final class GlobalChatApp extends Launcher {
 				new ContactsModule(),
 				new MapModule<String, String>(PROFILE_REPO_NAME) {},
 				new IndexRepoModule(CHAT_INDEX_REPO),
-				new UserContainerModule<ChatRoomOperation>(CHAT_INDEX_REPO, CHAT_REPO_PREFIX) {},
+				new ContainerModule<CommonUserContainer<ChatRoomOperation>>() {}
+						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new SharedRepoModule<ChatRoomOperation>(CHAT_REPO_PREFIX) {},
 				// override for debug purposes
 				override(new GlobalNodesModule(),

@@ -322,7 +322,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				completeLatch.await();
 				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
 			} catch (InterruptedException e) {
-				logger.error("Shutdown took too long", e);
+				logger.error("Shutdown thread was interrupted", e);
 			}
 		}, "shutdownNotification"));
 		shutdownLatch.await();

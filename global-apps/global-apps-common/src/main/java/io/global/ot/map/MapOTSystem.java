@@ -4,6 +4,7 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.util.CollectorsEx;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.Map;
@@ -22,72 +23,57 @@ public final class MapOTSystem {
 		throw new AssertionError();
 	}
 
-	public static <K, V> OTSystem<MapOperation<K, V>> createOTSystem(Comparator<V> comparator) {
+	public static <K, V> OTSystem<MapOperation<K, V>> create() {
+		return MapOTSystem.create(null);
+	}
+
+	public static <K, V> OTSystem<MapOperation<K, V>> create(@Nullable Comparator<V> comparator) {
+		OTSystem<SetValue<V>> setValueOTSystem = SetValueOTSystem.create(comparator);
 		return OTSystemImpl.<MapOperation<K, V>>create()
 				.withInvertFunction(MapOperation.class, op ->
-						singletonList(MapOperation.of(
-								transformMapValues(op.getOperations(), SetValue::invert)))
-				)
+						singletonList(MapOperation.of(transformMapValues(op.getOperations(), SetValue::invert))))
+
 				.withEmptyPredicate(MapOperation.class, op ->
-						op.getOperations().values().stream()
-								.allMatch(SetValue::isEmpty)
-				)
+						op.getOperations().values().stream().allMatch(setValueOTSystem::isEmpty))
 				.withTransformFunction(MapOperation.class, MapOperation.class, (left, right) -> {
-					Map<K, SetValue<V>> leftOps = filterEmpty(left.getOperations());
-					Map<K, SetValue<V>> rightOps = filterEmpty(right.getOperations());
+					Map<K, SetValue<V>> leftOps = nonEmpty(left.getOperations());
+					Map<K, SetValue<V>> rightOps = nonEmpty(right.getOperations());
 
 					if (leftOps.equals(rightOps)) return TransformResult.empty();
 
 					Set<K> intersection = intersection(leftOps.keySet(), rightOps.keySet());
-					if (intersection.isEmpty()) return TransformResult.of(right, left);
+					if (intersection.isEmpty()) {
+						return TransformResult.of(right, left);
+					}
 
 					Map<K, SetValue<V>> rightTransformed = leftOps.entrySet().stream()
 							.filter(entry -> !intersection.contains(entry.getKey()))
 							.collect(toMap(Entry::getKey, Entry::getValue));
+
 					Map<K, SetValue<V>> leftTransformed = rightOps.entrySet().stream()
 							.filter(entry -> !intersection.contains(entry.getKey()))
 							.collect(toMap(Entry::getKey, Entry::getValue));
 
 					for (K key : intersection) {
-						SetValue<V> leftSetOp = leftOps.get(key);
-						SetValue<V> rightSetOp = rightOps.get(key);
+						TransformResult<SetValue<V>> subResult = setValueOTSystem.transform(leftOps.get(key), rightOps.get(key));
 
-						if (leftSetOp.equals(rightSetOp)) break;
-
-						V leftNextValue = leftSetOp.getNext();
-						V rightNextValue = rightSetOp.getNext();
-
-						if (leftNextValue == null) {
-							leftTransformed.put(key, rightSetOp);
-							break;
-						}
-						if (rightNextValue == null) {
-							rightTransformed.put(key, leftSetOp);
-							break;
-						}
-						int compare = comparator.compare(leftNextValue, rightNextValue);
-						if (compare > 0) {
-							rightTransformed.put(key, set(rightNextValue, leftNextValue));
-						} else if (compare < 0) {
-							leftTransformed.put(key, set(leftNextValue, rightNextValue));
-						}
+						subResult.left.forEach(setValue -> leftTransformed.put(key, setValue));
+						subResult.right.forEach(setValue -> rightTransformed.put(key, setValue));
 					}
 					return TransformResult.of(MapOperation.of(leftTransformed), MapOperation.of(rightTransformed));
 				})
 				.withSquashFunction(MapOperation.class, MapOperation.class, (op1, op2) ->
 						MapOperation.of(
-								filterEmpty(Stream.concat(
+								nonEmpty(Stream.concat(
 										op1.getOperations().entrySet().stream(),
 										op2.getOperations().entrySet().stream())
 										.collect(toMap(Entry::getKey, Entry::getValue,
-												(first, second) -> set(first.getPrev(), second.getNext())))))
-				);
+												(first, second) -> set(first.getPrev(), second.getNext()))))));
 	}
 
-	private static <K, V> Map<K, SetValue<V>> filterEmpty(Map<K, SetValue<V>> map) {
+	private static <K, V> Map<K, SetValue<V>> nonEmpty(Map<K, SetValue<V>> map) {
 		return map.entrySet().stream()
 				.filter(entry -> !entry.getValue().isEmpty())
 				.collect(CollectorsEx.toMap());
 	}
-
 }

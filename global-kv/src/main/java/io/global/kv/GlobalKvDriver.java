@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Objects;
 import java.util.Set;
 
+import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.global.common.Hash.sha1;
 import static io.global.kv.util.BinaryDataFormats.RAW_KV_ITEM_CODEC;
 
@@ -70,14 +71,17 @@ public final class GlobalKvDriver<K, V> {
 
 	@NotNull
 	private SignedData<RawKvItem> encrypt(KvItem<K, V> item, PrivKey privKey, @Nullable SimKey simKey) {
-		byte[] key = BinaryUtils.encodeAsArray(keyCodec, item.getKey());
-		byte[] value = crypt(key, BinaryUtils.encodeAsArray(valueCodec, item.getValue()), simKey);
+		byte[] key = encodeAsArray(keyCodec, item.getKey());
+		byte[] value = crypt(key, encodeAsArray(valueCodec, item.getValue()), simKey);
 		RawKvItem raw = new RawKvItem(key, value, item.getTimestamp(), simKey != null ? sha1(simKey.getBytes()) : null);
 		return SignedData.sign(RAW_KV_ITEM_CODEC, raw, privKey);
 	}
 
-	private Promise<KvItem<K, V>> decrypt(SignedData<RawKvItem> signedRawKvItem, @Nullable SimKey simKey) {
+	private Promise<@Nullable KvItem<K, V>> decrypt(@Nullable SignedData<RawKvItem> signedRawKvItem, @Nullable SimKey simKey) {
 		try {
+			if (signedRawKvItem == null) {
+				return Promise.of(null);
+			}
 			RawKvItem raw = signedRawKvItem.getValue();
 			byte[] key = raw.getKey();
 			byte[] value = simKey != null ? crypt(key, raw.getValue(), simKey) : raw.getValue();
@@ -115,8 +119,8 @@ public final class GlobalKvDriver<K, V> {
 						.map(key -> SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(key, now.currentTimeMillis()), privKey)));
 	}
 
-	public Promise<KvItem<K, V>> get(PubKey space, String table, byte[] key, @Nullable SimKey simKey) {
-		return node.get(space, table, key)
+	public Promise<@Nullable KvItem<K, V>> get(PubKey space, String table, K key, @Nullable SimKey simKey) {
+		return node.get(space, table, encodeAsArray(keyCodec, key))
 				.then(signedRawKvItem -> decrypt(signedRawKvItem, simKey));
 	}
 
@@ -142,5 +146,17 @@ public final class GlobalKvDriver<K, V> {
 
 	public GlobalKvAdapter<K, V> adapt(KeyPair keys) {
 		return new GlobalKvAdapter<>(this, keys.getPubKey(), keys.getPrivKey());
+	}
+
+	public GlobalKvNode getNode() {
+		return node;
+	}
+
+	public StructuredCodec<K> getKeyCodec() {
+		return keyCodec;
+	}
+
+	public StructuredCodec<V> getValueCodec() {
+		return valueCodec;
 	}
 }

@@ -1,0 +1,5 @@
+app.http.staticPath=
+app.http.listenAddresses=
+discovery.address=
+fs.storage=
+appStoreUrl=

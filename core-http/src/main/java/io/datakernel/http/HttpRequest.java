@@ -18,10 +18,10 @@ package io.datakernel.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
+import io.datakernel.http.MultipartParser.MultipartDataHandler;
 import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaders.*;
@@ -320,7 +319,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		throw new IllegalArgumentException("No path parameter '" + key + "' found");
 	}
 
-	public Promise<Void> getFiles(Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
+	public Promise<Void> handleMultipart(MultipartDataHandler multipartDataHandler) {
 		String contentType = getHeader(CONTENT_TYPE);
 		if (contentType == null || !contentType.startsWith("multipart/form-data; boundary=")) {
 			return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
@@ -329,7 +328,8 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		if (boundary.startsWith("\"") && boundary.endsWith("\"")) {
 			boundary = boundary.substring(1, boundary.length() - 1);
 		}
-		return MultipartParser.create(boundary).splitByFiles(getBodyStream(), name -> ChannelConsumer.ofPromise(uploader.apply(name)));
+		return MultipartParser.create(boundary)
+				.split(getBodyStream(), multipartDataHandler);
 	}
 
 	int getPos() {

@@ -5,6 +5,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.ot.OTSystem;
 import io.global.chat.chatroom.CallInfo;
+import io.global.chat.chatroom.ChatRoomOTSystem;
 import io.global.chat.chatroom.message.Message;
 import io.global.chat.chatroom.operation.*;
 import io.global.common.PrivKey;
@@ -59,7 +60,9 @@ public final class Utils {
 			.withTagName("type", "value");
 
 	public static final OTSystem<MapOperation<PubKey, Boolean>> HANDLE_CALL_SUBSYSTEM = MapOTSystem
-			.createOTSystem(Boolean::compareTo);
+			.create(Boolean::compareTo);
+
+	public static final OTSystem<ChatRoomOperation> CHAT_ROOM_OT_SYSTEM = ChatRoomOTSystem.createOTSystem();
 
 	public static Message toRegularMessage(MessageOperation operation) {
 		return new Message(REGULAR, operation.getTimestamp(), operation.getAuthor(), operation.getContent());
@@ -76,6 +79,5 @@ public final class Utils {
 				"\nDropped at: " + dropCallOperation.getDropTimestamp();
 		return new Message(DROP, dropCallOperation.getDropTimestamp(), callInfo.getAuthor(), content);
 	}
-
 
 }

@@ -21,10 +21,10 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.exception.ParseException;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -63,7 +63,7 @@ public class HttpCookieTest {
 		Instant date = Instant.ofEpochMilli(987654321098L); // "Thu, 19 Apr 2001 04:25:21 GMT";
 		HttpCookie cookie = HttpCookie.of("name", "value")
 				.withExpirationDate(date)
-				.withMaxAge(10)
+				.withMaxAge(Duration.ofSeconds(10))
 				.withPath("/test")
 				.withDomain("www.google.com")
 				.withSecure(true)
@@ -82,7 +82,7 @@ public class HttpCookieTest {
 		Instant date = Instant.ofEpochMilli(987654321098L); // "Thu, 19 Apr 2001 04:25:21 GMT";
 		HttpCookie cookie1 = HttpCookie.of("name1", "value1")
 				.withExpirationDate(date)
-				.withMaxAge(10)
+				.withMaxAge(Duration.ofSeconds(10))
 				.withPath("/test")
 				.withDomain("www.google.com")
 				.withSecure(true);

@@ -4,6 +4,7 @@ import io.datakernel.async.RetryPolicy;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.exception.ParseException;
 import io.global.ot.edit.DeleteOperation;
 import io.global.ot.edit.EditOperation;
@@ -16,6 +17,7 @@ import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.RenameRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOperation;
+import io.global.ot.value.ChangeValue;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.Utils.PUB_KEY_HEX_CODEC;
@@ -40,7 +42,7 @@ public final class OTUtils {
 			"participants", SharedRepo::getParticipants, ofSet(PUB_KEY_HEX_CODEC));
 
 	public static final StructuredCodec<CreateOrDropRepo> CREATE_OR_DROP_REPO_CODEC = object(CreateOrDropRepo::new,
-			"shared repo", CreateOrDropRepo::getSharedRepo, SHARED_REPO_CODEC,
+			"shared_repo", CreateOrDropRepo::getSharedRepo, SHARED_REPO_CODEC,
 			"remove", CreateOrDropRepo::isRemove, BOOLEAN_CODEC);
 
 	public static final StructuredCodec<RenameRepo> RENAME_REPO_CODEC = object(RenameRepo::of,
@@ -91,4 +93,17 @@ public final class OTUtils {
 				}
 			}
 	);
+	public static <T> StructuredCodec<ChangeValue<T>> ofChangeValue(StructuredCodec<T> underlying) {
+		return object(ChangeValue::of,
+				"prev", ChangeValue::getPrev, underlying,
+				"next", ChangeValue::getNext, underlying,
+				"timestamp", ChangeValue::getTimestamp, LONG_CODEC);
+	}
+
+	public static CodecRegistry createOTRegistry() {
+		return CodecRegistry.createDefault()
+				.withGeneric(MapOperation.class, (registry, subCodecs) -> getMapOperationCodec(subCodecs[0], subCodecs[1]))
+				.withGeneric(SetValue.class, (registry, subCodecs) -> getSetValueCodec(subCodecs[0]))
+				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeValue(subCodecs[0]));
+	}
 }

@@ -1,0 +1,25 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="list-group my-3">
+                {{#threads}}
+                    <a href="/{{pubKey}}/{{id}}" class="list-group-item list-group-item-action">
+                        <div class="row">
+                            <div class="col">
+                                <span class="badge">{{root.initialTimestamp}}</span>
+                                <h5 class="ml-1 text-wrap text-break">{{meta.title}}</h5>
+                            </div>
+                            <div class="col-auto align-self-center mx-2">
+                                <div class="row">
+                                    <span class="badge align-self-center">{{root.author}}</span>
+
+                                    {{#root}}{{<avatar}}{{$size}}32{{/size}}{{/avatar}}{{/root}}
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                {{/threads}}
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

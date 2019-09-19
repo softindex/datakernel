@@ -1,0 +1,14 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active" aria-current="page">{{thread.title}}</li>
+                </ol>
+            </nav>
+            {{#post}}
+                {{>render_post}}
+            {{/post}}
+        </div>
+    {{/content}}
+{{/base}}

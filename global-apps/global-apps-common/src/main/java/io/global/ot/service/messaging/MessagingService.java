@@ -14,7 +14,7 @@ import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
-import io.global.ot.service.UserContainer;
+import io.global.ot.service.CommonUserContainer;
 import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
@@ -39,21 +39,21 @@ public final class MessagingService implements EventloopService {
 
 	private final Eventloop eventloop;
 	private final GlobalPmDriver<CreateSharedRepo> pmDriver;
-	private final UserContainer<?> userContainer;
+	private final CommonUserContainer<?> commonUserContainer;
 	private final String mailBox;
 
 	private SettablePromise<Message<CreateSharedRepo>> stopPromise = new SettablePromise<>();
 
-	private MessagingService(Eventloop eventloop, GlobalPmDriver<CreateSharedRepo> pmDriver, UserContainer<?> userContainer, String mailBox) {
+	private MessagingService(Eventloop eventloop, GlobalPmDriver<CreateSharedRepo> pmDriver, CommonUserContainer<?> commonUserContainer, String mailBox) {
 		this.eventloop = eventloop;
 		this.pmDriver = pmDriver;
-		this.userContainer = userContainer;
+		this.commonUserContainer = commonUserContainer;
 		this.mailBox = mailBox;
 	}
 
 	public static MessagingService create(Eventloop eventloop, GlobalPmDriver<CreateSharedRepo> pmDriver,
-			UserContainer<?> userContainer, String mailBox) {
-		return new MessagingService(eventloop, pmDriver, userContainer, mailBox);
+			CommonUserContainer<?> commonUserContainer, String mailBox) {
+		return new MessagingService(eventloop, pmDriver, commonUserContainer, mailBox);
 	}
 
 	@NotNull
@@ -77,7 +77,7 @@ public final class MessagingService implements EventloopService {
 	}
 
 	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
-		MyRepositoryId<?> myRepositoryId = userContainer.getMyRepositoryId();
+		MyRepositoryId<?> myRepositoryId = commonUserContainer.getMyRepositoryId();
 		PrivKey senderPrivKey = myRepositoryId.getPrivKey();
 		PubKey senderPubKey = senderPrivKey.computePubKey();
 		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
@@ -87,8 +87,8 @@ public final class MessagingService implements EventloopService {
 
 	@SuppressWarnings("ConstantConditions")
 	private void pollMessages() {
-		KeyPair keys = userContainer.getMyRepositoryId().getPrivKey().computeKeys();
-		OTStateManager<CommitId, SharedReposOperation> stateManager = userContainer.getStateManager();
+		KeyPair keys = commonUserContainer.getMyRepositoryId().getPrivKey().computeKeys();
+		OTStateManager<CommitId, SharedReposOperation> stateManager = commonUserContainer.getStateManager();
 		SharedReposOTState state = (SharedReposOTState) stateManager.getState();
 		AsyncSupplier<@Nullable Message<CreateSharedRepo>> messagesSupplier = retry(() -> pmDriver.poll(keys, mailBox),
 				POLL_RETRY_POLICY);

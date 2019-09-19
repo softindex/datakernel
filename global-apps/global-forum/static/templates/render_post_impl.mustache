@@ -1,0 +1,178 @@
+<div class="card no-gutters">
+    <div class="card-body clearfix py-1">
+        <div class="row mb-2">
+            <div class="col pl-0">
+                <a href="/{{pubKey}}/{{threadId}}/{{postId}}{{^postId}}root{{/postId}}"
+                   class="badge badge-secondary">#</a>
+
+                <span class="badge badge-primary badge-light">
+                    {{initialTimestamp}}
+                </span>
+            </div>
+
+            {{^deletedBy}}
+                {{#lastEditTimestamp}}
+                    <div class="col-auto small px-0 mx-1">
+                        <i>edited at: <b>{{.}}</b></i>
+                    </div>
+                {{/lastEditTimestamp}}
+            {{/deletedBy}}
+            {{#deletedBy}}
+                <div class="col-auto small px-0 mx-1">
+                    <i>deleted by: <b>{{.}}</b></i>
+                </div>
+            {{/deletedBy}}
+        </div>
+        <div class="row">
+            <div class="col-auto mx-3 text-center">
+
+                {{<avatar}}{{$classes}}row{{/classes}}{{$size}}64{{/size}}{{/avatar}}
+
+                <span class="row badge badge-primary badge-light text-wrap text-break">
+                    {{#user.role.privileged}}{{#author}}
+                        <a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a>{{/author}}{{/user.role.privileged}}
+                    {{^user.role.privileged}}{{author}}{{/user.role.privileged}}
+                    {{^author}}<i>ghost</i>{{/author}}
+                </span>
+            </div>
+            <div class="col">
+                <div class="row text-wrap text-break mr-2{{#deletedBy}} text-secondary{{/deletedBy}}">
+                    {{#deletedBy}}
+                    <details>
+                        <summary>show</summary>
+                    {{/deletedBy}}
+                    <p id="content_{{postId}}" class="{{^deletedBy}}form-control{{/deletedBy}}"
+                       style="border: 1px solid transparent; height: initial; {{^deletedBy}}color: initial; {{/deletedBy}}white-space: pre-line">{{content}}</p>
+                    {{#deletedBy}}
+                    </details>
+                    {{/deletedBy}}
+                </div>
+            </div>
+        </div>
+        {{#attachments}}
+            <div class="row m-2">
+                {{#image}}
+                    <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}">
+                        <img src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                             alt="attachment"
+                             class="img-thumbnail m-2">
+                    </a>
+                {{/image}}
+            </div>
+
+            <div class="row m-2">
+                {{#video}}
+                    <div class="embed-responsive embed-responsive-16by9 m-2">
+                        <video controls>
+                            <source src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}">
+                        </video>
+                    </div>
+                {{/video}}
+            </div>
+
+            <div class="row m-2">
+                {{#document}}
+                    <ul class="list-group col-auto">
+                        <li class="list-group-item text-truncate">
+                            <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{globalFsId}}"
+                               class="stretched-link">🠋</a>
+                            {{filename}}
+                        </li>
+                    </ul>
+                {{/document}}
+            </div>
+        {{/attachments}}
+        <div class="row">
+            <div class="col"></div>
+            <div class="col-auto mx-2 mb-2">
+                <div class="row">
+                    {{#deletedBy}}{{#editable}}
+                        <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                            <button class="btn btn-outline-primary btn-sm">restore</button>
+                        </form>
+                    {{/editable}}{{/deletedBy}}
+                    {{^deletedBy}}
+                        {{#user}}
+                            {{#editable}}
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
+                                            type="button"
+                                            id="change_menu_{{postId}}"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        change
+                                    </button>
+                                    <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                                          action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+
+                                        <button class="edit-button dropdown-item" type="button"
+                                                data-edit="#content_{{postId}}"
+                                                data-edit-action="/{{pubKey}}/{{threadId}}/{{postId}}/edit">
+                                            edit
+                                        </button>
+                                        <button class="dropdown-item" type="submit">delete</button>
+                                    </form>
+                                </div>
+                            {{/editable}}
+                            {{#user.role.known}}
+                                <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
+                                        data-target="#reply_{{postId}}">
+                                    reply
+                                </button>
+                            {{/user.role.known}}
+                        {{/user}}
+                    {{/deletedBy}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="ml-3 border-left border-dark">
+    {{^deletedBy}}
+        {{#user}}
+            <div class="collapse" id="reply_{{postId}}">
+                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
+                      method="post" enctype="multipart/form-data">
+                    <div class="mx-3">
+                        <textarea class="form-control" placeholder="Post your reply" name="content"
+                                  data-post-button="#post_button_{{postId}}"></textarea>
+                    </div>
+                    <div class="collapse" id="attachments_{{postId}}">
+                        <div class="mx-3 mt-3">
+                            <div class="custom-file col-3">
+                                <input type="file" accept="image/*" class="custom-file-input"
+                                       id="image_attachment_{{postId}}" multiple
+                                       name="image_attachment">
+                                <label class="custom-file-label text-truncate" for="image_attachment_{{postId}}">Attach
+                                    images</label>
+                            </div>
+                            <div class="custom-file col-3">
+                                <input type="file" accept="video/mp4" class="custom-file-input"
+                                       id="video_attachment_{{postId}}" multiple
+                                       name="video_attachment">
+                                <label class="custom-file-label text-truncate" for="video_attachment_{{postId}}">Attach
+                                    videos</label>
+                            </div>
+                            <div class="custom-file col-3">
+                                <input type="file" class="custom-file-input" id="document_attachment_{{postId}}"
+                                       multiple
+                                       name="document_attachment">
+                                <label class="custom-file-label text-truncate" for="document_attachment_{{postId}}">Attach
+                                    documents</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3">
+                        <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{postId}}">post</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-toggle="collapse"
+                                data-target="#attachments_{{postId}}">
+                            attach
+                        </button>
+                    </div>
+                </form>
+            </div>
+        {{/user}}
+    {{/deletedBy}}
+    {{#children}}
+        {{>render_post}}
+    {{/children}}
+</div>

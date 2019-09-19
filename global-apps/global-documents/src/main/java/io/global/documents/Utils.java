@@ -5,6 +5,7 @@ import io.datakernel.ot.MergedOTSystem;
 import io.datakernel.ot.OTSystem;
 import io.global.documents.document.DocumentMultiOperation;
 import io.global.ot.edit.EditOTSystem;
+import io.global.ot.edit.EditOperation;
 import io.global.ot.name.NameOTSystem;
 
 import static io.datakernel.codec.StructuredCodecs.object;
@@ -16,6 +17,8 @@ public final class Utils {
 	private Utils() {
 		throw new AssertionError();
 	}
+
+	public static final OTSystem<EditOperation> EDIT_OT_SYSTEM = EditOTSystem.createOTSystem();
 
 	public static final StructuredCodec<DocumentMultiOperation> DOCUMENT_MULTI_OPERATION_CODEC = object(DocumentMultiOperation::new,
 			"editOps", DocumentMultiOperation::getEditOps, ofList(EDIT_OPERATION_CODEC),

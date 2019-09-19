@@ -230,7 +230,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				writeBuf(buf);
 			}
 		} else {
-			writeHttpMessageAsChunkedStream(httpResponse);
+			writeHttpMessageAsStream(httpResponse);
 		}
 		httpResponse.recycle();
 	}

@@ -33,7 +33,7 @@ public interface KvClient<K, V> {
 
 	Promise<ChannelConsumer<byte[]>> remove(String table);
 
-	Promise<KvItem<K, V>> get(String table, byte[] key);
+	Promise<KvItem<K, V>> get(String table, K key);
 
 	default Promise<Void> put(String table, KvItem<K, V> item) {
 		return ChannelSupplier.of(item).streamTo(ChannelConsumer.ofPromise(upload(table)));

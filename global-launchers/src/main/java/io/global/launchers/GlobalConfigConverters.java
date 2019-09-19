@@ -1,34 +1,13 @@
 package io.global.launchers;
 
-import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverter;
 import io.global.common.*;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.NoSuchElementException;
 
 import static io.datakernel.config.ConfigConverters.ofString;
 
 public class GlobalConfigConverters {
 	public static ConfigConverter<RawServerId> ofRawServerId() {
-		return new ConfigConverter<RawServerId>() {
-			@Nullable
-			@Override
-			public RawServerId get(Config config, @Nullable RawServerId defaultValue) {
-				try {
-					return get(config);
-				} catch (NoSuchElementException ignored) {
-					return defaultValue;
-				}
-			}
-
-			@NotNull
-			@Override
-			public RawServerId get(Config config) {
-				return new RawServerId(config.getValue());
-			}
-		};
+		return ofString().transform(RawServerId::parse, RawServerId::getServerIdString);
 	}
 
 	public static ConfigConverter<PubKey> ofPubKey() {

@@ -1,0 +1,17 @@
+{{<base}}
+    {{$content}}
+        <div class="container text-center">
+            <div class="card round mx-auto" style="max-width: 18rem;">
+                <div class="card-header">Log in to proceed:</div>
+                <div class="card-body">
+                    <a class="btn btn-outline-success"
+                       href="{{appStoreUrl}}/oauth?redirectURI=http%3A//{{url.host}}/{{pubKey}}/authorize%3Forigin={{origin}}
+                    "
+                       id="login_button">
+                        Log In
+                    </a>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}
