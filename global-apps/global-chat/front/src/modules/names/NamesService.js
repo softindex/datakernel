@@ -1,9 +1,6 @@
-import {Service} from 'global-apps-common';
-import {retry, toEmoji} from 'global-apps-common';
-import {GlobalAppStoreAPI} from "global-apps-common";
+import {retry, toEmoji, delay, Service, GlobalAppStoreAPI} from 'global-apps-common';
 import ProfileService from "../profile/ProfileService";
 import {RETRY_TIMEOUT} from '../../common/utils';
-import {delay} from "global-apps-common/lib";
 
 class NamesService extends Service {
   constructor(contactsOTStateManager, roomsOTStateManager, globalAppStoreAPI, publicKey, createProfileService) {

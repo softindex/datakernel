@@ -2,13 +2,13 @@ const contactsListStyles = theme => {
   return {
     progressWrapper: {
       textAlign: 'center',
-      marginTop: theme.spacing.unit * 2
+      marginTop: theme.spacing(2)
     },
     paperError: {
       background: theme.palette.secondary.main,
-      padding: theme.spacing.unit * 2,
-      margin: theme.spacing.unit,
-      borderRadius: theme.spacing.unit,
+      padding: theme.spacing(2),
+      margin: theme.spacing(1),
+      borderRadius: theme.spacing(1),
       boxShadow: 'none'
     },
     dividerText: {

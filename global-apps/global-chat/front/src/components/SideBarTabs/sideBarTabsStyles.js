@@ -11,14 +11,14 @@ const sideBarTabsStyles = theme => {
         overflow: 'overlay'
       },
       background: theme.palette.primary.contrastText,
-      marginTop: theme.spacing.unit,
-      marginBottom: theme.spacing.unit
+      marginTop: theme.spacing(1),
+      marginBottom: theme.spacing(1)
     },
     paperDivider: {
       background: theme.palette.primary.background,
-      padding: theme.spacing.unit * 2,
-      marginTop: theme.spacing.unit,
-      marginBottom: theme.spacing.unit,
+      padding: theme.spacing(2),
+      marginTop: theme.spacing(1),
+      marginBottom: theme.spacing(1),
       boxShadow: 'none'
     },
     dividerText: {
@@ -26,7 +26,7 @@ const sideBarTabsStyles = theme => {
     },
     secondaryDividerText: {
       textAlign: 'center',
-      marginTop: theme.spacing.unit * 2
+      marginTop: theme.spacing(2)
     }
   }
 };

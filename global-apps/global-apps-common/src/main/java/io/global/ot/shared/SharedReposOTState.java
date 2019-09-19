@@ -7,10 +7,10 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public final class SharedReposOTState implements OTState<SharedReposOperation> {
-	public static final Consumer<SharedReposOperation> NO_ACTION = op -> {};
+	public static final Consumer<CreateOrDropRepo> NO_ACTION = op -> {};
 
 	private final Set<SharedRepo> sharedRepos = new HashSet<>();
-	private Consumer<SharedReposOperation> listener = NO_ACTION;
+	private Consumer<CreateOrDropRepo> listener = NO_ACTION;
 
 	@Override
 	public void init() {
@@ -20,20 +20,17 @@ public final class SharedReposOTState implements OTState<SharedReposOperation> {
 	@Override
 	public void apply(SharedReposOperation op) {
 		if (op.isEmpty()) return;
-
-		if (op.isRemove()) {
-			sharedRepos.remove(op.getSharedRepo());
-		} else {
-			sharedRepos.add(op.getSharedRepo());
+		op.apply(sharedRepos);
+		if (op instanceof CreateOrDropRepo) {
+			listener.accept((CreateOrDropRepo) op);
 		}
-		listener.accept(op);
 	}
 
 	public Set<SharedRepo> getSharedRepos() {
 		return sharedRepos;
 	}
 
-	public void setListener(Consumer<SharedReposOperation> listener) {
+	public void setListener(Consumer<CreateOrDropRepo> listener) {
 		this.listener = listener;
 	}
 }

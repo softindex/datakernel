@@ -6,27 +6,27 @@ const messageFormStyles = theme => {
       justifyContent: 'center',
       alignItems: 'center',
       flexShrink: 1,
-      margin: `${theme.spacing.unit}px auto`,
-      maxWidth:  theme.spacing.unit * 106
+      margin: `${theme.spacing(1)}px auto`,
+      maxWidth:  theme.spacing(1) * 106
     },
     submitIcon: {
-      marginRight: theme.spacing.unit
+      marginRight: theme.spacing(1)
     },
     divider: {
       width: 1,
-      height: theme.spacing.unit * 3,
-      margin: theme.spacing.unit * 0.5
+      height: theme.spacing(3),
+      margin: theme.spacing(0.5)
     },
     input: {
       flexGrow: 1,
-      margin: `${theme.spacing.unit}px ${theme.spacing.unit}px ${theme.spacing.unit}px ${theme.spacing.unit * 2}px`
+      margin: `${theme.spacing(1)}px ${theme.spacing(1)}px ${theme.spacing(1)}px ${theme.spacing(2)}px`
     },
     inputText: {
       color: theme.palette.common.black
     },
     form: {
-      padding: `0px ${theme.spacing.unit * 3}px`,
-      marginBottom: theme.spacing.unit * 2
+      padding: `0px ${theme.spacing(3)}px`,
+      marginBottom: theme.spacing(2)
     }
   }
 };

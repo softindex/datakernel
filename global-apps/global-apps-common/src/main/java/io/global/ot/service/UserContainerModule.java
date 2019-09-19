@@ -4,6 +4,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.ot.OTSystem;
 import io.global.kv.api.GlobalKvNode;
@@ -13,7 +14,7 @@ import io.global.pm.GlobalPmDriver;
 
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
-public class UserContainerModule<D> extends AbstractModule {
+public abstract class UserContainerModule<D> extends AbstractModule {
 	private final String indexRepo;
 	private final String repoPrefix;
 
@@ -29,7 +30,7 @@ public class UserContainerModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	ServiceEnsuringServlet providePrivKeyEnsuringServlet(UserContainerHolder<D> userContainerHolder, RoutingServlet servlet) {
+	AsyncServlet providePrivKeyEnsuringServlet(UserContainerHolder<D> userContainerHolder, RoutingServlet servlet) {
 		return ServiceEnsuringServlet.create(userContainerHolder, servlet);
 	}
 

@@ -21,6 +21,8 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.Function;
+
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -157,5 +159,10 @@ public final class DynamicOTNodeServlet<D> implements AsyncServlet {
 	@Override
 	public Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException {
 		return servlet.serve(request);
+	}
+
+	// for debug purposes etc.
+	public DynamicOTGraphServlet<D> createGraphServlet(Function<D, String> diffToString) {
+		return DynamicOTGraphServlet.create(driver, otSystem, diffCodec, prefix, diffToString);
 	}
 }

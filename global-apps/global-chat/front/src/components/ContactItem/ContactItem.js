@@ -15,12 +15,12 @@ function ContactItem({username, firstName, lastName, onClick, classes, selected}
       button
     >
       <Avatar
-        selected={!selected}
+        selected={selected}
         name={getAppStoreContactName({firstName, lastName, username})}
       />
       <ListItemText
-        primary={username}
-        secondary={firstName !== '' && lastName !== '' ?  firstName + ' ' + lastName : null}
+        primary={firstName !== '' ? firstName + ' ' + lastName : username}
+        secondary={firstName !== '' ? username : null}
         className={classes.itemText}
         classes={{
           primary: classes.itemTextPrimary

@@ -59,7 +59,7 @@ public final class Utils {
 			.withTagName("type", "value");
 
 	public static final OTSystem<MapOperation<PubKey, Boolean>> HANDLE_CALL_SUBSYSTEM = MapOTSystem
-			.create(Boolean::compareTo);
+			.createOTSystem(Boolean::compareTo);
 
 	public static Message toRegularMessage(MessageOperation operation) {
 		return new Message(REGULAR, operation.getTimestamp(), operation.getAuthor(), operation.getContent());

@@ -1,7 +1,7 @@
 const searchStyles = theme => ({
   inputDiv: {
-    marginLeft: theme.spacing.unit,
-    marginRight: theme.spacing.unit * 3,
+    marginLeft: theme.spacing(1),
+    marginRight: theme.spacing(3),
     flex: 1
   },
   input: {
@@ -13,7 +13,7 @@ const searchStyles = theme => ({
     display: 'flex'
   },
   iconButton: {
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit}px`
+    padding: `${theme.spacing(1)}px ${theme.spacing(1)}px`
   }
 });
 

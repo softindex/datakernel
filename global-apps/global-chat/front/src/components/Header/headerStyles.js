@@ -5,18 +5,19 @@ const headerStyles = theme => ({
   },
   chatTitleContainer: {
     display: 'flex',
-    marginLeft: theme.spacing.unit * 24,
     flexGrow: 1,
-    flexDirection: 'row-reverse'
+    overflow: 'hidden'
   },
   title: {
-    marginLeft: theme.spacing.unit * 3,
+    marginLeft: theme.spacing(3),
+    minWidth: theme.spacing(37)
   },
   chatTitle: {
-    fontSize: '1rem',
     flexGrow: 1,
-    display: 'flex',
-    alignItems: 'center'
+    overflow: 'hidden',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    display: 'flex'
   },
   iconButton: {
     '&:hover': {

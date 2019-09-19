@@ -1,8 +1,8 @@
 const contactItemStyles = theme => ({
   listItem: {
     borderRadius: 4,
-    paddingTop: theme.spacing.unit * 2,
-    paddingBottom: theme.spacing.unit * 2
+    paddingTop: theme.spacing(2),
+    paddingBottom: theme.spacing(2)
   },
   itemText: {
     overflow: 'hidden'

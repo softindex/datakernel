@@ -5,8 +5,8 @@ const messageItemStyles = theme => {
       flexDirection: 'row',
       width: '100%',
       margin: '0 auto',
-      maxWidth: theme.spacing.unit * 113,
-      padding: `0 ${theme.spacing.unit * 3}px`
+      maxWidth: theme.spacing(113),
+      padding: `0 ${theme.spacing(3)}px`
     },
     messageRowRightAlign: {
       justifyContent: 'flex-end'
@@ -14,9 +14,9 @@ const messageItemStyles = theme => {
     message: {
       display: 'flex',
       flexDirection: 'column',
-      padding: theme.spacing.unit * 2,
+      padding: theme.spacing(2),
       backgroundColor: theme.palette.grey[200],
-      marginBottom: theme.spacing.unit,
+      marginBottom: theme.spacing(1),
       wordBreak: 'break-all',
       borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px 
       ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
@@ -32,7 +32,7 @@ const messageItemStyles = theme => {
        ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`
     },
     statusWrapper: {
-      marginLeft: theme.spacing.unit,
+      marginLeft: theme.spacing(1),
       color: theme.palette.grey[100]
     }
   }

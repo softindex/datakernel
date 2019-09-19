@@ -4,14 +4,11 @@ import connectService from '../connectService/connectService';
 import AuthContext from './AuthContext';
 
 function checkAuth(Component) {
-  function CheckAuth(props) {
-    const {authorized, location, ...otherProps} = props;
-
-    if (location.pathname !== "/") {
-      localStorage.setItem('redirectURI', location.pathname);
-    }
-
+  function CheckAuth({authorized, location, wasAuthorized, ...otherProps}) {
     if (!authorized) {
+      if (location.pathname !== "/" && !wasAuthorized) {
+        sessionStorage.setItem('redirectURI', location.pathname);
+      }
       return <Redirect to='/sign-up'/>
     }
 
@@ -20,7 +17,10 @@ function checkAuth(Component) {
     );
   }
 
-  return withRouter(connectService(AuthContext, ({authorized}) => ({authorized}))(CheckAuth));
+  return withRouter(connectService(AuthContext, ({authorized, wasAuthorized}) => ({
+    authorized,
+    wasAuthorized
+  }))(CheckAuth));
 }
 
 export default checkAuth;

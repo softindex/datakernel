@@ -11,7 +11,7 @@ const signUpStyles = theme => {
       flexWrap: 'wrap'
     },
     button: {
-      minHeight: theme.spacing.unit * 7.5,
+      minHeight: theme.spacing(7.5),
       borderRadius: 70
     },
     signupButton: {
@@ -20,14 +20,14 @@ const signUpStyles = theme => {
       }
     },
     caption: {
-      marginTop: theme.spacing.unit * 3
+      marginTop: theme.spacing(3)
     },
     attachIcon: {
       transform: 'rotate(45deg)',
-      marginRight: theme.spacing.unit
+      marginRight: theme.spacing(1)
     },
     storeIcon: {
-      marginRight: theme.spacing.unit
+      marginRight: theme.spacing(1)
     },
     description: {
       marginBottom: '100px',
@@ -48,16 +48,16 @@ const signUpStyles = theme => {
       alignItems: 'flex-start',
       zIndex: 1,
       [theme.breakpoints.only('xs')]: {
-        padding: theme.spacing.unit * 2
+        padding: theme.spacing(2)
       },
       [theme.breakpoints.only('sm')]: {
-        padding: theme.spacing.unit * 6
+        padding: theme.spacing(6)
       },
       [theme.breakpoints.only('md')]: {
-        padding: theme.spacing.unit * 10
+        padding: theme.spacing(10)
       },
       [theme.breakpoints.up('lg')]: {
-        padding: theme.spacing.unit * 16
+        padding: theme.spacing(16)
       }
     },
     columnRight: {
@@ -95,7 +95,7 @@ const signUpStyles = theme => {
       display: 'none'
     },
     gridItem: {
-      padding: theme.spacing.unit * 2
+      padding: theme.spacing(2)
     }
   }
 };

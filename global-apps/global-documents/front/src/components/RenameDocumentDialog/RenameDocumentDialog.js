@@ -1,0 +1,95 @@
+import React, {useEffect, useState} from "react";
+import {withStyles} from '@material-ui/core';
+import renameDocumentStyles from "./renameDocumentStyles";
+import Button from '@material-ui/core/Button';
+import Dialog from '../Dialog/Dialog'
+import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
+import DialogTitle from '@material-ui/core/DialogTitle';
+import TextField from '@material-ui/core/TextField';
+import {withSnackbar} from "notistack";
+import {getInstance} from "global-apps-common";
+import DocumentsService from "../../modules/documents/DocumentsService";
+
+function RenameDocumentDialogView({classes, name, loading, onNameChange, onClose, onSubmit}) {
+  return (
+    <Dialog onClose={onClose}>
+      <form onSubmit={onSubmit}>
+        <DialogTitle>Rename document</DialogTitle>
+        <DialogContent>
+          <TextField
+            required={true}
+            autoFocus
+            value={name}
+            disabled={loading}
+            margin="normal"
+            label="New name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            onChange={onNameChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            className={classes.actionButton}
+            onClick={onClose}
+          >
+            Close
+          </Button>
+          <Button
+            className={classes.actionButton}
+            type={"submit"}
+            color={"primary"}
+            variant={"contained"}
+          >
+            Rename
+          </Button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}
+
+function RenameDocumentDialog({classes, documentName, documentId, onClose, enqueueSnackbar}) {
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const documentsService = getInstance(DocumentsService);
+
+  useEffect(() => {
+    setName(documentName);
+  }, [documentName]);
+
+  const props = {
+    classes,
+    documentName,
+    onClose,
+    name,
+    loading,
+
+    onNameChange(event) {
+      setName(event.target.value);
+    },
+
+    onSubmit(event) {
+      event.preventDefault();
+      setLoading(true);
+      documentsService.renameDocument(documentId, name)
+        .then(() => {
+          onClose();
+        })
+        .catch(error => {
+          enqueueSnackbar(error.message, {
+            variant: 'error'
+          });
+        })
+        .finally(() => {
+          setLoading(false);
+        })
+    }
+  };
+
+  return <RenameDocumentDialogView {...props}/>
+}
+
+export default withSnackbar(withStyles(renameDocumentStyles)(RenameDocumentDialog));

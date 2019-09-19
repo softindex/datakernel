@@ -48,7 +48,6 @@ class RoomItem extends React.Component {
     const {classes, room, roomId} = this.props;
     const roomURL = path.join('/room', roomId || '');
     const roomName = getRoomName(room.participants, this.props.names, this.props.publicKey);
-
     return (
       <>
         <ListItem
@@ -61,13 +60,12 @@ class RoomItem extends React.Component {
             className={classes.link}
           >
             <Avatar
-              selected={!this.props.selected}
+              selected={this.props.selected}
               name={roomName}
             />
             <ListItemText
               primary={roomName}
               className={classes.itemText}
-              classes={{primary: classes.itemTextPrimary}}
             />
           </Link>
           {this.props.showAddContactButton && !this.props.showDeleteButton && (

@@ -18,7 +18,7 @@ import io.global.pm.GlobalPmDriver;
 import org.jetbrains.annotations.NotNull;
 
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
-import static io.global.ot.OTUtils.SHARED_REPO_OPERATION_CODEC;
+import static io.global.ot.OTUtils.SHARED_REPOS_OPERATION_CODEC;
 import static io.global.ot.service.UserContainerHolder.LIST_SYSTEM;
 import static java.util.Collections.emptySet;
 
@@ -93,7 +93,7 @@ public final class UserContainer<D> implements EventloopService {
 	private static <D> OTStateManager<CommitId, SharedReposOperation> createStateManager(Eventloop eventloop, OTDriver driver,
 			MyRepositoryId<D> myRepositoryId, String resourceListRepoName) {
 		RepoID repoID = RepoID.of(myRepositoryId.getPrivKey(), resourceListRepoName);
-		MyRepositoryId<SharedReposOperation> listRepositoryId = new MyRepositoryId<>(repoID, myRepositoryId.getPrivKey(), SHARED_REPO_OPERATION_CODEC);
+		MyRepositoryId<SharedReposOperation> listRepositoryId = new MyRepositoryId<>(repoID, myRepositoryId.getPrivKey(), SHARED_REPOS_OPERATION_CODEC);
 		OTRepositoryAdapter<SharedReposOperation> repository = new OTRepositoryAdapter<>(driver, listRepositoryId, emptySet());
 		OTState<SharedReposOperation> state = new SharedReposOTState();
 		OTNodeImpl<CommitId, SharedReposOperation, OTCommit<CommitId, SharedReposOperation>> node = OTNodeImpl.create(repository, LIST_SYSTEM);

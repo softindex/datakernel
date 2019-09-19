@@ -44,7 +44,10 @@ public final class SetValue<T> {
 
 		SetValue that = (SetValue) o;
 
-		return Objects.equals(prev, that.prev) && Objects.equals(next, that.next);
+		if (prev != null ? !prev.equals(that.prev) : that.prev != null) return false;
+		if (next != null ? !next.equals(that.next) : that.next != null) return false;
+
+		return true;
 	}
 
 	@Override
@@ -52,13 +55,5 @@ public final class SetValue<T> {
 		int result = prev != null ? prev.hashCode() : 0;
 		result = 31 * result + (next != null ? next.hashCode() : 0);
 		return result;
-	}
-
-	@Override
-	public String toString() {
-		return "SetValue{" +
-				"prev=" + prev +
-				", next=" + next +
-				'}';
 	}
 }

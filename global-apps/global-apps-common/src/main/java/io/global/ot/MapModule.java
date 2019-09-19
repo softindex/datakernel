@@ -27,7 +27,7 @@ public abstract class MapModule<K, V> extends AbstractModule {
 
 	@Provides
 	OTSystem<MapOperation<K, V>> otSystem(Comparator<V> valueComparator) {
-		return MapOTSystem.create(valueComparator);
+		return MapOTSystem.createOTSystem(valueComparator);
 	}
 
 	@Provides

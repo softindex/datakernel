@@ -3,13 +3,12 @@ import path from 'path';
 import {Redirect, withRouter} from 'react-router-dom';
 
 function AfterAuthRedirect({history}) {
-  const redirectURI = localStorage.getItem('redirectURI') || '/';
+  const redirectURI = sessionStorage.getItem('redirectURI') || '/';
+
   useEffect(() => {
     if (redirectURI !== '/') {
       history.push(path.join(redirectURI));
-    }
-    return () => {
-      localStorage.clear();
+      sessionStorage.removeItem('redirectURI');
     }
   }, [redirectURI]);
 

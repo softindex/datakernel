@@ -9,7 +9,7 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import addContactDialogStyles from "./addContactDialogStyles";
-import {getInstance} from "global-apps-common/lib";
+import {getInstance} from "global-apps-common";
 import ContactsService from "../../modules/contacts/ContactsService";
 import {withSnackbar} from "notistack";
 import {withRouter} from "react-router-dom";

@@ -1,10 +1,10 @@
 const contactMenuStyles = theme => ({
   wrapperButton: {
-    width: theme.spacing.unit * 8
+    width: theme.spacing(8)
   },
   menuPaper: {
-    maxHeight: theme.spacing.unit * 27,
-    width: theme.spacing.unit * 25
+    maxHeight: theme.spacing(27),
+    width: theme.spacing(25)
   }
 });
 
