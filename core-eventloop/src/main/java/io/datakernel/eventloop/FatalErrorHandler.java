@@ -29,7 +29,7 @@ public interface FatalErrorHandler {
 	/**
 	 * Called when an unchecked exception is catched during some task is called from {@link Eventloop}.
 	 * @param e the catched exception
-	 * @param context the context in was catched in, commonly a {@link Runnable} or some callback whicj
+	 * @param context the context in was catched in, commonly a {@link Runnable} or some callback
 	 */
 	void handle(@NotNull Throwable e, @Nullable Object context);
 }

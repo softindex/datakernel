@@ -41,7 +41,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 	private final List<ChannelConsumer<T>> outputs = new ArrayList<>();
 
 	private boolean lenient = false;
-	private List<Throwable> lenientExceptions = new ArrayList<>();
+	private final List<Throwable> lenientExceptions = new ArrayList<>();
 
 	private ChannelSplitter() {
 	}

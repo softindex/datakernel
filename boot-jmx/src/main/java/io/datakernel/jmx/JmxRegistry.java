@@ -20,9 +20,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.UniqueNameImpl;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,6 +36,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.StringFormatUtils.parseDuration;
 import static io.datakernel.eventloop.util.ReflectionUtils.getAnnotationString;
+import static io.datakernel.jmx.Utils.*;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
@@ -269,16 +268,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	private boolean allInstancesAreOfSameType(List<?> instances) {
-		int last = instances.size() - 1;
-		for (int i = 0; i < last; i++) {
-			if (!instances.get(i).getClass().equals(instances.get(i + 1).getClass())) {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	private void registerMBeanForWorker(Object worker, int workerId, String commonName,
 			Key<?> key, MBeanSettings settings) {
 		String workerName = createWorkerName(commonName, workerId);
@@ -387,69 +376,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				Arrays.stream(genericType.getActualTypeArguments())
 						.map(JmxRegistry::formatSimpleGenericName)
 						.collect(joining(";", "<", ">"));
-	}
-
-	private static boolean isStandardMBean(Class<?> clazz) {
-		return classImplementsInterfaceWithNameEndingWith(clazz, "MBean");
-	}
-
-	private static boolean isMXBean(Class<?> clazz) {
-		return classFollowsMXBeanConvention(clazz);
-	}
-
-	private static boolean classImplementsInterfaceWithNameEndingWith(Class<?> clazz, String ending) {
-		String clazzName = clazz.getSimpleName();
-		Class<?>[] interfaces = clazz.getInterfaces();
-		for (Class<?> anInterface : interfaces) {
-			String interfaceName = anInterface.getSimpleName();
-			if (interfaceName.equals(clazzName + ending)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static boolean classFollowsMXBeanConvention(Class<?> clazz) {
-		Class<?>[] interfazes = clazz.getInterfaces();
-		for (Class<?> interfaze : interfazes) {
-			if (interfaceFollowsMXBeanConvention(interfaze)) {
-				return true;
-			}
-		}
-
-		Class<?> superClazz = clazz.getSuperclass();
-		if (superClazz != null) {
-			return classFollowsMXBeanConvention(superClazz);
-		}
-
-		return false;
-	}
-
-	private static boolean interfaceFollowsMXBeanConvention(Class<?> interfaze) {
-		if (interfaze.getSimpleName().endsWith("MXBean") || interfaze.isAnnotationPresent(MXBean.class)) {
-			return true;
-		}
-
-		Class<?>[] subInterfazes = interfaze.getInterfaces();
-		for (Class<?> subInterfaze : subInterfazes) {
-			if (interfaceFollowsMXBeanConvention(subInterfaze)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private static boolean isJmxMBean(Class<?> clazz) {
-		return ConcurrentJmxMBean.class.isAssignableFrom(clazz) || EventloopJmxMBean.class.isAssignableFrom(clazz);
-	}
-
-	private static boolean isDynamicMBean(Class<?> clazz) {
-		return DynamicMBean.class.isAssignableFrom(clazz);
-	}
-
-	private static boolean isMBean(Class<?> clazz) {
-		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz) || isDynamicMBean(clazz);
 	}
 
 	// region jmx

@@ -30,7 +30,7 @@ import java.util.Set;
 import static io.datakernel.common.Preconditions.checkState;
 
 public final class RpcStrategyTypeDispatching implements RpcStrategy {
-	private Map<Class<?>, RpcStrategy> dataTypeToStrategy = new HashMap<>();
+	private final Map<Class<?>, RpcStrategy> dataTypeToStrategy = new HashMap<>();
 	private RpcStrategy defaultStrategy;
 
 	private RpcStrategyTypeDispatching() {}

@@ -78,6 +78,6 @@ class Utils {
 		return result;
 	}
 
-	public static CodecFactory CUBE_TYPES = CodecRegistry.createDefault()
+	public static final CodecFactory CUBE_TYPES = CodecRegistry.createDefault()
 			.with(LocalDate.class, LOCAL_DATE_CODEC);
 }

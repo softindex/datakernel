@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
  */
 @State(org.openjdk.jmh.annotations.Scope.Benchmark)
 @Configuration
+@SuppressWarnings("FieldCanBeLocal")
 public class SpringDiBenchmark {
 	static class Kitchen {
 		private final int places;

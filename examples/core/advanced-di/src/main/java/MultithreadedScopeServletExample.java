@@ -16,7 +16,6 @@ import java.util.function.Function;
 
 //[START EXAMPLE]
 public final class MultithreadedScopeServletExample extends MultithreadedHttpServerLauncher {
-
 	@Provides
 	String string() {
 		return "root string";

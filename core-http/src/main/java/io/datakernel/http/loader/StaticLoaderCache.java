@@ -24,10 +24,10 @@ class StaticLoaderCache implements StaticLoader {
 	@Override
 	public Promise<ByteBuf> load(String path) {
 		byte[] bytes = get.apply(path);
-		if (bytes != null) {
-			return Promise.of(wrapForReading(bytes));
-		} else if (bytes == NOT_FOUND) {
+		if (bytes == NOT_FOUND) {
 			return Promise.ofException(NOT_FOUND_EXCEPTION);
+		} else if (bytes != null) {
+			return Promise.of(wrapForReading(bytes));
 		} else {
 			return doLoad(path);
 		}

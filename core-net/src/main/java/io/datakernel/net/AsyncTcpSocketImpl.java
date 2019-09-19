@@ -332,6 +332,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doRead() throws IOException {
+		assert channel != null;
 		ByteBuf buf = ByteBufPool.allocate(readBufferSize);
 		ByteBuffer buffer = buf.toWriteByteBuffer();
 
@@ -435,6 +436,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doWrite() throws IOException {
+		assert channel != null;
 		if (writeBuf != null) {
 			ByteBuf buf = this.writeBuf;
 			ByteBuffer buffer = buf.toReadByteBuffer();

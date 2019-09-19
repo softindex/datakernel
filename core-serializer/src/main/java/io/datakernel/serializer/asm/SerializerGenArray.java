@@ -142,6 +142,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 								)));
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -151,8 +152,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 
 		if (fixedSize != that.fixedSize) return false;
 		if (nullable != that.nullable) return false;
-		if (!Objects.equals(valueSerializer, that.valueSerializer))
-			return false;
+		if (!Objects.equals(valueSerializer, that.valueSerializer)) return false;
 		if (!Objects.equals(type, that.type)) return false;
 		return true;
 

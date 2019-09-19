@@ -1506,6 +1506,7 @@ public class AggregationPredicates {
 			return new RangeScan(from, to);
 		}
 
+		@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 		public boolean isNoScan() {
 			return from == null;
 		}

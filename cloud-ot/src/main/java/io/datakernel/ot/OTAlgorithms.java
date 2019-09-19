@@ -271,7 +271,7 @@ public final class OTAlgorithms {
 		return reduce(repository, system, startNodes,
 				new GraphReducer<K, D, Set<K>>() {
 					long minLevel;
-					Set<K> nodes = new HashSet<>(startNodes);
+					final Set<K> nodes = new HashSet<>(startNodes);
 
 					@Override
 					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {

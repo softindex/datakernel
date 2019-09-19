@@ -43,9 +43,7 @@ final class ExpressionIf implements Expression {
 
 		g.ifCmp(conditionType, GeneratorAdapter.EQ, labelTrue);
 
-		if (right != null) {
-			right.load(ctx);
-		}
+		right.load(ctx);
 
 		g.goTo(labelExit);
 

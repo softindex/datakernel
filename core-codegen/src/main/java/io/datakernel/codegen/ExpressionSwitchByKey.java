@@ -79,6 +79,7 @@ final class ExpressionSwitchByKey implements Expression {
 		return resultType;
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

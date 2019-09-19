@@ -31,7 +31,7 @@ public class ComputedMeasures {
 	private static final class E extends Expressions {}
 
 	public static abstract class AbstractComputedMeasure implements ComputedMeasure {
-		protected Set<ComputedMeasure> dependencies;
+		protected final Set<ComputedMeasure> dependencies;
 
 		public AbstractComputedMeasure(ComputedMeasure... dependencies) {
 			this.dependencies = new LinkedHashSet<>(Arrays.asList(dependencies));

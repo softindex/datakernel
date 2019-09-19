@@ -41,7 +41,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 	private int suspended = 0;
 
 	private boolean lenient = false;
-	private List<Throwable> lenientExceptions = new ArrayList<>();
+	private final List<Throwable> lenientExceptions = new ArrayList<>();
 
 	private StreamSplitter() {
 		input = new Input();

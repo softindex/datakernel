@@ -30,8 +30,8 @@ public final class RecordScheme {
 	int longs;
 	int floats;
 
-	Map<String, Integer> fieldIndices = new HashMap<>();
-	Map<String, Integer> fieldRawIndices = new HashMap<>();
+	final Map<String, Integer> fieldIndices = new HashMap<>();
+	final Map<String, Integer> fieldRawIndices = new HashMap<>();
 	String[] fields = {};
 	int[] rawIndices = {};
 

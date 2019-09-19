@@ -56,8 +56,8 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 	@Nullable
 	private List<String> readingHeaders = null;
 
-	private byte[] boundary;
-	private byte[] lastBoundary;
+	private final byte[] boundary;
+	private final byte[] lastBoundary;
 
 	private MultipartParser(String boundary) {
 		this.boundary = ("--" + boundary).getBytes(UTF_8);

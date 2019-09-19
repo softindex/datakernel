@@ -34,8 +34,8 @@ public final class AcceptMediaType {
 	public static final int DEFAULT_Q = 100;
 	private static final byte[] Q_KEY = {'q'};
 
-	private MediaType mime;
-	private int q;
+	private final MediaType mime;
+	private final int q;
 
 	private AcceptMediaType(MediaType mime, int q) {
 		this.mime = mime;

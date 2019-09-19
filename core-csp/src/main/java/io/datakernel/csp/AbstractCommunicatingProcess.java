@@ -42,7 +42,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 	private boolean processStarted;
 	private boolean processComplete;
-	private SettablePromise<Void> processCompletion = new SettablePromise<>();
+	private final SettablePromise<Void> processCompletion = new SettablePromise<>();
 
 	protected void beforeProcess() {
 	}

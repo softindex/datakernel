@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
@@ -67,10 +68,9 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	@Override
 	public final Map<String, Object> aggregateAttributes(@NotNull Set<String> attrNames, @NotNull List<?> sources) {
-		assert attrNames.size() == 1;
+		checkArgument(attrNames.size() == 1);
 		String attrName = first(attrNames);
-		assert name.equals(attrName);
-		assert sources != null;
+		checkArgument(name.equals(attrName));
 
 		if (sources.size() == 0) {
 			return singletonMap(attrName, null);
@@ -78,7 +78,6 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 		return Collections.singletonMap(name, aggregateAttribute(attrName, sources));
 	}
-
 
 	/**
 	 * It's guaranteed that list of sources is not empty and it doesn't contain null values

@@ -198,7 +198,7 @@ public final class RemoteFsCommands {
 	}
 
 	public static final class List extends FsCommand {
-		private String glob;
+		private final String glob;
 		private final boolean tombstones;
 
 		public List(String glob, boolean tombstones) {

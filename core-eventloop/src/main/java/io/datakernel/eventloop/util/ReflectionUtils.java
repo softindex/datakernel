@@ -337,10 +337,6 @@ public final class ReflectionUtils {
 	 * If annotation has no elements, string looks like this : "AnnotationName"
 	 * If annotation has a single element with the name "value", string looks like this : "AnnotationName(someValue)"
 	 * If annotation has one or more custom elements, string looks like this : "(key1=value1,key2=value2)"
-	 *
-	 * @param annotation
-	 * @return String representation of annotation with its elements
-	 * @throws ReflectiveOperationException
 	 */
 	public static String getAnnotationString(Annotation annotation) throws ReflectiveOperationException {
 		Class<? extends Annotation> annotationType = annotation.annotationType();

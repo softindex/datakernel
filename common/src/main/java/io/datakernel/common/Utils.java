@@ -195,9 +195,9 @@ public class Utils {
 
 	@Nullable
 	@Contract("_, _, _ -> null")
-	public static <V, T1> V nullify(@Nullable V value, @NotNull BiConsumer<@NotNull V, T1> action, T1 actionArg1) {
+	public static <V, A> V nullify(@Nullable V value, @NotNull BiConsumer<@NotNull V, A> action, A actionArg) {
 		if (value != null) {
-			action.accept(value, actionArg1);
+			action.accept(value, actionArg);
 		}
 		return null;
 	}

@@ -130,10 +130,10 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		return response;
 	}
 
-	private static Pattern splitter = Pattern.compile(",");
+	private static final Pattern SPLITTER = Pattern.compile(",");
 
 	private static List<String> split(String input) {
-		return splitter.splitAsStream(input)
+		return SPLITTER.splitAsStream(input)
 				.map(String::trim)
 				.filter(s -> !s.isEmpty())
 				.collect(toList());

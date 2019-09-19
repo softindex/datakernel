@@ -24,8 +24,8 @@ import static java.util.Collections.unmodifiableList;
  * Represents a query to aggregation. Contains the list of requested keys, fields, predicates and orderings.
  */
 public final class AggregationQuery {
-	private List<String> keys = new ArrayList<>();
-	private List<String> measures = new ArrayList<>();
+	private final List<String> keys = new ArrayList<>();
+	private final List<String> measures = new ArrayList<>();
 	private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
 
 	public static AggregationQuery create() {

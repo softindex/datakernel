@@ -47,7 +47,7 @@ public final class OptimizedSelectedKeysSet extends AbstractSet<SelectionKey> {
 
 	/**
 	 * @param index the pointer to the Selection key from the array,
-	 *              should be in rage of {@param sise}
+	 *              must be in range of {@param size}
 	 * @return the {@link SelectionKey} from the array by index
 	 */
 	@Nullable

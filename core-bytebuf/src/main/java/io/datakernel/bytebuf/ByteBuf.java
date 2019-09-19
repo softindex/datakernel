@@ -50,6 +50,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 		boolean assertsEnabled = false;
 		//noinspection AssertWithSideEffects
 		assert (assertsEnabled = true);
+		//noinspection ConstantConditions
 		CHECK_RECYCLE = ByteBufPool.REGISTRY || assertsEnabled;
 	}
 

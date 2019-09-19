@@ -64,7 +64,7 @@ public final class OTCommit<K, D> {
 	}
 
 	public static <K, D> OTCommit<K, D> of(int epoch, K id, Set<K> parents, Function<K, List<D>> diffs, Function<K, Long> levels) {
-		return of(epoch, id, (Map<K, DiffsWithLevel<D>>) parents.stream()
+		return of(epoch, id, parents.stream()
 				.collect(toMap(
 						parent -> parent,
 						parent -> new DiffsWithLevel<>(levels.apply(parent), diffs.apply(parent)),

@@ -130,9 +130,8 @@ public interface StreamConsumer<T> extends Cancellable {
 
 	default StreamConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
 		Promise<Void> acknowledgement = getAcknowledgement();
-		Promise<Void> suppliedAcknowledgement = fn.apply(acknowledgement);
-		if (acknowledgement == suppliedAcknowledgement) return this;
-		Promise<Void> newAcknowledgement = suppliedAcknowledgement;
+		Promise<Void> newAcknowledgement = fn.apply(acknowledgement);
+		if (acknowledgement == newAcknowledgement) return this;
 		return new ForwardingStreamConsumer<T>(this) {
 			@Override
 			public Promise<Void> getAcknowledgement() {

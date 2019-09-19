@@ -63,7 +63,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 public final class DatagraphSerialization implements Initializable<DatagraphSerialization> {
 	static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class);
 
-	final class CodecProvider<T> {
+	static final class CodecProvider<T> {
 		private StructuredCodec<T> ref;
 		private final Supplier<StructuredCodec<T>> supplier;
 

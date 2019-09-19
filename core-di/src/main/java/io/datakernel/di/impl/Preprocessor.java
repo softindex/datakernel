@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -295,7 +296,7 @@ public final class Preprocessor {
 		String getHintFor(Entry<Key<?>, Binding<?>> keybind, Key<?> missing, Set<Key<?>> upperKnown, Trie<Scope, Map<Key<?>, Binding<?>>> bindings);
 	}
 
-	private static final List<MissingKeyHint> missingKeyHints = Arrays.asList(
+	private static final List<MissingKeyHint> missingKeyHints = asList(
 			(missing, upperKnown, bindings) -> {
 				if (missing.getRawType() != InstanceFactory.class && missing.getRawType() != InstanceProvider.class) {
 					return null;
@@ -304,7 +305,7 @@ public final class Preprocessor {
 			}
 	);
 
-	private static final List<ErrorHint> errorHints = Arrays.asList(
+	private static final List<ErrorHint> errorHints = asList(
 			(keybind, missing, upperKnown, bindings) -> {
 				Class<?> rawType = keybind.getKey().getRawType();
 				if (Modifier.isStatic(rawType.getModifiers()) || !missing.getRawType().equals(rawType.getEnclosingClass())) {

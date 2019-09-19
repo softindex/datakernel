@@ -91,8 +91,8 @@ public final class BasicAuth implements AsyncServlet {
 	}
 
 	public static final class BasicAuthCredentials {
-		private String username;
-		private String password;
+		private final String username;
+		private final String password;
 
 		public BasicAuthCredentials(String username, String password) {
 			this.username = username;

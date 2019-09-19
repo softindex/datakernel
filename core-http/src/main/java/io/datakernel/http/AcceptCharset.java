@@ -34,8 +34,8 @@ public final class AcceptCharset {
 	public static final int DEFAULT_Q = 100;
 	private static final byte[] Q_KEY = encodeAscii("q");
 
-	private HttpCharset charset;
-	private int q;
+	private final HttpCharset charset;
+	private final int q;
 
 	private AcceptCharset(HttpCharset charset, int q) {
 		this.charset = charset;

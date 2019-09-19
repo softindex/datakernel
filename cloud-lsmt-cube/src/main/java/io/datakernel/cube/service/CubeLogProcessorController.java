@@ -47,10 +47,10 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	private boolean parallelRunner;
 
-	private PromiseStats promiseProcessLogs = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private PromiseStats promiseProcessLogsImpl = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
-	private ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
+	private final PromiseStats promiseProcessLogs = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseProcessLogsImpl = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final ValueStats addedChunks = ValueStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final ValueStats addedChunksRecords = ValueStats.create(DEFAULT_SMOOTHING_WINDOW).withRate();
 
 	CubeLogProcessorController(Eventloop eventloop,
 			List<LogOTProcessor<?, CubeDiff>> logProcessors,

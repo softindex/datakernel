@@ -316,7 +316,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 	// endregion
 
-	@SuppressWarnings("Duplicates")
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
@@ -346,7 +345,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert connection.pool == poolKeepAlive;
 		assert connection.remoteAddress.equals(address);
 		connection.pool.removeNode(connection); // moving from keep-alive state to taken(null) state
-		connection.pool = null;
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (connection.pool = null) == null;
 		if (addresses.isEmpty()) {
 			this.addresses.remove(address);
 		}
@@ -467,7 +467,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
-		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
+		SettablePromise<Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();

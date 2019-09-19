@@ -27,7 +27,7 @@ public abstract class AbstractModule implements Module {
 	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators;
 	private Map<Key<?>, Multibinder<?>> multibinders;
 
-	private AtomicBoolean configured = new AtomicBoolean();
+	private final AtomicBoolean configured = new AtomicBoolean();
 
 	@Nullable
 	private ModuleBuilder builder = null;
@@ -357,11 +357,6 @@ public abstract class AbstractModule implements Module {
 	@Override
 	public Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
 		return Module.super.rebindImports(rebinder);
-	}
-
-	@Override
-	public Trie<Scope, Map<Key<?>, Binding<?>>> getReducedBindings() {
-		return Module.super.getReducedBindings();
 	}
 
 	// endregion

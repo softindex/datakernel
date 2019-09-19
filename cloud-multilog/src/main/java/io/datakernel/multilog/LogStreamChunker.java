@@ -57,6 +57,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 		input.get()
 				.whenResult(buf -> {
 					if (buf != null) {
+						//noinspection ConstantConditions
 						ensureConsumer()
 								.then($ -> currentConsumer.accept(buf))
 								.whenResult($ -> doProcess());

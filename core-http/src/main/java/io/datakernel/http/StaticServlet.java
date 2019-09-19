@@ -46,7 +46,7 @@ public final class StaticServlet implements AsyncServlet {
 	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
 	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
 	private Supplier<HttpResponse> responseSupplier = HttpResponse::ok200;
-	private Set<String> indexResources = new LinkedHashSet<>();
+	private final Set<String> indexResources = new LinkedHashSet<>();
 
 	@Nullable
 	private String defaultResource;

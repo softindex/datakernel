@@ -30,6 +30,7 @@ public final class ConcurrentStackPoolTest {
 		initByteBufPool();
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testBase() {
 		ConcurrentStackPool<Supplier<String>> pool = new ConcurrentStackPool<>(new Supplier<Supplier<String>>() {

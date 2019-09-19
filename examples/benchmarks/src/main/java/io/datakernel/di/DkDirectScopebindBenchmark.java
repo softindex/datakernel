@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
  * @since 3.0.0
  */
 @State(Scope.Benchmark)
+@SuppressWarnings("FieldCanBeLocal")
 public class DkDirectScopebindBenchmark {
 
 	static class Kitchen {

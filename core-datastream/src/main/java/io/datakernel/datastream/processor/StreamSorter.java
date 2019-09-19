@@ -43,8 +43,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	private final boolean distinct;
 	private final int itemsInMemory;
 
-	private Input input;
-	private StreamSupplier<T> output;
+	private final Input input;
+	private final StreamSupplier<T> output;
 	private StreamConsumer<T> outputConsumer;
 
 	// region creators

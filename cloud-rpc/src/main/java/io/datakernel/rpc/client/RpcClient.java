@@ -94,7 +94,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private RpcStrategy strategy = new NoServersStrategy();
 	private List<InetSocketAddress> addresses = new ArrayList<>();
-	private Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
+	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 
 	private MemSize defaultPacketSize = DEFAULT_PACKET_SIZE;
 	private MemSize maxPacketSize = MAX_PACKET_SIZE;
@@ -119,7 +119,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private boolean running;
 
-	private final RpcClientConnectionPool pool = address -> connections.get(address);
+	private final RpcClientConnectionPool pool = connections::get;
 
 	// jmx
 	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);

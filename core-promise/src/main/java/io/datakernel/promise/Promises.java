@@ -1625,7 +1625,7 @@ public final class Promises {
 	}
 
 	private static final class PromiseToArray<T> extends NextPromise<T, T[]> {
-		@Nullable T[] accumulator;
+		final T[] accumulator;
 		int countdown;
 
 		private PromiseToArray(@NotNull T[] accumulator) {
@@ -1638,9 +1638,7 @@ public final class Promises {
 			}
 			accumulator[i] = result;
 			if (--countdown == 0) {
-				T[] accumulator = this.accumulator;
-				this.accumulator = null;
-				complete(accumulator);
+				complete(this.accumulator);
 			}
 		}
 
@@ -1655,7 +1653,7 @@ public final class Promises {
 	}
 
 	private static final class PromiseToList<T> extends NextPromise<T, List<T>> {
-		@Nullable Object[] accumulator;
+		final Object[] accumulator;
 		int countdown;
 
 		private PromiseToList(@NotNull T[] accumulator) {
@@ -1669,9 +1667,7 @@ public final class Promises {
 			}
 			accumulator[i] = result;
 			if (--countdown == 0) {
-				Object[] accumulator = this.accumulator;
-				this.accumulator = null;
-				complete((List<T>) asList(accumulator));
+				complete((List<T>) asList(this.accumulator));
 			}
 		}
 

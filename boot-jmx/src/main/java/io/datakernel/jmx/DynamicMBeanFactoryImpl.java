@@ -16,7 +16,6 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBean;
@@ -47,6 +46,7 @@ import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.eventloop.util.ReflectionUtils.*;
+import static io.datakernel.jmx.Utils.allInstancesAreOfSameType;
 import static java.lang.Math.ceil;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -122,7 +122,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	public DynamicMBean createDynamicMBean(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh) {
 		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
 		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
-		checkArgument(CollectionUtils.allItemsHaveSameType(monitorables), "Monitorables should be of the same type");
+		checkArgument(allInstancesAreOfSameType(monitorables), "Monitorables should be of the same type");
 
 		Object firstMBean = monitorables.get(0);
 		Class<?> mbeanClass = firstMBean.getClass();

@@ -167,14 +167,13 @@ public final class SerializerBuilder {
 		return builder;
 	}
 
-	private <A extends Annotation, P extends Annotation> SerializerBuilder setAnnotationHandler(Class<A> annotation,
+	private <A extends Annotation, P extends Annotation> void setAnnotationHandler(Class<A> annotation,
 			Class<P> annotationPlural,
 			AnnotationHandler<A, P> annotationHandler) {
 		annotationsMap.put(annotation, annotationHandler);
 		if (annotationPlural != null) {
 			annotationsExMap.put(annotation, annotationPlural);
 		}
-		return this;
 	}
 
 	public SerializerBuilder withCompatibilityLevel(CompatibilityLevel compatibilityLevel) {
@@ -811,7 +810,7 @@ public final class SerializerBuilder {
 		}
 
 		private final class Value {
-			public String method;
+			public final String method;
 			@Nullable
 			public Expression expression;
 
@@ -821,8 +820,8 @@ public final class SerializerBuilder {
 			}
 		}
 
-		private Map<Key, Value> mapSerialize = new HashMap<>();
-		private Map<Key, Value> mapDeserialize = new HashMap<>();
+		private final Map<Key, Value> mapSerialize = new HashMap<>();
+		private final Map<Key, Value> mapDeserialize = new HashMap<>();
 
 		public boolean startSerializeStaticMethod(SerializerGen serializerGen, int version) {
 			boolean b = mapSerialize.containsKey(new Key(serializerGen, version));

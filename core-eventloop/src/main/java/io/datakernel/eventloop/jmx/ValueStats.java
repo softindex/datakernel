@@ -260,9 +260,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		totalCount = 0;
 
 		if (histogramLevels != null) {
-			for (int i = 0; i < histogramValues.length; i++) {
-				histogramValues[i] = 0;
-			}
+			Arrays.fill(histogramValues, 0);
 		}
 	}
 
@@ -383,8 +381,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		double lastMin = (lastMinInteger < lastMinDouble) ? lastMinInteger : lastMinDouble;
 		double lastMax = (lastMaxInteger > lastMaxDouble) ? lastMaxInteger : lastMaxDouble;
 
-		absoluteMinValue = (absoluteMinValue < lastMin) ? absoluteMinValue : lastMin;
-		absoluteMaxValue = (absoluteMaxValue > lastMax) ? absoluteMaxValue : lastMax;
+		absoluteMinValue = min(absoluteMinValue, lastMin);
+		absoluteMaxValue = max(absoluteMaxValue, lastMax);
 
 		if (lastTimestampMillis == 0L) {
 			smoothedSum = lastSum;
@@ -707,8 +705,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		String negInf = "-∞";
 		String posInf = "+∞";
 
-		int maxLeftSymbols = Math.max(negInf.length(), maxLevelStrLen);
-		int maxRightSymbols = Math.max(posInf.length(), maxLevelStrLen);
+		int maxLeftSymbols = max(negInf.length(), maxLevelStrLen);
+		int maxRightSymbols = max(posInf.length(), maxLevelStrLen);
 
 		String pattern = "%" + maxLeftSymbols + "s, %" + maxRightSymbols + "s";
 

@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+@SuppressWarnings("DeprecatedIsStillUsed")
 public enum CompatibilityLevel {
 	/**
 	 * Provides basic version of serializer

@@ -160,6 +160,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeaderBuf(ByteBuf buf) {
+		//noinspection ConstantConditions
 		request.addHeaderBuf(buf);
 	}
 
@@ -209,6 +210,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
+		//noinspection ConstantConditions
 		if (request.headers.size() >= MAX_HEADERS) {
 			throw TOO_MANY_HEADERS;
 		}
@@ -238,6 +240,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
+		//noinspection ConstantConditions
 		request.flags |= MUST_LOAD_BODY;
 		request.body = body;
 		request.bodyStream = bodySupplier;
@@ -330,7 +333,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			request.recycle();
 			request = null;
 		}
+		//noinspection ConstantConditions
 		pool.removeNode(this);
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (pool = null) == null;
 		server.onConnectionClosed();
 	}
 

@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.jmx.JmxRefreshable;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
 import java.util.List;
@@ -41,7 +42,7 @@ interface AttributeNode {
 
 	boolean isSettable(@NotNull String attrName);
 
-	void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) throws SetterException;
+	void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<@Nullable ?> targets) throws SetterException;
 
 	boolean isVisible();
 

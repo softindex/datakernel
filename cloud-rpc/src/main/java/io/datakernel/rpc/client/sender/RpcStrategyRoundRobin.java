@@ -64,7 +64,7 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 
 	static final class Sender implements RpcSender {
 		private int nextSender;
-		private RpcSender[] subSenders;
+		private final RpcSender[] subSenders;
 
 		Sender(@NotNull List<RpcSender> senders) {
 			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");

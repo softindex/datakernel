@@ -376,8 +376,7 @@ public abstract class AbstractHttpConnection {
 				});
 	}
 
-	@Nullable
-	public static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
+	static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
 		if (httpMessage.body != null) {
 			ByteBuf body = httpMessage.body;
 			httpMessage.body = null;
@@ -417,6 +416,7 @@ public abstract class AbstractHttpConnection {
 		if ((httpMessage.flags & HttpMessage.USE_GZIP) != 0) {
 			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
+			//noinspection ConstantConditions
 			bodyStream.bindTo(deflater.getInput());
 			bodyStream = deflater.getOutput().getSupplier();
 		}
@@ -424,6 +424,7 @@ public abstract class AbstractHttpConnection {
 		if (httpMessage.headers.get(CONTENT_LENGTH) == null) {
 			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
 			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
+			//noinspection ConstantConditions
 			bodyStream.bindTo(chunker.getInput());
 			bodyStream = chunker.getOutput().getSupplier();
 		}
@@ -473,6 +474,7 @@ public abstract class AbstractHttpConnection {
 	}
 
 	protected void switchPool(ConnectionsLinkedList newPool) {
+		//noinspection ConstantConditions
 		pool.removeNode(this);
 		(pool = newPool).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();

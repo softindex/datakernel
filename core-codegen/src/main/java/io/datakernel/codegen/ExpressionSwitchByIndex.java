@@ -72,6 +72,7 @@ final class ExpressionSwitchByIndex implements Expression {
 		return listItemType;
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;

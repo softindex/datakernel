@@ -72,12 +72,12 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 		}
 	}
 
-	Map<Trigger, TriggerResult> suppressedResults = new LinkedHashMap<>();
-	private Map<Trigger, TriggerResult> cachedResults = new LinkedHashMap<>();
+	private final Map<Trigger, TriggerResult> suppressedResults = new LinkedHashMap<>();
+	private final Map<Trigger, TriggerResult> cachedResults = new LinkedHashMap<>();
 	private Map<Trigger, TriggerWithResult> maxSeverityResults = new LinkedHashMap<>();
 	private long cachedTimestamp;
 
-	private Predicate<TriggerWithResult> isNotSuppressed = triggerWithResult -> {
+	private final Predicate<TriggerWithResult> isNotSuppressed = triggerWithResult -> {
 		Trigger trigger = triggerWithResult.trigger;
 		if (suppressedResults.containsKey(trigger)) {
 			TriggerResult suppressedTriggerResult = suppressedResults.get(trigger);

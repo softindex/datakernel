@@ -90,7 +90,7 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		@NotNull
 		@Override
 		public Eventloop getEventloop() {
-			return null;
+			throw new UnsupportedOperationException();
 		}
 	}
 
@@ -105,7 +105,7 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		@NotNull
 		@Override
 		public Eventloop getEventloop() {
-			return null;
+			throw new UnsupportedOperationException();
 		}
 	}
 
@@ -120,7 +120,7 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		@NotNull
 		@Override
 		public Eventloop getEventloop() {
-			return null;
+			throw new UnsupportedOperationException();
 		}
 	}
 

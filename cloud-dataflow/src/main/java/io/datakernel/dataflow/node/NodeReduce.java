@@ -88,7 +88,7 @@ public final class NodeReduce<K, O, A> implements Node {
 		for(StreamId streamId : inputs.keySet()) {
 			Input<K, O, A> koaInput = inputs.get(streamId);
 			StreamConsumer<Object> input = streamReducer.newInput(
-					((Function<Object, K>) koaInput.keyFunction)::apply,
+					((Function<Object, K>) koaInput.keyFunction),
 					(Reducer<K, Object, O, A>) koaInput.reducer);
 			taskContext.bindChannel(streamId, input);
 		}

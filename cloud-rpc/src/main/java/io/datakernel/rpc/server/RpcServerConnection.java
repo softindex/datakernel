@@ -50,8 +50,8 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	private final InetAddress remoteAddress;
 	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private final ValueStats requestHandlingTime = ValueStats.create(RpcServer.SMOOTHING_WINDOW).withUnit("milliseconds");
-	private EventStats successfulRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
-	private EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
+	private final EventStats successfulRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
+	private final EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
 	private boolean monitoring = false;
 
 	RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,

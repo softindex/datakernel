@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Set;
 
 public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
-	private StreamConsumer<T> consumer;
+	private final StreamConsumer<T> consumer;
 
 	public ForwardingStreamConsumer(StreamConsumer<T> consumer) {
 		this.consumer = consumer;

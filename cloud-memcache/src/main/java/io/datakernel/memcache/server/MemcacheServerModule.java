@@ -5,7 +5,6 @@ import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 import io.datakernel.memcache.protocol.SerializerGenSlice;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;

@@ -51,6 +51,7 @@ public final class RpcStream {
 		void onSenderSuspended();
 	}
 
+	@SuppressWarnings("FieldCanBeLocal")
 	private final boolean server;
 	private final AsyncTcpSocket socket;
 	private Listener listener;

@@ -49,7 +49,6 @@ import io.datakernel.ot.OTState;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +74,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.entriesToMap;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static io.datakernel.cube.Utils.createResultClass;
+import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -147,7 +147,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	// state
-	private Map<String, AggregationContainer> aggregations = new LinkedHashMap<>();
+	private final Map<String, AggregationContainer> aggregations = new LinkedHashMap<>();
 
 	private CubeClassLoaderCache classLoaderCache;
 
@@ -234,10 +234,10 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public static final class AggregationConfig implements Initializable<AggregationConfig> {
 		private final String id;
-		private List<String> dimensions = new ArrayList<>();
-		private List<String> measures = new ArrayList<>();
+		private final List<String> dimensions = new ArrayList<>();
+		private final List<String> measures = new ArrayList<>();
 		private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
-		private List<String> partitioningKey = new ArrayList<>();
+		private final List<String> partitioningKey = new ArrayList<>();
 		private int chunkSize;
 		private int reducerBufferSize;
 		private int sorterItemsInMemory;
@@ -368,40 +368,40 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return this;
 	}
 
-	@Nullable
+	@NotNull
 	public Class<?> getAttributeInternalType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getInternalDataType();
 		if (attributeTypes.containsKey(attribute))
 			return attributeTypes.get(attribute);
-		return null;
+		throw new IllegalArgumentException("No attribute: " + attribute);
 	}
 
-	@Nullable
+	@NotNull
 	public Class<?> getMeasureInternalType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getInternalDataType();
 		if (computedMeasures.containsKey(field))
 			return computedMeasures.get(field).getType(measures);
-		return null;
+		throw new IllegalArgumentException("No measure: " + field);
 	}
 
-	@Nullable
+	@NotNull
 	public Type getAttributeType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getDataType();
 		if (attributeTypes.containsKey(attribute))
 			return attributeTypes.get(attribute);
-		return null;
+		throw new IllegalArgumentException("No attribute: " + attribute);
 	}
 
-	@Nullable
+	@NotNull
 	public Type getMeasureType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getDataType();
 		if (computedMeasures.containsKey(field))
 			return computedMeasures.get(field).getType(measures);
-		return null;
+		throw new IllegalArgumentException("No measure: " + field);
 	}
 
 	@Override
@@ -794,22 +794,22 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
 		Map<String, Object> fullySpecifiedDimensions;
 
-		Set<String> resultDimensions = new LinkedHashSet<>();
-		Set<String> resultAttributes = new LinkedHashSet<>();
+		final Set<String> resultDimensions = new LinkedHashSet<>();
+		final Set<String> resultAttributes = new LinkedHashSet<>();
 
-		Set<String> resultMeasures = new LinkedHashSet<>();
-		Set<String> resultStoredMeasures = new LinkedHashSet<>();
-		Set<String> resultComputedMeasures = new LinkedHashSet<>();
+		final Set<String> resultMeasures = new LinkedHashSet<>();
+		final Set<String> resultStoredMeasures = new LinkedHashSet<>();
+		final Set<String> resultComputedMeasures = new LinkedHashSet<>();
 
 		Class<R> resultClass;
 		Predicate<R> havingPredicate;
-		List<String> resultOrderings = new ArrayList<>();
+		final List<String> resultOrderings = new ArrayList<>();
 		Comparator<R> comparator;
 		MeasuresFunction<R> measuresFunction;
 		TotalsFunction<R, R> totalsFunction;
 
-		List<String> recordAttributes = new ArrayList<>();
-		List<String> recordMeasures = new ArrayList<>();
+		final List<String> recordAttributes = new ArrayList<>();
+		final List<String> recordMeasures = new ArrayList<>();
 		RecordScheme recordScheme;
 		RecordFunction recordFunction;
 
@@ -1119,10 +1119,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (limit == null) {
 				end = results.size();
 				limit = results.size();
-			} else if (start + limit > results.size()) {
-				end = results.size();
 			} else {
-				end = start + limit;
+				end = min(start + limit, results.size());
 			}
 
 			if (comparator != null) {

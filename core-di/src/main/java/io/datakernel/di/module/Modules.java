@@ -20,7 +20,7 @@ import static java.util.stream.Collectors.*;
  * This class contains a set of utilities for working with {@link Module modules}.
  */
 public final class Modules {
-	static Module EMPTY = new SimpleModule(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
+	static final Module EMPTY = new SimpleModule(Trie.leaf(emptyMap()), emptyMap(), emptyMap(), emptyMap());
 
 	/**
 	 * Combines multiple modules into one.

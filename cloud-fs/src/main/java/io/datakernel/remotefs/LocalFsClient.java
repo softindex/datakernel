@@ -114,7 +114,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		}
 	}
 
-	public static Duration DEFAULT_TOMBSTONE_TTL = Duration.ofHours(1);
+	public static final Duration DEFAULT_TOMBSTONE_TTL = Duration.ofHours(1);
 
 	public static final char FILE_SEPARATOR_CHAR = '/';
 

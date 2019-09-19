@@ -20,10 +20,10 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 	private static final Logger logger = LoggerFactory.getLogger(AttributeNodeForConverterType.class);
 
 	@Nullable
-	private Method setter;
-	private Function<T, String> to;
+	private final Method setter;
+	private final Function<T, String> to;
 	@Nullable
-	private Function<String, T> from;
+	private final Function<String, T> from;
 
 	public AttributeNodeForConverterType(String name, @Nullable String description, ValueFetcher fetcher,
 			boolean visible, @Nullable Method setter,

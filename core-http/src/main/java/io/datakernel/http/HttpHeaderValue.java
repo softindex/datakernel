@@ -139,7 +139,7 @@ public abstract class HttpHeaderValue {
 
 	static final class HttpHeaderValueOfContentType extends HttpHeaderValue {
 		@NotNull
-		private ContentType type;
+		private final ContentType type;
 
 		HttpHeaderValueOfContentType(@NotNull ContentType type) {
 			this.type = type;

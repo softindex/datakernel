@@ -252,26 +252,23 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return "color=" + (colorOrAttribute.startsWith("#") ? "\"" + colorOrAttribute + "\"" : colorOrAttribute);
 	}
 
-	public ServiceGraph add(Key key, @Nullable Service service, Key... dependencies) {
+	public void add(Key key, @Nullable Service service, Key... dependencies) {
 		checkArgument(!services.containsKey(key), "Key has already been added");
 		if (service != null) {
 			services.put(key, service);
 		}
 		add(key, asList(dependencies));
-		return this;
 	}
 
-	public ServiceGraph add(Key key, Collection<Key> dependencies) {
+	public void add(Key key, Collection<Key> dependencies) {
 		for (Key dependency : dependencies) {
 			forwards.computeIfAbsent(key, o -> new HashSet<>()).add(dependency);
 			backwards.computeIfAbsent(dependency, o -> new HashSet<>()).add(key);
 		}
-		return this;
 	}
 
-	public ServiceGraph add(Key key, Key first, Key... rest) {
+	public void add(Key key, Key first, Key... rest) {
 		add(key, concat(singletonList(first), asList(rest)));
-		return this;
 	}
 
 	synchronized public boolean isStarted() {

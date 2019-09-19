@@ -38,6 +38,7 @@ final class ExpressionArrayGet implements Expression {
 		return type;
 	}
 
+	@SuppressWarnings("RedundantIfStatement")
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -47,7 +48,6 @@ final class ExpressionArrayGet implements Expression {
 
 		if (!array.equals(that.array)) return false;
 		if (!index.equals(that.index)) return false;
-
 		return true;
 	}
 

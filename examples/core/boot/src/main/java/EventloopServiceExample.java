@@ -39,7 +39,7 @@ public class EventloopServiceExample extends Launcher {
 	@Override
 	protected void run() { }
 
-	private class CustomEventloopService implements EventloopService {
+	private static final class CustomEventloopService implements EventloopService {
 		private final Executor executor;
 		private final Eventloop eventloop;
 
@@ -64,9 +64,7 @@ public class EventloopServiceExample extends Launcher {
 		public @NotNull Promise<?> stop() {
 			System.out.println(String.format("|%s|", "Eventloop-Service stopping".toUpperCase()));
 			return Promise.ofBlockingRunnable(executor,
-						() -> {
-							System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase()));
-						});
+						() -> System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase())));
 		}
 	}
 

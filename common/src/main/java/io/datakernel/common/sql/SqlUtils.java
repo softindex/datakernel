@@ -18,12 +18,12 @@ package io.datakernel.common.sql;
 
 import javax.sql.DataSource;
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 import static io.datakernel.common.Utils.loadResource;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class SqlUtils {
 
@@ -32,7 +32,7 @@ public class SqlUtils {
 	}
 
 	public static void executeScript(DataSource dataSource, String scriptName) throws SQLException, IOException {
-		String sql = new String(loadResource(scriptName), Charset.forName("UTF-8"));
+		String sql = new String(loadResource(scriptName), UTF_8);
 		execute(dataSource, sql);
 	}
 

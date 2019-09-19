@@ -29,8 +29,8 @@ final class TypedModsMap {
 	private final Map<Integer, TypedModsMap> children;
 
 	public static class Builder {
-		private List<SerializerGenBuilder> mods = new ArrayList<>();
-		private Map<Integer, Builder> children = new LinkedHashMap<>();
+		private final List<SerializerGenBuilder> mods = new ArrayList<>();
+		private final Map<Integer, Builder> children = new LinkedHashMap<>();
 
 		public void add(SerializerGenBuilder serializerGenBuilder) {
 			mods.add(serializerGenBuilder);

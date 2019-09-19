@@ -78,8 +78,8 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	private boolean implInterface;
-	private Class<?> dataTypeIn;
-	private Class<?> dataTypeOut;
+	private final Class<?> dataTypeIn;
+	private final Class<?> dataTypeOut;
 	private List<SerializerForType> generics;
 
 	private final Map<String, FieldGen> fields = new LinkedHashMap<>();
@@ -92,9 +92,7 @@ public class SerializerGenClass implements SerializerGen {
 
 	public SerializerGenClass(@NotNull Class<?> type) {
 		this.dataTypeIn = type;
-		if (!dataTypeIn.isInterface()) {
-			this.dataTypeOut = dataTypeIn;
-		}
+		this.dataTypeOut = !dataTypeIn.isInterface() ? dataTypeIn : null;
 	}
 
 	public SerializerGenClass(@NotNull Class<?> type, @NotNull Class<?> typeImpl) {

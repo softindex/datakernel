@@ -587,7 +587,6 @@ public final class TestDI {
 		abstract class Module2<C> extends Module1<C> {
 			@Override
 			protected void configure() {
-				super.configure();
 				bind(TestDI.class).toInstance(TestDI.this);
 				bind(new Key<AndAContainerToo<C>>() {});
 			}

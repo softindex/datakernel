@@ -161,6 +161,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeaderBuf(ByteBuf buf) {
+		//noinspection ConstantConditions
 		response.addHeaderBuf(buf);
 	}
 
@@ -176,6 +177,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert !isClosed();
 
 		HttpResponse response = this.response;
+		//noinspection ConstantConditions
 		response.flags |= MUST_LOAD_BODY;
 		response.body = body;
 		response.bodyStream = bodySupplier;
@@ -183,6 +185,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		SettablePromise<HttpResponse> promise = this.promise;
 		this.promise = null;
+		//noinspection ConstantConditions
 		promise.set(response);
 	}
 
@@ -282,8 +285,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		// pool will be null if socket was closed by the value just before connection.send() invocation
 		// (eg. if connection was in open(null) or taken(null) states)
+		//noinspection ConstantConditions
 		pool.removeNode(this);
-		pool = null;
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (pool = null) == null;
 
 		client.onConnectionClosed();
 		if (response != null) {

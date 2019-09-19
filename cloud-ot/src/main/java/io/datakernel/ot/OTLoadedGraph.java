@@ -107,7 +107,7 @@ public class OTLoadedGraph<K, D> {
 	}
 
 	public boolean hasVisited(K node) {
-		return levels.keySet().contains(node);
+		return levels.containsKey(node);
 	}
 
 	public Map<K, List<? extends D>> getParents(K child) {

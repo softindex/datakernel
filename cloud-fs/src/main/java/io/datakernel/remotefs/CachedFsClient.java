@@ -306,7 +306,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 								}))));
 	}
 
-	private final class CacheStat {
+	private static final class CacheStat {
 		private long numberOfHits;
 		private long lastHitTimestamp;
 
@@ -328,7 +328,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * POJO class that encapsulates stats about file in cache folder.
 	 * Consists of {@link FileMetadata}, number of successful cache hits and a time of the last cache hit occurrence.
 	 */
-	public final class FullCacheStat {
+	public static final class FullCacheStat {
 		private final FileMetadata fileMetadata;
 		private final long numberOfHits;
 		private final long lastHitTimestamp;

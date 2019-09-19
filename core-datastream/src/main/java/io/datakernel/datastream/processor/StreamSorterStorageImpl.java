@@ -62,7 +62,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	private final Path path;
 
 	private String filePattern = DEFAULT_FILE_PATTERN;
-	private MemSize readBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
+	private MemSize readBlockSize = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	private MemSize writeBlockSize = DEFAULT_SORTER_BLOCK_SIZE;
 	private int compressionLevel = 0;
 
@@ -102,7 +102,6 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		this.readBlockSize = readBlockSize;
 		return this;
 	}
-
 	public StreamSorterStorageImpl<T> withWriteBlockSize(MemSize writeBlockSize) {
 		this.writeBlockSize = writeBlockSize;
 		return this;
@@ -129,7 +128,8 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		Path path = partitionPath(partition);
 		return Promise.of(StreamConsumer.<T>ofSupplier(
 				supplier -> supplier
-						.transformWith(ChannelSerializer.create(serializer))
+						.transformWith(ChannelSerializer.create(serializer)
+								.withInitialBufferSize(readBlockSize))
 						.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
 						.transformWith(ChannelLZ4Compressor.create(compressionLevel))
 						.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))

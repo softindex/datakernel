@@ -36,10 +36,7 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 
 			@Override
 			public T next() {
-				if (!hasNext()) {
-					throw new NoSuchElementException();
-				}
-				assert node != null;
+				if (!hasNext()) throw new NoSuchElementException();
 				T result = node.value;
 				node = node.next;
 				return result;

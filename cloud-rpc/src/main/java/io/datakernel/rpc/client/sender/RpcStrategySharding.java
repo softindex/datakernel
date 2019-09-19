@@ -31,7 +31,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 public final class RpcStrategySharding implements RpcStrategy {
 	private final RpcStrategyList list;
 	private final ShardingFunction<?> shardingFunction;
-	private int minActiveSubStrategies;
+	private final int minActiveSubStrategies;
 
 	private RpcStrategySharding(@NotNull ShardingFunction<?> shardingFunction, @NotNull RpcStrategyList list,
 	                            int minActiveSubStrategies) {

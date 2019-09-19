@@ -61,6 +61,7 @@ public final class FileLocker {
 		}
 	}
 
+	@SuppressWarnings({"BooleanMethodIsAlwaysInverted", "WeakerAccess"})
 	synchronized public boolean obtainLock() {
 		try {
 			File parentDir = lockFile.getCanonicalFile().getParentFile();

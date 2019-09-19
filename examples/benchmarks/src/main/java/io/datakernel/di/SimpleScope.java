@@ -15,12 +15,11 @@ public class SimpleScope implements Scope {
 						" explicitly seeded in this scope by calling" +
 						" SimpleScope.seed(), but was not.");
 			};
-	private static final ThreadLocal<Map<Key<?>, Object>> THREAD_LOCAL
-			= new ThreadLocal<Map<Key<?>, Object>>();
+	private static final ThreadLocal<Map<Key<?>, Object>> THREAD_LOCAL = new ThreadLocal<>();
 
 	public static void enter() {
 		checkState(THREAD_LOCAL.get() == null, "A scoping block is already in progress");
-		THREAD_LOCAL.set(Maps.<Key<?>, Object>newHashMap());
+		THREAD_LOCAL.set(Maps.newHashMap());
 	}
 
 	public static void exit() {

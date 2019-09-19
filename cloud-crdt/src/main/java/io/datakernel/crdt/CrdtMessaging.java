@@ -45,7 +45,7 @@ public final class CrdtMessaging {
 	}
 
 	public final static class Download implements CrdtMessage {
-		private long token;
+		private final long token;
 
 		public Download(long token) {
 			this.token = token;

@@ -107,7 +107,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 		this.measureRounds = config.get(ofInteger(), "benchmark.measureRounds", BENCHMARK_ROUNDS);
 		this.activeRequestsMax = config.get(ofInteger(), "benchmark.activeRequestsMax", ACTIVE_REQUESTS_MAX);
 		this.activeRequestsMin = config.get(ofInteger(), "benchmark.activeRequestsMin", ACTIVE_REQUESTS_MIN);
-		super.onStart();
 	}
 
 	@Override
@@ -148,7 +147,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 		long requestsPerSecond = (long) (totalRequests / avgTime * 1000);
 		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + " ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
-
 	}
 
 	private long round(Supplier<Promise<Long>> function) throws Exception {

@@ -124,20 +124,6 @@ public class CollectionUtils {
 				.collect(joining(",", "[", collection.size() <= limit ? "]" : ", ..and " + (collection.size() - limit) + " more]"));
 	}
 
-	public static boolean allItemsHaveSameType(Collection<?> collection) {
-		Class<?> c = null;
-		for (Object item : collection) {
-			if (c == null) {
-				c = item.getClass();
-			} else {
-				if (c != item.getClass()) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}
-
 	private static final Iterator<Object> EMPTY_ITERATOR = new Iterator<Object>() {
 		@Override
 		public boolean hasNext() {

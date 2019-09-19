@@ -85,7 +85,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private boolean compression = false;
 	private Duration autoFlushInterval = Duration.ZERO;
 
-	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
+	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
 	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private List<Class<?>> messageTypes;
@@ -98,13 +98,13 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	// region JMX vars
 	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
-	private EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
-	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
-	private EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);
-	private EventStats failedRequests = EventStats.create(SMOOTHING_WINDOW);
-	private ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW).withUnit("milliseconds");
-	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
-	private ExceptionStats lastProtocolError = ExceptionStats.create();
+	private final EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
+	private final Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
+	private final EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);
+	private final EventStats failedRequests = EventStats.create(SMOOTHING_WINDOW);
+	private final ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW).withUnit("milliseconds");
+	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
+	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
 	// endregion
 
