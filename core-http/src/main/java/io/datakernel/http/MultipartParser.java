@@ -24,6 +24,7 @@ import io.datakernel.common.Recyclable;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -33,8 +34,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
@@ -78,61 +81,72 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 		};
 	}
 
-	private Promise<String> getFilenameFromHeader(@Nullable String header) {
+	private Promise<Map<String, String>> getContentDispositionFields(MultipartFrame frame) {
+		String header = frame.getHeaders().get("content-disposition");
 		if (header == null) {
 			return Promise.ofException(new StacklessException(MultipartParser.class, "Headers had no Content-Disposition"));
 		}
-		int i = header.indexOf("filename=\"");
-		if (i == -1) {
-			return Promise.ofException(new StacklessException(MultipartParser.class, "Content-Disposition header has no filename"));
+		String[] headerParts = header.split(";");
+		if (headerParts.length == 0 || !"form-data".equals(headerParts[0].trim())) {
+			return Promise.ofException(new StacklessException(MultipartParser.class, "Content-Disposition type is not 'form-data'"));
 		}
-		i += 10;
-		int j = header.indexOf('"', i);
-		if (j == -1) {
-			return Promise.ofException(new StacklessException(MultipartParser.class, "Content-Disposition header filename field is missing a closing quote"));
-		}
-		return Promise.of(header.substring(i, j));
+		return Promise.of(Arrays.stream(headerParts)
+				.skip(1)
+				.map(part -> part.trim().split("=", 2))
+				.collect(toMap(s -> s[0], s -> {
+					String value = s.length == 1 ? "" : s[1];
+					// stripping double quotation
+					return value.substring(1, value.length() - 1);
+				})));
 	}
 
-	private Promise<Void> splitByFilesImpl(MultipartFrame headerFrame, ChannelSupplier<MultipartFrame> frames, Function<String, ChannelConsumer<ByteBuf>> consumerFunction) {
-		return getFilenameFromHeader(headerFrame.getHeaders().get("content-disposition"))
-				.then(filename -> {
+	private Promise<Void> doSplit(MultipartFrame headerFrame, ChannelSupplier<MultipartFrame> frames,
+			MultipartDataHandler dataHandler) {
+		return getContentDispositionFields(headerFrame)
+				.then(contentDispositionFields -> {
+					String fieldName = contentDispositionFields.get("name");
+					String fileName = contentDispositionFields.get("filename");
 					Ref<MultipartFrame> last = new Ref<>();
 					return frames
 							.until(f -> {
-								boolean res = !f.isData() && getFilenameFromHeader(f.getHeaders().get("content-disposition"))
-										.mapEx((x, e) -> x)
-										.getResult() != null; // ignoring any exceptions in this hack
-								if (res) {
+								if (f.isHeaders()) {
 									last.set(f);
+									return true;
 								}
-								return res;
+								return false;
 							})
 							.filter(MultipartFrame::isData)
 							.map(MultipartFrame::getData)
-							.streamTo(consumerFunction.apply(filename))
+							.streamTo(ChannelConsumer.ofPromise(fileName == null ?
+									dataHandler.handleField(fieldName) :
+									dataHandler.handleFile(fieldName, fileName)
+							))
 							.then($ -> last.get() != null ?
-									splitByFilesImpl(last.get(), frames, consumerFunction) :
+									doSplit(last.get(), frames, dataHandler) :
 									Promise.complete())
 							.toVoid();
 				});
 	}
 
 	/**
-	 * Complex operation that streams this channel of multipart frames into multiple binary consumers, file-by-file
+	 * Complex operation that streams this channel of multipart frames into multiple binary consumers,
 	 * as specified by the Content-Disposition multipart header.
 	 */
-	public Promise<Void> splitByFiles(ChannelSupplier<ByteBuf> source, Function<String, ChannelConsumer<ByteBuf>> consumerFunction) {
+	public Promise<Void> split(ChannelSupplier<ByteBuf> source, MultipartDataHandler dataHandler) {
 		ChannelSupplier<MultipartFrame> frames = BinaryChannelSupplier.of(source).parseStream(this);
 		return frames.get()
-				.then(frame ->
-						frame.isHeaders() ?
-								splitByFilesImpl(frame, frames, consumerFunction) :
-								Promise.ofException(new StacklessException(MultipartParser.class, "First frame had no headers")));
+				.then(frame -> {
+					if (frame.isHeaders()) {
+						return doSplit(frame, frames, dataHandler);
+					}
+					StacklessException e = new StacklessException(MultipartParser.class, "First frame had no headers");
+					frames.close(e);
+					return Promise.ofException(e);
+				});
 	}
 
-	boolean sawCrlf = true;
-	boolean finished = false;
+	private boolean sawCrlf = true;
+	private boolean finished = false;
 
 	@Nullable
 	@Override
@@ -260,4 +274,58 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 			return isHeaders() ? "headers" + headers : "" + data;
 		}
 	}
+
+	public interface MultipartDataHandler {
+		Promise<? extends ChannelConsumer<ByteBuf>> handleField(String fieldName);
+
+		Promise<? extends ChannelConsumer<ByteBuf>> handleFile(String fieldName, String fileName);
+
+		static MultipartDataHandler fieldsToMap(Map<String, String> fields) {
+			return fieldsToMap(fields, ($1, $2) -> Promise.of(ChannelConsumers.recycling()));
+		}
+
+		static MultipartDataHandler fieldsToMap(Map<String, String> fields,
+				Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
+			return fieldsToMap(fields, ($, fileName) -> uploader.apply(fileName));
+		}
+
+		static MultipartDataHandler fieldsToMap(Map<String, String> fields,
+				BiFunction<String, String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
+			return new MultipartDataHandler() {
+				@Override
+				public Promise<? extends ChannelConsumer<ByteBuf>> handleField(String fieldName) {
+					return Promise.of(ChannelConsumer.ofSupplier(supplier -> supplier.toCollector(ByteBufQueue.collector())
+							.map(value -> {
+								fields.put(fieldName, value.asString(UTF_8));
+								return (Void) null;
+							})));
+				}
+
+				@Override
+				public Promise<? extends ChannelConsumer<ByteBuf>> handleFile(String fieldName, String fileName) {
+					return uploader.apply(fieldName, fileName);
+				}
+			};
+		}
+
+		static MultipartDataHandler file(Function<String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
+			return files(($, fileName) -> uploader.apply(fileName));
+		}
+
+		static MultipartDataHandler files(BiFunction<String, String, Promise<? extends ChannelConsumer<ByteBuf>>> uploader) {
+			return new MultipartDataHandler() {
+				@Override
+				public Promise<? extends ChannelConsumer<ByteBuf>> handleField(String fieldName) {
+					return Promise.of(ChannelConsumers.recycling());
+				}
+
+				@Override
+				public Promise<? extends ChannelConsumer<ByteBuf>> handleFile(String fieldName, String fileName) {
+					return uploader.apply(fieldName, fileName);
+				}
+			};
+		}
+
+	}
+
 }

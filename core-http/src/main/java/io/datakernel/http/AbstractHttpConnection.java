@@ -410,26 +410,28 @@ public abstract class AbstractHttpConnection {
 		return null;
 	}
 
-	protected void writeHttpMessageAsChunkedStream(HttpMessage httpMessage) {
-		httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
+	protected void writeHttpMessageAsStream(HttpMessage httpMessage) {
 		ChannelSupplier<ByteBuf> bodyStream = httpMessage.bodyStream;
 		httpMessage.bodyStream = null;
-		if ((httpMessage.flags & HttpMessage.USE_GZIP) == 0) {
-			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
-			httpMessage.writeTo(buf);
+
+		if ((httpMessage.flags & HttpMessage.USE_GZIP) != 0) {
+			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
+			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
+			bodyStream.bindTo(deflater.getInput());
+			bodyStream = deflater.getOutput().getSupplier();
+		}
+
+		if (httpMessage.headers.get(CONTENT_LENGTH) == null) {
+			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
 			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
 			bodyStream.bindTo(chunker.getInput());
-			writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier()));
-		} else {
-			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
-			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
-			httpMessage.writeTo(buf);
-			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
-			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-			bodyStream.bindTo(deflater.getInput());
-			deflater.getOutput().bindTo(chunker.getInput());
-			writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), chunker.getOutput().getSupplier()));
+			bodyStream = chunker.getOutput().getSupplier();
 		}
+
+		ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
+		httpMessage.writeTo(buf);
+
+		writeStream(ChannelSuppliers.concat(ChannelSupplier.of(buf), bodyStream));
 	}
 
 	protected void writeBuf(ByteBuf buf) {

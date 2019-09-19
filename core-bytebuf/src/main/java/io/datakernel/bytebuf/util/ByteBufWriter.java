@@ -25,6 +25,8 @@ public final class ByteBufWriter extends Writer {
 	private final Charset charset;
 	private ByteBuf byteBuf;
 
+	private char[] surrogateBuffer;
+
 	public ByteBufWriter() {
 		this(INITIAL_BUF_SIZE, StandardCharsets.UTF_8);
 	}
@@ -52,10 +54,21 @@ public final class ByteBufWriter extends Writer {
 
 	@Override
 	public void write(int c) {
-		try {
-			super.write(c);
-		} catch (IOException ignored) {
-			throw new AssertionError("unreachable");
+		// sneaky little buffering for proper encoding of surrogate character pairs
+		synchronized (lock) {
+			if (surrogateBuffer == null) {
+				surrogateBuffer = new char[2];
+			}
+			char ch = (char) c;
+			if (Character.isLowSurrogate(ch)) {
+				surrogateBuffer[1] = ch;
+				write(surrogateBuffer, 0, 2);
+			} else {
+				surrogateBuffer[0] = ch;
+				if (!Character.isHighSurrogate(ch)) {
+					write(surrogateBuffer, 0, 1);
+				}
+			}
 		}
 	}
 

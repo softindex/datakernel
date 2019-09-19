@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.parse.ParseException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -106,7 +107,7 @@ public final class HttpCookie {
 		return this;
 	}
 
-	public HttpCookie withMaxAge(int maxAge) {
+	public HttpCookie withMaxAge(Duration maxAge) {
 		// %x31-39 ; digits 1 through 9
 		setMaxAge(maxAge);
 		return this;
@@ -165,8 +166,8 @@ public final class HttpCookie {
 		return maxAge;
 	}
 
-	public void setMaxAge(int maxAge) {
-		this.maxAge = maxAge;
+	public void setMaxAge(Duration maxAge) {
+		this.maxAge = (int) maxAge.getSeconds();
 	}
 
 	public String getDomain() {
@@ -373,7 +374,7 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setMaxAge(trimAndDecodePositiveInt(bytes, start, end - start));
+						cookie.setMaxAge(parseMaxAge(bytes, start, end));
 					}
 				};
 			case DOMAIN_HC:
@@ -411,6 +412,10 @@ public final class HttpCookie {
 
 	private static Instant parseExpirationDate(byte[] bytes, int start) throws ParseException {
 		return Instant.ofEpochSecond(HttpDate.parse(bytes, start));
+	}
+
+	private static Duration parseMaxAge(byte[] bytes, int start, int end) throws ParseException {
+		return Duration.ofSeconds(trimAndDecodePositiveInt(bytes, start, end - start));
 	}
 
 	@Override

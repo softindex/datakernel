@@ -20,7 +20,6 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
-import java.util.stream.Stream;
 
 import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -30,7 +29,6 @@ import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static java.util.stream.Collectors.joining;
 
 /**
  * Preconfigured Http server launcher.
@@ -86,10 +84,7 @@ public abstract class HttpServerLauncher extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		logger.info("HTTP Server is listening on " + Stream.concat(
-				httpServer.getListenAddresses().stream().map(address -> "http://" + ("0.0.0.0".equals(address.getHostName()) ? "localhost" : address.getHostName()) + (address.getPort() != 80 ? ":" + address.getPort() : "") + "/"),
-				httpServer.getSslListenAddresses().stream().map(address -> "https://" + ("0.0.0.0".equals(address.getHostName()) ? "localhost" : address.getHostName()) + (address.getPort() != 80 ? ":" + address.getPort() : "") + "/"))
-				.collect(joining(" ")));
+		logger.info("HTTP Server is now available at " + String.join(", ", httpServer.getHttpAddresses()));
 		awaitShutdown();
 	}
 

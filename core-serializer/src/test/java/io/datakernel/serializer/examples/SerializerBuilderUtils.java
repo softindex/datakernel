@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.Character.toUpperCase;
 import static java.util.Arrays.asList;
 

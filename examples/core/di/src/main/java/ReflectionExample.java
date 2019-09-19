@@ -2,7 +2,6 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
 import java.lang.annotation.ElementType;

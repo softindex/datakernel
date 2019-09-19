@@ -7,6 +7,7 @@ import io.datakernel.http.session.SessionStore;
 import io.datakernel.http.session.SessionStoreInMemory;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executor;
@@ -38,7 +39,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 
 	@Provides
 	SessionStore<String> sessionStore() {
-		return new SessionStoreInMemory<>();
+		return new SessionStoreInMemory<>(Duration.ofDays(30));
 	}
 
 	@Provides
@@ -109,7 +110,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 							String id = request.getCookie(SESSION_ID);
 							if (id != null) {
 								return HttpResponse.redirect302("/")
-										.withCookie(HttpCookie.of(SESSION_ID, id).withPath("/").withMaxAge(0));
+										.withCookie(HttpCookie.of(SESSION_ID, id).withPath("/").withMaxAge(Duration.ZERO));
 							}
 							return HttpResponse.ofCode(404);
 						}));

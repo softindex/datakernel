@@ -11,7 +11,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.singletonList;
 

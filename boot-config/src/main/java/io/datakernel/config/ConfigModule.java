@@ -42,7 +42,6 @@ import static java.util.Collections.singletonList;
 /**
  * Supplies config to your application, looks after usage of config, prevents usage of config in any part of lifecycle except for startup.
  */
-@SuppressWarnings("unused")
 public final class ConfigModule extends AbstractModule implements Initializable<ConfigModule> {
 	private static final Logger logger = LoggerFactory.getLogger(ConfigModule.class);
 	public static final Key<Config> KEY_OF_CONFIG = Key.of(Config.class);
@@ -82,7 +81,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 
 		@Override
 		public Config provideNoKeyChild(String key) {
-			checkArgument(!children.keySet().contains(key), "Children already contain key '%s'", key);
+			checkArgument(!children.containsKey(key), "Children already contain key '%s'", key);
 			return new ProtectedConfig(config.provideNoKeyChild(key), started);
 		}
 	}
@@ -155,5 +154,4 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 			effectiveConfigConsumer.accept(effectiveConfig.renderEffectiveConfig());
 		}
 	}
-
 }

@@ -44,7 +44,7 @@ import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.AsyncSslSocket.wrapServerSocket;
 import static io.datakernel.net.AsyncTcpSocketImpl.wrapChannel;

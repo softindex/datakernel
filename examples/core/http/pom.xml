@@ -32,12 +32,12 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>HttpBenchmark</id>
+            <id>HttpServerWorkloadBenchmark</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>HttpBenchmark</mainClass>
+              <mainClass>HttpServerWorkloadBenchmark</mainClass>
             </configuration>
           </execution>
           <execution>
