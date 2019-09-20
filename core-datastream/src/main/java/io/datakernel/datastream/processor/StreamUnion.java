@@ -18,6 +18,7 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,7 +66,6 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
 				output.sendEndOfStream();
 			}
-			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 
@@ -84,7 +84,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 		}
 
 		@Override
-		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			if (!inputs.isEmpty()) {
 				for (Input input : inputs) {
 					input.getSupplier().resume(dataAcceptor);

@@ -50,7 +50,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void resume(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			// do nothing
 		}
 
@@ -89,7 +89,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void resume(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			// do nothing
 		}
 
@@ -124,7 +124,7 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public void resume(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override

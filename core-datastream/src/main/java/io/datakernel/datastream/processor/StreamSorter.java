@@ -64,36 +64,37 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		this.input = new Input();
 
-		this.output = new ForwardingStreamSupplier<T>(StreamSupplier.ofPromise(
-				(this.temporaryStreamsCollector = AsyncCollector.create(new ArrayList<>()))
-						.run(input.getEndOfStream())
-						.get()
-						.map(streamIds -> {
-							input.list.sort(itemComparator);
-							Iterator<T> iterator = !distinct ?
-									input.list.iterator() :
-									new DistinctIterator<>(input.list, keyFunction, keyComparator);
-							StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
-							if (streamIds.isEmpty()) {
-								return listSupplier;
-							} else {
-								StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
-								listSupplier.streamTo(streamMerger.newInput());
-								streamIds.forEach(streamId ->
-										StreamSupplier.ofPromise(storage.read(streamId))
-												.streamTo(streamMerger.newInput()));
-								return streamMerger
-										.getOutput()
-										.withLateBinding();
-							}
-						})
-		)) {
-			@Override
-			public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-				super.setConsumer(consumer);
-				outputConsumer = consumer;
-			}
-		};
+		this.output =
+				new ForwardingStreamSupplier<T>(StreamSupplier.ofPromise(
+						(this.temporaryStreamsCollector = AsyncCollector.create(new ArrayList<>()))
+								.run(input.getEndOfStream())
+								.get()
+								.map(streamIds -> {
+									input.list.sort(itemComparator);
+									Iterator<T> iterator = !distinct ?
+											input.list.iterator() :
+											new DistinctIterator<>(input.list, keyFunction, keyComparator);
+									StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
+									if (streamIds.isEmpty()) {
+										return listSupplier;
+									} else {
+										StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
+										listSupplier.streamTo(streamMerger.newInput());
+										streamIds.forEach(streamId ->
+												StreamSupplier.ofPromise(storage.read(streamId))
+														.streamTo(streamMerger.newInput()));
+										return streamMerger
+												.getOutput()
+												.withLateBinding();
+									}
+								})
+				)) {
+					@Override
+					public void setConsumer(@NotNull StreamConsumer<T> consumer) {
+						super.setConsumer(consumer);
+						outputConsumer = consumer;
+					}
+				};
 	}
 
 	private static final class DistinctIterator<K, T> implements Iterator<T> {

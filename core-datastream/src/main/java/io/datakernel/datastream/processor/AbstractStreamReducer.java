@@ -117,11 +117,6 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 		}
 
 		@Override
-		protected void onWired() {
-			super.onWired();
-		}
-
-		@Override
 		protected void onStarted() {
 			getSupplier().resume(this);
 		}
@@ -155,7 +150,6 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 				streamsAwaiting--;
 			}
 			produce();
-			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 

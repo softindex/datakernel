@@ -17,14 +17,17 @@
 package io.datakernel.datastream;
 
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
 public final class StreamSupplierWithResult<T, X> {
+	@NotNull
 	private final StreamSupplier<T> supplier;
+	@NotNull
 	private final Promise<X> result;
 
-	private StreamSupplierWithResult(StreamSupplier<T> supplier, Promise<X> result) {
+	private StreamSupplierWithResult(@NotNull StreamSupplier<T> supplier, @NotNull Promise<X> result) {
 		this.supplier = supplier;
 		this.result = result;
 	}
@@ -61,10 +64,12 @@ public final class StreamSupplierWithResult<T, X> {
 				promise.then(StreamSupplierWithResult::getResult));
 	}
 
+	@NotNull
 	public StreamSupplier<T> getSupplier() {
 		return supplier;
 	}
 
+	@NotNull
 	public Promise<X> getResult() {
 		return result;
 	}

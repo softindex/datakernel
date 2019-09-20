@@ -19,6 +19,7 @@ package io.datakernel.datastream.processor;
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -112,7 +113,7 @@ public final class ShardingStreamSplitter<I, K> implements StreamInput<I>, Strea
 		}
 
 		@Override
-		protected void onProduce(StreamDataAcceptor<I> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<I> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				input.getSupplier().resume(ShardingStreamSplitter.this);

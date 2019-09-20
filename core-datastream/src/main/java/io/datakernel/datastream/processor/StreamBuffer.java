@@ -40,13 +40,12 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return addCapabilities(output.getConsumer(), IMMEDIATE_SUSPEND);
+			return extendCapabilities(output.getConsumer(), IMMEDIATE_SUSPEND);
 		}
 
 		@Override
 		protected Promise<Void> onEndOfStream() {
 			output.tryProduce();
-			assert output.getConsumer() != null;
 			return output.getConsumer().getAcknowledgement();
 		}
 
@@ -99,7 +98,7 @@ public class StreamBuffer<T> implements StreamTransformer<T, T> {
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return addCapabilities(input.getSupplier(), IMMEDIATE_SUSPEND);
+			return extendCapabilities(input.getSupplier(), IMMEDIATE_SUSPEND);
 		}
 
 		@Override

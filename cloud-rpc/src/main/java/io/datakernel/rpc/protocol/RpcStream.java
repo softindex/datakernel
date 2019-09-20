@@ -67,7 +67,7 @@ public final class RpcStream {
 		if (this.server) {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
-				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
+				protected void onProduce(@NotNull StreamDataAcceptor<RpcMessage> dataAcceptor) {
 					receiver.getSupplier().resume(listener);
 					listener.onSenderReady(dataAcceptor);
 				}
@@ -86,7 +86,7 @@ public final class RpcStream {
 		} else {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
-				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
+				protected void onProduce(@NotNull StreamDataAcceptor<RpcMessage> dataAcceptor) {
 					listener.onSenderReady(dataAcceptor);
 				}
 

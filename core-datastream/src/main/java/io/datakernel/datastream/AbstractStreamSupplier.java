@@ -44,7 +44,6 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	private final long createTick = eventloop.tick();
 
-	@Nullable
 	private StreamConsumer<T> consumer;
 
 	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
@@ -98,7 +97,6 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return consumer != null;
 	}
 
-	@Nullable
 	public final StreamConsumer<T> getConsumer() {
 		return consumer;
 	}
@@ -166,14 +164,13 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		});
 	}
 
-	protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		postProduce();
 	}
 
 	@Override
-	public final void resume(StreamDataAcceptor<T> dataAcceptor) {
+	public final void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
-		assert dataAcceptor != null;
 
 		if (currentDataAcceptor == dataAcceptor) return;
 		if (endOfStream.isComplete()) return;
@@ -199,7 +196,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	public Promise<Void> sendEndOfStream() {
-		assert consumer != null;
+		checkState(consumer != null);
 		if (endOfStream.isComplete()) return endOfStream;
 		currentDataAcceptor = null;
 		lastDataAcceptor = Recyclable::tryRecycle;
@@ -240,7 +237,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	/**
 	 * This method is useful for stream transformers that might add some capability to the stream
 	 */
-	protected static Set<StreamCapability> addCapabilities(@Nullable StreamSupplier<?> supplier,
+	protected static Set<StreamCapability> extendCapabilities(@Nullable StreamSupplier<?> supplier,
 			StreamCapability capability, StreamCapability... capabilities) {
 		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
 		if (supplier != null) {

@@ -2,10 +2,13 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
+import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 
 /**
@@ -19,8 +22,14 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	private final AbstractStreamConsumer<T> input = new Input();
 	private final AbstractStreamSupplier<T> output = new Output();
 
+	private int countdown = 2;
+
 	@Nullable
-	private StreamDataAcceptor<T> waitingAcceptor;
+	private StreamDataAcceptor<T> pendingAcceptor;
+	@Nullable
+	private Throwable pendingException;
+	@Nullable
+	private SettablePromise<Void> pendingEndOfStreamAck;
 
 	// region creators
 	private StreamLateBinder() {
@@ -34,57 +43,93 @@ public final class StreamLateBinder<T> implements StreamTransformer<T, T> {
 	private class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
-			if (waitingAcceptor != null) {
-				getSupplier().resume(waitingAcceptor);
-				waitingAcceptor = null;
+			if (--countdown == 0) {
+				startInputOutput();
 			}
 		}
 
 		@Override
 		protected Promise<Void> onEndOfStream() {
-			return output.sendEndOfStream();
+			if (countdown == 0) {
+				return output.sendEndOfStream();
+			} else {
+				pendingEndOfStreamAck = new SettablePromise<>();
+				return pendingEndOfStreamAck;
+			}
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			output.close(e);
+			if (countdown == 0) {
+				output.close(e);
+			} else {
+				pendingException = e;
+			}
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return addCapabilities(output.getConsumer(), LATE_BINDING);
+			return extendCapabilities(output.getConsumer(), LATE_BINDING);
 		}
 	}
 
 	private class Output extends AbstractStreamSupplier<T> {
 		@Override
-		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
-			StreamSupplier<T> supplier = input.getSupplier();
-			if (supplier == null) {
-				waitingAcceptor = dataAcceptor;
-				return;
+		protected void onStarted() {
+			if (--countdown == 0) {
+				startInputOutput();
 			}
-			supplier.resume(dataAcceptor);
+		}
+
+		@Override
+		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
+			if (countdown == 0) {
+				input.getSupplier().resume(dataAcceptor);
+			} else {
+				pendingAcceptor = dataAcceptor;
+			}
 		}
 
 		@Override
 		protected void onSuspended() {
-			StreamSupplier<T> supplier = input.getSupplier();
-			if (supplier == null) {
-				waitingAcceptor = null;
-				return;
+			if (countdown == 0) {
+				input.getSupplier().suspend();
+			} else {
+				pendingAcceptor = null;
 			}
-			supplier.suspend();
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			input.close(e);
+			if (countdown == 0) {
+				input.close(e);
+			} else {
+				pendingException = e;
+			}
 		}
 
 		@Override
 		public Set<StreamCapability> getCapabilities() {
-			return addCapabilities(input.getSupplier(), LATE_BINDING);
+			return extendCapabilities(input.getSupplier(), LATE_BINDING);
+		}
+	}
+
+	private void startInputOutput() {
+		if (pendingException != null) {
+			input.close(pendingException);
+			output.close(pendingException);
+			pendingAcceptor = null;
+			pendingEndOfStreamAck = nullify(pendingEndOfStreamAck, SettablePromise::setException, pendingException);
+			pendingException = null;
+		}
+		if (pendingEndOfStreamAck != null) {
+			output.sendEndOfStream()
+					.whenComplete(pendingEndOfStreamAck);
+			pendingAcceptor = null;
+		}
+		if (pendingAcceptor != null) {
+			input.getSupplier().resume(pendingAcceptor);
+			pendingAcceptor = null;
 		}
 	}
 

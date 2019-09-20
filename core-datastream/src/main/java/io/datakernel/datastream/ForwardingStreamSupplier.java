@@ -34,7 +34,7 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void resume(StreamDataAcceptor<T> dataAcceptor) {
+	public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		supplier.resume(dataAcceptor);
 	}
 

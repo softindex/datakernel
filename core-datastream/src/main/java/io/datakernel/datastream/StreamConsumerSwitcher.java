@@ -119,7 +119,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 		}
 
 		@Override
-		public void resume(StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			lastDataAcceptor = dataAcceptor;
 			suspended = false;
 

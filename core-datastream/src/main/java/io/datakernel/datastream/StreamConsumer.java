@@ -102,7 +102,6 @@ public interface StreamConsumer<T> extends Cancellable {
 			@Override
 			protected Promise<Void> doAccept(T item) {
 				if (item != null) return endpoint.put(item);
-				assert endpoint.getConsumer() != null;
 				return endpoint.put(null).both(endpoint.getConsumer().getAcknowledgement());
 			}
 		};

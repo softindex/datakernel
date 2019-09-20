@@ -19,6 +19,7 @@ package io.datakernel.datastream.processor;
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -122,7 +123,7 @@ public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, S
 		}
 
 		@Override
-		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			isSuspended = false;
 			if (--suspended == 0) {

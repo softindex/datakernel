@@ -19,6 +19,7 @@ package io.datakernel.datastream.processor;
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -100,7 +101,7 @@ public final class StreamSharder<T> implements StreamInput<T>, StreamOutputs, St
 		}
 
 		@Override
-		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			dataAcceptors[index] = dataAcceptor;
 			if (--suspended == 0) {
 				input.getSupplier().resume(StreamSharder.this);

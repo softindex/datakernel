@@ -19,6 +19,7 @@ package io.datakernel.datastream.stats;
 import io.datakernel.datastream.*;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
@@ -76,7 +77,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 
 	private class Output extends AbstractStreamSupplier<T> {
 		@Override
-		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			stats.onProduce();
 			input.getSupplier().resume(stats.createDataAcceptor(dataAcceptor));
 		}

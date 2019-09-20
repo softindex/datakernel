@@ -23,6 +23,7 @@ import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
+import org.jetbrains.annotations.NotNull;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -138,7 +139,7 @@ public class StreamConsumersTest {
 			}
 
 			@Override
-			protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+			protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 				resumed++;
 				input.getSupplier().resume(dataAcceptor);
 			}

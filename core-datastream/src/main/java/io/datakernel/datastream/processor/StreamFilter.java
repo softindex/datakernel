@@ -18,6 +18,7 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Predicate;
 
@@ -86,7 +87,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 			if (predicate.equals(ALWAYS_TRUE)) {
 				input.getSupplier().resume(dataAcceptor);
 			} else {

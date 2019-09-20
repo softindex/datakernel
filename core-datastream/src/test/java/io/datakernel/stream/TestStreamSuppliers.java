@@ -7,6 +7,7 @@ import io.datakernel.datastream.StreamSupplierTransformer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import io.datakernel.stream.TestStreamSuppliers.Decorator.Context;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
@@ -20,7 +21,7 @@ public class TestStreamSuppliers {
 			}
 
 			@Override
-			public void resume(StreamDataAcceptor<T> dataAcceptor) {
+			public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 				supplier.resume(decorator.decorate(new Context() {
 					@Override
 					public void endOfStream() {

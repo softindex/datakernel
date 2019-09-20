@@ -63,7 +63,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	/**
 	 * This method is called for restore streaming of this supplier
 	 */
-	void resume(StreamDataAcceptor<T> dataAcceptor);
+	void resume(@NotNull StreamDataAcceptor<T> dataAcceptor);
 
 	/**
 	 * This method is called for stop streaming of this supplier
@@ -74,7 +74,7 @@ public interface StreamSupplier<T> extends Cancellable {
 
 	Set<StreamCapability> getCapabilities();
 
-	default Promise<Void> streamTo(StreamConsumer<T> consumer) {
+	default Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
 		StreamSupplier<T> supplier = this;
 		supplier.setConsumer(consumer);
 		consumer.setSupplier(supplier);

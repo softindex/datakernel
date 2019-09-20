@@ -17,6 +17,7 @@
 package io.datakernel.datastream;
 
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
@@ -48,7 +49,6 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 					onProduce(getCurrentDataAcceptor());
 				}
 			});
-			assert StreamSupplierConcat.this.getConsumer() != null;
 			return StreamSupplierConcat.this.getConsumer().getAcknowledgement();
 		}
 
@@ -59,8 +59,7 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 	}
 
 	@Override
-	protected void onProduce(StreamDataAcceptor<T> dataAcceptor) {
-		assert dataAcceptor != null;
+	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		if (supplier == null) {
 			if (!iterator.hasNext()) {
 				eventloop.post(this::sendEndOfStream);

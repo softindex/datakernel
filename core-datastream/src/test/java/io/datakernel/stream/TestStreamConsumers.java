@@ -28,7 +28,7 @@ public class TestStreamConsumers {
 				super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
 					@SuppressWarnings("unchecked")
 					@Override
-					public void resume(StreamDataAcceptor<T> dataAcceptor) {
+					public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 						StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[1];
 						Context context = new Context() {
 							final Eventloop eventloop = getCurrentEventloop();

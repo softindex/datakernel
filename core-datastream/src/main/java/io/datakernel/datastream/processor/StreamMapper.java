@@ -18,6 +18,7 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
@@ -80,7 +81,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		protected void onProduce(StreamDataAcceptor<O> dataAcceptor) {
+		protected void onProduce(@NotNull StreamDataAcceptor<O> dataAcceptor) {
 			input.getSupplier().resume(
 					function == Function.identity() ?
 							(StreamDataAcceptor<I>) dataAcceptor :
