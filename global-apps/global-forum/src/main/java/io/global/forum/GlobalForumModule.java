@@ -10,12 +10,15 @@ import io.datakernel.loader.StaticLoader;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.comm.container.CommRepoNames;
+import io.global.comm.pojo.UserId;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.http.PublicServlet;
 import io.global.forum.util.MustacheTemplater;
 import io.global.fs.local.GlobalFsDriver;
+import io.global.kv.GlobalKvDriver;
+import io.global.kv.api.GlobalKvNode;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerServlet;
@@ -30,6 +33,7 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.forum.util.Utils.REGISTRY;
 import static io.global.forum.util.Utils.renderErrors;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
@@ -76,15 +80,21 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory(OTDriver otDriver, GlobalFsDriver fsDriver) {
+	BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory(OTDriver otDriver, GlobalKvDriver<String, UserId> kvDriver,
+			GlobalFsDriver fsDriver) {
 		return (eventloop, privKey) ->
-				ForumUserContainer.create(eventloop, privKey, otDriver, fsDriver.adapt(privKey).subfolder(forumFsDir), forumRepoNames);
+				ForumUserContainer.create(eventloop, privKey, otDriver, kvDriver.adapt(privKey), fsDriver.adapt(privKey).subfolder(forumFsDir), forumRepoNames);
 	}
 
 	@Provides
 	OTDriver otDriver(GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
 		return new OTDriver(node, simKey);
+	}
+
+	@Provides
+	GlobalKvDriver<String, UserId> kvDriver(GlobalKvNode node) {
+		return GlobalKvDriver.create(node, REGISTRY.get(String.class), REGISTRY.get(UserId.class));
 	}
 
 	@Provides

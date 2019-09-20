@@ -6,9 +6,6 @@ import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.util.Tuple2;
 import io.global.comm.ot.post.operation.*;
-import io.global.comm.ot.session.operation.AddOrRemoveSession;
-import io.global.comm.ot.session.operation.SessionOperation;
-import io.global.comm.ot.session.operation.UpdateTimestamp;
 import io.global.comm.pojo.*;
 
 import java.time.Instant;
@@ -92,19 +89,7 @@ public final class Utils {
 						PostChangesOperation::getChangeLastEditTimestamps, ofList(registry.get(ChangeLastEditTimestamp.class))))
 				.with(ThreadOperation.class, registry -> CodecSubtype.<ThreadOperation>create()
 						.with(AddPost.class, registry.get(AddPost.class))
-						.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)))
-				.with(AddOrRemoveSession.class, registry -> tuple(AddOrRemoveSession::of,
-						AddOrRemoveSession::getSessionId, STRING_CODEC,
-						AddOrRemoveSession::getUserId, registry.get(UserId.class),
-						AddOrRemoveSession::getTimestamp, LONG_CODEC,
-						AddOrRemoveSession::isRemove, BOOLEAN_CODEC))
-				.with(UpdateTimestamp.class, registry -> tuple(UpdateTimestamp::update,
-						UpdateTimestamp::getSessionId, STRING_CODEC,
-						UpdateTimestamp::getPrevious, LONG_CODEC,
-						UpdateTimestamp::getNext, LONG_CODEC))
-				.with(SessionOperation.class, registry -> CodecSubtype.<SessionOperation>create()
-						.with(AddOrRemoveSession.class, registry.get(AddOrRemoveSession.class))
-						.with(UpdateTimestamp.class, registry.get(UpdateTimestamp.class)));
+						.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)));
 	}
 
 	public static final CodecRegistry REGISTRY = createCommRegistry();

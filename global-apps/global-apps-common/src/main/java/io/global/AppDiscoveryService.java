@@ -60,10 +60,12 @@ public final class AppDiscoveryService implements DiscoveryService {
 	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return discoveryService.find(space)
 				.map(signedData -> {
+					AnnounceData actual;
 					if (signedData == null || !signedData.verify(space)) {
-						return null;
+						actual = new AnnounceData(System.currentTimeMillis(), emptySet());
+					} else {
+						actual = signedData.getValue();
 					}
-					AnnounceData actual = signedData.getValue();
 					AnnounceData custom = new AnnounceData(actual.getTimestamp(), union(actual.getServerIds(), customMasterServers));
 					return SignedData.sign(ANNOUNCE_DATA_CODEC, custom, STUB_PK);
 				});

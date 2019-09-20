@@ -16,16 +16,14 @@ import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.ThreadOTSystem;
 import io.global.comm.ot.post.operation.ThreadOperation;
-import io.global.comm.ot.session.SessionOTState;
-import io.global.comm.ot.session.SessionOTSystem;
-import io.global.comm.ot.session.UserIdSessionStore;
-import io.global.comm.ot.session.operation.SessionOperation;
+import io.global.comm.ot.session.KvSessionStore;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
 import io.global.comm.pojo.UserId;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
+import io.global.kv.api.KvClient;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
@@ -58,7 +56,6 @@ public final class CommGlobalState {
 	private final StructuredCodec<ThreadOperation> postOpCodec;
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
 	private final OTStateManager<CommitId, MapOperation<String, IpBanState>> bansStateManager;
-	private final OTStateManager<CommitId, SessionOperation> sessionStateManager;
 
 	private final OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager;
 
@@ -66,7 +63,7 @@ public final class CommGlobalState {
 	private final Map<String, OTStateManager<CommitId, ThreadOperation>> threadStateManagers = new HashMap<>();
 	private final Map<String, ThreadDao> threadDaos = new HashMap<>();
 
-	private final UserIdSessionStore sessionStore;
+	private final KvSessionStore<UserId> sessionStore;
 	private final MapOTStateListenerProxy<String, ThreadMetadata> threadsState;
 
 	private final CommDao commDao;
@@ -74,6 +71,7 @@ public final class CommGlobalState {
 	private CommGlobalState(
 			Eventloop eventloop,
 			OTDriver otDriver,
+			KvClient<String, UserId> kvClient,
 			FsClient fsClient,
 			KeyPair keys,
 			CommRepoNames names) {
@@ -87,9 +85,8 @@ public final class CommGlobalState {
 
 		this.usersStateManager = createStateManager(names.getUsers(), REGISTRY.get(new TypeT<MapOperation<UserId, UserData>>() {}), MapOTSystem.create(), new MapOTState<>());
 		this.bansStateManager = createStateManager(names.getBans(), REGISTRY.get(new TypeT<MapOperation<String, IpBanState>>() {}), MapOTSystem.create(), new MapOTState<>());
-		this.sessionStateManager = createStateManager(names.getSession(), REGISTRY.get(new TypeT<SessionOperation>() {}), SessionOTSystem.SYSTEM, new SessionOTState());
 
-		this.sessionStore = UserIdSessionStore.create(this.sessionStateManager);
+		this.sessionStore = KvSessionStore.create(eventloop, kvClient, names.getSession());
 		this.threadsState = new MapOTStateListenerProxy<>();
 		this.threadsStateManager = createStateManager(names.getThreads(), REGISTRY.get(new TypeT<MapOperation<String, ThreadMetadata>>() {}), MapOTSystem.create(), threadsState);
 
@@ -100,9 +97,10 @@ public final class CommGlobalState {
 			Eventloop eventloop,
 			PrivKey privKey,
 			OTDriver otDriver,
+			KvClient<String, UserId> kvClient,
 			FsClient fsClient,
 			CommRepoNames names) {
-		return new CommGlobalState(eventloop, otDriver, fsClient, privKey.computeKeys(), names);
+		return new CommGlobalState(eventloop, otDriver, kvClient, fsClient, privKey.computeKeys(), names);
 	}
 
 	public CommDao getCommDao() {
@@ -128,8 +126,7 @@ public final class CommGlobalState {
 						}
 					});
 				}));
-		return Promises.all(usersStateManager.start(), bansStateManager.start(), sessionStateManager.start(), threadsStart)
-				.then($ -> sessionStore.start())
+		return Promises.all(usersStateManager.start(), bansStateManager.start(), threadsStart, sessionStore.start())
 				.whenComplete(toLogger(logger, "start"));
 	}
 
@@ -140,8 +137,7 @@ public final class CommGlobalState {
 						pendingThreadStateManagers.values().stream().map(s -> s.then(OTStateManager::stop)))))
 				.whenResult($ -> threadStateManagers.clear());
 
-		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), sessionStateManager.stop(), threadsStop)
-				.then($ -> sessionStore.stop())
+		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), threadsStop, sessionStore.stop())
 				.whenComplete(toLogger(logger, "stop"));
 	}
 
