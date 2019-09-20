@@ -71,7 +71,7 @@ public final class GlobalKvAdapter<K, V> implements KvClient<K, V> {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<byte[]>> remove(String table) {
+	public Promise<ChannelConsumer<K>> remove(String table) {
 		return privKey != null ?
 				driver.remove(new KeyPair(privKey, space), table) :
 				Promise.ofException(UPK_DELETE);

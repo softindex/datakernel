@@ -112,11 +112,12 @@ public final class GlobalKvDriver<K, V> {
 						.mapAsync(signedRawKvItem -> decrypt(signedRawKvItem, simKey)));
 	}
 
-	public Promise<ChannelConsumer<byte[]>> remove(KeyPair keys, String table) {
+	public Promise<ChannelConsumer<K>> remove(KeyPair keys, String table) {
 		PrivKey privKey = keys.getPrivKey();
 		return node.upload(keys.getPubKey(), table)
 				.map(consumer -> consumer
-						.map(key -> SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(key, now.currentTimeMillis()), privKey)));
+						.map(key -> SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(encodeAsArray(keyCodec, key),
+								now.currentTimeMillis()), privKey)));
 	}
 
 	public Promise<@Nullable KvItem<K, V>> get(PubKey space, String table, K key, @Nullable SimKey simKey) {
@@ -128,8 +129,9 @@ public final class GlobalKvDriver<K, V> {
 		return node.put(keys.getPubKey(), table, encrypt(item, keys.getPrivKey(), simKey));
 	}
 
-	public Promise<Void> remove(KeyPair keys, String table, byte[] key) {
-		return node.put(keys.getPubKey(), table, SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(key, now.currentTimeMillis()), keys.getPrivKey()));
+	public Promise<Void> remove(KeyPair keys, String table, K key) {
+		return node.put(keys.getPubKey(), table, SignedData.sign(RAW_KV_ITEM_CODEC, RawKvItem.tombstone(encodeAsArray(keyCodec, key),
+				now.currentTimeMillis()), keys.getPrivKey()));
 	}
 
 	public Promise<Set<String>> list(PubKey space) {
