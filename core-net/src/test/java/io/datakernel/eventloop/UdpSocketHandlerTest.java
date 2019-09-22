@@ -54,7 +54,7 @@ public final class UdpSocketHandlerTest {
 		AsyncUdpSocketImpl.connect(Eventloop.getCurrentEventloop(), serverDatagramChannel)
 				.then(serverSocket -> serverSocket.receive()
 						.then(serverSocket::send)
-						.whenComplete(($, e) -> serverSocket.close()))
+						.whenComplete(serverSocket::close))
 				.whenComplete(assertComplete());
 
 		DatagramChannel clientDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
@@ -66,7 +66,7 @@ public final class UdpSocketHandlerTest {
 							.whenComplete(assertComplete());
 
 					clientSocket.receive()
-							.whenComplete(($, e) -> clientSocket.close())
+							.whenComplete(clientSocket::close)
 							.whenComplete(assertComplete(packet -> {
 								byte[] message = packet.getBuf().asArray();
 

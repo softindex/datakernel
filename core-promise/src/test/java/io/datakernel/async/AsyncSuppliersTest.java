@@ -1,6 +1,7 @@
 package io.datakernel.async;
 
 import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -47,14 +48,13 @@ public class AsyncSuppliersTest {
 		assertSame(promise2, promise4);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfGetAfterFirstPromise() {
 		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
-		Promise<Void>[] nextPromise = new Promise[1];
+		Ref<Promise<Void>> nextPromiseRef = new Ref<>();
 		Promise<Void> promise1 = subscribe.get()
-				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+				.whenComplete(() -> nextPromiseRef.value = subscribe.get());
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get();
@@ -68,8 +68,8 @@ public class AsyncSuppliersTest {
 		assertSame(promise2, promise4);
 
 		// subscribed to secondly returned promise
-		assertNotSame(nextPromise[0], promise1);
-		assertSame(nextPromise[0], promise2);
+		assertNotSame(nextPromiseRef.value, promise1);
+		assertSame(nextPromiseRef.value, promise2);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -103,17 +103,16 @@ public class AsyncSuppliersTest {
 		assertNotSame(nextPromise[1], nextPromise[2]);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfGetAfterLaterPromises() {
 		AsyncSupplier<Void> subscribe = coalesce(() -> Promise.complete().async());
 
-		Promise<Void>[] nextPromise = new Promise[1];
+		Ref<Promise<Void>> nextPromiseRef = new Ref<>();
 		Promise<Void> promise1 = subscribe.get();
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get()
-				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
+				.whenComplete(() -> nextPromiseRef.value = subscribe.get());
 		Promise<Void> promise4 = subscribe.get();
 
 		await(promise1);
@@ -124,8 +123,8 @@ public class AsyncSuppliersTest {
 		assertSame(promise2, promise4);
 
 		// subscribed to new promise
-		assertNotSame(nextPromise[0], promise1);
-		assertNotSame(nextPromise[0], promise2);
+		assertNotSame(nextPromiseRef.value, promise1);
+		assertNotSame(nextPromiseRef.value, promise2);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -203,24 +202,23 @@ public class AsyncSuppliersTest {
 		assertSame(nextPromise1[2], nextPromise1[2]);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void subscribeIfNotAsync() {
-		AsyncSupplier<Void> subscribe = coalesce(Promise::complete);
+		AsyncSupplier<Void> supplier = coalesce(Promise::complete);
 
-		Promise<Void>[] nextPromise = new Promise[1];
-		Promise<Void> promise1 = subscribe.get();
-		Promise<Void> promise2 = subscribe.get()
-				.whenComplete(($, e) -> nextPromise[0] = subscribe.get());
-		Promise<Void> promise3 = subscribe.get();
+		Ref<Promise<Void>> nextPromiseRef = new Ref<>();
+		Promise<Void> promise1 = supplier.get();
+		Promise<Void> promise2 = supplier.get()
+				.whenComplete(() -> nextPromiseRef.value = supplier.get());
+		Promise<Void> promise3 = supplier.get();
 
 		await(promise1);
 
 		assertNotSame(promise1, promise2);
 		assertNotSame(promise1, promise3);
-		assertNotSame(promise1, nextPromise[0]);
+		assertNotSame(promise1, nextPromiseRef.value);
 		assertNotSame(promise2, promise3);
-		assertNotSame(promise2, nextPromise[0]);
-		assertNotSame(promise3, nextPromise[0]);
+		assertNotSame(promise2, nextPromiseRef.value);
+		assertNotSame(promise3, nextPromiseRef.value);
 	}
 }

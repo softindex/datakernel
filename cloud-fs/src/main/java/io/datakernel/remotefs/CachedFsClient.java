@@ -168,14 +168,14 @@ public final class CachedFsClient implements FsClient, EventloopService {
 							.then(mainMetadata -> {
 								if (mainMetadata == null) {
 									return cacheClient.download(name, offset, length)
-											.whenComplete(($, e) -> updateCacheStats(name));
+											.whenComplete(() -> updateCacheStats(name));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
 
 								if (sizeInCache >= sizeInMain) {
 									return cacheClient.download(name, offset, length)
-											.whenComplete((val, e) -> updateCacheStats(name));
+											.whenComplete(() -> updateCacheStats(name));
 								}
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {

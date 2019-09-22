@@ -103,7 +103,7 @@ public final class StreamRegistry<V> implements Iterable<V> {
 		Entry<V> entry = new Entry<>(value);
 		Node<Entry<V>> node = list.addFirstValue(entry);
 		return promise -> promise
-				.whenComplete(($, e) -> list.removeNode(node));
+				.whenComplete(() -> list.removeNode(node));
 	}
 
 	@Override

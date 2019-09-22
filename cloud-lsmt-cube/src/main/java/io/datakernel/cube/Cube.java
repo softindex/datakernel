@@ -26,6 +26,7 @@ import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.process.AsyncCollector;
 import io.datakernel.codegen.*;
 import io.datakernel.common.Initializable;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
@@ -1088,15 +1089,15 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				String dimension = resolverContainer.dimensions.get(i);
 				key[i] = fullySpecifiedDimensions.get(dimension);
 			}
-			Object[] attributesPlaceholder = new Object[1];
 
+			Ref<Object> attributesRef = new Ref<>();
 			return resolverContainer.resolver.resolveAttributes(singletonList(key),
 					result1 -> (Object[]) result1,
-					(result12, attributes) -> attributesPlaceholder[0] = attributes)
+					(result12, attributes) -> attributesRef.value = attributes)
 					.whenResult($ -> {
 						for (int i = 0; i < resolverContainer.attributes.size(); i++) {
 							String attribute = resolverContainer.attributes.get(i);
-							result.put(attribute, attributesPlaceholder[0] != null ? ((Object[]) attributesPlaceholder[0])[i] : null);
+							result.put(attribute, attributesRef.value != null ? ((Object[]) attributesRef.value)[i] : null);
 						}
 					});
 		}

@@ -119,7 +119,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public Promise<Void> stop() {
 		poll = null;
 		return isValid() ?
-				sync().whenComplete(($, e) -> invalidateInternalState()) :
+				sync().whenComplete(this::invalidateInternalState) :
 				Promise.complete();
 	}
 
@@ -164,7 +164,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 				this::commit,
 				this::push)
 				.whenComplete(() -> isSyncing = false)
-				.whenComplete(($, e) -> poll())
+				.whenComplete(this::poll)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 

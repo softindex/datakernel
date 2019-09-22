@@ -109,7 +109,7 @@ public final class TestRemoteFsClusterClient {
 
 		await(client.upload(resultFile)
 				.then(ChannelSupplier.of(ByteBuf.wrapForReading(content.getBytes(UTF_8)))::streamTo)
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 
 		int uploaded = 0;
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
@@ -133,7 +133,7 @@ public final class TestRemoteFsClusterClient {
 
 		await(ChannelSupplier.ofPromise(client.download(file, 0))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(file)))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 
 		assertEquals(new String(readAllBytes(clientStorage.resolve(file)), UTF_8), content);
 	}
@@ -160,7 +160,7 @@ public final class TestRemoteFsClusterClient {
 		String[] files = {"file_1.txt", "file_2.txt", "file_3.txt", "other.txt"};
 
 		await(Promises.all(Arrays.stream(files).map(f -> ChannelSupplier.of(data.slice()).streamTo(ChannelConsumer.ofPromise(client.upload(f)))))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 
 		assertEquals(new String(readAllBytes(serverStorages[1].resolve("file_1.txt")), UTF_8), content);
 		assertEquals(new String(readAllBytes(serverStorages[2].resolve("file_2.txt")), UTF_8), content);
@@ -178,7 +178,7 @@ public final class TestRemoteFsClusterClient {
 				.mapToObj(i ->
 						() -> ChannelSupplier.of(data.slice())
 								.streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded_" + i + ".txt")))))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 
 		for (int i = 0; i < CLIENT_SERVER_PAIRS; i++) {
 			for (int j = 0; j < 1000; j++) {
@@ -192,7 +192,7 @@ public final class TestRemoteFsClusterClient {
 		client.withReplicationCount(client.getClients().size()); // max possible replication
 
 		Throwable exception = awaitException(ChannelSupplier.of(ByteBuf.wrapForReading("whatever, blah-blah".getBytes(UTF_8))).streamTo(ChannelConsumer.ofPromise(client.upload("file_uploaded.txt")))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Didn't connect to enough partitions"));
@@ -204,7 +204,7 @@ public final class TestRemoteFsClusterClient {
 
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(fileName))
 				.streamTo(ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle)))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString(fileName));

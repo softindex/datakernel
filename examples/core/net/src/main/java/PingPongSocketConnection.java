@@ -65,7 +65,7 @@ public final class PingPongSocketConnection {
 									.then($ -> bufsSupplier.parse(PARSER)
 											.whenResult(System.out::println)
 											.map($2 -> i + 1)))
-							.whenComplete(($, e) -> socket.close());
+							.whenComplete(socket::close);
 				})
 				.whenException(e -> { throw new RuntimeException(e); });
 

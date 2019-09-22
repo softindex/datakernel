@@ -1,5 +1,6 @@
 package io.datakernel.stream;
 
+import io.datakernel.common.ref.Ref;
 import io.datakernel.datastream.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
@@ -26,10 +27,9 @@ public class TestStreamConsumers {
 			@Override
 			public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 				super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
-					@SuppressWarnings("unchecked")
 					@Override
 					public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-						StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[1];
+						Ref<StreamDataAcceptor<T>> dataAcceptorRef = new Ref<>();
 						Context context = new Context() {
 							final Eventloop eventloop = getCurrentEventloop();
 
@@ -40,7 +40,7 @@ public class TestStreamConsumers {
 
 							@Override
 							public void resume() {
-								eventloop.post(() -> supplier.resume(dataAcceptors[0]));
+								eventloop.post(() -> supplier.resume(dataAcceptorRef.value));
 							}
 
 							@Override
@@ -48,8 +48,8 @@ public class TestStreamConsumers {
 								acknowledgement.trySetException(e);
 							}
 						};
-						dataAcceptors[0] = decorator.decorate(context, dataAcceptor);
-						super.resume(dataAcceptors[0]);
+						dataAcceptorRef.value = decorator.decorate(context, dataAcceptor);
+						super.resume(dataAcceptorRef.value);
 					}
 				});
 			}

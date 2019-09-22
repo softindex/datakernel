@@ -117,7 +117,7 @@ public final class AsyncHttpClientTest {
 				socket.read()
 						.whenResult(ByteBuf::recycle)
 						.then($ -> socket.write(wrapAscii("\r\n")))
-						.whenComplete(($, e) -> socket.close()))
+						.whenComplete(socket::close))
 				.withListenPort(PORT)
 				.withAcceptOnce()
 				.listen();

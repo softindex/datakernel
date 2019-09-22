@@ -164,7 +164,7 @@ public final class RpcHelloWorldTest {
 			for (int i = 0; i < requestCount; i++) {
 				String name = "World" + i;
 				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete(($, e) -> latch.countDown())
+						.whenComplete(latch::countDown)
 						.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();
@@ -212,7 +212,7 @@ public final class RpcHelloWorldTest {
 								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 				client2.eventloop.execute(() ->
 						client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(($, e) -> latch.countDown())
+								.whenComplete(latch::countDown)
 								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();

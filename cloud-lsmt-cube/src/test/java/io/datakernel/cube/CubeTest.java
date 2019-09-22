@@ -158,7 +158,7 @@ public final class CubeTest {
 		await(
 				Promises.all(consume(cube, chunkStorage, new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)),
 						consume(cube, chunkStorage, new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-						.whenComplete(($, e) -> remoteFsServer1.close())
+						.whenComplete(remoteFsServer1::close)
 		);
 		RemoteFsServer remoteFsServer2 = startServer(executor, serverStorage);
 

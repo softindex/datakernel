@@ -344,25 +344,25 @@ public final class OTAlgorithms {
 	}
 
 	public static <K, D> Promise<List<D>> checkout(OTRepository<K, D> repository, OTSystem<D> system) {
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(repository, system, heads, DiffsReducer.toVoid(),
 								commit -> repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
-								.then(findResult -> Promise.of(cachedSnapshot.value)))
+										.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null))
+								.then(findResult -> Promise.of(cachedSnapshotRef.value)))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public static <K, D> Promise<List<D>> checkout(OTRepository<K, D> repository, OTSystem<D> system, K commitId) {
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(repository, system, union(heads, singleton(commitId)), DiffsReducer.toVoid(),
 								commit -> repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
+										.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null))
 								.then(findResult -> diff(repository, system, findResult.commit, commitId)
-										.map(diff -> concat(cachedSnapshot.value, diff))))
+										.map(diff -> concat(cachedSnapshotRef.value, diff))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 

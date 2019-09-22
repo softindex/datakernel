@@ -214,7 +214,7 @@ public final class MessagingWithBinaryStreamingTest {
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream()))
 							.then($ -> messaging.receive())
-							.whenComplete(($, e) -> messaging.close());
+							.whenComplete(messaging::close);
 				}));
 
 		assertEquals("ack", msg);

@@ -135,7 +135,6 @@ public final class CodecRegistry implements CodecFactory {
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public <T> StructuredCodec<T> get(Type type) {
 		return doGet(RecursiveType.of(type));
 	}

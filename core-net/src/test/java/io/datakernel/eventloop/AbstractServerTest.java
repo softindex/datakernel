@@ -71,7 +71,7 @@ public final class AbstractServerTest {
 				.then(socket ->
 						socket.write(ByteBufStrings.wrapAscii(message))
 								.then($ -> socket.read())
-								.whenComplete(($, e) -> socket.close())));
+								.whenComplete(socket::close)));
 
 		assertEquals(message, response.asString(UTF_8));
 	}

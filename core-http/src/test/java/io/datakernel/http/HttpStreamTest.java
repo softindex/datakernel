@@ -165,7 +165,7 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+						.whenComplete(socket::close)));
 
 		assertEquals(responseMessage, body.asString(UTF_8));
 
@@ -187,7 +187,7 @@ public final class HttpStreamTest {
 		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+						.whenComplete(socket::close)));
 
 		assertNull(body);
 
@@ -216,7 +216,7 @@ public final class HttpStreamTest {
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.write(null))
 						.then($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+						.whenComplete(socket::close)));
 
 		assertNull(body);
 

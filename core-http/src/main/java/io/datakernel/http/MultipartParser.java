@@ -106,11 +106,11 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 				.then(contentDispositionFields -> {
 					String fieldName = contentDispositionFields.get("name");
 					String fileName = contentDispositionFields.get("filename");
-					Ref<MultipartFrame> last = new Ref<>();
+					Ref<MultipartFrame> lastRef = new Ref<>();
 					return frames
 							.until(f -> {
 								if (f.isHeaders()) {
-									last.set(f);
+									lastRef.set(f);
 									return true;
 								}
 								return false;
@@ -121,8 +121,8 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 									dataHandler.handleField(fieldName) :
 									dataHandler.handleFile(fieldName, fileName)
 							))
-							.then($ -> last.get() != null ?
-									doSplit(last.get(), frames, dataHandler) :
+							.then($ -> lastRef.get() != null ?
+									doSplit(lastRef.get(), frames, dataHandler) :
 									Promise.complete())
 							.toVoid();
 				});

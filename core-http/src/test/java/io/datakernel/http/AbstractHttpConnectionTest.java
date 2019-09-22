@@ -149,6 +149,6 @@ public final class AbstractHttpConnectionTest {
 				.post()
 				.then($ -> checkRequest("keep-alive", 2, connectionCount))
 				.post()
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 	}
 }

@@ -69,7 +69,7 @@ public final class PingPongSocketConnectionTest {
 									.whenResult(res -> assertEquals(REQUEST_MSG, res))
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG)))
 									.map($ -> i - 1))
-							.whenComplete(($, e) -> socket.close())
+							.whenComplete(socket::close)
 							.whenComplete(assertComplete());
 				})
 				.withListenAddress(ADDRESS)

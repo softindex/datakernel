@@ -62,9 +62,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		return backupPromise = inMemory.download(lastTimestamp)
 				.then(supplierWithResult -> supplierWithResult
 						.streamTo(StreamConsumer.ofPromise(localFiles.upload()))
-						.whenComplete(($, e) -> {
-							backupPromise = null;
-						}));
+						.whenComplete(() -> backupPromise = null));
 	}
 
 	public boolean backupInProgress() {

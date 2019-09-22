@@ -74,7 +74,7 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	@Override
 	public Promise<FetchData<K, D>> checkout() {
 		RefInt epoch = new RefInt(0);
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads -> findParent(
 						repository,
@@ -82,13 +82,13 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 						heads,
 						DiffsReducer.toList(),
 						commit -> repository.loadSnapshot(commit.getId())
-								.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null)))
+								.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null)))
 				.whenResult(findResult -> epoch.set(findResult.getEpoch()))
 				.then(findResult -> Promise.of(
 						new FetchData<>(
 								findResult.getChild(),
 								findResult.getChildLevel(),
-								concat(cachedSnapshot.value, findResult.getAccumulatedDiffs()))))
+								concat(cachedSnapshotRef.value, findResult.getAccumulatedDiffs()))))
 				.then(checkoutData -> fetch(checkoutData.getCommitId())
 						.map(fetchData -> new FetchData<>(
 								fetchData.getCommitId(),

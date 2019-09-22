@@ -926,15 +926,14 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			}
 
 			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
+			Ref<Object> lastValueRef = new Ref<>();
 			Ref<Exception> exceptionRef = new Ref<>();
-
-			Ref<Object> lastValue = new Ref<>();
 			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
 				Object mbean = mbeanWrapper.getMBean();
 				mbeanWrapper.execute(() -> {
 					try {
 						Object result = opMethod.invoke(mbean, args);
-						lastValue.set(result);
+						lastValueRef.set(result);
 						latch.countDown();
 					} catch (Exception e) {
 						exceptionRef.set(e);
@@ -955,7 +954,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			}
 
 			// We don't know how to aggregate return values if there are several mbeans
-			return mbeanWrappers.size() == 1 ? lastValue.get() : null;
+			return mbeanWrappers.size() == 1 ? lastValueRef.get() : null;
 		}
 
 		private void propagate(Throwable e) throws MBeanException {

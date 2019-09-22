@@ -76,7 +76,7 @@ public final class TestSimpleCrdt {
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(client.upload()))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		System.out.println("Data at 'remote' storage:");
 		remoteStorage.iterator().forEachRemaining(System.out::println);
