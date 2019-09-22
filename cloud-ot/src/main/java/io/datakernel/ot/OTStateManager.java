@@ -17,7 +17,6 @@
 package io.datakernel.ot;
 
 import io.datakernel.async.function.AsyncSupplier;
-import io.datakernel.async.function.AsyncSuppliers.AsyncSupplierWithStatus;
 import io.datakernel.async.process.AsyncExecutors;
 import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.async.service.EventloopService;
@@ -35,7 +34,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.async.function.AsyncSuppliers.coalesce;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.async.util.LogUtils.thisMethod;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.Preconditions.checkNotNull;
@@ -65,10 +64,12 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@Nullable
 	private List<D> pendingCommitDiffs;
 
-	private final AsyncSupplierWithStatus<Void> sync = new AsyncSupplierWithStatus<>(coalesce(this::doSync));
+	private final AsyncSupplier<Void> sync = reuse(this::doSync);
+	private boolean isSyncing;
 
 	@Nullable
-	private AsyncSupplierWithStatus<Void> poll;
+	private AsyncSupplier<Void> poll;
+	private boolean isPolling;
 
 	@SuppressWarnings("unchecked")
 	private OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D, ?> repository, OTState<D> state) {
@@ -96,7 +97,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	public OTStateManager<K, D> withPoll(@NotNull Function<AsyncSupplier<Void>, AsyncSupplier<Void>> pollPolicy) {
-		this.poll = new AsyncSupplierWithStatus<>(pollPolicy.apply(this::doPoll));
+		this.poll = pollPolicy.apply(this::doPoll);
 		return this;
 	}
 
@@ -139,12 +140,13 @@ public final class OTStateManager<K, D> implements EventloopService {
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	private boolean isSyncing() {
-		return sync.isRunning();
+		return isSyncing;
 	}
 
 	private boolean isPolling() {
-		return poll != null;
+		return isPolling;
 	}
 
 	@NotNull
@@ -155,21 +157,25 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	private Promise<Void> doSync() {
 		checkState(isValid());
+		isSyncing = true;
 		return sequence(
 				this::push,
 				poll == null ? this::fetch : Promise::complete,
 				this::commit,
 				this::push)
+				.whenComplete(() -> isSyncing = false)
 				.whenComplete(($, e) -> poll())
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	private void poll() {
-		if (poll != null && !poll.isRunning()) {
+		if (poll != null && !isPolling()) {
+			isPolling = true;
 			poll.get()
 					.async()
+					.whenComplete(() -> isPolling = false)
 					.whenComplete(($, e) -> {
-						if (!sync.isRunning()) {
+						if (!isSyncing()) {
 							poll();
 						}
 					});
@@ -191,7 +197,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		K pollCommitId = this.commitId;
 		return repository.poll(pollCommitId)
 				.whenResult(fetchData -> {
-					if (!sync.isRunning()) {
+					if (!isSyncing()) {
 						rebase(pollCommitId, fetchData);
 					}
 				})
@@ -255,7 +261,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	public void reset() {
-		checkState(!sync.isRunning());
+		checkState(!isSyncing());
 		apply(otSystem.invert(
 				concat(nullToEmpty(pendingCommitDiffs), workingDiffs)));
 		workingDiffs.clear();

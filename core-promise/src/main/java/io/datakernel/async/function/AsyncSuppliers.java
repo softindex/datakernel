@@ -37,7 +37,7 @@ public final class AsyncSuppliers {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> AsyncSupplier<T> coalesce(@NotNull AsyncSupplier<T> actual) {
-		Function<Void, Promise<T>> fn = Promises.coalesce(v -> actual.get(), a -> actual.get(), () -> null, (a, v) -> {});
+		Function<Void, Promise<T>> fn = Promises.coalesce(() -> null, (a, v) -> {}, a -> actual.get());
 		return () -> fn.apply(null);
 	}
 
@@ -119,30 +119,6 @@ public final class AsyncSuppliers {
 				}
 			}
 		};
-	}
-
-	public static final class AsyncSupplierWithStatus<T> implements AsyncSupplier<T> {
-		@NotNull
-		private final AsyncSupplier<T> asyncSupplier;
-
-		private int running;
-
-		public AsyncSupplierWithStatus(@NotNull AsyncSupplier<T> asyncSupplier) {this.asyncSupplier = asyncSupplier;}
-
-		@Override
-		public @NotNull Promise<T> get() {
-			running++;
-			return asyncSupplier.get()
-					.whenComplete(() -> running--);
-		}
-
-		public int getRunning() {
-			return running;
-		}
-
-		public boolean isRunning() {
-			return running != 0;
-		}
 	}
 
 }

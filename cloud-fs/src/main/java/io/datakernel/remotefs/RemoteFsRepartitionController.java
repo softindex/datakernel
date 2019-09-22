@@ -16,8 +16,7 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.function.AsyncSuppliers;
-import io.datakernel.async.function.AsyncSuppliers.AsyncSupplierWithStatus;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.Initializable;
@@ -45,6 +44,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.Preconditions.checkState;
@@ -129,12 +129,14 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		return repartition.get();
 	}
 
-	private final AsyncSupplierWithStatus<Void> repartition = new AsyncSupplierWithStatus<>(AsyncSuppliers.reuse(this::doRepartition));
+	private final AsyncSupplier<Void> repartition = reuse(this::doRepartition);
+	private boolean isRepartitioning;
 
 	@NotNull
 	private Promise<Void> doRepartition() {
 		checkState(eventloop.inEventloopThread(), "Should be called from eventloop thread");
 
+		isRepartitioning = true;
 		return localStorage.list(glob)
 				.then(list -> {
 					allFiles = list.size();
@@ -152,6 +154,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 														return Promise.complete();
 													})));
 				})
+				.whenComplete(() -> isRepartitioning = false)
 				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenEx(($, e) -> {
 					if (e != null) {
@@ -290,7 +293,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		return repartition.isRunning() ?
+		return isRepartitioning() ?
 				Promise.ofCallback(cb -> this.closeCallback = cb) :
 				Promise.complete();
 	}
@@ -303,7 +306,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@JmxAttribute
 	public boolean isRepartitioning() {
-		return repartition.isRunning();
+		return isRepartitioning;
 	}
 
 	@JmxAttribute

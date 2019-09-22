@@ -309,7 +309,7 @@ public final class Promises {
 
 	/**
 	 * {@code allCompleted} should be used if you want to work only with succeeded Promise results.
-	 *
+	 * <p>
 	 * Returns {@link Promise} that completes when all of the {@code promises} are completed.
 	 * If some {@code promises} completes exceptionally,
 	 * it will execute the next {@link Promise}
@@ -1683,96 +1683,76 @@ public final class Promises {
 
 	// endregion
 
-	private static final class AccumulatorRef<T> {
-		private static final Object EMPTY = new Object();
-		@SuppressWarnings("unchecked")
-		T accumulatedParameters = (T) EMPTY;
-	}
-
 	@Contract(pure = true)
 	@NotNull
-	public static <T, R> Function<T, Promise<R>> coalesce(@NotNull Function<T, Promise<R>> callFn,
-			@NotNull BinaryOperator<T> accumulator) {
-		return coalesce(
-				callFn,
-				(AccumulatorRef<T> accumulatorRef) -> callFn.apply(accumulatorRef.accumulatedParameters),
-				AccumulatorRef::new,
-				(accumulatorRef, value) -> accumulatorRef.accumulatedParameters =
-						accumulatorRef.accumulatedParameters == AccumulatorRef.EMPTY ?
-								value :
-								accumulator.apply(accumulatorRef.accumulatedParameters, value));
+	public static <T, A, R> Function<T, Promise<R>> coalesce(@NotNull Supplier<A> argumentAccumulatorSupplier, @NotNull BiConsumer<A, T> argumentAccumulatorFn,
+			@NotNull Function<A, Promise<R>> fn) {
+		return new CoalesceImpl<>(argumentAccumulatorSupplier, argumentAccumulatorFn, fn);
 	}
 
-	@Contract(pure = true)
-	@NotNull
-	public static <T, A, R> Function<T, Promise<R>> coalesce(@NotNull Function<A, Promise<R>> callFn,
-			@NotNull Supplier<A> supplier, @NotNull BiConsumer<A, T> accumulator) {
-		return coalesce(
-				parameter -> {
-					A accumulatedParameter = supplier.get();
-					accumulator.accept(accumulatedParameter, parameter);
-					return callFn.apply(accumulatedParameter);
-				},
-				callFn,
-				supplier, accumulator);
-	}
+	private static class CoalesceImpl<T, R, A> implements Function<T, Promise<R>> {
+		@NotNull
+		private final Supplier<A> argumentAccumulatorSupplier;
+		@NotNull
+		private final BiConsumer<A, T> argumentAccumulatorFn;
+		@NotNull
+		private final Function<A, Promise<R>> fn;
 
-	@Contract(pure = true)
-	@NotNull
-	public static <T, A, R> Function<T, Promise<R>> coalesce(
-			@NotNull Function<T, Promise<R>> directCallFn, @NotNull Function<A, Promise<R>> accumulatedCallFn,
-			@NotNull Supplier<A> supplier, @NotNull BiConsumer<A, T> accumulator) {
-		return new Function<T, Promise<R>>() {
-			boolean isRunning;
-			@Nullable
-			SettablePromise<R> promise;
-			@Nullable
-			A parameters;
+		boolean asyncRunning;
+		@Nullable
+		private SettablePromise<R> nextPromise;
+		private A argumentAccumulator;
 
-			@Override
-			public Promise<R> apply(T parameters) {
-				if (!isRunning) {
-					assert promise == null && this.parameters == null;
-					SettablePromise<R> result = new SettablePromise<>();
-					isRunning = true;
-					Promise<? extends R> promise = directCallFn.apply(parameters);
-					promise.whenComplete((v, e) -> {
-						result.accept(v, e);
-						isRunning = false;
-						processNext();
-					});
-					return result;
-				}
-				if (promise == null) {
-					promise = new SettablePromise<>();
-					this.parameters = supplier.get();
-				}
-				accumulator.accept(this.parameters, parameters);
-				return promise;
+		public CoalesceImpl(@NotNull Supplier<A> argumentAccumulatorSupplier, @NotNull BiConsumer<A, T> argumentAccumulatorFn, @NotNull Function<A, Promise<R>> fn) {
+			this.argumentAccumulatorSupplier = argumentAccumulatorSupplier;
+			this.argumentAccumulatorFn = argumentAccumulatorFn;
+			this.fn = fn;
+		}
+
+		@Override
+		public Promise<R> apply(T parameters) {
+			if (!asyncRunning) {
+				assert nextPromise == null && this.argumentAccumulator == null;
+				A argumentAccumulator = argumentAccumulatorSupplier.get();
+				argumentAccumulatorFn.accept(argumentAccumulator, parameters);
+				Promise<R> promise = fn.apply(argumentAccumulator);
+				asyncRunning = true;
+				SettablePromise<R> result = new SettablePromise<>();
+				promise.whenComplete((v, e) -> {
+					result.accept(v, e);
+					asyncRunning = false;
+					processNext();
+				});
+				return result;
 			}
-
-			void processNext() {
-				while (this.promise != null) {
-					SettablePromise<R> subscribedPromise = this.promise;
-					A accumulatedParameters = this.parameters;
-					this.promise = null;
-					this.parameters = null;
-					isRunning = true;
-					Promise<? extends R> promise = accumulatedCallFn.apply(accumulatedParameters);
-					if (promise.isComplete()) {
-						promise.whenComplete(subscribedPromise);
-						isRunning = false;
-						continue;
-					}
-					promise.whenComplete((result, e) -> {
-						subscribedPromise.accept(result, e);
-						isRunning = false;
-						processNext();
-					});
-					break;
-				}
+			if (nextPromise == null) {
+				nextPromise = new SettablePromise<>();
+				this.argumentAccumulator = argumentAccumulatorSupplier.get();
 			}
-		};
-	}
+			argumentAccumulatorFn.accept(this.argumentAccumulator, parameters);
+			return nextPromise;
+		}
 
+		void processNext() {
+			while (this.nextPromise != null) {
+				SettablePromise<R> nextPromise = this.nextPromise;
+				A argumentAccumulator = this.argumentAccumulator;
+				this.nextPromise = null;
+				this.argumentAccumulator = null;
+				asyncRunning = true;
+				Promise<? extends R> promise = fn.apply(argumentAccumulator);
+				if (promise.isComplete()) {
+					promise.whenComplete(nextPromise);
+					asyncRunning = false;
+					continue;
+				}
+				promise.whenComplete((result, e) -> {
+					nextPromise.accept(result, e);
+					asyncRunning = false;
+					processNext();
+				});
+				break;
+			}
+		}
+	}
 }
