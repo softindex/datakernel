@@ -47,6 +47,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
@@ -55,6 +56,7 @@ import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static java.nio.file.FileVisitResult.CONTINUE;
+import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -574,26 +576,66 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return emptyList();
 		}
 
+		StringBuilder sb = new StringBuilder();
+		String[] split = glob.split(FILE_SEPARATOR);
+		for (int i = 0; i < split.length - 1; i++) {
+			String part = split[i];
+			if (isWildcard(part)) {
+				break;
+			}
+			sb.append(part).append(FILE_SEPARATOR_CHAR);
+		}
+		String subglob = glob.substring(sb.length());
+		Path subfolder = resolve(sb.toString());
+
+		split = subglob.split(FILE_SEPARATOR);
+		PathMatcher[] dirMatchers = new PathMatcher[split.length];
+		for (int i = 0; i < split.length; i++) {
+			String sub = split[i];
+			if (sub.contains("**")) {
+				break;
+			}
+			dirMatchers[i] = storage.getFileSystem().getPathMatcher("glob:" + sub);
+		}
+		Predicate<Path> dirFilter =
+				Arrays.stream(dirMatchers).allMatch(Objects::isNull) ?
+						$ -> true :
+						dir -> {
+							Path relative = subfolder.relativize(dir);
+							if (relative.toString().isEmpty()) { // empty path name count returns 1
+								return true;
+							}
+							for (int i = 0; i < relative.getNameCount(); i++) {
+								PathMatcher matcher = dirMatchers[i];
+								if (matcher == null) {
+									return true;
+								}
+								if (!matcher.matches(relative.getName(i))) {
+									return false;
+								}
+							}
+							return true;
+						};
+
 		if (defaultRevision != null) {
 			List<FilenameInfo> list = new ArrayList<>();
 			// optimization for listing all files
-			if ("**".equals(glob)) {
-				walkFiles(storage, path -> list.add(simpleFileInfo(path, defaultRevision)));
+			if ("**".equals(subglob)) {
+				walkFiles(subfolder, dirFilter, path -> list.add(simpleFileInfo(path, defaultRevision)));
 				return list;
 			}
 			// optimization for single-file requests
-			if (!isWildcard(glob)) {
-				Path path = resolve(glob);
-				if (Files.isRegularFile(path)) {
-					list.add(simpleFileInfo(path, defaultRevision));
+			if ("".equals(subglob)) {
+				if (Files.isRegularFile(subfolder)) {
+					list.add(simpleFileInfo(subfolder, defaultRevision));
 				}
 				return list;
 			}
 			// common
-			PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
+			PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + subglob);
 
-			walkFiles(storage, path -> {
-				if (matcher.matches(storage.relativize(path))) {
+			walkFiles(subfolder, dirFilter, path -> {
+				if (matcher.matches(subfolder.relativize(path))) {
 					list.add(simpleFileInfo(path, defaultRevision));
 				}
 			});
@@ -602,8 +644,8 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 		Map<String, FilenameInfo> files = new HashMap<>();
 		// optimization for listing all files
-		if ("**".equals(glob)) {
-			walkFiles(storage, path -> {
+		if ("**".equals(subglob)) {
+			walkFiles(subfolder, dirFilter, path -> {
 				FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
 				if (info != null && (includeTombstones || !info.isTombstone())) {
 					files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
@@ -612,21 +654,11 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return files.values();
 		}
 
-		StringBuilder folder = new StringBuilder();
-		String[] split = glob.split(FILE_SEPARATOR);
-		for (int i = 0; i < split.length - 1; i++) {
-			String part = split[i];
-			if (isWildcard(part)) {
-				break;
-			}
-			folder.append(part).append(FILE_SEPARATOR_CHAR);
-		}
+		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + subglob);
 
-		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob.substring(folder.length()));
-
-		walkFiles(storage.resolve(folder.toString()), path -> {
+		walkFiles(subfolder, dirFilter, path -> {
 			FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
-			if (info != null && (includeTombstones || !info.isTombstone()) && matcher.matches(Paths.get(info.getName().substring(folder.length())))) {
+			if (info != null && (includeTombstones || !info.isTombstone()) && matcher.matches(Paths.get(info.getName().substring(sb.length())))) {
 				files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
 			}
 		});
@@ -669,6 +701,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	private static void walkFiles(Path dir, Walker walker) throws IOException {
+		walkFiles(dir, $ -> true, walker);
+	}
+
+	private static void walkFiles(Path dir, Predicate<Path> dirFilter, Walker walker) throws IOException {
 		if (!Files.isDirectory(dir)) {
 			return;
 		}
@@ -676,6 +712,17 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 				walker.accept(file);
+				return CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult preVisitDirectory(Path subdir, BasicFileAttributes attrs) {
+				return dirFilter.test(subdir) ? CONTINUE : SKIP_SUBTREE;
+			}
+
+			@Override
+			public FileVisitResult visitFileFailed(Path file, IOException exc) {
+				logger.warn("Failed to visit file {}", dir.relativize(file), exc);
 				return CONTINUE;
 			}
 		});
