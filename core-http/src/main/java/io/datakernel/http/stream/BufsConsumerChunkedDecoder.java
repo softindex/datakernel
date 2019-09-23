@@ -98,9 +98,9 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	private void processLength() {
 		input.parse(
 				queue -> {
-					int remainingBytes = queue.remainingBytes();
 					int chunkLength = 0;
-					for (int i = 0; i < min(remainingBytes, MAX_CHUNK_LENGTH_DIGITS); i++) {
+					int i;
+					for (i = 0; i < min(queue.remainingBytes(), MAX_CHUNK_LENGTH_DIGITS + 1); i++) {
 						byte c = queue.peekByte(i);
 						if (c >= '0' && c <= '9') {
 							chunkLength = (chunkLength << 4) + (c - '0');
@@ -120,7 +120,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 						}
 					}
 
-					if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
+					if (i == MAX_CHUNK_LENGTH_DIGITS + 1) {
 						throw MALFORMED_CHUNK_LENGTH;
 					}
 
