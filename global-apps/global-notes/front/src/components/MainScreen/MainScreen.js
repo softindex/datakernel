@@ -6,14 +6,14 @@ import SideBar from '../SideBar/SideBar';
 import mainScreenStyles from './mainScreenStyles';
 import NotesService from '../../modules/notes/NotesService';
 import Note from '../Note/Note';
+import EmptyNote from '../EmptyNote/EmptyNote'
 import {
   checkAuth,
   initService,
   AuthContext,
   connectService,
   RegisterDependency,
-  useService,
-  EmptyScreenTitle
+  useService
 } from 'global-apps-common';
 
 function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
@@ -40,7 +40,7 @@ function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
       <div className={classes.note}>
         <SideBar/>
         {!noteId && (
-          <EmptyScreenTitle title='Please select note to start editing'/>
+          <EmptyNote title='Please select note to start editing'/>
         )}
         {noteId && (
           <Note noteId={noteId}/>
