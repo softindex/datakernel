@@ -182,7 +182,7 @@ public class LogUtils {
 				(parameters.length != 0 ? " " + Arrays.stream(parameters)
 						.map(LogUtils::toString)
 						.collect(joining(", ")) : "") +
-				" ...";
+				" …";
 	}
 
 	public static String formatResult(String methodName, Object result, Object... parameters) {
@@ -190,7 +190,7 @@ public class LogUtils {
 				(parameters.length != 0 ? " " + Arrays.stream(parameters)
 						.map(LogUtils::toString)
 						.collect(joining(", ")) : "") +
-				" -> " + toString(result);
+				" → " + toString(result);
 	}
 
 }

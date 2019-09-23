@@ -46,7 +46,6 @@ import static io.datakernel.common.Utils.loadResource;
 import static io.datakernel.common.sql.SqlUtils.execute;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
@@ -151,9 +150,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(true);
 						try (PreparedStatement statement = connection.prepareStatement(
-								sql("" +
-										"INSERT INTO {revisions}(`epoch`, `type`, `created_by`, `level`) VALUES (0, ?, ?, 0)"
-								),
+								sql("INSERT INTO {revisions}(`epoch`, `type`, `created_by`, `level`) VALUES (0, ?, ?, 0)"),
 								Statement.RETURN_GENERATED_KEYS
 						)) {
 							statement.setString(1, "NEW");
@@ -191,17 +188,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
 
-						try (PreparedStatement ps = connection.prepareStatement(
-								sql("INSERT IGNORE INTO {revisions}(`id`) VALUES " +
-										Stream.generate(() -> "(?)").limit(commits.size())
-												.collect(joining(", "))))) {
-							int pos = 1;
-							for (OTCommit<Long, D> commit : commits) {
-								ps.setLong(pos++, commit.getId());
-							}
-							ps.executeUpdate();
-						}
-
 						for (OTCommit<Long, D> commit : commits) {
 							for (Long parentId : commit.getParents().keySet()) {
 								List<D> diff = commit.getParents().get(parentId);
@@ -216,7 +202,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 							}
 
 							try (PreparedStatement ps = connection.prepareStatement(sql(
-									"UPDATE {revisions} SET `level` = ?, `epoch` = ? WHERE `id` = ?"
+									"UPDATE {revisions} SET `type`='INNER', `level` = ?, `epoch`=? WHERE `id`=?"
 							))) {
 								ps.setLong(1, commit.getLevel());
 								ps.setInt(2, commit.getEpoch());
@@ -230,7 +216,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					return (Void) null;
 				})
 				.whenComplete(promisePush.recordStats())
-				.whenComplete(toLogger(logger, thisMethod(), commits.stream().map(OTCommit::toString).collect(toList())));
+				.whenComplete(toLogger(logger, thisMethod(), commits));
 	}
 
 	@NotNull
@@ -435,7 +421,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		if (heads.isEmpty()) return;
 		try (PreparedStatement ps = connection.prepareStatement(sql("" +
 				"UPDATE {revisions} " +
-				"SET `type`=\"" + type + "\" " +
+				"SET `type`='" + type + "' " +
 				"WHERE `id` IN " + Stream.generate(() -> "?").limit(heads.size()).collect(joining(", ", "(", ")"))
 		))) {
 			int pos = 1;
