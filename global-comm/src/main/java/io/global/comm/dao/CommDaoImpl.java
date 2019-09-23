@@ -21,23 +21,27 @@ import java.util.Set;
 
 public final class CommDaoImpl implements CommDao {
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
+	private final OTStateManager<CommitId, MapOperation<UserId, InetAddress>> lastIpsStateManager;
 	private final OTStateManager<CommitId, MapOperation<String, IpBanState>> bansStateManager;
 	private final OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager;
 
 	private final CommGlobalState container;
 
 	private final Map<UserId, UserData> usersView;
+	private final Map<UserId, InetAddress> lastIpsView;
 	private final Map<String, IpBanState> ipBanView;
 	private final Map<String, ThreadMetadata> threadsView;
 
 	public CommDaoImpl(CommGlobalState container) {
 		this.usersStateManager = container.getUsersStateManager();
+		this.lastIpsStateManager = container.getLastIpsStateManager();
 		this.bansStateManager = container.getBansStateManager();
 		this.threadsStateManager = container.getThreadsStateManager();
 
 		this.container = container;
 
 		usersView = ((MapOTState<UserId, UserData>) usersStateManager.getState()).getMap();
+		lastIpsView = ((MapOTState<UserId, InetAddress>) lastIpsStateManager.getState()).getMap();
 		ipBanView = ((MapOTState<String, IpBanState>) bansStateManager.getState()).getMap();
 		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) threadsStateManager.getState()).getMap();
 	}
@@ -69,6 +73,16 @@ public final class CommDaoImpl implements CommDao {
 	}
 
 	@Override
+	public Promise<InetAddress> getUserLastIp(UserId userId) {
+		return Promise.of(lastIpsView.get(userId));
+	}
+
+	@Override
+	public Promise<Void> updateUserLastIp(UserId userId, InetAddress lastIp) {
+		return applyAndSync(lastIpsStateManager, MapOperation.forKey(userId, SetValue.set(lastIpsView.get(userId), lastIp)));
+	}
+
+	@Override
 	public Promise<Set<UserId>> listKnownUsers() {
 		return Promise.of(usersView.keySet());
 	}
@@ -84,6 +98,11 @@ public final class CommDaoImpl implements CommDao {
 	@Override
 	public Promise<Map<String, IpBanState>> getBannedRanges() {
 		return Promise.of(ipBanView);
+	}
+
+	@Override
+	public Promise<IpBanState> getBannedRange(String id) {
+		return Promise.of(ipBanView.get(id));
 	}
 
 	@Override

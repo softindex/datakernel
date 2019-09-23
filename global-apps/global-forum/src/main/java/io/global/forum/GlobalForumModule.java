@@ -54,7 +54,7 @@ public final class GlobalForumModule extends AbstractModule {
 		AsyncServlet debug = RoutingServlet.create() // TODO anton: this is debug-only
 				.map("/*", servlet)
 				.map(GET, "/", request ->
-						Promise.of(redirect302("/79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")));
+						Promise.of(redirect302("/f7383de3a77f89df00de5fa259bb1b340874a0c603aca85771157c9c7c600f2:52484e25fb9eaec1ae346ae2a67514ff5ff2daac1e7fa49fe9506f1e34810d29")));
 		return AsyncHttpServer.create(eventloop, debug)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
@@ -64,7 +64,7 @@ public final class GlobalForumModule extends AbstractModule {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
-				.map("/static/*", StaticServlet.create(staticLoader))
+				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
 				.then(renderErrors(templater));
 	}
 

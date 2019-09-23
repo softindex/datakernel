@@ -1,49 +1,50 @@
 package io.global.comm.pojo;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.net.InetAddress;
+import java.util.Arrays;
 
-public final class IpRange implements Comparable<IpRange> {
-	private long lowerBound;
-	private long upperBound;
+public final class IpRange {
+	private final byte[] ip;
+	private final byte[] mask;
 
-	public IpRange(InetAddress lowerBound, InetAddress upperBound) {
-		this.lowerBound = ipToLong(lowerBound);
-		this.upperBound = ipToLong(upperBound);
+	public IpRange(byte[] ip, byte[] mask) {
+		this.ip = ip;
+		this.mask = mask;
 	}
 
-	public IpRange(long lowerBound, long upperBound) {
-		this.lowerBound = lowerBound;
-		this.upperBound = upperBound;
+	public byte[] getIp() {
+		return ip;
 	}
 
-	public long getLowerBound() {
-		return lowerBound;
-	}
-
-	public long getUpperBound() {
-		return upperBound;
+	public byte[] getMask() {
+		return mask;
 	}
 
 	public boolean test(InetAddress address) {
-		long x = ipToLong(address);
-		return x <= upperBound && x >= lowerBound;
-	}
-
-	private static long ipToLong(InetAddress ip) {
-		byte[] octets = ip.getAddress();
-		long result = 0;
-		for (byte octet : octets) {
-			result <<= 8;
-			result |= octet & 0xff;
+		byte[] raw = address.getAddress();
+		if (raw.length != 4) {
+			return false;
 		}
-		return result;
+		for (int i = 0; i < 4; i++) {
+			if (ip[i] != (raw[i] & mask[i])) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override
-	public int compareTo(@NotNull IpRange o) {
-		int result = Long.compare(lowerBound, upperBound);
-		return result != 0 ? result : Long.compare(upperBound, upperBound);
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		IpRange range = (IpRange) o;
+
+		return Arrays.equals(ip, range.ip) && Arrays.equals(mask, range.mask);
+	}
+
+	@Override
+	public int hashCode() {
+		return 31 * Arrays.hashCode(ip) + Arrays.hashCode(mask);
 	}
 }

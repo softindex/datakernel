@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.http.ContentTypes.HTML_UTF_8;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
@@ -17,10 +18,12 @@ import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static java.util.Collections.emptyMap;
 
 public final class MustacheTemplater {
+	private final Executor executor;
 	private final MustacheSupplier mustacheSupplier;
 	private final Map<String, Object> staticContext = new HashMap<>();
 
-	public MustacheTemplater(MustacheSupplier mustacheSupplier) {
+	public MustacheTemplater(Executor executor, MustacheSupplier mustacheSupplier) {
+		this.executor = executor;
 		this.mustacheSupplier = mustacheSupplier;
 	}
 
@@ -53,13 +56,14 @@ public final class MustacheTemplater {
 				promisesToWait.add(promise.whenResult(entry::setValue));
 			}
 		}
-		return Promises.all(promisesToWait).map($ -> {
-			ByteBufWriter writer = new ByteBufWriter();
-			mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
-			return HttpResponse.ofCode(code)
-					.withBody(writer.getBuf())
-					.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
-		});
+		return Promises.all(promisesToWait).then($ ->
+						Promise.ofBlockingCallable(executor, () -> {
+							ByteBufWriter writer = new ByteBufWriter();
+							mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
+							return HttpResponse.ofCode(code)
+									.withBody(writer.getBuf())
+									.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
+						}));
 	}
 
 	public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {

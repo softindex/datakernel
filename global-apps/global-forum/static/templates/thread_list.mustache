@@ -1,0 +1,34 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            {{#forum.description}}
+                <div class="card mb-3">
+                    <div class="card-body" style="white-space: pre-line">{{.}}</div>
+                </div>
+            {{/forum.description}}
+            <div class="card">
+                <div class="card-header text-center font-weight-bold">Threads</div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {{#threads}}
+                            <div class="list-group-item list-group-item-action">
+                                <div class="row">
+                                    <div class="col position-static">
+                                        <span class="badge">{{root.initialTimestamp}}</span>
+                                        <h5 class="ml-1 text-wrap text-break">
+                                            <a href="/{{pubKey}}/{{id}}"
+                                               class="stretched-link text-dark">{{meta.title}}</a>
+                                        </h5>
+                                    </div>
+                                    {{#root.author}}
+                                        {{>user_col}}
+                                    {{/root.author}}
+                                </div>
+                            </div>
+                        {{/threads}}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

@@ -1,4 +1,56 @@
-.img-thumbnail {
-    height:300px;
-    max-width:100%;
+
+.like, .dislike, .rating {
+  padding: 0 5px;
+  color: #fff;
+  background: #6c757d;
+  font-size: 0.8em;
+  height: fit-content;
+  cursor: default;
+
+  transition: color .15s ease-in-out, background-color .15s ease-in-out;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.like, .dislike {
+  cursor: pointer;
+}
+
+.like {
+  border-radius: .2rem 0 0 .2rem;
+}
+
+.dislike {
+  border-radius: 0 .2rem .2rem 0;
+}
+
+.like:hover, .liked > .like, .dislike:hover, .disliked > .dislike {
+  background: #5a6268;
+}
+
+.like:hover, .liked > .like {
+  color: red;
+}
+
+.dislike:hover, .disliked > .dislike {
+  color: blue;
+}
+
+.own > .like, .own > .dislike {
+  display: none;
+}
+
+.own > .rating:before {
+  content: "rating: ";
+}
+
+.own > .rating {
+  border-radius: .2rem;
+}
+
+i.fa {
+  pointer-events: none;
 }

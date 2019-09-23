@@ -6,6 +6,7 @@ import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
+import io.global.comm.pojo.UserRole;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -38,14 +39,14 @@ public class ThreadView {
 		return root;
 	}
 
-	public static Promise<List<ThreadView>> from(CommDao commDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
+	public static Promise<List<ThreadView>> from(CommDao commDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser, UserRole currentRole) {
 		return Promises.toList(threads.entrySet().stream()
 				.map(e -> {
 					ThreadDao dao = commDao.getThreadDao(e.getKey());
 					return dao != null ?
 							dao.getPost("root")
 									.then(rootPost ->
-											PostView.from(commDao, rootPost, currentUser, false)
+											PostView.from(commDao, rootPost, currentUser, currentRole, 0)
 													.map(post -> new ThreadView(e.getKey(), e.getValue(), post))) :
 							null;
 				})

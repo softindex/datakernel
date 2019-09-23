@@ -34,6 +34,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CACHE_CONTROL;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 
 /**
@@ -50,6 +51,8 @@ public final class StaticServlet implements AsyncServlet {
 
 	@Nullable
 	private String defaultResource;
+
+	private int httpCacheMaxAge = 0;
 
 	private StaticServlet(StaticLoader resourceLoader) {
 		this.resourceLoader = resourceLoader;
@@ -69,6 +72,11 @@ public final class StaticServlet implements AsyncServlet {
 
 	public static StaticServlet ofPath(Executor executor, Path path) {
 		return new StaticServlet(StaticLoader.ofPath(executor, path));
+	}
+
+	public StaticServlet withHttpCacheMaxAge(int httpCacheMaxAge) {
+		this.httpCacheMaxAge = httpCacheMaxAge;
+		return this;
 	}
 
 	public StaticServlet withContentType(ContentType contentType) {
@@ -137,9 +145,12 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	private HttpResponse createHttpResponse(ByteBuf buf, ContentType contentType) {
-		return responseSupplier.get()
+		HttpResponse response = responseSupplier.get()
 				.withBody(buf)
 				.withHeader(CONTENT_TYPE, ofContentType(contentType));
+		return httpCacheMaxAge > 0 ?
+				response.withHeader(CACHE_CONTROL, "public, max-age=" + httpCacheMaxAge) :
+				response;
 	}
 
 	@NotNull

@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
           integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css"
+          integrity="sha384-Re/I8sla3AIFEoz6DrgkHWaLDSWKXaLOYm5yn3Gwmf/QhWS3/ajG7O2qr1zBmF3d" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+          integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
     <link rel="stylesheet" href="/static/style.css">
 
     <title>Global Forum</title>
@@ -14,7 +19,7 @@
 <body>
 <div class="container">
     <nav class="navbar navbar-expand-md navbar-light bg-light my-3">
-        <a class="navbar-brand" href="/">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
+        <a class="navbar-brand" href="/">{{forum.title}}{{^forum.title}}Global Forum{{/forum.title}}</a>
 
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +36,11 @@
                             </li>
                         {{/user.role.known}}
                     {{/creatingNewThread}}
+                    {{#user.role.privileged}}
+                        <li class="nav-item">
+                            <a class="nav-link text-success" href="/{{pubKey}}/admin">Administration</a>
+                        </li>
+                    {{/user.role.privileged}}
                 {{/user}}
             </ul>
             <div class="row ml-auto mr-0">
@@ -45,7 +55,7 @@
                 {{/user}}
                 {{#user}}
                     <span class="navbar-text mr-2" style="position: relative;">
-                        Hello, <a class="stretched-link" href="/profile">{{username}}</a>
+                        Hello, <a class="stretched-link" href="/profile">{{user.name}}</a>
                     </span>
                     <form action="/logout" method="post">
                         <button class="btn btn-outline-success mx-2" type="submit">Log Out</button>
@@ -65,6 +75,12 @@
         crossorigin="anonymous"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
         integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"
+        integrity="sha384-fYxN7HsDOBRo1wT/NSZ0LkoNlcXvpDpFy6WzB42LxuKAX7sBwgo7vuins+E1HCaw"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/js/tempusdominus-bootstrap-4.min.js"
+        integrity="sha384-97pmbvZb0qdIXSwrjd4JuG6+4TJhp4eL0totTka0FF1Bf2E42dPiSXsqq09yQxjD"
         crossorigin="anonymous"></script>
 </body>
 </html>

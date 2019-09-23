@@ -89,8 +89,8 @@ public final class OTUtils {
 	);
 	public static <T> StructuredCodec<ChangeValue<T>> ofChangeValue(StructuredCodec<T> underlying) {
 		return object(ChangeValue::of,
-				"prev", ChangeValue::getPrev, underlying,
-				"next", ChangeValue::getNext, underlying,
+				"prev", ChangeValue::getPrev, underlying.nullable(),
+				"next", ChangeValue::getNext, underlying.nullable(),
 				"timestamp", ChangeValue::getTimestamp, LONG_CODEC);
 	}
 

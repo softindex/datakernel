@@ -2,6 +2,7 @@ package io.global.comm.ot.post.operation;
 
 import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
+import io.global.comm.pojo.Rating;
 import io.global.comm.pojo.UserId;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +37,7 @@ public final class PostChangesOperation implements ThreadOperation {
 		return new PostChangesOperation(singletonList(changeContent), attachmentsOps, emptyList(), emptyList(), emptyList());
 	}
 
-	public static PostChangesOperation rating(String postId, UserId userId, @Nullable Boolean prev, @Nullable Boolean next) {
+	public static PostChangesOperation rating(String postId, UserId userId, @Nullable Rating prev, @Nullable Rating next) {
 		ChangeRating changeRating = new ChangeRating(postId, userId, set(prev, next));
 		return new PostChangesOperation(emptyList(), emptyList(), singletonList(changeRating), emptyList(), emptyList());
 	}

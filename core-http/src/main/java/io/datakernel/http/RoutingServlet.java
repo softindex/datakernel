@@ -94,6 +94,10 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		checkArgument(path.isEmpty() || path.startsWith(ROOT) || path.endsWith(WILDCARD) || !path.contains(STAR), "Invalid path " + path);
 
 		if (path.endsWith(WILDCARD)) {
+			if (method != null) {
+				// multiple times this was the bug being searched for an hour at least
+				throw new UnsupportedOperationException("Wildcard mapping " + path + " is restricted to " + method + " methods only, this is not allowed");
+			}
 			makeSubtree(path.substring(0, path.length() - 2)).mapFallback(method, servlet, DEFAULT_MERGER);
 		} else {
 			makeSubtree(path).map(method, servlet, DEFAULT_MERGER);

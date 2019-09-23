@@ -10,6 +10,7 @@ import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
+import io.global.comm.pojo.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -38,11 +39,7 @@ public interface ThreadDao {
 
 	Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, AttachmentType> newAttachments, Set<String> toBeRemoved);
 
-	Promise<Void> like(UserId user, String postId);
-
-	Promise<Void> dislike(UserId user, String postId);
-
-	Promise<Void> removeLikeOrDislike(UserId user, String postId);
+	Promise<Void> updateRating(UserId user, String postId, @Nullable Rating rating);
 
 	Promise<Map<String, Post>> listPosts();
 

@@ -16,8 +16,8 @@ public final class Post {
 	private final long initialTimestamp;
 	private long lastEditTimestamp = -1;
 
-	private final Set<UserId> likes = new HashSet<>();
-	private final Set<UserId> dislikes = new HashSet<>();
+	private final Map<Rating, Set<UserId>> ratings = new EnumMap<>(Rating.class);
+
 	private final Map<String, AttachmentType> attachments = new HashMap<>();
 
 	@Nullable
@@ -31,6 +31,10 @@ public final class Post {
 		this.postId = postId;
 		this.author = author;
 		this.initialTimestamp = initialTimestamp;
+
+		for (Rating value : Rating.values()) {
+			ratings.put(value, new HashSet<>());
+		}
 	}
 
 	public static Post create(String postId, @NotNull UserId author, long initialTimestamp) {
@@ -68,19 +72,18 @@ public final class Post {
 		this.lastEditTimestamp = lastEditTimestamp;
 	}
 
-	public void addLike(UserId userId) {
-		likes.add(userId);
-		dislikes.remove(userId); // if any
-	}
-
-	public void addDislike(UserId userId) {
-		dislikes.add(userId);
-		likes.remove(userId); // if any
-	}
-
-	public void removeLikeAndDislike(UserId userId) {
-		likes.remove(userId);
-		dislikes.remove(userId);
+	public void updateRating(UserId userId, @Nullable Rating rating) {
+		if (rating == null) {
+			ratings.values().forEach(set -> set.remove(userId));
+			return;
+		}
+		if (ratings.get(rating).add(userId)) {
+			ratings.forEach((key, value) -> {
+				if (key != rating) {
+					value.remove(userId);
+				}
+			});
+		}
 	}
 
 	public void delete(@NotNull UserId deletedBy) {
@@ -129,12 +132,18 @@ public final class Post {
 		return children;
 	}
 
-	public Set<UserId> getLikes() {
-		return likes;
+	@Nullable
+	public Rating getRating(UserId userId) {
+		for (Map.Entry<Rating, Set<UserId>> entry : ratings.entrySet()) {
+			if (entry.getValue().contains(userId)) {
+				return entry.getKey();
+			}
+		}
+		return null;
 	}
 
-	public Set<UserId> getDislikes() {
-		return dislikes;
+	public Map<Rating, Set<UserId>> getRatings() {
+		return ratings;
 	}
 	// endregion
 
@@ -149,8 +158,7 @@ public final class Post {
 		if (lastEditTimestamp != post.lastEditTimestamp) return false;
 		if (!children.equals(post.children)) return false;
 		if (!author.equals(post.author)) return false;
-		if (!likes.equals(post.likes)) return false;
-		if (!dislikes.equals(post.dislikes)) return false;
+		if (!ratings.equals(post.ratings)) return false;
 		if (!Objects.equals(parent, post.parent)) return false;
 		if (!content.equals(post.content)) return false;
 		if (!attachments.equals(post.attachments)) return false;
@@ -162,8 +170,7 @@ public final class Post {
 		int result = children.hashCode();
 		result = 31 * result + author.hashCode();
 		result = 31 * result + (int) (initialTimestamp ^ (initialTimestamp >>> 32));
-		result = 31 * result + likes.hashCode();
-		result = 31 * result + dislikes.hashCode();
+		result = 31 * result + ratings.hashCode();
 		result = 31 * result + (parent != null ? parent.hashCode() : 0);
 		result = 31 * result + content.hashCode();
 		result = 31 * result + attachments.hashCode();
@@ -178,8 +185,7 @@ public final class Post {
 				"children=" + children +
 				", author=" + author +
 				", initialTimestamp=" + initialTimestamp +
-				", likes=" + likes +
-				", dislikes=" + dislikes +
+				", ratings=" + ratings +
 				", parent=" + parent +
 				", content='" + limit(content, 20) + '\'' +
 				", attachments=" + attachments +

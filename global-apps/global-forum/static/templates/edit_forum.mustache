@@ -1,0 +1,31 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="card">
+                <div class="card-header text-center font-weight-bold">Edit forum</div>
+                <div class="card-body">
+                    <form action="/{{pubKey}}/admin/edit-forum" method="post">
+                        <div class="col-sm-8 mx-auto">
+                            <div class="form-row mb-2">
+                                <input class="form-control"
+                                       name="title"
+                                       type="text" value="{{forum.title}}"
+                                       placeholder="Forum title">
+                            </div>
+                            <div class="form-row mb-2">
+                                <textarea class="form-control"
+                                          name="description"
+                                          placeholder="Forum description">{{forum.description}}</textarea>
+                            </div>
+                            <div class="form-row justify-content-center">
+                                <div class="col-4">
+                                    <button class="btn btn-block btn-primary">Save</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

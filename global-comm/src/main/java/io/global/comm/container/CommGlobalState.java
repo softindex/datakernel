@@ -36,6 +36,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -55,6 +56,8 @@ public final class CommGlobalState {
 	private final String threadRepoPrefix;
 	private final StructuredCodec<ThreadOperation> postOpCodec;
 	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
+	private final OTStateManager<CommitId, MapOperation<UserId, InetAddress>> userLastIpManager;
+
 	private final OTStateManager<CommitId, MapOperation<String, IpBanState>> bansStateManager;
 
 	private final OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager;
@@ -84,6 +87,8 @@ public final class CommGlobalState {
 		this.postOpCodec = REGISTRY.get(ThreadOperation.class);
 
 		this.usersStateManager = createStateManager(names.getUsers(), REGISTRY.get(new TypeT<MapOperation<UserId, UserData>>() {}), MapOTSystem.create(), new MapOTState<>());
+		this.userLastIpManager = createStateManager(names.getUserIps(), REGISTRY.get(new TypeT<MapOperation<UserId, InetAddress>>() {}), MapOTSystem.create(), new MapOTState<>());
+
 		this.bansStateManager = createStateManager(names.getBans(), REGISTRY.get(new TypeT<MapOperation<String, IpBanState>>() {}), MapOTSystem.create(), new MapOTState<>());
 
 		this.sessionStore = KvSessionStore.create(eventloop, kvClient, names.getSession());
@@ -126,7 +131,7 @@ public final class CommGlobalState {
 						}
 					});
 				}));
-		return Promises.all(usersStateManager.start(), bansStateManager.start(), threadsStart, sessionStore.start())
+		return Promises.all(usersStateManager.start(), bansStateManager.start(), userLastIpManager.start(), sessionStore.start(), threadsStart)
 				.whenComplete(toLogger(logger, "start"));
 	}
 
@@ -137,12 +142,16 @@ public final class CommGlobalState {
 						pendingThreadStateManagers.values().stream().map(s -> s.then(OTStateManager::stop)))))
 				.whenResult($ -> threadStateManagers.clear());
 
-		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), threadsStop, sessionStore.stop())
+		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), userLastIpManager.start(), sessionStore.stop(), threadsStop)
 				.whenComplete(toLogger(logger, "stop"));
 	}
 
 	public OTStateManager<CommitId, MapOperation<UserId, UserData>> getUsersStateManager() {
 		return usersStateManager;
+	}
+
+	public OTStateManager<CommitId, MapOperation<UserId, InetAddress>> getLastIpsStateManager() {
+		return userLastIpManager;
 	}
 
 	public OTStateManager<CommitId, MapOperation<String, IpBanState>> getBansStateManager() {

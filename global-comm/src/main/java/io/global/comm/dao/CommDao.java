@@ -23,11 +23,17 @@ public interface CommDao {
 
 	Promise<Void> updateUser(UserId userId, UserData userData);
 
+	Promise<Void> updateUserLastIp(UserId userId, InetAddress lastIp);
+
+	Promise<InetAddress> getUserLastIp(UserId userId);
+
 	Promise<Set<UserId>> listKnownUsers();
 
-	Promise<String> banIpRange(IpRange range, UserId banner, Instant until, String description);
+	Promise<String> banIpRange(IpRange range, UserId banner, Instant until, String reason);
 
 	Promise<Map<String, IpBanState>> getBannedRanges();
+
+	Promise<IpBanState> getBannedRange(String id);
 
 	Promise<Boolean> isBanned(InetAddress address);
 

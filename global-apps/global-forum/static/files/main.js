@@ -104,8 +104,62 @@ window.onload = () => {
   // handle textarea focus when reply button is pressed
   $('.collapse').on('show.bs.collapse', e => {
     let textarea = $(e.target).find('textarea');
-    if (textarea.length) {
-      setTimeout(() => textarea.focus(), 0);
+    setTimeout(() => textarea.focus(), 0);
+  });
+
+  // configure datetimepicker
+  $('.date').datetimepicker({
+    format: 'HH:mm:ss/DD.MM.YYYY',
+    useCurrent: false,
+  });
+
+  // $('.like > i').click((e) => $(e.target).parent().click());
+  // $('.dislike > i').click((e) => $(e.target).parent().click());
+
+  $('.like').click(e => {
+    let parent = $(e.target).parent();
+    let prefix = parent.data('prefix');
+    let child = parent.find('.rating');
+    if (parent.hasClass('liked')) {
+      fetch(`${prefix}/rate/null`, {method: 'POST'})
+        .then(() => {
+          parent.removeClass('liked');
+          child.text(parseInt(child.text()) - 1);
+        }, console.error)
+    } else {
+      fetch(`${prefix}/rate/like`, {method: 'POST'})
+        .then(() => {
+          parent.addClass('liked');
+          if (parent.hasClass('disliked')) {
+            parent.removeClass('disliked');
+            child.text(parseInt(child.text()) + 2);
+          } else {
+            child.text(parseInt(child.text()) + 1);
+          }
+        }, console.error)
+    }
+  });
+  $('.dislike').click(e => {
+    let parent = $(e.target).parent();
+    let prefix = parent.data('prefix');
+    let child = parent.find('.rating');
+    if (parent.hasClass('disliked')) {
+      fetch(`${prefix}/rate/null`, {method: 'POST'})
+        .then(() => {
+          parent.removeClass('disliked');
+          child.text(parseInt(child.text()) + 1);
+        }, console.error)
+    } else {
+      fetch(`${prefix}/rate/dislike`, {method: 'POST'})
+        .then(() => {
+          parent.addClass('disliked');
+          if (parent.hasClass('liked')) {
+            parent.removeClass('liked');
+            child.text(parseInt(child.text()) - 2);
+          } else {
+            child.text(parseInt(child.text()) - 1);
+          }
+        }, console.error)
     }
   });
 };

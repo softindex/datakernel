@@ -1,17 +1,19 @@
 {{<base}}
     {{$content}}
         <div class="container">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item active" aria-current="page">
-                        <a href="/{{threadId}}">{{thread.title}}</a>
-                    </li>
-                    <li class="breadcrumb-item active" aria-current="page">{{post.postId}}</li>
-                </ol>
-            </nav>
-            {{#post}}
-                {{>render_post}}
-            {{/post}}
+            <div class="card">
+                <div class="card-header">
+                    <div class="ml-3">{{thread.title}}</div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3 ml-3">
+                        <a href="/{{threadId}}">...</a>
+                    </div>
+                    {{#post}}
+                        {{>render_post}}
+                    {{/post}}
+                </div>
+            </div>
         </div>
     {{/content}}
 {{/base}}

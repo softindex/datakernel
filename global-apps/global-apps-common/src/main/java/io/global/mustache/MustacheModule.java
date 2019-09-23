@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 
@@ -26,8 +27,8 @@ public final class MustacheModule extends AbstractModule {
 
 	@Export
 	@Provides
-	MustacheTemplater mustacheTemplater(MustacheFactory mustacheFactory) {
+	MustacheTemplater mustacheTemplater(MustacheFactory mustacheFactory, Executor executor) {
 		Map<String, Mustache> templateCache = new HashMap<>();
-		return new MustacheTemplater(filename -> templateCache.computeIfAbsent(filename, mustacheFactory::compile));
+		return new MustacheTemplater(executor, filename -> templateCache.computeIfAbsent(filename, mustacheFactory::compile));
 	}
 }

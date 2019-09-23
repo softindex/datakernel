@@ -1,0 +1,86 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-sm-5">
+                    <div class="card">
+                        <div class="card-header text-center font-weight-bold">IP ban for {{ban.ip}}</div>
+                        <div class="card-body">
+                            <div class="row px-4">
+                                <form action="/{{pubKey}}/admin/ip-bans/{{ban.id}}" method="post">
+                                    <div class="form-row mb-2">
+                                        <div class="col-sm-2 col-form-label">IP:</div>
+                                        <div class="col-sm-10">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control text-center" name="ip_0"
+                                                       placeholder="xxx" value="{{ban.ipParts.value1}}">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="ip_1"
+                                                       placeholder="xxx" value="{{ban.ipParts.value2}}">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="ip_2"
+                                                       placeholder="xxx" value="{{ban.ipParts.value3}}">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="ip_3"
+                                                       placeholder="xxx" value="{{ban.ipParts.value4}}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <div class="col-sm-2 col-form-label">Mask:</div>
+                                        <div class="col-sm-10">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control text-center" name="mask_0"
+                                                       placeholder="xxx" value="{{ban.maskParts.value1}}">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="mask_1"
+                                                       placeholder="xxx" value="{{ban.maskParts.value2}}">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="mask_2"
+                                                       placeholder="xxx" value="{{ban.maskParts.value3}}">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="mask_3"
+                                                       placeholder="xxx" value="{{ban.maskParts.value4}}">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <div class="col-sm-2 col-form-label">Until:</div>
+                                        <div class="col-sm-10">
+                                            <div class="form-group">
+                                                <div class="input-group date" id="datetimepicker"
+                                                     data-target-input="nearest">
+                                                    <input type="text"
+                                                           class="form-control text-center datetimepicker-input"
+                                                           data-target="#datetimepicker" name="until"
+                                                           value="{{ban.until}}"/>
+                                                    <div class="input-group-append" data-target="#datetimepicker"
+                                                         data-toggle="datetimepicker">
+                                                        <div class="input-group-text"><i class="fa fa-calendar"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <textarea class="form-control" name="reason">{{ban.reason}}</textarea>
+                                    </div>
+                                    <div class="row justify-content-center">
+                                        <button class="btn btn-primary mx-2" type="submit" name="action" value="save">
+                                            save
+                                        </button>
+                                        <button class="btn btn-outline-primary mx-2" type="submit" name="action"
+                                                value="unban">
+                                            unban
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}
