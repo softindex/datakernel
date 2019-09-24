@@ -1,0 +1,178 @@
+<div class="card no-gutters">
+    <div class="card-body py-1">
+        <div class="row">
+            <div class="col">
+                <div data-value="{{content}}" id="content_{{postId}}"
+                     class="row mr-2{{#deletedBy}} text-secondary{{/deletedBy}}">
+                    <div class="m-4" style="overflow: hidden">
+                        {{{renderedContent}}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col"></div>
+            <div class="col-auto mx-2 mb-2">
+                <div class="row">
+                    {{#deletedBy}}
+                        {{#editable}}
+                            <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                                <button class="btn btn-outline-primary btn-sm">restore</button>
+                            </form>
+                        {{/editable}}
+                    {{/deletedBy}}
+
+                    {{^deletedBy}}
+                        {{#user}}
+                            {{#editable}}
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
+                                            type="button"
+                                            id="change_menu_{{postId}}"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        change
+                                    </button>
+                                    <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                                          action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+
+                                        <button class="edit-button dropdown-item" type="button"
+                                                data-maxLength="65256"
+                                                data-root-edit="#content_{{postId}}"
+                                                data-edit-action="/{{pubKey}}/owner/{{threadId}}/{{postId}}/edit">
+                                            edit
+                                        </button>
+                                        <button class="edit-button dropdown-item" type="button"
+                                                data-maxLength="120"
+                                                data-edit="#title"
+                                                data-edit-action="/{{pubKey}}/owner/{{threadId}}/edit">
+                                            edit title
+                                        </button>
+                                        <button class="dropdown-item" type="submit">delete</button>
+                                    </form>
+                                </div>
+                            {{/editable}}
+                            {{#user.role.known}}
+                                <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
+                                        data-target="#reply_{{postId}}">
+                                    reply
+                                </button>
+                            {{/user.role.known}}
+                        {{/user}}
+                    {{/deletedBy}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="text-center" style="display: none" id="attachments">
+    {{^deletedBy}}
+        {{#attachments}}
+            <div class="card">
+                {{#image}}
+                    <div class="card-header" title="{{.}}">
+                        <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}">
+                            <img src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}"
+                                 class="img-thumbnail m-2"/>
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="btn-group-toggle text-center" data-toggle="buttons">
+                            <label class="btn btn-outline-danger">
+                                <input id="attachment_{{.}}" data-value="{{.}}" type="checkbox"
+                                       autocomplete="off"> Delete
+                            </label>
+                        </div>
+                    </div>
+                {{/image}}
+                {{#video}}
+                    <div class="card-header" title="{{.}}">
+                        <div class="embed-responsive embed-responsive-16by9 m-2">
+                            <video controls>
+                                <source src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}">
+                            </video>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="btn-group-toggle text-center" data-toggle="buttons">
+                            <label class="btn btn-outline-danger">
+                                <input id="attachment_{{.}}" data-value="{{.}}" type="checkbox"
+                                       autocomplete="off"> Delete
+                            </label>
+                        </div>
+                    </div>
+                {{/video}}
+                {{#document}}
+                    <div class="card-header" title="{{.}}">
+                        <ul class="list-group">
+                            <li class="list-group-item text-truncate">
+                                <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}"
+                                   class="stretched-link"><i class="far fa-file"></i></a>
+                                {{.}}
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="btn-group-toggle text-center" data-toggle="buttons">
+                            <label class="btn btn-outline-danger">
+                                <input id="attachment_{{.}}" data-value="{{.}}" type="checkbox"
+                                       autocomplete="off"> Delete
+                            </label>
+                        </div>
+                    </div>
+                {{/document}}
+            </div>
+        {{/attachments}}
+    {{/deletedBy}}
+
+    <div class="col text-center">
+        <div id="attachments">
+            <div class="m-3">
+                <div class="custom-file col-3">
+                    <input type="file" accept="image/*" class="custom-file-input" id="image_attachment"
+                           multiple
+                           name="image_attachment">
+                    <label class="custom-file-label text-truncate text-left" for="image_attachment">Attach
+                        images</label>
+                </div>
+                <div class="custom-file col-3">
+                    <input type="file" accept="video/mp4" class="custom-file-input" id="video_attachment"
+                           multiple
+                           name="video_attachment">
+                    <label class="custom-file-label text-truncate text-left" for="video_attachment">Attach
+                        videos</label>
+                </div>
+                <div class="custom-file col-3">
+                    <input type="file" class="custom-file-input" id="document_attachment" multiple
+                           name="document_attachment">
+                    <label class="custom-file-label text-truncate text-left" for="document_attachment">Attach
+                        documents</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="progress" style="display: none">
+    <div class="progress-bar" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+</div>
+
+<div class="ml-3">
+    {{^deletedBy}}
+        {{#user}}
+            <div class="collapse" id="reply_{{postId}}">
+                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
+                      method="post">
+                    <div class="mx-3">
+                        <textarea maxlength="1024" class="form-control" placeholder="Post your reply" name="content"
+                                  data-post-button="#post_button_{{postId}}"></textarea>
+                    </div>
+                    <div class="p-3">
+                        <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{postId}}">post</button>
+                    </div>
+                </form>
+            </div>
+        {{/user}}
+    {{/deletedBy}}
+</div>
+

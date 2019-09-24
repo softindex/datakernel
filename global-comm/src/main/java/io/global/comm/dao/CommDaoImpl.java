@@ -116,6 +116,11 @@ public final class CommDaoImpl implements CommDao {
 	}
 
 	@Override
+	public Promise<Void> updateThreadTitle(String threadId, String title) {
+		return applyAndSync(threadsStateManager, MapOperation.forKey(threadId, SetValue.set(threadsView.get(threadId), new ThreadMetadata(title))));
+	}
+
+	@Override
 	public Promise<Void> removeThread(String id) {
 		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(threadsView.get(id), null)));
 		// ^ this will also remove the state manager because of the listener

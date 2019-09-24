@@ -187,20 +187,24 @@ public final class ThreadDaoImpl implements ThreadDao {
 		return Promise.of(postsView);
 	}
 
+
 	@Override
 	public Promise<Set<String>> listAttachments(String postId) {
+		int prefixLength = postId.length() + 1;
 		return attachmentFs.list(postId + "/*")
-				.map(list -> list.stream().map(FileMetadata::getName).collect(toSet()));
+				.map(list -> list.stream()
+						.map(m -> m.getName().substring(prefixLength))
+						.collect(toSet()));
 	}
 
 	@Override
 	public Promise<ChannelConsumer<ByteBuf>> uploadAttachment(String postId, String filename) {
-		return attachmentFs.upload(postId + "/" + filename);
+		return attachmentFs.upload(postId + "/" + filename, 0, System.currentTimeMillis());
 	}
 
 	@Override
 	public Promise<Void> deleteAttachment(String postId, String filename) {
-		return attachmentFs.delete(postId + "/" + filename);
+		return attachmentFs.delete(postId + "/" + filename, System.currentTimeMillis());
 	}
 
 	@Override

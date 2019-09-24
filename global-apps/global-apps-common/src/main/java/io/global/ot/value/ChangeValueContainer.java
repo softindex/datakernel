@@ -3,10 +3,11 @@ package io.global.ot.value;
 import io.datakernel.ot.OTState;
 
 public final class ChangeValueContainer<T> implements OTState<ChangeValue<T>> {
+	private final T initial;
 	private T value;
 
 	private ChangeValueContainer(T value) {
-		this.value = value;
+		this.initial = value;
 	}
 
 	public static <T> ChangeValueContainer<T> empty() {
@@ -23,7 +24,7 @@ public final class ChangeValueContainer<T> implements OTState<ChangeValue<T>> {
 
 	@Override
 	public void init() {
-		value = null;
+		value = initial;
 	}
 
 	@Override

@@ -1,0 +1,8 @@
+{{#deletedBy}}
+    {{#deletedVisible}}
+        {{>render_post_impl}}
+    {{/deletedVisible}}
+{{/deletedBy}}
+{{^deletedBy}}
+    {{>render_post_impl}}
+{{/deletedBy}}

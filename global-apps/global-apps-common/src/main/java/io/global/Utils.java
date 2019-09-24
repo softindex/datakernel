@@ -1,19 +1,30 @@
 package io.global;
 
+import io.datakernel.async.AsyncSupplier;
+import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.exception.ParseException;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.util.Tuple2;
 import io.global.appstore.pojo.AppInfo;
 import io.global.appstore.pojo.HostingInfo;
 import io.global.appstore.pojo.Profile;
 import io.global.appstore.pojo.User;
+import io.global.common.CryptoUtils;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.api.AnnounceData;
+import org.spongycastle.math.ec.ECPoint;
 
+import java.math.BigInteger;
+import java.util.Base64;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.global.common.CryptoUtils.randomBytes;
 import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
@@ -71,4 +82,51 @@ public final class Utils {
 								.collect(toList()));
 	}
 
+	public static HttpResponse redirectToReferer(HttpRequest request, String defaultPath) {
+		String referer = request.getHeader(REFERER);
+		return HttpResponse.redirect302(referer != null ? referer : defaultPath);
+	}
+
+	public static <T, E> BiFunction<T, Throwable, Promise<T>> revertIfException(AsyncSupplier<E> undo) {
+		return (result, e) -> {
+			if (e == null) {
+				return Promise.of(result);
+			}
+			return undo.get()
+					.thenEx(($2, e2) -> {
+						if (e2 != null) {
+							e.addSuppressed(e2);
+						}
+						return Promise.ofException(e);
+					});
+		};
+	}
+
+	private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
+	private static final Base64.Decoder BASE64_DECODER = Base64.getUrlDecoder();
+
+	public static String pubKeyToBase64(PubKey pubKey) {
+		ECPoint point = pubKey.getEcPublicKey().getQ();
+		byte[] first = point.getXCoord().toBigInteger().toByteArray();
+		byte[] second = point.getYCoord().toBigInteger().toByteArray();
+		return BASE64_ENCODER.encodeToString(first) + ':' + BASE64_ENCODER.encodeToString(second);
+	}
+
+	public static PubKey base64ToPubKey(String string) throws ParseException {
+		String[] parts = string.split(":");
+		if (parts.length != 2) {
+			throw new ParseException(PubKey.class, "No or more than one ':' delimiters in public key string");
+		}
+		try {
+			BigInteger x = new BigInteger(BASE64_DECODER.decode(parts[0]));
+			BigInteger y = new BigInteger(BASE64_DECODER.decode(parts[1]));
+			try {
+				return PubKey.of(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
+			} catch (IllegalArgumentException | ArithmeticException e) {
+				throw new ParseException(PubKey.class, "Failed to read a point on elliptic curve", e);
+			}
+		} catch (NumberFormatException e) {
+			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
+		}
+	}
 }

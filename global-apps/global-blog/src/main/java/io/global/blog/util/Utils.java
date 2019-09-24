@@ -1,15 +1,11 @@
-package io.global.forum.util;
+package io.global.blog.util;
 
 import io.datakernel.async.Promise;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpException;
-import io.global.comm.pojo.IpRange;
-import io.global.forum.http.IpBanRequest;
-import io.global.forum.ot.ForumMetadata;
+import io.global.blog.ot.BlogMetadata;
 import io.global.mustache.MustacheTemplater;
-
-import java.time.Instant;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
@@ -23,19 +19,14 @@ public final class Utils {
 	}
 
 	public static final CodecRegistry REGISTRY = createCommRegistry()
-			.with(ForumMetadata.class, registry -> tuple(ForumMetadata::new,
-					ForumMetadata::getName, STRING_CODEC,
-					ForumMetadata::getDescription, STRING_CODEC))
-			.with(IpBanRequest.class, registry -> tuple(IpBanRequest::new,
-					IpBanRequest::getRange, registry.get(IpRange.class),
-					IpBanRequest::getUntil, registry.get(Instant.class),
-					IpBanRequest::getDescription, STRING_CODEC));
+			.with(BlogMetadata.class, registry -> tuple(BlogMetadata::new,
+					BlogMetadata::getName, STRING_CODEC,
+					BlogMetadata::getDescription, STRING_CODEC));
 
 	public static AsyncServletDecorator renderErrors(MustacheTemplater templater) {
 		return servlet ->
 				request ->
-						servlet.serve(request)
-								.thenEx((response, e) -> {
+						servlet.serve(request).thenEx((response, e) -> {
 									if (e != null) {
 										int code = e instanceof HttpException ? ((HttpException) e).getCode() : 500;
 										return templater.render(code, "error", map("code", code, "message", e.getMessage()));
@@ -47,5 +38,9 @@ public final class Utils {
 									String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
 									return templater.render(code, "error", map("code", code, "message", message.isEmpty() ? null : message));
 								});
+	}
+
+	public static <T> T castIfExist(Object o, Class<T> type) {
+		return o == null ? null : type.isInstance(o) ? type.cast(o) : null;
 	}
 }

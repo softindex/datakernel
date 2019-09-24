@@ -1,0 +1,18 @@
+.img-thumbnail {
+    height:300px;
+    max-width:100%;
+}
+
+img, video {
+  max-width: 100%;
+}
+
+
+:target * {
+  animation: highlight 1.5s ease;
+  background: lightgray
+}
+@keyframes highlight {
+  0% { background: white;}
+  100% { background: lightgray; }
+}

@@ -1,4 +1,4 @@
-package io.global.forum;
+package io.global.mustache;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
@@ -7,7 +7,6 @@ import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.global.forum.util.MustacheTemplater;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

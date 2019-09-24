@@ -1,7 +1,7 @@
-package io.global.forum;
+package io.global.blog;
 
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -13,12 +13,14 @@ import io.global.comm.container.CommRepoNames;
 import io.global.comm.pojo.UserId;
 import io.global.common.PrivKey;
 import io.global.common.SimKey;
-import io.global.forum.container.ForumUserContainer;
-import io.global.forum.http.PublicServlet;
+import io.global.blog.container.BlogUserContainer;
+import io.global.blog.http.PublicServlet;
+import io.global.blog.http.view.PostView;
+import io.global.mustache.MustacheTemplater;
+import io.global.blog.preprocessor.Preprocessor;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
-import io.global.mustache.MustacheTemplater;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerServlet;
@@ -30,40 +32,43 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.forum.util.Utils.REGISTRY;
-import static io.global.forum.util.Utils.renderErrors;
+import static io.global.blog.util.Utils.REGISTRY;
+import static io.global.blog.util.Utils.renderErrors;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
-public final class GlobalForumModule extends AbstractModule {
+public final class GlobalBlogModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
-	private final String forumFsDir;
-	private final CommRepoNames forumRepoNames;
+	private final String blogFsDir;
+	private final CommRepoNames blogRepoNames;
 
-	public GlobalForumModule(String forumFsDir, CommRepoNames forumRepoNames) {
-		this.forumFsDir = forumFsDir;
-		this.forumRepoNames = forumRepoNames;
+	@Override
+	protected void configure() {
+		install(new PreprocessorsModule());
+	}
+
+	public GlobalBlogModule(String blogFsDir, CommRepoNames blogRepoNames) {
+		this.blogFsDir = blogFsDir;
+		this.blogRepoNames = blogRepoNames;
 	}
 
 	@Provides
 	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, ContainerServlet servlet) {
-		AsyncServlet debug = RoutingServlet.create() // TODO anton: this is debug-only
-				.map("/*", servlet)
-				.map(GET, "/", request ->
-						Promise.of(redirect302("/79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")));
-		return AsyncHttpServer.create(eventloop, debug)
+		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
 	@Provides
-	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader) {
+	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader, Executor executor,
+						 @Named("threadList") Preprocessor<PostView> threadListPostViewPreprocessor,
+						 @Named("postView") Preprocessor<PostView> postViewPreprocessor,
+						 @Named("comments") Preprocessor<PostView> commentsPreprocessor) {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
-				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
+				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater, executor,
+						threadListPostViewPreprocessor, postViewPreprocessor, commentsPreprocessor))
 				.map("/static/*", StaticServlet.create(staticLoader))
 				.then(renderErrors(templater));
 	}
@@ -80,21 +85,20 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory(OTDriver otDriver, GlobalKvDriver<String, UserId> kvDriver,
-			GlobalFsDriver fsDriver) {
+	BiFunction<Eventloop, PrivKey, BlogUserContainer> containerFactory(OTDriver otDriver, GlobalFsDriver fsDriver, GlobalKvDriver<String, UserId> kvDriver) {
 		return (eventloop, privKey) ->
-				ForumUserContainer.create(eventloop, privKey, otDriver, kvDriver.adapt(privKey), fsDriver.adapt(privKey).subfolder(forumFsDir), forumRepoNames);
+				BlogUserContainer.create(eventloop, privKey, otDriver, kvDriver.adapt(privKey), fsDriver.adapt(privKey).subfolder(blogFsDir), blogRepoNames);
+	}
+
+	@Provides
+	GlobalKvDriver<String, UserId> kvDriver(GlobalKvNode node) {
+		return GlobalKvDriver.create(node, REGISTRY.get(String.class), REGISTRY.get(UserId.class));
 	}
 
 	@Provides
 	OTDriver otDriver(GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
 		return new OTDriver(node, simKey);
-	}
-
-	@Provides
-	GlobalKvDriver<String, UserId> kvDriver(GlobalKvNode node) {
-		return GlobalKvDriver.create(node, REGISTRY.get(String.class), REGISTRY.get(UserId.class));
 	}
 
 	@Provides

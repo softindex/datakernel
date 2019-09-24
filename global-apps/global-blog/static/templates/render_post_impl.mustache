@@ -1,0 +1,129 @@
+<div class="card no-gutters" id="post_{{postId}}">
+    <div class="card-body clearfix py-1">
+        <div class="row mb-2">
+            <div class="col">
+                <span class="badge badge-primary {{#deletedBy}}text-secondary{{/deletedBy}} badge-light">
+                    {{initialTimestamp}}
+                </span>
+            </div>
+            <div class="col-auto text-secondary small px-0 mx-1">
+                {{^deletedBy}}
+                    {{#lastEditTimestamp}}
+                        Edited {{#user.role.privileged}}{{lastEditTimestamp}}{{/user.role.privileged}}
+                    {{/lastEditTimestamp}}
+                {{/deletedBy}}
+                {{#deletedBy}}
+                    Deleted
+                {{/deletedBy}}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-auto mx-3 text-center {{#deletedBy}} text-secondary{{/deletedBy}}">
+                <div style="{{#deletedBy}} opacity: 0.5; filter: alpha(opacity=50);{{/deletedBy}} width: 30px; height: 30px;">
+                    <img class="rounded" alt="avatar" style="width: 30px; height: 30px;" src="{{avatarUrl}}">
+                </div>
+
+                <span class="row badge badge-primary badge-light text-wrap text-break {{#deletedBy}} text-secondary{{/deletedBy}}">
+                    {{#user.role.privileged}}
+                        {{#author}}<a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a>{{/author}}
+                    {{/user.role.privileged}}
+
+                    {{^user.role.privileged}}
+                        {{#author}}
+                            {{.}}
+                        {{/author}}
+                        {{^author}}
+                            ghost
+                        {{/author}}
+                    {{/user.role.privileged}}
+                </span>
+            </div>
+
+            <div class="col {{#deletedBy}} text-secondary{{/deletedBy}}">
+                {{#deletedBy}}
+                <details>
+                    <summary>show...</summary>
+                {{/deletedBy}}
+                <div class="row text-wrap text-break mr-2">
+                    <p id="content_{{postId}}" class="{{^deletedBy}}form-control{{/deletedBy}}" data-field="content" data-value="{{content}}"
+                       style="border: 1px solid transparent; height: initial; {{^deletedBy}}color: initial; {{/deletedBy}} white-space: pre-line">{{{renderedContent}}}</p>
+                </div>
+                {{#deletedBy}}
+                </details>
+                {{/deletedBy}}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col"></div>
+            <div class="col-auto mx-2 mb-2">
+                <div class="row">
+                    {{#deletedBy}}
+                        {{#editable}}
+                            <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                                <button class="btn btn-outline-primary btn-sm">restore</button>
+                            </form>
+                        {{/editable}}
+                    {{/deletedBy}}
+
+                    {{^post.deletedBy}}
+                        {{^deletedBy}}
+                            {{#user}}
+                                {{#editable}}
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
+                                                type="button"
+                                                id="change_menu_{{postId}}"
+                                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                            change
+                                        </button>
+                                        <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                                              action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+
+                                            <button class="edit-button dropdown-item" type="button"
+                                                    data-edit="#content_{{postId}}"
+                                                    data-maxLength="1024"
+                                                    data-edit-action="/{{pubKey}}/{{threadId}}/{{postId}}/edit">
+                                                edit
+                                            </button>
+                                            <button class="dropdown-item" type="submit">delete</button>
+                                        </form>
+                                    </div>
+                                {{/editable}}
+                                {{#user.role.known}}
+                                    <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
+                                            data-target="#reply_{{postId}}">
+                                        reply
+                                    </button>
+                                {{/user.role.known}}
+                            {{/user}}
+                        {{/deletedBy}}
+                    {{/post.deletedBy}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ml-3 border-dark">
+    {{^post.deletedBy}}
+        {{#user}}
+            <div class="collapse" id="reply_{{postId}}">
+                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{^deepest}}{{parent.postId}}{{/deepest}}{{#deepest}}{{postId}}{{/deepest}}" method="post">
+                    <div class="mx-3">
+                        <textarea class="form-control" placeholder="Post your reply" maxlength="1024" name="content" onfocus="var val=this.value; this.value=''; this.value= val;"
+                                  data-post-button="#post_button_{{^deepest}}{{parent.postId}}{{/deepest}}{{#deepest}}{{postId}}{{/deepest}}">{{^deepest}}[{{#author}}{{.}}{{/author}}](#{{postId}}){{/deepest}}</textarea>
+                    </div>
+                    <div class="p-3">
+                        <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{^deepest}}{{parent.postId}}{{/deepest}}{{#deepest}}{{postId}}{{/deepest}}">post</button>
+                    </div>
+                </form>
+            </div>
+        {{/user}}
+    {{/post.deletedBy}}
+
+    {{#children}}
+        {{>render_post}}
+    {{/children}}
+</div>

@@ -1,4 +1,4 @@
-package io.global.forum.util;
+package io.global.mustache;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
@@ -36,7 +36,6 @@ public final class MustacheTemplater {
 	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
 		Map<String, Object> context = new HashMap<>(scope);
 		context.putAll(staticContext);
-
 		List<Promise<?>> promisesToWait = new ArrayList<>();
 
 		for (Map.Entry<String, Object> entry : context.entrySet()) {
@@ -54,14 +53,13 @@ public final class MustacheTemplater {
 				promisesToWait.add(promise.whenResult(entry::setValue));
 			}
 		}
-		return Promises.all(promisesToWait)
-				.map($ -> {
-					ByteBufWriter writer = new ByteBufWriter();
-					mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
-					return HttpResponse.ofCode(code)
-							.withBody(writer.getBuf())
-							.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
-				});
+		return Promises.all(promisesToWait).map($ -> {
+			ByteBufWriter writer = new ByteBufWriter();
+			mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
+			return HttpResponse.ofCode(code)
+					.withBody(writer.getBuf())
+					.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
+		});
 	}
 
 	public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {

@@ -1,0 +1,33 @@
+{{<infobase}}
+    {{$mainContent}}
+        <div class="container">
+            {{#post}}
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item active" aria-current="page" style="overflow: hidden" data-value="{{thread.title}}" data-field="title" id="title">{{thread.title}}</li>
+                     {{#deletedBy}}<li class="breadcrumb-item active" aria-current="page">Deleted</li>{{/deletedBy}}
+                </ol>
+            </nav>
+
+                {{>thread_root_post}}
+            {{/post}}
+
+            <div>
+                <div class="card" id="comments">
+                    <div class="card-header">
+                        <a class="card-link" data-toggle="collapse" href="#collapseOne">
+                            Comments
+                        </a>
+                    </div>
+                    <div id="collapseOne" class="collapse show" data-parent="#comments">
+                        <div class="card-body">
+                            {{#post.children}}
+                                {{>render_post}}
+                            {{/post.children}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/mainContent}}
+{{/infobase}}

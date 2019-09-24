@@ -37,6 +37,8 @@ public interface CommDao {
 
 	Promise<Void> updateThread(String threadId, ThreadMetadata threadMetadata);
 
+	Promise<Void> updateThreadTitle(String threadId, String title);
+
 	Promise<Map<String, ThreadMetadata>> getThreads();
 
 	Promise<Void> removeThread(String id);

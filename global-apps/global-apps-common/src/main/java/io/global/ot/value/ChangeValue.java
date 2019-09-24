@@ -30,7 +30,7 @@ public final class ChangeValue<T> {
 	}
 
 	public boolean isEmpty() {
-		return next.equals(prev);
+		return Objects.equals(next, prev);
 	}
 
 	@Override

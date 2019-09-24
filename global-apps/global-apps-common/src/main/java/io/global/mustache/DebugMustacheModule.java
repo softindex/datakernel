@@ -1,10 +1,9 @@
-package io.global.forum;
+package io.global.mustache;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.global.forum.util.MustacheTemplater;
 
 import java.io.File;
 import java.nio.file.Path;

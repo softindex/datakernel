@@ -1,0 +1,54 @@
+{{<infobase}}
+    {{$mainContent}}
+        <div class="list-group">
+            {{#threads}}
+                {{#user.role.privileged}}
+                    <div class="list-group-item list-group-item-action">
+                        <div class="row">
+                            <div class="col">
+                                <a href="/{{pubKey}}/{{id}}" style="color: black; text-decoration: none">
+                                    <h4 class="ml-1 text-wrap text-break">{{meta.title}}</h4>
+                                </a>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="/{{pubKey}}/{{id}}#comments" class="btn btn-sm btn-secondary"><i
+                                    class="fa fa-comments"> {{commentCount}} Comments</i></a>
+                            <a href="/{{pubKey}}/{{id}}" class="btn btn-sm btn-secondary"><i
+                                    class="fa fa-calendar">{{root.initialTimestamp}}</i></a>
+                        </div>
+                        <div style="overflow: hidden; text-overflow: ellipsis; background: #f7f7f7;"
+                             class="small mt-2 alert alert-dismissible">
+                            {{{root.renderedContent}}}
+                        </div>
+                        <a href="/{{pubKey}}/{{id}}" class="stretched-link">Read more [...]</a>
+                    </div>
+                {{/user.role.privileged}}
+                {{^user.role.privileged}}
+                    {{^root.deletedBy}}
+                        <div class="list-group-item list-group-item-action">
+                            <div class="row">
+                                <div class="col">
+                                    <a href="/{{pubKey}}/{{id}}" style="color: black; text-decoration: none">
+                                        <h4 class="ml-1 text-wrap text-break">{{meta.title}}</h4>
+                                    </a>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/{{pubKey}}/{{id}}#comments" class="btn btn-sm btn-secondary"><i
+                                        class="fa fa-comments"> {{commentCount}} Comments</i></a>
+                                <a href="/{{pubKey}}/{{id}}" class="btn btn-sm btn-secondary"><i
+                                        class="fa fa-calendar">{{root.initialTimestamp}}</i></a>
+                            </div>
+                            <div style="overflow: hidden; text-overflow: ellipsis; background: #f7f7f7;"
+                                 class="small mt-2 alert alert-dismissible">
+                                {{{root.renderedContent}}}
+                            </div>
+                            <a href="/{{pubKey}}/{{id}}" class="stretched-link">Read more [...]</a>
+                        </div>
+                    {{/root.deletedBy}}
+                {{/user.role.privileged}}
+            {{/threads}}
+        </div>
+    {{/mainContent}}
+{{/infobase}}

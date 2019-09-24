@@ -1,4 +1,4 @@
-package io.global.forum.http;
+package io.global.comm.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumers;
@@ -22,12 +22,12 @@ public final class AttachmentDataHandler {
 			.collect(Collectors.toMap(type -> type.toString().toLowerCase() + "_attachment", Function.identity()));
 
 	public static MultipartDataHandler create(ThreadDao threadDao, String postId, Map<String, String> paramMap,
-			Map<String, AttachmentType> attachmentMap, boolean deduplicate) {
+											  Map<String, AttachmentType> attachmentMap, boolean deduplicate) {
 		return create(threadDao, postId, emptySet(), paramMap, attachmentMap, deduplicate);
 	}
 
 	public static MultipartDataHandler create(ThreadDao threadDao, String postId, Set<String> existing, Map<String, String> paramMap,
-			Map<String, AttachmentType> attachmentMap, boolean deduplicate) {
+											  Map<String, AttachmentType> attachmentMap, boolean deduplicate) {
 		return MultipartDataHandler.fieldsToMap(paramMap, (fieldName, fileName) -> {
 			if (fileName.isEmpty()) {
 				return Promise.of(ChannelConsumers.recycling());
