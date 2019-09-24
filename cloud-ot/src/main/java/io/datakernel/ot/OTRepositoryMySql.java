@@ -149,8 +149,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(true);
-						try (PreparedStatement statement = connection.prepareStatement(
-								sql("INSERT INTO {revisions}(`epoch`, `type`, `created_by`, `level`) VALUES (0, ?, ?, 0)"),
+						try (PreparedStatement statement = connection.prepareStatement(sql(
+								"INSERT INTO {revisions}(`epoch`, `type`, `created_by`, `level`) VALUES (0, ?, ?, 0)"),
 								Statement.RETURN_GENERATED_KEYS
 						)) {
 							statement.setString(1, "NEW");
@@ -202,7 +202,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 							}
 
 							try (PreparedStatement ps = connection.prepareStatement(sql(
-									"UPDATE {revisions} SET `type`='INNER', `level` = ?, `epoch`=? WHERE `id`=?"
+									"UPDATE {revisions} SET `type`='INNER', `level`=?, `epoch`=? WHERE `id`=?"
 							))) {
 								ps.setLong(1, commit.getLevel());
 								ps.setInt(2, commit.getEpoch());
@@ -307,7 +307,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 								" {diffs}.`diff` " +
 								"FROM {revisions} " +
 								"LEFT JOIN {diffs} ON {diffs}.`revision_id`={revisions}.`id` " +
-								"WHERE {revisions}.`id`=?"
+								"WHERE {revisions}.`id`=? AND `type` IN ('HEAD', 'INNER')"
 						))) {
 							ps.setLong(1, revisionId);
 							ResultSet resultSet = ps.executeQuery();
@@ -345,7 +345,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					try (Connection connection = dataSource.getConnection()) {
 						String snapshot = toJson(otSystem.squash(diffs));
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
-								"UPDATE {revisions} SET `snapshot` = ? WHERE `id` = ?"
+								"UPDATE {revisions} SET `snapshot`=? WHERE `id`=?"
 						))) {
 							ps.setString(1, snapshot);
 							ps.setLong(2, revisionId);
@@ -363,16 +363,15 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
-						connection.setAutoCommit(false);
+						connection.setAutoCommit(true);
 
-						try (PreparedStatement ps = connection.prepareStatement(
-								sql("" +
-										"DELETE FROM {revisions} " +
-										"WHERE `timestamp` < " +
-										"  (SELECT `timestamp` - INTERVAL ? SECOND FROM (SELECT `id`, `timestamp` FROM {revisions}) AS t WHERE t.`id`=?)"
-								))) {
-							ps.setLong(1, deleteMargin.getSeconds());
-							ps.setLong(2, minId);
+						try (PreparedStatement ps = connection.prepareStatement(sql("" +
+								"DELETE FROM {revisions} " +
+								"WHERE `type` in ('HEAD', 'INNER') AND `timestamp` < " +
+								"  (SELECT t2.`timestamp` FROM (SELECT t.`timestamp` FROM {revisions} t WHERE t.`id`=?) AS t2) - INTERVAL ? SECOND"
+						))) {
+							ps.setLong(1, minId);
+							ps.setLong(2, deleteMargin.getSeconds());
 							ps.executeUpdate();
 						}
 
@@ -382,8 +381,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						))) {
 							ps.executeUpdate();
 						}
-
-						connection.commit();
 					}
 
 					return (Void) null;
@@ -397,8 +394,9 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
-						try (PreparedStatement statement = connection.prepareStatement(
-								sql("INSERT INTO {backup}(`id`, `epoch`, `level`, `snapshot`) VALUES (?, ?, ?, ?)"))) {
+						try (PreparedStatement statement = connection.prepareStatement(sql(
+								"INSERT INTO {backup}(`id`, `epoch`, `level`, `snapshot`) VALUES (?, ?, ?, ?)"
+						))) {
 							statement.setLong(1, commit.getId());
 							statement.setInt(2, commit.getEpoch());
 							statement.setLong(3, commit.getLevel());
