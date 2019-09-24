@@ -50,9 +50,6 @@ public final class Utils {
 				.with(IpBanState.class, registry -> tuple(IpBanState::new,
 						IpBanState::getBanState, registry.get(BanState.class),
 						IpBanState::getIpRange, registry.get(IpRange.class)))
-				.with(Attachment.class, registry -> tuple(Attachment::new,
-						Attachment::getAttachmentType, ofEnum(AttachmentType.class),
-						Attachment::getFilename, STRING_CODEC))
 				.with(AddPost.class, registry -> tuple(AddPost::new,
 						AddPost::getPostId, STRING_CODEC,
 						AddPost::getParentId, STRING_CODEC.nullable(),
@@ -61,8 +58,8 @@ public final class Utils {
 						AddPost::isRemove, BOOLEAN_CODEC))
 				.with(ChangeAttachments.class, registry -> tuple(ChangeAttachments::new,
 						ChangeAttachments::getPostId, STRING_CODEC,
-						ChangeAttachments::getGlobalFsId, STRING_CODEC,
-						ChangeAttachments::getAttachment, registry.get(Attachment.class),
+						ChangeAttachments::getFilename, STRING_CODEC,
+						ChangeAttachments::getAttachmentType, ofEnum(AttachmentType.class),
 						ChangeAttachments::getTimestamp, LONG_CODEC,
 						ChangeAttachments::isRemove, BOOLEAN_CODEC))
 				.with(ChangeContent.class, registry -> tuple(ChangeContent::new,
@@ -108,7 +105,7 @@ public final class Utils {
 		out.writeKey("author", userIdCodec, post.getAuthor());
 		out.writeKey("created", LONG_CODEC, post.getInitialTimestamp());
 		out.writeKey("content", STRING_CODEC, post.getContent());
-		out.writeKey("attachments", ofMap(STRING_CODEC, REGISTRY.get(Attachment.class)), post.getAttachments());
+		out.writeKey("attachments", ofMap(STRING_CODEC, REGISTRY.get(AttachmentType.class)), post.getAttachments());
 		out.writeKey("deletedBy", userIdCodec.nullable(), post.getDeletedBy());
 		out.writeKey("edited", LONG_CODEC, post.getLastEditTimestamp());
 		out.writeKey("likes", userIdCodecSet, post.getLikes());

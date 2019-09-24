@@ -19,7 +19,6 @@ import static io.datakernel.util.CollectorsEx.toMultimap;
 
 public final class PostView {
 	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
-	private static final Comparator<Entry<String, Attachment>> ATTACHMENT_COMPARATOR = Comparator.comparing(a -> a.getValue().getFilename());
 	private static final Comparator<Post> POST_COMPARATOR = Comparator.comparing(Post::getInitialTimestamp);
 
 	private final String postId;
@@ -30,7 +29,7 @@ public final class PostView {
 	private final String author;
 	private final String authorId;
 	private final String avatarUrl;
-	private final Map<String, Set<AttachmentView>> attachments;
+	private final Map<String, Set<String>> attachments;
 
 
 	@Nullable
@@ -44,7 +43,7 @@ public final class PostView {
 	public PostView(
 			String postId, String content, String initialTimestamp, String lastEditTimestamp,
 			String author, String authorId, String avatarUrl,
-			Map<String, Set<AttachmentView>> attachments,
+			Map<String, Set<String>> attachments,
 			@Nullable String deletedBy,
 			boolean editable, boolean deletedVisible,
 			List<PostView> children
@@ -91,7 +90,7 @@ public final class PostView {
 		return children;
 	}
 
-	public Map<String, Set<AttachmentView>> getAttachments() {
+	public Map<String, Set<String>> getAttachments() {
 		return attachments;
 	}
 
@@ -185,11 +184,10 @@ public final class PostView {
 		return "https://gravatar.com/avatar/" + md5(email) + "?d=identicon";
 	}
 
-	private static Map<String, Set<AttachmentView>> convert(Map<String, Attachment> attachments) {
+	private static Map<String, Set<String>> convert(Map<String, AttachmentType> attachments) {
 		return attachments.entrySet().stream()
-				.sorted(ATTACHMENT_COMPARATOR)
-				.collect(toMultimap(entry -> entry.getValue().getAttachmentType().toString().toLowerCase(),
-						entry -> new AttachmentView(entry.getValue().getFilename(), entry.getKey())));
+				.sorted(Comparator.comparing(Entry::getKey))
+				.collect(toMultimap(entry -> entry.getValue().toString().toLowerCase(), Entry::getKey));
 	}
 
 }

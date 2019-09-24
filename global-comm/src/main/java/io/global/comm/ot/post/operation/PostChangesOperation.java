@@ -1,6 +1,6 @@
 package io.global.comm.ot.post.operation;
 
-import io.global.comm.pojo.Attachment;
+import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.UserId;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +30,7 @@ public final class PostChangesOperation implements ThreadOperation {
 		this.changeLastEditTimestamps = changeLastEditTimestamps;
 	}
 
-	public static PostChangesOperation forNewPost(String postId, String content, Map<String, Attachment> attachments, long initialTimestamp) {
+	public static PostChangesOperation forNewPost(String postId, String content, Map<String, AttachmentType> attachments, long initialTimestamp) {
 		List<ChangeAttachments> attachmentsOps = attachmentsToOps(postId, attachments, initialTimestamp, false);
 		ChangeContent changeContent = new ChangeContent(postId, "", content, initialTimestamp);
 		return new PostChangesOperation(singletonList(changeContent), attachmentsOps, emptyList(), emptyList(), emptyList());
@@ -88,7 +88,7 @@ public final class PostChangesOperation implements ThreadOperation {
 				changeLastEditTimestamps.isEmpty();
 	}
 
-	public static List<ChangeAttachments> attachmentsToOps(String postId, Map<String, Attachment> attachments, long timestamp, boolean remove) {
+	public static List<ChangeAttachments> attachmentsToOps(String postId, Map<String, AttachmentType> attachments, long timestamp, boolean remove) {
 		return attachments.entrySet().stream()
 				.map(entry -> new ChangeAttachments(postId, entry.getKey(), entry.getValue(), timestamp, remove))
 				.collect(Collectors.toList());

@@ -1,15 +1,16 @@
 package io.global.comm.dao;
 
 import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.operation.*;
-import io.global.comm.pojo.Attachment;
+import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
@@ -17,15 +18,18 @@ import io.global.comm.util.Utils;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.global.comm.ot.post.operation.PostChangesOperation.attachmentsToOps;
 import static io.global.comm.ot.post.operation.PostChangesOperation.rating;
-import static io.global.comm.util.Utils.generateId;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
 public final class ThreadDaoImpl implements ThreadDao {
 	private final CommDao parent;
@@ -46,30 +50,30 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
+	public Promise<String> generatePostId() {
+		String postId;
+		do {
+			postId = Utils.generateId();
+		} while (postsView.containsKey(postId));
+		return Promise.of(postId);
+	}
+
+	@Override
 	public Promise<ThreadMetadata> getThreadMetadata() {
 		return parent.getThreads().map(threads -> threads.get(threadId));
 	}
 
 	@Override
-	public Promise<String> addPost(UserId author, String parentId, String content, Map<String, Attachment> attachments) {
+	public Promise<Void> addPost(UserId author, @Nullable String parentId, String postId, String content, Map<String, AttachmentType> attachments) {
 		long initialTimestamp = now.currentTimeMillis();
 		return Promise.complete()
 				.then($ -> {
 					if (parentId == null && !postsView.isEmpty()) {
 						return Promise.ofException(ROOT_ALREADY_PRESENT_EXCEPTION);
 					}
-					String postId;
-					if (parentId == null) {
-						postId = "root";
-					} else {
-						do {
-							postId = Utils.generateId();
-						} while (postsView.containsKey(postId));
-					}
 					stateManager.add(AddPost.addPost(postId, parentId, author, initialTimestamp));
 					stateManager.add(PostChangesOperation.forNewPost(postId, content, attachments, initialTimestamp));
-					String finalPostId = postId;
-					return stateManager.sync().map($2 -> finalPostId);
+					return stateManager.sync();
 				});
 	}
 
@@ -102,7 +106,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved) {
+	public Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, AttachmentType> newAttachments, Set<String> toBeRemoved) {
 		long lastEditTimestamp = now.currentTimeMillis();
 		return getPost(postId)
 				.then(post -> {
@@ -117,8 +121,8 @@ public final class ThreadDaoImpl implements ThreadDao {
 						changeAttachments.addAll(attachmentsToOps(postId, newAttachments, lastEditTimestamp, false));
 					}
 					if (!toBeRemoved.isEmpty()) {
-						Map<String, Attachment> existingAttachments = post.getAttachments();
-						Map<String, Attachment> toBeRemovedMap = toBeRemoved.stream()
+						Map<String, AttachmentType> existingAttachments = post.getAttachments();
+						Map<String, AttachmentType> toBeRemovedMap = toBeRemoved.stream()
 								.filter(existingAttachments::containsKey)
 								.collect(Collectors.toMap(Function.identity(), existingAttachments::get));
 						changeAttachments.addAll(attachmentsToOps(postId, toBeRemovedMap, lastEditTimestamp, true));
@@ -133,18 +137,6 @@ public final class ThreadDaoImpl implements ThreadDao {
 					return stateManager.sync();
 				});
 
-	}
-
-	@Override
-	public Promise<Attachment> getAttachment(String postId, String globalFsId) {
-		return getPost(postId)
-				.then(post -> {
-					Attachment attachment = post.getAttachments().get(globalFsId);
-					if (attachment == null) {
-						return Promise.ofException(ATTACHMENT_NOT_FOUND);
-					}
-					return Promise.of(attachment);
-				});
 	}
 
 	@Override
@@ -196,23 +188,24 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<AttachmentUploader> uploadAttachment() {
-		return Promises.until(() -> Promise.of(generateId()),
-				globalFsId -> attachmentFs.getMetadata(globalFsId)
-						.map(Objects::isNull))
-				.then(globalFsId ->
-						attachmentFs.upload(globalFsId)
-								.map(uploader -> new AttachmentUploader(globalFsId, uploader)));
+	public Promise<Set<String>> listAttachments(String postId) {
+		return attachmentFs.list(postId + "/*")
+				.map(list -> list.stream().map(FileMetadata::getName).collect(toSet()));
 	}
 
 	@Override
-	public Promise<Void> deleteAttachment(String globalFsId) {
-		return attachmentFs.delete(globalFsId);
+	public Promise<ChannelConsumer<ByteBuf>> uploadAttachment(String postId, String filename) {
+		return attachmentFs.upload(postId + "/" + filename);
 	}
 
 	@Override
-	public Promise<Long> attachmentSize(String globalFsId) {
-		return attachmentFs.getMetadata(globalFsId)
+	public Promise<Void> deleteAttachment(String postId, String filename) {
+		return attachmentFs.delete(postId + "/" + filename);
+	}
+
+	@Override
+	public Promise<Long> attachmentSize(String postId, String filename) {
+		return attachmentFs.getMetadata(postId + "/" + filename)
 				.then(metadata -> {
 					if (metadata == null) {
 						return Promise.ofException(ATTACHMENT_NOT_FOUND);
@@ -222,8 +215,8 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> loadAttachment(String globalFsId, long offset, long limit) {
-		return attachmentFs.download(globalFsId, offset, limit)
+	public Promise<ChannelSupplier<ByteBuf>> loadAttachment(String postId, String filename, long offset, long limit) {
+		return attachmentFs.download(postId + "/" + filename, offset, limit)
 				.thenEx((value, e) -> {
 					if (e == FsClient.FILE_NOT_FOUND) {
 						return Promise.ofException(ATTACHMENT_NOT_FOUND);

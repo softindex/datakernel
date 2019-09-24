@@ -18,7 +18,7 @@ public final class Post {
 
 	private final Set<UserId> likes = new HashSet<>();
 	private final Set<UserId> dislikes = new HashSet<>();
-	private final Map<String, Attachment> attachments = new HashMap<>();
+	private final Map<String, AttachmentType> attachments = new HashMap<>();
 
 	@Nullable
 	private Post parent;
@@ -56,12 +56,12 @@ public final class Post {
 		this.content = content;
 	}
 
-	public void addAttachment(String globalFsId, Attachment attachment) {
-		this.attachments.put(globalFsId, attachment);
+	public void addAttachment(String filename, AttachmentType attachmentType) {
+		this.attachments.put(filename, attachmentType);
 	}
 
-	public void removeAttachment(String globalFsId) {
-		this.attachments.remove(globalFsId);
+	public void removeAttachment(String filename) {
+		this.attachments.remove(filename);
 	}
 
 	public void setLastEditTimestamp(long lastEditTimestamp) {
@@ -102,7 +102,7 @@ public final class Post {
 	}
 
 	@NotNull
-	public Map<String, Attachment> getAttachments() {
+	public Map<String, AttachmentType> getAttachments() {
 		return attachments;
 	}
 

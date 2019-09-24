@@ -6,7 +6,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.exception.StacklessException;
-import io.global.comm.pojo.Attachment;
+import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
@@ -22,11 +22,13 @@ public interface ThreadDao {
 
 	Promise<ThreadMetadata> getThreadMetadata();
 
-	default Promise<Void> addRootPost(UserId author, String content, Map<String, Attachment> attachments) {
-		return addPost(author, null, content, attachments).toVoid();
+	Promise<String> generatePostId();
+
+	default Promise<Void> addRootPost(UserId author, String content, Map<String, AttachmentType> attachments) {
+		return addPost(author, null, "root", content, attachments);
 	}
 
-	Promise<String> addPost(UserId author, @Nullable String parentId, @Nullable String content, Map<String, Attachment> attachments);
+	Promise<Void> addPost(UserId author, @Nullable String parentId, String postId, @Nullable String content, Map<String, AttachmentType> attachments);
 
 	Promise<Post> getPost(String postId);
 
@@ -34,9 +36,7 @@ public interface ThreadDao {
 
 	Promise<Void> restorePost(String postId);
 
-	Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, Attachment> newAttachments, Set<String> toBeRemoved);
-
-	Promise<Attachment> getAttachment(String postId, String globalFsId);
+	Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, AttachmentType> newAttachments, Set<String> toBeRemoved);
 
 	Promise<Void> like(UserId user, String postId);
 
@@ -46,37 +46,21 @@ public interface ThreadDao {
 
 	Promise<Map<String, Post>> listPosts();
 
-	Promise<AttachmentUploader> uploadAttachment();
+	Promise<Set<String>> listAttachments(String postId);
 
-	default Promise<Void> deleteAttachments(Set<String> globalFsIds) {
-		return Promises.all(globalFsIds.stream().map(this::deleteAttachment));
+	Promise<ChannelConsumer<ByteBuf>> uploadAttachment(String postId, String filename);
+
+	default Promise<Void> deleteAttachments(String postId, Set<String> filenames) {
+		return Promises.all(filenames.stream().map(filename -> deleteAttachment(postId, filename)));
 	}
 
-	Promise<Void> deleteAttachment(String globalFsId);
+	Promise<Void> deleteAttachment(String postId, String filename);
 
-	Promise<Long> attachmentSize(String globalFsId);
+	Promise<Long> attachmentSize(String postId, String filename);
 
-	Promise<ChannelSupplier<ByteBuf>> loadAttachment(String globalFsId, long offset, long limit);
+	Promise<ChannelSupplier<ByteBuf>> loadAttachment(String postId, String filename, long offset, long limit);
 
-	default Promise<ChannelSupplier<ByteBuf>> loadAttachment(String globalFsId) {
-		return loadAttachment(globalFsId, 0, -1);
-	}
-
-	class AttachmentUploader {
-		private final String globalFsId;
-		private final ChannelConsumer<ByteBuf> uploader;
-
-		public AttachmentUploader(String globalFsId, ChannelConsumer<ByteBuf> uploader) {
-			this.globalFsId = globalFsId;
-			this.uploader = uploader;
-		}
-
-		public String getGlobalFsId() {
-			return globalFsId;
-		}
-
-		public ChannelConsumer<ByteBuf> getUploader() {
-			return uploader;
-		}
+	default Promise<ChannelSupplier<ByteBuf>> loadAttachment(String postId, String filename) {
+		return loadAttachment(postId, filename, 0, -1);
 	}
 }

@@ -178,7 +178,7 @@ public final class CommGlobalState {
 					return stateManager.start()
 							.whenResult($ -> {
 								threadStateManagers.put(tid, stateManager);
-								threadDaos.put(tid, new ThreadDaoImpl(commDao, tid, stateManager, fsClient));
+								threadDaos.put(tid, new ThreadDaoImpl(commDao, tid, stateManager, fsClient.subfolder(tid)));
 							})
 							.whenComplete(() -> pendingThreadStateManagers.remove(tid))
 							.map($2 -> stateManager);

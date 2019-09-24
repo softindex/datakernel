@@ -33,7 +33,7 @@ public interface CommDao {
 
 	Promise<Void> unbanIpRange(String id);
 
-	Promise<String> createThread(ThreadMetadata threadMetadata);
+	Promise<String> generateThreadId();
 
 	Promise<Void> updateThread(String threadId, ThreadMetadata threadMetadata);
 

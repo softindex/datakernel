@@ -32,6 +32,7 @@ import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.Utils.nullToEmpty;
 import static io.global.Utils.generateString;
+import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
 import static io.global.comm.pojo.AuthService.DK_APP_STORE;
 import static io.global.forum.util.Utils.redirectToReferer;
 import static io.global.forum.util.Utils.revertIfException;
@@ -135,15 +136,17 @@ public final class PublicServlet {
 					}
 					CommDao commDao = request.getAttachment(CommDao.class);
 
-					return commDao.createThread(new ThreadMetadata("<unnamed>"))
+					return commDao.generateThreadId()
+							.then(id -> commDao.updateThread(id, new ThreadMetadata("<unnamed>"))
+									.map($ -> id))
 							.then(tid -> {
 								ThreadDao threadDao = commDao.getThreadDao(tid);
 								assert threadDao != null : "No thread dao just after creating the thread";
 
-								Map<String, Attachment> attachmentMap = new HashMap<>();
+								Map<String, AttachmentType> attachmentMap = new HashMap<>();
 								Map<String, String> paramsMap = new HashMap<>();
 
-								return request.handleMultipart(AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap))
+								return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", paramsMap, attachmentMap, true))
 										.then($ -> {
 											String title = paramsMap.get("title");
 											if (title == null || title.matches(WHITESPACE)) {
@@ -163,7 +166,7 @@ public final class PublicServlet {
 													.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
 													.map($2 -> redirect302("/" + pk + "/" + tid));
 										})
-										.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())))
+										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
 										.thenEx(revertIfException(() -> commDao.removeThread(tid)));
 							});
 				})
@@ -253,21 +256,22 @@ public final class PublicServlet {
 				.map(POST, "/", request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 
-					Map<String, Attachment> attachmentMap = new HashMap<>();
+					Map<String, AttachmentType> attachmentMap = new HashMap<>();
 					Map<String, String> paramsMap = new HashMap<>();
 
 					UserId user = request.getAttachment(UserId.class);
-					String pid = request.getPathParameter("postID");
+					String parentId = request.getPathParameter("postID");
 
-					return request.handleMultipart(AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap))
-							.then($ -> {
-								String content = paramsMap.get("content");
-								if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
-									return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
-								}
-								return threadDao.addPost(user, pid, content, attachmentMap).toVoid();
-							})
-							.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())))
+					return threadDao.generatePostId()
+							.then(postId -> request.handleMultipart(AttachmentDataHandler.create(threadDao, postId, paramsMap, attachmentMap, true))
+									.then($ -> {
+										String content = paramsMap.get("content");
+										if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
+											return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
+										}
+										return threadDao.addPost(user, parentId, postId, content, attachmentMap).toVoid();
+									}))
+							.thenEx(revertIfException(() -> threadDao.deleteAttachments(parentId, attachmentMap.keySet())))
 							.map($ -> postOpRedirect(request));
 				})
 				.map(POST, "/delete", request ->
@@ -281,10 +285,11 @@ public final class PublicServlet {
 
 					String pid = request.getPathParameter("postID");
 
-					Map<String, Attachment> attachmentMap = new HashMap<>();
+					Map<String, AttachmentType> attachmentMap = new HashMap<>();
 					Map<String, String> paramsMap = new HashMap<>();
 
-					return request.handleMultipart(AttachmentDataHandler.create(threadDao, paramsMap, attachmentMap))
+					return threadDao.listAttachments(pid)
+							.then(existing -> request.handleMultipart(AttachmentDataHandler.create(threadDao, pid, existing, paramsMap, attachmentMap, true)))
 							.then($ -> {
 								String content = paramsMap.get("content");
 								if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
@@ -297,22 +302,28 @@ public final class PublicServlet {
 								return threadDao.updatePost(pid, content, attachmentMap, removed)
 										.map($2 -> postOpRedirect(request));
 							})
-							.thenEx(revertIfException(() -> threadDao.deleteAttachments(attachmentMap.keySet())));
+							.thenEx(revertIfException(() -> threadDao.deleteAttachments(pid, attachmentMap.keySet())));
 				})
-				.map(GET, "/download/:tag", request -> {
+				.map(GET, "/download/:filename", request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-					String pid = request.getPathParameter("postID");
-					String tag = request.getPathParameter("tag");
+					String postId = request.getPathParameter("postID");
+					String filename = request.getPathParameter("filename");
 
-					return threadDao.getAttachment(pid, tag)
-							.then(attachment -> threadDao.attachmentSize(tag)
-									.then(size ->
-											HttpResponse.file(
-													(offset, limit) -> threadDao.loadAttachment(tag, offset, limit),
-													attachment.getFilename(),
-													size,
-													request.getHeader(HttpHeaders.RANGE)
-											)));
+					return threadDao.attachmentSize(postId, filename)
+							.thenEx((size, e) -> {
+								if (e == null) {
+									return HttpResponse.file(
+											(offset, limit) -> threadDao.loadAttachment(postId, filename, offset, limit),
+											filename,
+											size,
+											request.getHeader(HttpHeaders.RANGE)
+									);
+								} else if (e == ATTACHMENT_NOT_FOUND) {
+									return Promise.of(HttpResponse.notFound404());
+								} else {
+									return Promise.<HttpResponse>ofException(e);
+								}
+							});
 				})
 				.then(servlet -> request -> {
 					if (request.getMethod() == POST && request.getAttachment(UserId.class) == null) {

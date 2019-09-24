@@ -101,12 +101,13 @@ public final class CommDaoImpl implements CommDao {
 		return Promise.of(threadsView);
 	}
 
-	// invariant: just after creating the thread you should do `getThreadDao(id).addRootPost(...)`
 	@Override
-	public Promise<String> createThread(ThreadMetadata threadMetadata) {
-		String id = Utils.generateId();
-		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(null, threadMetadata)))
-				.map($ -> id);
+	public Promise<String> generateThreadId() {
+		String postId;
+		do {
+			postId = Utils.generateId();
+		} while (threadsView.containsKey(postId));
+		return Promise.of(postId);
 	}
 
 	@Override

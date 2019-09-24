@@ -164,7 +164,7 @@ public final class ThreadOTSystem {
 
 	private static OTSystem<ChangeAttachments> attachmentsOTSystem() {
 		return OTSystemImpl.<ChangeAttachments>create()
-				.withEmptyPredicate(ChangeAttachments.class, op -> op.getGlobalFsId().isEmpty())
+				.withEmptyPredicate(ChangeAttachments.class, op -> op.getFilename().isEmpty())
 				.withInvertFunction(ChangeAttachments.class, op ->
 						singletonList(op.invert()))
 				.withSquashFunction(ChangeAttachments.class, ChangeAttachments.class, (first, second) -> {
@@ -174,11 +174,8 @@ public final class ThreadOTSystem {
 					return null;
 				})
 				.withTransformFunction(ChangeAttachments.class, ChangeAttachments.class, (left, right) -> {
-					if (!left.getPostId().equals(right.getPostId()) || !left.getGlobalFsId().equals(right.getGlobalFsId())) {
+					if (!left.getPostId().equals(right.getPostId()) || !left.getFilename().equals(right.getFilename())) {
 						return TransformResult.of(right, left);
-					}
-					if (!(left.isRemove() && right.isRemove()) || !left.getAttachment().equals(right.getAttachment())) {
-						throw new OTTransformException("ID collision");
 					}
 					if (left.getTimestamp() > right.getTimestamp()) {
 						return TransformResult.right(asList(right.invert(), left));
