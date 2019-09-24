@@ -325,4 +325,12 @@ public final class TestLocalFsClient {
 		assertFalse(Files.exists(storagePath.resolve("i_do_not_exist.txt")));
 		assertFalse(Files.exists(storagePath.resolve("neither_am_i.txt")));
 	}
+
+	@Test
+	public void testMoveDirAtomicSpecialization() {
+		await(client.moveDir("2", "3"));
+
+		assertTrue(Files.isDirectory(storagePath.resolve("3")));
+		assertFalse(Files.exists(storagePath.resolve("2")));
+	}
 }

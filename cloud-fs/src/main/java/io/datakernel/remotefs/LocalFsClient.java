@@ -47,7 +47,6 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
@@ -61,6 +60,7 @@ import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -345,6 +345,47 @@ public final class LocalFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
+	public Promise<Void> moveDir(@NotNull String name, @NotNull String target, long targetRevision, long removeRevision) {
+		if (defaultRevision == null) {
+			return FsClient.super.moveDir(name, target, targetRevision, removeRevision);
+		}
+		String finalName = name.endsWith("/") ? name : name + '/';
+		String finalTarget = target.endsWith("/") ? target : target + '/';
+
+		Path from, to;
+		try {
+			from = resolve(finalName);
+			to = resolve(finalTarget);
+		} catch (StacklessException e) {
+			return Promise.ofException(e);
+		}
+
+		return Promise.ofBlockingCallable(executor, () -> Files.isRegularFile(to))
+				.then(isRegular -> {
+					if (isRegular) {
+						return Promise.ofException(FILE_EXISTS);
+					}
+					return Promise.ofBlockingCallable(executor, () -> Files.isDirectory(to));
+				})
+				.then(isDir -> {
+					if (isDir) {
+						return FsClient.super.moveDir(name, target, targetRevision, removeRevision);
+					}
+					return Promise.ofBlockingCallable(executor, () -> {
+						if (!Files.isDirectory(from)) {
+							return null;
+						}
+						try {
+							Files.move(from, to, ATOMIC_MOVE);
+						} catch (AtomicMoveNotSupportedException e) {
+							Files.move(from, to);
+						}
+						return null;
+					});
+				});
+	}
+
+	@Override
 	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		checkArgument(defaultRevision == null || targetRevision == defaultRevision, "unsupported revision");
 
@@ -576,6 +617,7 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return emptyList();
 		}
 
+		// get strict prefix folder from the glob
 		StringBuilder sb = new StringBuilder();
 		String[] split = glob.split(FILE_SEPARATOR);
 		for (int i = 0; i < split.length - 1; i++) {
@@ -588,64 +630,53 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		String subglob = glob.substring(sb.length());
 		Path subfolder = resolve(sb.toString());
 
-		split = subglob.split(FILE_SEPARATOR);
-		PathMatcher[] dirMatchers = new PathMatcher[split.length];
-		for (int i = 0; i < split.length; i++) {
-			String sub = split[i];
-			if (sub.contains("**")) {
-				break;
-			}
-			dirMatchers[i] = storage.getFileSystem().getPathMatcher("glob:" + sub);
-		}
-		Predicate<Path> dirFilter =
-				Arrays.stream(dirMatchers).allMatch(Objects::isNull) ?
-						$ -> true :
-						dir -> {
-							Path relative = subfolder.relativize(dir);
-							if (relative.toString().isEmpty()) { // empty path name count returns 1
-								return true;
-							}
-							for (int i = 0; i < relative.getNameCount(); i++) {
-								PathMatcher matcher = dirMatchers[i];
-								if (matcher == null) {
-									return true;
-								}
-								if (!matcher.matches(relative.getName(i))) {
-									return false;
-								}
-							}
-							return true;
-						};
+		return defaultRevision != null ?
+				simpleFindMatching(subfolder, subglob) :
+				findMatchingWithRevision(subfolder, subglob, includeTombstones);
+	}
 
-		if (defaultRevision != null) {
+	private FilenameInfo simpleFileInfo(Path path) {
+		assert defaultRevision != null;
+
+		return new FilenameInfo(path, storage.relativize(path).toString(), defaultRevision, false);
+	}
+
+	private Collection<FilenameInfo> simpleFindMatching(Path folder, String glob) throws IOException {
+		assert defaultRevision != null;
+
+		// optimization for listing all files
+		if ("**".equals(glob)) {
 			List<FilenameInfo> list = new ArrayList<>();
-			// optimization for listing all files
-			if ("**".equals(subglob)) {
-				walkFiles(subfolder, dirFilter, path -> list.add(simpleFileInfo(path, defaultRevision)));
-				return list;
-			}
-			// optimization for single-file requests
-			if ("".equals(subglob)) {
-				if (Files.isRegularFile(subfolder)) {
-					list.add(simpleFileInfo(subfolder, defaultRevision));
-				}
-				return list;
-			}
-			// common
-			PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + subglob);
-
-			walkFiles(subfolder, dirFilter, path -> {
-				if (matcher.matches(subfolder.relativize(path))) {
-					list.add(simpleFileInfo(path, defaultRevision));
-				}
-			});
+			walkFiles(folder, path -> list.add(simpleFileInfo(path)));
 			return list;
 		}
 
+		// optimization for single-file requests
+		if ("".equals(glob)) {
+			return Files.isRegularFile(folder) ?
+					singletonList(simpleFileInfo(folder)) :
+					emptyList();
+		}
+
+		// common route
+		List<FilenameInfo> list = new ArrayList<>();
+		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
+
+		walkFiles(folder, glob, path -> {
+			if (matcher.matches(folder.relativize(path))) {
+				list.add(simpleFileInfo(path));
+			}
+		});
+
+		return list;
+	}
+
+	private Collection<FilenameInfo> findMatchingWithRevision(Path folder, String glob, boolean includeTombstones) throws IOException {
 		Map<String, FilenameInfo> files = new HashMap<>();
+
 		// optimization for listing all files
-		if ("**".equals(subglob)) {
-			walkFiles(subfolder, dirFilter, path -> {
+		if ("**".equals(glob)) {
+			walkFiles(folder, path -> {
 				FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
 				if (info != null && (includeTombstones || !info.isTombstone())) {
 					files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
@@ -654,20 +685,33 @@ public final class LocalFsClient implements FsClient, EventloopService {
 			return files.values();
 		}
 
-		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + subglob);
+		// optimization for single-file requests
+		if ("".equals(glob)) {
+			walkFiles(folder, path -> {
+				FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
+				if (info != null && (!info.isTombstone() || includeTombstones)) {
+					files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
+				}
+			});
+		}
 
-		walkFiles(subfolder, dirFilter, path -> {
+		// common route
+		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
+
+		int relativeSubfolderLength = storage.relativize(folder).toString().length();
+
+		walkFiles(folder, glob, path -> {
 			FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
-			if (info != null && (includeTombstones || !info.isTombstone()) && matcher.matches(Paths.get(info.getName().substring(sb.length())))) {
-				files.merge(info.getName(), info, LocalFsClient.this::getBetterFilenameInfo);
+			if (info == null || (info.isTombstone() && !includeTombstones)) {
+				return;
+			}
+			String name = info.getName();
+			if (matcher.matches(Paths.get(name.substring(relativeSubfolderLength)))) {
+				files.merge(name, info, LocalFsClient.this::getBetterFilenameInfo);
 			}
 		});
 
 		return files.values();
-	}
-
-	private FilenameInfo simpleFileInfo(Path path, long revision) {
-		return new FilenameInfo(path, storage.relativize(path).toString(), revision, false);
 	}
 
 	private FileMetadata toFileMetadata(FilenameInfo info) {
@@ -700,14 +744,45 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		void accept(Path path) throws IOException;
 	}
 
-	private static void walkFiles(Path dir, Walker walker) throws IOException {
-		walkFiles(dir, $ -> true, walker);
+	private void walkFiles(Path dir, Walker walker) throws IOException {
+		walkFiles(dir, null, walker);
 	}
 
-	private static void walkFiles(Path dir, Predicate<Path> dirFilter, Walker walker) throws IOException {
+	private void walkFiles(Path dir, @Nullable String glob, Walker walker) throws IOException {
 		if (!Files.isDirectory(dir)) {
 			return;
 		}
+		String[] parts;
+		if (glob == null || (parts = glob.split(FILE_SEPARATOR))[0].contains("**")) {
+			Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
+				@Override
+				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+					walker.accept(file);
+					return CONTINUE;
+				}
+
+				@Override
+				public FileVisitResult visitFileFailed(Path file, IOException exc) {
+					logger.warn("Failed to visit file {}", storage.relativize(file), exc);
+					return CONTINUE;
+				}
+			});
+			return;
+		}
+
+		FileSystem fs = dir.getFileSystem();
+
+		PathMatcher[] matchers = new PathMatcher[parts.length];
+		matchers[0] = fs.getPathMatcher("glob:" + parts[0]);
+
+		for (int i = 1; i < parts.length; i++) {
+			String part = parts[i];
+			if (part.contains("**")) {
+				break;
+			}
+			matchers[i] = fs.getPathMatcher("glob:" + part);
+		}
+
 		Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -717,12 +792,25 @@ public final class LocalFsClient implements FsClient, EventloopService {
 
 			@Override
 			public FileVisitResult preVisitDirectory(Path subdir, BasicFileAttributes attrs) {
-				return dirFilter.test(subdir) ? CONTINUE : SKIP_SUBTREE;
+				if (subdir.equals(dir)) {
+					return CONTINUE;
+				}
+				Path relative = dir.relativize(subdir);
+				for (int i = 0; i < relative.getNameCount(); i++) {
+					PathMatcher matcher = matchers[i];
+					if (matcher == null) {
+						return CONTINUE;
+					}
+					if (!matcher.matches(relative.getName(i))) {
+						return SKIP_SUBTREE;
+					}
+				}
+				return CONTINUE;
 			}
 
 			@Override
 			public FileVisitResult visitFileFailed(Path file, IOException exc) {
-				logger.warn("Failed to visit file {}", dir.relativize(file), exc);
+				logger.warn("Failed to visit file {}", storage.relativize(file), exc);
 				return CONTINUE;
 			}
 		});
