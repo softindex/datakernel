@@ -185,8 +185,8 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = () -> 1;
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
-			public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
-				return failOnce(() -> super.createCommit(parent, diffs, parentLevel));
+			public Promise<OTCommit<Integer, TestOp>> createProtoCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
+				return failOnce(() -> super.createProtoCommit(parent, diffs, parentLevel));
 			}
 		};
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
@@ -255,8 +255,8 @@ public class OTStateManagerTest {
 		repository.revisionIdSupplier = asList(3, 4, 5).iterator()::next;
 		OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> otNode = new OTNodeDecorator(node) {
 			@Override
-			public Promise<FetchData<Integer, TestOp>> push(OTCommit<Integer, TestOp> commit) {
-				return failOnce(() -> super.push(commit));
+			public Promise<FetchData<Integer, TestOp>> push(OTCommit<Integer, TestOp> protoCommit) {
+				return failOnce(() -> super.push(protoCommit));
 			}
 		};
 		OTStateManager<Integer, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, otNode, testOpState);
@@ -296,13 +296,13 @@ public class OTStateManagerTest {
 		}
 
 		@Override
-		public Promise<OTCommit<Integer, TestOp>> createCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
-			return node.createCommit(parent, diffs, parentLevel);
+		public Promise<OTCommit<Integer, TestOp>> createProtoCommit(Integer parent, List<TestOp> diffs, long parentLevel) {
+			return node.createProtoCommit(parent, diffs, parentLevel);
 		}
 
 		@Override
-		public Promise<FetchData<Integer, TestOp>> push(OTCommit<Integer, TestOp> commit) {
-			return node.push(commit);
+		public Promise<FetchData<Integer, TestOp>> push(OTCommit<Integer, TestOp> protoCommit) {
+			return node.push(protoCommit);
 		}
 
 		@Override

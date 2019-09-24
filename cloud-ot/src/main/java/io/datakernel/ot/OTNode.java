@@ -48,8 +48,8 @@ public interface OTNode<K, D, C> {
 		return fetch(currentCommitId);
 	}
 
-	Promise<C> createCommit(K parent, List<D> diffs, long parentLevel);
+	Promise<C> createProtoCommit(K parent, List<D> diffs, long parentLevel);
 
-	Promise<FetchData<K, D>> push(C commit);
+	Promise<FetchData<K, D>> push(C protoCommit);
 
 }

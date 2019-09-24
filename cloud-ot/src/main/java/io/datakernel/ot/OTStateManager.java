@@ -60,9 +60,9 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private List<D> workingDiffs = new ArrayList<>();
 
 	@Nullable
-	private Object pendingCommit;
+	private Object pendingProtoCommit;
 	@Nullable
-	private List<D> pendingCommitDiffs;
+	private List<D> pendingProtoCommitDiffs;
 
 	private final AsyncSupplier<Void> sync = reuse(this::doSync);
 	private boolean isSyncing;
@@ -208,7 +208,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private void rebase(K originalCommitId, FetchData<K, D> fetchData) {
 		logger.info("Rebasing - {} {}", originalCommitId, fetchData);
 		if (commitId != originalCommitId) return;
-		if (pendingCommit != null) return;
+		if (pendingProtoCommit != null) return;
 
 		List<D> fetchedDiffs = fetchData.getDiffs();
 
@@ -231,15 +231,15 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> commit() {
-		assert pendingCommit == null;
+		assert pendingProtoCommit == null;
 		if (workingDiffs.isEmpty()) return Promise.complete();
 		int originalSize = workingDiffs.size();
 		List<D> diffs = new ArrayList<>(otSystem.squash(workingDiffs));
-		return repository.createCommit(this.commitId, diffs, level)
-				.whenResult(commit -> {
-					assert pendingCommit == null;
-					pendingCommit = commit;
-					pendingCommitDiffs = diffs;
+		return repository.createProtoCommit(this.commitId, diffs, level)
+				.whenResult(protoCommit -> {
+					assert pendingProtoCommit == null;
+					pendingProtoCommit = protoCommit;
+					pendingProtoCommitDiffs = diffs;
 					workingDiffs = new ArrayList<>(workingDiffs.subList(originalSize, workingDiffs.size()));
 				})
 				.toVoid()
@@ -248,12 +248,12 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> push() {
-		if (pendingCommit == null) return Promise.complete();
+		if (pendingProtoCommit == null) return Promise.complete();
 		K currentCommitId = this.commitId;
-		return repository.push(pendingCommit)
+		return repository.push(pendingProtoCommit)
 				.whenResult(fetchData -> {
-					pendingCommit = null;
-					pendingCommitDiffs = null;
+					pendingProtoCommit = null;
+					pendingProtoCommitDiffs = null;
 					rebase(currentCommitId, fetchData);
 				})
 				.toVoid()
@@ -263,10 +263,10 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public void reset() {
 		checkState(!isSyncing());
 		apply(otSystem.invert(
-				concat(nullToEmpty(pendingCommitDiffs), workingDiffs)));
+				concat(nullToEmpty(pendingProtoCommitDiffs), workingDiffs)));
 		workingDiffs.clear();
-		pendingCommit = null;
-		pendingCommitDiffs = null;
+		pendingProtoCommit = null;
+		pendingProtoCommitDiffs = null;
 	}
 
 	public void add(@NotNull D diff) {
@@ -308,8 +308,8 @@ public final class OTStateManager<K, D> implements EventloopService {
 		level = 0;
 		workingDiffs = null;
 
-		pendingCommit = null;
-		pendingCommitDiffs = null;
+		pendingProtoCommit = null;
+		pendingProtoCommitDiffs = null;
 
 		poll = null;
 	}
@@ -331,7 +331,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	public boolean hasPendingCommits() {
-		return pendingCommit != null;
+		return pendingProtoCommit != null;
 	}
 
 	@Override
@@ -339,7 +339,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return "{" +
 				"revision=" + commitId +
 				" workingDiffs:" + (workingDiffs != null ? workingDiffs.size() : null) +
-				" pendingCommits:" + (pendingCommit != null) +
+				" pendingCommits:" + (pendingProtoCommit != null) +
 				"}";
 	}
 }

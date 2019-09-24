@@ -20,20 +20,20 @@ import static io.datakernel.ot.DiffsReducer.toSquashedList;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static java.util.Collections.singleton;
 
-public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
+public final class OTNodeImpl<K, D, PC> implements OTNode<K, D, PC> {
 	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
 
 	private final OTSystem<D> otSystem;
 	private final OTRepository<K, D> repository;
-	private final Function<OTCommit<K, D>, C> commitToObject;
-	private final Function<C, OTCommit<K, D>> objectToCommit;
+	private final Function<OTCommit<K, D>, PC> protoCommitEncoder;
+	private final Function<PC, OTCommit<K, D>> protoCommitDecoder;
 
-	private OTNodeImpl(OTRepository<K, D> repository, OTSystem<D> otSystem, Function<OTCommit<K, D>, C> commitToObject,
-			Function<C, OTCommit<K, D>> objectToCommit) {
+	private OTNodeImpl(OTRepository<K, D> repository, OTSystem<D> otSystem, Function<OTCommit<K, D>, PC> protoCommitEncoder,
+			Function<PC, OTCommit<K, D>> protoCommitDecoder) {
 		this.otSystem = otSystem;
 		this.repository = repository;
-		this.commitToObject = commitToObject;
-		this.objectToCommit = objectToCommit;
+		this.protoCommitEncoder = protoCommitEncoder;
+		this.protoCommitDecoder = protoCommitDecoder;
 	}
 
 	public static <K, D, C> OTNodeImpl<K, D, C> create(OTRepository<K, D> repository, OTSystem<D> otSystem,
@@ -50,25 +50,25 @@ public final class OTNodeImpl<K, D, C> implements OTNode<K, D, C> {
 	}
 
 	@Override
-	public Promise<C> createCommit(K parent, List<D> diffs, long parentLevel) {
+	public Promise<PC> createProtoCommit(K parent, List<D> diffs, long parentLevel) {
 		return repository.createCommit(parent, new DiffsWithLevel<>(parentLevel, diffs))
-				.map(commitToObject)
+				.map(protoCommitEncoder)
 				.whenComplete(toLogger(logger, thisMethod(), parent, diffs, parentLevel));
 	}
 
 	@Override
-	public Promise<FetchData<K, D>> push(C commit) {
-		OTCommit<K, D> otCommit = objectToCommit.apply(commit);
-		return repository.push(otCommit)
+	public Promise<FetchData<K, D>> push(PC protoCommit) {
+		OTCommit<K, D> commit = protoCommitDecoder.apply(protoCommit);
+		return repository.push(commit)
 				.then($ -> repository.getHeads())
-				.then(initalHeads -> excludeParents(repository, otSystem, union(initalHeads, singleton(otCommit.getId())))
+				.then(initalHeads -> excludeParents(repository, otSystem, union(initalHeads, singleton(commit.getId())))
 						.then(heads -> merge(repository, otSystem, heads))
 						.then(mergeHead -> {
 							Set<K> mergeHeadSet = singleton(mergeHead);
 							return repository.updateHeads(mergeHeadSet, difference(initalHeads, mergeHeadSet))
-									.then($ -> doFetch(mergeHeadSet, otCommit.getId()));
+									.then($ -> doFetch(mergeHeadSet, commit.getId()));
 						}))
-				.whenComplete(toLogger(logger, thisMethod(), commit));
+				.whenComplete(toLogger(logger, thisMethod(), protoCommit));
 	}
 
 	@Override
