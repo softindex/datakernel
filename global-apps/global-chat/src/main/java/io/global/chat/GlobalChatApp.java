@@ -38,6 +38,7 @@ import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.CommonUserContainer;
+import io.global.ot.service.ContainerManager;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
@@ -46,19 +47,24 @@ import io.global.pm.GlobalPmDriver;
 import io.global.pm.api.PmClient;
 import io.global.pm.http.PmClientServlet;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.util.CollectionUtils.concat;
 import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
 import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
+import static java.util.Collections.singletonList;
 
 public final class GlobalChatApp extends Launcher {
 	private static final String PROPERTIES_FILE = "chat.properties";
@@ -104,8 +110,11 @@ public final class GlobalChatApp extends Launcher {
 			DynamicOTNodeServlet<ChatRoomOperation> roomServlet,
 			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
 			@Named("Calls") AsyncServlet callsServlet,
-			StaticServlet staticServlet
+			StaticServlet staticServlet,
+			Executor executor,
+			ContainerManager<CommonUserContainer<ChatRoomOperation>> containerManager
 	) {
+		Path expectedKeys = DEFAULT_CONTAINERS_DIR.resolve("expected.dat");
 		return RoutingServlet.create()
 				.map("/ot/contacts/*", contactsServlet)
 				.map("/ot/rooms/*", roomListServlet)
@@ -113,7 +122,24 @@ public final class GlobalChatApp extends Launcher {
 				.map("/ot/profile/:pubKey/*", profileServlet)
 				.map("/ot/myProfile/*", profileServlet)
 				.map("/calls/*", callsServlet)
-				.map("/*", staticServlet);
+				.map("/*", staticServlet)
+
+				// for backwards compatibility, to be removed later
+				.then(servlet -> request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return servlet.serve(request);
+					} else {
+						return Promise.ofBlockingRunnable(executor,
+								() -> {
+									List<String> strings = Files.readAllLines(expectedKeys);
+									if (!strings.contains(key)) {
+										Files.write(expectedKeys, concat(strings, singletonList(key)));
+									}
+								})
+								.then($ -> servlet.serve(request));
+					}
+				});
 	}
 
 	@Provides

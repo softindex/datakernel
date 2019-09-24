@@ -1,5 +1,6 @@
 package io.global.documents;
 
+import io.datakernel.async.Promise;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -35,24 +36,30 @@ import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.edit.EditOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.CommonUserContainer;
+import io.global.ot.service.ContainerManager;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.GlobalPmDriver;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.util.CollectionUtils.concat;
 import static io.global.documents.Utils.EDIT_OT_SYSTEM;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
+import static java.util.Collections.singletonList;
 
 public final class GlobalDocumentsApp extends Launcher {
 	private static final String PROPERTIES_FILE = "global-documents.properties";
@@ -92,15 +99,35 @@ public final class GlobalDocumentsApp extends Launcher {
 			DynamicOTNodeServlet<SharedReposOperation> documentListServlet,
 			DynamicOTNodeServlet<EditOperation> documentServlet,
 			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
-			StaticServlet staticServlet
+			StaticServlet staticServlet,
+			Executor executor,
+			ContainerManager<CommonUserContainer<EditOperation>> containerManager
 	) {
+		Path expectedKeys = DEFAULT_CONTAINERS_DIR.resolve("expected.dat");
 		return RoutingServlet.create()
 				.map("/ot/contacts/*", contactsServlet)
 				.map("/ot/documents/*", documentListServlet)
 				.map("/ot/document/:suffix/*", documentServlet)
 				.map("/ot/profile/:pubKey/*", profileServlet)
 				.map("/ot/myProfile/*", profileServlet)
-				.map("/*", staticServlet);
+				.map("/*", staticServlet)
+
+				// for backwards compatibility, to be removed later
+				.then(servlet -> request -> {
+					String key = request.getCookie("Key");
+					if (key == null) {
+						return servlet.serve(request);
+					} else {
+						return Promise.ofBlockingRunnable(executor,
+								() -> {
+									List<String> strings = Files.readAllLines(expectedKeys);
+									if (!strings.contains(key)) {
+										Files.write(expectedKeys, concat(strings, singletonList(key)));
+									}
+								})
+								.then($ -> servlet.serve(request));
+					}
+				});
 	}
 
 	@Provides
