@@ -146,7 +146,7 @@ public class CubeMeasureRemovalTest {
 				NAME_PARTITION_REMAINDER_SEQ);
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTNodeImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTNodeImpl.create(repository, otSystem);
+		OTUplinkImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTUplinkImpl.create(repository, otSystem);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		LogOTProcessor<LogItem, CubeDiff> logOTProcessor = LogOTProcessor.create(eventloop, multilog,
@@ -280,7 +280,7 @@ public class CubeMeasureRemovalTest {
 			initializeRepository(repository);
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
-			OTNodeImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTNodeImpl.create(repository, otSystem);
+			OTUplinkImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTUplinkImpl.create(repository, otSystem);
 			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);
@@ -340,7 +340,7 @@ public class CubeMeasureRemovalTest {
 			initializeRepository(repository);
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
-			OTNodeImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTNodeImpl.create(repository, otSystem);
+			OTUplinkImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTUplinkImpl.create(repository, otSystem);
 			OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager1 = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 			LogDataConsumer<LogItem, CubeDiff> logStreamConsumer1 = cube1.logStreamConsumer(LogItem.class);

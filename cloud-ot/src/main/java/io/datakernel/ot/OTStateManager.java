@@ -22,7 +22,7 @@ import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.OTNode.FetchData;
+import io.datakernel.ot.OTUplink.FetchData;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -49,7 +49,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;
-	private final OTNode<K, D, Object> repository;
+	private final OTUplink<K, D, Object> uplink;
 
 	private OTState<D> state;
 
@@ -72,15 +72,15 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private boolean isPolling;
 
 	@SuppressWarnings("unchecked")
-	private OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D, ?> repository, OTState<D> state) {
+	private OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTUplink<K, D, ?> uplink, OTState<D> state) {
 		this.eventloop = eventloop;
 		this.otSystem = otSystem;
-		this.repository = (OTNode<K, D, Object>) repository;
+		this.uplink = (OTUplink<K, D, Object>) uplink;
 		this.state = state;
 	}
 
 	@NotNull
-	public static <K, D> OTStateManager<K, D> create(@NotNull Eventloop eventloop, @NotNull OTSystem<D> otSystem, @NotNull OTNode<K, D, ?> repository,
+	public static <K, D> OTStateManager<K, D> create(@NotNull Eventloop eventloop, @NotNull OTSystem<D> otSystem, @NotNull OTUplink<K, D, ?> repository,
 			@NotNull OTState<D> state) {
 		return new OTStateManager<>(eventloop, otSystem, repository, state);
 	}
@@ -126,7 +126,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	public Promise<Void> checkout() {
 		checkState(commitId == null);
-		return repository.checkout()
+		return uplink.checkout()
 				.whenResult(checkoutData -> {
 					state.init();
 					apply(checkoutData.getDiffs());
@@ -185,7 +185,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	private Promise<Void> fetch() {
 		K fetchCommitId = this.commitId;
-		return repository.fetch(fetchCommitId)
+		return uplink.fetch(fetchCommitId)
 				.whenResult(fetchData -> rebase(fetchCommitId, fetchData))
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
@@ -195,7 +195,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Promise<Void> doPoll() {
 		if (!isValid()) return Promise.complete();
 		K pollCommitId = this.commitId;
-		return repository.poll(pollCommitId)
+		return uplink.poll(pollCommitId)
 				.whenResult(fetchData -> {
 					if (!isSyncing()) {
 						rebase(pollCommitId, fetchData);
@@ -235,7 +235,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		if (workingDiffs.isEmpty()) return Promise.complete();
 		int originalSize = workingDiffs.size();
 		List<D> diffs = new ArrayList<>(otSystem.squash(workingDiffs));
-		return repository.createProtoCommit(this.commitId, diffs, level)
+		return uplink.createProtoCommit(this.commitId, diffs, level)
 				.whenResult(protoCommit -> {
 					assert pendingProtoCommit == null;
 					pendingProtoCommit = protoCommit;
@@ -250,7 +250,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Promise<Void> push() {
 		if (pendingProtoCommit == null) return Promise.complete();
 		K currentCommitId = this.commitId;
-		return repository.push(pendingProtoCommit)
+		return uplink.push(pendingProtoCommit)
 				.whenResult(fetchData -> {
 					pendingProtoCommit = null;
 					pendingProtoCommitDiffs = null;

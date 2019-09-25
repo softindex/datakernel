@@ -7,7 +7,7 @@ import java.util.List;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
-public interface OTNode<K, D, C> {
+public interface OTUplink<K, D, C> {
 
 	final class FetchData<K, D> {
 		private final K commitId;

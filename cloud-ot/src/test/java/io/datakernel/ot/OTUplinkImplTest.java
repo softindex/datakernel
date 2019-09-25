@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.common.exception.StacklessException;
-import io.datakernel.ot.OTNode.FetchData;
+import io.datakernel.ot.OTUplink.FetchData;
 import io.datakernel.ot.utils.OTGraphBuilder;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
@@ -26,7 +26,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class OTNodeImplTest {
+public class OTUplinkImplTest {
 	private static final TestOpState state = new TestOpState();
 
 	@ClassRule
@@ -34,12 +34,12 @@ public class OTNodeImplTest {
 
 	private final OTRepositoryStub<Integer, TestOp> REPOSITORY = OTRepositoryStub.create();
 
-	private OTNode<Integer, TestOp, OTCommit<Integer, TestOp>> node;
+	private OTUplink<Integer, TestOp, OTCommit<Integer, TestOp>> node;
 
 	@Before
 	public void setUp() {
 		REPOSITORY.reset();
-		node = OTNodeImpl.create(REPOSITORY, createTestOp());
+		node = OTUplinkImpl.create(REPOSITORY, createTestOp());
 		resetRepo(null);
 
 	}

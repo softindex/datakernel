@@ -98,7 +98,7 @@ public final class LogToCubeTest {
 		List<TestAdvResult> expected = asList(new TestAdvResult(10, 2), new TestAdvResult(20, 1), new TestAdvResult(30, 1));
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTNodeImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTNodeImpl.create(repository, otSystem);
+		OTUplinkImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTUplinkImpl.create(repository, otSystem);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<TestPubRequest> multilog = MultilogImpl.create(eventloop,

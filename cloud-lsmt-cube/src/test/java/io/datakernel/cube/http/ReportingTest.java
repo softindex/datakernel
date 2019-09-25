@@ -312,7 +312,7 @@ public final class ReportingTest {
 		initializeRepository(repository);
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTNodeImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTNodeImpl.create(repository, otSystem);
+		OTUplinkImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTUplinkImpl.create(repository, otSystem);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,

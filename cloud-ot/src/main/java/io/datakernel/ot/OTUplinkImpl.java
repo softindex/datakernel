@@ -20,15 +20,15 @@ import static io.datakernel.ot.DiffsReducer.toSquashedList;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static java.util.Collections.singleton;
 
-public final class OTNodeImpl<K, D, PC> implements OTNode<K, D, PC> {
-	private static final Logger logger = LoggerFactory.getLogger(OTNodeImpl.class);
+public final class OTUplinkImpl<K, D, PC> implements OTUplink<K, D, PC> {
+	private static final Logger logger = LoggerFactory.getLogger(OTUplinkImpl.class);
 
 	private final OTSystem<D> otSystem;
 	private final OTRepository<K, D> repository;
 	private final Function<OTCommit<K, D>, PC> protoCommitEncoder;
 	private final Function<PC, OTCommit<K, D>> protoCommitDecoder;
 
-	private OTNodeImpl(OTRepository<K, D> repository, OTSystem<D> otSystem, Function<OTCommit<K, D>, PC> protoCommitEncoder,
+	private OTUplinkImpl(OTRepository<K, D> repository, OTSystem<D> otSystem, Function<OTCommit<K, D>, PC> protoCommitEncoder,
 			Function<PC, OTCommit<K, D>> protoCommitDecoder) {
 		this.otSystem = otSystem;
 		this.repository = repository;
@@ -36,13 +36,13 @@ public final class OTNodeImpl<K, D, PC> implements OTNode<K, D, PC> {
 		this.protoCommitDecoder = protoCommitDecoder;
 	}
 
-	public static <K, D, C> OTNodeImpl<K, D, C> create(OTRepository<K, D> repository, OTSystem<D> otSystem,
+	public static <K, D, C> OTUplinkImpl<K, D, C> create(OTRepository<K, D> repository, OTSystem<D> otSystem,
 			Function<OTCommit<K, D>, C> commitToObject, Function<C, OTCommit<K, D>> objectToCommit) {
-		return new OTNodeImpl<>(repository, otSystem, commitToObject, objectToCommit);
+		return new OTUplinkImpl<>(repository, otSystem, commitToObject, objectToCommit);
 	}
 
-	public static <K, D> OTNodeImpl<K, D, OTCommit<K, D>> create(OTRepository<K, D> repository, OTSystem<D> otSystem) {
-		return new OTNodeImpl<>(repository, otSystem, commit -> commit, object -> object);
+	public static <K, D> OTUplinkImpl<K, D, OTCommit<K, D>> create(OTRepository<K, D> repository, OTSystem<D> otSystem) {
+		return new OTUplinkImpl<>(repository, otSystem, commit -> commit, object -> object);
 	}
 
 	public OTRepository<K, D> getRepository() {
