@@ -121,7 +121,7 @@ public final class GlobalChatApp extends Launcher {
 				.map("/ot/room/:suffix/*", roomServlet)
 				.map("/ot/profile/:pubKey/*", profileServlet)
 				.map("/ot/myProfile/*", profileServlet)
-				.map("/calls/*", callsServlet)
+				.map("/notifications/*", callsServlet)
 				.map("/*", staticServlet)
 
 				// for backwards compatibility, to be removed later
