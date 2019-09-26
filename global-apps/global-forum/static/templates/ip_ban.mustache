@@ -7,22 +7,27 @@
                         <div class="card-header text-center font-weight-bold">IP ban for {{ban.ip}}</div>
                         <div class="card-body">
                             <div class="row px-4">
-                                <form action="/{{pubKey}}/admin/ip-bans/{{ban.id}}" method="post">
+                                <form class="validate" action="/{{pubKey}}/admin/ip-bans/{{ban.id}}" method="post"
+                                      novalidate>
                                     <div class="form-row mb-2">
                                         <div class="col-sm-2 col-form-label">IP:</div>
                                         <div class="col-sm-10">
                                             <div class="input-group">
                                                 <input type="text" class="form-control text-center" name="ip_0"
-                                                       placeholder="xxx" value="{{ban.ipParts.value1}}">
+                                                       placeholder="xxx" value="{{ban.ipParts.value1}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="ip_1"
-                                                       placeholder="xxx" value="{{ban.ipParts.value2}}">
+                                                       placeholder="xxx" value="{{ban.ipParts.value2}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="ip_2"
-                                                       placeholder="xxx" value="{{ban.ipParts.value3}}">
+                                                       placeholder="xxx" value="{{ban.ipParts.value3}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="ip_3"
-                                                       placeholder="xxx" value="{{ban.ipParts.value4}}">
+                                                       placeholder="xxx" value="{{ban.ipParts.value4}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                             </div>
                                         </div>
                                     </div>
@@ -31,16 +36,20 @@
                                         <div class="col-sm-10">
                                             <div class="input-group">
                                                 <input type="text" class="form-control text-center" name="mask_0"
-                                                       placeholder="xxx" value="{{ban.maskParts.value1}}">
+                                                       placeholder="xxx" value="{{ban.maskParts.value1}}{{^ban.maskParts.value1}}255{{/ban.maskParts.value1}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="mask_1"
-                                                       placeholder="xxx" value="{{ban.maskParts.value2}}">
+                                                       placeholder="xxx" value="{{ban.maskParts.value2}}{{^ban.maskParts.value2}}255{{/ban.maskParts.value2}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="mask_2"
-                                                       placeholder="xxx" value="{{ban.maskParts.value3}}">
+                                                       placeholder="xxx" value="{{ban.maskParts.value3}}{{^ban.maskParts.value3}}255{{/ban.maskParts.value3}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="mask_3"
-                                                       placeholder="xxx" value="{{ban.maskParts.value4}}">
+                                                       placeholder="xxx" value="{{ban.maskParts.value4}}{{^ban.maskParts.value4}}255{{/ban.maskParts.value4}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                             </div>
                                         </div>
                                     </div>
@@ -53,7 +62,8 @@
                                                     <input type="text"
                                                            class="form-control text-center datetimepicker-input"
                                                            data-target="#datetimepicker" name="until"
-                                                           value="{{ban.until}}"/>
+                                                           value="{{ban.until}}"
+                                                           required/>
                                                     <div class="input-group-append" data-target="#datetimepicker"
                                                          data-toggle="datetimepicker">
                                                         <div class="input-group-text"><i class="fa fa-calendar"></i>

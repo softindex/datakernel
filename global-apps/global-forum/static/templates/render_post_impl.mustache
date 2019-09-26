@@ -149,8 +149,8 @@
     {{^deletedBy}}
         {{#user}}
             <div class="collapse" id="reply_{{postId}}">
-                <form class="pt-3" action="/{{threadId}}/{{postId}}"
-                      method="post" enctype="multipart/form-data">
+                <form class="pt-3 validate" action="/{{threadId}}/{{postId}}"
+                      method="post" enctype="multipart/form-data" novalidate>
                     <div class="mx-3">
                         <textarea class="form-control" placeholder="Post your reply" name="content"
                                   data-post-button="#post_button_{{postId}}" required></textarea>

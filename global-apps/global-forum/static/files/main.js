@@ -1,5 +1,7 @@
+
 window.onload = () => {
 
+  // handle editing
   $('[data-edit]').click((e) => {
     let element = $(e.target.dataset.edit);
     let lines = Math.round(element.height() / parseFloat(element.css('line-height')));
@@ -8,6 +10,7 @@ window.onload = () => {
     let cancel = $(`<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>`);
     let textarea = $(`<textarea class="form-control" rows="${lines}"></textarea>`);
 
+    // 'ctrl+enter' => save the edit and 'escape' => cancel editing
     textarea.keydown((e) => {
       if (e.keyCode === 13 && e.ctrlKey) {
         e.preventDefault();
@@ -16,6 +19,8 @@ window.onload = () => {
         cancel.click();
       }
     });
+
+    // change text-area height on typing
     textarea.on('input', () => {
       let lines = textarea.val().split('\n').length;
       textarea.attr('rows', lines);
@@ -53,7 +58,7 @@ window.onload = () => {
     });
   });
 
-  // make pressing ctrl+enter submit the current post
+  // auto-submit form when pressing ctrl+enter
   $('[data-post-button]').keydown((e) => {
     if (e.keyCode === 13 && e.ctrlKey) {
       e.preventDefault();
@@ -76,9 +81,9 @@ window.onload = () => {
     const numberOfFiles = files.length;
     const label = $(this).next('.custom-file-label');
 
-    if (numberOfFiles > 1){
+    if (numberOfFiles > 1) {
       label.html(`[${numberOfFiles} ${type}s]`)
-    } else if (numberOfFiles === 1){
+    } else if (numberOfFiles === 1) {
       label.html(files[0].name.split('\\').pop());
     } else if (numberOfFiles === 0) {
       label.html(`Attach ${type}s`);
@@ -95,7 +100,7 @@ window.onload = () => {
     let target = $(e.target);
     e.target.select();
     e.target.setSelectionRange(0, 99999); /* For mobile devices */
-    document.execCommand("copy");
+    document.execCommand('copy');
     setTimeout(() => target.popover('hide'), 1000);
     e.preventDefault();
     return false;
@@ -112,9 +117,6 @@ window.onload = () => {
     format: 'HH:mm:ss/DD.MM.YYYY',
     useCurrent: false,
   });
-
-  // $('.like > i').click((e) => $(e.target).parent().click());
-  // $('.dislike > i').click((e) => $(e.target).parent().click());
 
   $('.like').click(e => {
     let parent = $(e.target).parent();
@@ -161,5 +163,14 @@ window.onload = () => {
           }
         }, console.error)
     }
+  });
+
+  $('.validate').submit(e => {
+    let form = e.target;
+    if (form.checkValidity() === false) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    form.classList.add('was-validated');
   });
 };

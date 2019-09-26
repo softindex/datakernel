@@ -26,10 +26,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
@@ -43,6 +40,7 @@ import static io.global.Utils.*;
 import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
 import static io.global.comm.pojo.AuthService.DK_APP_STORE;
 import static io.global.forum.util.Utils.*;
+import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toSet;
 
 public final class PublicServlet {
@@ -349,7 +347,7 @@ public final class PublicServlet {
 
 				.map(GET, "/ip-bans", request -> templater.render("ip_bans", map("bans", IpBanView.from(request.getAttachment(CommDao.class)))))
 
-				.map(GET, "/edit-forum", request -> templater.render("edit_forum", map()))
+				.map(GET, "/edit-forum", request -> templater.render("edit_forum", emptyMap()))
 
 				.map(POST, "/edit-forum", request -> {
 					try {
