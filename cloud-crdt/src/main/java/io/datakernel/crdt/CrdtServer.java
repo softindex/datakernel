@@ -45,13 +45,11 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
-																	   CrdtDataSerializer<K, S> serializer) {
+	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
 		return new CrdtServer<>(eventloop, client, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
-																	   BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 

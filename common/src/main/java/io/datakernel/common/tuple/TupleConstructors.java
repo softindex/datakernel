@@ -14,8 +14,8 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, R> TupleConstructor2<T1, T2, R> toPojo(Supplier<R> pojoSupplier,
-	                                                              Consumer<T1> setter1,
-	                                                              Consumer<T2> setter2) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2) {
 		return (value1, value2) -> {
 			R pojo = pojoSupplier.get();
 			setter1.accept(value1);
@@ -25,9 +25,9 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, R> TupleConstructor3<T1, T2, T3, R> toPojo(Supplier<R> pojoSupplier,
-	                                                                      Consumer<T1> setter1,
-	                                                                      Consumer<T2> setter2,
-	                                                                      Consumer<T3> setter3) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3) {
 		return (value1, value2, value3) -> {
 			R pojo = pojoSupplier.get();
 			setter1.accept(value1);
@@ -38,10 +38,10 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, T4, R> TupleConstructor4<T1, T2, T3, T4, R> toPojo(Supplier<R> pojoSupplier,
-	                                                                              Consumer<T1> setter1,
-	                                                                              Consumer<T2> setter2,
-	                                                                              Consumer<T3> setter3,
-	                                                                              Consumer<T4> setter4) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3,
+			Consumer<T4> setter4) {
 		return (value1, value2, value3, value4) -> {
 			R pojo = pojoSupplier.get();
 			setter1.accept(value1);
@@ -53,11 +53,11 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, T4, T5, R> TupleConstructor5<T1, T2, T3, T4, T5, R> toPojo(Supplier<R> pojoSupplier,
-	                                                                                      Consumer<T1> setter1,
-	                                                                                      Consumer<T2> setter2,
-	                                                                                      Consumer<T3> setter3,
-	                                                                                      Consumer<T4> setter4,
-	                                                                                      Consumer<T5> setter5) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3,
+			Consumer<T4> setter4,
+			Consumer<T5> setter5) {
 		return (value1, value2, value3, value4, value5) -> {
 			R pojo = pojoSupplier.get();
 			setter1.accept(value1);
@@ -70,12 +70,12 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, R> TupleConstructor6<T1, T2, T3, T4, T5, T6, R> toPojo(Supplier<R> pojoSupplier,
-	                                                                                              Consumer<T1> setter1,
-	                                                                                              Consumer<T2> setter2,
-	                                                                                              Consumer<T3> setter3,
-	                                                                                              Consumer<T4> setter4,
-	                                                                                              Consumer<T5> setter5,
-	                                                                                              Consumer<T6> setter6) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3,
+			Consumer<T4> setter4,
+			Consumer<T5> setter5,
+			Consumer<T6> setter6) {
 		return (value1, value2, value3, value4, value5, value6) -> {
 			R pojo = pojoSupplier.get();
 			setter1.accept(value1);
@@ -96,8 +96,8 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, R> TupleConstructor2<T1, T2, R> toPojo(R pojo,
-	                                                              Consumer<T1> setter1,
-	                                                              Consumer<T2> setter2) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2) {
 		return (value1, value2) -> {
 			setter1.accept(value1);
 			setter2.accept(value2);
@@ -106,9 +106,9 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, R> TupleConstructor3<T1, T2, T3, R> toPojo(R pojo,
-	                                                                      Consumer<T1> setter1,
-	                                                                      Consumer<T2> setter2,
-	                                                                      Consumer<T3> setter3) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3) {
 		return (value1, value2, value3) -> {
 			setter1.accept(value1);
 			setter2.accept(value2);
@@ -118,10 +118,10 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, T4, R> TupleConstructor4<T1, T2, T3, T4, R> toPojo(R pojo,
-	                                                                              Consumer<T1> setter1,
-	                                                                              Consumer<T2> setter2,
-	                                                                              Consumer<T3> setter3,
-	                                                                              Consumer<T4> setter4) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3,
+			Consumer<T4> setter4) {
 		return (value1, value2, value3, value4) -> {
 			setter1.accept(value1);
 			setter2.accept(value2);
@@ -132,11 +132,11 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, T4, T5, R> TupleConstructor5<T1, T2, T3, T4, T5, R> toPojo(R pojo,
-	                                                                                      Consumer<T1> setter1,
-	                                                                                      Consumer<T2> setter2,
-	                                                                                      Consumer<T3> setter3,
-	                                                                                      Consumer<T4> setter4,
-	                                                                                      Consumer<T5> setter5) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3,
+			Consumer<T4> setter4,
+			Consumer<T5> setter5) {
 		return (value1, value2, value3, value4, value5) -> {
 			setter1.accept(value1);
 			setter2.accept(value2);
@@ -148,12 +148,12 @@ public final class TupleConstructors {
 	}
 
 	public static <T1, T2, T3, T4, T5, T6, R> TupleConstructor6<T1, T2, T3, T4, T5, T6, R> toPojo(R pojo,
-	                                                                                              Consumer<T1> setter1,
-	                                                                                              Consumer<T2> setter2,
-	                                                                                              Consumer<T3> setter3,
-	                                                                                              Consumer<T4> setter4,
-	                                                                                              Consumer<T5> setter5,
-	                                                                                              Consumer<T6> setter6) {
+			Consumer<T1> setter1,
+			Consumer<T2> setter2,
+			Consumer<T3> setter3,
+			Consumer<T4> setter4,
+			Consumer<T5> setter5,
+			Consumer<T6> setter6) {
 		return (value1, value2, value3, value4, value5, value6) -> {
 			setter1.accept(value1);
 			setter2.accept(value2);

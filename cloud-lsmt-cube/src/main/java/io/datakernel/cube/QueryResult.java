@@ -36,8 +36,8 @@ public final class QueryResult {
 	private final ReportType reportType;
 
 	private QueryResult(RecordScheme recordScheme, List<Record> records, Record totals, int totalCount,
-	                    List<String> attributes, List<String> measures, List<String> sortedBy,
-	                    Map<String, Object> filterAttributes, ReportType reportType) {
+			List<String> attributes, List<String> measures, List<String> sortedBy,
+			Map<String, Object> filterAttributes, ReportType reportType) {
 		this.recordScheme = recordScheme;
 		this.records = records;
 		this.totals = totals;
@@ -56,21 +56,21 @@ public final class QueryResult {
 	}
 
 	public static QueryResult createForMetadata(RecordScheme recordScheme, List<String> attributes,
-	                                            List<String> measures) {
+			List<String> measures) {
 		return create(recordScheme, attributes, measures, Collections.emptyList(), Collections.emptyList(), Record.create(recordScheme), 0,
 				Collections.emptyMap(), ReportType.METADATA);
 	}
 
 	public static QueryResult createForData(RecordScheme recordScheme, List<Record> records, List<String> attributes,
-	                                        List<String> measures, List<String> sortedBy,
-	                                        Map<String, Object> filterAttributes) {
+			List<String> measures, List<String> sortedBy,
+			Map<String, Object> filterAttributes) {
 		return create(recordScheme, attributes, measures, sortedBy, records, Record.create(recordScheme), 0,
 				filterAttributes, ReportType.DATA);
 	}
 
 	public static QueryResult createForDataWithTotals(RecordScheme recordScheme, List<Record> records, Record totals,
-	                                                  int totalCount, List<String> attributes, List<String> measures,
-	                                                  List<String> sortedBy, Map<String, Object> filterAttributes) {
+			int totalCount, List<String> attributes, List<String> measures,
+			List<String> sortedBy, Map<String, Object> filterAttributes) {
 		return create(recordScheme, attributes, measures, sortedBy, records, totals, totalCount, filterAttributes,
 				ReportType.DATA_WITH_TOTALS);
 	}

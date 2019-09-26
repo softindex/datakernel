@@ -34,8 +34,8 @@ public final class FixedSizeFieldsExample {
 	}
 
 	private static <T> T serializeAndDeserialize(T testData1,
-												 BinarySerializer<T> serializer,
-												 BinarySerializer<T> deserializer) {
+			BinarySerializer<T> serializer,
+			BinarySerializer<T> deserializer) {
 		byte[] array = new byte[1000];
 		serializer.encode(array, 0, testData1);
 		return deserializer.decode(array, 0);

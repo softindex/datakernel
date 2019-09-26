@@ -34,7 +34,7 @@ public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 	private final Joiner<K, L, R, V> joiner;
 
 	public DatasetJoin(SortedDataset<K, L> left, SortedDataset<K, R> right, Joiner<K, L, R, V> joiner,
-	                   Class<V> resultType, Function<V, K> keyFunction) {
+			Class<V> resultType, Function<V, K> keyFunction) {
 		super(resultType, left.keyComparator(), left.keyType(), keyFunction);
 		this.left = left;
 		this.right = right;

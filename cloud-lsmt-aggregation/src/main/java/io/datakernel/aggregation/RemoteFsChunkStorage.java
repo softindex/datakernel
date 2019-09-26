@@ -125,8 +125,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	public static <C> RemoteFsChunkStorage<C> create(Eventloop eventloop,
-													 ChunkIdCodec<C> chunkIdCodec,
-													 IdGenerator<C> idGenerator, FsClient client) {
+			ChunkIdCodec<C> chunkIdCodec,
+			IdGenerator<C> idGenerator, FsClient client) {
 		return new RemoteFsChunkStorage<>(eventloop, chunkIdCodec, idGenerator, client);
 	}
 
@@ -159,8 +159,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
-											   Class<T> recordClass, C chunkId,
-											   DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId,
+			DefiningClassLoader classLoader) {
 		return client.download(getPath(chunkId))
 				.whenComplete(promiseOpenR.recordStats())
 				.map(supplier -> supplier
@@ -176,8 +176,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
-												Class<T> recordClass, C chunkId,
-												DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId,
+			DefiningClassLoader classLoader) {
 		return client.upload(getTempPath(chunkId))
 				.whenComplete(promiseOpenW.recordStats())
 				.map(consumer -> StreamConsumer.ofSupplier(

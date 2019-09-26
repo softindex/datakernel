@@ -39,8 +39,7 @@ public final class MeasureCount extends Measure {
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Variable accumulator,
-	                                                 Expression firstAccumulator) {
+	public Expression initAccumulatorWithAccumulator(Variable accumulator, Expression firstAccumulator) {
 		return set(accumulator, firstAccumulator);
 	}
 

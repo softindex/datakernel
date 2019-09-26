@@ -86,7 +86,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-						 AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
+			AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
 		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;

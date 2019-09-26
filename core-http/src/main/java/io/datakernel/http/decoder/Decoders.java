@@ -20,8 +20,8 @@ public final class Decoders {
 	public static final String REQUIRED_COOKIE = "Required cookie: %1";
 
 	private static <T> Decoder<T> ofParamEx(String paramName,
-													@NotNull Mapper<String, T> fn,
-													@NotNull BiFunction<HttpRequest, String, String> paramSupplier,
+			@NotNull Mapper<String, T> fn,
+			@NotNull BiFunction<HttpRequest, String, String> paramSupplier,
 			String message) {
 		return new AbstractDecoder<T>(paramName) {
 			@Override
@@ -36,9 +36,9 @@ public final class Decoders {
 	}
 
 	private static <T> Decoder<T> ofParamEx(String paramName,
-													@NotNull Mapper<String, T> fn,
-													@NotNull BiFunction<HttpRequest, String, String> paramSupplier,
-													@Nullable T defaultValue) {
+			@NotNull Mapper<String, T> fn,
+			@NotNull BiFunction<HttpRequest, String, String> paramSupplier,
+			@Nullable T defaultValue) {
 		return new AbstractDecoder<T>(paramName) {
 			@Override
 			public Either<T, DecodeErrors> decode(@NotNull HttpRequest request) {
@@ -52,7 +52,7 @@ public final class Decoders {
 	}
 
 	public static Decoder<String> ofGet(String paramName) {
-		return ofGetEx(paramName, (Mapper<String, String>)Either::left);
+		return ofGetEx(paramName, (Mapper<String, String>) Either::left);
 	}
 
 	public static Decoder<String> ofGet(String paramName, String defaultValue) {
@@ -68,13 +68,13 @@ public final class Decoders {
 	}
 
 	public static <T> Decoder<T> ofGetEx(@NotNull String paramName,
-												 @NotNull Mapper<String, T> fn) {
+			@NotNull Mapper<String, T> fn) {
 		return ofParamEx(paramName, fn, HttpRequest::getQueryParameter, REQUIRED_GET_PARAM);
 	}
 
 	public static <T> Decoder<T> ofGetEx(@NotNull String paramName,
-												 @NotNull Mapper<String, T> fn,
-												 @Nullable T defaultValue) {
+			@NotNull Mapper<String, T> fn,
+			@Nullable T defaultValue) {
 		return ofParamEx(paramName, fn, HttpRequest::getQueryParameter, defaultValue);
 	}
 
@@ -95,13 +95,13 @@ public final class Decoders {
 	}
 
 	public static <T> Decoder<T> ofPostEx(@NotNull String paramName,
-												  @NotNull Mapper<String, T> fn) {
+			@NotNull Mapper<String, T> fn) {
 		return ofParamEx(paramName, fn, HttpRequest::getPostParameter, REQUIRED_POST_PARAM);
 	}
 
 	public static <T> Decoder<T> ofPostEx(@NotNull String paramName,
-												  @NotNull Mapper<String, T> fn,
-												  @Nullable T defaultValue) {
+			@NotNull Mapper<String, T> fn,
+			@Nullable T defaultValue) {
 		return ofParamEx(paramName, fn, HttpRequest::getPostParameter, defaultValue);
 	}
 
@@ -122,13 +122,13 @@ public final class Decoders {
 	}
 
 	public static <T> Decoder<T> ofPathEx(@NotNull String paramName,
-												  @NotNull Mapper<String, T> fn) {
+			@NotNull Mapper<String, T> fn) {
 		return ofParamEx(paramName, fn, HttpRequest::getPathParameter, REQUIRED_PATH_PARAM);
 	}
 
 	public static <T> Decoder<T> ofPathEx(@NotNull String paramName,
-												  @NotNull Mapper<String, T> fn,
-												  @Nullable T defaultValue) {
+			@NotNull Mapper<String, T> fn,
+			@Nullable T defaultValue) {
 		return ofParamEx(paramName, fn, HttpRequest::getPathParameter, defaultValue);
 	}
 
@@ -149,13 +149,13 @@ public final class Decoders {
 	}
 
 	public static <T> Decoder<T> ofCookieEx(@NotNull String paramName,
-													@NotNull Mapper<String, T> fn) {
+			@NotNull Mapper<String, T> fn) {
 		return ofParamEx(paramName, fn, HttpRequest::getCookie, REQUIRED_COOKIE);
 	}
 
 	public static <T> Decoder<T> ofCookieEx(@NotNull String paramName,
-													@NotNull Mapper<String, T> fn,
-													@Nullable T defaultValue) {
+			@NotNull Mapper<String, T> fn,
+			@Nullable T defaultValue) {
 		return ofParamEx(paramName, fn, HttpRequest::getCookie, defaultValue);
 	}
 }

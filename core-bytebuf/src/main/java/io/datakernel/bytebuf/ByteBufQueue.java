@@ -62,7 +62,9 @@ public final class ByteBufQueue implements Recyclable {
 	private static Collector<ByteBuf, ByteBufQueue, ByteBuf> COLLECTOR = Collector.of(
 			ByteBufQueue::new,
 			ByteBufQueue::add,
-			(bufs1, bufs2) -> { throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");},
+			(bufs1, bufs2) -> {
+				throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");
+			},
 			ByteBufQueue::takeRemaining);
 
 	/**
@@ -88,7 +90,9 @@ public final class ByteBufQueue implements Recyclable {
 					}
 					queue.add(buf);
 				},
-				(bufs1, bufs2) -> { throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");},
+				(bufs1, bufs2) -> {
+					throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");
+				},
 				ByteBufQueue::takeRemaining);
 	}
 

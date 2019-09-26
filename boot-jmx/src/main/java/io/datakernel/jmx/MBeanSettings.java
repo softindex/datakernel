@@ -35,8 +35,8 @@ public final class MBeanSettings {
 	}
 
 	public static MBeanSettings of(Set<String> includedOptionals,
-	                               Map<String, ? extends AttributeModifier<?>> modifiers,
-	                               Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			Map<String, ? extends AttributeModifier<?>> modifiers,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new MBeanSettings(includedOptionals, modifiers, customTypes);
 	}
 

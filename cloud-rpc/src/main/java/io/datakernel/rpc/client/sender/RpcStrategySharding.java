@@ -33,8 +33,7 @@ public final class RpcStrategySharding implements RpcStrategy {
 	private final ShardingFunction<?> shardingFunction;
 	private final int minActiveSubStrategies;
 
-	private RpcStrategySharding(@NotNull ShardingFunction<?> shardingFunction, @NotNull RpcStrategyList list,
-	                            int minActiveSubStrategies) {
+	private RpcStrategySharding(@NotNull ShardingFunction<?> shardingFunction, @NotNull RpcStrategyList list, int minActiveSubStrategies) {
 		this.shardingFunction = shardingFunction;
 		this.list = list;
 		this.minActiveSubStrategies = minActiveSubStrategies;

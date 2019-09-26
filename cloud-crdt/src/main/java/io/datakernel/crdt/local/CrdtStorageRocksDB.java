@@ -74,7 +74,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	// endregion
 
 	private CrdtStorageRocksDB(Eventloop eventloop, Executor executor, RocksDB db,
-							   BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer, CrdtFunction<S> function) {
+			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer, CrdtFunction<S> function) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.db = db;

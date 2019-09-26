@@ -76,8 +76,8 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	private final PromiseStats singleFileRepartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
 
 	private RemoteFsRepartitionController(Eventloop eventloop, Object localPartitionId, RemoteFsClusterClient cluster,
-										  LocalFsClient localStorage, ServerSelector serverSelector, Map<Object, FsClient> clients,
-										  int replicationCount) {
+			LocalFsClient localStorage, ServerSelector serverSelector, Map<Object, FsClient> clients,
+			int replicationCount) {
 		this.eventloop = eventloop;
 		this.localPartitionId = localPartitionId;
 		this.cluster = cluster;

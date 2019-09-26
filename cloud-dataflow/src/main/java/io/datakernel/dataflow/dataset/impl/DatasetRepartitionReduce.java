@@ -33,12 +33,12 @@ public final class DatasetRepartitionReduce<K, I, O> extends Dataset<O> {
 	private final List<Partition> partitions;
 
 	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
-	                                Class<O> resultType) {
+			Class<O> resultType) {
 		this(input, reducer, resultType, null);
 	}
 
 	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
-	                                Class<O> resultType, List<Partition> partitions) {
+			Class<O> resultType, List<Partition> partitions) {
 		super(resultType);
 		this.input = input;
 		this.reducer = reducer;

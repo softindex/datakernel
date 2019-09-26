@@ -41,8 +41,7 @@ public final class MeasureUnion extends Measure {
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Variable accumulator,
-	                                                 Expression firstAccumulator) {
+	public Expression initAccumulatorWithAccumulator(Variable accumulator, Expression firstAccumulator) {
 		return sequence(
 				getInitializeExpression(accumulator),
 				call(accumulator, "addAll", cast(firstAccumulator, Collection.class)));

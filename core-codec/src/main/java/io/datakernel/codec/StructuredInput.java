@@ -35,8 +35,7 @@ public interface StructuredInput {
 
 	String readString() throws ParseException;
 
-	@Nullable
-	<T> T readNullable(StructuredDecoder<T> decoder) throws ParseException;
+	@Nullable <T> T readNullable(StructuredDecoder<T> decoder) throws ParseException;
 
 	boolean hasNext() throws ParseException;
 
@@ -68,11 +67,17 @@ public interface StructuredInput {
 	}
 
 	default void readTuple(ParserRunnable decoder) throws ParseException {
-		readTuple(in -> {decoder.run(); return null;});
+		readTuple(in -> {
+			decoder.run();
+			return null;
+		});
 	}
 
 	default void readObject(ParserRunnable decoder) throws ParseException {
-		readObject(in -> {decoder.run(); return null;});
+		readObject(in -> {
+			decoder.run();
+			return null;
+		});
 	}
 
 	<T> T readCustom(Type type) throws ParseException;

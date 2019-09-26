@@ -97,7 +97,7 @@ public final class HttpTolerantApplicationTest {
 					DataInputStream in = new DataInputStream(socket.getInputStream());
 					int b = 0;
 					//noinspection StatementWithEmptyBody
-					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF));
+					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF)) ;
 					System.out.println("write: " + socket);
 					write(socket, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc");
 				} catch (IOException ignored) {

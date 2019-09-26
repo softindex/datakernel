@@ -31,7 +31,7 @@ public final class DatasetLocalSortReduce<K, I, O> extends LocallySortedDataset<
 	private final Reducer<K, I, O, ?> reducer;
 
 	public DatasetLocalSortReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
-	                              Class<O> resultType, Function<O, K> resultKeyFunction) {
+			Class<O> resultType, Function<O, K> resultKeyFunction) {
 		super(resultType, input.keyComparator(), input.keyType(), resultKeyFunction);
 		this.input = input;
 		this.reducer = reducer;

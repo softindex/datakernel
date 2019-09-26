@@ -45,6 +45,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 			String content(HttpRequest request, @WorkerId int workerId, Function<Object[], String> template) {
 				return template.apply(new Object[]{workerId, request});
 			}
+
 			//[START REGION_1]
 			@Provides
 			@RequestScope
@@ -70,6 +71,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 			String content(HttpRequest request, @WorkerId int workerId, Function<Object[], String> template) {
 				return template.apply(new Object[]{workerId, request});
 			}
+
 			//[START REGION_2]
 			@Provides
 			@RequestScope

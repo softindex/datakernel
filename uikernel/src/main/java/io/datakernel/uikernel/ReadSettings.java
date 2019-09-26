@@ -56,11 +56,11 @@ public final class ReadSettings<K> {
 	private final Set<K> extra;
 
 	private ReadSettings(List<String> fields,
-	                     int offset,
-	                     int limit,
-	                     Map<String, String> filters,
-	                     Map<String, SortOrder> sort,
-	                     Set<K> extra) {
+			int offset,
+			int limit,
+			Map<String, String> filters,
+			Map<String, SortOrder> sort,
+			Set<K> extra) {
 		this.fields = fields;
 		this.offset = offset;
 		this.limit = limit;
@@ -130,11 +130,11 @@ public final class ReadSettings<K> {
 	}
 
 	public static <K> ReadSettings<K> of(List<String> fields,
-	                                     int offset,
-	                                     int limit,
-	                                     Map<String, String> filters,
-	                                     Map<String, SortOrder> sort,
-	                                     Set<K> extra) {
+			int offset,
+			int limit,
+			Map<String, String> filters,
+			Map<String, SortOrder> sort,
+			Set<K> extra) {
 		return new ReadSettings<>(fields, offset, limit, filters, sort, extra);
 	}
 

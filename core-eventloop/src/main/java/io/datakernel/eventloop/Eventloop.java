@@ -282,7 +282,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		}
 	}
 
-	@Nullable public Selector ensureSelector() {
+	@Nullable
+	public Selector ensureSelector() {
 		if (selector == null) {
 			openSelector();
 		}

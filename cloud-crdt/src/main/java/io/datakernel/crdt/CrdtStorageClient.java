@@ -76,13 +76,11 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
-																			  CrdtDataSerializer<K, S> serializer) {
+	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
 		return new CrdtStorageClient<>(eventloop, address, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address,
-																			  BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtStorageClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
