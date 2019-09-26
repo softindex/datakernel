@@ -26,19 +26,19 @@ public interface ServerSelector {
 			}
 		}
 		return shards.stream()
-			.map(shard -> new ShardWithHash(shard, murmur3hash(fileName.hashCode(), shard.hashCode())))
-			.sorted(comparingInt(h -> h.hash))
-			.map(h -> h.shard)
-			.limit(topShards)
-			.collect(toList());
+				.map(shard -> new ShardWithHash(shard, murmur3hash(fileName.hashCode(), shard.hashCode())))
+				.sorted(comparingInt(h -> h.hash))
+				.map(h -> h.shard)
+				.limit(topShards)
+				.collect(toList());
 	};
 
 	/**
 	 * Selects partitions where given file should belong.
 	 *
-	 * @param fileName     name of the file
-	 * @param shards set of partition ids to choose from
-	 * @param topShards    number of ids to return
+	 * @param fileName  name of the file
+	 * @param shards    set of partition ids to choose from
+	 * @param topShards number of ids to return
 	 * @return list of keys of servers ordered by priority where file with given name should be
 	 */
 	List<Object> selectFrom(String fileName, Set<Object> shards, int topShards);

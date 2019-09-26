@@ -111,13 +111,16 @@ final class ExpressionBitOp implements Expression {
 	private Type unifyType(int leftSort, int rightSort) {
 		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
 			if (leftSort == Type.LONG || rightSort == Type.LONG) return Type.LONG_TYPE;
-			if (leftSort == Type.VOID || rightSort == Type.VOID) throw new IllegalArgumentException("One of types of bit operation arguments is void");
+			if (leftSort == Type.VOID || rightSort == Type.VOID)
+				throw new IllegalArgumentException("One of types of bit operation arguments is void");
 			if (leftSort <= Type.INT && rightSort <= Type.INT) return Type.INT_TYPE;
 			throw new IllegalArgumentException("One of types of bit operation arguments is not integral");
 		} else {
-			if (rightSort == Type.VOID || rightSort > Type.INT) throw new IllegalArgumentException("Right argument of a bit operation arguments is void or not integral");
+			if (rightSort == Type.VOID || rightSort > Type.INT)
+				throw new IllegalArgumentException("Right argument of a bit operation arguments is void or not integral");
 			if (leftSort == Type.LONG) return Type.LONG_TYPE;
-			if (leftSort == Type.VOID || leftSort > Type.INT) throw new IllegalArgumentException("Left argument of a bit operation arguments is void or not integral");
+			if (leftSort == Type.VOID || leftSort > Type.INT)
+				throw new IllegalArgumentException("Left argument of a bit operation arguments is void or not integral");
 			return Type.INT_TYPE;
 		}
 	}

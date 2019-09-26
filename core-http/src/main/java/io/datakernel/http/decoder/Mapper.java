@@ -1,6 +1,5 @@
 package io.datakernel.http.decoder;
 
-
 import io.datakernel.common.collection.Either;
 
 import java.util.List;

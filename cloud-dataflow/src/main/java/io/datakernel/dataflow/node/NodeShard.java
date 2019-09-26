@@ -94,7 +94,7 @@ public final class NodeShard<K, T> implements Node {
 		StreamSharder<T> streamSharder = StreamSharder.create(
 				object -> hashSharder.shard(keyFunction.apply(object)));
 		taskContext.bindChannel(input, streamSharder.getInput());
-		for(StreamId streamId : outputs) {
+		for (StreamId streamId : outputs) {
 			StreamSupplier<T> supplier = streamSharder.newOutput();
 			taskContext.export(streamId, supplier);
 		}

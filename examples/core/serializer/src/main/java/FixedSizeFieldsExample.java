@@ -41,7 +41,6 @@ public final class FixedSizeFieldsExample {
 		return deserializer.decode(array, 0);
 	}
 
-
 	public static void main(String[] args) {
 		// Create a test object
 		TestDataFixedSize testData1 = new TestDataFixedSize();

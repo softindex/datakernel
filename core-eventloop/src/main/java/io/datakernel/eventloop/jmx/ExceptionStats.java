@@ -146,7 +146,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats>, JmxStatsW
 	}
 
 	@Nullable
-	public Object getContext(){
+	public Object getContext() {
 		return context;
 	}
 }

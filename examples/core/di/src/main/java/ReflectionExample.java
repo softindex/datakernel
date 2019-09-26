@@ -29,7 +29,6 @@ public final class ReflectionExample {
 		void send(String message);
 	}
 
-
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.FIELD)
 	@NameAnnotation

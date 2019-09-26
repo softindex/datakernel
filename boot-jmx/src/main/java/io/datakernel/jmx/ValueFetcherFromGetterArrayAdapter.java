@@ -49,7 +49,7 @@ final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 
 	private List<Object> wrapPrimitives(Object arr) {
 		int length = Array.getLength(arr);
-		if(length == 0) {
+		if (length == 0) {
 			return emptyList();
 		}
 

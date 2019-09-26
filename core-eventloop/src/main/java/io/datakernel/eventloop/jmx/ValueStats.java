@@ -744,7 +744,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 			decimalFormat = new DecimalFormat("0.0####E0#");
 		} else {
 			decimalFormat = new DecimalFormat("0");
-			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(max-min) / precision), 0), 6)));
+			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(max - min) / precision), 0), 6)));
 		}
 
 		StringBuilder constructorTemplate = new StringBuilder();

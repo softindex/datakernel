@@ -315,6 +315,7 @@ public final class StructuredCodecs {
 						Arrays::asList
 				);
 	}
+
 	public static <T> StructuredCodec<List<T>> ofTupleList(StructuredCodec<? extends T>... elementDecoders) {
 		return ofTupleList(asList(elementDecoders));
 	}

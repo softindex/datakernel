@@ -22,13 +22,15 @@ import org.jetbrains.annotations.Nullable;
 /**
  * An {@link Eventloop}-global callback for any fatal (unchecked) exceptions,
  * that bubbled up to the task call from the main loop.
+ *
  * @see Eventloop#withFatalErrorHandler
  */
 @FunctionalInterface
 public interface FatalErrorHandler {
 	/**
 	 * Called when an unchecked exception is catched during some task is called from {@link Eventloop}.
-	 * @param e the catched exception
+	 *
+	 * @param e       the catched exception
 	 * @param context the context in was catched in, commonly a {@link Runnable} or some callback
 	 */
 	void handle(@NotNull Throwable e, @Nullable Object context);

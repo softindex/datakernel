@@ -13,7 +13,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-
 @SuppressWarnings("unused")
 //[START EXAMPLE]
 public class AdvancedServiceExample extends Launcher {
@@ -72,13 +71,13 @@ public class AdvancedServiceExample extends Launcher {
 		public @NotNull Promise<?> start() {
 			System.out.println("AuthService starting");
 			return Promise.ofBlockingRunnable(executor,
-						() -> System.out.println("AuthService started"));
+					() -> System.out.println("AuthService started"));
 		}
 
 		@Override
 		public @NotNull Promise<?> stop() {
 			return Promise.ofBlockingRunnable(executor,
-						() -> System.out.println("AuthService stopped"));
+					() -> System.out.println("AuthService stopped"));
 		}
 	}
 

@@ -75,7 +75,6 @@ public final class CubeTest {
 	private final DefiningClassLoader classLoader = create();
 	private final Executor executor = newSingleThreadExecutor();
 
-
 	private AggregationChunkStorage<Long> chunkStorage;
 	private Cube cube;
 

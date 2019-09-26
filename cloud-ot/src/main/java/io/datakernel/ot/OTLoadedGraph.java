@@ -226,7 +226,6 @@ public class OTLoadedGraph<K, D> {
 	private K doMerge(Set<K> nodes) throws OTException {
 		if (nodes.size() == 1) return first(nodes);
 
-
 		Optional<K> min = nodes.stream().min(comparingInt((K node) -> findRoots(node).size()));
 		assert min.isPresent();
 		K pivotNode = min.get();
@@ -304,7 +303,6 @@ public class OTLoadedGraph<K, D> {
 				(node.equals(revision) ? "green" : "white") +
 				"];\n");
 	}
-
 
 	private String nodeToGraphViz(K node) {
 		return "\"" + idToString.apply(node) + "\"";

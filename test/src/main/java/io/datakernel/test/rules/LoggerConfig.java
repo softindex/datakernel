@@ -1,6 +1,5 @@
 package io.datakernel.test.rules;
 
-
 import org.slf4j.event.Level;
 
 import java.lang.annotation.*;

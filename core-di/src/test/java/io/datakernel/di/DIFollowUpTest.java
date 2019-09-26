@@ -13,10 +13,10 @@ import io.datakernel.di.util.Trie;
 import org.junit.Test;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static junit.framework.TestCase.*;
 
@@ -378,12 +378,12 @@ public class DIFollowUpTest {
 		//[START REGION_12]
 		Injector injector = Injector.of(cookbook);
 		Kitchen kitchen = injector.getInstance(Kitchen.class);
-		List<Cookie> cookies = new ArrayList<>();
+		Set<Cookie> cookies = new HashSet<>();
 		for (int i = 0; i < 10; ++i) {
 			Injector subinjector = injector.enterScope(ORDER_SCOPE);
 
 			assertSame(subinjector.getInstance(Kitchen.class), kitchen);
-			if (i > 0) assertNotSame(cookies.get(i - 1), subinjector.getInstance(Cookie.class));
+			if (i > 0) assertFalse(cookies.contains(subinjector.getInstance(Cookie.class)));
 
 			cookies.add(subinjector.getInstance(Cookie.class));
 		}

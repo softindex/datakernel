@@ -106,14 +106,9 @@ public final class AuthLauncher extends HttpServerLauncher {
 						.map(GET, "/cookie", request ->
 								HttpResponse.ok200().withBody(wrapUtf8(request.getAttachment(String.class))))
 						//[END REGION_8]
-						.map(POST, "/logout", request -> {
-							String id = request.getCookie(SESSION_ID);
-							if (id != null) {
-								return HttpResponse.redirect302("/")
-										.withCookie(HttpCookie.of(SESSION_ID, id).withPath("/").withMaxAge(Duration.ZERO));
-							}
-							return HttpResponse.ofCode(404);
-						}));
+						.map(POST, "/logout", request ->
+								HttpResponse.redirect302("/")
+										.withCookie(HttpCookie.of(SESSION_ID).withPath("/").withMaxAge(Duration.ZERO))));
 		//[END REGION_7]
 	}
 	//[END REGION_5]

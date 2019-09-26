@@ -153,7 +153,7 @@ public final class HttpApiTest {
 		assertEquals(requestAcceptContentTypes, request.getHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
 		assertEquals(requestAcceptCharsets, request.getHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
 		assertEquals(requestDate, request.getHeader(DATE, HttpHeaderValue::toInstant));
-		assertEquals(dateIMS,request.getHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
+		assertEquals(dateIMS, request.getHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
 		assertEquals(dateIUMS, request.getHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
 		assertEquals(requestContentType, request.getHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
 		assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));

@@ -73,9 +73,9 @@ public interface SerializerGen {
 	/**
 	 * Serializes provided {@link Expression} {@code value} to byte array
 	 *
-	 * @param byteArray byte array to which the value will be serialized
-	 * @param off an offset in the byte array
-	 * @param value the value to be serialized to byte array
+	 * @param byteArray          byte array to which the value will be serialized
+	 * @param off                an offset in the byte array
+	 * @param value              the value to be serialized to byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return serialized to byte array value
 	 */
@@ -86,7 +86,7 @@ public interface SerializerGen {
 	/**
 	 * Deserializes object of {@code targetType} from byte array
 	 *
-	 * @param targetType target type which is used to deserialize byte array
+	 * @param targetType         target type which is used to deserialize byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */

@@ -69,7 +69,6 @@ final class FilterFsClient implements FsClient {
 		return parent.move(name, target);
 	}
 
-
 	@Override
 	public Promise<Void> copy(@NotNull String name, @NotNull String target) {
 		if (!predicate.test(name) || !predicate.test(target)) {

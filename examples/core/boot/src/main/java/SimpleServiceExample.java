@@ -28,7 +28,7 @@ public class SimpleServiceExample extends Launcher {
 			System.out.println(String.format("|%s|", "Service starting".toUpperCase()));
 			return CompletableFuture.completedFuture(null)
 					.whenCompleteAsync(($1, $2) ->
-							System.out.println(String.format("|%s|", "Service started".toUpperCase())));
+							System.out.println("|SERVICE STARTED|"));
 		}
 
 		@Override
@@ -36,13 +36,13 @@ public class SimpleServiceExample extends Launcher {
 			System.out.println(String.format("|%s|", "Service stopping".toUpperCase()));
 			return CompletableFuture.completedFuture(null)
 					.whenCompleteAsync(($1, $2) ->
-							System.out.println(String.format("|%s|", "Service stopped".toUpperCase())));
+							System.out.println("|SERVICE STOPPED|"));
 		}
 	}
 
 	@Override
 	protected void run() {
-		System.out.println("RUN");
+		System.out.println("|RUN|");
 	}
 }
 //[END EXAMPLE]

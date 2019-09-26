@@ -78,18 +78,18 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 		return new EventStats(smoothingWindow.toMillis() / 1000.0);
 	}
 
-	public EventStats withRateUnit(String rateUnit){
+	public EventStats withRateUnit(String rateUnit) {
 		this.rateUnit = rateUnit;
 		return this;
 	}
 
-	public EventStats withPrecision(int precision){
+	public EventStats withPrecision(int precision) {
 		checkArgument(precision > 0, "Precision should be a positive value");
 		this.precision = precision;
 		return this;
 	}
 
-	public EventStats withScientificNotation(){
+	public EventStats withScientificNotation() {
 		this.precision = -1;
 		return this;
 	}
@@ -170,7 +170,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 		addedStats++;
 	}
 
-	public static String format(long count, double rate, String rateUnit, DecimalFormat decimalFormat){
+	public static String format(long count, double rate, String rateUnit, DecimalFormat decimalFormat) {
 		return count + " @ " + decimalFormat.format(rate) + (rateUnit == null || rateUnit.equals("") ? "" : " " + rateUnit) + "/second";
 	}
 

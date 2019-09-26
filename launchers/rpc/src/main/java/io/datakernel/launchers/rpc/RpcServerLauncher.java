@@ -56,7 +56,6 @@ public abstract class RpcServerLauncher extends Launcher {
 				.initialize(eventloop -> eventloop.withInspector(throttlingController));
 	}
 
-
 	@Provides
 	Config config() {
 		return Config.create()

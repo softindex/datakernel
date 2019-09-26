@@ -214,7 +214,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * @return element of this buffer at {@code head}
 	 * index if the buffer is not empty, otherwise {@code null}
 	 * @throws Exception if current {@code exception}
-	 * is not {@code null}
+	 *                   is not {@code null}
 	 */
 	@Nullable
 	public T poll() throws Exception {

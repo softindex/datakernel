@@ -35,7 +35,7 @@ public final class TestUtils {
 	private static int activePromises = 0;
 
 	public static synchronized int getFreePort() {
-		try(ServerSocket s = new ServerSocket(0)) {
+		try (ServerSocket s = new ServerSocket(0)) {
 			return s.getLocalPort();
 		} catch (IOException e) {
 			throw new AssertionError(e);

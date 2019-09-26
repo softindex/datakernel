@@ -32,9 +32,12 @@ public class PromiseAdvanceExample {
 
 	private static void secondExample() {
 		//[START REGION_2]
-		Promise<Integer> intervalPromise = Promises.interval(2000, Promise.of(1000));
-		Promise<Integer> schedulePromise = Promises.schedule(2000, Instant.now());
-		Promise<Integer> delayPromise = Promises.delay(1000, 1000);
+		int someValue = 1000;
+		int delay = 1000;     // in milliseconds
+		int interval = 2000;  // also in milliseconds
+		Promise<Integer> intervalPromise = Promises.interval(interval, Promise.of(someValue));
+		Promise<Integer> schedulePromise = Promises.schedule(someValue * 2, Instant.now());
+		Promise<Integer> delayPromise = Promises.delay(delay, someValue);
 
 		Promise<Integer> result = intervalPromise
 				.combine(schedulePromise, (first, second) -> first - second)

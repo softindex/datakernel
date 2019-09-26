@@ -35,7 +35,6 @@ public final class SerializerGenHppc7Collection extends AbstractSerializerGenCol
 	}
 	// endregion
 
-
 	@Override
 	protected Expression collectionForEach(Expression collection, Class<?> valueType, Function<Expression, Expression> value) {
 		try {

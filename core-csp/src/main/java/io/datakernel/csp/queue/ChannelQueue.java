@@ -58,7 +58,7 @@ public interface ChannelQueue<T> extends Cancellable {
 	 * get a {@code ChannelSupplier} in such case).
 	 *
 	 * @param acknowledgement a promise which will work when
-	 *                           a {@code null} value is passed
+	 *                        a {@code null} value is passed
 	 * @return a ChannelConsumer with custom behaviour in case a
 	 * {@code null} value is accepted
 	 */

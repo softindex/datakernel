@@ -239,7 +239,7 @@ public final class UrlParser {
 		if (host == -1) {
 			return null;
 		}
-		int end = path != -1 ? path : query != -1 ? query - 1 : fragment != - 1 ? fragment - 1 : raw.length();
+		int end = path != -1 ? path : query != -1 ? query - 1 : fragment != -1 ? fragment - 1 : raw.length();
 		return raw.substring(host, end);
 	}
 

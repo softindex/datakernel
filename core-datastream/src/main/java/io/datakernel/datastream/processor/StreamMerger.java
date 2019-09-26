@@ -49,7 +49,7 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 	 *
 	 * @param keyComparator comparator for compare keys
 	 * @param keyFunction   function for counting key
-	 * @param distinct   if it is true it means that in result will be not objects with same key
+	 * @param distinct      if it is true it means that in result will be not objects with same key
 	 * @param <K>           type of key for mapping
 	 * @param <T>           type of output data
 	 */

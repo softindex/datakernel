@@ -91,7 +91,6 @@ public class TestUtils {
 		assertEquals(getFullUri(httpRequest), fullUri);
 	}
 
-
 	@Test
 	public void testFullUriHttps() {
 		String fullUri = "https://localhost:8080/";

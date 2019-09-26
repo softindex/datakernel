@@ -90,5 +90,4 @@ public final class AggregationStructure implements Initializable<AggregationStru
 		return partitioningKey;
 	}
 
-
 }

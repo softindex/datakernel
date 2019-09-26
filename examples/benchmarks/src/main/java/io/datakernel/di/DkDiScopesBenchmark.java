@@ -22,314 +22,313 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings("FieldCanBeLocal")
 public class DkDiScopesBenchmark {
 
-    static class Kitchen {
-        private final int places;
+	static class Kitchen {
+		private final int places;
 
-        @Inject
-        Kitchen() {
-            this.places = 1;
-        }
+		@Inject
+		Kitchen() {
+			this.places = 1;
+		}
 
-        public int getPlaces() {
-            return places;
-        }
-    }
+		public int getPlaces() {
+			return places;
+		}
+	}
 
-    static class Sugar {
-        private final String name;
-        private final float weight;
+	static class Sugar {
+		private final String name;
+		private final float weight;
 
-        @Inject
-        public Sugar() {
-            this.name = "WhiteSugar";
-            this.weight = 10.f;
-        }
-        //[END REGION_8]
+		@Inject
+		public Sugar() {
+			this.name = "WhiteSugar";
+			this.weight = 10.f;
+		}
+		//[END REGION_8]
 
-        public Sugar(String name, float weight) {
-            this.name = name;
-            this.weight = weight;
-        }
+		public Sugar(String name, float weight) {
+			this.name = name;
+			this.weight = weight;
+		}
 
-        public String getName() {
-            return name;
-        }
+		public String getName() {
+			return name;
+		}
 
-        public float getWeight() {
-            return weight;
-        }
-    }
+		public float getWeight() {
+			return weight;
+		}
+	}
 
-    static class Butter {
-        private float weight;
-        private String name;
+	static class Butter {
+		private float weight;
+		private String name;
 
-        @Inject
-        public Butter() {
-            this.weight = 10.f;
-            this.name = "Butter";
-        }
+		@Inject
+		public Butter() {
+			this.weight = 10.f;
+			this.name = "Butter";
+		}
 
-        public Butter(String name, float weight) {
-            this.weight = weight;
-            this.name = name;
-        }
+		public Butter(String name, float weight) {
+			this.weight = weight;
+			this.name = name;
+		}
 
-        public float getWeight() {
-            return weight;
-        }
+		public float getWeight() {
+			return weight;
+		}
 
-        public String getName() {
-            return name;
-        }
-    }
+		public String getName() {
+			return name;
+		}
+	}
 
-    static class Flour {
-        private float weight;
-        private String name;
+	static class Flour {
+		private float weight;
+		private String name;
 
-        @Inject
-        public Flour() { }
+		@Inject
+		public Flour() { }
 
-        public Flour(String name, float weight) {
-            this.weight = weight;
-            this.name = name;
-        }
+		public Flour(String name, float weight) {
+			this.weight = weight;
+			this.name = name;
+		}
 
-        public float getWeight() {
-            return weight;
-        }
+		public float getWeight() {
+			return weight;
+		}
 
-        public String getName() {
-            return name;
-        }
-    }
+		public String getName() {
+			return name;
+		}
+	}
 
-    static class Pastry {
-        private final Sugar sugar;
-        private final Butter butter;
-        private final Flour flour;
+	static class Pastry {
+		private final Sugar sugar;
+		private final Butter butter;
+		private final Flour flour;
 
-        @Inject
-        Pastry(Sugar sugar, Butter butter, Flour flour) {
-            this.sugar = sugar;
-            this.butter = butter;
-            this.flour = flour;
-        }
+		@Inject
+		Pastry(Sugar sugar, Butter butter, Flour flour) {
+			this.sugar = sugar;
+			this.butter = butter;
+			this.flour = flour;
+		}
 
-        public Flour getFlour() {
-            return flour;
-        }
+		public Flour getFlour() {
+			return flour;
+		}
 
-        public Sugar getSugar() {
-            return sugar;
-        }
+		public Sugar getSugar() {
+			return sugar;
+		}
 
-        public Butter getButter() {
-            return butter;
-        }
-    }
+		public Butter getButter() {
+			return butter;
+		}
+	}
 
-    static class Cookie1 {
-        private final Pastry pastry;
+	static class Cookie1 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie1(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie1(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class Cookie2 {
-        private final Pastry pastry;
+	static class Cookie2 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie2(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie2(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class Cookie3 {
-        private final Pastry pastry;
+	static class Cookie3 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie3(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie3(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class Cookie4 {
-        private final Pastry pastry;
+	static class Cookie4 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie4(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie4(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class Cookie5 {
-        private final Pastry pastry;
+	static class Cookie5 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie5(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie5(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class Cookie6 {
-        private final Pastry pastry;
+	static class Cookie6 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie6(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie6(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class Cookie7 {
-        private final Pastry pastry;
+	static class Cookie7 {
+		private final Pastry pastry;
 
-        @Inject
-        Cookie7(Pastry pastry) {
-            this.pastry = pastry;
-        }
+		@Inject
+		Cookie7(Pastry pastry) {
+			this.pastry = pastry;
+		}
 
-        public Pastry getPastry() {
-            return pastry;
-        }
-    }
+		public Pastry getPastry() {
+			return pastry;
+		}
+	}
 
-    static class CookieBucket {
-        private final Cookie1 c1;
-        private final Cookie2 c2;
-        private final Cookie3 c3;
-        private final Cookie4 c4;
-        private final Cookie5 c5;
-        private final Cookie6 c6;
+	static class CookieBucket {
+		private final Cookie1 c1;
+		private final Cookie2 c2;
+		private final Cookie3 c3;
+		private final Cookie4 c4;
+		private final Cookie5 c5;
+		private final Cookie6 c6;
 
-        public Cookie4 getC4() {
-            return c4;
-        }
+		public Cookie4 getC4() {
+			return c4;
+		}
 
-        @Inject
-        public CookieBucket(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
-            this.c1 = c1;
-            this.c2 = c2;
-            this.c3 = c3;
-            this.c4 = c4;
-            this.c5 = c5;
-            this.c6 = c6;
-        }
-    }
+		@Inject
+		public CookieBucket(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
+			this.c1 = c1;
+			this.c2 = c2;
+			this.c3 = c3;
+			this.c4 = c4;
+			this.c5 = c5;
+			this.c6 = c6;
+		}
+	}
 
-    AbstractModule cookbook;
-    Injector injector;
-    CookieBucket cb;
+	AbstractModule cookbook;
+	Injector injector;
+	CookieBucket cb;
 
-    public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
+	public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
 
-    @Setup
-    public void setup() {
-        cookbook = new AbstractModule() {
-            @Override
-            protected void configure() {
+	@Setup
+	public void setup() {
+		cookbook = new AbstractModule() {
+			@Override
+			protected void configure() {
 				bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
 						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
-            }
+			}
 
-            @Provides
-            Kitchen kitchen() { return new Kitchen(); }
+			@Provides
+			Kitchen kitchen() { return new Kitchen(); }
 
-            @OrderScope
-            Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
+			@OrderScope
+			Sugar sugar() { return new Sugar("WhiteSugar", 10.f); }
 
-            @OrderScope
-            Butter butter() { return new Butter("PerfectButter", 20.0f); }
+			@OrderScope
+			Butter butter() { return new Butter("PerfectButter", 20.0f); }
 
-            @OrderScope
-            Flour flour() { return new Flour("GoodFlour", 100.0f); }
+			@OrderScope
+			Flour flour() { return new Flour("GoodFlour", 100.0f); }
 
-            @OrderScope
-            Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
-                return new Pastry(sugar, butter, flour);
-            }
+			@OrderScope
+			Pastry pastry(Sugar sugar, Butter butter, Flour flour) {
+				return new Pastry(sugar, butter, flour);
+			}
 
-            @OrderScope
-            Cookie1 cookie1(Pastry pastry) {
-                return new Cookie1(pastry);
-            }
+			@OrderScope
+			Cookie1 cookie1(Pastry pastry) {
+				return new Cookie1(pastry);
+			}
 
-            @OrderScope
-            Cookie2 cookie2(Pastry pastry) {
-                return new Cookie2(pastry);
-            }
+			@OrderScope
+			Cookie2 cookie2(Pastry pastry) {
+				return new Cookie2(pastry);
+			}
 
-            @OrderScope
-            Cookie3 cookie3(Pastry pastry) {
-                return new Cookie3(pastry);
-            }
+			@OrderScope
+			Cookie3 cookie3(Pastry pastry) {
+				return new Cookie3(pastry);
+			}
 
-            @OrderScope
-            Cookie4 cookie4(Pastry pastry) {
-                return new Cookie4(pastry);
-            }
+			@OrderScope
+			Cookie4 cookie4(Pastry pastry) {
+				return new Cookie4(pastry);
+			}
 
-            @OrderScope
-            Cookie5 cookie5(Pastry pastry) {
-                return new Cookie5(pastry);
-            }
+			@OrderScope
+			Cookie5 cookie5(Pastry pastry) {
+				return new Cookie5(pastry);
+			}
 
-            @OrderScope
-            Cookie6 cookie6(Pastry pastry) {
-                return new Cookie6(pastry);
-            }
+			@OrderScope
+			Cookie6 cookie6(Pastry pastry) {
+				return new Cookie6(pastry);
+			}
 
-            @OrderScope
-            Cookie7 cookie7(Pastry pastry) {
-                return new Cookie7(pastry);
-            }
-        };
+			@OrderScope
+			Cookie7 cookie7(Pastry pastry) {
+				return new Cookie7(pastry);
+			}
+		};
 
-        injector = Injector.of(cookbook);
-    }
+		injector = Injector.of(cookbook);
+	}
 
+	@Param({"1", "10"})
+	int arg;
 
-    @Param({"1", "10"})
-    int arg;
-
-    @Benchmark
-    @OutputTimeUnit(value = TimeUnit.NANOSECONDS)
-    public void testMethod(Blackhole blackhole) {
-        Kitchen kitchen = injector.getInstance(Kitchen.class);
+	@Benchmark
+	@OutputTimeUnit(value = TimeUnit.NANOSECONDS)
+	public void testMethod(Blackhole blackhole) {
+		Kitchen kitchen = injector.getInstance(Kitchen.class);
 		for (int i = 0; i < arg; ++i) {
 			Injector subinjector = injector.enterScope(ORDER_SCOPE);
 			cb = subinjector.getInstance(CookieBucket.class);
 			blackhole.consume(cb);
 		}
-        blackhole.consume(kitchen);
-    }
+		blackhole.consume(kitchen);
+	}
 
 	public static void main(String[] args) throws RunnerException {
 

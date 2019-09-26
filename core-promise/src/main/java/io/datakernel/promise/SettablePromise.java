@@ -42,11 +42,11 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * Otherwise, {@code Throwable e} will be set.
 	 *
 	 * @param result a value to be set to this
-	 * 				{@code SettablePromise} if
-	 * 			    {@code e} is {@code null}
-	 * @param e 	a {@code Throwable}, which will
-	 *          	be set to this {@code SettablePromise}
-	 *          	if not {@code null}
+	 *               {@code SettablePromise} if
+	 *               {@code e} is {@code null}
+	 * @param e      a {@code Throwable}, which will
+	 *               be set to this {@code SettablePromise}
+	 *               if not {@code null}
 	 */
 	@Override
 	public void accept(T result, @Nullable Throwable e) {

@@ -254,7 +254,6 @@ public class TriggersTest {
 		return timestamp;
 	}
 
-
 	private void initializeTriggers() {
 		triggers = Triggers.create();
 		triggers.addTrigger(Severity.HIGH, "@CubeThread Eventloop", "fatalErrors", TriggerResult::create);

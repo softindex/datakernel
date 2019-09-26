@@ -42,7 +42,6 @@ public final class HttpCharset extends Token {
 	public static final HttpCharset US_ASCII = charsets.register("us-ascii").addCharset(StandardCharsets.US_ASCII);
 	public static final HttpCharset LATIN_1 = charsets.register("iso-8859-1").addCharset(StandardCharsets.ISO_8859_1);
 
-
 	// maximum of 40 characters, us-ascii, see rfc2978,
 	// http://www.iana.org/assignments/character-sets/character-sets.txt
 	private final byte[] bytes;

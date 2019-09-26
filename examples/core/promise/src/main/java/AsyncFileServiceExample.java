@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.common.collection.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.Files.delete;
 import static java.nio.file.StandardOpenOption.*;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
@@ -23,9 +24,10 @@ public final class AsyncFileServiceExample {
 	private static final ExecutorService executorService = newCachedThreadPool();
 	private static final AsyncFileService fileService = new ExecutorAsyncFileService(executorService);
 	private static final Path PATH;
+
 	static {
 		try {
-			PATH = Files.createTempFile("NewFile", "txt");
+			PATH = Files.createTempFile("NewFile", ".txt");
 		} catch (IOException e) {
 			throw new UncheckedException(e);
 		}
@@ -61,8 +63,8 @@ public final class AsyncFileServiceExample {
 		}
 
 		return fileService.read(channel, 0, array, 0, array.length)
-				.map($ -> {
-					ByteBuf buf = ByteBuf.wrapForReading(array);
+				.map(bytesRead -> {
+					ByteBuf buf = ByteBuf.wrap(array, 0, bytesRead);
 					System.out.println(buf.getString(UTF_8));
 					return buf;
 				});
@@ -77,6 +79,11 @@ public final class AsyncFileServiceExample {
 				.whenComplete(($, e) -> {
 					if (e != null) {
 						System.out.println("Something went wrong : " + e);
+					}
+					try {
+						delete(PATH);
+					} catch (IOException ex) {
+						ex.printStackTrace();
 					}
 					executorService.shutdown();
 				});

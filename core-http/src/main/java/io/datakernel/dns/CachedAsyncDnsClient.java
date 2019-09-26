@@ -104,12 +104,12 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 				anotherEventloop.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
 				return Promise.ofCallback(cb ->
-								eventloop.execute(() ->
-										CachedAsyncDnsClient.this.resolve(query)
-												.whenComplete((result, e) -> {
-													anotherEventloop.execute(() -> cb.accept(result, e));
-													anotherEventloop.completeExternalTask();
-												})));
+						eventloop.execute(() ->
+								CachedAsyncDnsClient.this.resolve(query)
+										.whenComplete((result, e) -> {
+											anotherEventloop.execute(() -> cb.accept(result, e));
+											anotherEventloop.completeExternalTask();
+										})));
 			}
 
 			@Override

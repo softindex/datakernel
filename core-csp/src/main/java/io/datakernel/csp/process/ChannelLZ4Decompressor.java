@@ -253,6 +253,4 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		}
 	}
 
-
-
 }

@@ -4,6 +4,7 @@ import java.util.Objects;
 
 /**
  * A simple POJO that combines a {@link Key} with a boolean of is it required or not.
+ *
  * @see Binding
  */
 public final class Dependency {

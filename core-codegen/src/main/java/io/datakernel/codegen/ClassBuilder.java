@@ -108,10 +108,10 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			if (o == null || getClass() != o.getClass()) return false;
 			AsmClassKey<?> that = (AsmClassKey<?>) o;
 			return Objects.equals(mainClass, that.mainClass) &&
-				Objects.equals(otherClasses, that.otherClasses) &&
-				Objects.equals(fields, that.fields) &&
-				Objects.equals(expressionMap, that.expressionMap) &&
-				Objects.equals(expressionStaticMap, that.expressionStaticMap);
+					Objects.equals(otherClasses, that.otherClasses) &&
+					Objects.equals(fields, that.fields) &&
+					Objects.equals(expressionMap, that.expressionMap) &&
+					Objects.equals(expressionStaticMap, that.expressionStaticMap);
 		}
 
 		@Override
@@ -126,7 +126,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	 * Creates a new instance of AsmFunctionFactory
 	 *
 	 * @param classLoader class loader
-	 * @param mainClass        type of dynamic class
+	 * @param mainClass   type of dynamic class
 	 */
 	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainClass) {
 		this(classLoader, mainClass, emptyList());

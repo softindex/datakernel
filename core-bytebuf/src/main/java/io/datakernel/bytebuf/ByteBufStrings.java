@@ -31,9 +31,13 @@ public final class ByteBufStrings {
 	public static final byte SP = (byte) ' ';
 	public static final byte HT = (byte) '\t';
 
-	/** Same as String.valueOf(Long.MIN_VALUE).getBytes() */
+	/**
+	 * Same as String.valueOf(Long.MIN_VALUE).getBytes()
+	 */
 	private static final byte[] MIN_LONG_BYTES = new byte[]{45, 57, 50, 50, 51, 51, 55, 50, 48, 51, 54, 56, 53, 52, 55, 55, 53, 56, 48, 56};
-	/** Same as String.valueOf(Integer.MIN_VALUE).getBytes() */
+	/**
+	 * Same as String.valueOf(Integer.MIN_VALUE).getBytes()
+	 */
 	private static final byte[] MIN_INT_BYTES = new byte[]{45, 50, 49, 52, 55, 52, 56, 51, 54, 52, 56};
 
 	// ASCII

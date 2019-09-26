@@ -171,6 +171,7 @@ public abstract class Key<T> {
 
 	/**
 	 * Returns a type parameter of the underlying type wrapped as a key with no name.
+	 *
 	 * @throws IllegalStateException when undelying type is not a parameterized one.
 	 */
 	public <U> Key<U> getTypeParameter(int index) {

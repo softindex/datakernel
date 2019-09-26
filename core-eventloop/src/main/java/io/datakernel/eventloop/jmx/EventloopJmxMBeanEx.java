@@ -23,7 +23,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
-
 public interface EventloopJmxMBeanEx extends EventloopJmxMBean {
 
 	@JmxOperation

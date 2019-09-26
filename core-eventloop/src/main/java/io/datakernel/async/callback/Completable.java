@@ -11,6 +11,7 @@ import java.util.function.Consumer;
  * <p>
  * This is a more generic and flexible abstraction over
  * things like completion stages, promises or futures
+ *
  * @param <T>
  */
 public interface Completable<T> {

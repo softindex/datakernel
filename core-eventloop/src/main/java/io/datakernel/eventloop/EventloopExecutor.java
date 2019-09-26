@@ -27,6 +27,7 @@ import java.util.function.Supplier;
  * An abstraction over the {@link Eventloop} that can receive, dispatch and run tasks in it.
  * <p>
  * As a plain case, {@link Eventloop} itself implements it and posts received tasks to its own queues.
+ *
  * @see BlockingEventloopExecutor
  */
 public interface EventloopExecutor extends Executor {

@@ -102,6 +102,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		this.readBlockSize = readBlockSize;
 		return this;
 	}
+
 	public StreamSorterStorageImpl<T> withWriteBlockSize(MemSize writeBlockSize) {
 		this.writeBlockSize = writeBlockSize;
 		return this;

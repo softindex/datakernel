@@ -16,7 +16,6 @@ public final class Utils {
 	private static Field SELECTED_KEYS_FIELD;
 	private static Field PUBLIC_SELECTED_KEYS_FIELD;
 
-
 	static {
 		try {
 			Class<?> cls = Class.forName("sun.nio.ch.SelectorImpl", false, ClassLoader.getSystemClassLoader());

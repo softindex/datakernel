@@ -138,7 +138,6 @@ public final class LWWSet<E> implements Set<E>, CrdtType<LWWSet<E>> {
 		return existed;
 	}
 
-
 	@Override
 	public boolean containsAll(Collection<?> c) {
 		return stream().allMatch(c::contains);
