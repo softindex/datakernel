@@ -45,7 +45,7 @@ public interface Multibinder<T> {
 								new AbstractCompiledBinding<T>(scope, index) {
 									final CompiledBinding[] conflictedBindings = bindings.stream()
 											.map(Binding::getCompiler)
-											.map(bindingCompiler -> bindingCompiler.compileForCreateOnly(compiledBindings, true, scope, index))
+											.map(bindingCompiler -> bindingCompiler.compile(compiledBindings, true, scope, index))
 											.toArray(CompiledBinding[]::new);
 
 									@SuppressWarnings("unchecked")

@@ -527,7 +527,7 @@ public final class Binding<T> {
 		return new Binding<>(this.dependencies, location,
 				(compiledBindings, threadsafe, scope, index) ->
 						new AbstractCompiledBinding<R>(scope, index) {
-							final CompiledBinding<T> originalBinding = compiler.compileForCreateOnly(compiledBindings, threadsafe, scope, index);
+							final CompiledBinding<T> originalBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
 							final CompiledBinding[] bindings =
 									dependencies == null ?
 											null :
@@ -543,7 +543,7 @@ public final class Binding<T> {
 										args[i] = bindings[i].getInstance(scopedInstances, synchronizedScope);
 									}
 								}
-								T instance = originalBinding.createInstance(scopedInstances, synchronizedScope);
+								T instance = originalBinding.getInstance(scopedInstances, synchronizedScope);
 								return instance != null ? fn.apply(args, instance) : null;
 							}
 						});
@@ -684,12 +684,12 @@ public final class Binding<T> {
 				new Binding<>(union(dependencies, bindingInitializer.getDependencies()), location,
 						(compiledBindings, threadsafe, scope, index) ->
 								new AbstractCompiledBinding<T>(scope, index) {
-									final CompiledBinding<T> compiledBinding = compiler.compileForCreateOnly(compiledBindings, threadsafe, scope, index);
+									final CompiledBinding<T> compiledBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
 									final CompiledBindingInitializer<T> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
 
 									@Override
 									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-										T instance = compiledBinding.createInstance(scopedInstances, synchronizedScope);
+										T instance = compiledBinding.getInstance(scopedInstances, synchronizedScope);
 										consumer.initInstance(instance, scopedInstances, synchronizedScope);
 										return instance;
 									}
