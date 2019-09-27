@@ -16,9 +16,6 @@
 
 package io.datakernel.http;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
-
 /**
  * This is a special exception, that is formatted as HTTP response with code and text from it by default.
  * It is a stackless exception.
@@ -62,8 +59,8 @@ public class HttpException extends Exception {
 		return new HttpException(code, cause);
 	}
 
-	public static HttpException badRequest400() {
-		return new HttpException(400, "Bad request");
+	public static HttpException badRequest400(String message) {
+		return new HttpException(400, message);
 	}
 
 	public static HttpException notFound404() {
@@ -87,22 +84,12 @@ public class HttpException extends Exception {
 		return this;
 	}
 
-	public HttpResponse createResponse() {
-		HttpResponse response = HttpResponse.ofCode(code);
-		String message = "";
-		if (getLocalizedMessage() != null) {
-			message = getLocalizedMessage();
-		}
-		if (getCause() != null) {
-			StringWriter writer = new StringWriter();
-			getCause().printStackTrace(new PrintWriter(writer));
-			message += "\n" + writer;
-		}
-		return response.withPlainText(message);
-	}
-
 	@Override
 	public String toString() {
-		return "HTTP code " + code + ": " + getLocalizedMessage();
+		String msg = getLocalizedMessage();
+		if (msg != null) {
+			return "HTTP code " + code + ": " + msg;
+		}
+		return "HTTP code " + code;
 	}
 }

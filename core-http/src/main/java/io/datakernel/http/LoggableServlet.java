@@ -2,7 +2,6 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.promise.Async;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -53,9 +52,7 @@ public final class LoggableServlet implements AsyncServlet {
 		}
 		return httpResponsePromise
 				.whenComplete((res, e) -> {
-					if (e instanceof HttpException) {
-						logger.info(loggerFunction.apply(request, ((HttpException) e).createResponse()));
-					} else if (e != null) {
+					if (e != null) {
 						logger.error("Exception", e);
 					} else {
 						logger.info(loggerFunction.apply(request, res));

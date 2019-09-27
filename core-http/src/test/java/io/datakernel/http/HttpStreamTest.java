@@ -141,7 +141,7 @@ public final class HttpStreamTest {
 						.withBodyStream(supplier))
 				.then(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
 
-		assertEquals(exceptionMessage, body.asString(UTF_8));
+		assertTrue(body.asString(UTF_8).contains(exceptionMessage));
 	}
 
 	@Test
