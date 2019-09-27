@@ -44,6 +44,7 @@ import static io.datakernel.codec.json.JsonUtils.indent;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.loadResource;
 import static io.datakernel.common.sql.SqlUtils.execute;
+import static io.datakernel.promise.Promises.until;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
@@ -175,6 +176,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@Override
 	public Promise<Void> push(Collection<OTCommit<Long, D>> commits) {
 		if (commits.isEmpty()) return Promise.complete();
+		return until($ -> doPush(commits).mapEx(($2, e) -> !(e instanceof SQLTransactionRollbackException)));
+	}
+
+	@NotNull
+	private Promise<Void> doPush(Collection<OTCommit<Long, D>> commits) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
@@ -352,10 +358,15 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<Void> cleanup(Long minId) {
+		return until($ -> doCleanup(minId).mapEx(($2, e) -> !(e instanceof SQLTransactionRollbackException)));
+	}
+
+	@NotNull
+	private Promise<Void> doCleanup(Long minId) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
-						connection.setAutoCommit(true);
+						connection.setAutoCommit(false);
 
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
 								"DELETE FROM {revisions} " +
@@ -372,6 +383,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						))) {
 							ps.executeUpdate();
 						}
+
+						connection.commit();
 					}
 
 					return (Void) null;
