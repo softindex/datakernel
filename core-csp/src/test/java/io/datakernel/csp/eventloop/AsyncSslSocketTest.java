@@ -162,7 +162,7 @@ public final class AsyncSslSocketTest {
 				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
 				.whenResult(sslSocket ->
 						sendData(sslSocket)
-								.whenComplete(($, e) -> sslSocket.close())));
+								.whenComplete(sslSocket::close)));
 	}
 
 	@Test

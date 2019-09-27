@@ -154,7 +154,7 @@ public final class AsyncHttpClientTest {
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)),
 				httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
-				.whenComplete(($, e1) -> {
+				.whenComplete(() -> {
 					server.close();
 					responses.forEach(response -> response.set(HttpResponse.ok200()));
 

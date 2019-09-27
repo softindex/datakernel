@@ -50,7 +50,7 @@ public final class PingPongSocketConnection {
 							bufsSupplier.parse(PARSER)
 									.whenResult(System.out::println)
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG))))
-							.whenComplete(($, e) -> socket.close());
+							.whenComplete(socket::close);
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce();

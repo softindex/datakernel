@@ -133,7 +133,7 @@ public final class TestPartialRemoteFs {
 	}
 
 	@Test
-	public void downloadOverSuffix() throws IOException {
+	public void downloadOverSuffix() {
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(FILE, 13, 123))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
 				.whenComplete(server::close));
@@ -142,7 +142,7 @@ public final class TestPartialRemoteFs {
 	}
 
 	@Test
-	public void downloadOver() throws IOException {
+	public void downloadOver() {
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(FILE, 123, 123))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
 				.whenComplete(server::close));

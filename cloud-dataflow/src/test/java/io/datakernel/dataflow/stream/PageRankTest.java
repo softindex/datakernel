@@ -246,7 +246,7 @@ public class PageRankTest {
 		graph.execute();
 
 		await(result1.getResult()
-				.whenComplete(($, e) -> {
+				.whenComplete(() -> {
 					server1.close();
 					server2.close();
 				}));

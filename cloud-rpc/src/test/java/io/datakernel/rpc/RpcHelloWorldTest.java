@@ -208,7 +208,7 @@ public final class RpcHelloWorldTest {
 				String name = "world" + i;
 				client1.eventloop.execute(() ->
 						client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(($1, e1) -> latch.countDown())
+								.whenComplete(latch::countDown)
 								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 				client2.eventloop.execute(() ->
 						client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)

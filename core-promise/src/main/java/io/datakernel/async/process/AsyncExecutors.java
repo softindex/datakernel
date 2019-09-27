@@ -108,7 +108,7 @@ public class AsyncExecutors {
 			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) throws RejectedExecutionException {
 				if (pendingCalls < maxParallelCalls) {
 					pendingCalls++;
-					return supplier.get().whenComplete(($, e) -> {
+					return supplier.get().whenComplete(() -> {
 						pendingCalls--;
 						processBuffer();
 					});

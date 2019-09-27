@@ -116,7 +116,7 @@ public final class TestCrdtCluster {
 		await(cluster.download()
 				.then(supplier -> supplier
 						.streamTo(StreamConsumer.of(localStorage::put))
-						.whenComplete(($, e) -> {
+						.whenComplete(() -> {
 							System.out.println("!finish");
 							servers.forEach(AbstractServer::close);
 						})));

@@ -437,13 +437,13 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeBuf(ByteBuf buf) {
 		socket.write(buf)
-				.whenComplete(($, e2) -> {
+				.whenComplete(($, e) -> {
 					if (isClosed()) return;
-					if (e2 == null) {
+					if (e == null) {
 						flags |= BODY_SENT;
 						onBodySent();
 					} else {
-						closeWithError(e2);
+						closeWithError(e);
 					}
 				});
 	}

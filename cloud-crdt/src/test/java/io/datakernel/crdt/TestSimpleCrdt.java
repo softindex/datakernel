@@ -94,7 +94,7 @@ public final class TestSimpleCrdt {
 
 		await(client.download().then(supplierWithResult -> supplierWithResult
 				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(($, err) -> server.close())));
+				.whenComplete(server::close)));
 
 		System.out.println("Data fetched from 'remote' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

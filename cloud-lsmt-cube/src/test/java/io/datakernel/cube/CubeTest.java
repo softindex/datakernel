@@ -166,7 +166,7 @@ public final class CubeTest {
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, classLoader)
 				.toList()
-				.whenComplete(($2, e) -> remoteFsServer2.close()));
+				.whenComplete(remoteFsServer2::close));
 
 		assertEquals(expected, list);
 	}

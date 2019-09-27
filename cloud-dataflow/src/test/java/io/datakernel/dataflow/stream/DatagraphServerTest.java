@@ -350,7 +350,7 @@ public final class DatagraphServerTest {
 
 	private static <T> Promise<T> cleanUp(Promise<T> promise) {
 		return promise
-				.whenComplete(($, e) -> {
+				.whenComplete(() -> {
 					server1.close();
 					server2.close();
 				});

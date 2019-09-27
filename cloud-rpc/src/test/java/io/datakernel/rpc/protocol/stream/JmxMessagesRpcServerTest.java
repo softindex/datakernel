@@ -47,7 +47,7 @@ public class JmxMessagesRpcServerTest {
 				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 		await(client.start().whenResult($ -> {
 			client.sendRequest("msg", 1000)
-					.whenComplete(($1, e) -> {
+					.whenComplete(() -> {
 						assertEquals(0, server.getFailedRequests().getTotalCount());
 						client.stop();
 					});
@@ -61,7 +61,7 @@ public class JmxMessagesRpcServerTest {
 				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 		await(client.start().whenResult($ -> {
 			client.sendRequest("msg", 10000)
-					.whenComplete(($1, e) -> {
+					.whenComplete(() -> {
 						assertTrue(server.getLastProtocolError().getTotal() > 0);
 						client.stop();
 					});
@@ -75,7 +75,7 @@ public class JmxMessagesRpcServerTest {
 				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 		await(client.start().whenResult($ -> {
 			client.sendRequest("Message larger than LZ4 header", 1000)
-					.whenComplete(($1, e) -> {
+					.whenComplete(() -> {
 						assertTrue(server.getLastProtocolError().getTotal() > 0);
 						client.stop();
 					});

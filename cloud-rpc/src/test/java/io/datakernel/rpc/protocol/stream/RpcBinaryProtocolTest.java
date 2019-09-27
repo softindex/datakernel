@@ -76,7 +76,7 @@ public final class RpcBinaryProtocolTest {
 				.then($ ->
 						Promises.toList(IntStream.range(0, countRequests)
 								.mapToObj(i -> client.<String, String>sendRequest(testMessage, 1000))))
-				.whenComplete(($, e) -> {
+				.whenComplete(() -> {
 					client.stop();
 					server.close();
 				}));
