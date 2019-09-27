@@ -143,6 +143,9 @@ public final class UrlParser {
 			host = index;
 
 			short hostPortEnd = findHostPortEnd(host);
+			if (host == hostPortEnd || raw.indexOf(":", host) == host) {
+				throw new ParseException("Domain name cannot be null or empty");
+			}
 
 			if (raw.indexOf(IPV6_OPENING_BRACKET, index) != -1) {                   // parse IPv6
 				int closingSection = raw.indexOf(IPV6_CLOSING_SECTION_WITH_PORT, index);

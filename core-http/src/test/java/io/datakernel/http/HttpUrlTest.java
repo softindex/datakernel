@@ -372,4 +372,22 @@ public final class HttpUrlTest {
 		assertEquals("abc", url.getQueryParameter("d"));
 		assertEquals("", url.getQueryParameter("x"));
 	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testEmptyHost() {
+		UrlParser url = UrlParser.of("http://:80/");
+		assertEquals("", url.getHost());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testEmptyHost2() {
+		UrlParser url = UrlParser.of("http:///");
+		assertEquals("", url.getHost());
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void testEmptyHost3() {
+		UrlParser url = UrlParser.of("http://?test=':80'");
+		assertEquals("", url.getHost());
+	}
 }
