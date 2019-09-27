@@ -14,7 +14,7 @@ import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.service.synchronization.SynchronizationService;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.GlobalPmDriver;
+import io.global.pm.Messenger;
 import org.jetbrains.annotations.NotNull;
 
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
@@ -32,19 +32,19 @@ public final class CommonUserContainer<D> implements UserContainer {
 	private final MessagingService messagingService;
 
 	private CommonUserContainer(Eventloop eventloop, MyRepositoryId<D> myRepositoryId, OTDriver driver, OTSystem<D> otSystem,
-			OTStateManager<CommitId, SharedReposOperation> stateManager, GlobalPmDriver<CreateSharedRepo> pmDriver,
+			OTStateManager<CommitId, SharedReposOperation> stateManager, Messenger<Long, CreateSharedRepo> messenger,
 			String indexRepoName) {
 		this.eventloop = eventloop;
 		this.myRepositoryId = myRepositoryId;
 		this.stateManager = stateManager;
 		this.synchronizationService = SynchronizationService.create(eventloop, driver, this, otSystem);
-		this.messagingService = MessagingService.create(eventloop, pmDriver, this, indexRepoName);
+		this.messagingService = MessagingService.create(eventloop, messenger, this, indexRepoName);
 	}
 
 	public static <D> CommonUserContainer<D> create(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem, MyRepositoryId<D> myRepositoryId,
-			GlobalPmDriver<CreateSharedRepo> pmDriver, String indexRepoName) {
+			Messenger<Long, CreateSharedRepo> messenger, String indexRepoName) {
 		OTStateManager<CommitId, SharedReposOperation> stateManager = createStateManager(eventloop, driver, myRepositoryId, indexRepoName);
-		return new CommonUserContainer<>(eventloop, myRepositoryId, driver, otSystem, stateManager, pmDriver, indexRepoName);
+		return new CommonUserContainer<>(eventloop, myRepositoryId, driver, otSystem, stateManager, messenger, indexRepoName);
 	}
 
 	@NotNull

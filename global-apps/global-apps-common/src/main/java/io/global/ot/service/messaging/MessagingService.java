@@ -10,17 +10,15 @@ import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.util.ApplicationSettings;
 import io.global.common.KeyPair;
-import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
-import io.global.ot.client.MyRepositoryId;
 import io.global.ot.service.CommonUserContainer;
 import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.GlobalPmDriver;
-import io.global.pm.api.Message;
+import io.global.pm.Message;
+import io.global.pm.Messenger;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,22 +36,22 @@ public final class MessagingService implements EventloopService {
 	public static final Duration POLL_INTERVAL = ApplicationSettings.getDuration(MessagingService.class, "message.poll.interval", Duration.ofSeconds(5));
 
 	private final Eventloop eventloop;
-	private final GlobalPmDriver<CreateSharedRepo> pmDriver;
+	private final Messenger<Long, CreateSharedRepo> messenger;
 	private final CommonUserContainer<?> commonUserContainer;
 	private final String mailBox;
 
-	private SettablePromise<Message<CreateSharedRepo>> stopPromise = new SettablePromise<>();
+	private SettablePromise<Message<Long, CreateSharedRepo>> stopPromise = new SettablePromise<>();
 
-	private MessagingService(Eventloop eventloop, GlobalPmDriver<CreateSharedRepo> pmDriver, CommonUserContainer<?> commonUserContainer, String mailBox) {
+	private MessagingService(Eventloop eventloop, Messenger<Long, CreateSharedRepo> messenger, CommonUserContainer<?> commonUserContainer, String mailBox) {
 		this.eventloop = eventloop;
-		this.pmDriver = pmDriver;
+		this.messenger = messenger;
 		this.commonUserContainer = commonUserContainer;
 		this.mailBox = mailBox;
 	}
 
-	public static MessagingService create(Eventloop eventloop, GlobalPmDriver<CreateSharedRepo> pmDriver,
+	public static MessagingService create(Eventloop eventloop, Messenger<Long, CreateSharedRepo> messenger,
 			CommonUserContainer<?> commonUserContainer, String mailBox) {
-		return new MessagingService(eventloop, pmDriver, commonUserContainer, mailBox);
+		return new MessagingService(eventloop, messenger, commonUserContainer, mailBox);
 	}
 
 	@NotNull
@@ -77,12 +75,9 @@ public final class MessagingService implements EventloopService {
 	}
 
 	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
-		MyRepositoryId<?> myRepositoryId = commonUserContainer.getMyRepositoryId();
-		PrivKey senderPrivKey = myRepositoryId.getPrivKey();
-		PubKey senderPubKey = senderPrivKey.computePubKey();
+		KeyPair keys = commonUserContainer.getKeys();
 		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
-		Message<CreateSharedRepo> message = Message.now(senderPubKey, payload);
-		return pmDriver.send(senderPrivKey, receiver, mailBox, message);
+		return messenger.send(keys, receiver, mailBox, payload).toVoid();
 	}
 
 	@SuppressWarnings("ConstantConditions")
@@ -90,7 +85,7 @@ public final class MessagingService implements EventloopService {
 		KeyPair keys = commonUserContainer.getMyRepositoryId().getPrivKey().computeKeys();
 		OTStateManager<CommitId, SharedReposOperation> stateManager = commonUserContainer.getStateManager();
 		SharedReposOTState state = (SharedReposOTState) stateManager.getState();
-		AsyncSupplier<@Nullable Message<CreateSharedRepo>> messagesSupplier = retry(() -> pmDriver.poll(keys, mailBox),
+		AsyncSupplier<@Nullable Message<Long, CreateSharedRepo>> messagesSupplier = retry(() -> messenger.poll(keys, mailBox),
 				POLL_RETRY_POLICY);
 
 		repeat(() -> eitherComplete(messagesSupplier.get(), stopPromise)
@@ -109,7 +104,7 @@ public final class MessagingService implements EventloopService {
 										return Promise.complete();
 									}
 								})
-								.then($ -> pmDriver.drop(keys, mailBox, message.getId()))
+								.then($ -> messenger.drop(keys, mailBox, message.getId()))
 								.toTry()
 								.toVoid();
 					}

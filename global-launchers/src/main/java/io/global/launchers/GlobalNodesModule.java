@@ -202,13 +202,6 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Named("PM")
-	FsClient pmStorage(Eventloop eventloop, Config config) {
-		return LocalFsClient.create(eventloop, config.get(ofPath(), "pm.storage"))
-				.withRevisions();
-	}
-
-	@Provides
 	Function<RawServerId, GlobalFsNode> fsNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalFsNode.create(id.getServerIdString(), client);
 	}
