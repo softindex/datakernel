@@ -6,6 +6,7 @@ import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.*;
@@ -243,4 +244,11 @@ public interface AsyncServletDecorator {
 						.then($ -> servlet.serveAsync(request));
 	}
 
+	static AsyncServletDecorator logged() {
+		return LoggableServlet::create;
+	}
+
+	static AsyncServletDecorator logged(BiFunction<HttpRequest, @Nullable HttpResponse, String> loggerFunction) {
+		return servlet -> LoggableServlet.create(servlet, loggerFunction);
+	}
 }
