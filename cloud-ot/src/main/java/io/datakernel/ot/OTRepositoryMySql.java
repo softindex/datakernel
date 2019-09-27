@@ -49,7 +49,6 @@ import static java.util.stream.Collectors.joining;
 
 public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
-	public static final Duration DEFAULT_DELETE_MARGIN = Duration.ofHours(1);
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	public static final String DEFAULT_REVISION_TABLE = "ot_revisions";
 	public static final String DEFAULT_DIFFS_TABLE = "ot_diffs";
@@ -61,8 +60,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	private final DataSource dataSource;
 	private final StructuredCodec<List<D>> diffsCodec;
-
-	private Duration deleteMargin = DEFAULT_DELETE_MARGIN;
 
 	private String tableRevision = DEFAULT_REVISION_TABLE;
 	private String tableDiffs = DEFAULT_DIFFS_TABLE;
@@ -92,11 +89,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, Executor executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffCodec) {
 		StructuredCodec<List<D>> listCodec = indent(ofList(diffCodec), "\t");
 		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listCodec, dataSource);
-	}
-
-	public OTRepositoryMySql<D> withDeleteMargin(Duration deleteMargin) {
-		this.deleteMargin = deleteMargin;
-		return this;
 	}
 
 	public OTRepositoryMySql<D> withCreatedBy(String createdBy) {
@@ -367,11 +359,10 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
 								"DELETE FROM {revisions} " +
-								"WHERE `type` in ('HEAD', 'INNER') AND `timestamp` < " +
-								"  (SELECT t2.`timestamp` FROM (SELECT t.`timestamp` FROM {revisions} t WHERE t.`id`=?) AS t2) - INTERVAL ? SECOND"
+								"WHERE `type` in ('HEAD', 'INNER') AND `level` < " +
+								"  (SELECT t2.`level` FROM (SELECT t.`level` FROM {revisions} t WHERE t.`id`=?) AS t2)"
 						))) {
 							ps.setLong(1, minId);
-							ps.setLong(2, deleteMargin.getSeconds());
 							ps.executeUpdate();
 						}
 
