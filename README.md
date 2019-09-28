@@ -5,7 +5,6 @@
 </p>
 
 [![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
-[![Download](https://img.shields.io/badge/download-3.0.0--SNAPSHOT-blue.svg)](https://github.com/softindex/datakernel/archive/master.zip)
 [![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
 
@@ -29,7 +28,7 @@ DataKernel is a full-featured alternative Java framework, created from ground up
 Just insert this snippet to your terminal...
 
 ```
-mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=http-archetype -DarchetypeVersion=3.0.0-beta2
+mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=archetype-http -DarchetypeVersion=3.0.0-rc
 ```
 
 ... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 
