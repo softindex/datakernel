@@ -107,8 +107,13 @@ public final class HttpCookie {
 		return this;
 	}
 
-	public HttpCookie withMaxAge(Duration maxAge) {
+	public HttpCookie withMaxAge(int maxAge) {
 		// %x31-39 ; digits 1 through 9
+		setMaxAge(maxAge);
+		return this;
+	}
+
+	public HttpCookie withMaxAge(Duration maxAge) {
 		setMaxAge(maxAge);
 		return this;
 	}
@@ -164,6 +169,10 @@ public final class HttpCookie {
 
 	public int getMaxAge() {
 		return maxAge;
+	}
+
+	public void setMaxAge(int maxAge) {
+		this.maxAge = maxAge;
 	}
 
 	public void setMaxAge(Duration maxAge) {
@@ -374,7 +383,7 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setMaxAge(parseMaxAge(bytes, start, end));
+						cookie.setMaxAge(trimAndDecodePositiveInt(bytes, start, end - start));
 					}
 				};
 			case DOMAIN_HC:

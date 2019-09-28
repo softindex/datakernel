@@ -3,7 +3,6 @@ package io.datakernel.http.session;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,10 +11,12 @@ import java.util.Map;
  */
 public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	private final Map<String, T> store = new HashMap<>();
-	private final Duration sessionLifetime;
 
-	public SessionStoreInMemory(Duration lifetime) {
-		sessionLifetime = lifetime;
+	private SessionStoreInMemory() {
+	}
+
+	public static <T> SessionStoreInMemory<T> create() {
+		return new SessionStoreInMemory<T>();
 	}
 
 	@Override
@@ -33,10 +34,5 @@ public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	public Promise<Void> remove(String sessionId) {
 		store.remove(sessionId);
 		return Promise.complete();
-	}
-
-	@Override
-	public Duration getSessionLifetime() {
-		return sessionLifetime;
 	}
 }
