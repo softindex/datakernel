@@ -19,6 +19,8 @@ package io.datakernel.async.process;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 
@@ -129,32 +131,9 @@ public class AsyncExecutors {
 			@NotNull
 			@Override
 			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
-				return Promise.ofCallback(settablePromise ->
-						retryImpl(supplier, retryPolicy, 0, 0, settablePromise));
+				return Promises.retry(supplier, retryPolicy);
 			}
 		};
-	}
-
-	private static <T> void retryImpl(@NotNull AsyncSupplier<? extends T> supplier, @NotNull RetryPolicy retryPolicy,
-			int retryCount, long _retryTimestamp, SettablePromise<T> cb) {
-		supplier.get()
-				.async()
-				.whenComplete((value, e) -> {
-					if (e == null) {
-						cb.set(value);
-					} else {
-						Eventloop eventloop = Eventloop.getCurrentEventloop();
-						long now = eventloop.currentTimeMillis();
-						long retryTimestamp = _retryTimestamp != 0 ? _retryTimestamp : now;
-						long nextRetryTimestamp = retryPolicy.nextRetryTimestamp(now, e, retryCount, retryTimestamp);
-						if (nextRetryTimestamp == 0) {
-							cb.setException(e);
-						} else {
-							eventloop.schedule(nextRetryTimestamp,
-									() -> retryImpl(supplier, retryPolicy, retryCount + 1, retryTimestamp, cb));
-						}
-					}
-				});
 	}
 
 	public static AsyncExecutor ofMaxRecursiveCalls(int maxRecursiveCalls) {

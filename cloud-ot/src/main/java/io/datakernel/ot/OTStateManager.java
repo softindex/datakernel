@@ -18,13 +18,13 @@ package io.datakernel.ot;
 
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.process.AsyncExecutors;
-import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTUplink.FetchData;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;

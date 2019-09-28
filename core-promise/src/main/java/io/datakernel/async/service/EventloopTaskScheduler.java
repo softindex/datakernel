@@ -18,7 +18,6 @@ package io.datakernel.async.service;
 
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.function.AsyncSuppliers;
-import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.common.Initializable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -26,6 +25,7 @@ import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,18 +35,19 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 
 import static io.datakernel.common.Utils.nullify;
+import static io.datakernel.promise.Promises.retry;
 
 @SuppressWarnings("UnusedReturnValue")
 public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class);
 
 	private final Eventloop eventloop;
-	private final AsyncSupplier<?> task;
+	private final AsyncSupplier<Object> task;
 	private final PromiseStats stats = PromiseStats.create(Duration.ofMinutes(5));
 
 	private long initialDelay;
 	private Schedule schedule;
-	private RetryPolicy retryPolicy;
+	private RetryPolicy<Object> retryPolicy;
 
 	private boolean abortOnError = false;
 
@@ -54,7 +55,6 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	private long lastCompleteTime;
 	@Nullable
 	private Throwable lastException;
-	private long firstRetryTime;
 	private int errorCount;
 
 	@Nullable
@@ -122,7 +122,8 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private EventloopTaskScheduler(Eventloop eventloop, AsyncSupplier<?> task) {
 		this.eventloop = eventloop;
-		this.task = task;
+		//noinspection unchecked
+		this.task = (AsyncSupplier<Object>) task;
 	}
 
 	public static <T> EventloopTaskScheduler create(Eventloop eventloop, AsyncSupplier<T> task) {
@@ -152,8 +153,9 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		return this;
 	}
 
-	public EventloopTaskScheduler withRetryPolicy(RetryPolicy retryPolicy) {
-		this.retryPolicy = retryPolicy;
+	public EventloopTaskScheduler withRetryPolicy(RetryPolicy<?> retryPolicy) {
+		//noinspection unchecked
+		this.retryPolicy = (RetryPolicy<Object>) retryPolicy;
 		return this;
 	}
 
@@ -183,15 +185,8 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		long timestamp;
 		if (lastStartTime == 0) {
 			timestamp = now + initialDelay;
-		} else if (lastException == null || retryPolicy == null) {
-			timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
 		} else {
-			assert errorCount != 0;
-			if (firstRetryTime == 0) firstRetryTime = now;
-			timestamp = retryPolicy.nextRetryTimestamp(now, lastException, errorCount - 1, firstRetryTime);
-			if (timestamp == 0) {
-				timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
-			}
+			timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
 		}
 
 		scheduledTask = eventloop.scheduleBackground(timestamp, doCall::get);
@@ -201,12 +196,11 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private Promise<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();
-		return task.get()
+		return (retryPolicy == null ? task.get() : retry(task, retryPolicy))
 				.whenComplete(stats.recordStats())
 				.whenComplete((result, e) -> {
 					lastCompleteTime = eventloop.currentTimeMillis();
 					if (e == null) {
-						firstRetryTime = 0;
 						lastException = null;
 						errorCount = 0;
 						scheduleTask();
@@ -247,8 +241,9 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 		}
 	}
 
-	public void setRetryPolicy(RetryPolicy retryPolicy) {
-		this.retryPolicy = retryPolicy;
+	public void setRetryPolicy(RetryPolicy<?> retryPolicy) {
+		//noinspection unchecked
+		this.retryPolicy = (RetryPolicy<Object>) retryPolicy;
 		if (stats.getActivePromises() != 0 && scheduledTask != null && !scheduledTask.isCancelled() && lastException != null) {
 			scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
 			scheduleTask();

@@ -23,6 +23,7 @@ import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.tuple.*;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -1200,7 +1201,7 @@ public final class Promises {
 	private static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
 		if (breakCondition.test(seed)) return Promise.of(seed);
 		return Promise.ofCallback(cb ->
-				loopImpl(seed, next, breakCondition, cb));
+				untilImpl(seed, next, breakCondition, cb));
 	}
 
 	public static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull AsyncPredicate<T> breakCondition) {
@@ -1212,7 +1213,7 @@ public final class Promises {
 					if (e == null) {
 						if (!b) {
 							return Promise.ofCallback(cb ->
-									loopImpl(seed, next, breakCondition, cb));
+									untilImpl(seed, next, breakCondition, cb));
 						} else {
 							return Promise.of(seed);
 						}
@@ -1224,7 +1225,7 @@ public final class Promises {
 
 	private static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull Predicate<T> breakCondition) {
 		return Promise.ofCallback(cb ->
-				loopImpl(null, $ -> next.get(), breakCondition, cb));
+				untilImpl(null, $ -> next.get(), breakCondition, cb));
 	}
 
 	public static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull AsyncPredicate<T> breakCondition) {
@@ -1232,14 +1233,14 @@ public final class Promises {
 			return until(next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
 		}
 		return Promise.ofCallback(cb ->
-				loopImpl(null, $ -> next.get(), breakCondition, cb));
+				untilImpl(null, $ -> next.get(), breakCondition, cb));
 	}
 
 	public static Promise<Void> until(@NotNull AsyncPredicate<Void> breakCondition) {
 		return until(Promise::complete, breakCondition);
 	}
 
-	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
+	private static <T> void untilImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
 			@NotNull Predicate<T> breakCondition, SettablePromise<T> cb) {
 		while (true) {
 			Promise<T> promise = next.apply(value);
@@ -1255,7 +1256,7 @@ public final class Promises {
 						if (breakCondition.test(newValue)) {
 							cb.set(newValue);
 						} else {
-							loopImpl(newValue, next, breakCondition, cb);
+							untilImpl(newValue, next, breakCondition, cb);
 						}
 					} else {
 						cb.setException(e);
@@ -1266,7 +1267,7 @@ public final class Promises {
 		}
 	}
 
-	private static <T> void loopImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
+	private static <T> void untilImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
 			@NotNull AsyncPredicate<T> breakCondition, SettablePromise<T> cb) {
 		while (true) {
 			Promise<T> promise = next.apply(value);
@@ -1287,7 +1288,7 @@ public final class Promises {
 						if (b) {
 							cb.set(finalValue);
 						} else {
-							loopImpl(finalValue, next, breakCondition, cb);
+							untilImpl(finalValue, next, breakCondition, cb);
 						}
 					} else {
 						cb.setException(e);
@@ -1303,7 +1304,7 @@ public final class Promises {
 										if (b) {
 											cb.set(newValue);
 										} else {
-											loopImpl(newValue, next, breakCondition, cb);
+											untilImpl(newValue, next, breakCondition, cb);
 										}
 									} else {
 										cb.setException(e2);
@@ -1316,6 +1317,77 @@ public final class Promises {
 				return;
 			}
 		}
+	}
+
+	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier) {
+		return retry(asyncSupplier, (v, e) -> e == null);
+	}
+
+	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, Predicate<T> breakCondition) {
+		return retry(asyncSupplier, (v, e) -> e == null && breakCondition.test(v));
+	}
+
+	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, BiPredicate<T, Throwable> breakCondition) {
+		return Promise.ofCallback(cb -> retryImpl(asyncSupplier, breakCondition, cb));
+	}
+
+	static <T> void retryImpl(AsyncSupplier<T> asyncSupplier, BiPredicate<T, Throwable> breakCondition, SettablePromise<T> cb) {
+		while (true) {
+			Promise<T> promise = asyncSupplier.get();
+			if (promise.isComplete()) {
+				T v = promise.getResult();
+				Throwable e = promise.getException();
+				if (breakCondition.test(v, e)) {
+					cb.accept(v, e);
+					return;
+				}
+				continue;
+			}
+			promise.whenComplete((v, e) -> {
+				if (breakCondition.test(v, e)) {
+					cb.accept(v, e);
+				} else {
+					retryImpl(asyncSupplier, breakCondition, cb);
+				}
+			});
+			break;
+		}
+	}
+
+	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, @NotNull RetryPolicy<?> retryPolicy) {
+		return retry(asyncSupplier, (v, e) -> e == null, retryPolicy);
+	}
+
+	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, Predicate<T> breakCondition, @NotNull RetryPolicy<?> retryPolicy) {
+		return retry(asyncSupplier, (v, e) -> e == null && breakCondition.test(v), retryPolicy);
+	}
+
+	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, BiPredicate<T, Throwable> breakCondition, @NotNull RetryPolicy<?> retryPolicy) {
+		//noinspection unchecked
+		return Promise.ofCallback(cb ->
+				retryImpl(asyncSupplier, breakCondition, (RetryPolicy<Object>) retryPolicy, null, cb));
+	}
+
+	private static <T> void retryImpl(@NotNull AsyncSupplier<? extends T> supplier, BiPredicate<T, Throwable> breakCondition,
+			@NotNull RetryPolicy<Object> retryPolicy, Object retryState,
+			SettablePromise<T> cb) {
+		supplier.get()
+				.whenComplete((v, e) -> {
+					if (breakCondition.test(v, e)) {
+						cb.accept(v, e);
+					} else {
+						Eventloop eventloop = Eventloop.getCurrentEventloop();
+						long now = eventloop.currentTimeMillis();
+						Object retryStateFinal = retryState != null ? retryState : retryPolicy.createRetryState();
+						long nextRetryTimestamp = retryPolicy.nextRetryTimestamp(now, e, retryStateFinal);
+						if (nextRetryTimestamp == 0) {
+							cb.setException(e != null ? e : new StacklessException(Promises.class, "RetryPolicy: giving up " + retryState));
+						} else {
+							eventloop.schedule(nextRetryTimestamp,
+									() -> retryImpl(supplier, breakCondition, retryPolicy, retryStateFinal, cb));
+						}
+					}
+				});
 	}
 
 	/**

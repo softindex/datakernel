@@ -16,6 +16,7 @@
 
 package io.datakernel.ot;
 
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
@@ -23,6 +24,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,7 +46,7 @@ import static io.datakernel.codec.json.JsonUtils.indent;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.loadResource;
 import static io.datakernel.common.sql.SqlUtils.execute;
-import static io.datakernel.promise.Promises.until;
+import static io.datakernel.promise.Promises.retry;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 
@@ -119,6 +121,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.replace("{backup}", Objects.toString(tableBackup, ""));
 	}
 
+	private static <T> Promise<T> retryRollbacks(AsyncSupplier<T> id) {
+		//noinspection ConditionCoveredByFurtherCondition
+		return retry(id, ($, e) -> e == null || !(e instanceof SQLTransactionRollbackException), RetryPolicy.exponentialBackoff(1, 1000L));
+	}
+
 	public void initialize() throws IOException, SQLException {
 		logger.trace("Initializing tables");
 		execute(dataSource, sql(new String(loadResource("sql/ot_diffs.sql"), UTF_8)));
@@ -138,6 +145,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	public Promise<Long> createCommitId() {
+		return retryRollbacks(this::doCreateCommitId);
+	}
+
+	@NotNull
+	private Promise<Long> doCreateCommitId() {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
@@ -176,7 +188,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@Override
 	public Promise<Void> push(Collection<OTCommit<Long, D>> commits) {
 		if (commits.isEmpty()) return Promise.complete();
-		return until($ -> doPush(commits).mapEx(($2, e) -> !(e instanceof SQLTransactionRollbackException)));
+		return retryRollbacks(() -> doPush(commits));
 	}
 
 	@NotNull
@@ -220,6 +232,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@NotNull
 	@Override
 	public Promise<Void> updateHeads(Set<Long> newHeads, Set<Long> excludedHeads) {
+		return retryRollbacks(() -> doUpdateHeads(newHeads, excludedHeads));
+	}
+
+	@NotNull
+	private Promise<Void> doUpdateHeads(Set<Long> newHeads, Set<Long> excludedHeads) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
@@ -358,7 +375,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@Override
 	public Promise<Void> cleanup(Long minId) {
-		return until($ -> doCleanup(minId).mapEx(($2, e) -> !(e instanceof SQLTransactionRollbackException)));
+		return retryRollbacks(() -> doCleanup(minId));
 	}
 
 	@NotNull

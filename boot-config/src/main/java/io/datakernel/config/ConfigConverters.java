@@ -16,7 +16,6 @@
 
 package io.datakernel.config;
 
-import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.async.service.EventloopTaskScheduler.Schedule;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.StringFormatUtils;
@@ -27,6 +26,7 @@ import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.eventloop.net.DatagramSocketSettings;
 import io.datakernel.eventloop.net.ServerSocketSettings;
 import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.promise.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

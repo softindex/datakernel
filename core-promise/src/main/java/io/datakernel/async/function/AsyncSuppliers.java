@@ -1,10 +1,8 @@
 package io.datakernel.async.function;
 
 import io.datakernel.async.process.AsyncExecutors;
-import io.datakernel.async.process.RetryPolicy;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,34 +49,6 @@ public final class AsyncSuppliers {
 	@NotNull
 	public static <T> AsyncSupplier<T> buffer(int maxParallelCalls, int maxBufferedCalls, @NotNull AsyncSupplier<T> actual) {
 		return actual.withExecutor(AsyncExecutors.buffered(maxParallelCalls, maxBufferedCalls));
-	}
-
-	public static <T> AsyncSupplier<T> retry(AsyncSupplier<T> asyncSupplier, RetryPolicy retryPolicy) {
-		return asyncSupplier.withExecutor(AsyncExecutors.retry(retryPolicy));
-	}
-
-	public static <T> AsyncSupplier<T> retry(AsyncSupplier<T> asyncSupplier) {
-		return new AsyncSupplier<T>() {
-			@Override
-			public @NotNull Promise<T> get() {
-				while (true) {
-					Promise<T> promise = asyncSupplier.get();
-					if (promise.isResult()) return promise;
-					if (promise.isException()) continue;
-					return Promise.ofCallback(cb -> getImpl(promise, cb));
-				}
-			}
-
-			void getImpl(Promise<T> promise, SettablePromise<T> cb) {
-				promise.whenComplete((v, e) -> {
-					if (e == null) {
-						cb.set(v);
-					} else {
-						getImpl(asyncSupplier.get(), cb);
-					}
-				});
-			}
-		};
 	}
 
 	@Contract(pure = true)
