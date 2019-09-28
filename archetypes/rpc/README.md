@@ -4,5 +4,5 @@
 mvn archetype:generate                                   \
         -DarchetypeGroupId=io.datakernel                 \
         -DarchetypeArtifactId=archetype-rpc              \
-        -DarchetypeVersion=3.0-SNAPSHOT 
+        -DarchetypeVersion=3.1-SNAPSHOT 
 ```
