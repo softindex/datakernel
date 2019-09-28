@@ -4,7 +4,7 @@
 mvn archetype:generate \
         -DarchetypeGroupId=io.datakernel                 \
         -DarchetypeArtifactId=datakernel-rpc-archetype   \
-        -DarchetypeVersion=3.0.0-SNAPSHOT                \
+        -DarchetypeVersion=3.0-SNAPSHOT                \
         -DgroupId=<group id>                             \
         -DartifactId=<artifact id>                       \
         -DmainClassName=<your main class name> 
