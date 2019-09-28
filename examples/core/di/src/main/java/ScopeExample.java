@@ -1,6 +1,5 @@
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ScopeAnnotation;
-import io.datakernel.di.core.DIException;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
@@ -10,7 +9,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.stream.IntStream;
 
 /**
  * Scopes in datakernel DI are a bit different from other DI frameworks.
@@ -81,12 +79,11 @@ public final class ScopeExample {
 		protected void configure() {
 			// when your factory returns null it means that it refuses to construct an instance
 			// and so it throws a nice CannotConstructException if called
-			bind(HttpRequest.class).in(HttpScope.class).to(() -> null);
+			bind(HttpRequest.class).in(HttpScope.class).to(() -> {throw new AssertionError();});
 		}
 	}
 
 	static class ApplicationModule extends AbstractModule {
-
 		@Override
 		protected void configure() {
 			install(new HttpModule());
@@ -117,19 +114,16 @@ public final class ScopeExample {
 	public static void main(String[] args) {
 		Injector injector = Injector.of(new ApplicationModule());
 
-		IntStream.range(0, 10)
-				.mapToObj(i -> "ping: " + i)
-				.forEach(s -> {
-					Injector subInjector = injector.enterScope(HTTP_SCOPE);
-					subInjector.putInstance(Key.of(HttpRequest.class), new HttpRequest(s));
-					System.out.println(subInjector.getInstance(HttpResponse.class).pong);
-				});
+		for (int i = 0; i < 10; i++) {
+			Injector subInjector = injector.enterScope(HTTP_SCOPE);
+			subInjector.putInstance(Key.of(HttpRequest.class), new HttpRequest("ping: " + i));
+			System.out.println(subInjector.getInstance(HttpResponse.class).pong);
+		}
 
 		try {
 			Injector subsubInjector = injector.enterScope(HTTP_SCOPE).enterScope(HTTP_SCOPE);
-		} catch (DIException e) {
+		} catch (Exception e) {
 			System.err.println("\nNo bindings in scope ()->@HttpScope()->@HttpScope()\n");
-			e.printStackTrace();
 		}
 	}
 }
