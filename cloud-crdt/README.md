@@ -3,7 +3,6 @@
 CRDT module was designed to create collaborative editing applications with CRDT (conflict-free replicated data type) approach.
 
 You can add this module to your project by inserting the following dependency to **pom.xml**:
-
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>

@@ -5,7 +5,6 @@ Git, but with support of arbitrary user-defined data types and automatic conflic
 transformations (OT).
 
 You can add this module to your project by inserting the following dependency to **pom.xml**:
-
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>

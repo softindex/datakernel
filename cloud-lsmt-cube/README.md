@@ -4,7 +4,6 @@ LSMT OLAP Cube is a log-structured merge-tree database designed for processing m
 raw data and forms a multidimensional OLAP (online analytical processing). 
 
 You can add this module to your project by inserting the following dependency to **pom.xml**:
-
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>
