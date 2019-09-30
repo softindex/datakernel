@@ -2,7 +2,6 @@ package io.global.chat;
 
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.ot.OTSystem;
 import io.global.chat.chatroom.CallInfo;
 import io.global.chat.chatroom.ChatRoomOTSystem;
@@ -22,14 +21,15 @@ import static io.global.ot.OTUtils.getMapOperationCodec;
 
 public final class Utils {
 	public static final PubKey STUB_PUB_KEY = PrivKey.of(BigInteger.ONE).computePubKey();
-	public static final CallInfo EMPTY_CALL_INFO = new CallInfo(STUB_PUB_KEY, -1);
+	public static final CallInfo EMPTY_CALL_INFO = new CallInfo(STUB_PUB_KEY, "", -1);
 
 	private Utils() {
 		throw new AssertionError();
 	}
 
-	public static final StructuredCodec<CallInfo> CALL_INFO_CODEC = StructuredCodecs.object(CallInfo::new,
-			"author", CallInfo::getAuthor, PUB_KEY_HEX_CODEC,
+	public static final StructuredCodec<CallInfo> CALL_INFO_CODEC = object(CallInfo::new,
+			"pubKey", CallInfo::getPubKey, PUB_KEY_HEX_CODEC,
+			"peerId", CallInfo::getPeerId, STRING_CODEC,
 			"timestamp", CallInfo::getCallStarted, LONG_CODEC);
 
 	public static final StructuredCodec<CallOperation> CALL_OPERATION_CODEC = object(CallOperation::new,
@@ -69,7 +69,7 @@ public final class Utils {
 	}
 
 	public static Message toCallMessage(CallInfo callInfo) {
-		return new Message(CALL, callInfo.getCallStarted(), callInfo.getAuthor(), "Call info: " + callInfo);
+		return new Message(CALL, callInfo.getCallStarted(), callInfo.getPubKey(), "Call info: " + callInfo);
 	}
 
 	public static Message toDropMessage(DropCallOperation dropCallOperation) {
@@ -77,7 +77,7 @@ public final class Utils {
 		String content = "Call dropped: " + callInfo +
 				"\nHandled: " + dropCallOperation.getPreviouslyHandled() +
 				"\nDropped at: " + dropCallOperation.getDropTimestamp();
-		return new Message(DROP, dropCallOperation.getDropTimestamp(), callInfo.getAuthor(), content);
+		return new Message(DROP, dropCallOperation.getDropTimestamp(), callInfo.getPubKey(), content);
 	}
 
 }

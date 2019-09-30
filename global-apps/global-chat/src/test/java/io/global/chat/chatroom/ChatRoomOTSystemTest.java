@@ -34,8 +34,8 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transform2Calls() throws OTTransformException {
-		CallOperation call1 = call(new CallInfo(PUB_KEY_1, 100));
-		CallOperation call2 = call(new CallInfo(PUB_KEY_2, 200));
+		CallOperation call1 = call(new CallInfo(PUB_KEY_1, "1", 100));
+		CallOperation call2 = call(new CallInfo(PUB_KEY_2, "2", 200));
 
 		ChatRoomOTState expectedState = new ChatRoomOTState();
 
@@ -46,10 +46,10 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transform2Calls1Inverted() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
-		CallOperation newCall = call(initialCallInfo, new CallInfo(PUB_KEY_1, 200));
+		CallOperation newCall = call(initialCallInfo, new CallInfo(PUB_KEY_1, "2", 200));
 		CallOperation invert = initialCall.invert();
 
 		ChatRoomOTState expectedState = new ChatRoomOTState();
@@ -62,10 +62,10 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformCallAndDropCall() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
-		CallInfo newCallInfo = new CallInfo(PUB_KEY_2, 200);
+		CallInfo newCallInfo = new CallInfo(PUB_KEY_2, "2", 200);
 		CallOperation newCall = call(initialCallInfo, newCallInfo);
 
 		// new call should win always
@@ -88,7 +88,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformInvertedCallAndDropCall() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
 		CallOperation invertedCall = initialCall.invert();
@@ -104,11 +104,11 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformCallAndInvertedDropCall() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 		DropCallOperation initialDrop = dropCall(initialCallInfo, emptyMap(), 250);
 
-		CallOperation newCall = call(new CallInfo(PUB_KEY_2, 300));
+		CallOperation newCall = call(new CallInfo(PUB_KEY_2, "2", 300));
 		DropCallOperation invertedDrop = initialDrop.invert();
 
 		// new call should win
@@ -121,10 +121,10 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformCallAndHandleCall() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
-		CallInfo newCallInfo = new CallInfo(PUB_KEY_2, 200);
+		CallInfo newCallInfo = new CallInfo(PUB_KEY_2, "2", 200);
 		CallOperation newCall = call(initialCallInfo, newCallInfo);
 		HandleCallOperation acceptCall = accept(PUB_KEY_1);
 
@@ -138,11 +138,11 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformCallAndInvertedHandleCall() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 		HandleCallOperation initialAccept = accept(PUB_KEY_1);
 
-		CallOperation newCall = call(initialCallInfo, new CallInfo(PUB_KEY_2, 200));
+		CallOperation newCall = call(initialCallInfo, new CallInfo(PUB_KEY_2, "2", 200));
 		HandleCallOperation invertedAcceptCall = initialAccept.invert();
 
 		// both should apply
@@ -155,7 +155,7 @@ public final class ChatRoomOTSystemTest {
 	@Test
 	public void transformInvertedCallAndHandleCall() throws OTTransformException {
 		// prev call is null
-		CallOperation initialCall = call(new CallInfo(PUB_KEY_2, 200));
+		CallOperation initialCall = call(new CallInfo(PUB_KEY_2, "2", 200));
 
 		CallOperation invertedCall = initialCall.invert();
 		HandleCallOperation acceptCall = accept(PUB_KEY_1);
@@ -167,9 +167,9 @@ public final class ChatRoomOTSystemTest {
 		testTransform(singletonList(initialCall), expectedState, invertedCall, acceptCall);
 
 		// prev call is not null
-		CallInfo firstCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo firstCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation firstCall = call(firstCallInfo);
-		CallOperation secondCall = call(firstCallInfo, new CallInfo(PUB_KEY_2, 200));
+		CallOperation secondCall = call(firstCallInfo, new CallInfo(PUB_KEY_2, "2", 200));
 
 		invertedCall = secondCall.invert();
 
@@ -182,7 +182,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transform2Drops() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
 		DropCallOperation dropCall1 = dropCall(initialCallInfo, emptyMap(), 200);
@@ -198,7 +198,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformDropAndHandle() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
 		DropCallOperation dropCall = dropCall(initialCallInfo, emptyMap(), 200);
@@ -214,7 +214,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformDropAndInvertedHandle() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 		HandleCallOperation accept1 = accept(PUB_KEY_1);
 		HandleCallOperation accept2 = accept(PUB_KEY_2);
@@ -235,7 +235,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transform2Handles() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
 		HandleCallOperation accept1 = accept(PUB_KEY_1);
@@ -252,7 +252,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transformAcceptRejectSameUser() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 
 		HandleCallOperation accept = accept(PUB_KEY_1);
@@ -268,7 +268,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transform2Handles1Inverted() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 		HandleCallOperation initialAccept = accept(PUB_KEY_1);
 
@@ -285,7 +285,7 @@ public final class ChatRoomOTSystemTest {
 
 	@Test
 	public void transform2HandlesBothInverted() throws OTTransformException {
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 		CallOperation initialCall = call(initialCallInfo);
 		HandleCallOperation initialAccept1 = accept(PUB_KEY_1);
 		HandleCallOperation initialAccept2 = accept(PUB_KEY_2);
@@ -304,7 +304,7 @@ public final class ChatRoomOTSystemTest {
 	public void squashDropAndHandle() {
 		ChatRoomOTState stateNotSquashed = new ChatRoomOTState();
 		ChatRoomOTState stateSquashed = new ChatRoomOTState();
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 
 		CallOperation initialCall = call(initialCallInfo);
 		HandleCallOperation initialAccept = accept(PUB_KEY_1);
@@ -348,7 +348,7 @@ public final class ChatRoomOTSystemTest {
 	public void squashHandleAndDrop() {
 		ChatRoomOTState stateNotSquashed = new ChatRoomOTState();
 		ChatRoomOTState stateSquashed = new ChatRoomOTState();
-		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, 100);
+		CallInfo initialCallInfo = new CallInfo(PUB_KEY_1, "1", 100);
 
 		CallOperation initialCall = call(initialCallInfo);
 		HandleCallOperation initialAccept = accept(PUB_KEY_1);

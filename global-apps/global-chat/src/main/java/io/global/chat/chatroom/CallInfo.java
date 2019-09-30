@@ -1,19 +1,24 @@
 package io.global.chat.chatroom;
 
 import io.global.common.PubKey;
-import org.jetbrains.annotations.Nullable;
 
 public final class CallInfo {
-	private final PubKey author;
+	private final PubKey pubKey;
+	private final String peerId;
 	private final long callStarted;
 
-	public CallInfo(PubKey author, long callStarted) {
-		this.author = author;
+	public CallInfo(PubKey pubKey, String peerId, long callStarted) {
+		this.pubKey = pubKey;
+		this.peerId = peerId;
 		this.callStarted = callStarted;
 	}
 
-	public PubKey getAuthor() {
-		return author;
+	public PubKey getPubKey() {
+		return pubKey;
+	}
+
+	public String getPeerId() {
+		return peerId;
 	}
 
 	public long getCallStarted() {
@@ -21,21 +26,23 @@ public final class CallInfo {
 	}
 
 	@Override
-	public boolean equals(@Nullable Object o) {
+	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
 		CallInfo callInfo = (CallInfo) o;
 
 		if (callStarted != callInfo.callStarted) return false;
-		if (!author.equals(callInfo.author)) return false;
+		if (!pubKey.equals(callInfo.pubKey)) return false;
+		if (!peerId.equals(callInfo.peerId)) return false;
 
 		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = author.hashCode();
+		int result = pubKey.hashCode();
+		result = 31 * result + peerId.hashCode();
 		result = 31 * result + (int) (callStarted ^ (callStarted >>> 32));
 		return result;
 	}
@@ -43,7 +50,8 @@ public final class CallInfo {
 	@Override
 	public String toString() {
 		return "CallInfo{" +
-				"author=" + author +
+				"pubKey=" + pubKey +
+				", peerId='" + peerId + '\'' +
 				", callStarted=" + callStarted +
 				'}';
 	}
