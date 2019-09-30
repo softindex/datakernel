@@ -2,7 +2,6 @@ package io.global.forum.http.view;
 
 import io.datakernel.async.Promise;
 import io.global.comm.dao.CommDao;
-import io.global.comm.pojo.BanState;
 import io.global.comm.pojo.UserData;
 import io.global.comm.pojo.UserId;
 import io.global.comm.pojo.UserRole;
@@ -21,9 +20,9 @@ public final class UserView {
 	private final String email;
 	private final String firstName;
 	private final String lastName;
-	private final BanState banState;
+	private final BanView ban;
 
-	public UserView(String id, String name, UserRole role, String avatarUrl, String email, String firstName, String lastName, BanState banState) {
+	public UserView(String id, String name, UserRole role, String avatarUrl, String email, String firstName, String lastName, BanView ban) {
 		this.id = id;
 		this.name = name;
 		this.role = role;
@@ -31,7 +30,7 @@ public final class UserView {
 		this.email = email;
 		this.firstName = firstName;
 		this.lastName = lastName;
-		this.banState = banState;
+		this.ban = ban;
 	}
 
 	public String getId() {
@@ -62,8 +61,8 @@ public final class UserView {
 		return lastName;
 	}
 
-	public BanState getBanState() {
-		return banState;
+	public BanView getBan() {
+		return ban;
 	}
 
 	@Override
@@ -71,25 +70,26 @@ public final class UserView {
 		return name;
 	}
 
-	public static UserView from(UserId userId, @Nullable UserData userData) {
+	public static Promise<UserView> from(CommDao commDao, UserId userId, @Nullable UserData userData) {
 		return userData == null ?
-				new UserView(userId.getAuthId(), "ghost", UserRole.GUEST, "https://gravatar.com/avatar?d=mp", null, null, null, null) :
-				new UserView(
-						userId.getAuthId(),
-						userData.getUsername(),
-						userData.getRole(),
-						avatarUrl(userData),
-						userData.getEmail(),
-						userData.getFirstName(),
-						userData.getLastName(),
-						userData.getBanState());
+				Promise.of(new UserView(userId.getAuthId(), "ghost", UserRole.GUEST, "https://gravatar.com/avatar?d=mp", null, null, null, null)) :
+				BanView.from(commDao, userData.getBanState())
+						.map(ban -> new UserView(
+								userId.getAuthId(),
+								userData.getUsername(),
+								userData.getRole(),
+								avatarUrl(userData),
+								userData.getEmail(),
+								userData.getFirstName(),
+								userData.getLastName(),
+								ban));
 	}
 
 	public static Promise<UserView> from(CommDao commDao, @Nullable UserId userId) {
 		return userId == null ?
 				Promise.of(null) :
 				commDao.getUser(userId)
-						.map(userData -> from(userId, userData));
+						.then(userData -> from(commDao, userId, userData));
 	}
 
 	private static final MessageDigest MD5;

@@ -1,11 +1,13 @@
 <div class="col-auto align-self-center mx-2">
     <div class="row">
-        <span class="badge align-self-center">
+        <span class="badge align-self-center col-auto">
             {{#user.role.privileged}}
                 <a href="/{{pubKey}}/profile/{{id}}"
                    class="text-dark stretched-link">{{name}}</a>{{/user.role.privileged}}
             {{^user.role.privileged}}{{name}}{{/user.role.privileged}}
         </span>
-        {{<avatar}}{{$size}}32{{/size}}{{/avatar}}
+        <div class="col-auto px-0">
+            {{<avatar}}{{$size}}32{{/size}}{{/avatar}}
+        </div>
     </div>
 </div>

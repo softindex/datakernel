@@ -9,7 +9,7 @@
                     <form class="validate" action="/{{pubKey}}/new" method="post" enctype="multipart/form-data" novalidate>
                         <div class="form-group">
                             <input class="form-control form-control-lg invalid" name="title" type="text" placeholder="Title"
-                                   required pattern="\s*\S{1,120}\s*">
+                                   required pattern="\s*(?=\S).{1,120}\s*">
                         </div>
                         <div class="form-group">
                     <textarea class="form-control" name="content" placeholder="Content" rows="20" required

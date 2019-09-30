@@ -14,18 +14,22 @@
                                         <div class="col-sm-10">
                                             <div class="input-group">
                                                 <input type="text" class="form-control text-center" name="ip_0"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.ipParts.value1}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="ip_1"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.ipParts.value2}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="ip_2"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.ipParts.value3}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="ip_3"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.ipParts.value4}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                             </div>
@@ -36,18 +40,22 @@
                                         <div class="col-sm-10">
                                             <div class="input-group">
                                                 <input type="text" class="form-control text-center" name="mask_0"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.maskParts.value1}}{{^ban.maskParts.value1}}255{{/ban.maskParts.value1}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="mask_1"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.maskParts.value2}}{{^ban.maskParts.value2}}255{{/ban.maskParts.value2}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="mask_2"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.maskParts.value3}}{{^ban.maskParts.value3}}255{{/ban.maskParts.value3}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                                 <span class="mt-auto">.</span>
                                                 <input type="text" class="form-control text-center" name="mask_3"
+                                                       data-post-button="#save"
                                                        placeholder="xxx" value="{{ban.maskParts.value4}}{{^ban.maskParts.value4}}255{{/ban.maskParts.value4}}"
                                                        required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
                                             </div>
@@ -62,7 +70,7 @@
                                                     <input type="text"
                                                            class="form-control text-center datetimepicker-input"
                                                            data-target="#datetimepicker" name="until"
-                                                           value="{{ban.until}}"
+                                                           value="{{ban.ban.until}}"
                                                            required/>
                                                     <div class="input-group-append" data-target="#datetimepicker"
                                                          data-toggle="datetimepicker">
@@ -74,16 +82,20 @@
                                         </div>
                                     </div>
                                     <div class="form-row mb-2">
-                                        <textarea class="form-control" name="reason">{{ban.reason}}</textarea>
+                                        <textarea class="form-control" name="reason" placeholder="Reason" required
+                                                  data-post-button="#save">{{ban.ban.reason}}</textarea>
                                     </div>
                                     <div class="row justify-content-center">
-                                        <button class="btn btn-primary mx-2" type="submit" name="action" value="save">
+                                        <button class="btn btn-primary mx-2" type="submit" name="action" value="save"
+                                                id="save">
                                             save
                                         </button>
-                                        <button class="btn btn-outline-primary mx-2" type="submit" name="action"
-                                                value="unban">
-                                            unban
-                                        </button>
+                                        {{#ban}}
+                                            <button class="btn btn-outline-primary mx-2" type="submit" name="action"
+                                                    value="unban">
+                                                unban
+                                            </button>
+                                        {{/ban}}
                                     </div>
                                 </form>
                             </div>

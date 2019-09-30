@@ -39,18 +39,10 @@
   color: blue;
 }
 
-.own > .like, .own > .dislike {
-  display: none;
-}
-
-.own > .rating:before {
-  content: "rating: ";
-}
-
-.own > .rating {
-  border-radius: .2rem;
-}
-
 i.fa {
   pointer-events: none;
+}
+
+.multiline {
+  white-space: pre-line;
 }

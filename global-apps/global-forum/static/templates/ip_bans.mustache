@@ -22,19 +22,19 @@
                                                 </tr>
                                                 <tr>
                                                     <th>Until:</th>
-                                                    <td>{{until}}</td>
+                                                    <td>{{ban.until}}</td>
                                                 </tr>
                                             </table>
                                         </div>
                                     </div>
                                     <div class="col">
                                         <div class="row text-wrap m-2">
-                                            {{reason}}
+                                            {{ban.reason}}
                                         </div>
                                     </div>
-                                    {{#banner}}
+                                    {{#ban.banner}}
                                         {{>user_col}}
-                                    {{/banner}}
+                                    {{/ban.banner}}
                                 </div>
                             </div>
                         {{/bans}}

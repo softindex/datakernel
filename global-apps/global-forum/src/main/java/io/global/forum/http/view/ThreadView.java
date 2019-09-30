@@ -52,7 +52,7 @@ public class ThreadView {
 				})
 				.filter(Objects::nonNull))
 				.map(ts -> ts.stream()
-						.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
+						.sorted(Comparator.comparing(t -> t.getRoot().getTimestamp()))
 						.collect(toList()));
 	}
 }

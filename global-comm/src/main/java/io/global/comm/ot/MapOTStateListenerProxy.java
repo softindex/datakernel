@@ -10,10 +10,18 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public final class MapOTStateListenerProxy<K, V> implements OTState<MapOperation<K, V>> {
-	private final MapOTState<K, V> state = new MapOTState<>(new HashMap<>());
+	private final MapOTState<K, V> state;
 
 	@Nullable
 	private Consumer<MapOperation<K, V>> listener;
+
+	public MapOTStateListenerProxy() {
+		state = new MapOTState<>(new HashMap<>());
+	}
+
+	public MapOTStateListenerProxy(Map<K, V> map) {
+		state = new MapOTState<>(map);
+	}
 
 	public void onOperationReceived(@Nullable Consumer<MapOperation<K, V>> listener) {
 		this.listener = listener;

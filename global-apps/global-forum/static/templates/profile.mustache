@@ -5,61 +5,154 @@
             <div class="card">
                 <div class="card-header text-center font-weight-bold">Profile:</div>
                 <div class="card-body">
-                    <form class="m-2" action="/profile/{{shownUser.id}}" method="post">
-                        <div class="form-group row">
-                            <div class="col-sm-2 col-form-label">Username</div>
-                            <div class="col-sm-10">
-                                <input type="text" class="form-control" name="username"
-                                       placeholder="Username"
-                                       value="{{shownUser.name}}">
+                    <div class="row">
+                        <div class="col-auto mb-2 pr-0">
+                            <div class="p-1 border border-secondary" style="border-radius: 5px">
+                                {{#shownUser}}
+                                    {{<avatar}}{{$size}}80{{/size}}{{/avatar}}
+                                {{/shownUser}}
                             </div>
                         </div>
+                        <div class="col">
+                            <form class="validate" action="/profile/{{shownUser.id}}" method="post"
+                                  novalidate>
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">Username</div>
+                                    <div class="col-sm">
+                                        <input type="text" class="form-control" name="username"
+                                               placeholder="Username"
+                                               data-post-button="#save"
+                                               value="{{shownUser.name}}"
+                                               pattern="\s*(?=\S).{1,60}\s*">
+                                    </div>
+                                </div>
 
-                        <div class="form-group row">
-                            <div class="col-sm-2 col-form-label">Email</div>
-                            <div class="col-sm-10">
-                                <input type="text" class="form-control" name="email" placeholder="Email"
-                                       value="{{shownUser.email}}">
-                            </div>
-                        </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">Email</div>
+                                    <div class="col-sm">
+                                        <input type="text" class="form-control" name="email" placeholder="Email"
+                                               value="{{shownUser.email}}"
+                                               data-post-button="#save"
+                                               pattern="\s*(?=\S).{1,60}\s*"
+                                               required>
+                                    </div>
+                                </div>
 
-                        <div class="form-group row">
-                            <div class="col-sm-2 col-form-label">Real name</div>
-                            <div class="col col-sm-5">
-                                <input class="form-control" type="text" name="first_name" placeholder="First name"
-                                       value="{{shownUser.firstName}}">
-                            </div>
-                            <div class="col col-sm-5">
-                                <input class="form-control" type="text" name="last_name" placeholder="Last name"
-                                       value="{{shownUser.lastName}}">
-                            </div>
-                        </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">Real name</div>
+                                    <div class="col col-sm-5">
+                                        <input class="form-control" type="text" name="first_name"
+                                               placeholder="First name"
+                                               data-post-button="#save"
+                                               value="{{shownUser.firstName}}"
+                                               pattern="\s*(?=\S).{1,60}\s*">
+                                    </div>
+                                    <div class="col col-sm-5">
+                                        <input class="form-control" type="text" name="last_name" placeholder="Last name"
+                                               data-post-button="#save"
+                                               value="{{shownUser.lastName}}"
+                                               pattern="\s*(?=\S).{1,60}\s*">
+                                    </div>
+                                </div>
 
-                        <div class="form-group row">
-                            <div class="col-sm-2 col-form-label">User ID</div>
-                            <div class="col-sm-10 align-self-center">
-                                <input type="text" readonly class="form-control-plaintext small text-center autocopy"
-                                       value="{{shownUser.id}}">
-                            </div>
-                        </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">User ID</div>
+                                    <div class="col-sm align-self-center">
+                                        <input type="text" readonly
+                                               class="form-control-plaintext small text-center autocopy"
+                                               value="{{shownUser.id}}">
+                                    </div>
+                                </div>
 
-                        <div class="row">
-                            <button class="btn btn-lg btn-primary mx-auto" type="submit">Save</button>
+                                {{#shownUser.ip}}
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label">Last Used IP</div>
+                                        <div class="col-sm align-self-center">
+                                            <input type="text" readonly class="form-control-plaintext"
+                                                   value="{{.}}">
+                                        </div>
+                                    </div>
+                                {{/shownUser.ip}}
+
+                                {{#shownUser.ban}}
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label"><b>Banned until</b></div>
+                                        <div class="col-sm align-self-center">
+                                            {{until}}
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label"><b>Ban reason</b></div>
+                                        <div class="col-sm align-self-center multiline">{{reason}}</div>
+                                    </div>
+                                {{/shownUser.ban}}
+
+                                {{#user.role.privileged}}
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label"><b>Moderation</b></div>
+                                        <div class="col-1 px-1 align-self-center">
+                                            <a href="/{{pubKey}}/admin/user-ban/{{shownUser.id}}"
+                                               class="btn btn-block btn-sm btn-outline-success">{{#shownUser.ban}}
+                                                edit ban{{/shownUser.ban}}{{^shownUser.ban}}ban{{/shownUser.ban}}</a>
+                                        </div>
+                                        {{#shownUser.ban}}
+                                            <div class="col-1 px-1 align-self-center">
+                                                <button type="button" class="btn btn-block btn-sm btn-outline-success"
+                                                        data-toggle="modal" data-target="#unban">
+                                                    unban
+                                                </button>
+                                            </div>
+                                            <div class="modal fade" id="unban" tabindex="-1" role="dialog"
+                                                 aria-hidden="true">
+                                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="exampleModalLongTitle">
+                                                                Confirmation</h5>
+                                                            <button type="button" class="close" data-dismiss="modal">
+                                                                <span aria-hidden="true">&times;</span>
+                                                            </button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            Are you sure you want to unban
+                                                            <mark>{{shownUser.name}}</mark>
+                                                            ?
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary"
+                                                                    data-dismiss="modal">
+                                                                No
+                                                            </button>
+                                                            <form action="/{{pubKey}}/admin/user-ban/{{bannedUser.id}}"
+                                                                  method="post">
+                                                                <button class="btn btn-primary" type="submit"
+                                                                        name="action" value="unban">
+                                                                    Yes
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {{/shownUser.ban}}
+                                        {{#shownUser.ip}}
+                                            <div class="col-1 px-1 align-self-center">
+                                                <a href="/{{pubKey}}/admin/ip-bans/new?ip={{.}}" class="btn btn-block
+                                                btn-sm
+                                                btn-outline-success">ban ip</a>
+                                            </div>
+                                        {{/shownUser.ip}}
+                                    </div>
+                                {{/user.role.privileged}}
+
+                                <div class="row">
+                                    <button class="btn btn-lg btn-primary mx-auto" type="submit" id="save">Save</button>
+                                </div>
+                            </form>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
-            {{#user.banState}}
-                <div class="row">
-                    Ban state:
-                </div>
-                <div class="row">
-                    until: {{until}}
-                </div>
-                <div class="row">
-                    reason: {{reason}}
-                </div>
-            {{/user.banState}}
         </div>
     {{/content}}
 {{/base}}

@@ -1,0 +1,34 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="card col-sm-6 px-0">
+                    <div class="card-header text-center font-weight-bold">Users</div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            {{#users}}
+                                <div class="list-group-item list-group-item-action col-9 align-self-center">
+                                    <div class="row">
+                                        <div class="col-auto px-1">
+                                            {{<avatar}}{{$size}}32{{/size}}{{/avatar}}
+                                        </div>
+                                        <span class="badge align-self-center">
+                                            {{#user.role.privileged}}
+                                                <a href="/{{pubKey}}/profile/{{id}}"
+                                                   class="text-dark stretched-link">{{name}}</a>
+                                            {{/user.role.privileged}}
+                                            {{^user.role.privileged}}{{name}}{{/user.role.privileged}}
+                                        </span>
+                                        {{#ban}}
+                                            <span class="badge badge-warning align-self-center">banned</span>
+                                        {{/ban}}
+                                    </div>
+                                </div>
+                            {{/users}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

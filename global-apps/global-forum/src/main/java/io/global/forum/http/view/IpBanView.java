@@ -11,24 +11,19 @@ import io.global.comm.pojo.IpRange;
 import java.util.Comparator;
 import java.util.List;
 
-import static io.global.forum.util.Utils.formatInstant;
 import static java.util.stream.Collectors.toList;
 
 public final class IpBanView {
 	private final String id;
 	private final Tuple4<String, String, String, String> ip;
 	private final Tuple4<String, String, String, String> mask;
-	private final UserView banner;
-	private final String until;
-	private final String reason;
+	private final BanView ban;
 
-	private IpBanView(String id, Tuple4<String, String, String, String> ip, Tuple4<String, String, String, String> mask, UserView banner, String until, String reason) {
+	private IpBanView(String id, Tuple4<String, String, String, String> ip, Tuple4<String, String, String, String> mask, BanView ban) {
 		this.id = id;
 		this.ip = ip;
 		this.mask = mask;
-		this.banner = banner;
-		this.until = until;
-		this.reason = reason;
+		this.ban = ban;
 	}
 
 	public String getId() {
@@ -51,16 +46,8 @@ public final class IpBanView {
 		return mask.getValue1() + '.' + mask.getValue2() + '.' + mask.getValue3() + '.' + mask.getValue4();
 	}
 
-	public UserView getBanner() {
-		return banner;
-	}
-
-	public String getUntil() {
-		return until;
-	}
-
-	public String getReason() {
-		return reason;
+	public BanView getBan() {
+		return ban;
 	}
 
 	public static Promise<IpBanView> from(CommDao commDao, String id) {
@@ -71,14 +58,8 @@ public final class IpBanView {
 	public static Promise<IpBanView> from(CommDao commDao, String id, IpBanState state) {
 		BanState banState = state.getBanState();
 		IpRange range = state.getIpRange();
-		return UserView.from(commDao, banState.getBanner())
-				.map(user ->
-						new IpBanView(id,
-								convert(range.getIp()),
-								convert(range.getMask()),
-								user,
-								formatInstant(banState.getUntil()),
-								banState.getReason()));
+		return BanView.from(commDao, banState)
+				.map(ban -> new IpBanView(id, convert(range.getIp()), convert(range.getMask()), ban));
 	}
 
 	private static Tuple4<String, String, String, String> convert(byte[] bytes) {
@@ -90,6 +71,6 @@ public final class IpBanView {
 				.then(bannedIps ->
 						Promises.toList(bannedIps.entrySet().stream()
 								.map(e -> from(commDao, e.getKey(), e.getValue()))))
-				.map(list -> list.stream().sorted(Comparator.comparing(IpBanView::getUntil)).collect(toList()));
+				.map(list -> list.stream().sorted(Comparator.comparing(ibv -> ibv.ban.getUntilInstant())).collect(toList()));
 	}
 }

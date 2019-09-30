@@ -62,8 +62,8 @@ public class HttpException extends Exception {
 		return new HttpException(code, cause);
 	}
 
-	public static HttpException badRequest400() {
-		return new HttpException(400, "Bad request");
+	public static HttpException badRequest400(String message) {
+		return new HttpException(400, message);
 	}
 
 	public static HttpException notFound404() {

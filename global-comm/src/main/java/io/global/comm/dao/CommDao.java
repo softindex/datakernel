@@ -21,6 +21,8 @@ public interface CommDao {
 
 	Promise<@Nullable UserData> getUser(UserId userId);
 
+	Promise<Map<UserId, UserData>> getUsers();
+
 	Promise<Void> updateUser(UserId userId, UserData userData);
 
 	Promise<Void> updateUserLastIp(UserId userId, InetAddress lastIp);

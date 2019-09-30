@@ -68,6 +68,11 @@ public final class CommDaoImpl implements CommDao {
 	}
 
 	@Override
+	public Promise<Map<UserId, UserData>> getUsers() {
+		return Promise.of(usersView);
+	}
+
+	@Override
 	public Promise<Void> updateUser(UserId userId, UserData userData) {
 		return applyAndSync(usersStateManager, MapOperation.forKey(userId, SetValue.set(usersView.get(userId), userData)));
 	}

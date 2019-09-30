@@ -9,20 +9,22 @@ import io.global.comm.pojo.UserId;
 import io.global.comm.pojo.UserRole;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.*;
+import java.util.Map.Entry;
 
 import static io.datakernel.util.CollectorsEx.toMultimap;
 import static io.global.forum.util.Utils.formatInstant;
+import static java.util.Map.Entry.comparingByKey;
 
 public final class PostView {
-	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
 	private static final Comparator<Post> POST_COMPARATOR = Comparator.comparing(Post::getInitialTimestamp);
 
 	private final String postId;
 	private final String content;
 	private final String initialTimestamp;
 	private final String lastEditTimestamp;
+	private final Instant timestamp;
 
 	private final UserView author;
 	private final Map<String, Set<String>> attachments;
@@ -39,20 +41,22 @@ public final class PostView {
 	private final boolean disliked;
 
 	private final List<PostView> children;
+	private final boolean hasChildren;
 
 	public PostView(
-			String postId, String content, String initialTimestamp, String lastEditTimestamp,
+			String postId, String content, String initialTimestamp, String lastEditTimestamp, Instant timestamp,
 			UserView author,
 			Map<String, Set<String>> attachments,
 			@Nullable UserView deletedBy,
 			boolean own, boolean editable, boolean deletedVisible,
 			int likes, boolean liked, boolean disliked,
-			List<PostView> children
-	) {
+			List<PostView> children,
+			boolean hasChildren) {
 		this.postId = postId;
 		this.content = content;
 		this.initialTimestamp = initialTimestamp;
 		this.lastEditTimestamp = lastEditTimestamp;
+		this.timestamp = timestamp;
 		this.author = author;
 		this.attachments = attachments;
 		this.deletedBy = deletedBy;
@@ -63,6 +67,7 @@ public final class PostView {
 		this.liked = liked;
 		this.disliked = disliked;
 		this.children = children;
+		this.hasChildren = hasChildren;
 	}
 
 	public String getPostId() {
@@ -79,6 +84,10 @@ public final class PostView {
 
 	public String getLastEditTimestamp() {
 		return lastEditTimestamp;
+	}
+
+	public Instant getTimestamp() {
+		return timestamp;
 	}
 
 	public UserView getAuthor() {
@@ -122,6 +131,10 @@ public final class PostView {
 		return children;
 	}
 
+	public boolean hasChildren() {
+		return hasChildren;
+	}
+
 	public static Promise<PostView> from(CommDao commDao, Post post, @Nullable UserId currentUser, UserRole currentRole, int depth) {
 		assert depth >= 0;
 
@@ -143,15 +156,21 @@ public final class PostView {
 								Map<Rating, Set<UserId>> ratings = post.getRatings();
 								Set<UserId> likes = ratings.get(Rating.LIKE);
 								Set<UserId> dislikes = ratings.get(Rating.DISLIKE);
+
+								long initialTimestamp = post.getInitialTimestamp();
+								long lastEditTimestamp = post.getLastEditTimestamp();
+								Instant timestamp = Instant.ofEpochMilli(lastEditTimestamp == -1 ? initialTimestamp : lastEditTimestamp);
+
 								return new PostView(
 										post.getId(),
 										post.getContent(),
-										formatInstant(post.getInitialTimestamp()),
-										formatInstant(post.getLastEditTimestamp()),
+										formatInstant(initialTimestamp),
+										formatInstant(lastEditTimestamp),
+										timestamp,
 										author,
 										post.getAttachments().entrySet().stream()
-												.sorted(Comparator.comparing(Map.Entry::getKey))
-												.collect(toMultimap(entry -> entry.getValue().toString().toLowerCase(), Map.Entry::getKey)),
+												.sorted(comparingByKey())
+												.collect(toMultimap(entry -> entry.getValue().toString().toLowerCase(), Entry::getKey)),
 										deleter,
 										post.getAuthor().equals(currentUser),
 										currentRole.isPrivileged() || own && currentRole.isKnown() && (deleterId == null || post.getAuthor().equals(deleterId)),
@@ -159,8 +178,8 @@ public final class PostView {
 										likes.size() - dislikes.size(),
 										currentUser != null && likes.contains(currentUser),
 										currentUser != null && dislikes.contains(currentUser),
-										children
-								);
+										children,
+										!post.getChildren().isEmpty());
 							});
 				});
 	}

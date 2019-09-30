@@ -26,7 +26,7 @@ public final class IpRange {
 			return false;
 		}
 		for (int i = 0; i < 4; i++) {
-			if (ip[i] != (raw[i] & mask[i])) {
+			if ((ip[i] & mask[i]) != (raw[i] & mask[i])) {
 				return false;
 			}
 		}

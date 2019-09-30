@@ -10,11 +10,13 @@ import io.global.comm.pojo.IpRange;
 import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
 import io.global.mustache.MustacheTemplater;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
@@ -37,6 +39,7 @@ public final class Utils {
 					IpBanRequest::getDescription, STRING_CODEC));
 
 	public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
+	private static final String WHITESPACE = "^(?:\\p{Z}|\\p{C})*$";
 
 	public static String formatInstant(@Nullable Instant timestamp) {
 		return timestamp == null ? "" : timestamp.atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMAT);
@@ -71,10 +74,35 @@ public final class Utils {
 								});
 	}
 
+	@Contract("_, _, _, true -> !null")
+	@Nullable
+	private static String getPostParameterImpl(Map<String, String> postParameters, String name, int maxLength, boolean required) throws ParseException {
+		String parameter = postParameters.get(name);
+		if (parameter == null || parameter.matches(WHITESPACE)) {
+			if (required) {
+				throw new ParseException(Utils.class, "'" + name + "' POST parameter is required");
+			}
+			return null;
+		}
+		String trimmed = parameter.trim();
+		if (trimmed.length() > maxLength) {
+			throw new ParseException(Utils.class, "'" + name + "' POST parameter is too long (" + trimmed.length() + ">" + maxLength + ")");
+		}
+		return trimmed;
+	}
+
+	public static String getPostParameter(Map<String, String> postParameters, String name, int maxLength) throws ParseException {
+		return getPostParameterImpl(postParameters, name, maxLength, true);
+	}
+
+	public static String getOptionalPostParameter(Map<String, String> postParameters, String name, int maxLength) throws ParseException {
+		return getPostParameterImpl(postParameters, name, maxLength, false);
+	}
+
 	public static String getRequiredPostParameter(HttpRequest request, String name) throws ParseException {
 		String parameter = request.getPostParameter(name);
 		if (parameter == null) {
-			throw new ParseException("'" + name + "' POST parameter is required");
+			throw new ParseException(Utils.class, "'" + name + "' POST parameter is required");
 		}
 		return parameter;
 	}

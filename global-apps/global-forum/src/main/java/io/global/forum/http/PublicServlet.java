@@ -19,14 +19,20 @@ import io.global.forum.http.view.PostView;
 import io.global.forum.http.view.ThreadView;
 import io.global.forum.http.view.UserView;
 import io.global.forum.ot.ForumMetadata;
+import io.global.forum.util.Utils;
 import io.global.mustache.MustacheTemplater;
 
+import java.net.InetAddress;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
-import java.util.*;
+import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
@@ -45,7 +51,6 @@ import static java.util.stream.Collectors.toSet;
 
 public final class PublicServlet {
 	private static final String SESSION_ID = "FORUM_SID";
-	public static final String WHITESPACE = "^(?:\\p{Z}|\\p{C})*$";
 
 	public static AsyncServlet create(String appStoreUrl, AppStore appStore, MustacheTemplater templater) {
 		return RoutingServlet.create()
@@ -60,7 +65,6 @@ public final class PublicServlet {
 				.map("/admin/*", adminServlet(templater))
 
 				.map(GET, "/login", request -> {
-
 					String origin = request.getQueryParameter("origin");
 					if (origin == null) {
 						origin = request.getHeader(REFERER);
@@ -77,7 +81,7 @@ public final class PublicServlet {
 				.map(GET, "/authorize", request -> {
 					String token = request.getQueryParameter("token");
 					if (token == null) {
-						return Promise.ofException(HttpException.ofCode(400));
+						return Promise.ofException(HttpException.badRequest400("No token"));
 					}
 					return appStore.exchangeAuthToken(token)
 							.then(profile -> {
@@ -131,7 +135,7 @@ public final class PublicServlet {
 					if (request.getAttachment(UserId.class) == null) {
 						return Promise.of(redirectToLogin(request));
 					}
-					return templater.render("new_thread", map("creatingNewThread", true));
+					return templater.render("new_thread", emptyMap());
 				})
 				.map(POST, "/new", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -152,33 +156,30 @@ public final class PublicServlet {
 
 								return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", paramsMap, attachmentMap, true))
 										.then($ -> {
-											String title = paramsMap.get("title");
-											if (title == null || title.matches(WHITESPACE)) {
-												return Promise.ofException(new ParseException(PublicServlet.class, "'title' POST parameter is required"));
-											}
-											if (title.length() > 120) {
-												return Promise.ofException(new ParseException(PublicServlet.class, "Title is too long (" + title.length() + ">120)"));
-											}
+											try {
+												String title = getPostParameter(paramsMap, "title", 120);
+												String content = getPostParameter(paramsMap, "content", 4000);
 
-											String content = paramsMap.get("content");
-											if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
-												return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
+												return commDao.updateThread(tid, new ThreadMetadata(title))
+														.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
+														.then($2 -> threadDao.updateRating(userId, "root", Rating.LIKE))
+														.map($2 -> redirect302("/" +  tid));
+											} catch (ParseException e) {
+												return Promise.ofException(e);
 											}
-
-											return commDao.updateThread(tid, new ThreadMetadata(title))
-													.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
-													.then($2 -> threadDao.updateRating(userId, "root", Rating.LIKE))
-													.map($2 -> redirect302("/" + tid));
 										})
 										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
 										.thenEx(revertIfException(() -> commDao.removeThread(tid)));
 							});
 				})
 				.map(GET, "/profile", request -> {
-					if (request.getAttachment(UserId.class) == null) {
+					UserId userId = request.getAttachment(UserId.class);
+					if (userId == null) {
 						return Promise.of(redirectToLogin(request));
 					}
-					return templater.render("profile", map("shownUser", new Ref<>("user")));
+					return templater.render("profile", map(
+							"shownUser", new Ref<>("user"),
+							"shownUser.ip", request.getAttachment(CommDao.class).getUserLastIp(userId).map(InetAddress::getHostAddress)));
 				})
 				.map(GET, "/profile/:userId", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -193,7 +194,9 @@ public final class PublicServlet {
 					return commDao
 							.getUser(shownUserId)
 							.then(shownUser -> shownUser != null ?
-									templater.render("profile", map("shownUser", UserView.from(shownUserId, shownUser))) :
+									templater.render("profile", map(
+											"shownUser", UserView.from(commDao, shownUserId, shownUser),
+											"shownUser.ip", commDao.getUserLastIp(shownUserId).map(InetAddress::getHostAddress))) :
 									Promise.ofException(HttpException.ofCode(400, "No such user")));
 				})
 				.map(POST, "/profile/:userId", request -> {
@@ -207,26 +210,24 @@ public final class PublicServlet {
 					}
 
 					Map<String, String> params = request.getPostParameters();
-					String email = params.get("email");
-					String username = params.get("username");
-					String firstName = params.get("first_name");
-					String lastName = params.get("last_name");
-					if (email == null || email.matches(WHITESPACE)) {
-						return Promise.ofException(HttpException.ofCode(401, "Email POST parameter is required"));
-					}
-					if (username == null || username.matches(WHITESPACE)) {
-						return Promise.ofException(HttpException.ofCode(401, "Username POST parameter is required"));
-					}
-					CommDao commDao = request.getAttachment(CommDao.class);
 
-					return commDao.getUser(updatingUserId)
-							.then(oldData -> {
-								if (oldData == null) {
-									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
-								}
-								return commDao.updateUser(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
-										.map($ -> redirectToReferer(request, "/"));
-							});
+					try {
+						String email = getPostParameter(params, "email", 60);
+						String username = getOptionalPostParameter(params, "username", 60);
+						String firstName = getOptionalPostParameter(params, "firstName", 60);
+						String lastName = getOptionalPostParameter(params, "lastName", 60);
+						CommDao commDao = request.getAttachment(CommDao.class);
+						return commDao.getUser(updatingUserId)
+								.then(oldData -> {
+									if (oldData == null) {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
+									}
+									return commDao.updateUser(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
+											.map($ -> redirectToReferer(request, "/"));
+								});
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
 				})
 				.map("/:threadID/*", RoutingServlet.create()
 						.map(GET, "/", postViewServlet(templater))
@@ -260,12 +261,13 @@ public final class PublicServlet {
 					return threadDao.generatePostId()
 							.then(postId -> request.handleMultipart(AttachmentDataHandler.create(threadDao, postId, paramsMap, attachmentMap, true))
 									.then($ -> {
-										String content = paramsMap.get("content");
-										if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
-											return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
+										try {
+											String content = getPostParameter(paramsMap, "content", 4000);
+											return threadDao.addPost(user, parentId, postId, content, attachmentMap)
+													.then($2 -> threadDao.updateRating(user, postId, Rating.LIKE));
+										} catch (ParseException e) {
+											return Promise.ofException(e);
 										}
-										return threadDao.addPost(user, parentId, postId, content, attachmentMap)
-												.then($2 -> threadDao.updateRating(user, postId, Rating.LIKE));
 									}))
 							.thenEx(revertIfException(() -> threadDao.deleteAttachments(parentId, attachmentMap.keySet())))
 							.map($ -> postOpRedirect(request));
@@ -299,16 +301,16 @@ public final class PublicServlet {
 					return threadDao.listAttachments(pid)
 							.then(existing -> request.handleMultipart(AttachmentDataHandler.create(threadDao, pid, existing, paramsMap, attachmentMap, true)))
 							.then($ -> {
-								String content = paramsMap.get("content");
-								if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
-									return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
+								try {
+									String content = getPostParameter(paramsMap, "content", 4000);
+									Set<String> removed = Arrays.stream(nullToEmpty(paramsMap.get("removeAttachments")).split(","))
+											.map(String::trim)
+											.collect(toSet());
+									return threadDao.updatePost(pid, content, attachmentMap, removed)
+											.map($2 -> postOpRedirect(request));
+								} catch (ParseException e) {
+									return Promise.ofException(e);
 								}
-								Set<String> removed = Arrays.stream(nullToEmpty(paramsMap.get("removeAttachments")).split(","))
-										.map(String::trim)
-										.collect(toSet());
-
-								return threadDao.updatePost(pid, content, attachmentMap, removed)
-										.map($2 -> postOpRedirect(request));
 							})
 							.thenEx(revertIfException(() -> threadDao.deleteAttachments(pid, attachmentMap.keySet())));
 				})
@@ -345,14 +347,85 @@ public final class PublicServlet {
 		return RoutingServlet.create()
 				.map(GET, "/", request -> templater.render("admin_panel"))
 
+				.map(GET, "/users", request -> {
+					CommDao commDao = request.getAttachment(CommDao.class);
+					return commDao.getUsers()
+							.then(users -> templater.render("user_list", map("users", Promises.toList(users.entrySet().stream().map(e -> UserView.from(commDao, e.getKey(), e.getValue()))))));
+				})
+
+				.map(GET, "/user-ban/:userId", request -> {
+					UserId userId = new UserId(DK_APP_STORE, request.getPathParameter("userId"));
+					CommDao commDao = request.getAttachment(CommDao.class);
+					return commDao
+							.getUser(userId)
+							.then(userData -> {
+								if (userData == null) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
+								}
+								Map<String, Object> context = new HashMap<>();
+								context.put("bannedUser", UserView.from(commDao, userId, userData));
+								if (userData.getBanState() == null) {
+									context.put("bannedUser.ban.until", formatInstant(Instant.now().plus(1, ChronoUnit.DAYS)));
+								}
+								return templater.render("user_ban", context);
+							});
+				})
+
+				.map(POST, "/user-ban/:userId", request -> {
+					String action;
+					try {
+						action = getPostParameter(request.getPostParameters(), "action", 5);
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+					String userIdParam = request.getPathParameter("userId");
+					UserId bannedUserId = new UserId(DK_APP_STORE, userIdParam);
+					UserId userId = request.getAttachment(UserId.class);
+					CommDao commDao = request.getAttachment(CommDao.class);
+
+					return commDao.getUser(bannedUserId)
+							.then(user -> {
+								if (user == null) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
+								}
+								switch (action) {
+									case "unban": {
+										UserData newData = new UserData(user.getRole(), user.getEmail(), user.getUsername(), user.getFirstName(), user.getLastName());
+										PubKey pk = commDao.getKeys().getPubKey();
+										return commDao.updateUser(bannedUserId, newData)
+												.map($ -> redirect302(request.getPostParameters().getOrDefault("redirect", "/" + pk.asString() + "/profile/" + userIdParam)));
+									}
+									case "save": {
+										try {
+											String reason = getPostParameter(request.getPostParameters(), "reason", 1000);
+											Instant until = LocalDateTime.parse(getPostParameter(request.getPostParameters(), "until", 20), DATE_TIME_FORMAT).atZone(ZoneId.systemDefault()).toInstant();
+											BanState banState = new BanState(userId, until, reason);
+											UserData newData = new UserData(user.getRole(), user.getEmail(), user.getUsername(), user.getFirstName(), user.getLastName(), banState);
+											PubKey pk = commDao.getKeys().getPubKey();
+											return commDao.updateUser(bannedUserId, newData)
+													.map($ -> redirect302(request.getPostParameters().getOrDefault("redirect", "/" + pk.asString() + "/profile/" + userIdParam)));
+										} catch (ParseException e) {
+											return Promise.<HttpResponse>ofException(e);
+										} catch (DateTimeParseException e) {
+											return Promise.<HttpResponse>ofException(new ParseException(PublicServlet.class, "Invalid datetime: " + e.getMessage()));
+										}
+									}
+									default: {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "Unknown action '" + action + "'"));
+									}
+								}
+							});
+				})
+
 				.map(GET, "/ip-bans", request -> templater.render("ip_bans", map("bans", IpBanView.from(request.getAttachment(CommDao.class)))))
 
 				.map(GET, "/edit-forum", request -> templater.render("edit_forum", emptyMap()))
 
 				.map(POST, "/edit-forum", request -> {
 					try {
-						String title = getRequiredPostParameter(request, "title");
-						String description = getRequiredPostParameter(request, "description");
+						Map<String, String> params = request.getPostParameters();
+						String title = getPostParameter(params, "title", 60);
+						String description = getPostParameter(params, "description", 1000);
 						return request.getAttachment(ForumDao.class)
 								.setForumMetadata(new ForumMetadata(title, description))
 								.map($ -> redirect302("."));
@@ -360,7 +433,24 @@ public final class PublicServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.map(GET, "/ip-bans/new", request -> templater.render("ip_ban", map("ban.id", "new", "ban.ip", "a new range")))
+				.map(GET, "/ip-bans/new", request -> {
+					Map<String, Object> context = new HashMap<>();
+					context.put("ban.id", "new");
+					context.put("ban.ip", "a new range");
+					String ip = request.getQueryParameter("ip");
+					if (ip != null) {
+						String trimmed = ip.trim();
+						if (!(trimmed + ".").matches("^(?:(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.){4}$")) {
+							return Promise.ofException(new ParseException(PublicServlet.class, "invalid IP: " + trimmed));
+						}
+						String[] parts = trimmed.split("\\.");
+						for (int i = 0; i < parts.length; i++) {
+							context.put("ban.ipParts.value" + (i + 1), parts[i]);
+						}
+					}
+					context.put("ban.ban.until", Utils.formatInstant(Instant.now().plus(1, ChronoUnit.DAYS)));
+					return templater.render("ip_ban", context);
+				})
 
 				.map(GET, "/ip-bans/:id", request ->
 						IpBanView.from(request.getAttachment(CommDao.class), request.getPathParameter("id"))
@@ -371,7 +461,7 @@ public final class PublicServlet {
 				.map(POST, "/ip-bans/:id", request -> {
 					String action;
 					try {
-						action = getRequiredPostParameter(request, "action");
+						action = getPostParameter(request.getPostParameters(), "action", 5);
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -386,8 +476,8 @@ public final class PublicServlet {
 							try {
 								byte[] ip = parse4Bytes(request, "ip");
 								byte[] mask = parse4Bytes(request, "mask");
-								String reason = getRequiredPostParameter(request, "reason");
-								Instant until = LocalDateTime.parse(getRequiredPostParameter(request, "until"), DATE_TIME_FORMAT).atZone(ZoneId.systemDefault()).toInstant();
+								String reason = getPostParameter(request.getPostParameters(), "reason", 1000);
+								Instant until = LocalDateTime.parse(getPostParameter(request.getPostParameters(), "until", 20), DATE_TIME_FORMAT).atZone(ZoneId.systemDefault()).toInstant();
 
 								CommDao commDao = request.getAttachment(CommDao.class);
 
@@ -402,7 +492,7 @@ public final class PublicServlet {
 							} catch (ParseException e) {
 								return Promise.ofException(e);
 							} catch (DateTimeParseException e) {
-								return Promise.ofException(new ParseException("Invalid datetime: " + e.getMessage()));
+								return Promise.ofException(new ParseException(PublicServlet.class, "Invalid datetime: " + e.getMessage()));
 							}
 						}
 						default: {
@@ -437,7 +527,7 @@ public final class PublicServlet {
 					"threadId", tid,
 					"thread", threadDao.getThreadMetadata(),
 					"post", threadDao.getPost(pid != null ? pid : "root")
-							.then(post -> PostView.from(commDao, post, userId, role, 100))));
+							.then(post -> PostView.from(commDao, post, userId, role, 5))));
 		};
 	}
 
@@ -459,6 +549,7 @@ public final class PublicServlet {
 
 			templater.put("url", host + request.getPathAndQuery());
 			templater.put("url.host", host);
+			templater.put("url.referer", request.getHeader(REFERER));
 			templater.put("forum", forumDao.getForumMetadata());
 		});
 	}
@@ -480,7 +571,7 @@ public final class PublicServlet {
 									maxAge = Promises.toTuple(commDao.updateUserLastIp(userId, request.getRemoteAddress()), commDao.getUser(userId))
 											.map(t -> {
 												UserData user = t.getValue2();
-												templater.put("user", UserView.from(userId, user));
+												templater.put("user", UserView.from(commDao, userId, user));
 												request.attach(userId);
 												request.attach(user);
 												request.attach(user.getRole());

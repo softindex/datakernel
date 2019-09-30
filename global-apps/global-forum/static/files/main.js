@@ -58,11 +58,13 @@ window.onload = () => {
     });
   });
 
-  // auto-submit form when pressing ctrl+enter
+  // auto-submit forms when pressing ctrl+enter
   $('[data-post-button]').keydown((e) => {
-    if (e.keyCode === 13 && e.ctrlKey) {
+    if (e.keyCode === 13) {
+      if (e.ctrlKey) {
+        $(e.target.dataset.postButton).click();
+      }
       e.preventDefault();
-      $(e.target.dataset.postButton).click();
     }
   });
 
@@ -170,7 +172,7 @@ window.onload = () => {
     if (form.checkValidity() === false) {
       e.preventDefault();
       e.stopPropagation();
+      form.classList.add('was-validated');
     }
-    form.classList.add('was-validated');
   });
 };

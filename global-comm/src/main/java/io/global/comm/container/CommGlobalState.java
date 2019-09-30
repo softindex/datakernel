@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Stream;
 
 import static io.datakernel.util.LogUtils.toLogger;
@@ -86,13 +87,13 @@ public final class CommGlobalState {
 		this.threadRepoPrefix = names.getThreadRepoPrefix();
 		this.postOpCodec = REGISTRY.get(ThreadOperation.class);
 
-		this.usersStateManager = createStateManager(names.getUsers(), REGISTRY.get(new TypeT<MapOperation<UserId, UserData>>() {}), MapOTSystem.create(), new MapOTState<>());
+		this.usersStateManager = createStateManager(names.getUsers(), REGISTRY.get(new TypeT<MapOperation<UserId, UserData>>() {}), MapOTSystem.create(), new MapOTState<>(new TreeMap<>()));
 		this.userLastIpManager = createStateManager(names.getUserIps(), REGISTRY.get(new TypeT<MapOperation<UserId, InetAddress>>() {}), MapOTSystem.create(), new MapOTState<>());
 
-		this.bansStateManager = createStateManager(names.getBans(), REGISTRY.get(new TypeT<MapOperation<String, IpBanState>>() {}), MapOTSystem.create(), new MapOTState<>());
+		this.bansStateManager = createStateManager(names.getBans(), REGISTRY.get(new TypeT<MapOperation<String, IpBanState>>() {}), MapOTSystem.create(), new MapOTState<>(new TreeMap<>()));
 
 		this.sessionStore = KvSessionStore.create(eventloop, kvClient, names.getSession());
-		this.threadsState = new MapOTStateListenerProxy<>();
+		this.threadsState = new MapOTStateListenerProxy<>(new TreeMap<>());
 		this.threadsStateManager = createStateManager(names.getThreads(), REGISTRY.get(new TypeT<MapOperation<String, ThreadMetadata>>() {}), MapOTSystem.create(), threadsState);
 
 		commDao = new CommDaoImpl(this);
@@ -142,7 +143,7 @@ public final class CommGlobalState {
 						pendingThreadStateManagers.values().stream().map(s -> s.then(OTStateManager::stop)))))
 				.whenResult($ -> threadStateManagers.clear());
 
-		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), userLastIpManager.start(), sessionStore.stop(), threadsStop)
+		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), userLastIpManager.stop(), sessionStore.stop(), threadsStop)
 				.whenComplete(toLogger(logger, "stop"));
 	}
 

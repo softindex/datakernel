@@ -29,13 +29,11 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav">
                 {{#user}}
-                    {{^creatingNewThread}}
-                        {{#user.role.known}}
-                            <li class="nav-item">
-                                <a class="nav-link" href="/new">New thread</a>
-                            </li>
-                        {{/user.role.known}}
-                    {{/creatingNewThread}}
+                    {{#user.role.known}}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/new">New thread</a>
+                        </li>
+                    {{/user.role.known}}
                     {{#user.role.privileged}}
                         <li class="nav-item">
                             <a class="nav-link text-success" href="/{{pubKey}}/admin">Administration</a>
