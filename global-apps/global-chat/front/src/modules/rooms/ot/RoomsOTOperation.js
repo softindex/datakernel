@@ -11,7 +11,7 @@ class RoomsOTOperation {
   static EMPTY = new RoomsOTOperation(null, [], false);
 
   static createFromJson(json) {
-    const room = json.value['shared repo'];
+    const room = json.value['shared_repo'];
     return new RoomsOTOperation(room.id, room.participants, json.value.remove);
   }
 
@@ -47,7 +47,7 @@ class RoomsOTOperation {
     return {
       type: 'CreateOrDropRepo',
       value: {
-        'shared repo': {
+        'shared_repo': {
           id: this._roomId,
           name: '', // TODO Add names to operation
           participants: this._participants

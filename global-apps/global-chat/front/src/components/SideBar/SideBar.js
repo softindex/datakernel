@@ -81,7 +81,6 @@ function SideBar({classes, publicKey, enqueueSnackbar}) {
     },
 
     onSearchClear() {
-      console.log('Hello!');
       onSearchChange('');
     }
   };

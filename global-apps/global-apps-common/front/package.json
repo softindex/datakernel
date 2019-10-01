@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "elliptic": "latest",
-    "query-string": "^6.8.2"
+    "query-string": "^6.8.2",
+    "marked": "^0.7.0"
   }
 }

@@ -113,3 +113,12 @@ export function getAvatarLetters(name) {
       nameString[0][0]).toUpperCase();
   }
 }
+
+export function isValidURL(urlString) {
+  try {
+    new URL(urlString);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}

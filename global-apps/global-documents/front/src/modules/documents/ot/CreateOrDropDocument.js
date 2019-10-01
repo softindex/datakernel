@@ -12,7 +12,7 @@ class CreateOrDropDocument {
   static EMPTY = new CreateOrDropDocument(null, null, [], false);
 
   static createFromJson(json) {
-    const document = json['shared repo'];
+    const document = json['shared_repo'];
     return new CreateOrDropDocument(document.id, document.name, document.participants, json.remove);
   }
 
@@ -48,7 +48,7 @@ class CreateOrDropDocument {
 
   toJSON() {
     return {
-      'shared repo': {
+      'shared_repo': {
         id: this._documentId,
         name: this._documentName,
         participants: this._participants
