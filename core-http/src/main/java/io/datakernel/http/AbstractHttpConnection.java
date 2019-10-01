@@ -65,6 +65,7 @@ public abstract class AbstractHttpConnection {
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = ApplicationSettings.getInt(HttpMessage.class, "maxHeaders", 100); // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 	public static final int MAX_RECURSIVE_CALLS = ApplicationSettings.getInt(AbstractHttpConnection.class, "maxRecursiveCalls", 64);
+	public static final boolean MULTILINE_HEADERS = ApplicationSettings.getBoolean(AbstractHttpConnection.class, "multilineHeaders", true);
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
@@ -211,7 +212,7 @@ public abstract class AbstractHttpConnection {
 					if (array[p] == LF) {
 
 						// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-						if (isMultilineHeader(array, head, tail, p)) {
+						if (MULTILINE_HEADERS && isMultilineHeader(array, head, tail, p)) {
 							preprocessMultiline(array, p);
 							continue;
 						}
