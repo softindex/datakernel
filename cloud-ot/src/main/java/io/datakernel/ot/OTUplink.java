@@ -7,7 +7,7 @@ import java.util.List;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 
-public interface OTUplink<K, D, C> {
+public interface OTUplink<K, D, PC> {
 
 	final class FetchData<K, D> {
 		private final K commitId;
@@ -48,8 +48,8 @@ public interface OTUplink<K, D, C> {
 		return fetch(currentCommitId);
 	}
 
-	Promise<C> createProtoCommit(K parent, List<D> diffs, long parentLevel);
+	Promise<PC> createProtoCommit(K parent, List<D> diffs, long parentLevel);
 
-	Promise<FetchData<K, D>> push(C protoCommit);
+	Promise<FetchData<K, D>> push(PC protoCommit);
 
 }
