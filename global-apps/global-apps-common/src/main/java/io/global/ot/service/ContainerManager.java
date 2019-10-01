@@ -39,18 +39,18 @@ public final class ContainerManager<C extends UserContainer> implements Eventloo
 	private final Map<PubKey, Tuple2<PrivKey, C>> containers = new HashMap<>();
 
 	private final EventloopTaskScheduler synchronizer;
-	private final ContainerKeyManager keyManager;
+	private final KeyExchanger keyExchanger;
 
-	private ContainerManager(Eventloop eventloop, ContainerKeyManager keyManager, BiFunction<Eventloop, PrivKey, C> containerFactory) {
+	private ContainerManager(Eventloop eventloop, KeyExchanger keyExchanger, BiFunction<Eventloop, PrivKey, C> containerFactory) {
 		this.eventloop = eventloop;
 		this.containerFactory = containerFactory;
-		this.keyManager = keyManager;
+		this.keyExchanger = keyExchanger;
 		this.synchronizer = EventloopTaskScheduler.create(eventloop, this::sync)
 				.withSchedule(DEFAULT_SYNC_SCHEDULE);
 	}
 
-	public static <C extends UserContainer> ContainerManager<C> create(Eventloop eventloop, ContainerKeyManager keyManager, BiFunction<Eventloop, PrivKey, C> containerFactory) {
-		return new ContainerManager<>(eventloop, keyManager, containerFactory);
+	public static <C extends UserContainer> ContainerManager<C> create(Eventloop eventloop, KeyExchanger keyExchanger, BiFunction<Eventloop, PrivKey, C> containerFactory) {
+		return new ContainerManager<>(eventloop, keyExchanger, containerFactory);
 	}
 
 	public ContainerManager<C> withSyncSchedule(Schedule schedule) {
@@ -110,7 +110,7 @@ public final class ContainerManager<C extends UserContainer> implements Eventloo
 	}
 
 	private Promise<Void> sync() {
-		return keyManager.getKeys()
+		return keyExchanger.receiveKeys()
 				.then(expected -> {
 					Map<PubKey, PrivKey> keysMap = new HashMap<>();
 					for (PrivKey privKey : expected) {
@@ -123,7 +123,7 @@ public final class ContainerManager<C extends UserContainer> implements Eventloo
 					return Promises.all(Stream.concat(
 							toRemove.stream().map(this::removeUserContainer),
 							toAdd.stream().map(pubKey -> ensureUserContainer(keysMap.get(pubKey)))))
-							.then($ -> keyManager.updateKeys(containers.values().stream()
+							.then($ -> keyExchanger.sendKeys(containers.values().stream()
 									.map(Tuple2::getValue1)
 									.collect(Collectors.toSet())));
 				})

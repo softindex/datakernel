@@ -6,8 +6,8 @@ import io.global.common.PrivKey;
 
 import java.util.Set;
 
-public interface ContainerKeyManager extends EventloopService {
-	Promise<Set<PrivKey>> getKeys();
+public interface KeyExchanger extends EventloopService {
+	Promise<Set<PrivKey>> receiveKeys();
 
-	Promise<Void> updateKeys(Set<PrivKey> keys);
+	Promise<Void> sendKeys(Set<PrivKey> keys);
 }
