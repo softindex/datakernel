@@ -16,7 +16,6 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.common.tuple.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.EventloopRule;
@@ -241,15 +240,18 @@ public final class PromisesTest {
 
 	@Test
 	public void testLoop() {
-		Promises.loop(0, AsyncPredicate.of(i -> i < 5), i -> Promise.of(i + 1)
-				.whenResult(counter::set));
+		Promises.loop(0,
+				i -> i < 5,
+				i -> Promise.of(i + 1)
+						.whenResult(counter::set));
 		assertEquals(5, counter.get());
 	}
 
 	@Test
 	public void testLoopAsync() {
-		await(Promises.loop(0, AsyncPredicate.of(i -> i < 5), i ->
-				Promises.delay(10L, i + 1)
+		await(Promises.loop(0,
+				i -> i < 5,
+				i -> Promises.delay(10L, i + 1)
 						.whenResult(counter::set)
 						.whenResult(System.out::println)));
 		assertEquals(5, counter.get());
@@ -272,14 +274,12 @@ public final class PromisesTest {
 						() -> getStage(n).toVoid())));
 	}
 
-	@SuppressWarnings("all")
 	@Test
 	public void testSomeMethodWithZeroParam() {
 		Promise<?> some = some(100);
 		assertEquals(some.getClass(), CompleteExceptionallyPromise.class);
 	}
 
-	@SuppressWarnings("all")
 	@Test
 	public void testSomeMethodWithOneParamAndGetOne() {
 		Integer result = 100;
@@ -288,12 +288,11 @@ public final class PromisesTest {
 		assertEquals(result, gotResult);
 	}
 
-	@SuppressWarnings("all")
 	@Test(expected = IndexOutOfBoundsException.class)
 	public void testSomeMethodWithOneParamAndGetNone() {
 		Integer value = 100;
 		Promise<List<Integer>> some = some(Promise.of(value), 0);
-		Integer gotResult = some.getResult().get(0);
+		some.getResult().get(0);
 	}
 
 	@SuppressWarnings("all")
@@ -333,7 +332,6 @@ public final class PromisesTest {
 		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
 	}
 
-	@SuppressWarnings("all")
 	@Test
 	public void testSomeWithManyParamsAndGetNone() {
 		List<Promise<Integer>> params = Stream.generate(() -> of(0)).limit(10).collect(Collectors.toList());
@@ -352,7 +350,6 @@ public final class PromisesTest {
 		promiseResult.whenResult(result -> assertEquals(params.size() / 2, result.size()));
 	}
 
-	@SuppressWarnings("all")
 	@Test
 	public void testSomeTheWholeAreFailed() {
 		List<CompleteExceptionallyPromise<Object>> params = Stream.generate(() -> Promise.ofException(new RuntimeException()))

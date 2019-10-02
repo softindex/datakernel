@@ -4,7 +4,6 @@ import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 
 public final class ChannelBufferExample {
@@ -15,8 +14,9 @@ public final class ChannelBufferExample {
 
 			ChannelBuffer<Integer> plate = new ChannelBuffer<>(5, 10);
 			ChannelSupplier<Integer> granny = plate.getSupplier();
-			Promises.loop(0, apple -> Promise.of(apple < 25), apple ->
-					plate.put(apple).map($ -> {
+			Promises.loop(0,
+					apple -> apple < 25,
+					apple -> plate.put(apple).map($ -> {
 						System.out.println("Granny gives apple   #" + apple);
 						return apple + 1;
 					}));
@@ -34,8 +34,9 @@ public final class ChannelBufferExample {
 			ChannelQueue<Integer> buffer = new ChannelZeroBuffer<>();
 			ChannelSupplier<Integer> granny = buffer.getSupplier();
 
-			Promises.loop(0, apple -> Promise.of(apple < 10), apple ->
-					buffer.put(apple).map($ -> {
+			Promises.loop(0,
+					apple -> apple < 10,
+					apple -> buffer.put(apple).map($ -> {
 						System.out.println("Granny gives apple   #" + apple);
 						return apple + 1;
 					}));

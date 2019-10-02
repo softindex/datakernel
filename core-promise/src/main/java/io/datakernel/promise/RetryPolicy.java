@@ -55,6 +55,10 @@ public interface RetryPolicy<S> {
 		};
 	}
 
+	static RetryPolicy<Void> fixedDelay(Duration delay) {
+		return fixedDelay(delay.toMillis());
+	}
+
 	static RetryPolicy<Void> fixedDelay(long delay) {
 		return new StatelessRetryPolicy() {
 			@Override
@@ -89,6 +93,10 @@ public interface RetryPolicy<S> {
 		abstract public long nextRetryTimestamp(long now, Throwable lastError, int retryCount, long firstRetryTimestamp);
 	}
 
+	static RetryPolicy<SimpleRetryState> exponentialBackoff(Duration initialDelay, Duration maxDelay, double exponent) {
+		return exponentialBackoff(initialDelay.toMillis(), maxDelay.toMillis(), exponent);
+	}
+
 	static RetryPolicy<SimpleRetryState> exponentialBackoff(long initialDelay, long maxDelay, double exponent) {
 		checkArgument(maxDelay > initialDelay && exponent > 1.0,
 				"Max delay should be greater than initial delay and exponent should be greater than 1.0");
@@ -102,6 +110,10 @@ public interface RetryPolicy<S> {
 								min(maxDelay, (long) (initialDelay * pow(exponent, retryCount))));
 			}
 		};
+	}
+
+	static RetryPolicy exponentialBackoff(Duration initialDelay, Duration maxDelay) {
+		return exponentialBackoff(initialDelay.toMillis(), maxDelay.toMillis());
 	}
 
 	static RetryPolicy exponentialBackoff(long initialDelay, long maxDelay) {

@@ -16,8 +16,6 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.function.AsyncPredicate;
-import io.datakernel.async.function.AsyncPredicates;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.AsyncTimeoutException;
@@ -1172,30 +1170,8 @@ public final class Promises {
 	 * is a marker of completion of the loop.
 	 */
 
-	private static <T> Promise<Void> loop(@Nullable T seed, @NotNull Predicate<T> loopCondition, @NotNull Function<T, Promise<T>> next) {
-		return until(seed, next, (Predicate<T>) v -> !loopCondition.test(v)).toVoid();
-	}
-
-	public static <T> Promise<Void> loop(@Nullable T seed, @NotNull AsyncPredicate<T> loopCondition, @NotNull Function<T, Promise<T>> next) {
-		if (loopCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
-			return loop(seed, ((AsyncPredicates.AsyncPredicateWrapper<T>) loopCondition).getPredicate(), next);
-		}
-		return until(seed, next, (AsyncPredicate<T>) v -> loopCondition.test(v).map(b -> !b)).toVoid();
-	}
-
-	private static Promise<Void> loop(@NotNull Predicate<Void> loopCondition, @NotNull AsyncSupplier<Void> action) {
-		return until(null, $ -> action.get(), loopCondition.negate()).toVoid();
-	}
-
-	public static Promise<Void> loop(@NotNull AsyncPredicate<Void> loopCondition, @NotNull AsyncSupplier<Void> action) {
-		if (loopCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
-			return loop(((AsyncPredicates.AsyncPredicateWrapper<Void>) loopCondition).getPredicate(), action);
-		}
-		return until(null, $ -> action.get(), loopCondition.negate()).toVoid();
-	}
-
-	public static Promise<Void> loop(@NotNull AsyncPredicate<Void> loopCondition) {
-		return loop(loopCondition, Promise::complete);
+	public static <T> Promise<T> loop(@Nullable T seed, @NotNull Predicate<T> loopCondition, @NotNull Function<T, Promise<T>> next) {
+		return until(seed, next, v -> !loopCondition.test(v));
 	}
 
 	private static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
@@ -1204,44 +1180,7 @@ public final class Promises {
 				untilImpl(seed, next, breakCondition, cb));
 	}
 
-	public static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull AsyncPredicate<T> breakCondition) {
-		if (breakCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
-			return until(seed, next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
-		}
-		return breakCondition.test(seed)
-				.thenEx((b, e) -> {
-					if (e == null) {
-						if (!b) {
-							return Promise.ofCallback(cb ->
-									untilImpl(seed, next, breakCondition, cb));
-						} else {
-							return Promise.of(seed);
-						}
-					} else {
-						return Promise.ofException(e);
-					}
-				});
-	}
-
-	private static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull Predicate<T> breakCondition) {
-		return Promise.ofCallback(cb ->
-				untilImpl(null, $ -> next.get(), breakCondition, cb));
-	}
-
-	public static <T> Promise<T> until(@NotNull AsyncSupplier<T> next, @NotNull AsyncPredicate<T> breakCondition) {
-		if (breakCondition instanceof AsyncPredicates.AsyncPredicateWrapper) {
-			return until(next, ((AsyncPredicates.AsyncPredicateWrapper<T>) breakCondition).getPredicate());
-		}
-		return Promise.ofCallback(cb ->
-				untilImpl(null, $ -> next.get(), breakCondition, cb));
-	}
-
-	public static Promise<Void> until(@NotNull AsyncPredicate<Void> breakCondition) {
-		return until(Promise::complete, breakCondition);
-	}
-
-	private static <T> void untilImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
-			@NotNull Predicate<T> breakCondition, SettablePromise<T> cb) {
+	private static <T> void untilImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition, SettablePromise<T> cb) {
 		while (true) {
 			Promise<T> promise = next.apply(value);
 			if (promise.isResult()) {
@@ -1267,58 +1206,6 @@ public final class Promises {
 		}
 	}
 
-	private static <T> void untilImpl(@Nullable T value, @NotNull Function<T, Promise<T>> next,
-			@NotNull AsyncPredicate<T> breakCondition, SettablePromise<T> cb) {
-		while (true) {
-			Promise<T> promise = next.apply(value);
-			if (promise.isResult()) {
-				value = promise.getResult();
-				Promise<Boolean> breakPromise = breakCondition.test(value);
-				if (breakPromise.isResult()) {
-					if (breakPromise.getResult()) {
-						cb.set(value);
-						break;
-					} else {
-						continue;
-					}
-				}
-				@Nullable T finalValue = value;
-				breakPromise.whenComplete((b, e) -> {
-					if (e == null) {
-						if (b) {
-							cb.set(finalValue);
-						} else {
-							untilImpl(finalValue, next, breakCondition, cb);
-						}
-					} else {
-						cb.setException(e);
-					}
-				});
-				break;
-			} else {
-				promise.whenComplete((newValue, e) -> {
-					if (e == null) {
-						breakCondition.test(newValue)
-								.whenComplete((b, e2) -> {
-									if (e2 == null) {
-										if (b) {
-											cb.set(newValue);
-										} else {
-											untilImpl(newValue, next, breakCondition, cb);
-										}
-									} else {
-										cb.setException(e2);
-									}
-								});
-					} else {
-						cb.setException(e);
-					}
-				});
-				return;
-			}
-		}
-	}
-
 	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier) {
 		return retry(asyncSupplier, (v, e) -> e == null);
 	}
@@ -1331,9 +1218,9 @@ public final class Promises {
 		return Promise.ofCallback(cb -> retryImpl(asyncSupplier, breakCondition, cb));
 	}
 
-	static <T> void retryImpl(AsyncSupplier<T> asyncSupplier, BiPredicate<T, Throwable> breakCondition, SettablePromise<T> cb) {
+	static <T> void retryImpl(AsyncSupplier<T> next, BiPredicate<T, Throwable> breakCondition, SettablePromise<T> cb) {
 		while (true) {
-			Promise<T> promise = asyncSupplier.get();
+			Promise<T> promise = next.get();
 			if (promise.isComplete()) {
 				T v = promise.getResult();
 				Throwable e = promise.getException();
@@ -1347,7 +1234,7 @@ public final class Promises {
 				if (breakCondition.test(v, e)) {
 					cb.accept(v, e);
 				} else {
-					retryImpl(asyncSupplier, breakCondition, cb);
+					retryImpl(next, breakCondition, cb);
 				}
 			});
 			break;
@@ -1368,10 +1255,10 @@ public final class Promises {
 				retryImpl(asyncSupplier, breakCondition, (RetryPolicy<Object>) retryPolicy, null, cb));
 	}
 
-	private static <T> void retryImpl(@NotNull AsyncSupplier<? extends T> supplier, BiPredicate<T, Throwable> breakCondition,
+	private static <T> void retryImpl(@NotNull AsyncSupplier<? extends T> next, BiPredicate<T, Throwable> breakCondition,
 			@NotNull RetryPolicy<Object> retryPolicy, Object retryState,
 			SettablePromise<T> cb) {
-		supplier.get()
+		next.get()
 				.whenComplete((v, e) -> {
 					if (breakCondition.test(v, e)) {
 						cb.accept(v, e);
@@ -1384,7 +1271,7 @@ public final class Promises {
 							cb.setException(e != null ? e : new StacklessException(Promises.class, "RetryPolicy: giving up " + retryState));
 						} else {
 							eventloop.schedule(nextRetryTimestamp,
-									() -> retryImpl(supplier, breakCondition, retryPolicy, retryStateFinal, cb));
+									() -> retryImpl(next, breakCondition, retryPolicy, retryStateFinal, cb));
 						}
 					}
 				});
