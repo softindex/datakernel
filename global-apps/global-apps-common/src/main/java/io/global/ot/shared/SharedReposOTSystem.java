@@ -3,8 +3,8 @@ package io.global.ot.shared;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
-import io.global.ot.name.ChangeName;
-import io.global.ot.name.NameOTSystem;
+import io.global.ot.value.ChangeValue;
+import io.global.ot.value.ChangeValueOTSystem;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
@@ -14,7 +14,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public final class SharedReposOTSystem {
-	private static final OTSystem<ChangeName> CHANGE_NAME_OT_SYSTEM = NameOTSystem.createOTSystem();
+	private static final OTSystem<ChangeValue<String>> CHANGE_NAME_OT_SYSTEM = ChangeValueOTSystem.get();
 
 	private SharedReposOTSystem() {
 		throw new AssertionError();
@@ -34,7 +34,7 @@ public final class SharedReposOTSystem {
 						return TransformResult.of(right, left);
 					}
 					String id = left.getId();
-					TransformResult<ChangeName> result = CHANGE_NAME_OT_SYSTEM
+					TransformResult<ChangeValue<String>> result = CHANGE_NAME_OT_SYSTEM
 							.transform(left.getChangeNameOp(), right.getChangeNameOp());
 					return TransformResult.of(
 							collectDiffs(id, result.left),
@@ -48,7 +48,7 @@ public final class SharedReposOTSystem {
 
 					String id = left.getId();
 					// Remove wins
-					ChangeName changeNameOp = right.getChangeNameOp();
+					ChangeValue<String> changeNameOp = right.getChangeNameOp();
 					if (left.isRemove()) {
 						return TransformResult.right(drop(new SharedRepo(
 								id,
@@ -115,7 +115,7 @@ public final class SharedReposOTSystem {
 	}
 
 	@NotNull
-	public static List<RenameRepo> collectDiffs(String id, List<ChangeName> diffs) {
+	public static List<RenameRepo> collectDiffs(String id, List<ChangeValue<String>> diffs) {
 		return diffs.stream()
 				.map(changeName -> RenameRepo.of(id, changeName))
 				.collect(toList());

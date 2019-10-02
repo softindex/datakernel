@@ -8,8 +8,8 @@ import io.datakernel.ot.exceptions.OTTransformException;
 import io.global.comm.ot.post.operation.*;
 import io.global.ot.map.SetValue;
 import io.global.ot.map.SetValueOTSystem;
-import io.global.ot.name.ChangeName;
-import io.global.ot.name.NameOTSystem;
+import io.global.ot.value.ChangeValue;
+import io.global.ot.value.ChangeValueOTSystem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -187,9 +187,9 @@ public final class ThreadOTSystem {
 	}
 
 	private static OTSystem<ChangeContent> contentOTSystem() {
-		OTSystem<ChangeName> nameOTSystem = NameOTSystem.createOTSystem();
+		OTSystem<ChangeValue<String>> changeContentSubsystem = ChangeValueOTSystem.get();
 		return OTSystemImpl.<ChangeContent>create()
-				.withEmptyPredicate(ChangeContent.class, op -> nameOTSystem.isEmpty(op.getChangeContent()))
+				.withEmptyPredicate(ChangeContent.class, op -> changeContentSubsystem.isEmpty(op.getChangeContent()))
 				.withInvertFunction(ChangeContent.class, op ->
 						singletonList(new ChangeContent(op.getPostId(), op.getNext(), op.getPrev(), op.getTimestamp())))
 				.withSquashFunction(ChangeContent.class, ChangeContent.class, (first, second) -> {
@@ -202,7 +202,7 @@ public final class ThreadOTSystem {
 					if (!left.getPostId().equals(right.getPostId())) {
 						return TransformResult.of(right, left);
 					}
-					TransformResult<ChangeName> subResult = nameOTSystem.transform(
+					TransformResult<ChangeValue<String>> subResult = changeContentSubsystem.transform(
 							left.getChangeContent(), right.getChangeContent());
 					return collect(subResult, changeName -> new ChangeContent(left.getPostId(), changeName));
 				});

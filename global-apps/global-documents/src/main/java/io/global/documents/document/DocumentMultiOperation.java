@@ -1,7 +1,7 @@
 package io.global.documents.document;
 
 import io.global.ot.edit.EditOperation;
-import io.global.ot.name.ChangeName;
+import io.global.ot.value.ChangeValue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,9 +10,9 @@ import static java.util.Arrays.asList;
 
 public final class DocumentMultiOperation {
 	private final List<EditOperation> editOps;
-	private final List<ChangeName> documentNameOps;
+	private final List<ChangeValue<String>> documentNameOps;
 
-	public DocumentMultiOperation(List<EditOperation> editOps, List<ChangeName> documentNameOps) {
+	public DocumentMultiOperation(List<EditOperation> editOps, List<ChangeValue<String>> documentNameOps) {
 		this.editOps = editOps;
 		this.documentNameOps = documentNameOps;
 	}
@@ -26,7 +26,8 @@ public final class DocumentMultiOperation {
 		return this;
 	}
 
-	public DocumentMultiOperation withDocumentNameOps(ChangeName... roomNameOps) {
+	@SafeVarargs
+	public final DocumentMultiOperation withDocumentNameOps(ChangeValue<String>... roomNameOps) {
 		this.documentNameOps.addAll(asList(roomNameOps));
 		return this;
 	}
@@ -35,7 +36,7 @@ public final class DocumentMultiOperation {
 		return editOps;
 	}
 
-	public List<ChangeName> getDocumentNameOps() {
+	public List<ChangeValue<String>> getDocumentNameOps() {
 		return documentNameOps;
 	}
 }

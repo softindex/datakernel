@@ -1,26 +1,24 @@
 package io.global.ot.shared;
 
-import io.global.ot.name.ChangeName;
+import io.global.ot.value.ChangeValue;
 
 import java.util.Set;
 
-import static io.global.ot.name.ChangeName.changeName;
-
 public final class RenameRepo implements SharedReposOperation {
 	private final String id;
-	private final ChangeName changeNameOp;
+	private final ChangeValue<String> changeNameOp;
 
-	private RenameRepo(String id, ChangeName changeNameOp) {
+	private RenameRepo(String id, ChangeValue<String> changeNameOp) {
 		this.id = id;
 		this.changeNameOp = changeNameOp;
 	}
 
-	public static RenameRepo of(String id, ChangeName changeNameOp) {
+	public static RenameRepo of(String id, ChangeValue<String> changeNameOp) {
 		return new RenameRepo(id, changeNameOp);
 	}
 
 	public static RenameRepo of(String id, String prev, String next, long timestamp) {
-		return new RenameRepo(id, new ChangeName(prev, next, timestamp));
+		return new RenameRepo(id, ChangeValue.of(prev, next, timestamp));
 	}
 
 	@Override
@@ -43,10 +41,10 @@ public final class RenameRepo implements SharedReposOperation {
 
 	@Override
 	public SharedReposOperation invert() {
-		return new RenameRepo(id, changeName(changeNameOp.getNext(), changeNameOp.getPrev(), changeNameOp.getTimestamp()));
+		return new RenameRepo(id, ChangeValue.of(changeNameOp.getNext(), changeNameOp.getPrev(), changeNameOp.getTimestamp()));
 	}
 
-	public ChangeName getChangeNameOp() {
+	public ChangeValue<String> getChangeNameOp() {
 		return changeNameOp;
 	}
 }

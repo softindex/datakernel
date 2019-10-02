@@ -18,6 +18,7 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.stub.CommitStorageStub;
+import io.global.ot.value.ChangeValue;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -26,7 +27,6 @@ import static io.datakernel.async.TestUtils.await;
 import static io.global.documents.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
 import static io.global.documents.Utils.createMergedOTSystem;
 import static io.global.ot.edit.InsertOperation.insert;
-import static io.global.ot.name.ChangeName.changeName;
 import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
 
@@ -68,8 +68,8 @@ public class DocumentOTSystemTest {
 	public void test() {
 		await(stateManager1.checkout(), stateManager2.checkout());
 
-		stateManager1.add(DocumentMultiOperation.create().withDocumentNameOps(changeName(state1.getDocumentName(), "My Document 1", 10)));
-		stateManager2.add(DocumentMultiOperation.create().withDocumentNameOps(changeName(state2.getDocumentName(), "My Document 2", 20)));
+		stateManager1.add(DocumentMultiOperation.create().withDocumentNameOps(ChangeValue.of(state1.getDocumentName(), "My Document 1", 10)));
+		stateManager2.add(DocumentMultiOperation.create().withDocumentNameOps(ChangeValue.of(state2.getDocumentName(), "My Document 2", 20)));
 
 		sync();
 

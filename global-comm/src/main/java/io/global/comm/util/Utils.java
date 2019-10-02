@@ -64,7 +64,7 @@ public final class Utils {
 						ChangeAttachments::isRemove, BOOLEAN_CODEC))
 				.with(ChangeContent.class, registry -> tuple(ChangeContent::new,
 						ChangeContent::getPostId, STRING_CODEC,
-						ChangeContent::getChangeContent, CHANGE_NAME_CODEC))
+						ChangeContent::getChangeContent, ofChangeValue(STRING_CODEC)))
 				.with(ChangeLastEditTimestamp.class, registry -> tuple(ChangeLastEditTimestamp::new,
 						ChangeLastEditTimestamp::getPostId, STRING_CODEC,
 						ChangeLastEditTimestamp::getPrevTimestamp, LONG_CODEC,

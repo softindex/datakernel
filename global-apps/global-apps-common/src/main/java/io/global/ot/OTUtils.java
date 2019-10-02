@@ -11,7 +11,6 @@ import io.global.ot.edit.EditOperation;
 import io.global.ot.edit.InsertOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
-import io.global.ot.name.ChangeName;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.RenameRepo;
@@ -31,11 +30,6 @@ public final class OTUtils {
 
 	public static final RetryPolicy POLL_RETRY_POLICY = RetryPolicy.exponentialBackoff(1000, 1000 * 60);
 
-	public static final StructuredCodec<ChangeName> CHANGE_NAME_CODEC = object(ChangeName::new,
-			"prev", ChangeName::getPrev, STRING_CODEC,
-			"next", ChangeName::getNext, STRING_CODEC,
-			"timestamp", ChangeName::getTimestamp, LONG_CODEC);
-
 	public static final StructuredCodec<SharedRepo> SHARED_REPO_CODEC = object(SharedRepo::new,
 			"id", SharedRepo::getId, STRING_CODEC,
 			"name", SharedRepo::getName, STRING_CODEC,
@@ -47,7 +41,7 @@ public final class OTUtils {
 
 	public static final StructuredCodec<RenameRepo> RENAME_REPO_CODEC = object(RenameRepo::of,
 			"id", RenameRepo::getId, STRING_CODEC,
-			"changeName", RenameRepo::getChangeNameOp, CHANGE_NAME_CODEC);
+			"changeName", RenameRepo::getChangeNameOp, ofChangeValue(STRING_CODEC));
 
 	public static final StructuredCodec<CreateSharedRepo> SHARED_REPO_MESSAGE_CODEC = SHARED_REPO_CODEC
 			.transform(CreateSharedRepo::new, CreateSharedRepo::getSharedRepo);

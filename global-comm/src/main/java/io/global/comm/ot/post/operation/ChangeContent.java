@@ -1,7 +1,7 @@
 package io.global.comm.ot.post.operation;
 
 import io.global.comm.pojo.Post;
-import io.global.ot.name.ChangeName;
+import io.global.ot.value.ChangeValue;
 
 import java.util.Map;
 
@@ -9,15 +9,15 @@ import static io.datakernel.util.StringFormatUtils.limit;
 
 public final class ChangeContent implements ThreadOperation {
 	private final String postId;
-	private final ChangeName changeContent;
+	private final ChangeValue<String> changeContent;
 
-	public ChangeContent(String postId, ChangeName changeContent) {
+	public ChangeContent(String postId, ChangeValue<String> changeContent) {
 		this.postId = postId;
 		this.changeContent = changeContent;
 	}
 
 	public ChangeContent(String postId, String prev, String next, long timestamp) {
-		this(postId, new ChangeName(prev, next, timestamp));
+		this(postId, ChangeValue.of(prev, next, timestamp));
 	}
 
 	@Override
@@ -30,7 +30,7 @@ public final class ChangeContent implements ThreadOperation {
 		return postId;
 	}
 
-	public ChangeName getChangeContent() {
+	public ChangeValue<String> getChangeContent() {
 		return changeContent;
 	}
 
