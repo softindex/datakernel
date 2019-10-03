@@ -1,9 +1,9 @@
 import React from 'react';
 import {Redirect, withRouter} from 'react-router-dom';
-import connectService from '../connectService/connectService';
-import AuthContext from './AuthContext';
+import {connectService} from '../service/connectService';
+import {AuthContext} from './AuthContext';
 
-function checkAuth(Component) {
+export function checkAuth(Component) {
   function CheckAuth({authorized, location, wasAuthorized, ...otherProps}) {
     if (!authorized) {
       if (location.pathname !== "/" && !wasAuthorized) {
@@ -23,4 +23,3 @@ function checkAuth(Component) {
   }))(CheckAuth));
 }
 
-export default checkAuth;

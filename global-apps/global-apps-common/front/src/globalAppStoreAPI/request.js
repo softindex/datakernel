@@ -1,4 +1,4 @@
-async function request(resource, init) {
+export async function request(resource, init) {
   const response = await fetch(resource, init);
 
   if (!response.ok) {
@@ -19,4 +19,3 @@ async function request(resource, init) {
   return response;
 }
 
-export default request;

@@ -143,7 +143,7 @@ function SideBarTabs({
     onRemoveContact(contactPublicKey) {
       enqueueSnackbar('Deleting...');
       return contactsService.removeContact(contactPublicKey)
-        .then((dialogRoomId) => {
+        .then(({dialogRoomId}) => {
           const {roomId} = match.params;
           setTimeout(() => closeSnackbar(), 1000);
           if (roomId === dialogRoomId) {

@@ -1,6 +1,6 @@
 import EventEmitter from 'events';
 
-class Service extends EventEmitter {
+export class Service extends EventEmitter {
   constructor(initialStore) {
     super();
     this.state = initialStore;
@@ -30,5 +30,3 @@ class Service extends EventEmitter {
     return this.getAll();
   }
 }
-
-export default Service;

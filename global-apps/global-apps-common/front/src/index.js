@@ -1,31 +1,19 @@
-import checkAuth from './auth/checkAuth';
-import request from './globalAppStoreAPI/request';
-import connectService from './connectService/connectService';
-import Service from './connectService/Service';
-import AuthContext from './auth/AuthContext';
-import AuthService from './auth/AuthService';
-import GlobalAppStoreAPI from './globalAppStoreAPI/GlobalAppStoreAPI';
-import SignUpAbstractionImage from './signUp/SignUpAbstractionImage/SignUpAbstractionImage';
-import SignUp from './signUp/SignUp/SignUp';
-import OAuthCallback from './auth/OAuthCallback/OAuthCallback';
-import Avatar from './avatar/Avatar';
-import ContactChip from './contactChip/ContactChip';
+import SignUp from './components/SignUp/SignUp';
+import OAuthCallback from './auth/OAuthCallback';
+import Avatar from './components/avatar/Avatar';
+import ContactChip from './components/contactChip/ContactChip';
 
-export * from './utils/utils';
-export * from './serviceHooks';
+export * from './auth/checkAuth';
+export * from './globalAppStoreAPI/GlobalAppStoreAPI';
+export * from './globalAppStoreAPI/request';
+export * from './service/connectService';
+export * from './service/serviceHooks';
+export * from './service/Service';
+export * from './utils';
+export * from './service/serviceHooks';
 export * from './DI';
-export {
-  checkAuth,
-  request,
-  connectService,
-  SignUp,
-  Service,
-  AuthContext,
-  AuthService,
-  SignUpAbstractionImage,
-  GlobalAppStoreAPI,
-  OAuthCallback,
-  Avatar,
-  ContactChip
-}
+export * from './auth/AuthContext';
+export * from './auth/AuthService';
+export * from './components/SignUpAbstractionImage/SignUpAbstractionImage';
+export {SignUp, OAuthCallback, Avatar, ContactChip}
 

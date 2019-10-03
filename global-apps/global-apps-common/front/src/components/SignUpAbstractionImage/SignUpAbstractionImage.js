@@ -27,7 +27,7 @@ class Node {
   }
 }
 
-class SignUpAbstractionImage extends Component {
+export class SignUpAbstractionImage extends Component {
   componentDidMount() {
     this.renderAnimation();
   }
@@ -101,5 +101,4 @@ class SignUpAbstractionImage extends Component {
   }
 }
 
-export default SignUpAbstractionImage;
 

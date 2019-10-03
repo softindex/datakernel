@@ -1,8 +1,8 @@
 import url from 'url';
-import request from './request';
+import {request} from './request';
 import marked from "marked";
 
-class GlobalAppStoreAPI {
+export class GlobalAppStoreAPI {
   constructor(request, url = '') {
     this._request = request;
     this._url = url;
@@ -136,4 +136,3 @@ class GlobalAppStoreAPI {
   }
 }
 
-export default GlobalAppStoreAPI;

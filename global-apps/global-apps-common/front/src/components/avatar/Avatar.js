@@ -4,7 +4,7 @@ import Badge from "@material-ui/core/Badge";
 import ListItemAvatar from "@material-ui/core/ListItemAvatar";
 import MuiAvatar from "@material-ui/core/Avatar"
 import avatarStyles from "./avatarStyles";
-import {getAvatarLetters} from "..";
+import {getAvatarLetters} from "../../index";
 
 function Avatar({classes, name, selected}) {
   return (
