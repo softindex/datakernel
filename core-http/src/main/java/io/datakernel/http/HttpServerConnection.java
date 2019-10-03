@@ -260,6 +260,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			servletResult = Promise.ofException(u.getCause());
 		}
 		servletResult.whenComplete((response, e) -> {
+			assert eventloop.inEventloopThread();
 			if (isClosed()) {
 				request.recycle();
 				if (response != null) {

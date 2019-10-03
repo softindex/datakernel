@@ -18,7 +18,6 @@ DataKernel is a full-featured alternative Java framework, created from ground up
 - 🧩 Exceptionally fast, powerful, and simple **Dependency Injection**
 - ⏱ Magnificently **fast build** and **start-up times** for your applications with **extremely small** JAR sizes
 - 🚀 A wide selection of application launchers and **embedded servers**
-- ⚙️ **Elegant** data structures and components with outstanding **performance**
 - 🌎 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
 - 🏎 Scalable and fault-tolerant **microservice** architecture with ultra-fast binary messaging 
 - 📖 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**
@@ -54,7 +53,7 @@ public final class HelloWorldExample {
 ```
 `AsyncHttpServer` is a built-in implementation of an HTTP server which asynchronously runs in a Node.js-inspired Event Loop.
 
-📌 *`AsyncHttpServer` is up to 20% faster than [multithreaded Vert.x server](https://github.com/networknt/microservices-framework-benchmark/tree/master/vertx), with 1/2 of CPU usage, on a single core!*
+- *`AsyncHttpServer` is up to 20% faster than [multithreaded Vert.x server](https://github.com/networknt/microservices-framework-benchmark/tree/master/vertx), with 1/2 of CPU usage, on a single core!*
 
 ### Full-featured embedded web application server, with Dependency Injection:
 ```java
@@ -78,26 +77,21 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 
 `Promise` - Node.js-inspired async single-threaded Promises, an alternative to `CompletableFuture`
 
-📌 *The JAR file size of this example is only 723KB, with no extra dependencies*
-
-📌 *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
-
-📌 *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 5.5 times faster than Guice and 100s times faster than Spring.*
-
-📌 *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
+- *The JAR file size of this example is only 723KB, with no extra dependencies*
+- *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
+- *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 5.5 times faster than Guice and 100s times faster than Spring.*
+- *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
 
 ### Lightning-fast RPC server:
 ```java
-...
 public RpcServer rpcServer(Eventloop eventloop) {
     return RpcServer.create(eventloop)
             .withStreamProtocol(...)
             .withMessageTypes(Integer.class)
             .withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
 }
-...
 ```
-📌 *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on a single core*.
+- *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on a single core*.
 
 ## Documentation
 See the docs, examples and tutorials on [our website](https://datakernel.io).

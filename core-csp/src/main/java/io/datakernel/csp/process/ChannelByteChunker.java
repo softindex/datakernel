@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.MemSize;
@@ -44,8 +43,9 @@ public final class ChannelByteChunker extends AbstractChannelTransformer<Channel
 	protected Promise<Void> onItem(ByteBuf item) {
 		bufs.add(item);
 		return Promises.loop(
-				AsyncPredicate.of($ -> bufs.hasRemainingBytes(minChunkSize)),
-				() -> {
+				null,
+				$ -> bufs.hasRemainingBytes(minChunkSize),
+				$ -> {
 					int exactSize = 0;
 					for (int i = 0; i != bufs.remainingBufs(); i++) {
 						exactSize += bufs.peekBuf(i).readRemaining();

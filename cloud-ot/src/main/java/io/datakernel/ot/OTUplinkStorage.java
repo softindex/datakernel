@@ -52,7 +52,7 @@ public final class OTUplinkStorage<K, D> implements OTUplink<Long, D, OTUplinkSt
 			return getHead()
 					.then(headCommitId ->
 							Promises.loop(commitId + 1L,
-									i -> Promise.of(i <= headCommitId),
+									i -> i <= headCommitId,
 									i -> getCommit(i)
 											.map(commit -> {
 												diffs.addAll(commit.getDiffs());

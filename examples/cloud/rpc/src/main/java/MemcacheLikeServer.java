@@ -4,7 +4,6 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.server.MemcacheServerModule;
@@ -19,9 +18,6 @@ import static io.datakernel.di.module.Modules.combine;
 public class MemcacheLikeServer extends Launcher {
 
 	@Provides
-	Eventloop eventloop() { return Eventloop.create(); }
-
-	@Provides
 	Config config() {
 		return Config.create()
 				.with("memcache.buffers", "8")
@@ -32,9 +28,6 @@ public class MemcacheLikeServer extends Launcher {
 
 	@Inject
 	RpcServer memcacheServer;
-
-	@Inject
-	Eventloop eventloop;
 
 	@Override
 	protected Module getModule() {
@@ -47,8 +40,7 @@ public class MemcacheLikeServer extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		eventloop.run();
-		memcacheServer.listen();
+		awaitShutdown();
 	}
 
 	public static void main(String[] args) throws Exception {

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -60,7 +59,8 @@ public final class PingPongSocketConnection {
 		AsyncTcpSocketImpl.connect(ADDRESS)
 				.whenResult(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
-					loop(0, AsyncPredicate.of(i -> i < ITERATIONS),
+					loop(0,
+							i -> i < ITERATIONS,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.then($ -> bufsSupplier.parse(PARSER)
 											.whenResult(System.out::println)

@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.eventloop;
 
-import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelSupplier;
@@ -244,14 +243,15 @@ public final class AsyncSslSocketTest {
 		return builder.toString();
 	}
 
-	private Promise<Void> sendData(AsyncTcpSocket socket) {
+	private Promise<?> sendData(AsyncTcpSocket socket) {
 		String largeData = generateLargeString(10_000);
 		ByteBuf largeBuf = wrapAscii(largeData);
 		sentData.append(largeData);
 		sentData.append(String.join("", Collections.nCopies(1000, TEST_STRING)));
 
 		return socket.write(largeBuf)
-				.then($ -> Promises.loop(1000, AsyncPredicate.of(i -> i != 0),
+				.then($ -> Promises.loop(1000,
+						i -> i != 0,
 						i -> socket.write(wrapAscii(TEST_STRING))
 								.async()
 								.map($2 -> i - 1)));

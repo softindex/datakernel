@@ -3,6 +3,7 @@ package io.datakernel.ot;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import io.datakernel.promise.RetryPolicy;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -33,14 +34,15 @@ public final class PollSanitizer<T> implements AsyncSupplier<T> {
 
 	@Override
 	public Promise<T> get() {
-		return Promises.until(poll,
+		return Promises.retry(poll,
 				value -> {
-					if (!Objects.equals(value, lastValue)) {
-						this.lastValue = value;
-						return Promise.of(true);
+					if (Objects.equals(value, lastValue)) {
+						return false;
 					} else {
-						return Promises.delay(yieldInterval, false);
+						this.lastValue = value;
+						return true;
 					}
-				});
+				},
+				RetryPolicy.fixedDelay(yieldInterval));
 	}
 }

@@ -13,10 +13,12 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.promise.Promises.retry;
 
 public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBeanEx {
 
@@ -75,8 +77,10 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 		if (next < limit) {
 			return Promise.of(next++);
 		}
-		return reserveId.get()
-				.then($ -> createId());
+		return retry(
+				() -> reserveId.get()
+						.then($ -> next < limit ? Promise.of(next++) : Promise.of(null)),
+				Objects::nonNull);
 	}
 
 	@NotNull

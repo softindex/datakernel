@@ -48,6 +48,7 @@ import static io.datakernel.common.Utils.loadResource;
 import static io.datakernel.common.sql.SqlUtils.execute;
 import static io.datakernel.promise.Promises.retry;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.sql.Connection.TRANSACTION_READ_COMMITTED;
 import static java.util.stream.Collectors.joining;
 
 public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
@@ -384,6 +385,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
+						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
 								"DELETE FROM {revisions} " +

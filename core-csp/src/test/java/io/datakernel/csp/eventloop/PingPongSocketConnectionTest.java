@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.eventloop;
 
-import io.datakernel.async.function.AsyncPredicate;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
@@ -64,7 +63,8 @@ public final class PingPongSocketConnectionTest {
 		SimpleServer.create(
 				socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
-					loop(ITERATIONS, AsyncPredicate.of(i -> i != 0),
+					loop(ITERATIONS,
+							i -> i != 0,
 							i -> bufsSupplier.parse(PARSER)
 									.whenResult(res -> assertEquals(REQUEST_MSG, res))
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG)))
@@ -79,7 +79,8 @@ public final class PingPongSocketConnectionTest {
 		await(AsyncTcpSocketImpl.connect(ADDRESS)
 				.then(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
-					return loop(ITERATIONS, AsyncPredicate.of(i -> i != 0),
+					return loop(ITERATIONS,
+							i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.then($ -> bufsSupplier.parse(PARSER))
 									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
