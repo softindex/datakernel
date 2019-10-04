@@ -10,7 +10,7 @@ function EmptyNote({classes}) {
       <Paper className={classes.paper}>
         <Typography className={classes.typography} variant="h6">
           <div className={classes.emptyNote}>
-            Please select a document or create new
+            Please select a note or create new
           </div>
         </Typography>
       </Paper>
