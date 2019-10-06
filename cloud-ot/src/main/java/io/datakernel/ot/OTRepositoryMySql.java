@@ -396,7 +396,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
 								"DELETE FROM {revisions} " +
 								"WHERE `type` in ('HEAD', 'INNER') AND `level` < " +
-								"  (SELECT t2.`level` FROM (SELECT t.`level` FROM {revisions} t WHERE t.`id`=?) AS t2)"
+								"  (SELECT t2.`level` FROM (SELECT t.`level` FROM {revisions} t WHERE t.`id`=?) AS t2)-1"
 						))) {
 							ps.setLong(1, minId);
 							ps.executeUpdate();
