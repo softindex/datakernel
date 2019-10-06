@@ -155,6 +155,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(true);
+						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 						try (PreparedStatement statement = connection.prepareStatement(sql(
 								"INSERT INTO {revisions}(`epoch`, `type`, `created_by`, `level`) VALUES (0, ?, ?, 0)"),
 								Statement.RETURN_GENERATED_KEYS
@@ -198,6 +199,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
+						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 
 						for (OTCommit<Long, D> commit : commits) {
 							for (Long parentId : commit.getParents().keySet()) {
@@ -242,6 +244,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
 						connection.setAutoCommit(false);
+						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 
 						updateRevisions(newHeads, connection, "HEAD");
 						updateRevisions(excludedHeads, connection, "INNER");
@@ -359,6 +362,9 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
+						connection.setAutoCommit(true);
+						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
+
 						String snapshot = toJson(otSystem.squash(diffs));
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
 								"UPDATE {revisions} SET `snapshot`=? WHERE `id`=?"
@@ -384,13 +390,13 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
-						connection.setAutoCommit(false);
+						connection.setAutoCommit(true);
 						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
 								"DELETE FROM {revisions} " +
 								"WHERE `type` in ('HEAD', 'INNER') AND `level` < " +
-								"  (SELECT t2.`level` FROM (SELECT t.`level` FROM {revisions} t WHERE t.`id`=?) AS t2)"
+								"  (SELECT t2.`level` FROM (SELECT t.`level` FROM {revisions} t WHERE t.`id`=?) AS t2)-1"
 						))) {
 							ps.setLong(1, minId);
 							ps.executeUpdate();
@@ -402,8 +408,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						))) {
 							ps.executeUpdate();
 						}
-
-						connection.commit();
 					}
 
 					return (Void) null;

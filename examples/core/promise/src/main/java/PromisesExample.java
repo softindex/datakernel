@@ -26,8 +26,8 @@ public final class PromisesExample {
 		Promises.loop(0,
 				i -> i < 5,
 				i -> {
-					System.out.println("This is iteration #" + ++i);
-					return Promise.of(i);
+					System.out.println("This is iteration #" + i);
+					return Promise.of(i + 1);
 				});
 		//[END REGION_2]
 		System.out.println();
