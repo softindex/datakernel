@@ -43,28 +43,4 @@ final class ExpressionArraySet implements Expression {
 		g.arrayStore(getType(arrayType.getDescriptor().substring(1)));
 		return Type.VOID_TYPE;
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionArraySet that = (ExpressionArraySet) o;
-
-		if (!array.equals(that.array)) return false;
-		if (!position.equals(that.position)) return false;
-		if (!newElement.equals(that.newElement)) return false;
-
-		return true;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = array.hashCode();
-		result = 31 * result + position.hashCode();
-		result = 31 * result + newElement.hashCode();
-		return result;
-	}
 }

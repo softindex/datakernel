@@ -20,9 +20,6 @@ import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.Objects;
-
-import static io.datakernel.common.Utils.deepHashCode;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -81,19 +78,5 @@ final class ExpressionConstant implements Expression {
 			g.getStatic(ctx.getSelfType(), staticConstantField, getType(value.getClass()));
 		}
 		return type;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionConstant that = (ExpressionConstant) o;
-		return Objects.deepEquals(value, that.value);
-	}
-
-	@Override
-	public int hashCode() {
-		return deepHashCode(value);
 	}
 }

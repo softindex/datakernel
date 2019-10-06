@@ -75,26 +75,4 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		g.mark(labelExit);
 		return Type.VOID_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		AbstractExpressionMapForEach that = (AbstractExpressionMapForEach) o;
-
-		if (!collection.equals(that.collection)) return false;
-		if (!forKey.equals(that.forKey)) return false;
-		if (!forValue.equals(that.forValue)) return false;
-		return entryClazz.equals(that.entryClazz);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = collection.hashCode();
-		result = 31 * result + forKey.hashCode();
-		result = 31 * result + forValue.hashCode();
-		result = 31 * result + entryClazz.hashCode();
-		return result;
-	}
 }

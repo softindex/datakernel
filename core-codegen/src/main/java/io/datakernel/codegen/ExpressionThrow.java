@@ -21,8 +21,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import java.util.Objects;
-
 import static org.objectweb.asm.Type.VOID_TYPE;
 import static org.objectweb.asm.Type.getType;
 
@@ -49,20 +47,5 @@ final class ExpressionThrow implements Expression {
 		}
 		g.throwException();
 		return VOID_TYPE;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		ExpressionThrow that = (ExpressionThrow) o;
-		if (!Objects.equals(this.exceptionClass, that.exceptionClass)) return false;
-		if (!Objects.equals(this.message, that.message)) return false;
-		return false;
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(exceptionClass, message);
 	}
 }

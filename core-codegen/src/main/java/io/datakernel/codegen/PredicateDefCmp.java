@@ -86,31 +86,4 @@ final class PredicateDefCmp implements PredicateDef {
 
 		return BOOLEAN_TYPE;
 	}
-
-	public int getOperationOpCode() {
-		return operation.opCode;
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		PredicateDefCmp that = (PredicateDefCmp) o;
-
-		if (!left.equals(that.left)) return false;
-		if (!right.equals(that.right)) return false;
-		if (operation != that.operation) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = left.hashCode();
-		result = 31 * result + right.hashCode();
-		result = 31 * result + operation.hashCode();
-		return result;
-	}
 }

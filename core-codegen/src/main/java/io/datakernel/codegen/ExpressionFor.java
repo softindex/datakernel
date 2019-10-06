@@ -68,25 +68,4 @@ final class ExpressionFor implements Expression {
 
 		return Type.VOID_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionFor that = (ExpressionFor) o;
-
-		if (!to.equals(that.to)) return false;
-		if (!from.equals(that.from)) return false;
-		return forVar.equals(that.forVar);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = to.hashCode();
-		result = 31 * result + from.hashCode();
-		result = 31 * result + forVar.hashCode();
-		return result;
-	}
 }

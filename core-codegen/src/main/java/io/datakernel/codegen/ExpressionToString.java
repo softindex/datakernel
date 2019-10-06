@@ -127,29 +127,4 @@ public final class ExpressionToString implements Expression {
 		g.invokeVirtual(getType(StringBuilder.class), getMethod("String toString()"));
 		return getType(String.class);
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionToString that = (ExpressionToString) o;
-
-		if (!begin.equals(that.begin)) return false;
-		if (!end.equals(that.end)) return false;
-		if (!separator.equals(that.separator)) return false;
-		if (!arguments.equals(that.arguments)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = begin.hashCode();
-		result = 31 * result + end.hashCode();
-		result = 31 * result + separator.hashCode();
-		result = 31 * result + arguments.hashCode();
-		return result;
-	}
 }

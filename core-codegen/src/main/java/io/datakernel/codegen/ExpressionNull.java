@@ -38,18 +38,4 @@ final class ExpressionNull implements Expression {
 		g.push((String) null);
 		return type;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionNull that = (ExpressionNull) o;
-		return type.equals(that.type);
-	}
-
-	@Override
-	public int hashCode() {
-		return type.hashCode();
-	}
 }

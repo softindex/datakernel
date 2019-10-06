@@ -53,28 +53,4 @@ final class ExpressionIf implements Expression {
 		g.mark(labelExit);
 		return leftType;
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionIf that = (ExpressionIf) o;
-
-		if (!condition.equals(that.condition)) return false;
-		if (!left.equals(that.left)) return false;
-		if (!right.equals(that.right)) return false;
-
-		return true;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = condition.hashCode();
-		result = 31 * result + left.hashCode();
-		result = 31 * result + right.hashCode();
-		return result;
-	}
 }

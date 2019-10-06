@@ -114,24 +114,4 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 
 		return Type.VOID_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		AbstractExpressionIteratorForEach that = (AbstractExpressionIteratorForEach) o;
-
-		if (!collection.equals(that.collection)) return false;
-		if (!forEach.equals(that.forEach)) return false;
-		return type.equals(that.type);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = collection.hashCode();
-		result = 31 * result + forEach.hashCode();
-		result = 31 * result + type.hashCode();
-		return result;
-	}
 }

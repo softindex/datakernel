@@ -37,24 +37,4 @@ final class ExpressionArrayGet implements Expression {
 		g.arrayLoad(type);
 		return type;
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionArrayGet that = (ExpressionArrayGet) o;
-
-		if (!array.equals(that.array)) return false;
-		if (!index.equals(that.index)) return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = array.hashCode();
-		result = 31 * result + index.hashCode();
-		return result;
-	}
 }

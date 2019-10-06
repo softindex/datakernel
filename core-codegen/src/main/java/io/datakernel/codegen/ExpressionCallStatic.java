@@ -74,27 +74,4 @@ final class ExpressionCallStatic implements Expression {
 		g.invokeStatic(Type.getType(owner), org.objectweb.asm.commons.Method.getMethod(method));
 		return returnType;
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionCallStatic that = (ExpressionCallStatic) o;
-
-		if (!owner.equals(that.owner)) return false;
-		if (!name.equals(that.name)) return false;
-		if (!arguments.equals(that.arguments)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = owner.hashCode();
-		result = 31 * result + name.hashCode();
-		result = 31 * result + arguments.hashCode();
-		return result;
-	}
 }

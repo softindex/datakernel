@@ -101,18 +101,4 @@ final class ExpressionHash implements Expression {
 
 		return INT_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionHash that = (ExpressionHash) o;
-		return arguments.equals(that.arguments);
-	}
-
-	@Override
-	public int hashCode() {
-		return arguments.hashCode();
-	}
 }

@@ -30,16 +30,4 @@ final class ExpressionVoid implements Expression {
 	public Type load(Context ctx) {
 		return VOID_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		return o != null && getClass() == o.getClass();
-	}
-
-	@Override
-	public int hashCode() {
-		return 0;
-	}
-
 }

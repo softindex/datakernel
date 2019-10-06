@@ -54,18 +54,4 @@ final class ExpressionLet implements Variable {
 
 		var.store(ctx, storeContext, type);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionLet that = (ExpressionLet) o;
-		return field.equals(that.field);
-	}
-
-	@Override
-	public int hashCode() {
-		return field.hashCode();
-	}
 }

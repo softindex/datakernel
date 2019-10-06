@@ -41,17 +41,4 @@ final class PredicateDefNot implements PredicateDef {
 		g.visitLabel(labelExit);
 		return Type.BOOLEAN_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		PredicateDefNot that = (PredicateDefNot) o;
-		return predicateDef.equals(that.predicateDef);
-	}
-
-	@Override
-	public int hashCode() {
-		return predicateDef.hashCode();
-	}
 }

@@ -42,25 +42,4 @@ final class ExpressionNewArray implements Expression {
 			return getType("[L" + type.getName() + ";");
 		}
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionNewArray that = (ExpressionNewArray) o;
-
-		if (!type.equals(that.type)) return false;
-		if (!length.equals(that.length)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = type.hashCode();
-		result = 31 * result + length.hashCode();
-		return result;
-	}
 }

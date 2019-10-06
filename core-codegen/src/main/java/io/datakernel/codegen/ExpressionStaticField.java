@@ -81,22 +81,4 @@ final class ExpressionStaticField implements Variable {
 				exceptionInGeneratedClass(ctx))
 		);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionStaticField that = (ExpressionStaticField) o;
-
-		if (!owner.equals(that.owner)) return false;
-		return name.equals(that.name);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = owner.hashCode();
-		result = 31 * result + name.hashCode();
-		return result;
-	}
 }

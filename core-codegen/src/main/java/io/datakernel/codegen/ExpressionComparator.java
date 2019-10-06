@@ -169,18 +169,4 @@ public final class ExpressionComparator implements Expression {
 
 		return INT_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionComparator that = (ExpressionComparator) o;
-		return pairs.equals(that.pairs);
-	}
-
-	@Override
-	public int hashCode() {
-		return pairs.hashCode();
-	}
 }

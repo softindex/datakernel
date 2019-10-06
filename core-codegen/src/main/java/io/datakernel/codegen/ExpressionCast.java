@@ -41,25 +41,4 @@ final class ExpressionCast implements Expression {
 		ctx.cast(expression.load(ctx), targetType);
 		return targetType;
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionCast that = (ExpressionCast) o;
-
-		if (!expression.equals(that.expression)) return false;
-		if (!targetType.equals(that.targetType)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = expression.hashCode();
-		result = 31 * result + targetType.hashCode();
-		return result;
-	}
 }

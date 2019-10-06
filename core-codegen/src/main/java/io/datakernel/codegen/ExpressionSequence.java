@@ -51,18 +51,4 @@ final class ExpressionSequence implements Expression {
 
 		return type;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionSequence that = (ExpressionSequence) o;
-		return expressions.equals(that.expressions);
-	}
-
-	@Override
-	public int hashCode() {
-		return expressions.hashCode();
-	}
 }

@@ -101,23 +101,6 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 					", expressionStaticMap=" + expressionStaticMap +
 					'}';
 		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			AsmClassKey<?> that = (AsmClassKey<?>) o;
-			return Objects.equals(mainClass, that.mainClass) &&
-					Objects.equals(otherClasses, that.otherClasses) &&
-					Objects.equals(fields, that.fields) &&
-					Objects.equals(expressionMap, that.expressionMap) &&
-					Objects.equals(expressionStaticMap, that.expressionStaticMap);
-		}
-
-		@Override
-		public int hashCode() {
-			return Objects.hash(mainClass, otherClasses, fields, expressionMap, expressionStaticMap);
-		}
 	}
 
 	// region builders

@@ -53,18 +53,4 @@ final class PredicateDefAnd implements PredicateDef {
 		g.mark(exit);
 		return BOOLEAN_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		PredicateDefAnd that = (PredicateDefAnd) o;
-		return predicates.equals(that.predicates);
-	}
-
-	@Override
-	public int hashCode() {
-		return predicates.hashCode();
-	}
 }

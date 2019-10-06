@@ -69,18 +69,4 @@ final class ExpressionNeg implements Expression {
 				exceptionInGeneratedClass(ctx))
 		);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionNeg that = (ExpressionNeg) o;
-		return arg.equals(that.arg);
-	}
-
-	@Override
-	public int hashCode() {
-		return arg.hashCode();
-	}
 }

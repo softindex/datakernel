@@ -124,24 +124,4 @@ final class ExpressionBitOp implements Expression {
 			return Type.INT_TYPE;
 		}
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionBitOp that = (ExpressionBitOp) o;
-
-		if (op != that.op) return false;
-		if (!left.equals(that.left)) return false;
-		return right.equals(that.right);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = op.hashCode();
-		result = 31 * result + left.hashCode();
-		result = 31 * result + right.hashCode();
-		return result;
-	}
 }

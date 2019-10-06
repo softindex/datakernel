@@ -75,25 +75,4 @@ final class ExpressionCallStaticSelf implements Expression {
 		g.invokeStatic(ctx.getSelfType(), new Method(methodName, returnType, argumentTypes));
 		return returnType;
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionCallStaticSelf that = (ExpressionCallStaticSelf) o;
-
-		if (!methodName.equals(that.methodName)) return false;
-		if (!arguments.equals(that.arguments)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = methodName.hashCode();
-		result = 31 * result + arguments.hashCode();
-		return result;
-	}
 }

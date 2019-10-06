@@ -18,9 +18,6 @@ package io.datakernel.codegen;
 
 import org.objectweb.asm.Type;
 
-import java.util.Arrays;
-import java.util.Objects;
-
 /**
  * Defines methods for using static methods from other classes
  */
@@ -38,25 +35,5 @@ final class ExpressionCall implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		return ctx.invoke(owner, methodName, arguments);
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		ExpressionCall that = (ExpressionCall) o;
-		if (!Objects.equals(this.owner, that.owner)) return false;
-		if (!Objects.equals(this.methodName, that.methodName)) return false;
-		if (!Arrays.equals(this.arguments, that.arguments)) return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = owner.hashCode();
-		result = 31 * result + methodName.hashCode();
-		result = 31 * result + Arrays.hashCode(arguments);
-		return result;
 	}
 }

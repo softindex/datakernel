@@ -21,7 +21,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.List;
-import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.exception;
 import static io.datakernel.codegen.Expressions.newLocal;
@@ -70,27 +69,5 @@ final class ExpressionSwitchByIndex implements Expression {
 		g.mark(labelExit);
 
 		return listItemType;
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionSwitchByIndex that = (ExpressionSwitchByIndex) o;
-
-		if (!Objects.equals(index, that.index)) return false;
-		if (!Objects.equals(expressions, that.expressions)) return false;
-		if (!Objects.equals(defaultExpression, that.defaultExpression)) return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = index.hashCode();
-		result = 31 * result + expressions.hashCode();
-		result = 31 * result + (defaultExpression == null ? 0 : expressions.hashCode());
-		return result;
 	}
 }

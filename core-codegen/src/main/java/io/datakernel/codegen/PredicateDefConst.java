@@ -32,18 +32,4 @@ final class PredicateDefConst implements PredicateDef {
 		g.push(value);
 		return Type.BOOLEAN_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		PredicateDefConst that = (PredicateDefConst) o;
-		return value == that.value;
-	}
-
-	@Override
-	public int hashCode() {
-		return Boolean.hashCode(value);
-	}
 }

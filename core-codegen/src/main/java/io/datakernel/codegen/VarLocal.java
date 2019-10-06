@@ -61,18 +61,4 @@ public final class VarLocal implements Variable {
 	public int getLocal() {
 		return local;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		VarLocal varLocal = (VarLocal) o;
-		return local == varLocal.local;
-	}
-
-	@Override
-	public int hashCode() {
-		return local;
-	}
 }

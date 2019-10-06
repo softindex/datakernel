@@ -90,25 +90,4 @@ final class ExpressionArithmeticOp implements Expression {
 		g.visitInsn(resultType.getOpcode(op.opCode));
 		return resultType;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionArithmeticOp that = (ExpressionArithmeticOp) o;
-
-		if (op != that.op) return false;
-		if (!left.equals(that.left)) return false;
-		return right.equals(that.right);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = op.hashCode();
-		result = 31 * result + left.hashCode();
-		result = 31 * result + right.hashCode();
-		return result;
-	}
-
 }

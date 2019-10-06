@@ -47,19 +47,5 @@ final class ExpressionCmpNotNull implements PredicateDef {
 
 		return Type.BOOLEAN_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionCmpNotNull that = (ExpressionCmpNotNull) o;
-		return value.equals(that.value);
-	}
-
-	@Override
-	public int hashCode() {
-		return value.hashCode();
-	}
 }
 

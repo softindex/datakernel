@@ -67,25 +67,4 @@ final class ExpressionConstructor implements Expression {
 					exceptionInGeneratedClass(ctx)));
 		}
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionConstructor that = (ExpressionConstructor) o;
-
-		if (!fields.equals(that.fields)) return false;
-		if (!type.equals(that.type)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = type.hashCode();
-		result = 31 * result + fields.hashCode();
-		return result;
-	}
 }

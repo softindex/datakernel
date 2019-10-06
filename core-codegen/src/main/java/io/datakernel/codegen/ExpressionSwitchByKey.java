@@ -21,7 +21,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.List;
-import java.util.Objects;
 
 import static io.datakernel.codegen.Expressions.exception;
 import static io.datakernel.codegen.Expressions.newLocal;
@@ -77,25 +76,5 @@ final class ExpressionSwitchByKey implements Expression {
 		g.mark(labelExit);
 
 		return resultType;
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionSwitchByKey that = (ExpressionSwitchByKey) o;
-
-		if (!Objects.equals(this.value, that.value)) return false;
-		if (!Objects.equals(this.defaultExpression, that.defaultExpression)) return false;
-		if (!Objects.equals(this.matchCases, that.matchCases)) return false;
-		if (!Objects.equals(this.matchExpressions, that.matchExpressions)) return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(value, defaultExpression, matchCases, matchExpressions);
 	}
 }

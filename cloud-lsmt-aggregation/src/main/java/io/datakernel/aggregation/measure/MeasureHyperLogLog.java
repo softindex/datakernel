@@ -138,21 +138,5 @@ public final class MeasureHyperLogLog extends Measure {
 
 			return Type.VOID_TYPE;
 		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			ExpressionHyperLogLog that = (ExpressionHyperLogLog) o;
-			return value.equals(that.value) &&
-					accumulator.equals(that.accumulator);
-		}
-
-		@Override
-		public int hashCode() {
-			int result = value.hashCode();
-			result = 31 * result + accumulator.hashCode();
-			return result;
-		}
 	}
 }

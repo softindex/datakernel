@@ -39,18 +39,4 @@ final class ExpressionLength implements Expression {
 		}
 		return Type.INT_TYPE;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionLength that = (ExpressionLength) o;
-		return value.equals(that.value);
-	}
-
-	@Override
-	public int hashCode() {
-		return value.hashCode();
-	}
 }
