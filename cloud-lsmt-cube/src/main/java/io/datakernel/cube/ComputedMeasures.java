@@ -51,6 +51,19 @@ public class ComputedMeasures {
 			}
 			return result;
 		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			AbstractComputedMeasure other = (AbstractComputedMeasure) o;
+			return dependencies.equals(other.dependencies);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(dependencies);
+		}
 	}
 
 	private static abstract class AbstractArithmeticMeasure extends AbstractComputedMeasure {
@@ -66,44 +79,16 @@ public class ComputedMeasures {
 			}
 			return E.unifyArithmeticTypes(types);
 		}
+
+
 	}
 
 	public static ComputedMeasure value(Object value) {
-		return new ComputedMeasure() {
-			@Override
-			public Class<?> getType(Map<String, Measure> storedMeasures) {
-				return Primitives.unwrap(value.getClass());
-			}
-
-			@Override
-			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
-				return E.value(value);
-			}
-
-			@Override
-			public Set<String> getMeasureDependencies() {
-				return emptySet();
-			}
-		};
+		return new ComputedMeasureValue(value);
 	}
 
 	public static ComputedMeasure measure(String measureId) {
-		return new ComputedMeasure() {
-			@Override
-			public Class<?> getType(Map<String, Measure> storedMeasures) {
-				return (Class<?>) storedMeasures.get(measureId).getFieldType().getDataType();
-			}
-
-			@Override
-			public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
-				return storedMeasures.get(measureId).valueOfAccumulator(E.property(record, measureId));
-			}
-
-			@Override
-			public Set<String> getMeasureDependencies() {
-				return singleton(measureId);
-			}
-		};
+		return new ComputedMeasureMeasure(measureId);
 	}
 
 	public static ComputedMeasure add(ComputedMeasure measure1, ComputedMeasure measure2) {
@@ -200,4 +185,71 @@ public class ComputedMeasures {
 		return mul(div(numerator, denominator), value(100));
 	}
 
+	private static final class ComputedMeasureValue implements ComputedMeasure {
+		private final Object value;
+
+		public ComputedMeasureValue(Object value) {this.value = value;}
+
+		@Override
+		public Class<?> getType(Map<String, Measure> storedMeasures) {
+			return Primitives.unwrap(value.getClass());
+		}
+
+		@Override
+		public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
+			return E.value(value);
+		}
+
+		@Override
+		public Set<String> getMeasureDependencies() {
+			return emptySet();
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			ComputedMeasureValue other = (ComputedMeasureValue) o;
+			return Objects.equals(value, other.value);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(value);
+		}
+	}
+
+	private static final class ComputedMeasureMeasure implements ComputedMeasure {
+		private final String measureId;
+
+		public ComputedMeasureMeasure(String measureId) {this.measureId = measureId;}
+
+		@Override
+		public Class<?> getType(Map<String, Measure> storedMeasures) {
+			return (Class<?>) storedMeasures.get(measureId).getFieldType().getDataType();
+		}
+
+		@Override
+		public Expression getExpression(Expression record, Map<String, Measure> storedMeasures) {
+			return storedMeasures.get(measureId).valueOfAccumulator(E.property(record, measureId));
+		}
+
+		@Override
+		public Set<String> getMeasureDependencies() {
+			return singleton(measureId);
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			ComputedMeasureMeasure other = (ComputedMeasureMeasure) o;
+			return measureId.equals(other.measureId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(measureId);
+		}
+	}
 }

@@ -65,13 +65,14 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.aggregation.Utils.*;
 import static io.datakernel.codegen.ExpressionComparator.leftProperty;
 import static io.datakernel.codegen.ExpressionComparator.rightProperty;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Primitives.isWrapperType;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Utils.of;
 import static io.datakernel.common.collection.CollectionUtils.entriesToMap;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static io.datakernel.cube.Utils.createResultClass;
@@ -80,7 +81,9 @@ import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.sort;
+import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Represents an OLAP cube. Provides methods for loading and querying data.
@@ -557,6 +560,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			DefiningClassLoader classLoader,
 			Map<String, FieldType> keyTypes) {
 		return ClassBuilder.create(classLoader, Predicate.class)
+				.withClassKey(inputClass, predicate)
 				.withMethod("test", boolean.class, singletonList(Object.class),
 						predicate.createPredicateDef(cast(arg(0), inputClass), keyTypes))
 				.buildClassAndCreateNewInstance();
@@ -629,7 +633,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				break;
 			}
 
-			Function<S, K> keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
+			Function<S, K> keyFunction = io.datakernel.aggregation.Utils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
 			Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);
@@ -915,6 +919,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		RecordFunction createRecordFunction() {
 			return ClassBuilder.create(queryClassLoader, RecordFunction.class)
+					.withClassKey(resultClass)
 					.withMethod("copyAttributes",
 							sequence(expressions -> {
 								for (String field : recordScheme.getFields()) {
@@ -947,16 +952,17 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		MeasuresFunction<R> createMeasuresFunction() {
-			ClassBuilder<MeasuresFunction> builder = ClassBuilder.create(queryClassLoader, MeasuresFunction.class);
-			List<Expression> computeSequence = new ArrayList<>();
+			return ClassBuilder.create(queryClassLoader, MeasuresFunction.class)
+					.withClassKey(resultClass, resultComputedMeasures)
+					.withFields(resultComputedMeasures.stream().collect(toMap(identity(), computedMeasure -> computedMeasures.get(computedMeasure).getType(measures))))
+					.withMethod("computeMeasures", sequence(list -> {
+						for (String computedMeasure : resultComputedMeasures) {
+							Expression record = cast(arg(0), resultClass);
+							list.add(set(property(record, computedMeasure),
+									computedMeasures.get(computedMeasure).getExpression(record, measures)));
+						}
 
-			for (String computedMeasure : resultComputedMeasures) {
-				builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
-				Expression record = cast(arg(0), resultClass);
-				computeSequence.add(set(property(record, computedMeasure),
-						computedMeasures.get(computedMeasure).getExpression(record, measures)));
-			}
-			return builder.withMethod("computeMeasures", sequence(computeSequence))
+					}))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -965,7 +971,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (queryHaving == AggregationPredicates.alwaysFalse()) return o -> false;
 
 			return ClassBuilder.create(queryClassLoader, Predicate.class)
-					.withMethod("test", boolean.class, singletonList(Object.class),
+					.withClassKey(resultClass, queryHaving)
+					.withMethod("test",
 							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldTypes))
 					.buildClassAndCreateNewInstance();
 		}
@@ -975,23 +982,26 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (query.getOrderings().isEmpty())
 				return (o1, o2) -> 0;
 
-			ExpressionComparator comparator = ExpressionComparator.create();
-
-			for (Ordering ordering : query.getOrderings()) {
-				String field = ordering.getField();
-
-				if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
-					String property = field.replace('.', '$');
-					comparator.with(
-							ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
-							ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
-							true);
-					resultOrderings.add(field);
-				}
-			}
-
 			return ClassBuilder.create(queryClassLoader, Comparator.class)
-					.withMethod("compare", comparator)
+					.withClassKey(resultClass, query.getOrderings())
+					.withMethod("compare", of(() -> {
+						ExpressionComparator comparator = ExpressionComparator.create();
+
+						for (Ordering ordering : query.getOrderings()) {
+							String field = ordering.getField();
+
+							if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
+								String property = field.replace('.', '$');
+								comparator.with(
+										ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
+										ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
+										true);
+								resultOrderings.add(field);
+							}
+						}
+
+						return comparator;
+					}))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -1027,7 +1037,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
-					tasks.add(Utils.resolveAttributes(results, resolverContainer.resolver,
+					tasks.add(io.datakernel.cube.Utils.resolveAttributes(results, resolverContainer.resolver,
 							resolverContainer.dimensions, attributes,
 							fullySpecifiedDimensions, (Class) resultClass, queryClassLoader));
 				}
@@ -1137,6 +1147,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		TotalsFunction<R, R> createTotalsFunction() {
 			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)
+					.withClassKey(resultClass, resultStoredMeasures, resultComputedMeasures)
 					.withMethod("zero",
 							sequence(expressions -> {
 								for (String field : resultStoredMeasures) {

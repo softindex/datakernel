@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.aggregation.Utils.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;

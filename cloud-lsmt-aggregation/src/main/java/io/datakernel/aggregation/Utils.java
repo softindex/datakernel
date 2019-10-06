@@ -35,7 +35,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodecs.ofTupleArray;
 import static io.datakernel.codegen.Expressions.*;
@@ -44,16 +43,8 @@ import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static io.datakernel.eventloop.util.ReflectionUtils.extractFieldNameFromGetter;
 
-/**
- * Defines a structure of an aggregation.
- * It is defined by keys, fields and their types.
- * Contains methods for defining dynamic classes, that are used for different operations.
- * Provides serializer for records that have the defined structure.
- */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class AggregationUtils {
-	private AggregationUtils() {
-	}
+public class Utils {
 
 	public static <K extends Comparable> Class<K> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
 		List<String> keyList = new ArrayList<>(keys.keySet());
@@ -70,6 +61,7 @@ public class AggregationUtils {
 
 	public static <R> Comparator<R> createKeyComparator(Class<R> recordClass, List<String> keys, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Comparator.class)
+				.withClassKey(recordClass, keys)
 				.withMethod("compare", compare(recordClass, keys))
 				.buildClassAndCreateNewInstance();
 	}
@@ -78,10 +70,11 @@ public class AggregationUtils {
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
+				.withClassKey(recordClass, keys, fields)
 				.withMethod("apply",
 						let(constructor(resultClass), result ->
 								sequence(expressions -> {
-									for (String fieldName : (Iterable<String>) Stream.concat(keys.stream(), fields.stream())::iterator) {
+									for (String fieldName : concat(keys, fields)) {
 										expressions.add(set(
 												property(result, fieldName),
 												property(cast(arg(0), recordClass), fieldName)));
@@ -95,6 +88,7 @@ public class AggregationUtils {
 			List<String> keys,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
+				.withClassKey(recordClass, keyClass, keys)
 				.withMethod("apply",
 						let(constructor(keyClass), key ->
 								sequence(expressions -> {
@@ -169,6 +163,7 @@ public class AggregationUtils {
 			DefiningClassLoader classLoader) {
 
 		return ClassBuilder.create(classLoader, Reducer.class)
+				.withClassKey(inputClass, outputClass, keys, fields)
 				.withMethod("onFirstItem",
 						let(constructor(outputClass), accumulator ->
 								sequence(expressions -> {
@@ -210,6 +205,7 @@ public class AggregationUtils {
 			DefiningClassLoader classLoader) {
 
 		return ClassBuilder.create(classLoader, Aggregate.class)
+				.withClassKey(inputClass, outputClass, keyFields, measureFields)
 				.withMethod("createAccumulator",
 						let(constructor(outputClass), accumulator ->
 								sequence(expressions -> {
@@ -255,6 +251,7 @@ public class AggregationUtils {
 			return singlePartition();
 
 		return ClassBuilder.create(classLoader, PartitionPredicate.class)
+				.withClassKey(recordClass, partitioningKey)
 				.withMethod("isSamePartition", and(
 						partitioningKey.stream()
 								.map(keyComponent -> cmpEq(

@@ -68,6 +68,7 @@ public final class Utils {
 			}
 		}
 		KeyFunction keyFunction = ClassBuilder.create(classLoader, KeyFunction.class)
+				.withClassKey(recordClass, recordDimensions)
 				.withMethod("extractKey",
 						let(
 								newArray(Object.class, value(recordDimensions.size())),
@@ -85,6 +86,7 @@ public final class Utils {
 
 		List<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributesFunction.class)
+				.withClassKey(recordClass, recordAttributes)
 				.withMethod("applyAttributes",
 						sequence(expressions -> {
 							for (String attribute : recordAttributes) {

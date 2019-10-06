@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.common.Initializer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
@@ -608,98 +609,21 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBuildedInstance() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		Class<Test> testClass1 = ClassBuilder.create(definingClassLoader, Test.class)
+
+		Initializer<ClassBuilder<Object>> initializer = builder -> builder
 				.withField("x", int.class)
 				.withField("y", Long.class)
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "property1", "property2"))
-				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareToImpl("x"))
-				.withMethod("equals",
-						equalsImpl("x"))
-				.withMethod("setXY", sequence(
-						set(property(self(), "x"), arg(0)),
-						set(property(self(), "y"), arg(1))))
-				.withMethod("test",
-						add(arg(0), value(1L)))
-				.withMethod("hash",
-						hash(property(arg(0), "property1"), property(arg(0), "property2")))
-				.withMethod("property1",
-						property(arg(0), "property1"))
-				.withMethod("setter", sequence(
-						set(property(arg(0), "property1"), value(10)),
-						set(property(arg(0), "property2"), value(20)),
-						arg(0)))
-				.withMethod("ctor", let(
-						constructor(TestPojo.class, value(1)),
-						local -> sequence(
-								set(property(local, "property2"), value(2)),
-								local)))
-				.withMethod("getX",
-						property(self(), "x"))
-				.withMethod("getY",
-						property(self(), "y"))
-				.withMethod("allEqual",
-						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("anyEqual",
-						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoproperty1",
-						call(arg(0), "setproperty1", arg(1)))
-				.withMethod("getPojoproperty1",
-						call(arg(0), "getproperty1"))
-				.withMethod("toString",
-						ExpressionToString.create()
-								.withQuotes("{", "}", ", ")
-								.with(property(self(), "x"))
-								.with("labelY: ", property(self(), "y")))
+						compare(TestPojo.class, "property1", "property2"));
+
+		Class<?> testClass1 = ClassBuilder.create(definingClassLoader, Object.class)
+				.withClassKey("TestKey")
+				.initialize(initializer)
 				.build();
 
-		Class<Test> testClass2 = ClassBuilder.create(definingClassLoader, Test.class)
-				.withField("x", int.class)
-				.withField("y", Long.class)
-				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "property1", "property2"))
-				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareToImpl("x"))
-				.withMethod("equals",
-						equalsImpl("x"))
-				.withMethod("setXY", sequence(
-						set(property(self(), "x"), arg(0)),
-						set(property(self(), "y"), arg(1))))
-				.withMethod("test",
-						add(arg(0), value(1L)))
-				.withMethod("hash",
-						hash(
-								property(arg(0), "property1"),
-								property(arg(0), "property2")))
-				.withMethod("property1",
-						property(arg(0), "property1"))
-				.withMethod("setter", sequence(
-						set(property(arg(0), "property1"), value(10)),
-						set(property(arg(0), "property2"), value(20)),
-						arg(0)))
-				.withMethod("ctor", let(
-						constructor(TestPojo.class, value(1)),
-						local -> sequence(
-								set(property(local, "property2"), value(2)),
-								local)))
-				.withMethod("getX",
-						property(self(), "x"))
-				.withMethod("getY",
-						property(self(), "y"))
-				.withMethod("allEqual",
-						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("anyEqual",
-						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoproperty1",
-						call(arg(0), "setproperty1", arg(1)))
-				.withMethod("getPojoproperty1",
-						call(arg(0), "getproperty1"))
-				.withMethod("toString",
-						ExpressionToString.create()
-								.withQuotes("{", "}", ", ")
-								.with(property(self(), "x"))
-								.with("labelY: ", property(self(), "y")))
+		Class<?> testClass2 = ClassBuilder.create(definingClassLoader, Object.class)
+				.withClassKey("TestKey")
+				.initialize(initializer)
 				.build();
 
 		assertEquals(testClass1, testClass2);

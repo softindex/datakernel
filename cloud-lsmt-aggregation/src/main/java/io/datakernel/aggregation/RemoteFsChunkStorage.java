@@ -58,7 +58,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.datakernel.aggregation.AggregationUtils.createBinarySerializer;
+import static io.datakernel.aggregation.Utils.createBinarySerializer;
 import static io.datakernel.async.util.LogUtils.thisMethod;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.collection.CollectionUtils.difference;

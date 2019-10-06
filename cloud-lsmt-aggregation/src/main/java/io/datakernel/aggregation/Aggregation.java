@@ -49,7 +49,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.aggregation.Utils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.common.Preconditions.checkArgument;
@@ -212,7 +212,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	public <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(Class<I> inputClass, Class<O> outputClass,
 			List<String> keys, List<String> measures,
 			DefiningClassLoader classLoader) {
-		return AggregationUtils.aggregationReducer(structure, inputClass, outputClass,
+		return Utils.aggregationReducer(structure, inputClass, outputClass,
 				keys, measures, classLoader);
 	}
 
@@ -443,7 +443,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		for (SequenceStream<S> sequence : sequences) {
 			Function<S, K> extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			Reducer<K, S, R, Object> reducer = AggregationUtils.aggregationReducer(structure,
+			Reducer<K, S, R, Object> reducer = Utils.aggregationReducer(structure,
 					sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
@@ -488,6 +488,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private <T> Predicate<T> createPredicate(Class<T> chunkRecordClass,
 			AggregationPredicate where, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Predicate.class)
+				.withClassKey(chunkRecordClass, where)
 				.withMethod("test", boolean.class, singletonList(Object.class),
 						where.createPredicateDef(cast(arg(0), chunkRecordClass), getKeyTypes()))
 				.buildClassAndCreateNewInstance();

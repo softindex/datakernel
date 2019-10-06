@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.codegen.DefiningClassLoader.ClassKey;
 import io.datakernel.codegen.utils.DefiningClassWriter;
 import io.datakernel.common.Initializable;
 import org.objectweb.asm.Type;
@@ -31,11 +32,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.getInternalName;
 import static org.objectweb.asm.Type.getType;
@@ -57,6 +58,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 	private final Class<? super T> mainClass;
 	private final List<Class<?>> otherClasses;
+	private ClassKey key;
 	private Path bytecodeSaveDir;
 
 	private String className;
@@ -66,42 +68,6 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	private final Map<String, Object> staticConstants = new LinkedHashMap<>();
 	private final Map<Method, Expression> methods = new LinkedHashMap<>();
 	private final Map<Method, Expression> staticMethods = new LinkedHashMap<>();
-
-	public static class AsmClassKey<T> {
-		private final Class<T> mainClass;
-		private final List<Class<?>> otherClasses;
-		private final Map<String, Class<?>> fields;
-		private final Map<Method, Expression> expressionMap;
-		private final Map<Method, Expression> expressionStaticMap;
-
-		public AsmClassKey(Class<T> mainClass, List<Class<?>> otherClasses, Map<String, Class<?>> fields,
-				Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
-			this.mainClass = mainClass;
-			this.otherClasses = otherClasses;
-			this.fields = fields;
-			this.expressionMap = expressionMap;
-			this.expressionStaticMap = expressionStaticMap;
-		}
-
-		public Class<T> getMainClass() {
-			return mainClass;
-		}
-
-		public List<Class<?>> getOtherClasses() {
-			return otherClasses;
-		}
-
-		@Override
-		public String toString() {
-			return "AsmClassKey{" +
-					"mainType=" + mainClass +
-					", otherTypes" + otherClasses +
-					", fields=" + fields +
-					", expressionMap=" + expressionMap +
-					", expressionStaticMap=" + expressionStaticMap +
-					'}';
-		}
-	}
 
 	// region builders
 
@@ -119,6 +85,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		this.classLoader = classLoader;
 		this.mainClass = mainClass;
 		this.otherClasses = types;
+		this.key = new ClassKey(mainClass, new HashSet<>(otherClasses), singletonList(new Object()));
 	}
 
 	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<? super T> type) {
@@ -134,6 +101,16 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		return this;
 	}
 
+	public ClassBuilder<T> withClassKey(Object... parameters) {
+		this.key = new ClassKey(mainClass, new HashSet<>(otherClasses), asList(parameters));
+		return this;
+	}
+
+	public ClassBuilder<T> withClassName(String name) {
+		this.className = name;
+		return this;
+	}
+
 	/**
 	 * Creates a new field for a dynamic class
 	 *
@@ -146,28 +123,8 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		return this;
 	}
 
-	public ClassBuilder<T> withMethod(Method method, Supplier<Expression> expression) {
-		return withMethod(method, expression.get());
-	}
-
-	/**
-	 * Creates a new method for a dynamic class
-	 *
-	 * @param method     new method for class
-	 * @param expression function which will be processed
-	 * @return changed AsmFunctionFactory
-	 */
-	public ClassBuilder<T> withMethod(Method method, Expression expression) {
-		methods.put(method, expression);
-		return this;
-	}
-
-	public ClassBuilder<T> withStaticMethod(Method method, Supplier<? extends Expression> expression) {
-		return withStaticMethod(method, expression.get());
-	}
-
-	public ClassBuilder<T> withStaticMethod(Method method, Expression expression) {
-		this.staticMethods.put(method, expression);
+	public ClassBuilder<T> withFields(Map<String, Class<?>> fields) {
+		this.fields.putAll(fields);
 		return this;
 	}
 
@@ -175,30 +132,13 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	 * Creates a new method for a dynamic class
 	 *
 	 * @param methodName    name of method
-	 * @param returnClass   type which returns this method
+	 * @param returnType    type which returns this method
 	 * @param argumentTypes list of types of arguments
 	 * @param expression    function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public ClassBuilder<T> withMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
-		Type[] types = new Type[argumentTypes.size()];
-		for (int i = 0; i < argumentTypes.size(); i++) {
-			types[i] = getType(argumentTypes.get(i));
-		}
-		return withMethod(new Method(methodName, getType(returnClass), types), expression);
-	}
-
-	public ClassBuilder<T> withStaticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
-		Type[] types = new Type[argumentTypes.size()];
-		for (int i = 0; i < argumentTypes.size(); i++) {
-			types[i] = getType(argumentTypes.get(i));
-		}
-		return withStaticMethod(new Method(methodName, getType(returnClass), types), expression);
-	}
-
-	public ClassBuilder<T> withStaticField(String fieldName, Class<?> type, Object value) {
-		this.staticFields.put(fieldName, type);
-		this.staticConstants.put(fieldName, value);
+	public ClassBuilder<T> withMethod(String methodName, Class<?> returnType, List<? extends Class<?>> argumentTypes, Expression expression) {
+		methods.put(new Method(methodName, getType(returnType), argumentTypes.stream().map(Type::getType).toArray(Type[]::new)), expression);
 		return this;
 	}
 
@@ -212,7 +152,8 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	public ClassBuilder<T> withMethod(String methodName, Expression expression) {
 		if (methodName.contains("(")) {
 			Method method = Method.getMethod(methodName);
-			return withMethod(method, expression);
+			methods.put(method, expression);
+			return this;
 		}
 
 		Method foundMethod = null;
@@ -235,18 +176,24 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			}
 		}
 		checkArgument(foundMethod != null, "Could not find method '" + methodName + "'");
-		return withMethod(foundMethod, expression);
+		methods.put(foundMethod, expression);
+		return this;
 	}
 
-	public ClassBuilder<T> withClassName(String name) {
-		this.className = name;
+	public ClassBuilder<T> withStaticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+		staticMethods.put(new Method(methodName, getType(returnClass), argumentTypes.stream().map(Type::getType).toArray(Type[]::new)), expression);
+		return this;
+	}
+
+	public ClassBuilder<T> withStaticField(String fieldName, Class<?> type, Object value) {
+		this.staticFields.put(fieldName, type);
+		this.staticConstants.put(fieldName, value);
 		return this;
 	}
 
 	// endregion
 	public Class<T> build() {
 		synchronized (classLoader) {
-			AsmClassKey<?> key = new AsmClassKey<>(mainClass, otherClasses, fields, methods, staticMethods);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -268,7 +215,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 	}
 
-	private Class<T> defineNewClass(AsmClassKey<?> key) {
+	private Class<T> defineNewClass(ClassKey key) {
 		DefiningClassWriter cw = DefiningClassWriter.create(classLoader);
 
 		String actualClassName;
@@ -371,7 +318,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 		cw.visitEnd();
 
-		Class<?> definedClass = classLoader.defineClass(actualClassName, key, cw.toByteArray());
+		Class<?> definedClass = classLoader.defineClass(key, actualClassName, cw.toByteArray());
 		logger.trace("Defined new {} for key {}", definedClass, key);
 		return (Class<T>) definedClass;
 	}

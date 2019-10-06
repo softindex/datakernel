@@ -27,7 +27,7 @@ import io.datakernel.common.parse.ParseException;
 import java.util.Collections;
 import java.util.Set;
 
-import static io.datakernel.aggregation.AggregationUtils.getPrimaryKeyCodec;
+import static io.datakernel.aggregation.Utils.getPrimaryKeyCodec;
 import static io.datakernel.codec.StructuredCodecs.ofSet;
 import static io.datakernel.codec.json.JsonUtils.oneline;
 
