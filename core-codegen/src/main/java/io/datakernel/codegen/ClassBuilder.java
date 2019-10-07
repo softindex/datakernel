@@ -346,4 +346,8 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			throw new RuntimeException(e);
 		}
 	}
+
+	public DefiningClassLoader getClassLoader() {
+		return classLoader;
+	}
 }

@@ -16,18 +16,20 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static java.util.Collections.emptySet;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, NullableOptimization {
 	protected final SerializerGen valueSerializer;
@@ -53,8 +55,13 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
-		versions.addRecursive(valueSerializer);
+	public void accept(Visitor visitor) {
+		visitor.visit(valueSerializer);
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -68,15 +75,10 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-	}
-
-	@Override
-	public final Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
 				it -> set(off,
-						valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel)));
+						valueSerializer.serialize(classLoader, byteArray, off, cast(it, valueSerializer.getRawType()), version, compatibilityLevel)));
 
 		if (!nullable) {
 			return sequence(
@@ -88,7 +90,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public final Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
 		return let(call(arg(0), "readVarInt"), length ->
 				!nullable ?
@@ -96,7 +98,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "add",
-														cast(valueSerializer.deserialize(elementType, version, staticMethods, compatibilityLevel), elementType)),
+														cast(valueSerializer.deserialize(classLoader, elementType, version, compatibilityLevel), elementType)),
 												voidExp())),
 								instance)) :
 						ifThenElse(
@@ -106,24 +108,17 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "add",
-																cast(valueSerializer.deserialize(elementType, version, staticMethods, compatibilityLevel), elementType)),
+																cast(valueSerializer.deserialize(classLoader, elementType, version, compatibilityLevel), elementType)),
 														voidExp())),
 										instance))));
 
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (!(o instanceof AbstractSerializerGenCollection)) return false;
-
 		AbstractSerializerGenCollection that = (AbstractSerializerGenCollection) o;
-
 		if (nullable != that.nullable) return false;
 		if (!valueSerializer.equals(that.valueSerializer)) return false;
 		if (!collectionType.equals(that.collectionType)) return false;

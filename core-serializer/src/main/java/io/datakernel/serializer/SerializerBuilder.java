@@ -22,7 +22,6 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
-import io.datakernel.serializer.asm.SerializerGen.VersionsCollector;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
@@ -51,7 +50,7 @@ import static java.util.Arrays.asList;
  * Scans fields of classes for serialization.
  */
 public final class SerializerBuilder {
-	private final AtomicInteger counter = new AtomicInteger();
+	private static final AtomicInteger counter = new AtomicInteger();
 	private final DefiningClassLoader definingClassLoader;
 	private String profile;
 	private int version = Integer.MAX_VALUE;
@@ -98,9 +97,9 @@ public final class SerializerBuilder {
 			SerializerGenClass serializer;
 			SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, type.getAnnotations());
 			if (annotation != null && annotation.impl() != void.class) {
-				serializer = new SerializerGenClass(type, generics, annotation.impl());
+				serializer = new SerializerGenClass(type, annotation.impl());
 			} else {
-				serializer = new SerializerGenClass(type, generics);
+				serializer = new SerializerGenClass(type);
 			}
 			builder.initTasks.add(() -> builder.scanAnnotations(type, generics, serializer));
 			return serializer;
@@ -148,12 +147,12 @@ public final class SerializerBuilder {
 		builder.setSerializer(Float.class, new SerializerGenFloat());
 		builder.setSerializer(Double.class, new SerializerGenDouble());
 		builder.setSerializer(String.class, new SerializerGenString());
-		builder.setSerializer(Inet4Address.class, SerializerGenInet4Address.instance());
-		builder.setSerializer(Inet6Address.class, SerializerGenInet6Address.instance());
+		builder.setSerializer(Inet4Address.class, new SerializerGenInet4Address());
+		builder.setSerializer(Inet6Address.class, new SerializerGenInet6Address());
 
 		LinkedHashMap<Class<?>, SerializerGen> addressMap = new LinkedHashMap<>();
-		addressMap.put(Inet4Address.class, SerializerGenInet4Address.instance());
-		addressMap.put(Inet6Address.class, SerializerGenInet6Address.instance());
+		addressMap.put(Inet4Address.class, new SerializerGenInet4Address());
+		addressMap.put(Inet6Address.class, new SerializerGenInet6Address());
 		builder.setSerializer(InetAddress.class, new SerializerGenSubclass(InetAddress.class, addressMap, 0));
 
 		builder.setSerializer(ByteBuffer.class, new SerializerGenByteBuffer());
@@ -269,12 +268,13 @@ public final class SerializerBuilder {
 		return build(type, serializerForTypes);
 	}
 
-	public <T> BinarySerializer<T> build(SerializerGen serializerGen) {
-		return buildBufferSerializer(serializerGen, version);
+	public <T> BinarySerializer<T> build(Class<?> type, SerializerForType[] generics) {
+		SerializerGen serializer = createSerializerGen(type, generics, Collections.emptyList());
+		return buildBufferSerializer(serializer, version);
 	}
 
-	public <T> BinarySerializer<T> build(Class<?> type, SerializerForType[] generics) {
-		return buildBufferSerializer(createSerializerGen(type, generics, Collections.emptyList()), version);
+	public <T> BinarySerializer<T> build(SerializerGen serializerGen) {
+		return buildBufferSerializer(serializerGen, version);
 	}
 
 	private SerializerGen createSerializerGen(Class<?> type, SerializerForType[] generics, List<SerializerGenBuilder> mods) {
@@ -681,8 +681,7 @@ public final class SerializerBuilder {
 	}
 
 	private void scanGetters(Class<?> classType, SerializerForType[] classGenerics, List<FoundSerializer> foundSerializers) {
-		Method[] methods = classType.getDeclaredMethods();
-		for (Method method : methods) {
+		for (Method method : classType.getDeclaredMethods()) {
 			FoundSerializer foundSerializer = tryAddGetter(classType, classGenerics, method);
 			if (foundSerializer != null) {
 				foundSerializers.add(foundSerializer);
@@ -767,103 +766,6 @@ public final class SerializerBuilder {
 		return (BinarySerializer<T>) createSerializer(serializerGen, serializeVersion);
 	}
 
-	public class StaticMethods {
-		private final DefiningClassLoader definingClassLoader = SerializerBuilder.this.definingClassLoader;
-
-		public DefiningClassLoader getDefiningClassLoader() {
-			return definingClassLoader;
-		}
-
-		private final class Key {
-			public final SerializerGen serializerGen;
-			public final int version;
-
-			public Key(SerializerGen serializerGen, int version) {
-				this.serializerGen = serializerGen;
-				this.version = version;
-			}
-
-			@Override
-			public boolean equals(Object o) {
-				if (this == o) {
-					return true;
-				}
-				if (o == null || getClass() != o.getClass()) {
-					return false;
-				}
-
-				Key key = (Key) o;
-
-				if (version != key.version) {
-					return false;
-				}
-				return Objects.equals(serializerGen, key.serializerGen);
-
-			}
-
-			@Override
-			public int hashCode() {
-				int result = serializerGen != null ? serializerGen.hashCode() : 0;
-				result = 31 * result + version;
-				return result;
-			}
-		}
-
-		private final class Value {
-			public final String method;
-			@Nullable
-			public Expression expression;
-
-			public Value(String method, @Nullable Expression expression) {
-				this.method = method;
-				this.expression = expression;
-			}
-		}
-
-		private final Map<Key, Value> mapSerialize = new HashMap<>();
-		private final Map<Key, Value> mapDeserialize = new HashMap<>();
-
-		public boolean startSerializeStaticMethod(SerializerGen serializerGen, int version) {
-			boolean b = mapSerialize.containsKey(new Key(serializerGen, version));
-			if (!b) {
-				String methodName = "serialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + counter.incrementAndGet();
-				mapSerialize.put(new Key(serializerGen, version), new Value(methodName, null));
-			}
-			return b;
-		}
-
-		public boolean startDeserializeStaticMethod(SerializerGen serializerGen, int version) {
-			boolean b = mapDeserialize.containsKey(new Key(serializerGen, version));
-			if (!b) {
-				String methodName = "deserialize_" + serializerGen.getRawType().getSimpleName().replace('[', 's').replace(']', '_') + "_V" + version + "_" + counter.incrementAndGet();
-				mapDeserialize.put(new Key(serializerGen, version), new Value(methodName, null));
-			}
-			return b;
-		}
-
-		public void registerStaticSerializeMethod(SerializerGen serializerGen, int version, Expression expression) {
-			Key key = new Key(serializerGen, version);
-			Value value = mapSerialize.get(key);
-			value.expression = expression;
-		}
-
-		public void registerStaticDeserializeMethod(SerializerGen serializerGen, int version, Expression expression) {
-			Key key = new Key(serializerGen, version);
-			Value value = mapDeserialize.get(key);
-			value.expression = expression;
-		}
-
-		public Expression callStaticSerializeMethod(SerializerGen serializerGen, int version, Expression... args) {
-			Value value = mapSerialize.get(new Key(serializerGen, version));
-			return callStaticSelf(value.method, args);
-		}
-
-		public Expression callStaticDeserializeMethod(SerializerGen serializerGen, int version, Expression... args) {
-			Value value = mapDeserialize.get(new Key(serializerGen, version));
-			return callStaticSelf(value.method, args);
-		}
-	}
-
 	synchronized private BinarySerializer<?> createSerializer(SerializerGen serializerGen, int serializeVersion) {
 		ClassBuilder<BinarySerializer<?>> classBuilder = ClassBuilder.create(definingClassLoader, BinarySerializer.class);
 		if (saveBytecodePath != null) {
@@ -873,9 +775,20 @@ public final class SerializerBuilder {
 		checkArgument(serializeVersion >= 0, "serializerVersion is negative");
 		Class<?> dataType = serializerGen.getRawType();
 
+		Set<Integer> collectedVersions = new HashSet<>();
+		SerializerGen.Visitor visitor = new SerializerGen.Visitor() {
+			@Override
+			public void visit(String subcomponentId, SerializerGen site) {
+				collectedVersions.addAll(site.getVersions());
+				site.accept(this);
+			}
+		};
+		visitor.visit(serializerGen);
+
 		List<Integer> versions = new ArrayList<>();
 		List<Integer> allVersions = new ArrayList<>();
-		for (int v : VersionsCollector.versions(serializerGen)) {
+
+		for (int v : collectedVersions) {
 			if (v <= serializeVersion) {
 				versions.add(v);
 			}
@@ -887,37 +800,20 @@ public final class SerializerBuilder {
 				Integer.valueOf(serializeVersion) :
 				getLatestVersion(versions);
 
-		StaticMethods staticMethods = new StaticMethods();
-
-		serializerGen.prepareSerializeStaticMethods(nullToDefault(currentVersion, 0),
-				staticMethods, compatibilityLevel);
-		for (StaticMethods.Key key : staticMethods.mapSerialize.keySet()) {
-			StaticMethods.Value value = staticMethods.mapSerialize.get(key);
-			classBuilder.withStaticMethod(value.method,
-					int.class,
-					asList(byte[].class, int.class, key.serializerGen.getRawType()),
-					value.expression);
-		}
 		classBuilder.withMethod("encode", int.class, asList(byte[].class, int.class, Object.class),
 				let(currentVersion == null ?
 								arg(1) :
 								callStatic(BinaryOutputUtils.class, "writeVarInt", arg(0), arg(1), value(currentVersion)),
 						pos ->
-								serializerGen.serialize(
+								serializerGen.serialize(definingClassLoader,
 										arg(0),
 										pos,
 										cast(arg(2), dataType),
-										nullToDefault(currentVersion, 0), staticMethods, compatibilityLevel))
+										nullToDefault(currentVersion, 0),
+										compatibilityLevel))
 		);
 
-		defineDeserialize(serializerGen, classBuilder, allVersions, staticMethods);
-		for (StaticMethods.Key key : staticMethods.mapDeserialize.keySet()) {
-			StaticMethods.Value value = staticMethods.mapDeserialize.get(key);
-			classBuilder.withStaticMethod(value.method,
-					key.serializerGen.getRawType(),
-					asList(BinaryInput.class),
-					value.expression);
-		}
+		defineDeserialize(serializerGen, classBuilder, allVersions);
 
 		classBuilder.withMethod("encode", void.class, asList(BinaryOutput.class, Object.class),
 				let(call(self(), "encode",
@@ -934,45 +830,39 @@ public final class SerializerBuilder {
 
 	private void defineDeserialize(SerializerGen serializerGen,
 			ClassBuilder<BinarySerializer<?>> classBuilder,
-			List<Integer> allVersions,
-			StaticMethods staticMethods) {
-		defineDeserializeLatest(serializerGen, classBuilder, getLatestVersion(allVersions), staticMethods);
+			List<Integer> allVersions) {
+		defineDeserializeLatest(serializerGen, classBuilder, getLatestVersion(allVersions));
 
-		defineDeserializeEarlierVersion(serializerGen, classBuilder, allVersions, staticMethods);
+		defineDeserializeEarlierVersion(serializerGen, classBuilder, allVersions);
 		for (int i = allVersions.size() - 2; i >= 0; i--) {
 			int version = allVersions.get(i);
-			defineDeserializeVersion(serializerGen, classBuilder, version, staticMethods);
+			defineDeserializeVersion(serializerGen, classBuilder, version);
 		}
 	}
 
 	private void defineDeserializeLatest(SerializerGen serializerGen,
 			ClassBuilder<BinarySerializer<?>> classBuilder,
-			Integer latestVersion,
-			StaticMethods staticMethods) {
+			Integer latestVersion) {
 		if (latestVersion == null) {
-			serializerGen.prepareDeserializeStaticMethods(0, staticMethods, compatibilityLevel);
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
-					serializerGen.deserialize(serializerGen.getRawType(), 0, staticMethods, compatibilityLevel));
+					serializerGen.deserialize(classBuilder.getClassLoader(), serializerGen.getRawType(), 0, compatibilityLevel));
 		} else {
-			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods, compatibilityLevel);
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
 					let(call(arg(0), "readVarInt"),
 							version -> ifThenElse(cmpEq(version, value(latestVersion)),
-									serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods, compatibilityLevel),
+									serializerGen.deserialize(classBuilder.getClassLoader(), serializerGen.getRawType(), latestVersion, compatibilityLevel),
 									call(self(), "deserializeEarlierVersions", arg(0), version))));
 		}
 	}
 
 	private void defineDeserializeEarlierVersion(SerializerGen serializerGen,
 			ClassBuilder<BinarySerializer<?>> classBuilder,
-			List<Integer> allVersions,
-			StaticMethods staticMethods) {
+			List<Integer> allVersions) {
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (int i = allVersions.size() - 2; i >= 0; i--) {
 			int version = allVersions.get(i);
 			listKey.add(value(version));
-			serializerGen.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			listValue.add(call(self(), "deserializeVersion" + version, arg(0)));
 		}
 		classBuilder.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(BinaryInput.class, int.class),
@@ -981,11 +871,11 @@ public final class SerializerBuilder {
 
 	private void defineDeserializeVersion(SerializerGen serializerGen,
 			ClassBuilder<BinarySerializer<?>> classBuilder,
-			int version, StaticMethods staticMethods) {
+			int version) {
 		classBuilder.withMethod("deserializeVersion" + version,
 				serializerGen.getRawType(),
 				asList(BinaryInput.class),
-				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
+				sequence(serializerGen.deserialize(classBuilder.getClassLoader(), serializerGen.getRawType(), version, compatibilityLevel)));
 	}
 
 	@Nullable

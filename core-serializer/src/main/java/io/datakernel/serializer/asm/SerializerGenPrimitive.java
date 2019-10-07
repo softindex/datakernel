@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
+import java.util.Set;
 
 import static io.datakernel.codegen.utils.Primitives.wrap;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static java.util.Collections.emptySet;
 
 public abstract class SerializerGenPrimitive implements SerializerGen {
 
@@ -32,7 +32,12 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	}
 
 	@Override
-	public final void getVersions(VersionsCollector versions) {
+	public void accept(Visitor visitor) {
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -62,15 +67,5 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	@Override
 	public int hashCode() {
 		return 0;
-	}
-
-	@Override
-	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
-	}
-
-	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
 	}
 }

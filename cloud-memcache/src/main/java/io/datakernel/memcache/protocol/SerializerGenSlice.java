@@ -1,16 +1,19 @@
 package io.datakernel.memcache.protocol;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
+import java.util.Set;
+
 import static io.datakernel.codegen.Expressions.*;
+import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
 public class SerializerGenSlice implements SerializerGen, NullableOptimization {
@@ -25,7 +28,12 @@ public class SerializerGenSlice implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
+	public void accept(Visitor visitor) {
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -39,22 +47,14 @@ public class SerializerGenSlice implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-	}
-
-	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-	}
-
-	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenSlice.class,
 				"write" + (nullable ? "Nullable" : ""),
 				byteArray, off, cast(value, Slice.class));
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenSlice.class,
 				"read" + (nullable ? "Nullable" : ""),
 				arg(0));

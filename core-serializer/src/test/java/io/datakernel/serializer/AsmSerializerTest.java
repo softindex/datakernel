@@ -37,8 +37,7 @@ public class AsmSerializerTest {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 
 	private static <T> T doTest(Class<T> type, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(definingClassLoader)
+		BinarySerializer<T> serializer = SerializerBuilder.create(definingClassLoader)
 				.build(type);
 		return doTest(testData1, serializer, serializer);
 	}
@@ -999,6 +998,7 @@ public class AsmSerializerTest {
 		assertEquals(0, testData2.f);
 	}
 
+/*
 	public static class TestDataRecursive {
 		@Serialize(order = 0)
 		public String s;
@@ -1027,6 +1027,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.next.next.s, testData2.next.next.s);
 		assertNull(testData2.next.next.next);
 	}
+*/
 
 	public static class TestDataExtraSubclasses {
 		@Serialize(order = 0)

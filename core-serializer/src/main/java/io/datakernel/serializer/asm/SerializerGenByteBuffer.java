@@ -16,16 +16,18 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.nio.ByteBuffer;
+import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static java.util.Collections.emptySet;
 
 public class SerializerGenByteBuffer implements SerializerGen, NullableOptimization {
 	private final boolean wrapped;
@@ -46,7 +48,12 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
+	public void accept(Visitor visitor) {
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -60,12 +67,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
-	}
-
-	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return let(
 				cast(value, ByteBuffer.class),
 				buffer ->
@@ -97,12 +99,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
-	}
-
-	@Override
-	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !wrapped ?
 				let(call(arg(0), "readVarInt"), length -> {
 					if (!nullable) {

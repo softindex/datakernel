@@ -16,22 +16,26 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.net.Inet4Address;
+import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static java.util.Collections.emptySet;
 
 public class SerializerGenInet4Address implements SerializerGen {
-	private static final SerializerGenInet4Address INSTANCE = new SerializerGenInet4Address();
+	@Override
+	public void accept(Visitor visitor) {
+	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
-
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -45,29 +49,15 @@ public class SerializerGenInet4Address implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return callStatic(BinaryOutputUtils.class, "write", byteArray, off, call(value, "getAddress"));
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return callStatic(BinaryOutputUtils.class, "write", byteArray, off, call(cast(value, getRawType()), "getAddress"));
-	}
-
-	@Override
-	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
-	}
-
-	@Override
-	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return let(newArray(byte[].class, value(4)), local ->
 				sequence(
 						call(arg(0), "read", local),
 						callStatic(getRawType(), "getByAddress", local)));
-	}
-
-	public static SerializerGen instance() {
-		return INSTANCE;
 	}
 }

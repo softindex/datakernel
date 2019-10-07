@@ -16,13 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -30,34 +28,17 @@ import java.util.Set;
  */
 public interface SerializerGen {
 
-	final class VersionsCollector {
-		private final Set<Integer> versions = new HashSet<>();
-		private final Set<SerializerGen> collected = new HashSet<>();
+	interface Visitor {
+		void visit(String subcomponentId, SerializerGen site);
 
-		public static Set<Integer> versions(SerializerGen serializerGen) {
-			VersionsCollector versions = new VersionsCollector();
-			versions.collected.add(serializerGen);
-			serializerGen.getVersions(versions);
-			return versions.versions;
-		}
-
-		public void add(int version) {
-			versions.add(version);
-		}
-
-		public void addAll(Collection<Integer> versions) {
-			this.versions.addAll(versions);
-		}
-
-		public void addRecursive(SerializerGen serializerGen) {
-			if (!collected.contains(serializerGen)) {
-				collected.add(serializerGen);
-				serializerGen.getVersions(this);
-			}
+		default void visit(SerializerGen site) {
+			visit("", site);
 		}
 	}
 
-	void getVersions(VersionsCollector versions);
+	void accept(Visitor visitor);
+
+	Set<Integer> getVersions();
 
 	boolean isInline();
 
@@ -68,8 +49,6 @@ public interface SerializerGen {
 	 */
 	Class<?> getRawType();
 
-	void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
-
 	/**
 	 * Serializes provided {@link Expression} {@code value} to byte array
 	 *
@@ -79,9 +58,7 @@ public interface SerializerGen {
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return serialized to byte array value
 	 */
-	Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
-
-	void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
+	Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel);
 
 	/**
 	 * Deserializes object of {@code targetType} from byte array
@@ -90,6 +67,11 @@ public interface SerializerGen {
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
-	Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
+	Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
 
+	@Override
+	boolean equals(Object o);
+
+	@Override
+	int hashCode();
 }

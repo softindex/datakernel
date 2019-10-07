@@ -17,11 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
-import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 
@@ -80,7 +79,6 @@ public class SerializerGenClass implements SerializerGen {
 	private boolean implInterface;
 	private final Class<?> dataTypeIn;
 	private final Class<?> dataTypeOut;
-	private List<SerializerForType> generics;
 
 	private final Map<String, FieldGen> fields = new LinkedHashMap<>();
 
@@ -101,16 +99,6 @@ public class SerializerGenClass implements SerializerGen {
 		this.dataTypeIn = type;
 		this.dataTypeOut = typeImpl;
 		this.implInterface = true;
-	}
-
-	public SerializerGenClass(Class<?> type, SerializerForType[] generics) {
-		this(type);
-		this.generics = asList(generics);
-	}
-
-	public SerializerGenClass(Class<?> type, SerializerForType[] generics, Class<?> typeImpl) {
-		this(type, typeImpl);
-		this.generics = asList(generics);
 	}
 
 	public void addSetter(@NotNull Method method, @NotNull List<String> fields) {
@@ -202,14 +190,23 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
+	public void accept(Visitor visitor) {
+		for (String field : fields.keySet()) {
+			visitor.visit(field, fields.get(field).serializer);
+
+		}
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		Set<Integer> versions = new HashSet<>();
 		for (FieldGen fieldGen : fields.values()) {
 			if (fieldGen.versionAdded != -1)
 				versions.add(fieldGen.versionAdded);
 			if (fieldGen.versionDeleted != -1)
 				versions.add(fieldGen.versionDeleted);
-			versions.addRecursive(fieldGen.serializer);
 		}
+		return versions;
 	}
 
 	@Override
@@ -234,83 +231,39 @@ public class SerializerGenClass implements SerializerGen {
 		return getterName;
 	}
 
-	@SuppressWarnings("RedundantIfStatement")
 	@Override
-	public boolean equals(Object o) {
-		if (generics == null)
-			return super.equals(o);
-
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerGenClass that = (SerializerGenClass) o;
-
-		if (!dataTypeIn.equals(that.dataTypeIn)) return false;
-		if (!generics.equals(that.generics)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		if (generics == null)
-			return super.hashCode();
-
-		int result = dataTypeIn.hashCode();
-		result = 31 * result + generics.hashCode();
-		return result;
-	}
-
-	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		if (staticMethods.startSerializeStaticMethod(this, version)) {
-			return;
-		}
-
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
 		for (String fieldName : fields.keySet()) {
 
 			FieldGen fieldGen = fields.get(fieldName);
 			if (!fieldGen.hasVersion(version)) continue;
 
-			Class<?> type = fieldGen.serializer.getRawType();
-			if (!fieldGen.getRawType().equals(Object.class)) type = fieldGen.getRawType();
+			Class<?> fieldType = fieldGen.serializer.getRawType();
+			if (!fieldGen.getRawType().equals(Object.class)) fieldType = fieldGen.getRawType();
 
 			if (fieldGen.field != null) {
-				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(property(arg(2), fieldName), type), version, staticMethods, compatibilityLevel)));
+				list.add(set(off,
+						fieldGen.serializer.serialize(classLoader, byteArray, off, cast(property(value, fieldName), fieldType), version, compatibilityLevel)));
 			} else if (fieldGen.method != null) {
-				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(call(arg(2), fieldGen.method.getName()), type), version, staticMethods, compatibilityLevel)));
+				list.add(set(off,
+						fieldGen.serializer.serialize(classLoader, byteArray, off, cast(call(value, fieldGen.method.getName()), fieldType), version, compatibilityLevel)));
 			} else {
 				throw new AssertionError();
 			}
 		}
-		list.add(arg(1));
+		list.add(off);
 
-		staticMethods.registerStaticSerializeMethod(this, version, sequence(list));
+		return sequence(list);
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression field, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, field);
-	}
-
-	@Override
-	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		if (staticMethods.startDeserializeStaticMethod(this, version)) {
-			return;
-		}
-
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		if (!implInterface && dataTypeIn.isInterface()) {
-			Expression expression = deserializeInterface(dataTypeIn, version, staticMethods, compatibilityLevel);
-			staticMethods.registerStaticDeserializeMethod(this, version, expression);
-			return;
+			return deserializeInterface(classLoader, dataTypeIn, version, compatibilityLevel);
 		}
 		if (!implInterface && constructor == null && factory == null && setters.isEmpty()) {
-			Expression expression = deserializeClassSimple(version, staticMethods, compatibilityLevel);
-			staticMethods.registerStaticDeserializeMethod(this, version, expression);
-			return;
+			return deserializeClassSimple(classLoader, version, compatibilityLevel);
 		}
 
 		List<Expression> list = new ArrayList<>();
@@ -320,8 +273,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (!fieldGen.hasVersion(version)) continue;
 
-			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-			Expression expression = var(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel));
+			Expression expression = var(fieldGen.serializer.deserialize(classLoader, fieldGen.getRawType(), version, compatibilityLevel));
 			list.add(expression);
 			map.put(fieldName, cast(expression, fieldGen.getRawType()));
 		}
@@ -373,12 +325,7 @@ public class SerializerGenClass implements SerializerGen {
 		}
 
 		list.add(local);
-		staticMethods.registerStaticDeserializeMethod(this, version, sequence(list));
-	}
-
-	@Override
-	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
+		return sequence(list);
 	}
 
 	private Expression callFactory(Map<String, Expression> map, int version) {
@@ -419,22 +366,21 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Expression deserializeInterface(Class<?> targetType,
+	private Expression deserializeInterface(DefiningClassLoader classLoader, Class<?> targetType,
 			int version,
-			StaticMethods staticMethods,
 			CompatibilityLevel compatibilityLevel) {
-		ClassBuilder<?> asmFactory = ClassBuilder.create(staticMethods.getDefiningClassLoader(), (Class<Object>) targetType);
+		ClassBuilder<?> classBuilder = ClassBuilder.create(classLoader, (Class<Object>) targetType);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
 
 			Method method = checkNotNull(fieldGen.method);
 
-			asmFactory = asmFactory
+			classBuilder
 					.withField(fieldName, method.getReturnType())
 					.withMethod(method.getName(), property(self(), fieldName));
 		}
 
-		Class<?> newClass = asmFactory.build();
+		Class<?> newClass = classBuilder.build();
 
 		return let(
 				constructor(newClass),
@@ -445,18 +391,15 @@ public class SerializerGenClass implements SerializerGen {
 							continue;
 						Variable property = property(instance, fieldName);
 
-						fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 						Expression expression =
-								fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel);
+								fieldGen.serializer.deserialize(classLoader, fieldGen.getRawType(), version, compatibilityLevel);
 						expressions.add(set(property, expression));
 					}
 					expressions.add(instance);
 				}));
 	}
 
-	private Expression deserializeClassSimple(int version,
-			StaticMethods staticMethods,
-			CompatibilityLevel compatibilityLevel) {
+	private Expression deserializeClassSimple(DefiningClassLoader classLoader, int version, CompatibilityLevel compatibilityLevel) {
 		return let(
 				constructor(dataTypeIn),
 				instance ->
@@ -467,8 +410,7 @@ public class SerializerGenClass implements SerializerGen {
 								if (!fieldGen.hasVersion(version)) continue;
 
 								Variable property = property(instance, fieldName);
-								fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-								expressions.add(set(property, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods, compatibilityLevel)));
+								expressions.add(set(property, fieldGen.serializer.deserialize(classLoader, fieldGen.getRawType(), version, compatibilityLevel)));
 							}
 							expressions.add(instance);
 						}));
@@ -499,4 +441,21 @@ public class SerializerGenClass implements SerializerGen {
 				throw new IllegalArgumentException("Unsupported type " + type);
 		}
 	}
+
+	@SuppressWarnings("RedundantIfStatement")
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		SerializerGenClass that = (SerializerGenClass) o;
+		if (!dataTypeIn.equals(that.dataTypeIn)) return false;
+		return true;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = dataTypeIn.hashCode();
+		return result;
+	}
+
 }

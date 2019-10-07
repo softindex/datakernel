@@ -16,17 +16,19 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
+import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static java.util.Collections.emptySet;
 
 public final class SerializerGenArray implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
@@ -57,8 +59,13 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
-		versions.addRecursive(valueSerializer);
+	public void accept(Visitor visitor) {
+		visitor.visit(valueSerializer);
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -72,13 +79,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-	}
-
-	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version,
-			StaticMethods staticMethods,
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version,
 			CompatibilityLevel compatibilityLevel) {
 		Expression castedValue = cast(value, type);
 		Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
@@ -89,7 +90,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 		Expression writeByteArray = callStatic(BinaryOutputUtils.class, "write", byteArray, off, castedValue);
 		Expression writeCollection = loop(value(0), length,
 				it -> set(off,
-						valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)));
+						valueSerializer.serialize(classLoader, byteArray, off, getArrayItem(castedValue, it), version, compatibilityLevel)));
 
 		if (!nullable) {
 			if (type.getComponentType() == Byte.TYPE) {
@@ -112,12 +113,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-	}
-
-	@Override
-	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !nullable ?
 				let(call(arg(0), "readVarInt"), len ->
 						let(newArray(type, len), array ->
@@ -126,7 +122,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 												call(arg(0), "read", array) :
 												loop(value(0), len,
 														i -> setArrayItem(array, i,
-																cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
+																cast(valueSerializer.deserialize(classLoader, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 										array))) :
 				let(call(arg(0), "readVarInt"), len ->
 						ifThenElse(cmpEq(len, value(0)),
@@ -137,7 +133,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 														call(arg(0), "read", array) :
 														loop(value(0), dec(len),
 																i -> setArrayItem(array, i,
-																		cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()))),
+																		cast(valueSerializer.deserialize(classLoader, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));
 	}

@@ -16,10 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -56,7 +56,7 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		if (varLength) {
 			return callStatic(BinaryOutputUtils.class, "writeVarLong", byteArray, off, cast(value, long.class));
 		} else {
@@ -65,7 +65,7 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		if (varLength) {
 			if (targetType.isPrimitive())
 				return call(arg(0), "readVarLong");

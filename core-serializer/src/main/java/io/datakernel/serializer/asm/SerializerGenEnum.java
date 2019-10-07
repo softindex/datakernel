@@ -16,14 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.SerializerBuilder.StaticMethods;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
+import java.util.Set;
+
 import static io.datakernel.codegen.Expressions.*;
+import static java.util.Collections.emptySet;
 
 public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	private final Class<?> enumType;
@@ -39,7 +42,12 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public void getVersions(VersionsCollector versions) {
+	public void accept(Visitor visitor) {
+	}
+
+	@Override
+	public Set<Integer> getVersions() {
+		return emptySet();
 	}
 
 	@Override
@@ -53,12 +61,7 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
-	}
-
-	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = call(cast(value, Enum.class), "ordinal");
 		if (isSmallEnum()) {
 			ordinal = cast(ordinal, byte.class);
@@ -76,14 +79,8 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version,
-			StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-
-	}
-
-	@Override
-	public Expression deserialize(Class<?> targetType, int version,
-			StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version,
+			CompatibilityLevel compatibilityLevel) {
 		return isSmallEnum() ?
 				let(call(arg(0), "readByte"), value ->
 						!nullable ?
