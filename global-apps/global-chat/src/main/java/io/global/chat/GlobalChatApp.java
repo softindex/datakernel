@@ -5,12 +5,14 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
@@ -23,7 +25,6 @@ import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.operation.ChatRoomOperation;
 import io.global.common.BinaryDataFormats;
 import io.global.common.PrivKey;
-import io.global.kv.api.GlobalKvNode;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.MapModule;
@@ -41,8 +42,10 @@ import io.global.ot.service.ContainerModule;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.Messenger;
-import io.global.pm.MessengerServlet;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.PmClient;
+import io.global.pm.http.PmClientServlet;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,22 +53,17 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
-import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
 import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
-import static io.global.common.CryptoUtils.randomBytes;
-import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toMap;
@@ -113,7 +111,7 @@ public final class GlobalChatApp extends Launcher {
 			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
 			DynamicOTNodeServlet<ChatRoomOperation> roomServlet,
 			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
-			Messenger<String, String> messenger,
+			@Named("Calls") AsyncServlet callsServlet,
 			StaticServlet staticServlet,
 			Executor executor,
 			ContainerManager<CommonUserContainer<ChatRoomOperation>> containerManager
@@ -125,7 +123,7 @@ public final class GlobalChatApp extends Launcher {
 				.map("/ot/room/:suffix/*", roomServlet)
 				.map("/ot/profile/:pubKey/*", profileServlet)
 				.map("/ot/myProfile/*", profileServlet)
-				.map("/notifications/*", MessengerServlet.create(messenger))
+				.map("/notifications/*", callsServlet)
 				.map("/*", staticServlet)
 
 				// for backwards compatibility, to be removed later
@@ -147,28 +145,45 @@ public final class GlobalChatApp extends Launcher {
 								})
 								.then($ -> servlet.serve(request));
 					}
-				})
-				.then(loadBody());
+				});
 	}
 
 	@Provides
-	Messenger<Long, CreateSharedRepo> provideMessenger(GlobalKvNode node) {
-		Random random = new Random();
-		return Messenger.create(node, LONG_CODEC, SHARED_REPO_MESSAGE_CODEC, random::nextLong);
+	GlobalPmDriver<String> callsPMDriver(GlobalPmNode node) {
+		return new GlobalPmDriver<>(node, STRING_CODEC);
 	}
 
 	@Provides
-	Messenger<String, String> provideNotificationsMessenger(GlobalKvNode node) {
-		return Messenger.create(node, STRING_CODEC, STRING_CODEC, () -> toHexString(randomBytes(8)));
+	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode node) {
+		return new GlobalPmDriver<>(node, SHARED_REPO_MESSAGE_CODEC);
+	}
+
+	@Provides
+	@Named("Calls")
+	AsyncServlet callsPMServlet(GlobalPmDriver<String> driver) {
+		return request -> {
+			try {
+				String key = request.getCookie("Key");
+				if (key == null) {
+					return Promise.ofException(new ParseException(GlobalChatApp.class, "Cookie `Key` is required"));
+				}
+				PrivKey privKey = PrivKey.fromString(key);
+				PmClient<String> client = driver.adapt(privKey.computeKeys());
+				return PmClientServlet.create(client, STRING_CODEC)
+						.serve(request);
+			} catch (ParseException e) {
+				return Promise.ofException(e);
+			}
+		};
 	}
 
 	@Provides
 	BiFunction<Eventloop, PrivKey, CommonUserContainer<ChatRoomOperation>> factory(OTDriver driver,
-			Messenger<Long, CreateSharedRepo> messenger) {
+			GlobalPmDriver<CreateSharedRepo> pmDriver) {
 		return (eventloop, privKey) -> {
 			RepoID repoID = RepoID.of(privKey, CHAT_REPO_PREFIX);
 			MyRepositoryId<ChatRoomOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, CHAT_ROOM_OPERATION_CODEC);
-			return CommonUserContainer.create(eventloop, driver, CHAT_ROOM_OT_SYSTEM, myRepositoryId, messenger, CHAT_INDEX_REPO);
+			return CommonUserContainer.create(eventloop, driver, CHAT_ROOM_OT_SYSTEM, myRepositoryId, pmDriver, CHAT_INDEX_REPO);
 		};
 	}
 

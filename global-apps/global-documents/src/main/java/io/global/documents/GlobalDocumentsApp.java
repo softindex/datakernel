@@ -22,7 +22,6 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.common.BinaryDataFormats;
 import io.global.common.PrivKey;
-import io.global.kv.api.GlobalKvNode;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.DynamicOTNodeServlet;
 import io.global.ot.MapModule;
@@ -41,7 +40,8 @@ import io.global.ot.service.ContainerModule;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.Messenger;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,16 +49,13 @@ import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.function.BiFunction;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
-import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.util.CollectionUtils.concat;
 import static io.global.documents.Utils.EDIT_OT_SYSTEM;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
@@ -94,9 +91,8 @@ public final class GlobalDocumentsApp extends Launcher {
 	}
 
 	@Provides
-	Messenger<Long, CreateSharedRepo> provideMessenger(GlobalKvNode node) {
-		Random random = new Random();
-		return Messenger.create(node, LONG_CODEC, SHARED_REPO_MESSAGE_CODEC, random::nextLong);
+	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode node) {
+		return new GlobalPmDriver<>(node, SHARED_REPO_MESSAGE_CODEC);
 	}
 
 	@Provides
@@ -137,17 +133,16 @@ public final class GlobalDocumentsApp extends Launcher {
 								})
 								.then($ -> servlet.serve(request));
 					}
-				})
-				.then(loadBody());
+				});
 	}
 
 	@Provides
 	BiFunction<Eventloop, PrivKey, CommonUserContainer<EditOperation>> factory(OTDriver driver,
-			Messenger<Long, CreateSharedRepo> messenger) {
+			GlobalPmDriver<CreateSharedRepo> pmDriver) {
 		return (eventloop, privKey) -> {
 			RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
 			MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
-			return CommonUserContainer.create(eventloop, driver, EDIT_OT_SYSTEM, myRepositoryId, messenger, DOCUMENTS_INDEX_REPO);
+			return CommonUserContainer.create(eventloop, driver, EDIT_OT_SYSTEM, myRepositoryId, pmDriver, DOCUMENTS_INDEX_REPO);
 		};
 	}
 

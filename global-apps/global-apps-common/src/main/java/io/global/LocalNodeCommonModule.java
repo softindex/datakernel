@@ -13,6 +13,8 @@ import io.global.kv.api.StorageFactory;
 import io.global.kv.stub.RuntimeKvStorageStub;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.stub.CommitStorageStub;
+import io.global.pm.MapMessageStorage;
+import io.global.pm.api.MessageStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,8 +60,12 @@ public final class LocalNodeCommonModule extends AbstractModule {
 	}
 
 	@Provides
+	MessageStorage provideMessageStorage() {
+		return new MapMessageStorage();
+	}
+
+	@Provides
 	StorageFactory kvStorageFactory() {
 		return (pubKey, table) -> Promise.of(new RuntimeKvStorageStub());
 	}
-
 }

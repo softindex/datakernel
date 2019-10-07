@@ -57,6 +57,12 @@ import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
+import io.global.pm.FsMessageStorage;
+import io.global.pm.GlobalPmNodeImpl;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.MessageStorage;
+import io.global.pm.http.GlobalPmNodeServlet;
+import io.global.pm.http.HttpGlobalPmNode;
 
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -105,6 +111,12 @@ public class GlobalNodesModule extends AbstractModule {
 			StorageFactory storageFactory) {
 		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, storageFactory)
 				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
+	}
+
+	@Provides
+	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
+		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
+				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
 
 	@Provides
@@ -160,11 +172,12 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Named("Nodes")
 	AsyncServlet servlet(RawServerServlet otServlet, @Named("fs") AsyncServlet fsServlet,
-			@Named("kv") AsyncServlet kvServlet) {
+			@Named("kv") AsyncServlet kvServlet, @Named("pm") AsyncServlet pmServlet) {
 		return RoutingServlet.create()
 				.map("/ot/*", otServlet)
 				.map("/fs/*", fsServlet)
-				.map("/kv/*", kvServlet);
+				.map("/kv/*", kvServlet)
+				.map("/pm/*", pmServlet);
 	}
 
 	@Provides
@@ -185,6 +198,12 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
+	@Named("pm")
+	AsyncServlet pmServlet(GlobalPmNode node) {
+		return GlobalPmNodeServlet.create(node);
+	}
+
+	@Provides
 	CommitStorage commitStorage(Eventloop eventloop, Config config, Executor executor) {
 		return CommitStorageRocksDb.create(executor, eventloop, config.get("ot.storage"));
 	}
@@ -202,6 +221,18 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
+	@Named("PM")
+	FsClient pmStorage(Eventloop eventloop, Config config) {
+		return LocalFsClient.create(eventloop, config.get(ofPath(), "pm.storage"))
+				.withRevisions();
+	}
+
+	@Provides
+	MessageStorage messageStorage(@Named("PM") FsClient fsClient) {
+		return FsMessageStorage.create(fsClient);
+	}
+
+	@Provides
 	Function<RawServerId, GlobalFsNode> fsNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalFsNode.create(id.getServerIdString(), client);
 	}
@@ -214,6 +245,11 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
+	}
+
+	@Provides
+	Function<RawServerId, GlobalPmNode> pmNodeFactory(IAsyncHttpClient client) {
+		return id -> HttpGlobalPmNode.create(id.getServerIdString(), client);
 	}
 
 	// region schedulers
