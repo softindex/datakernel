@@ -49,6 +49,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
@@ -67,6 +68,7 @@ import static io.global.common.CryptoUtils.randomBytes;
 import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toMap;
 
 public final class GlobalChatApp extends Launcher {
 	private static final String PROPERTIES_FILE = "chat.properties";
@@ -134,9 +136,13 @@ public final class GlobalChatApp extends Launcher {
 					} else {
 						return Promise.ofBlockingRunnable(executor,
 								() -> {
-									List<String> strings = Files.readAllLines(expectedKeys);
-									if (!strings.contains(key)) {
-										Files.write(expectedKeys, concat(strings, singletonList(key)));
+									List<String> lines = Files.readAllLines(expectedKeys);
+									Map<String, String> collected = lines.stream()
+											.map(s -> s.split(":"))
+											.collect(toMap(parts -> parts[0], parts -> parts[1]));
+									if (!collected.values().contains(key)) {
+										int lastKey = collected.keySet().stream().mapToInt(Integer::valueOf).max().orElse(0);
+										Files.write(expectedKeys, concat(lines, singletonList(++lastKey + ":" + key)));
 									}
 								})
 								.then($ -> servlet.serve(request));
