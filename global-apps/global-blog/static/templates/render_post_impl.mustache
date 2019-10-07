@@ -26,7 +26,7 @@
 
                 <span class="row badge badge-primary badge-light text-wrap text-break {{#deletedBy}} text-secondary{{/deletedBy}}">
                     {{#user.role.privileged}}
-                        {{#author}}<a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a>{{/author}}
+                        {{#author}}<a href="/profile/{{authorId}}">{{.}}</a>{{/author}}
                     {{/user.role.privileged}}
 
                     {{^user.role.privileged}}
@@ -61,7 +61,7 @@
                 <div class="row">
                     {{#deletedBy}}
                         {{#editable}}
-                            <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                            <form action="/{{threadId}}/{{postId}}/restore" method="post">
                                 <button class="btn btn-outline-primary btn-sm">restore</button>
                             </form>
                         {{/editable}}
@@ -79,12 +79,12 @@
                                             change
                                         </button>
                                         <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
-                                              action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+                                              action="/{{threadId}}/{{postId}}/delete" method="post">
 
                                             <button class="edit-button dropdown-item" type="button"
                                                     data-edit="#content_{{postId}}"
                                                     data-maxLength="1024"
-                                                    data-edit-action="/{{pubKey}}/{{threadId}}/{{postId}}/edit">
+                                                    data-edit-action="/{{threadId}}/{{postId}}/edit">
                                                 edit
                                             </button>
                                             <button class="dropdown-item" type="submit">delete</button>
@@ -110,7 +110,9 @@
     {{^post.deletedBy}}
         {{#user}}
             <div class="collapse" id="reply_{{postId}}">
-                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{^deepest}}{{parent.postId}}{{/deepest}}{{#deepest}}{{postId}}{{/deepest}}" method="post">
+                <form class="pt-3"
+                      action="/{{threadId}}/{{^deepest}}{{parent.postId}}{{/deepest}}{{#deepest}}{{postId}}{{/deepest}}"
+                      method="post">
                     <div class="mx-3">
                         <textarea class="form-control" placeholder="Post your reply" maxlength="1024" name="content" onfocus="var val=this.value; this.value=''; this.value= val;"
                                   data-post-button="#post_button_{{^deepest}}{{parent.postId}}{{/deepest}}{{#deepest}}{{postId}}{{/deepest}}">{{^deepest}}[{{#author}}{{.}}{{/author}}](#{{postId}}){{/deepest}}</textarea>

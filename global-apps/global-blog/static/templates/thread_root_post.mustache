@@ -16,7 +16,7 @@
                 <div class="row">
                     {{#deletedBy}}
                         {{#editable}}
-                            <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                            <form action="/{{threadId}}/{{postId}}/restore" method="post">
                                 <button class="btn btn-outline-primary btn-sm">restore</button>
                             </form>
                         {{/editable}}
@@ -33,18 +33,18 @@
                                         change
                                     </button>
                                     <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
-                                          action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+                                          action="/{{threadId}}/{{postId}}/delete" method="post">
 
                                         <button class="edit-button dropdown-item" type="button"
                                                 data-maxLength="65256"
                                                 data-root-edit="#content_{{postId}}"
-                                                data-edit-action="/{{pubKey}}/owner/{{threadId}}/{{postId}}/edit">
+                                                data-edit-action="/owner/{{threadId}}/{{postId}}/edit">
                                             edit
                                         </button>
                                         <button class="edit-button dropdown-item" type="button"
                                                 data-maxLength="120"
                                                 data-edit="#title"
-                                                data-edit-action="/{{pubKey}}/owner/{{threadId}}/edit">
+                                                data-edit-action="/owner/{{threadId}}/edit">
                                             edit title
                                         </button>
                                         <button class="dropdown-item" type="submit">delete</button>
@@ -71,8 +71,8 @@
             <div class="card">
                 {{#image}}
                     <div class="card-header" title="{{.}}">
-                        <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}">
-                            <img src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}"
+                        <a href="/{{threadId}}/{{postId}}/download/{{.}}">
+                            <img src="/{{threadId}}/{{postId}}/download/{{.}}"
                                  class="img-thumbnail m-2"/>
                         </a>
                     </div>
@@ -89,7 +89,7 @@
                     <div class="card-header" title="{{.}}">
                         <div class="embed-responsive embed-responsive-16by9 m-2">
                             <video controls>
-                                <source src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}">
+                                <source src="/{{threadId}}/{{postId}}/download/{{.}}">
                             </video>
                         </div>
                     </div>
@@ -106,7 +106,7 @@
                     <div class="card-header" title="{{.}}">
                         <ul class="list-group">
                             <li class="list-group-item text-truncate">
-                                <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}"
+                                <a href="/{{threadId}}/{{postId}}/download/{{.}}"
                                    class="stretched-link"><i class="far fa-file"></i></a>
                                 {{.}}
                             </li>
@@ -161,7 +161,7 @@
     {{^deletedBy}}
         {{#user}}
             <div class="collapse" id="reply_{{postId}}">
-                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
+                <form class="pt-3" action="/{{threadId}}/{{postId}}"
                       method="post">
                     <div class="mx-3">
                         <textarea maxlength="1024" class="form-control" placeholder="Post your reply" name="content"
