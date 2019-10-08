@@ -57,7 +57,7 @@ public final class TestDI {
 	}
 
 	@Test
-	public void provider() {
+	public void factory() {
 		AtomicInteger ref = new AtomicInteger(41);
 		Injector injector = Injector.of(Module.create()
 				.bind(Integer.class).to(ref::incrementAndGet)
@@ -80,6 +80,27 @@ public final class TestDI {
 		// mutable factory is only to indicate multiple factory calls in testing, in reality nobody
 		// should really do non-pure factories unless they know what hack they're trying to accomplish
 		assertEquals(46, injector.getInstance(Integer.class).intValue());
+	}
+
+	@Test
+	public void provider() {
+		AtomicInteger ref = new AtomicInteger(41);
+		Injector injector = Injector.of(Module.create()
+				.bind(Integer.class).to(ref::incrementAndGet)
+				.bind(String.class).to(i -> "str: " + i.get(), new Key<InstanceProvider<Integer>>() {})
+				.bindInstanceProvider(String.class));
+
+		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals("str: 42", injector.getInstance(String.class));
+
+		InstanceProvider<String> provider = injector.getInstance(new Key<InstanceProvider<String>>() {});
+		assertEquals("str: 42", provider.get());
+		assertEquals("str: 42", provider.get());
+		assertEquals("str: 42", provider.get());
+
+		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals(42, injector.getInstance(Integer.class).intValue());
 	}
 
 	@Test
@@ -1121,7 +1142,6 @@ public final class TestDI {
 
 	@Test
 	public void recursiveRebindImport() {
-
 		Module importingModule = Module.create()
 				.bind(String.class).to(i -> "hello #" + i, Integer.class);
 
@@ -1401,5 +1421,137 @@ public final class TestDI {
 
 		assertEquals("hello", injector.getInstance(String.class));
 		assertEquals(123, injector.getInstance(Integer.class).intValue());
+	}
+
+	public interface TestInterface<T> {
+		T getObj();
+	}
+
+	public static class StringInterface implements TestInterface<String> {
+		static int counter = 0;
+
+		private final String obj;
+
+		public StringInterface(String obj) {
+			this.obj = obj;
+			counter++;
+		}
+
+		@Override
+		public String getObj() {
+			return obj;
+		}
+	}
+
+	@Test
+	public void bindIntoSetBug() {
+		Injector injector = Injector.of(
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bindIntoSet(new Key<TestInterface<?>>() {}, Key.of(StringInterface.class));
+					}
+
+					@Provides
+					StringInterface testBindIntoSet() {
+						return new StringInterface("string");
+					}
+				});
+		Set<TestInterface<?>> interfaces = injector.getInstance(new Key<Set<TestInterface<?>>>() {});
+
+		injector.getInstance(StringInterface.class);
+
+		assertEquals(1, interfaces.size());
+		assertEquals(1, StringInterface.counter); // bug: 1 != 2
+	}
+
+	public static class TestManyInstance {
+		static int counter = 0;
+
+		@Inject
+		public TestManyInstance() {
+			++counter;
+		}
+	}
+
+	@Test
+	public void instanceFactoryBug() {
+		Key<InstanceFactory<TestManyInstance>> factoryKey = new Key<InstanceFactory<TestManyInstance>>() {};
+
+		Injector injector = Injector.of(Module.create().bind(TestManyInstance.class).bind(factoryKey));
+
+		TestManyInstance instance0 = injector.getInstance(new Key<TestManyInstance>() {});
+
+		assertEquals(1, TestManyInstance.counter);
+
+		InstanceFactory<TestManyInstance> factory = injector.getInstanceOrNull(factoryKey);
+		assertNotNull(factory);
+
+		TestManyInstance instance1 = factory.create();
+		assertNotSame(instance0, instance1);
+		assertEquals(2, TestManyInstance.counter);
+
+		TestManyInstance instance2 = factory.create();
+		assertNotSame(instance1, instance2);
+		assertEquals(3, TestManyInstance.counter);
+	}
+
+	public interface PostConstruct {
+		void init();
+	}
+
+	public static class PostConstructModule extends AbstractModule {
+		@Override
+		protected void configure() {
+			transform(99, (bindings, scope, key, binding) -> {
+				if (PostConstruct.class.isAssignableFrom(key.getRawType())) {
+					return binding.mapInstance(obj -> {
+						((PostConstruct) obj).init();
+						return obj;
+					});
+				}
+				return binding;
+			});
+		}
+	}
+
+	public static class PostConstructed implements PostConstruct {
+		private final String s;
+		private boolean inited;
+
+		public PostConstructed(String s) {
+			this.s = s;
+		}
+
+		@Override
+		public void init() {
+			inited = true;
+		}
+
+		@Override
+		public String toString() {
+			return s;
+		}
+	}
+
+	@Test
+	public void mapInstanceWithFactoryBug() {
+		AtomicInteger mut = new AtomicInteger();
+		Injector injector = Injector.of(Module.create()
+						.bind(PostConstructed.class).to(() -> new PostConstructed("str_" + mut.incrementAndGet()))
+						.bindInstanceFactory(PostConstructed.class),
+				new PostConstructModule());
+
+		InstanceFactory<PostConstructed> factory = injector.getInstanceFactory(PostConstructed.class);
+
+		PostConstructed instance1 = factory.create();
+		assertEquals("str_1", instance1.s);
+		assertTrue(instance1.inited);
+		PostConstructed instance2 = factory.create();
+		assertEquals("str_2", instance2.s);
+		assertTrue(instance2.inited);
+		PostConstructed instance3 = factory.create();
+		assertEquals("str_3", instance3.s);
+		assertTrue(instance3.inited);
 	}
 }

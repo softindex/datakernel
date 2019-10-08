@@ -32,5 +32,4 @@ public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<
 	}
 
 	protected abstract R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
-
 }
