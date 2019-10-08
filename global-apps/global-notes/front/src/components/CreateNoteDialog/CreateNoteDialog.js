@@ -14,7 +14,7 @@ import NotesService from "../../modules/notes/NotesService";
 
 function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose, onNameChange}) {
   return (
-    <Dialog onClose={onClose}>
+    <Dialog onClose={onClose} loading={loading}>
       <form onSubmit={onSubmit}>
         <DialogTitle>
           {rename.show ? 'Rename note' : 'Create note'}
@@ -45,6 +45,7 @@ function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose
             type="submit"
             color="primary"
             variant="contained"
+            disabled={loading}
           >
             {rename.show ? 'Rename' : 'Create'}
           </Button>
@@ -54,7 +55,7 @@ function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose
   );
 }
 
-function CreateNoteDialog({classes, enqueueSnackbar, onClose, rename, history}) {
+function CreateNoteDialog({classes, enqueueSnackbar, closeSnackbar, onClose, rename, history}) {
   const notesService = getInstance(NotesService);
   const [name, setName] = useState(rename.noteName || '');
   const [loading, setLoading] = useState(false);
@@ -79,9 +80,9 @@ function CreateNoteDialog({classes, enqueueSnackbar, onClose, rename, history}) 
 
     onSubmit(event) {
       event.preventDefault();
-      setLoading(true);
 
       if (!rename.show) {
+        setLoading(true);
         notesService.createNote(name)
           .then(newNoteId => {
             onClose();
@@ -91,19 +92,19 @@ function CreateNoteDialog({classes, enqueueSnackbar, onClose, rename, history}) 
             enqueueSnackbar(err.message, {
               variant: 'error'
             });
-          });
-      } else {
-        notesService.renameNote(rename.noteId, name)
-          .then(() => {
-            onClose();
           })
+          .finally(() => setLoading(false));
+      } else {
+        enqueueSnackbar('Renaming...');
+        onClose();
+        notesService.renameNote(rename.noteId, name)
+          .then(() => setTimeout(() => closeSnackbar(), 1000))
           .catch(err => {
             enqueueSnackbar(err.message, {
               variant: 'error'
             });
           });
       }
-      setLoading(false);
     }
   };
 

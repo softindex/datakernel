@@ -45,7 +45,7 @@ function DeleteNoteDialogView({classes, onClose, onDelete}) {
   );
 }
 
-function DeleteNoteDialog({classes, match, history, onClose, enqueueSnackbar, currentNoteId}) {
+function DeleteNoteDialog({classes, match, history, onClose, enqueueSnackbar, closeSnackbar, currentNoteId}) {
   const notesService = getInstance(NotesService);
 
   const props = {
@@ -53,10 +53,12 @@ function DeleteNoteDialog({classes, match, history, onClose, enqueueSnackbar, cu
     onClose,
 
     onDelete() {
+      enqueueSnackbar('Deleting...');
+      onClose();
       return notesService.deleteNote(currentNoteId)
         .then(() => {
           const {noteId} = match.params;
-          onClose();
+          setTimeout(() => closeSnackbar(), 1000);
           if (currentNoteId === noteId) {
             history.push('/note/');
           }

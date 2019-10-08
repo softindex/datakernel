@@ -56,7 +56,7 @@ function SideBarView({
       >
         New Note
       </Button>
-      <div className={classes.notesList}>
+      <div className={`${classes.notesList} scroller`}>
         <NotesList
           notes={getFilteredNotes()}
           ready={ready}

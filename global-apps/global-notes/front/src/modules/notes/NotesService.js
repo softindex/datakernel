@@ -11,7 +11,6 @@ class NotesService extends Service {
     super({
       notes: {},
       ready: false
-      // newNotes: new Set()
     });
     this._notesOTStateManager = notesOTStateManager;
     this._reconnectDelay = null;
@@ -61,10 +60,7 @@ class NotesService extends Service {
 
   async createNote(name) {
     const id = randomString(32);
-    this._sendOperation(id, name);
-    // this.setState({
-    //   newNotes: new Set([...this.state.newNotes, id])
-    // });
+    await this._sendOperation(id, name);
 
     return id;
   };

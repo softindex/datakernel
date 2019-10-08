@@ -8,11 +8,7 @@ const noteEditorStyles = theme => ({
     width: '100%',
     height: '100%',
     resize: 'none',
-    borderStyle: 'none',
-    overflowY: 'hidden',
-    '&:hover': {
-      overflowY: 'overlay'
-    }
+    borderStyle: 'none'
   },
   paper: {
     flexGrow: 1,

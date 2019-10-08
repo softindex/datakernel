@@ -15,14 +15,14 @@ function NoteEditorView({classes, content, onChange}) {
 
   return (
     <Paper className={classes.paper}>
-      <textarea
-        className={classes.noteEditor}
-        value={content}
-        onChange={onChange}
-        ref={input => {
-          textInput = input
-        }}
-      />
+        <textarea
+          className={`${classes.noteEditor} scrollbar`}
+          value={content}
+          onChange={onChange}
+          ref={input => {
+            textInput = input
+          }}
+        />
     </Paper>
   );
 }
