@@ -1,6 +1,7 @@
 const sideBarTabsStyles = theme => {
   return {
     paper: {
+      zIndex: 2,
       boxShadow: `0px 6px  9px -5px rgba(0,0,0,0.2)`,
       background: theme.palette.primary.background
     },
@@ -8,7 +9,7 @@ const sideBarTabsStyles = theme => {
       flexGrow: 1,
       overflow: 'hidden',
       '&:hover': {
-        overflow: 'overlay'
+        overflow: 'auto'
       },
       background: theme.palette.primary.contrastText,
       marginTop: theme.spacing(1),

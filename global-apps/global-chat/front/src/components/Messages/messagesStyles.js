@@ -11,10 +11,6 @@ const messageFormStyles = theme => {
     },
     wrapper: {
       width: '100%',
-      overflow: 'hidden',
-      '&:hover': {
-        overflow: 'overlay'
-      }
     },
     progressWrapper: {
       width: '100%',

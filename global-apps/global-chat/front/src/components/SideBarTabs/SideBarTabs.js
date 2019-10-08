@@ -50,36 +50,35 @@ function SideBarTabsView({
           <Tab value={CONTACTS_TAB} label="Contacts"/>
         </Tabs>
       </Paper>
-      <div className={classes.chatsList}>
-        <RoomsList
-          rooms={rooms}
-          contacts={contacts}
-          names={names}
-          namesReady={namesReady}
-          roomsReady={roomsReady}
-          onRemoveContact={onRemoveContact}
-          publicKey={publicKey}
-          showDeleteButton={tabId === "contacts"}
-        />
-
-        {search !== '' && (
-          <>
-            <Paper square className={classes.paperDivider}>
-              <Typography className={classes.dividerText}>
-                People
-              </Typography>
-            </Paper>
-            <ContactsList
-              searchReady={searchReady}
-              searchContacts={searchContacts}
-              onSearchClear={onSearchClear}
-            />
-            {searchContacts.size === 0 && searchReady && (
-              <InviteButton publicKey={publicKey}/>
-            )}
-          </>
-        )}
-      </div>
+        <div className={classes.chatsList}>
+          <RoomsList
+            rooms={rooms}
+            contacts={contacts}
+            names={names}
+            namesReady={namesReady}
+            roomsReady={roomsReady}
+            onRemoveContact={onRemoveContact}
+            publicKey={publicKey}
+            showDeleteButton={tabId === "contacts"}
+          />
+          {search !== '' && (
+            <>
+              <Paper square className={classes.paperDivider}>
+                <Typography className={classes.dividerText}>
+                  People
+                </Typography>
+              </Paper>
+              <ContactsList
+                searchReady={searchReady}
+                searchContacts={searchContacts}
+                onSearchClear={onSearchClear}
+              />
+              {searchContacts.size === 0 && searchReady && (
+                <InviteButton publicKey={publicKey}/>
+              )}
+            </>
+          )}
+        </div>
     </>
   );
 }

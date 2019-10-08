@@ -43,7 +43,7 @@ function CreateChatDialogView({
           Add Members
         </DialogTitle>
         <DialogContent className={classes.dialogContent}>
-          <div className={classes.chipsContainer}>
+          <div className={`${classes.chipsContainer} scroller`}>
             {[...participants].map(([publicKey, name]) => (
               <ContactChip
                 color="primary"
@@ -57,7 +57,7 @@ function CreateChatDialogView({
             placeholder="Search people..."
             value={search}
             onChange={onSearchChange}
-            searchReady={searchReady}
+            searchReady={loading? true : searchReady}
           />
           <SelectContactsList
             search={search}
@@ -75,6 +75,7 @@ function CreateChatDialogView({
           <Button
             className={classes.actionButton}
             onClick={onClose}
+            disabled={loading}
           >
             Close
           </Button>
@@ -83,6 +84,7 @@ function CreateChatDialogView({
             type="submit"
             color="primary"
             variant="contained"
+            disabled={loading}
           >
             Create
           </Button>

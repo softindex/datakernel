@@ -20,49 +20,53 @@ function SelectContactsListView({
                                   publicKey
                                 }) {
   return (
-    <div className={classes.chatsList}>
+    <>
       {search === '' && filteredContacts.length === 0 && (
         <EmptySelectScreen/>
       )}
-      <List subheader={<li/>}>
-        {filteredContacts.length > 0 && (
-          <li>
-            <List className={classes.innerUl}>
-              <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
-              {filteredContacts.map(([publicKey]) =>
-                <ContactItem
-                  selected={participants.has(publicKey)}
-                  onClick={onContactToggle.bind(this, publicKey)}
-                  username={names.get(publicKey)}
-                  firstName=''
-                  lastName=''
-                />
-              )}
-            </List>
-          </li>
-        )}
-        {search !== '' && (
-          <li>
-            <List className={classes.innerUl}>
-              <ListSubheader className={classes.listSubheader}>People</ListSubheader>
-              {[...searchContacts]
-                .map(([publicKey, contact]) => (
-                  <ContactItem
-                    username={contact.username}
-                    firstName={contact.firstName}
-                    lastName={contact.lastName}
-                    selected={participants.has(publicKey)}
-                    onClick={onContactToggle.bind(this, publicKey)}
-                  />
-                ))}
-            </List>
-          </li>
-        )}
-      </List>
-      {searchContacts.size === 0 && search !== '' && searchReady && (
-        <InviteButton publicKey={publicKey}/>
+      {(search !== '' || filteredContacts.length !== 0) && (
+        <div className={`${classes.chatsList} scroller`}>
+          <List subheader={<li/>}>
+            {filteredContacts.length > 0 && (
+              <li>
+                <List className={classes.innerUl}>
+                  <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
+                  {filteredContacts.map(([publicKey]) =>
+                    <ContactItem
+                      selected={participants.has(publicKey)}
+                      onClick={onContactToggle.bind(this, publicKey)}
+                      username={names.get(publicKey)}
+                      firstName=''
+                      lastName=''
+                    />
+                  )}
+                </List>
+              </li>
+            )}
+            {search !== '' && (
+              <li>
+                <List className={classes.innerUl}>
+                  <ListSubheader className={classes.listSubheader}>People</ListSubheader>
+                  {[...searchContacts]
+                    .map(([publicKey, contact]) => (
+                      <ContactItem
+                        username={contact.username}
+                        firstName={contact.firstName}
+                        lastName={contact.lastName}
+                        selected={participants.has(publicKey)}
+                        onClick={onContactToggle.bind(this, publicKey)}
+                      />
+                    ))}
+                </List>
+              </li>
+            )}
+          </List>
+          {searchContacts.size === 0 && search !== '' && searchReady && (
+            <InviteButton publicKey={publicKey}/>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

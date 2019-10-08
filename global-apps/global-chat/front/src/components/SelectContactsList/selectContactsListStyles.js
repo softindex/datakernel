@@ -2,12 +2,12 @@ const selectContactsListStyles = theme => {
   return {
     chatsList: {
       flexGrow: 1,
-      '&:hover': {
-        overflow: 'overlay'
-      },
-      overflow: 'hidden',
       height: theme.spacing(37),
-      marginTop: theme.spacing(1)
+      marginTop: theme.spacing(1),
+      overflow: 'hidden',
+      '&:hover': {
+        overflow: 'auto'
+      },
     },
     secondaryDividerText: {
       textAlign: 'center',
