@@ -3,10 +3,10 @@ package io.datakernel.aggregation;
 import io.datakernel.promise.Promise;
 
 public class IdGeneratorStub implements IdGenerator<Long> {
-	public long chunkId;
+	public long id;
 
 	@Override
 	public Promise<Long> createId() {
-		return Promise.of(++chunkId);
+		return Promise.of(++id);
 	}
 }

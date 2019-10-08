@@ -76,8 +76,8 @@ public class CubeCleanerControllerTest {
 				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
 				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
-		repository = OTRepositoryMySql.create(eventloop, executor, dataSource, OT_SYSTEM,
-				LogDiffCodec.create(CubeDiffCodec.create(cube)));
+		repository = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+				OT_SYSTEM, LogDiffCodec.create(CubeDiffCodec.create(cube)));
 		repository.initialize();
 		repository.truncateTables();
 	}

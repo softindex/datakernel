@@ -1,4 +1,4 @@
-package io.datakernel.cube;
+package io.datakernel.ot;
 
 import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.promise.Promise;
