@@ -1,64 +1,184 @@
-
 window.onload = () => {
 
-  // handle editing
-  $('[data-edit]').click((e) => {
-    let element = $(e.target.dataset.edit);
-    let lines = Math.round(element.height() / parseFloat(element.css('line-height')));
+  function addAll(formData, fieldName, $input) {
+    let files = $input[0].files;
+    for (let i = 0; i < files.length; i++) {
+      let f = files[i];
+      formData.append(fieldName, f, f.name);
+    }
+    $input.val('');
+  }
 
-    let save = $(`<button class="btn btn-sm btn-primary">save</button>`);
-    let cancel = $(`<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>`);
-    let textarea = $(`<textarea class="form-control" rows="${lines}"></textarea>`);
+  function addPostCallbacks($element) {
+    // region handle deleting and restoring
+    $element.find('[data-post]').click(e => {
+      let element = $(e.target.dataset.post);
 
-    // 'ctrl+enter' => save the edit and 'escape' => cancel editing
-    textarea.keydown((e) => {
-      if (e.keyCode === 13 && e.ctrlKey) {
-        e.preventDefault();
-        save.click();
-      } else if (e.keyCode === 27) {
-        cancel.click();
-      }
+      fetch(e.target.dataset.postReply, {method: 'POST'})
+        .then(r => r.text())
+        .then(text => {
+          let $rerendered = $(text);
+          element.replaceWith($rerendered);
+          addPostCallbacks($rerendered);
+        }, console.error);
     });
+    // endregion
 
-    // change text-area height on typing
-    textarea.on('input', () => {
-      let lines = textarea.val().split('\n').length;
-      textarea.attr('rows', lines);
-    });
+    // region handle editing
+    $('[data-edit]').click((e) => {
+      let element = $(e.target.dataset.edit);
+      let lineHeight = parseFloat(element.css('line-height'));
+      let lines = Math.round(element.height() / lineHeight);
 
-    let dropdown = $(e.target.parentElement).removeClass('show');
-    let row = dropdown.parent().parent();
-    row.children().addClass('d-none');
-    row.append(cancel);
-    row.append(save);
+      let save = $('<button class="btn btn-sm btn-primary">save</button>');
+      let cancel = $('<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>');
+      let textarea = $('<textarea class="form-control m-0 p-2 mb-3" rows="' + lines + '"></textarea>');
 
-    save.click(() => {
-      let formData = new FormData();
-      let content = textarea.val();
-      formData.append('content', content);
-      fetch(e.target.dataset.editAction, {
-        method: 'POST',
-        body: formData
-      }).then(() => location.reload(), e => {
-        console.error(e);
-        cancel.click();
+      textarea.css('height', (lines + 1) * lineHeight - 6);
+
+      // 'ctrl+enter' => save the edit and 'escape' => cancel editing
+      textarea.keydown((e) => {
+        if (e.keyCode === 13 && e.ctrlKey) {
+          e.preventDefault();
+          save.click();
+        } else if (e.keyCode === 27) {
+          cancel.click();
+        }
+      });
+
+      // change text-area height on typing
+      textarea.on('input', () => {
+        let lines = textarea.val().split('\n').length;
+        textarea.attr('rows', lines);
+        textarea.css('height', (lines + 1) * lineHeight - 6);
+      });
+
+      let dropdown = $(e.target.parentElement).removeClass('show');
+      let row = dropdown.parent().parent();
+      row.children().addClass('d-none');
+      row.append(cancel);
+      row.append(save);
+
+      save.click(() => {
+        let formData = new FormData();
+        let content = textarea.val();
+        formData.append('content', content);
+
+        fetch(e.target.dataset.editAction, {method: 'POST', body: formData})
+          .then(r => r.text())
+          .then(text => {
+            let rerendered = $(text);
+            $(e.target.dataset.postId).replaceWith(rerendered);
+            addPostCallbacks(rerendered);
+          }, e => {
+            console.error(e);
+            cancel.click();
+          });
+      });
+
+      element.addClass('d-none').after(textarea);
+      textarea.focus().val(element.text());
+
+      cancel.click(() => {
+        $(document).focus();
+        textarea.remove();
+        cancel.remove();
+        save.remove();
+        element.removeClass('d-none');
+        row.children().removeClass('d-none');
       });
     });
+    // endregion
 
-    element.addClass('d-none').after(textarea);
-    textarea.focus().val(element.text());
-
-    cancel.click(() => {
-      $(document).focus();
-      textarea.remove();
-      cancel.remove();
-      save.remove();
-      element.removeClass('d-none');
-      row.children().removeClass('d-none');
+    // region handle likes and dislikes
+    $element.find('.like').click(e => {
+      let parent = $(e.target).parent();
+      let prefix = parent.data('prefix');
+      let child = parent.find('.rating');
+      if (parent.hasClass('liked')) {
+        fetch(prefix + '/rate/null', {method: 'POST'})
+          .then(() => {
+            parent.removeClass('liked');
+            child.text(parseInt(child.text()) - 1);
+          }, console.error)
+      } else {
+        fetch(prefix + '/rate/like', {method: 'POST'})
+          .then(() => {
+            parent.addClass('liked');
+            if (parent.hasClass('disliked')) {
+              parent.removeClass('disliked');
+              child.text(parseInt(child.text()) + 2);
+            } else {
+              child.text(parseInt(child.text()) + 1);
+            }
+          }, console.error)
+      }
     });
-  });
+    $element.find('.dislike').click(e => {
+      let parent = $(e.target).parent();
+      let prefix = parent.data('prefix');
+      let child = parent.find('.rating');
+      if (parent.hasClass('disliked')) {
+        fetch(prefix + '/rate/null', {method: 'POST'})
+          .then(() => {
+            parent.removeClass('disliked');
+            child.text(parseInt(child.text()) + 1);
+          }, console.error)
+      } else {
+        fetch(prefix + '/rate/dislike', {method: 'POST'})
+          .then(() => {
+            parent.addClass('disliked');
+            if (parent.hasClass('liked')) {
+              parent.removeClass('liked');
+              child.text(parseInt(child.text()) - 2);
+            } else {
+              child.text(parseInt(child.text()) - 1);
+            }
+          }, console.error)
+      }
+    });
+    // endregion
 
-  // auto-submit forms when pressing ctrl+enter
+    // region handle replies
+    $element.find('.post-button').click(e => {
+      let postId = e.target.dataset.postId;
+      let threadId = e.target.dataset.threadId;
+
+      let formData = new FormData();
+
+      let $content = $('#reply_content_' + postId);
+      formData.append('content', $content.val());
+
+      let selector = '#image_attachment_' + postId;
+      console.log(selector);
+      console.log($(selector));
+      addAll(formData, 'image_attachment', $(selector));
+      addAll(formData, 'video_attachment', $('#video_attachment_' + postId));
+      addAll(formData, 'document_attachment', $('#document_attachment_' + postId));
+
+      let $reply = $('#reply_' + postId);
+      fetch('/' + threadId + '/' + postId, {method: 'POST', body: formData})
+        .then(r => r.text())
+        .then(text => {
+          $reply.removeClass('show');
+          $('#attachments_' + postId).removeClass('show');
+
+          let $rerendered = $(text);
+          if ($rerendered.data('inlineParent')) {
+            $reply.parent().parent().append($rerendered);
+          } else {
+            $reply.parent().append($rerendered);
+          }
+          handleReferences($rerendered);
+          addPostCallbacks($rerendered);
+        }, console.error);
+    });
+    // endregion
+  }
+
+  addPostCallbacks($(document));
+
+  // region auto-submit forms when pressing ctrl+enter
   $('[data-post-button]').keydown((e) => {
     if (e.keyCode === 13) {
       if (e.ctrlKey) {
@@ -67,15 +187,40 @@ window.onload = () => {
       e.preventDefault();
     }
   });
+  // endregion
 
-  // store scroll position
+  // region store scroll position
   $(window).on('beforeunload', () => localStorage.setItem('scroll', $(document).scrollTop()));
   let scroll = localStorage.getItem('scroll');
   if (scroll) {
     $('html, body').scrollTop(scroll);
   }
+  // endregion
 
-  // handle filenames in attachments
+  // region imitating anchor-links without mandatory scroll-jumps and with yellowfade
+  function handleReferences($element) {
+    $element.find('[data-post-reference]').on('click', e => {
+      let post = $(e.target.dataset.postReference);
+      scrollTo(post);
+      post.removeClass('target-fade').addClass('target-fade');
+      setTimeout(() => post.removeClass('target-fade'), 500);
+    });
+
+    function scrollTo($target) {
+      let windowHeight = window.innerHeight || document.documentElement.clientHeight;
+      let top = $target.position().top;
+      if (top < jQuery(window).scrollTop()) {
+        $('html,body').scrollTop(top);
+      } else if (top + $target.height() > $(window).scrollTop() + windowHeight) {
+        $('html,body').scrollTop(top - windowHeight + $target.height());
+      }
+    }
+  }
+
+  handleReferences($(document));
+  // endregion
+
+  // region handle filenames in attachments
   $('.custom-file input').change(() => {
     const thisElement = $(this)[0];
     const files = thisElement.files;
@@ -84,15 +229,16 @@ window.onload = () => {
     const label = $(this).next('.custom-file-label');
 
     if (numberOfFiles > 1) {
-      label.html(`[${numberOfFiles} ${type}s]`)
+      label.html('[' + numberOfFiles + ' ' + type + 's]')
     } else if (numberOfFiles === 1) {
       label.html(files[0].name.split('\\').pop());
     } else if (numberOfFiles === 0) {
-      label.html(`Attach ${type}s`);
+      label.html('Attach ' + type + 's');
     }
   });
+  // endregion
 
-  // handle copy-on-click functionality
+  // region handle copy-on-click functionality
   let autocopied = $('.autocopy');
   autocopied.popover({
     content: 'Copied to clipboard',
@@ -107,66 +253,23 @@ window.onload = () => {
     e.preventDefault();
     return false;
   });
+  // endregion
 
-  // handle textarea focus when reply button is pressed
+  // region handle textarea focus when reply button is pressed
   $('.collapse').on('show.bs.collapse', e => {
     let textarea = $(e.target).find('textarea');
     setTimeout(() => textarea.focus(), 0);
   });
+  // endregion
 
-  // configure datetimepicker
+  // region configure datetimepicker
   $('.date').datetimepicker({
     format: 'HH:mm:ss/DD.MM.YYYY',
     useCurrent: false,
   });
+  // endregion
 
-  $('.like').click(e => {
-    let parent = $(e.target).parent();
-    let prefix = parent.data('prefix');
-    let child = parent.find('.rating');
-    if (parent.hasClass('liked')) {
-      fetch(`${prefix}/rate/null`, {method: 'POST'})
-        .then(() => {
-          parent.removeClass('liked');
-          child.text(parseInt(child.text()) - 1);
-        }, console.error)
-    } else {
-      fetch(`${prefix}/rate/like`, {method: 'POST'})
-        .then(() => {
-          parent.addClass('liked');
-          if (parent.hasClass('disliked')) {
-            parent.removeClass('disliked');
-            child.text(parseInt(child.text()) + 2);
-          } else {
-            child.text(parseInt(child.text()) + 1);
-          }
-        }, console.error)
-    }
-  });
-  $('.dislike').click(e => {
-    let parent = $(e.target).parent();
-    let prefix = parent.data('prefix');
-    let child = parent.find('.rating');
-    if (parent.hasClass('disliked')) {
-      fetch(`${prefix}/rate/null`, {method: 'POST'})
-        .then(() => {
-          parent.removeClass('disliked');
-          child.text(parseInt(child.text()) + 1);
-        }, console.error)
-    } else {
-      fetch(`${prefix}/rate/dislike`, {method: 'POST'})
-        .then(() => {
-          parent.addClass('disliked');
-          if (parent.hasClass('liked')) {
-            parent.removeClass('liked');
-            child.text(parseInt(child.text()) - 2);
-          } else {
-            child.text(parseInt(child.text()) - 1);
-          }
-        }, console.error)
-    }
-  });
-
+  // region check validity on form submit
   $('.validate').submit(e => {
     let form = e.target;
     if (form.checkValidity() === false) {
@@ -175,4 +278,5 @@ window.onload = () => {
       form.classList.add('was-validated');
     }
   });
+  // endregion
 };

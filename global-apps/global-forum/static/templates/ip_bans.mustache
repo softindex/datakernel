@@ -5,44 +5,18 @@
                 <div class="card-header text-center font-weight-bold">IP bans</div>
                 <div class="card-body">
                     <div class="col-sm-8 mx-auto list-group">
-                        {{#bans}}
-                            <div class="list-group-item list-group-item-action"
-                                 onclick="window.location='/{{pubKey}}/admin/ip-bans/{{id}}'">
-                                <div class="row">
-                                    <div class="col-lg-4">
-                                        <div class="row">
-                                            <table class="table table-sm ml-2 mb-0">
-                                                <tr>
-                                                    <th>IP:</th>
-                                                    <td>{{ip}}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Mask:</th>
-                                                    <td>{{mask}}</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Until:</th>
-                                                    <td>{{ban.until}}</td>
-                                                </tr>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    <div class="col">
-                                        <div class="row text-wrap m-2">
-                                            {{ban.reason}}
-                                        </div>
-                                    </div>
-                                    {{#ban.banner}}
-                                        {{>user_col}}
-                                    {{/ban.banner}}
-                                </div>
-                            </div>
-                        {{/bans}}
-                        <div class="row mt-4 justify-content-center">
-                            <div class="col-4">
-                                <a href="/{{pubKey}}/admin/ip-bans/new" class="btn btn-block btn-primary">Add</a>
-                            </div>
+                        <div class="row mb-4 justify-content-center">
+                            <a href="/admin/ip-bans/new" class="col-3 btn btn-block btn-primary">Add</a>
                         </div>
+                        {{#bans}}
+                            {{>ip_ban_entry}}
+                        {{/bans}}
+                        {{#pages.tail}}
+                            {{#bans.any}}
+                                {{<ip_ban_entry}}{{$classes}}invisible{{/classes}}{{/ip_ban_entry}}
+                            {{/bans.any}}
+                        {{/pages.tail}}
+                        {{>pagination}}
                     </div>
                 </div>
             </div>

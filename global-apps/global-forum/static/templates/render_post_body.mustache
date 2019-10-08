@@ -1,0 +1,193 @@
+<div class="card no-gutters" id="post_{{postId}}"{{#inlineParent}}
+     data-inline-parent="#post_{{postId}}"{{/inlineParent}}>
+    <div class="card-body py-1">
+        <div class="row mb-2">
+            <div class="col pl-0">
+                <a href="/{{thread.threadId}}/{{postId}}{{^postId}}root{{/postId}}"
+                   class="badge badge-secondary">#</a>
+
+                <span class="badge badge-primary badge-light">
+                    {{initialTimestamp}}
+                </span>
+            </div>
+
+            {{^deletedBy}}
+                {{#lastEditTimestamp}}
+                    <div class="col-auto small px-0 mx-1">
+                        <i>edited at: <b>{{.}}</b></i>
+                    </div>
+                {{/lastEditTimestamp}}
+            {{/deletedBy}}
+            {{#deletedBy}}
+                <div class="col-auto small px-0 mx-1">
+                    <i>deleted by: <b>{{.}}</b></i>
+                </div>
+            {{/deletedBy}}
+        </div>
+        <div class="row">
+            <div class="col-auto mx-3">
+                {{#author}}{{<avatar}}{{$classes}}row{{/classes}}{{$size}}64{{/size}}{{/avatar}}{{/author}}
+                <div class="row justify-content-center">
+                    <span class="badge badge-primary badge-light text-wrap text-break mt-1">
+                        {{#user.role.privileged}}
+                            {{#author}}
+                                <a href="/profile/{{postId}}" class="text-dark stretched-link">{{.}}</a>
+                            {{/author}}
+                        {{/user.role.privileged}}
+                        {{^user.role.privileged}}
+                            {{author}}
+                        {{/user.role.privileged}}
+                        {{^author}}<i>ghost</i>{{/author}}
+                    </span>
+                </div>
+                {{#author.ban}}
+                    <div class="row justify-content-center mt-2">
+                        {{#user.role.privileged}}
+                            <a href="/admin/user-ban/{{author.userId}}"
+                               class="badge badge-warning align-self-center">banned</a>
+                        {{/user.role.privileged}}
+                        {{^user.role.privileged}}
+                            <span class="badge badge-warning align-self-center">banned</span>
+                        {{/user.role.privileged}}
+                    </div>
+                {{/author.ban}}
+            </div>
+            <div class="col">
+                {{#inlineParent}}
+                    <div class="row">
+                        <div class="col-auto ml-n3 small font-weight-bold">
+                            Replying to:&nbsp;<span class="link-like stretched-link"
+                                                    data-post-reference="#post_{{postId}}">{{author}}</span>
+                        </div>
+                    </div>
+                {{/inlineParent}}
+                <div class="row text-wrap text-break mr-2{{#deletedBy}} text-secondary{{/deletedBy}}">
+                    {{#deletedBy}}
+                    <details>
+                        <summary class="px-2">show</summary>
+                    {{/deletedBy}}
+
+                    <p id="content_{{postId}}" class="multiline m-0 p-2 mb-3"
+                       style="border: 1px solid transparent">{{content}}</p>
+
+                    {{#deletedBy}}
+                    </details>
+                    {{/deletedBy}}
+                </div>
+            </div>
+        </div>
+        {{#deletedBy}}
+        <div class="row">
+        <details>
+            <summary class="my-1 px-2 text-secondary">attachments</summary>
+        {{/deletedBy}}
+
+        {{#attachments}}
+            {{#image.size}}
+                <div class="row m-2">
+                    {{#image}}
+                        <a href="/{{thread.threadId}}/{{postId}}/download/{{.}}">
+                            <img src="/{{thread.threadId}}/{{postId}}/download/{{.}}"
+                                 alt="attachment"
+                                 class="m-2"
+                                 style="height:300px;max-width:100%;">
+                        </a>
+                    {{/image}}
+                </div>
+            {{/image.size}}
+
+            {{#video.size}}
+                <div class="row m-2">
+                    {{#video}}
+                        <div class="embed-responsive embed-responsive-16by9 m-2">
+                            <video controls>
+                                <source src="/{{thread.threadId}}/{{postId}}/download/{{.}}">
+                            </video>
+                        </div>
+                    {{/video}}
+                </div>
+            {{/video.size}}
+
+            {{#document.size}}
+                <div class="row m-2">
+                    <ul class="list-group col-auto">
+                        {{#document}}
+                            <li class="list-group-item text-truncate">
+                                <a href="/{{thread.threadId}}/{{postId}}/download/{{.}}"
+                                   class="stretched-link">🠋</a>
+                                {{.}}
+                            </li>
+                        {{/document}}
+                    </ul>
+                </div>
+            {{/document.size}}
+        {{/attachments}}
+
+        {{#deletedBy}}
+        </details>
+        </div>
+        {{/deletedBy}}
+        <div class="row">
+            {{#user}}
+                <div class="col-auto mx-3 align-self-center">
+                    <div class="row justify-content-center {{#liked}} liked{{/liked}}{{#disliked}} disliked{{/disliked}}"
+                         data-prefix="/{{thread.threadId}}/{{postId}}"
+                         style="width: 64px">
+                        <div class="like">
+                            <i class="fa fa-angle-up"></i>
+                        </div>
+                        <div class="rating">{{likes}}</div>
+                        <div class="dislike">
+                            <i class="fa fa-angle-down"></i>
+                        </div>
+                    </div>
+                </div>
+            {{/user}}
+            <div class="col"></div>
+            <div class="col-auto mx-2 mb-2">
+                <div class="row">
+                    {{#deletedBy}}{{#editable}}
+                        <button class="btn btn-outline-primary btn-sm"
+                                data-post="#post_{{postId}}"
+                                data-post-reply="/{{thread.threadId}}/{{postId}}/restore">
+                            restore
+                        </button>
+                    {{/editable}}{{/deletedBy}}
+                    {{^deletedBy}}
+                        {{#user}}
+                            {{#editable}}
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
+                                            type="button"
+                                            id="change_menu_{{postId}}"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        change
+                                    </button>
+                                    <div class="dropdown-menu" aria-labelledby="change_menu_{{postId}}">
+                                        <button class="dropdown-item"
+                                                data-edit="#content_{{postId}}"
+                                                data-post-id="#post_{{postId}}"
+                                                data-edit-action="/{{thread.threadId}}/{{postId}}/edit">
+                                            edit
+                                        </button>
+                                        <button class="dropdown-item"
+                                                data-post="#post_{{postId}}"
+                                                data-post-reply="/{{thread.threadId}}/{{postId}}/delete">
+                                            delete
+                                        </button>
+                                    </div>
+                                </div>
+                            {{/editable}}
+                            {{#user.role.known}}
+                                <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
+                                        data-target="#reply_{{postId}}">
+                                    reply
+                                </button>
+                            {{/user.role.known}}
+                        {{/user}}
+                    {{/deletedBy}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

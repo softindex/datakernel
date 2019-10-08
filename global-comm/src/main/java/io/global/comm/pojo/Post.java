@@ -9,7 +9,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.StringFormatUtils.limit;
 
 public final class Post {
-	private final String postId;
+	private final String id;
 	@NotNull
 	private final UserId author;
 	private String content = "";
@@ -27,8 +27,8 @@ public final class Post {
 	@Nullable
 	private UserId deletedBy;
 
-	private Post(String postId, @NotNull UserId author, long initialTimestamp) {
-		this.postId = postId;
+	private Post(String id, @NotNull UserId author, long initialTimestamp) {
+		this.id = id;
 		this.author = author;
 		this.initialTimestamp = initialTimestamp;
 
@@ -42,7 +42,7 @@ public final class Post {
 	}
 
 	public String getId() {
-		return postId;
+		return id;
 	}
 
 	// Mutates child
@@ -126,6 +126,15 @@ public final class Post {
 	@Nullable
 	public Post getParent() {
 		return parent;
+	}
+
+	public int computeDepth() {
+		int depth = 0;
+		Post post = this;
+		while ((post = post.parent) != null) {
+			depth++;
+		}
+		return depth;
 	}
 
 	public List<Post> getChildren() {

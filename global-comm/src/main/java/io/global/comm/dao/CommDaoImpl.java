@@ -2,48 +2,48 @@ package io.global.comm.dao;
 
 import io.datakernel.async.Promise;
 import io.datakernel.http.session.SessionStore;
-import io.datakernel.ot.OTStateManager;
 import io.global.comm.container.CommGlobalState;
 import io.global.comm.ot.MapOTStateListenerProxy;
-import io.global.comm.pojo.*;
+import io.global.comm.pojo.IpBanState;
+import io.global.comm.pojo.ThreadMetadata;
+import io.global.comm.pojo.UserData;
+import io.global.comm.pojo.UserId;
+import io.global.comm.util.OTPagedAsyncMap;
+import io.global.comm.util.PagedAsyncMap;
 import io.global.comm.util.Utils;
 import io.global.common.KeyPair;
-import io.global.ot.api.CommitId;
-import io.global.ot.map.MapOTState;
-import io.global.ot.map.MapOperation;
-import io.global.ot.map.SetValue;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
-import java.time.Instant;
 import java.util.Map;
-import java.util.Set;
+
+import static java.util.Comparator.comparingLong;
+import static java.util.Map.Entry.comparingByValue;
 
 public final class CommDaoImpl implements CommDao {
-	private final OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
-	private final OTStateManager<CommitId, MapOperation<UserId, InetAddress>> lastIpsStateManager;
-	private final OTStateManager<CommitId, MapOperation<String, IpBanState>> bansStateManager;
-	private final OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager;
-
 	private final CommGlobalState container;
 
-	private final Map<UserId, UserData> usersView;
-	private final Map<UserId, InetAddress> lastIpsView;
-	private final Map<String, IpBanState> ipBanView;
 	private final Map<String, ThreadMetadata> threadsView;
 
-	public CommDaoImpl(CommGlobalState container) {
-		this.usersStateManager = container.getUsersStateManager();
-		this.lastIpsStateManager = container.getLastIpsStateManager();
-		this.bansStateManager = container.getBansStateManager();
-		this.threadsStateManager = container.getThreadsStateManager();
+	private final PagedAsyncMap<UserId, UserData> users;
+	private final PagedAsyncMap<UserId, InetAddress> lastIps;
+	private final PagedAsyncMap<String, IpBanState> ipBans;
+	private final PagedAsyncMap<String, ThreadMetadata> threads;
 
+	public CommDaoImpl(CommGlobalState container) {
 		this.container = container;
 
-		usersView = ((MapOTState<UserId, UserData>) usersStateManager.getState()).getMap();
-		lastIpsView = ((MapOTState<UserId, InetAddress>) lastIpsStateManager.getState()).getMap();
-		ipBanView = ((MapOTState<String, IpBanState>) bansStateManager.getState()).getMap();
-		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) threadsStateManager.getState()).getMap();
+		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) container.getThreadsStateManager().getState()).getMap();
+
+		users = new OTPagedAsyncMap<>(container.getUsersStateManager());
+		lastIps = new OTPagedAsyncMap<>(container.getLastIpsStateManager());
+		ipBans = new OTPagedAsyncMap<>(container.getBansStateManager());
+
+		threads = new OTPagedAsyncMap<>(
+				container.getThreadsStateManager(),
+				((MapOTStateListenerProxy<String, ThreadMetadata>) container.getThreadsStateManager().getState()).getMap(),
+				comparingByValue(comparingLong(ThreadMetadata::getLastUpdate).reversed())
+		);
 	}
 
 	@Override
@@ -63,95 +63,31 @@ public final class CommDaoImpl implements CommDao {
 	}
 
 	@Override
-	public Promise<@Nullable UserData> getUser(UserId userId) {
-		return Promise.of(usersView.get(userId));
+	public PagedAsyncMap<UserId, UserData> getUsers() {
+		return users;
 	}
 
 	@Override
-	public Promise<Map<UserId, UserData>> getUsers() {
-		return Promise.of(usersView);
+	public PagedAsyncMap<UserId, InetAddress> getUserLastIps() {
+		return lastIps;
 	}
 
 	@Override
-	public Promise<Void> updateUser(UserId userId, UserData userData) {
-		return applyAndSync(usersStateManager, MapOperation.forKey(userId, SetValue.set(usersView.get(userId), userData)));
+	public PagedAsyncMap<String, IpBanState> getIpBans() {
+		return ipBans;
 	}
 
 	@Override
-	public Promise<InetAddress> getUserLastIp(UserId userId) {
-		return Promise.of(lastIpsView.get(userId));
-	}
-
-	@Override
-	public Promise<Void> updateUserLastIp(UserId userId, InetAddress lastIp) {
-		return applyAndSync(lastIpsStateManager, MapOperation.forKey(userId, SetValue.set(lastIpsView.get(userId), lastIp)));
-	}
-
-	@Override
-	public Promise<Set<UserId>> listKnownUsers() {
-		return Promise.of(usersView.keySet());
-	}
-
-	@Override
-	public Promise<String> banIpRange(IpRange range, UserId banner, Instant until, String reason) {
-		IpBanState state = new IpBanState(new BanState(banner, until, reason), range);
-		String id = Utils.generateId();
-		return applyAndSync(bansStateManager, MapOperation.forKey(id, SetValue.set(null, state)))
-				.map($ -> id);
-	}
-
-	@Override
-	public Promise<Map<String, IpBanState>> getBannedRanges() {
-		return Promise.of(ipBanView);
-	}
-
-	@Override
-	public Promise<IpBanState> getBannedRange(String id) {
-		return Promise.of(ipBanView.get(id));
-	}
-
-	@Override
-	public Promise<Boolean> isBanned(InetAddress address) {
-		return Promise.of(ipBanView.values().stream().anyMatch(ban -> ban.getIpRange().test(address)));
-	}
-
-	@Override
-	public Promise<Void> unbanIpRange(String id) {
-		return applyAndSync(bansStateManager, MapOperation.forKey(id, SetValue.set(ipBanView.get(id), null)));
-	}
-
-	@Override
-	public Promise<Map<String, ThreadMetadata>> getThreads() {
-		return Promise.of(threadsView);
+	public PagedAsyncMap<String, ThreadMetadata> getThreads() {
+		return threads;
 	}
 
 	@Override
 	public Promise<String> generateThreadId() {
 		String postId;
-		do {
+		do { // if this ever runs two times then it was worth it
 			postId = Utils.generateId();
 		} while (threadsView.containsKey(postId));
 		return Promise.of(postId);
-	}
-
-	@Override
-	public Promise<Void> updateThread(String threadId, ThreadMetadata threadMetadata) {
-		return applyAndSync(threadsStateManager, MapOperation.forKey(threadId, SetValue.set(threadsView.get(threadId), threadMetadata)));
-	}
-
-	@Override
-	public Promise<Void> updateThreadTitle(String threadId, String title) {
-		return applyAndSync(threadsStateManager, MapOperation.forKey(threadId, SetValue.set(threadsView.get(threadId), new ThreadMetadata(title))));
-	}
-
-	@Override
-	public Promise<Void> removeThread(String id) {
-		return applyAndSync(threadsStateManager, MapOperation.forKey(id, SetValue.set(threadsView.get(id), null)));
-		// ^ this will also remove the state manager because of the listener
-	}
-
-	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {
-		stateManager.add(op);
-		return stateManager.sync();
 	}
 }

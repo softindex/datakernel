@@ -40,7 +40,8 @@ public final class Utils {
 					}
 				}, InetAddress::getAddress))
 				.with(ThreadMetadata.class, tuple(ThreadMetadata::new,
-						ThreadMetadata::getTitle, STRING_CODEC))
+						ThreadMetadata::getTitle, STRING_CODEC,
+						ThreadMetadata::getLastUpdate, LONG_CODEC))
 				.with(UserId.class, registry -> tuple(UserId::new,
 						UserId::getAuthService, ofEnum(AuthService.class),
 						UserId::getAuthId, STRING_CODEC))

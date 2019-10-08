@@ -74,6 +74,18 @@ public final class Utils {
 								});
 	}
 
+	public static int getUnsignedInt(HttpRequest request, String queryParameter, int defaultValue) {
+		try {
+			String parameter = request.getQueryParameter(queryParameter);
+			if (parameter == null) {
+				return defaultValue;
+			}
+			return Integer.parseUnsignedInt(parameter);
+		} catch (NumberFormatException ignored) {
+			return defaultValue;
+		}
+	}
+
 	@Contract("_, _, _, true -> !null")
 	@Nullable
 	private static String getPostParameterImpl(Map<String, String> postParameters, String name, int maxLength, boolean required) throws ParseException {

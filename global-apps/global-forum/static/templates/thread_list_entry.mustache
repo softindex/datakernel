@@ -1,0 +1,14 @@
+<div class="list-group-item list-group-item-action {{$classes}}{{/classes}}">
+    <div class="row">
+        <div class="col position-static">
+            <span class="badge">{{lastUpdate}}</span>
+            <h5 class="ml-1 text-wrap text-break">
+                <a href="/{{threadId}}"
+                   class="stretched-link text-dark">{{title}}</a>
+            </h5>
+        </div>
+        {{#root.author}}
+            {{>user_col}}
+        {{/root.author}}
+    </div>
+</div>

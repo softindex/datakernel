@@ -1,5 +1,6 @@
 package io.global.mustache;
 
+import com.github.mustachejava.util.InternalArrayList;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.http.HttpResponse;
@@ -37,14 +38,14 @@ public final class MustacheTemplater {
 
 	@SuppressWarnings("SuspiciousMethodCalls")
 	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
-		Map<String, Object> context = new HashMap<>(scope);
-		context.putAll(staticContext);
+		Map<String, Object> map = new HashMap<>(scope);
+		map.putAll(staticContext);
 		List<Promise<?>> promisesToWait = new ArrayList<>();
 
-		for (Map.Entry<String, Object> entry : context.entrySet()) {
+		for (Map.Entry<String, Object> entry : map.entrySet()) {
 			Object value = entry.getValue();
 			if (value instanceof Ref) {
-				entry.setValue(context.get(((Ref<?>) value).get()));
+				entry.setValue(map.get(((Ref<?>) value).get()));
 			}
 			if (!(value instanceof Promise)) {
 				continue;
@@ -56,8 +57,15 @@ public final class MustacheTemplater {
 				promisesToWait.add(promise.whenResult(entry::setValue));
 			}
 		}
-		return Promises.all(promisesToWait).then($ ->
+		return Promises.all(promisesToWait)
+				.then($ ->
 						Promise.ofBlockingCallable(executor, () -> {
+							InternalArrayList<Object> context = new InternalArrayList<>();
+							Object spread;
+							if ((spread = map.remove(".")) != null) {
+								context.add(spread);
+							}
+							context.add(map);
 							ByteBufWriter writer = new ByteBufWriter();
 							mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
 							return HttpResponse.ofCode(code)

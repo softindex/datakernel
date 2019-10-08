@@ -45,6 +45,9 @@ public final class BanView {
 		return UserView.from(commDao, state.getBanner())
 				.map(user -> {
 					Instant until = state.getUntil();
+					if (until.compareTo(Instant.now()) < 0) {
+						return null;
+					}
 					return new BanView(user, until, formatInstant(until), state.getReason());
 				});
 	}

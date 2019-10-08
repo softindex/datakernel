@@ -5,16 +5,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.operation.*;
 import io.global.comm.pojo.*;
-import io.global.comm.pojo.AttachmentType;
-import io.global.comm.pojo.Post;
-import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
 import io.global.comm.util.Utils;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.Nullable;
@@ -61,7 +56,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 
 	@Override
 	public Promise<ThreadMetadata> getThreadMetadata() {
-		return parent.getThreads().map(threads -> threads.get(threadId));
+		return parent.getThreads().get(threadId);
 	}
 
 	@Override

@@ -1,0 +1,31 @@
+<div class="list-group-item list-group-item-action {{$classes}}{{/classes}}"
+     onclick="window.location='/admin/ip-bans/{{banId}}'">
+    <div class="row">
+        <div class="col-lg-4">
+            <div class="row">
+                <table class="table table-sm ml-2 mb-0">
+                    <tr>
+                        <th>IP:</th>
+                        <td>{{ip}}</td>
+                    </tr>
+                    <tr>
+                        <th>Mask:</th>
+                        <td>{{mask}}</td>
+                    </tr>
+                    <tr>
+                        <th>Until:</th>
+                        <td>{{ban.until}}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div class="col">
+            <div class="row text-wrap m-2">
+                {{ban.reason}}
+            </div>
+        </div>
+        {{#ban.banner}}
+            {{>user_col}}
+        {{/ban.banner}}
+    </div>
+</div>

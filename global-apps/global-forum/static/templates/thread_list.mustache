@@ -11,22 +11,15 @@
                 <div class="card-body">
                     <div class="list-group">
                         {{#threads}}
-                            <div class="list-group-item list-group-item-action">
-                                <div class="row">
-                                    <div class="col position-static">
-                                        <span class="badge">{{root.initialTimestamp}}</span>
-                                        <h5 class="ml-1 text-wrap text-break">
-                                            <a href="/{{pubKey}}/{{id}}"
-                                               class="stretched-link text-dark">{{meta.title}}</a>
-                                        </h5>
-                                    </div>
-                                    {{#root.author}}
-                                        {{>user_col}}
-                                    {{/root.author}}
-                                </div>
-                            </div>
+                            {{>thread_list_entry}}
                         {{/threads}}
+                        {{#pages.tail}}
+                            {{#threads.any}}
+                                {{<thread_list_entry}}{{$classes}}invisible{{/classes}}{{/thread_list_entry}}
+                            {{/threads.any}}
+                        {{/pages.tail}}
                     </div>
+                    {{>pagination}}
                 </div>
             </div>
         </div>

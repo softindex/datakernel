@@ -2,15 +2,26 @@
     {{$content}}
         <div class="container">
             <div class="card">
-                <div class="card-header">
-                    <div class="font-weight-bold ml-3">
+                <div class="card-header row">
+
+                    <div class="font-weight-bold col-auto">
                         {{thread.title}}
                     </div>
+                    <div class="col"></div>
+
+                    {{#thread.root.editable}}
+                        <div class="col-auto pr-0">
+                            <div class="btn btn-sm btn-outline-primary">rename</div>
+                        </div>
+                        <div class="col-auto pl-1">
+                            <div class="btn btn-sm btn-outline-danger">delete</div>
+                        </div>
+                    {{/thread.root.editable}}
                 </div>
                 <div class="card-body">
-                    {{#post}}
+                    {{#thread.root}}
                         {{>render_post}}
-                    {{/post}}
+                    {{/thread.root}}
                 </div>
             </div>
         </div>

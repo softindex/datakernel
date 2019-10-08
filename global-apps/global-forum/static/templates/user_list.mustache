@@ -7,25 +7,15 @@
                     <div class="card-body">
                         <div class="list-group">
                             {{#users}}
-                                <div class="list-group-item list-group-item-action col-9 align-self-center">
-                                    <div class="row">
-                                        <div class="col-auto px-1">
-                                            {{<avatar}}{{$size}}32{{/size}}{{/avatar}}
-                                        </div>
-                                        <span class="badge align-self-center">
-                                            {{#user.role.privileged}}
-                                                <a href="/{{pubKey}}/profile/{{id}}"
-                                                   class="text-dark stretched-link">{{name}}</a>
-                                            {{/user.role.privileged}}
-                                            {{^user.role.privileged}}{{name}}{{/user.role.privileged}}
-                                        </span>
-                                        {{#ban}}
-                                            <span class="badge badge-warning align-self-center">banned</span>
-                                        {{/ban}}
-                                    </div>
-                                </div>
+                                {{>user_list_entry}}
                             {{/users}}
+                            {{#pages.tail}}
+                                {{#users.any}}
+                                    {{<user_list_entry}}{{$classes}}invisible{{/classes}}{{/user_list_entry}}
+                                {{/users.any}}
+                            {{/pages.tail}}
                         </div>
+                        {{>pagination}}
                     </div>
                 </div>
             </div>

@@ -1,6 +1,5 @@
 package io.global.forum;
 
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
@@ -30,8 +29,6 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.forum.util.Utils.REGISTRY;
 import static io.global.forum.util.Utils.renderErrors;
@@ -51,11 +48,7 @@ public final class GlobalForumModule extends AbstractModule {
 
 	@Provides
 	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, ContainerServlet servlet) {
-		AsyncServlet debug = RoutingServlet.create() // TODO anton: this is debug-only
-				.map("/*", servlet)
-				.map(GET, "/", request ->
-						Promise.of(redirect302("/f7383de3a77f89df00de5fa259bb1b340874a0c603aca85771157c9c7c600f2:52484e25fb9eaec1ae346ae2a67514ff5ff2daac1e7fa49fe9506f1e34810d29")));
-		return AsyncHttpServer.create(eventloop, debug)
+		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 

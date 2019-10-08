@@ -46,3 +46,21 @@ i.fa {
 .multiline {
   white-space: pre-line;
 }
+
+@keyframes yellowfade {
+  from {
+    background: rgb(255, 255, 200);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.target-fade {
+  animation: yellowfade 0.5s;
+}
+
+.link-like:hover {
+  text-decoration: underline;
+  color: blue;
+}

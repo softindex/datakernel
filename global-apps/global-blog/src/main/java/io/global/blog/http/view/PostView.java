@@ -100,9 +100,9 @@ public final class PostView {
 	public static Promise<PostView> from(CommDao commDao, Post post, @Nullable UserId currentUser, int childrenDepth, @Nullable PostView parent) {
 		boolean deepest = childrenDepth != 0;
 		UserId deleterId = post.getDeletedBy();
-		Promise<@Nullable UserData> authorPromise = commDao.getUser(post.getAuthor());
-		Promise<@Nullable UserData> deleterPromise = deleterId != null ? commDao.getUser(deleterId) : Promise.of(null);
-		Promise<@Nullable UserData> currentPromise = currentUser != null ? commDao.getUser(currentUser) : Promise.of(null);
+		Promise<@Nullable UserData> authorPromise = commDao.getUsers().get(post.getAuthor());
+		Promise<@Nullable UserData> deleterPromise = deleterId != null ? commDao.getUsers().get(deleterId) : Promise.of(null);
+		Promise<@Nullable UserData> currentPromise = currentUser != null ? commDao.getUsers().get(currentUser) : Promise.of(null);
 		return Promises.toTuple(authorPromise, deleterPromise, currentPromise)
 				.map(users -> ofTuple(users, post, currentUser, deleterId, deepest, parent))
 				.then(root -> {

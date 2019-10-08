@@ -7,20 +7,28 @@ import io.global.comm.pojo.Post;
 import io.global.comm.pojo.Rating;
 import io.global.comm.pojo.UserId;
 import io.global.comm.pojo.UserRole;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.util.CollectorsEx.toMultimap;
 import static io.global.forum.util.Utils.formatInstant;
+import static java.util.Collections.emptyList;
 import static java.util.Map.Entry.comparingByKey;
+import static java.util.stream.Collectors.toList;
 
-public final class PostView {
+public final class PostView implements Comparable<PostView> {
 	private static final Comparator<Post> POST_COMPARATOR = Comparator.comparing(Post::getInitialTimestamp);
 
-	private final String postId;
+	private final String id;
 	private final String content;
 	private final String initialTimestamp;
 	private final String lastEditTimestamp;
@@ -41,18 +49,19 @@ public final class PostView {
 	private final boolean disliked;
 
 	private final List<PostView> children;
-	private final boolean hasChildren;
+
+	@Nullable
+	private PostView inlineParent;
 
 	public PostView(
-			String postId, String content, String initialTimestamp, String lastEditTimestamp, Instant timestamp,
+			String id, String content, String initialTimestamp, String lastEditTimestamp, Instant timestamp,
 			UserView author,
 			Map<String, Set<String>> attachments,
 			@Nullable UserView deletedBy,
 			boolean own, boolean editable, boolean deletedVisible,
 			int likes, boolean liked, boolean disliked,
-			List<PostView> children,
-			boolean hasChildren) {
-		this.postId = postId;
+			List<PostView> children) {
+		this.id = id;
 		this.content = content;
 		this.initialTimestamp = initialTimestamp;
 		this.lastEditTimestamp = lastEditTimestamp;
@@ -67,11 +76,10 @@ public final class PostView {
 		this.liked = liked;
 		this.disliked = disliked;
 		this.children = children;
-		this.hasChildren = hasChildren;
 	}
 
 	public String getPostId() {
-		return postId;
+		return id;
 	}
 
 	public String getContent() {
@@ -131,16 +139,58 @@ public final class PostView {
 		return children;
 	}
 
-	public boolean hasChildren() {
-		return hasChildren;
+	@Nullable
+	public PostView getInlineParent() {
+		return inlineParent;
+	}
+
+	public void setInlineParent(@Nullable PostView inlineParent) {
+		this.inlineParent = inlineParent;
+	}
+
+	@Override
+	public int compareTo(@NotNull PostView o) {
+		return timestamp.compareTo(o.timestamp);
+	}
+
+	private static Promise<Stream<PostView>> inlineChildren(CommDao commDao, Post post, @Nullable UserId currentUser, UserRole currentRole, @Nullable PostView parent) {
+		return Promises.toList(post.getChildren().stream()
+				.map(p ->
+						from(commDao, p, currentUser, currentRole, -1)
+								.then(pv -> {
+									pv.setInlineParent(parent);
+									return inlineChildren(commDao, p, currentUser, currentRole, pv).map(s -> Stream.concat(Stream.of(pv), s));
+								})))
+				.map(ll -> ll.stream().flatMap(Function.identity()).sorted());
+	}
+
+	public static Promise<PostView> single(CommDao commDao, Post post, @Nullable UserId currentUser, UserRole currentRole, int maxDepth) {
+		Promise<PostView> promise = from(commDao, post, currentUser, currentRole, -1);
+		if (maxDepth != -1 && post.computeDepth() > maxDepth + 1) { // implies post.getParent() != null
+			return Promises.toTuple(promise, single(commDao, post.getParent(), currentUser, currentRole, -1))
+					.map(t -> {
+						t.getValue1().setInlineParent(t.getValue2());
+						return t.getValue1();
+					});
+		}
+		return promise;
 	}
 
 	public static Promise<PostView> from(CommDao commDao, Post post, @Nullable UserId currentUser, UserRole currentRole, int depth) {
-		assert depth >= 0;
+		assert depth >= -1;
 
-		Promise<List<PostView>> childrenPromise = depth != 0 ?
-				Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(commDao, p, currentUser, currentRole, depth - 1))) :
-				Promise.of(Collections.<PostView>emptyList());
+		if (post == null) {
+			return Promise.of(null);
+		}
+
+		boolean deepest = depth == 0;
+
+		Promise<List<PostView>> childrenPromise =
+				depth == -1 ?
+						Promise.of(emptyList()) :
+						deepest ?
+								inlineChildren(commDao, post, currentUser, currentRole, null).map(s -> s.collect(toList())) :
+								Promises.toList(post.getChildren().stream().sorted(POST_COMPARATOR).map(p -> from(commDao, p, currentUser, currentRole, depth - 1)));
 
 		return childrenPromise
 				.then(children -> {
@@ -159,14 +209,13 @@ public final class PostView {
 
 								long initialTimestamp = post.getInitialTimestamp();
 								long lastEditTimestamp = post.getLastEditTimestamp();
-								Instant timestamp = Instant.ofEpochMilli(lastEditTimestamp == -1 ? initialTimestamp : lastEditTimestamp);
 
 								return new PostView(
 										post.getId(),
 										post.getContent(),
 										formatInstant(initialTimestamp),
 										formatInstant(lastEditTimestamp),
-										timestamp,
+										Instant.ofEpochMilli(initialTimestamp),
 										author,
 										post.getAttachments().entrySet().stream()
 												.sorted(comparingByKey())
@@ -178,8 +227,8 @@ public final class PostView {
 										likes.size() - dislikes.size(),
 										currentUser != null && likes.contains(currentUser),
 										currentUser != null && dislikes.contains(currentUser),
-										children,
-										!post.getChildren().isEmpty());
+										children
+								);
 							});
 				});
 	}

@@ -1,8 +1,81 @@
 {{#deletedBy}}
     {{#deletedVisible}}
-        {{>render_post_impl}}
+        {{>render_post_body}}
+    {{/deletedVisible}}
+    {{^deletedVisible}}
+        {{^children.isEmpty}}
+            <div class="card no-gutters" id="post_{{postId}}"{{#inlineParent}}
+                 data-inline-parent="#post_{{postId}}"{{/inlineParent}}>
+                <div class="card-body py-1 text-secondary">
+                    &lt;deleted post&gt;
+                </div>
+            </div>
+        {{/children.isEmpty}}
     {{/deletedVisible}}
 {{/deletedBy}}
 {{^deletedBy}}
-    {{>render_post_impl}}
+    {{>render_post_body}}
 {{/deletedBy}}
+
+{{^partialReply}}
+    <div class="ml-3 border-left border-dark">
+        {{^deletedBy}}
+            {{#user}}
+                <div class="collapse" id="reply_{{postId}}">
+                    <div class="pt-3 validate">
+                        <div class="mx-3">
+                            <textarea class="form-control" placeholder="Post your reply" name="content"
+                                      id="reply_content_{{postId}}"
+                                      data-post-button="#post_button_{{postId}}" required></textarea>
+                        </div>
+                        <div class="collapse" id="attachments_{{postId}}">
+                            <div class="mx-3 mt-3">
+                                <div class="custom-file col-3">
+                                    <input type="file" accept="image/*" class="custom-file-input"
+                                           id="image_attachment_{{postId}}" multiple
+                                           name="image_attachment">
+                                    <label class="custom-file-label text-truncate" for="image_attachment_{{postId}}">
+                                        Attach images
+                                    </label>
+                                </div>
+                                <div class="custom-file col-3">
+                                    <input type="file" accept="video/mp4" class="custom-file-input"
+                                           id="video_attachment_{{postId}}" multiple
+                                           name="video_attachment">
+                                    <label class="custom-file-label text-truncate" for="video_attachment_{{postId}}">
+                                        Attach videos
+                                    </label>
+                                </div>
+                                <div class="custom-file col-3">
+                                    <input type="file" class="custom-file-input" id="document_attachment_{{postId}}"
+                                           multiple
+                                           name="document_attachment">
+                                    <label class="custom-file-label text-truncate" for="document_attachment_{{postId}}">
+                                        Attach documents
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <button class="btn btn-sm btn-primary post-button"
+                                    id="post_button_{{postId}}"
+                                    data-thread-id="{{thread.threadId}}"
+                                    data-post-id="{{postId}}">
+                                post
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary"
+                                    data-toggle="collapse"
+                                    data-target="#attachments_{{postId}}">
+                                attach
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            {{/user}}
+        {{/deletedBy}}
+
+        {{#children}}
+            {{>render_post}}
+        {{/children}}
+    </div>
+{{/partialReply}}

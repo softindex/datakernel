@@ -14,7 +14,7 @@
                             </div>
                         </div>
                         <div class="col">
-                            <form class="validate" action="/profile/{{shownUser.id}}" method="post"
+                            <form class="validate" action="/profile/{{shownUser.userId}}" method="post"
                                   novalidate>
                                 <div class="form-group row">
                                     <div class="col-sm-2 col-form-label">Username</div>
@@ -60,7 +60,7 @@
                                     <div class="col-sm align-self-center">
                                         <input type="text" readonly
                                                class="form-control-plaintext small text-center autocopy"
-                                               value="{{shownUser.id}}">
+                                               value="{{shownUser.userId}}">
                                     </div>
                                 </div>
 
@@ -91,55 +91,14 @@
                                     <div class="form-group row">
                                         <div class="col-sm-2 col-form-label"><b>Moderation</b></div>
                                         <div class="col-1 px-1 align-self-center">
-                                            <a href="/{{pubKey}}/admin/user-ban/{{shownUser.id}}"
+                                            <a href="/admin/user-ban/{{shownUser.userId}}"
                                                class="btn btn-block btn-sm btn-outline-success">{{#shownUser.ban}}
                                                 edit ban{{/shownUser.ban}}{{^shownUser.ban}}ban{{/shownUser.ban}}</a>
                                         </div>
-                                        {{#shownUser.ban}}
-                                            <div class="col-1 px-1 align-self-center">
-                                                <button type="button" class="btn btn-block btn-sm btn-outline-success"
-                                                        data-toggle="modal" data-target="#unban">
-                                                    unban
-                                                </button>
-                                            </div>
-                                            <div class="modal fade" id="unban" tabindex="-1" role="dialog"
-                                                 aria-hidden="true">
-                                                <div class="modal-dialog modal-dialog-centered" role="document">
-                                                    <div class="modal-content">
-                                                        <div class="modal-header">
-                                                            <h5 class="modal-title" id="exampleModalLongTitle">
-                                                                Confirmation</h5>
-                                                            <button type="button" class="close" data-dismiss="modal">
-                                                                <span aria-hidden="true">&times;</span>
-                                                            </button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            Are you sure you want to unban
-                                                            <mark>{{shownUser.name}}</mark>
-                                                            ?
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button type="button" class="btn btn-secondary"
-                                                                    data-dismiss="modal">
-                                                                No
-                                                            </button>
-                                                            <form action="/{{pubKey}}/admin/user-ban/{{bannedUser.id}}"
-                                                                  method="post">
-                                                                <button class="btn btn-primary" type="submit"
-                                                                        name="action" value="unban">
-                                                                    Yes
-                                                                </button>
-                                                            </form>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        {{/shownUser.ban}}
                                         {{#shownUser.ip}}
                                             <div class="col-1 px-1 align-self-center">
-                                                <a href="/{{pubKey}}/admin/ip-bans/new?ip={{.}}" class="btn btn-block
-                                                btn-sm
-                                                btn-outline-success">ban ip</a>
+                                                <a href="/admin/ip-bans/new?ip={{.}}"
+                                                class="btn btn-block btn-sm btn-outline-success">ban ip</a>
                                             </div>
                                         {{/shownUser.ip}}
                                     </div>

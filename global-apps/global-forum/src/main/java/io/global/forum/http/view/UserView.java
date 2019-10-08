@@ -1,6 +1,7 @@
 package io.global.forum.http.view;
 
 import io.datakernel.async.Promise;
+import io.datakernel.async.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.UserData;
 import io.global.comm.pojo.UserId;
@@ -10,6 +11,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.Objects;
+
+import static java.util.stream.Collectors.toList;
 
 public final class UserView {
 	private final String id;
@@ -33,7 +38,7 @@ public final class UserView {
 		this.ban = ban;
 	}
 
-	public String getId() {
+	public String getUserId() {
 		return id;
 	}
 
@@ -71,25 +76,31 @@ public final class UserView {
 	}
 
 	public static Promise<UserView> from(CommDao commDao, UserId userId, @Nullable UserData userData) {
-		return userData == null ?
-				Promise.of(new UserView(userId.getAuthId(), "ghost", UserRole.GUEST, "https://gravatar.com/avatar?d=mp", null, null, null, null)) :
-				BanView.from(commDao, userData.getBanState())
-						.map(ban -> new UserView(
-								userId.getAuthId(),
-								userData.getUsername(),
-								userData.getRole(),
-								avatarUrl(userData),
-								userData.getEmail(),
-								userData.getFirstName(),
-								userData.getLastName(),
-								ban));
+		if (userData == null) {
+			return Promise.of(new UserView(userId.getAuthId(), "ghost", UserRole.GUEST, "https://gravatar.com/avatar?d=mp", null, null, null, null));
+		}
+		return BanView.from(commDao, userData.getBanState())
+				.map(ban -> new UserView(
+						userId.getAuthId(),
+						userData.getUsername(),
+						userData.getRole(),
+						avatarUrl(userData),
+						userData.getEmail(),
+						userData.getFirstName(),
+						userData.getLastName(),
+						ban));
+	}
+
+	public static Promise<List<UserView>> from(CommDao commDao, int page, int limit) {
+		return commDao.getUsers().slice(page * limit, limit)
+				.then(users -> Promises.toList(users.stream().map(e -> from(commDao, e.getKey(), e.getValue()))))
+				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()));
 	}
 
 	public static Promise<UserView> from(CommDao commDao, @Nullable UserId userId) {
-		return userId == null ?
-				Promise.of(null) :
-				commDao.getUser(userId)
-						.then(userData -> from(commDao, userId, userData));
+		return userId != null ?
+				commDao.getUsers().get(userId).then(userData -> from(commDao, userId, userData)) :
+				Promise.of(null);
 	}
 
 	private static final MessageDigest MD5;

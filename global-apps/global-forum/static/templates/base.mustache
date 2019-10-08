@@ -11,6 +11,7 @@
           integrity="sha384-Re/I8sla3AIFEoz6DrgkHWaLDSWKXaLOYm5yn3Gwmf/QhWS3/ajG7O2qr1zBmF3d" crossorigin="anonymous">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
           integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+
     <link rel="stylesheet" href="/static/style.css">
 
     <title>Global Forum</title>
@@ -36,7 +37,7 @@
                     {{/user.role.known}}
                     {{#user.role.privileged}}
                         <li class="nav-item">
-                            <a class="nav-link text-success" href="/{{pubKey}}/admin">Administration</a>
+                            <a class="nav-link text-success" href="/admin">Administration</a>
                         </li>
                     {{/user.role.privileged}}
                 {{/user}}
@@ -65,8 +66,8 @@
 </div>
 {{$content}}{{/content}}
 <script src="/static/main.js"></script>
-<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT"
         crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
         integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"

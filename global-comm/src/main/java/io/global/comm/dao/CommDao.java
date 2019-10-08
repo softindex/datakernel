@@ -2,14 +2,15 @@ package io.global.comm.dao;
 
 import io.datakernel.async.Promise;
 import io.datakernel.http.session.SessionStore;
-import io.global.comm.pojo.*;
+import io.global.comm.pojo.IpBanState;
+import io.global.comm.pojo.ThreadMetadata;
+import io.global.comm.pojo.UserData;
+import io.global.comm.pojo.UserId;
+import io.global.comm.util.PagedAsyncMap;
 import io.global.common.KeyPair;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
-import java.time.Instant;
-import java.util.Map;
-import java.util.Set;
 
 public interface CommDao {
 	KeyPair getKeys();
@@ -19,35 +20,13 @@ public interface CommDao {
 	@Nullable
 	ThreadDao getThreadDao(String id);
 
-	Promise<@Nullable UserData> getUser(UserId userId);
+	PagedAsyncMap<UserId, UserData> getUsers();
 
-	Promise<Map<UserId, UserData>> getUsers();
+	PagedAsyncMap<UserId, InetAddress> getUserLastIps();
 
-	Promise<Void> updateUser(UserId userId, UserData userData);
+	PagedAsyncMap<String, IpBanState> getIpBans();
 
-	Promise<Void> updateUserLastIp(UserId userId, InetAddress lastIp);
-
-	Promise<InetAddress> getUserLastIp(UserId userId);
-
-	Promise<Set<UserId>> listKnownUsers();
-
-	Promise<String> banIpRange(IpRange range, UserId banner, Instant until, String reason);
-
-	Promise<Map<String, IpBanState>> getBannedRanges();
-
-	Promise<IpBanState> getBannedRange(String id);
-
-	Promise<Boolean> isBanned(InetAddress address);
-
-	Promise<Void> unbanIpRange(String id);
+	PagedAsyncMap<String, ThreadMetadata> getThreads();
 
 	Promise<String> generateThreadId();
-
-	Promise<Void> updateThread(String threadId, ThreadMetadata threadMetadata);
-
-	Promise<Void> updateThreadTitle(String threadId, String title);
-
-	Promise<Map<String, ThreadMetadata>> getThreads();
-
-	Promise<Void> removeThread(String id);
 }

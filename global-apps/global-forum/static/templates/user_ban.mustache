@@ -6,7 +6,8 @@
                     <div class="card">
                         <div class="card-header text-center font-weight-bold">Ban for {{bannedUser.name}}</div>
                         <div class="card-body">
-                            <form class="validate" action="/{{pubKey}}/admin/user-ban/{{bannedUser.id}}" method="post"
+                            <form class="validate" action="/admin/user-ban/{{bannedUser.userId}}"
+                                  method="post"
                                   novalidate>
                                 <div class="form-row mb-2">
                                     <div class="col-sm-2 col-form-label">Until:</div>
