@@ -17,10 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.stream.Stream;
 
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.transformMapValues;
+import static io.datakernel.util.CollectorsEx.toMap;
 import static io.datakernel.util.LogUtils.Level.TRACE;
 import static io.datakernel.util.LogUtils.thisMethod;
 import static io.datakernel.util.LogUtils.toLogger;
@@ -34,8 +32,9 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	private final Eventloop eventloop;
 	private final BiFunction<Eventloop, PrivKey, C> containerFactory;
 
-	private final Map<String, Promise<C>> pendingContainers = new HashMap<>();
-	private final Map<String, C> containers = new HashMap<>();
+	private final Map<PrivKey, Promise<C>> pendingContainers = new HashMap<>();
+	private final Map<PrivKey, C> containers = new HashMap<>();
+	private final Map<String, PrivKey> idMapping = new HashMap<>();
 
 	private final EventloopTaskScheduler synchronizer;
 	private final KeyExchanger keyExchanger;
@@ -80,30 +79,41 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	}
 
 	private Promise<C> ensureUserContainer(String id, PrivKey privKey) {
-		C existing = containers.get(id);
+		PrivKey existingKey = idMapping.get(id);
+		if (existingKey != null) {
+			return Promise.of(containers.get(existingKey));
+		}
+		C existing = containers.get(privKey);
 		if (existing != null) {
+			idMapping.put(id, privKey);
 			return Promise.of(existing);
 		}
-		return pendingContainers.computeIfAbsent(id,
+		return pendingContainers.computeIfAbsent(privKey,
 				$ -> {
 					C container = containerFactory.apply(eventloop, privKey);
 					return container.start()
-							.whenComplete(() -> pendingContainers.remove(id))
-							.whenResult($2 -> containers.put(id, container))
+							.whenComplete(() -> pendingContainers.remove(privKey))
+							.whenResult($2 -> {
+								containers.put(privKey, container);
+								idMapping.put(id, privKey);
+							})
 							.map($2 -> container);
 				})
 				.whenComplete(toLogger(logger, thisMethod(), id));
 	}
 
 	private Promise<?> removeUserContainer(String id) {
-		C container = containers.remove(id);
-		return (container == null ? Promise.complete() : container.stop())
+		PrivKey privKey = idMapping.remove(id);
+		if (privKey == null || idMapping.containsValue(privKey)) {
+			return Promise.complete();
+		}
+		return Promise.of(containers.remove(privKey).stop())
 				.whenComplete(toLogger(logger, thisMethod(), id));
 	}
 
 	@Nullable
 	public C getUserContainer(String id) {
-		return containers.get(id);
+		return containers.get(idMapping.get(id));
 	}
 
 	@Override
@@ -114,20 +124,22 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	private Promise<Void> sync() {
 		return keyExchanger.receiveKeys()
 				.then(keysMap -> {
-					Set<String> containerIds = containers.keySet();
-					Set<String> toRemove = containers.entrySet().stream()
+					Map<String, PrivKey> toAdd = keysMap.entrySet().stream()
+							.filter(entry -> !idMapping.containsKey(entry.getKey()))
+							.collect(toMap());
+					Set<String> toRemove = idMapping.entrySet().stream()
 							.filter(entry -> {
-								PrivKey existing = keysMap.get(entry.getKey());
-								return existing == null || !existing.equals(entry.getValue().getKeys().getPrivKey());
+								PrivKey expected = keysMap.get(entry.getKey());
+								return expected == null || !expected.equals(entry.getValue());
 							})
 							.map(Map.Entry::getKey)
 							.collect(toSet());
-					Set<String> toAdd = difference(keysMap.keySet(), containerIds);
-					return Promises.all(Stream.concat(
-							toRemove.stream().map(this::removeUserContainer),
-							toAdd.stream().map(id -> ensureUserContainer(id, keysMap.get(id)))))
-							.then($ -> keyExchanger.sendKeys(transformMapValues(containers,
-									container -> container.getKeys().getPrivKey())));
+					return Promises.all(toAdd.entrySet()
+							.stream()
+							.map(entry -> ensureUserContainer(entry.getKey(), entry.getValue())))
+							.then($ -> Promises.all(toRemove.stream()
+									.map(this::removeUserContainer)))
+							.then($ -> keyExchanger.sendKeys(idMapping));
 				})
 				.whenComplete(toLogger(logger, TRACE, "sync"));
 	}
