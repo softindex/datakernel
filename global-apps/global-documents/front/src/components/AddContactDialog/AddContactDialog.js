@@ -63,7 +63,7 @@ function AddContactDialogView({classes, onClose, name, loading, onSubmit, onName
   );
 }
 
-function AddContactDialog({classes, enqueueSnackbar, contactPublicKey, onClose}) {
+function AddContactDialog({classes, enqueueSnackbar, closeSnackbar, contactPublicKey, onClose}) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const contactsService = getInstance(ContactsService);
@@ -80,9 +80,11 @@ function AddContactDialog({classes, enqueueSnackbar, contactPublicKey, onClose})
 
     onSubmit(event) {
       event.preventDefault();
+      enqueueSnackbar('Adding...');
       setLoading(true);
       return contactsService.addContact(contactPublicKey, name)
         .then(() => {
+          setTimeout(() => closeSnackbar(), 2000);
           onClose();
         })
         .catch(err => {

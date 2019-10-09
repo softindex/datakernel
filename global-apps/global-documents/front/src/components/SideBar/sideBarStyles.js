@@ -25,7 +25,7 @@ const sideBarStyles = theme => {
       flexGrow: 1,
       overflow: 'hidden',
       '&:hover': {
-        overflowY: 'overlay'
+        overflowY: 'auto'
       },
       background: theme.palette.primary.contrastText,
       marginBottom: theme.spacing(1)

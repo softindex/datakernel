@@ -13,7 +13,7 @@ import DocumentsService from "../../modules/documents/DocumentsService";
 
 function RenameDocumentDialogView({classes, name, loading, onNameChange, onClose, onSubmit}) {
   return (
-    <Dialog onClose={onClose}>
+    <Dialog onClose={onClose} loading={loading}>
       <form onSubmit={onSubmit}>
         <DialogTitle>Rename document</DialogTitle>
         <DialogContent>
@@ -34,14 +34,16 @@ function RenameDocumentDialogView({classes, name, loading, onNameChange, onClose
           <Button
             className={classes.actionButton}
             onClick={onClose}
+            disabled={loading}
           >
             Close
           </Button>
           <Button
             className={classes.actionButton}
-            type={"submit"}
-            color={"primary"}
-            variant={"contained"}
+            type="submit"
+            color="primary"
+            variant="contained"
+            disabled={loading}
           >
             Rename
           </Button>

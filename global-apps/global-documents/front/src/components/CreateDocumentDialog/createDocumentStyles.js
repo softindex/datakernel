@@ -21,7 +21,10 @@ const createChatDialogStyles = theme => ({
     display: 'flex',
     flexFlow: 'row wrap',
     maxHeight: theme.spacing(12),
-    overflow: 'overlay'
+    overflow: 'hidden',
+    '&:hover': {
+      overflow: 'auto'
+    },
   },
   search: {
     padding: `${theme.spacing(1)}px 0px`,

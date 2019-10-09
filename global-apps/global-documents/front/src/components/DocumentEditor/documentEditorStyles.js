@@ -1,4 +1,4 @@
-const editorStyles = theme => ({
+const documentEditorStyles = theme => ({
   editor: {
     fontSize: theme.typography.h6.fontSize,
     fontFamily: 'Roboto',
@@ -8,11 +8,7 @@ const editorStyles = theme => ({
     width: '100%',
     height: '100%',
     resize: 'none',
-    borderStyle: 'none',
-    overflow: 'hidden',
-    '&:hover': {
-      overflow: 'overlay'
-    }
+    borderStyle: 'none'
   },
   paper: {
     flexGrow: 1,
@@ -20,7 +16,10 @@ const editorStyles = theme => ({
     marginTop: theme.spacing(11),
     padding: theme.spacing(3),
     paddingRight: theme.spacing(2)
+  },
+  circularProgress: {
+    margin: 'auto'
   }
 });
 
-export default editorStyles;
+export default documentEditorStyles;

@@ -64,7 +64,7 @@ function CreateDocumentDialogView({
         )}
         {activeStep > 0 && (
           <DialogContent className={classes.dialogContent}>
-            <div className={classes.chipsContainer}>
+            <div className={`${classes.chipsContainer} scroller`}>
               {[...participants].map(([publicKey, name]) => (
                 <ContactChip
                   color="primary"
@@ -78,7 +78,7 @@ function CreateDocumentDialogView({
               placeholder="Search people..."
               value={search}
               onChange={onSearchChange}
-              searchReady={searchReady}
+              searchReady={loading? true : searchReady}
             />
             <SelectContactsList
               search={search}
@@ -116,7 +116,6 @@ function CreateDocumentDialogView({
           {activeStep > 0 && (
             <Button
               className={classes.actionButton}
-              loading={loading}
               type="submit"
               disabled={loading}
               color="primary"
@@ -186,10 +185,6 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
       (async () => {
         if (activeStep === 0) {
           props.gotoStep(activeStep + 1);
-          return;
-        }
-
-        if (participants.size === 0 && contacts.size !== 0) {
           return;
         }
 

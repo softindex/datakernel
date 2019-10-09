@@ -3,7 +3,7 @@ const selectContactsListStyles = theme => {
     chatsList: {
       flexGrow: 1,
       '&:hover': {
-        overflow: 'overlay'
+        overflow: 'auto'
       },
       overflow: 'hidden',
       height: theme.spacing(37),

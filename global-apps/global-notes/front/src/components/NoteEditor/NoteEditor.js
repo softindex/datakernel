@@ -5,16 +5,27 @@ import withStyles from "@material-ui/core/es/styles/withStyles";
 import {Paper} from "@material-ui/core";
 import {getInstance, useService} from "global-apps-common";
 import NoteService from "../../modules/note/NoteService";
+import CircularProgress from "@material-ui/core/CircularProgress";
 
-function NoteEditorView({classes, content, onChange}) {
+function NoteEditorView({classes, content, ready, onChange}) {
   let textInput = React.createRef();
 
   useEffect(() => {
-    textInput.focus();
+    if (ready) {
+      textInput.focus();
+    }
   }, [textInput]);
 
   return (
-    <Paper className={classes.paper}>
+    <>
+      {!ready && (
+        <CircularProgress
+          size={36}
+          className={classes.circularProgress}
+        />
+      )}
+      {ready && (
+        <Paper className={classes.paper}>
         <textarea
           className={`${classes.noteEditor} scrollbar`}
           value={content}
@@ -23,17 +34,20 @@ function NoteEditorView({classes, content, onChange}) {
             textInput = input
           }}
         />
-    </Paper>
+        </Paper>
+      )}
+      </>
   );
 }
 
 function NoteEditor({classes, onInsert, onDelete, onReplace}) {
   const noteService = getInstance(NoteService);
-  const {content} = useService(noteService);
+  const {content, ready} = useService(noteService);
 
   const props = {
     classes,
     content,
+    ready,
 
     onChange(event) {
       const difference = getDifference(content, event.target.value, event.target.selectionEnd);

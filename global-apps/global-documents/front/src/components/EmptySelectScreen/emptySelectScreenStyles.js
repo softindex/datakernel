@@ -4,7 +4,7 @@ const emptyChatScreenStyles = theme => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: theme.spacing(14)
+      height: theme.spacing(37)
     },
     paper: {
       display: 'flex',

@@ -12,7 +12,6 @@ import Tooltip from "@material-ui/core/Tooltip";
 import IconButton from "@material-ui/core/IconButton";
 import {withSnackbar} from "notistack";
 import CircularProgress from "@material-ui/core/CircularProgress";
-import Grow from "@material-ui/core/Grow";
 import MyProfileService from "../../modules/profile/MyProfileService";
 
 function ProfileDialogView({
@@ -133,6 +132,9 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
 
     onSubmit(event) {
       event.preventDefault();
+      if (name === profile.name) {
+        return;
+      }
       setLoading(true);
       profileService.setProfileField('name', name)
         .catch(error => enqueueSnackbar(error.message, {

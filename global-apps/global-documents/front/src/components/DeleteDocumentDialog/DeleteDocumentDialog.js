@@ -51,6 +51,7 @@ function DeleteDocumentDialog({classes, documentId, onClose, history, match, enq
 
     onDelete() {
       enqueueSnackbar('Deleting...');
+      onClose();
       return documentsService.deleteDocument(documentId)
         .then((documentKey) => {
           const {documentId} = match.params;
@@ -63,8 +64,7 @@ function DeleteDocumentDialog({classes, documentId, onClose, history, match, enq
           enqueueSnackbar(error.message, {
             variant: 'error'
           })
-        })
-        .finally(() => onClose())
+        });
     }
   };
 

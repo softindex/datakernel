@@ -8,7 +8,8 @@ const dialogStyles = theme => ({
   circularProgress: {
     position: 'absolute',
     top: 'calc(50% - 12px)',
-    left: 'calc(50% - 12px)'
+    left: 'calc(50% - 12px)',
+    zIndex: 3
   },
   muDialog: {
     minWidth: theme.spacing(47),

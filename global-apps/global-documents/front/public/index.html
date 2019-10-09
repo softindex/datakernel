@@ -13,24 +13,25 @@
   <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500|Roboto" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <style>
+    .scroller {
+      scrollbar-color: #66666680 transparent;
+      scrollbar-width: thin;
+    }
+
     ::-webkit-scrollbar {
-      width: 8px;
+      width: 5px;
       height: 8px;
     }
 
     ::-webkit-scrollbar-button {
-      width: 0px;
-      height: 0px;
+      width: 0;
+      height: 0;
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #e1e1e180;
-      border: 0px none #ffffff80;
+      background: #66666680;
+      border: 0 none #ffffff80;
       border-radius: 10px;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #ffffff80;
     }
 
     ::-webkit-scrollbar-thumb:active {
@@ -40,11 +41,7 @@
     ::-webkit-scrollbar-track {
       background: #66666680;
       border: 6px none #ffffff80;
-      border-radius: 0px;
-    }
-
-    ::-webkit-scrollbar-track:hover {
-      background: #66666680;
+      border-radius: 0;
     }
 
     ::-webkit-scrollbar-track:active {
@@ -56,9 +53,8 @@
     }
 
     ::-webkit-scrollbar-track {
-      background: border-box
+      background: border-box;
     }
-
   </style>
 </head>
 <body>

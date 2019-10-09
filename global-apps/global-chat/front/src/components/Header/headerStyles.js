@@ -26,7 +26,8 @@ const headerStyles = theme => ({
     color: 'inherit'
   },
   listItemIcon: {
-    color: 'inherit'
+    color: 'inherit',
+    alignItems: 'center'
   },
   arrowIcon: {
     fontSize: '1.25rem'

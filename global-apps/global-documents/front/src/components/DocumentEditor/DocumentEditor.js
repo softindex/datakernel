@@ -1,36 +1,50 @@
 import React, {useEffect} from 'react';
 import {Paper, withStyles} from '@material-ui/core';
 import {getDifference} from './utils';
-import editorStyles from "./editorStyles";
+import documentEditorStyles from "./documentEditorStyles";
 import {getInstance, useService} from "global-apps-common";
 import DocumentService from "../../modules/document/DocumentService";
+import CircularProgress from "@material-ui/core/CircularProgress";
 
-function DocumentEditorView({classes, onContentChange, content}) {
+function DocumentEditorView({classes, onContentChange, content, ready}) {
   let textInput = React.createRef();
 
   useEffect(() => {
-    textInput.focus();
+    if (ready) {
+      textInput.focus();
+    }
   }, [textInput]);
 
   return (
-    <Paper className={classes.paper}>
-      <textarea
-        className={classes.editor}
-        value={content}
-        onChange={onContentChange}
-        ref={input => textInput = input}
-      />
-    </Paper>
+    <>
+      {!ready && (
+        <CircularProgress
+          size={36}
+          className={classes.circularProgress}
+        />
+      )}
+      {ready && (
+        <Paper className={classes.paper}>
+          <textarea
+            className={classes.editor}
+            value={content}
+            onChange={onContentChange}
+            ref={input => textInput = input}
+          />
+        </Paper>
+      )}
+    </>
   );
 }
 
 function DocumentEditor({classes, onInsert, onDelete, onReplace}) {
   const documentService = getInstance(DocumentService);
-  const {content} = useService(documentService);
+  const {content, ready} = useService(documentService);
 
   const props = {
     classes,
     content,
+    ready,
 
     onContentChange(event) {
       const difference = getDifference(content, event.target.value, event.target.selectionEnd);
@@ -57,4 +71,4 @@ function DocumentEditor({classes, onInsert, onDelete, onReplace}) {
   return <DocumentEditorView {...props}/>
 }
 
-export default withStyles(editorStyles)(DocumentEditor);
+export default withStyles(documentEditorStyles)(DocumentEditor);

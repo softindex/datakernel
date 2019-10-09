@@ -37,6 +37,7 @@ function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose
           <Button
             className={classes.actionButton}
             onClick={onClose}
+            disabled={loading}
           >
             Close
           </Button>
