@@ -79,10 +79,6 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	}
 
 	private Promise<C> ensureUserContainer(String id, PrivKey privKey) {
-		PrivKey existingKey = idMapping.get(id);
-		if (existingKey != null) {
-			return Promise.of(containers.get(existingKey));
-		}
 		C existing = containers.get(privKey);
 		if (existing != null) {
 			idMapping.put(id, privKey);

@@ -79,50 +79,45 @@ public final class FsKeyExchanger implements KeyExchanger {
 	@Override
 	public Promise<Map<String, PrivKey>> receiveKeys() {
 		return Promise.ofBlockingCallable(executor, () -> {
-			try {
-				Map<String, PrivKey> privKeys = new HashMap<>();
-				List<String> lines = Files.readAllLines(incoming);
-				for (String line : lines) {
-					if (line.trim().isEmpty()) {
-						logger.trace("Empty line found in place of a private key, skipping");
-					}
-					String[] parts = line.split(":");
-					if (parts.length != 2) {
-						logger.warn("Corrupted line '{}', should be formatted as 'id:privateKey'", line);
-						continue;
-					}
-					if (privKeys.containsKey(parts[0])) {
-						logger.warn("Duplicate id '{}' found", parts[0]);
-						continue;
-					}
-					try {
-						privKeys.put(parts[0], PrivKey.fromString(parts[1]));
-					} catch (ParseException ignored) {
-						logger.warn("Could not parse a private key from line {}", line);
-					}
+			Map<String, PrivKey> mapping = new HashMap<>();
+			List<String> lines = Files.readAllLines(incoming);
+			for (int i = 0; i < lines.size(); i++) {
+				String line = lines.get(i);
+				if (line.trim().isEmpty()) {
+					logger.trace("Empty line #{} found in place of a private key, skipping", i);
 				}
-				return privKeys;
-			} catch (IOException e) {
-				logger.error("Failed to receive keys", e);
-				throw new UncheckedException(e);
+				String[] parts = line.split(":");
+				if (parts.length != 2) {
+					logger.warn("Corrupted line #{} '{}', should be formatted as 'id:privateKey'", i, line);
+					continue;
+				}
+				try {
+					PrivKey privKey = PrivKey.fromString(parts[1]);
+					int finalI = i;
+					mapping.compute(parts[0], ($, old) -> {
+						if (old == null) {
+							return privKey;
+						}
+						logger.warn("Duplicate id '{}' found at line #{}", parts[0], finalI);
+						return old;
+					});
+				} catch (ParseException ignored) {
+					logger.warn("Could not parse a private key from line #{}: '{}'", i, line);
+				}
 			}
+			return mapping;
 		});
 	}
 
 	@Override
 	public Promise<Void> sendKeys(Map<String, PrivKey> keys) {
 		return Promise.ofBlockingRunnable(executor, () -> {
-			try {
-				Path temp = outgoing.resolveSibling("tmp_" + outgoing.getFileName());
-				Files.write(temp, keys.entrySet()
-						.stream()
-						.map(entry -> entry.getKey() + ":" + entry.getValue().asString())
-						.collect(toSet()));
-				Files.move(temp, outgoing, ATOMIC_MOVE, REPLACE_EXISTING);
-			} catch (IOException e) {
-				logger.error("Failed to send keys", e);
-				throw new UncheckedException(e);
-			}
+			Path temp = outgoing.resolveSibling("tmp_" + outgoing.getFileName());
+			Files.write(temp, keys.entrySet()
+					.stream()
+					.map(entry -> entry.getKey() + ":" + entry.getValue().asString())
+					.collect(toSet()));
+			Files.move(temp, outgoing, ATOMIC_MOVE, REPLACE_EXISTING);
 		});
 	}
 }
