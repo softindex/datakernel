@@ -2,11 +2,11 @@ package io.datakernel.di.impl;
 
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
+public abstract class MappingCompiledBinding<R> implements CompiledBinding<R> {
 	protected final int scope;
 	protected final int index;
 
-	protected AbstractCompiledBinding(int scope, int index) {
+	protected MappingCompiledBinding(int scope, int index) {
 		this.scope = scope;
 		this.index = index;
 	}
@@ -18,7 +18,7 @@ public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 		R instance = (R) array.get(index);
 		if (instance != null) return instance;
 		if (synchronizedScope == scope) {
-			instance = doCreateInstance(scopedInstances, synchronizedScope);
+			instance = doGetInstance(scopedInstances, synchronizedScope);
 			array.set(index, instance);
 			return instance;
 		}
@@ -26,11 +26,13 @@ public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 		synchronized (array) {
 			instance = (R) array.get(index);
 			if (instance != null) return instance;
-			instance = doCreateInstance(scopedInstances, scope);
+			instance = doGetInstance(scopedInstances, scope);
 			array.set(index, instance);
 			return instance;
 		}
 	}
+
+	protected abstract R doGetInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
 
 	@Override
 	public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {

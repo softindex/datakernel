@@ -10,7 +10,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.promise.Promises.retry;
@@ -194,7 +193,7 @@ public final class OTUplinkStorage<K, D> implements OTUplink<Long, D, OTUplinkSt
 												.then(ok -> Promise.of(ok ?
 														new FetchData<>(FIRST_COMMIT_ID, NO_LEVEL, uplinkSnapshotData.getDiffs()) :
 														null)))),
-				Objects::nonNull)
+				(v, e) -> e != null || v != null)
 				.then(snapshotData ->
 						storage.fetch(snapshotData.getCommitId())
 								.map(fetchData ->

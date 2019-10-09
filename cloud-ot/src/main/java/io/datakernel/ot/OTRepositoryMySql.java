@@ -16,6 +16,7 @@
 
 package io.datakernel.ot;
 
+import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
@@ -60,9 +61,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	private final Eventloop eventloop;
 	private final Executor executor;
-	private final OTSystem<D> otSystem;
 
 	private final DataSource dataSource;
+	private final IdGenerator<Long> idGenerator;
+
+	private final OTSystem<D> otSystem;
 	private final StructuredCodec<List<D>> diffsCodec;
 
 	private String tableRevision = DEFAULT_REVISION_TABLE;
@@ -81,18 +84,20 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRepositoryMySql(Eventloop eventloop, Executor executor, OTSystem<D> otSystem, StructuredCodec<List<D>> diffsCodec,
-			DataSource dataSource) {
+	private OTRepositoryMySql(Eventloop eventloop, Executor executor, DataSource dataSource, IdGenerator<Long> idGenerator,
+			OTSystem<D> otSystem, StructuredCodec<List<D>> diffsCodec) {
 		this.eventloop = eventloop;
 		this.executor = executor;
-		this.otSystem = otSystem;
 		this.dataSource = dataSource;
+		this.idGenerator = idGenerator;
+		this.otSystem = otSystem;
 		this.diffsCodec = diffsCodec;
 	}
 
-	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, Executor executor, DataSource dataSource, OTSystem<D> otSystem, StructuredCodec<D> diffCodec) {
+	public static <D> OTRepositoryMySql<D> create(Eventloop eventloop, Executor executor, DataSource dataSource, IdGenerator<Long> idGenerator,
+			OTSystem<D> otSystem, StructuredCodec<D> diffCodec) {
 		StructuredCodec<List<D>> listCodec = indent(ofList(diffCodec), "\t");
-		return new OTRepositoryMySql<>(eventloop, executor, otSystem, listCodec, dataSource);
+		return new OTRepositoryMySql<>(eventloop, executor, dataSource, idGenerator, otSystem, listCodec);
 	}
 
 	public OTRepositoryMySql<D> withCreatedBy(String createdBy) {
@@ -124,7 +129,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	private static <T> Promise<T> retryRollbacks(AsyncSupplier<T> id) {
 		//noinspection ConditionCoveredByFurtherCondition
-		return retry(id, ($, e) -> e == null || !(e instanceof SQLTransactionRollbackException), RetryPolicy.exponentialBackoff(1, 1000L));
+		return retry(id, ($, e) -> e == null || !(e instanceof SQLTransactionRollbackException),
+				RetryPolicy.exponentialBackoff(Duration.ofMillis(1), Duration.ofSeconds(1)));
 	}
 
 	public void initialize() throws IOException, SQLException {
@@ -146,31 +152,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	}
 
 	public Promise<Long> createCommitId() {
-		return retryRollbacks(this::doCreateCommitId);
-	}
-
-	@NotNull
-	private Promise<Long> doCreateCommitId() {
-		return Promise.ofBlockingCallable(executor,
-				() -> {
-					try (Connection connection = dataSource.getConnection()) {
-						connection.setAutoCommit(true);
-						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
-						try (PreparedStatement statement = connection.prepareStatement(sql(
-								"INSERT INTO {revisions}(`epoch`, `type`, `created_by`, `level`) VALUES (0, ?, ?, 0)"),
-								Statement.RETURN_GENERATED_KEYS
-						)) {
-							statement.setString(1, "NEW");
-							statement.setString(2, createdBy);
-							statement.executeUpdate();
-							ResultSet generatedKeys = statement.getGeneratedKeys();
-							generatedKeys.next();
-							return generatedKeys.getLong(1);
-						}
-					}
-				})
-				.whenComplete(promiseCreateCommitId.recordStats())
-				.whenComplete(toLogger(logger, thisMethod()));
+		return idGenerator.createId();
 	}
 
 	@Override
@@ -202,6 +184,16 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 
 						for (OTCommit<Long, D> commit : commits) {
+							try (PreparedStatement statement = connection.prepareStatement(sql(
+									"INSERT INTO {revisions}(`id`, `epoch`, `type`, `created_by`, `level`) VALUES (?, ?, 'INNER', ?, ?)")
+							)) {
+								statement.setLong(1, commit.getId());
+								statement.setInt(2, commit.getEpoch());
+								statement.setString(3, createdBy);
+								statement.setLong(4, commit.getLevel());
+								statement.executeUpdate();
+							}
+
 							for (Long parentId : commit.getParents().keySet()) {
 								List<D> diff = commit.getParents().get(parentId);
 								try (PreparedStatement ps = connection.prepareStatement(sql(
@@ -212,15 +204,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 									ps.setString(3, toJson(diff));
 									ps.executeUpdate();
 								}
-							}
-
-							try (PreparedStatement ps = connection.prepareStatement(sql(
-									"UPDATE {revisions} SET `type`='INNER', `level`=?, `epoch`=? WHERE `id`=?"
-							))) {
-								ps.setLong(1, commit.getLevel());
-								ps.setInt(2, commit.getEpoch());
-								ps.setLong(3, commit.getId());
-								ps.executeUpdate();
 							}
 						}
 
@@ -390,7 +373,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					try (Connection connection = dataSource.getConnection()) {
-						connection.setAutoCommit(true);
+						connection.setAutoCommit(false);
 						connection.setTransactionIsolation(TRANSACTION_READ_COMMITTED);
 
 						try (PreparedStatement ps = connection.prepareStatement(sql("" +
@@ -408,6 +391,8 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						))) {
 							ps.executeUpdate();
 						}
+
+						connection.commit();
 					}
 
 					return (Void) null;

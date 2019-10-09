@@ -526,16 +526,16 @@ public final class Binding<T> {
 		}
 		return new Binding<>(this.dependencies, location,
 				(compiledBindings, threadsafe, scope, index) ->
-						new AbstractCompiledBinding<R>(scope, index) {
+						new MappingCompiledBinding<R>(scope, index) {
 							final CompiledBinding<T> originalBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
 							final CompiledBinding[] bindings =
 									dependencies == null ?
 											null :
 											dependencies.stream().map(compiledBindings::get).toArray(CompiledBinding[]::new);
 
-							@Nullable
 							@Override
-							protected R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+							@Nullable
+							protected R doGetInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 								Object[] args = null;
 								if (bindings != null) {
 									args = new Object[bindings.length];
@@ -544,6 +544,20 @@ public final class Binding<T> {
 									}
 								}
 								T instance = originalBinding.getInstance(scopedInstances, synchronizedScope);
+								return instance != null ? fn.apply(args, instance) : null;
+							}
+
+							@Override
+							@Nullable
+							protected R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+								Object[] args = null;
+								if (bindings != null) {
+									args = new Object[bindings.length];
+									for (int i = 0; i < bindings.length; i++) {
+										args[i] = bindings[i].createInstance(scopedInstances, synchronizedScope);
+									}
+								}
+								T instance = originalBinding.createInstance(scopedInstances, synchronizedScope);
 								return instance != null ? fn.apply(args, instance) : null;
 							}
 						});
@@ -683,13 +697,20 @@ public final class Binding<T> {
 				this :
 				new Binding<>(union(dependencies, bindingInitializer.getDependencies()), location,
 						(compiledBindings, threadsafe, scope, index) ->
-								new AbstractCompiledBinding<T>(scope, index) {
+								new MappingCompiledBinding<T>(scope, index) {
 									final CompiledBinding<T> compiledBinding = compiler.compile(compiledBindings, threadsafe, scope, index);
 									final CompiledBindingInitializer<T> consumer = bindingInitializer.getCompiler().compile(compiledBindings);
 
 									@Override
-									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+									protected T doGetInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
 										T instance = compiledBinding.getInstance(scopedInstances, synchronizedScope);
+										consumer.initInstance(instance, scopedInstances, synchronizedScope);
+										return instance;
+									}
+
+									@Override
+									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+										T instance = compiledBinding.createInstance(scopedInstances, synchronizedScope);
 										consumer.initInstance(instance, scopedInstances, synchronizedScope);
 										return instance;
 									}

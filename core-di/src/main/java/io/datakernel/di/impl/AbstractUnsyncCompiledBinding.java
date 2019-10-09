@@ -28,5 +28,4 @@ public abstract class AbstractUnsyncCompiledBinding<R> implements CompiledBindin
 	}
 
 	protected abstract R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
-
 }

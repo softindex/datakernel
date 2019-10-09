@@ -1210,10 +1210,6 @@ public final class Promises {
 		return retry(asyncSupplier, (v, e) -> e == null);
 	}
 
-	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, Predicate<T> breakCondition) {
-		return retry(asyncSupplier, (v, e) -> e == null && breakCondition.test(v));
-	}
-
 	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, BiPredicate<T, Throwable> breakCondition) {
 		return Promise.ofCallback(cb -> retryImpl(asyncSupplier, breakCondition, cb));
 	}
@@ -1243,10 +1239,6 @@ public final class Promises {
 
 	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, @NotNull RetryPolicy<?> retryPolicy) {
 		return retry(asyncSupplier, (v, e) -> e == null, retryPolicy);
-	}
-
-	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, Predicate<T> breakCondition, @NotNull RetryPolicy<?> retryPolicy) {
-		return retry(asyncSupplier, (v, e) -> e == null && breakCondition.test(v), retryPolicy);
 	}
 
 	public static <T> Promise<T> retry(AsyncSupplier<T> asyncSupplier, BiPredicate<T, Throwable> breakCondition, @NotNull RetryPolicy<?> retryPolicy) {

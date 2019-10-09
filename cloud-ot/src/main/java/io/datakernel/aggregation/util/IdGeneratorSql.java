@@ -13,7 +13,6 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.Objects;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.async.function.AsyncSuppliers.reuse;
@@ -80,7 +79,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 		return retry(
 				() -> reserveId.get()
 						.then($ -> next < limit ? Promise.of(next++) : Promise.of(null)),
-				Objects::nonNull);
+				(v, e) -> e != null || v != null);
 	}
 
 	@NotNull

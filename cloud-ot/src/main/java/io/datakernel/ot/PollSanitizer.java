@@ -3,11 +3,12 @@ package io.datakernel.ot;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.RetryPolicy;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
+
+import static io.datakernel.promise.RetryPolicy.exponentialBackoff;
 
 public final class PollSanitizer<T> implements AsyncSupplier<T> {
 	public static final Duration DEFAULT_YIELD_INTERVAL = Duration.ofMillis(1000L);
@@ -35,7 +36,8 @@ public final class PollSanitizer<T> implements AsyncSupplier<T> {
 	@Override
 	public Promise<T> get() {
 		return Promises.retry(poll,
-				value -> {
+				(value, e) -> {
+					if (e != null) return true;
 					if (Objects.equals(value, lastValue)) {
 						return false;
 					} else {
@@ -43,6 +45,6 @@ public final class PollSanitizer<T> implements AsyncSupplier<T> {
 						return true;
 					}
 				},
-				RetryPolicy.fixedDelay(yieldInterval));
+				exponentialBackoff(Duration.ofMillis(1), yieldInterval));
 	}
 }

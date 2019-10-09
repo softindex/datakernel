@@ -137,7 +137,8 @@ public class CubeMeasureRemovalTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
+		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+				otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
 		initializeRepository(repository);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
@@ -276,7 +277,8 @@ public class CubeMeasureRemovalTest {
 
 			LogDiffCodec<CubeDiff> diffCodec1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec1);
+			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+					otSystem, diffCodec1);
 			initializeRepository(repository);
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
@@ -305,7 +307,8 @@ public class CubeMeasureRemovalTest {
 
 		LogDiffCodec<CubeDiff> diffCodec2 = LogDiffCodec.create(CubeDiffCodec.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec2);
+		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+				otSystem, diffCodec2);
 		otSourceSql2.initialize();
 
 		exception.expectCause(instanceOf(ParseException.class));
@@ -336,7 +339,8 @@ public class CubeMeasureRemovalTest {
 
 			LogDiffCodec<CubeDiff> diffCodec1 = LogDiffCodec.create(CubeDiffCodec.create(cube1));
 			OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec1);
+			OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+					otSystem, diffCodec1);
 			initializeRepository(repository);
 
 			LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube1);
@@ -367,7 +371,8 @@ public class CubeMeasureRemovalTest {
 
 		LogDiffCodec<CubeDiff> diffCodec2 = LogDiffCodec.create(CubeDiffCodec.create(cube2));
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, diffCodec2);
+		OTRepositoryMySql<LogDiff<CubeDiff>> otSourceSql2 = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+				otSystem, diffCodec2);
 		otSourceSql2.initialize();
 
 		exception.expectCause(instanceOf(ParseException.class));
