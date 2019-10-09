@@ -241,6 +241,10 @@ public class Expressions {
 		return and(asList(predicateDefs));
 	}
 
+	public static PredicateDef and(PredicateDef predicate1, PredicateDef predicate2) {
+		return and(asList(predicate1, predicate2));
+	}
+
 	/**
 	 * Returns result of logical 'or' for the list of predicates
 	 *
@@ -257,6 +261,10 @@ public class Expressions {
 
 	public static PredicateDefOr or(PredicateDef... predicateDefs) {
 		return or(asList(predicateDefs));
+	}
+
+	public static PredicateDefOr or(PredicateDef predicate1, PredicateDef predicate2) {
+		return or(asList(predicate1, predicate2));
 	}
 
 	/**
@@ -442,6 +450,30 @@ public class Expressions {
 
 	public static ExpressionArithmeticOp rem(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.REM, left, right);
+	}
+
+	public static ExpressionArithmeticOp and(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.AND, left, right);
+	}
+
+	public static ExpressionArithmeticOp or(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.OR, left, right);
+	}
+
+	public static ExpressionArithmeticOp xor(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.XOR, left, right);
+	}
+
+	public static ExpressionArithmeticOp shl(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.SHL, left, right);
+	}
+
+	public static ExpressionArithmeticOp shr(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.SHR, left, right);
+	}
+
+	public static ExpressionArithmeticOp ushr(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ArithmeticOperation.USHR, left, right);
 	}
 
 	/**

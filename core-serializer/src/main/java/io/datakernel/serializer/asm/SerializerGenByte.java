@@ -20,7 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.util.BinaryOutputUtils;
+import io.datakernel.serializer.util.BinaryOutputUtils2;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -32,7 +32,7 @@ public final class SerializerGenByte extends SerializerGenPrimitive {
 
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, cast(value, byte.class));
+		return BinaryOutputUtils2.writeByte(byteArray, off, cast(value, byte.class));
 	}
 
 	@Override
