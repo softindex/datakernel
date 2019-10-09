@@ -1,5 +1,6 @@
 package io.datakernel.aggregation;
 
+import io.datakernel.ot.util.IdGenerator;
 import io.datakernel.promise.Promise;
 
 public class IdGeneratorStub implements IdGenerator<Long> {

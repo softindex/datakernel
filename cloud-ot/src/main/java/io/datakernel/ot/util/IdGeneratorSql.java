@@ -1,6 +1,5 @@
-package io.datakernel.aggregation.util;
+package io.datakernel.ot.util;
 
-import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;

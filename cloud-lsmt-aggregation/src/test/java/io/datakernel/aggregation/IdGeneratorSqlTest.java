@@ -16,9 +16,9 @@
 
 package io.datakernel.aggregation;
 
-import io.datakernel.aggregation.util.IdGeneratorSql;
-import io.datakernel.aggregation.util.SqlAtomicSequence;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.ot.util.IdGeneratorSql;
+import io.datakernel.ot.util.SqlAtomicSequence;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;

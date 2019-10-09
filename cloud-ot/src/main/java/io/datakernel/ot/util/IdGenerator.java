@@ -1,4 +1,4 @@
-package io.datakernel.aggregation;
+package io.datakernel.ot.util;
 
 import io.datakernel.promise.Promise;
 
