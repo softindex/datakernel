@@ -84,7 +84,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
-	private OTRepositoryMySql(Eventloop eventloop, Executor executor, DataSource dataSource, @Nullable IdGenerator<Long> idGenerator,
+	private OTRepositoryMySql(Eventloop eventloop, Executor executor, DataSource dataSource, IdGenerator<Long> idGenerator,
 			OTSystem<D> otSystem, StructuredCodec<List<D>> diffsCodec) {
 		this.eventloop = eventloop;
 		this.executor = executor;

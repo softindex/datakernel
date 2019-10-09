@@ -108,7 +108,7 @@ public final class OTUplinkImpl<K, D, PC> implements OTUplink<K, D, PC> {
 
 	@Override
 	public Promise<FetchData<K, D>> poll(K currentCommitId) {
-		return Promises.retry(PollSanitizer.create(repository.pollHeads()), polledHeads -> !polledHeads.contains(currentCommitId))
+		return Promises.retry(PollSanitizer.create(repository.pollHeads()), (polledHeads, e) -> e != null || !polledHeads.contains(currentCommitId))
 				.then(heads -> doFetch(heads, currentCommitId));
 	}
 
