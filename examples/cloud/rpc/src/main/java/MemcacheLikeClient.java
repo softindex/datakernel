@@ -9,20 +9,27 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.client.RawMemcacheClient;
-import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
-import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.service.ServiceGraphModule;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.di.module.Modules.combine;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.datakernel.promise.Promises.sequence;
+import static java.util.stream.IntStream.range;
 
 //[START REGION_1]
 public class MemcacheLikeClient extends Launcher {
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
+	}
+
+	@Provides
+	RawMemcacheClientAdapter rawMemcacheClientAdapter(RawMemcacheClient client) {
+		return new RawMemcacheClientAdapter(client);
 	}
 
 	@Provides
@@ -34,7 +41,7 @@ public class MemcacheLikeClient extends Launcher {
 	}
 
 	@Inject
-	RawMemcacheClient client;
+	RawMemcacheClientAdapter client;
 
 	@Inject
 	Eventloop eventloop;
@@ -49,37 +56,16 @@ public class MemcacheLikeClient extends Launcher {
 	}
 
 	@Override
-	protected void run() {
-		eventloop.submit(() -> {
-			byte[][] bytes = new byte[25][1];
-			for (int i = 0; i < 25; ++i) {
-				bytes[i] = new byte[]{(byte) i};
-			}
-			for (int i = 0; i < 25; ++i) {
-				final int idx = i;
-				byte[] message = "Strong and smart people always be successful".getBytes();
-				Promise<Void> put = client.put(bytes[i], new Slice(message));
-				put.whenComplete((res, e) -> {
-					if (e != null) {
-						e.printStackTrace();
-						return;
-					}
-					System.out.println("Request sent : " + idx);
-				});
-			}
-			for (int i = 0; i < 25; ++i) {
-				final int idx = i;
-				Promise<Slice> byteBufPromise = client.get(bytes[idx]);
-				byteBufPromise.whenComplete((resp, e1) -> {
-					if (e1 != null) {
-						e1.printStackTrace();
-						return;
-					}
-					System.out.println("Got back from [" + idx + "] : " +
-							new String(resp.array(), resp.offset(), resp.length(), UTF_8));
-				});
-			}
-		});
+	protected void run() throws ExecutionException, InterruptedException {
+		String message = "Hello, Memcached Server";
+
+		CompletableFuture<Void> future = eventloop.submit(() ->
+				sequence(
+						() -> Promises.all(range(0, 25).mapToObj(i ->
+								client.put(i, message))),
+						() -> Promises.all(range(0, 25).mapToObj(i ->
+								client.get(i).whenResult(res -> System.out.println(i + " : " + res))))));
+		future.get();
 	}
 
 	public static void main(String[] args) throws Exception {
