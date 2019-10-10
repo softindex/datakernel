@@ -45,7 +45,7 @@ function ProfileDialogView({
         <form onSubmit={onSubmit}>
           <DialogContent classes={{root: classes.dialogContent}}>
             <TextField
-              value={name === null ? profile.name : name}
+              value={name}
               disabled={loading}
               margin="normal"
               label="Name"
@@ -103,7 +103,7 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
   const profileService = getInstance(MyProfileService);
   const {profile, profileReady} = useService(profileService);
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState(null);
+  const [name, setName] = useState(profile.name);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(document.getElementById('inputId').value);
@@ -133,6 +133,11 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
 
     onSubmit(event) {
       event.preventDefault();
+
+      if (profile.name === name) {
+        return;
+      }
+
       setLoading(true);
       profileService.setProfileField('name', name)
         .catch(error => enqueueSnackbar(error.message, {

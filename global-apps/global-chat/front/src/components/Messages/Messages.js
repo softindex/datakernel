@@ -32,7 +32,13 @@ class MessagesView extends React.Component {
           <div ref={this.wrapper} className={classes.wrapper}>
             {messages.map((message, index) => {
               const previousMessageAuthor = messages[index - 1] && messages[index - 1].authorPublicKey;
+              const previousDate = new Date(messages[index - 1] && messages[index - 1].timestamp);
+              const date = new Date(message.timestamp);
               let shape = 'start';
+              let drawCaption = false;
+              if (isNaN(previousDate.getMinutes()) || previousDate.getMinutes() + 1 <= date.getMinutes()) {
+                drawCaption = true;
+              }
               if (previousMessageAuthor === message.authorPublicKey) {
                 shape = 'medium';
               }
@@ -44,9 +50,10 @@ class MessagesView extends React.Component {
                     message.authorPublicKey === publicKey ? '' :
                       this.props.names.get(message.authorPublicKey)
                   }
-                  time={new Date(message.timestamp).toLocaleString()}
+                  time={date.getHours() + ':' + ('0' + date.getMinutes()).substr(-2)}
                   loaded={message.loaded}
                   drawSide={(message.authorPublicKey !== publicKey) ? 'left' : 'right'}
+                  drawCaption={drawCaption}
                   shape={shape}
                 />
               )

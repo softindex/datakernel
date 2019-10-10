@@ -7,13 +7,21 @@ import classNames from 'classnames';
 import DoneIcon from '@material-ui/icons/Done';
 import DoneAllIcon from '@material-ui/icons/DoneAll';
 
-function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
+function MessageItem({text, author, time, drawSide, drawCaption, loaded, shape, classes}) {
   return (
     <div
       className={classNames(classes.messageRow, {
         [classes.messageRowRightAlign]: drawSide === 'right',
       })}
     >
+      {drawCaption && (
+        <Typography
+          className={classes.timeCaption}
+          color="textSecondary"
+          variant="caption">
+          {author ? author + ', ' : ''}{time}
+        </Typography>
+      )}
       <Paper
         elevation={0}
         className={classNames(classes.message, {
@@ -22,30 +30,18 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
         })}
       >
         <Typography
-          color="secondary"
-          variant="subtitle2"
-        >
-          {author}
-        </Typography>
-        <Typography
-          color="primary"
-          variant="h6"
-          gutterBottom
+          className={classes.messageText}
+          variant="subtitle1"
         >
           {text}
         </Typography>
-        <Typography
-          color="textSecondary"
-          variant="caption">
-          {time}
-        </Typography>
       </Paper>
-      {drawSide === 'left' && (
-        <div className={classes.statusWrapper}>
-          {loaded && <DoneAllIcon/>}
-          {!loaded && <DoneIcon/>}
-        </div>
-      )}
+      {/*{drawSide === 'right' && (*/}
+      {/*  <div className={classes.statusWrapper}>*/}
+      {/*    {loaded && <DoneAllIcon/>}*/}
+      {/*    {!loaded && <DoneIcon/>}*/}
+      {/*  </div>*/}
+      {/*)}*/}
     </div>
   );
 }

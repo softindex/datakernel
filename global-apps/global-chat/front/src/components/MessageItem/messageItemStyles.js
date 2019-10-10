@@ -2,21 +2,21 @@ const messageItemStyles = theme => {
   return {
     messageRow: {
       display: 'flex',
-      flexDirection: 'row',
-      width: '100%',
+      flexDirection: 'column',
       margin: '0 auto',
       maxWidth: theme.spacing(113),
       padding: `0 ${theme.spacing(3)}px`
     },
     messageRowRightAlign: {
-      justifyContent: 'flex-end'
+      alignItems: 'flex-end'
     },
     message: {
       display: 'flex',
       flexDirection: 'column',
-      padding: theme.spacing(2),
+      width: 'fit-content',
+      padding: theme.spacing(1),
       backgroundColor: theme.palette.grey[200],
-      marginBottom: theme.spacing(1),
+      marginBottom: theme.spacing(0.5),
       wordBreak: 'break-all',
       borderRadius: `${theme.shape.borderRadius}px ${theme.shape.borderRadius * 4}px 
       ${theme.shape.borderRadius * 4}px ${theme.shape.borderRadius * 4}px`,
@@ -34,6 +34,12 @@ const messageItemStyles = theme => {
     statusWrapper: {
       marginLeft: theme.spacing(1),
       color: theme.palette.grey[100]
+    },
+    messageText: {
+      color: theme.palette.secondary.contrastText
+    },
+    timeCaption: {
+      width: 'fit-content'
     }
   }
 };

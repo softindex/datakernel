@@ -21,10 +21,24 @@ const sideBarStyles = theme => ({
     marginBottom: theme.spacing(1)
   },
   button: {
-    width: theme.spacing(41),
-    margin:  `${theme.spacing(2)}px auto`,
-    borderRadius: theme.spacing(9),
-    marginTop: theme.spacing(2)
+    width: theme.spacing(20),
+    margin:  `${theme.spacing(2)}px`,
+    borderRadius: theme.spacing(5),
+    marginTop: theme.spacing(10),
+    padding: 0,
+    background: 'transparent',
+    boxShadow: 'none',
+    '&:hover': {
+      background: theme.palette.secondary.lightGrey,
+      boxShadow: 'none'
+    }
+  },
+  fab: {
+    margin: `${theme.spacing(0.5)}px ${theme.spacing(1)}px`,
+    boxShadow: 'none',
+    '&:hover': {
+      background: theme.palette.primary.main
+    }
   },
   search: {
     padding: `${theme.spacing(1)}px 0px`,
@@ -35,7 +49,7 @@ const sideBarStyles = theme => ({
     border: 'none',
     flexGrow: 0,
     paddingBottom: theme.spacing(1),
-    marginTop: theme.spacing(8)
+    marginBottom: theme.spacing(1)
   },
   inputDiv: {
     marginLeft: theme.spacing(1),

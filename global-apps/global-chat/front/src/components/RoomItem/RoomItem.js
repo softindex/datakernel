@@ -53,6 +53,7 @@ class RoomItem extends React.Component {
         <ListItem
           className={classes.listItem}
           button
+          classes={{selected: classes.selectedItem}}
           selected={roomId === this.props.match.params.roomId}
         >
           <Link

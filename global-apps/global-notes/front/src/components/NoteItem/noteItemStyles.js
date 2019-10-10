@@ -1,15 +1,20 @@
 const noteItemStyles = theme => ({
   listItem: {
-    borderRadius: 4,
+    borderBottom: '1px solid #00000012',
     paddingTop: theme.spacing(0.5),
     paddingBottom: theme.spacing(0.5),
+    '&:hover': {
+      background: theme.palette.secondary.lightGrey
+    },
     '& > div': {
       display: 'none'
     },
     '&:hover > div': {
       display: 'block'
-    },
-    boxShadow: `0px 13px ${theme.spacing(1)}px -${theme.spacing(2)}px rgba(0,0,0,0.5)`
+    }
+  },
+  selectedItem: {
+    background: `${theme.palette.secondary.lightGrey} !important`
   },
   link: {
     display: 'flex',

@@ -11,6 +11,7 @@ function NoteItem({classes, noteId, noteName, getNotePath, onRename, onDelete, .
     <ListItem
       className={classes.listItem}
       button
+      classes={{selected: classes.selectedItem}}
       selected={noteId === otherProps.match.params.noteId}
     >
       <Link

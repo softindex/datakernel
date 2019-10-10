@@ -1,4 +1,4 @@
-import {Service, delay} from 'global-apps-common';
+import {Service, delay, GlobalAppStoreAPI} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import profileOTSystem from "./ot/ProfileOTSystem";
 import profileSerializer from "./ot/serializer";
@@ -7,23 +7,29 @@ import ProfileOTOperation from "./ot/ProfileOTOperation";
 const RETRY_TIMEOUT = 1000;
 
 class MyProfileService extends Service {
-  constructor(profileOTStateManager) {
+  constructor(profileOTStateManager, globalAppStoreAPI, myPublicKey) {
     super({
       profile: {},
       profileReady: false
     });
+    this._myPublicKey = myPublicKey;
     this._profileOTStateManager = profileOTStateManager;
+    this._globalAppStoreAPI = globalAppStoreAPI;
     this._reconnectDelay = null;
     this._resyncDelay = null;
   }
 
-  static create() {
+  static createFrom(publicKey) {
     const profileOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/myProfile',
       serializer: profileSerializer
     });
     const profileOTStateManager = new OTStateManager(() => ({}), profileOTNode, profileOTSystem);
-    return new MyProfileService(profileOTStateManager);
+    return new MyProfileService(
+      profileOTStateManager,
+      GlobalAppStoreAPI.create(process.env.REACT_APP_GLOBAL_OAUTH_LINK),
+      publicKey
+    );
   }
 
   async init() {
@@ -68,11 +74,20 @@ class MyProfileService extends Service {
     await this._sync();
   };
 
+  async _getAppStoreName() {
+    const user = await this._globalAppStoreAPI.getUserByPublicKey(this._myPublicKey);
+    return user !== null ? user.firstName + ' ' + user.lastName : '';
+  }
+
   _onStateChange = () => {
-    this.setState({
-      profile: this._getProfileFields(),
-      profileReady: true
-    });
+    const profile = this._getProfileFields();
+    (async () => {
+      if (Object.keys(profile).length === 0 || profile.name === '') {
+        profile.name = await this._getAppStoreName();
+      }
+    })()
+      .catch(err => console.error(err))
+      .finally(() => this.setState({profile, profileReady: true}));
   };
 
   _getProfileFields() {

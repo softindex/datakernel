@@ -1,9 +1,12 @@
 const contactItemStyles = theme => ({
   listItem: {
     borderRadius: 4,
-    paddingTop: theme.spacing(2),
-    paddingBottom: theme.spacing(2),
+    paddingTop: theme.spacing(1),
+    paddingBottom: theme.spacing(1),
     color: theme.palette.secondary.contrastText,
+    '&:hover': {
+      background: theme.palette.secondary.lightGrey
+    },
     '& > button' : {
       display: 'none'
     },

@@ -101,7 +101,7 @@ class NamesService extends Service {
     );
   }
 
-  _getUserByPublicKey(publicKey) {
+  async _getUserByPublicKey(publicKey) {
     return this._globalAppStoreAPI.getUserByPublicKey(publicKey);
   }
 

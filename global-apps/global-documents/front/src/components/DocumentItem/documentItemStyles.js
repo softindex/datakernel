@@ -1,8 +1,11 @@
 const documentItemStyles = theme => ({
   listItem: {
-    borderRadius: 4,
+    borderBottom: '1px solid #00000008',
     paddingTop: theme.spacing(0.5),
     paddingBottom: theme.spacing(0.5),
+    '&:hover': {
+      background: theme.palette.secondary.lightGrey
+    },
     '& > div' : {
       display: 'none'
     },
@@ -15,6 +18,9 @@ const documentItemStyles = theme => ({
     '&:hover > div': {
       display: 'block'
     }
+  },
+  selectedItem: {
+    background: `${theme.palette.secondary.lightGrey} !important`
   },
   link: {
     display: 'flex',

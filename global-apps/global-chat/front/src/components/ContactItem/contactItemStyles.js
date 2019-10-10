@@ -1,8 +1,10 @@
 const contactItemStyles = theme => ({
   listItem: {
-    borderRadius: 4,
-    paddingTop: theme.spacing(2),
-    paddingBottom: theme.spacing(2)
+    paddingTop: theme.spacing(1),
+    paddingBottom: theme.spacing(1),
+    '&:hover': {
+      background: theme.palette.secondary.lightGrey
+    }
   },
   itemText: {
     overflow: 'hidden'

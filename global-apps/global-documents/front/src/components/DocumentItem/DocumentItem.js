@@ -34,6 +34,7 @@ function DocumentItem({classes, document, documentId, match, showMenuIcon, onCli
       <ListItem
         className={classes.listItem}
         button
+        classes={{selected: classes.selectedItem}}
         selected={documentId === match.params.documentId}
       >
         <Link

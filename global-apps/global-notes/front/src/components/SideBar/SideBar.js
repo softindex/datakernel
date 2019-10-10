@@ -13,6 +13,8 @@ import SearchIcon from "@material-ui/icons/Search";
 import Typography from "@material-ui/core/Typography";
 import {getInstance, useService} from "global-apps-common";
 import NotesService from "../../modules/notes/NotesService";
+import Fab from '@material-ui/core/Fab';
+import AddIcon from '@material-ui/icons/Add';
 
 function SideBarView({
                        classes,
@@ -30,6 +32,23 @@ function SideBarView({
                      }) {
   return (
     <div className={classes.wrapper}>
+      <Button
+        variant="contained"
+        fullWidth={true}
+        size="medium"
+        color="default"
+        onClick={onShowCreateDialog}
+        className={classes.button}
+        startIcon={
+          <Fab size="small" color="primary" className={classes.fab}>
+            <AddIcon/>
+          </Fab>
+        }
+      >
+        <Typography>
+          New Note
+        </Typography>
+      </Button>
       <Paper className={classes.search}>
         <IconButton
           className={classes.iconButton}
@@ -46,16 +65,6 @@ function SideBarView({
           classes={{input: classes.input}}
         />
       </Paper>
-      <Button
-        className={classes.button}
-        fullWidth={true}
-        variant="contained"
-        size="medium"
-        color="primary"
-        onClick={onShowCreateDialog}
-      >
-        New Note
-      </Button>
       <div className={classes.notesList}>
         <NotesList
           notes={getFilteredNotes()}

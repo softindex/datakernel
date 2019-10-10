@@ -24,7 +24,7 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
     });
 
     const contactsOTStateManager = new OTStateManager(() => new Map(), contactsOTNode, contactsOTSystem);
-    const profileService = MyProfileService.create();
+    const profileService = MyProfileService.createFrom(publicKey);
     const contactsService = ContactsService.createFrom(contactsOTStateManager, publicKey);
     const namesService = NamesService.createFrom(contactsOTStateManager, publicKey);
     const documentsService = DocumentsService.createFrom(contactsService, publicKey);
