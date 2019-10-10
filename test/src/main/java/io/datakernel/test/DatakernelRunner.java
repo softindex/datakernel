@@ -22,27 +22,112 @@ import org.junit.runners.model.Statement;
 import java.lang.annotation.Annotation;
 import java.util.*;
 
-import static io.datakernel.di.util.ReflectionUtils.keyOf;
-import static java.util.Arrays.asList;
+import static io.datakernel.common.collection.CollectionUtils.union;
 import static java.util.stream.Collectors.toSet;
 
 public class DatakernelRunner extends BlockJUnit4ClassRunner {
-	private final List<FrameworkMethod> beforesAndAfters = new ArrayList<>();
+	private final Set<FrameworkMethod> surroundings = new HashSet<>();
 	private final Set<Dependency> staticDependencies;
 
-	protected Injector currentInjector;
 	private Module currentModule;
 	private Set<Dependency> currentDependencies;
+
+	protected Injector currentInjector;
 
 	public DatakernelRunner(Class<?> clazz) throws InitializationError {
 		super(clazz);
 
-		beforesAndAfters.addAll(getTestClass().getAnnotatedMethods(Before.class));
-		beforesAndAfters.addAll(getTestClass().getAnnotatedMethods(After.class));
+		surroundings.addAll(getTestClass().getAnnotatedMethods(Before.class));
+		surroundings.addAll(getTestClass().getAnnotatedMethods(After.class));
 
-		staticDependencies = beforesAndAfters.stream()
+		staticDependencies = surroundings.stream()
 				.flatMap(m -> Arrays.stream(ReflectionUtils.toDependencies(clazz, m.getMethod().getParameters())))
 				.collect(toSet());
+	}
+
+	// runChild is always called before createTest
+	@Override
+	protected void runChild(FrameworkMethod method, RunNotifier notifier) {
+		Description description = describeChild(method);
+		if (isIgnored(method)) {
+			notifier.fireTestIgnored(description);
+			return;
+		}
+		try {
+			Class<?> cls = getTestClass().getJavaClass();
+
+			Set<Module> modules = new HashSet<>();
+
+			addClassModules(modules, cls); // add modules from class annotation
+			addMethodModules(modules, method); // add modules from current test method
+			for (FrameworkMethod m : surroundings) { // add modules from befores and afters
+				addMethodModules(modules, m);
+			}
+			currentModule = Modules.combine(modules);
+
+			currentDependencies =
+					Arrays.stream(ReflectionUtils.toDependencies(cls, method.getMethod().getParameters()))
+							.collect(toSet());
+
+		} catch (ExceptionInInitializerError e) {
+			Throwable cause = e.getCause();
+			notifier.fireTestFailure(new Failure(description, cause != null ? cause : e));
+			return;
+		} catch (Exception e) {
+			notifier.fireTestFailure(new Failure(description, e));
+			return;
+		}
+
+		runLeaf(methodBlock(method), description, notifier);
+	}
+
+	private static void addClassModules(Set<Module> modules, Class<?> cls) throws IllegalAccessException, InstantiationException, ExceptionInInitializerError {
+		while (cls != null) {
+			UseModules useModules = cls.getAnnotation(UseModules.class);
+			if (useModules != null) {
+				for (Class<? extends Module> moduleClass : useModules.value()) {
+					modules.add(moduleClass.newInstance());
+				}
+			}
+			cls = cls.getSuperclass();
+		}
+	}
+
+	private static void addMethodModules(Set<Module> modules, FrameworkMethod method) throws IllegalAccessException, InstantiationException, ExceptionInInitializerError {
+		UseModules useModules = method.getMethod().getAnnotation(UseModules.class);
+		if (useModules == null) {
+			return;
+		}
+		for (Class<? extends Module> moduleClass : useModules.value()) {
+			modules.add(moduleClass.newInstance());
+		}
+	}
+
+	private static final class DependencyToken {}
+
+	// createTest is always called after runChild
+	@Override
+	protected Object createTest() throws Exception {
+		Object instance = super.createTest();
+
+		Key<Object> self = Key.ofType(getTestClass().getJavaClass());
+
+		currentInjector = Injector.of(currentModule, Module.create()
+				.scan(instance)
+
+				// bind unusable private type and add all the extra dependencies to it so that injector knows about them
+				.bind(DependencyToken.class).to(Binding.<DependencyToken>to(() -> {
+					throw new AssertionError("should never be instantiated");
+				}).addDependencies(union(currentDependencies, staticDependencies)))
+
+				// bind test class to existing instance, and make it eager for the postInject
+				.bind(self).toInstance(instance).asEagerSingleton()
+				// and make it post-injectable
+				.postInjectInto(self));
+
+		currentInjector.createEagerSingletons();
+		currentInjector.postInjectInstances();
+		return instance;
 	}
 
 	// allow test methods to have any arguments
@@ -53,29 +138,42 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 		}
 	}
 
+	// invoke methods with args fetched from current injector
 	@Override
 	protected Statement methodInvoker(FrameworkMethod method, Object test) {
-		return new LambdaStatement(() -> {
-			Object[] args = Arrays.stream(method.getMethod().getParameters())
-					.map(parameter -> currentInjector.getInstance(keyOf(getTestClass().getJavaClass(), parameter.getParameterizedType(), parameter)))
-					.toArray(Object[]::new);
-
-			method.invokeExplosively(test, args);
-		});
+		return new LambdaStatement(() -> method.invokeExplosively(test, getArgs(method)));
 	}
 
+	protected Object[] getArgs(FrameworkMethod method) {
+		return Arrays.stream(ReflectionUtils.toDependencies(getTestClass().getJavaClass(), method.getMethod().getParameters()))
+				.map(dependency -> dependency.isRequired() ?
+						currentInjector.getInstance(dependency.getKey()) :
+						currentInjector.getInstanceOrNull(dependency.getKey()))
+				.toArray(Object[]::new);
+	}
+
+	// same as original except that methods are called like in methodInvoker method
 	@Override
 	protected Statement withBefores(FrameworkMethod method, Object target, Statement test) {
-		Statement before = createCleanupStatement(target, Before.class);
+		List<FrameworkMethod> methods = getTestClass().getAnnotatedMethods(Before.class);
+		if (methods.isEmpty()) {
+			return test;
+		}
 		return new LambdaStatement(() -> {
-			before.evaluate();
+			for (FrameworkMethod m : methods) {
+				m.invokeExplosively(target, getArgs(m));
+			}
 			test.evaluate();
 		});
 	}
 
+	// same as above
 	@Override
 	protected Statement withAfters(FrameworkMethod method, Object target, Statement test) {
-		Statement after = createCleanupStatement(target, After.class);
+		List<FrameworkMethod> methods = getTestClass().getAnnotatedMethods(After.class);
+		if (methods.isEmpty()) {
+			return test;
+		}
 		return new LambdaStatement(() -> {
 			List<Throwable> errors = new ArrayList<>();
 			try {
@@ -83,96 +181,15 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 			} catch (Throwable e) {
 				errors.add(e);
 			} finally {
-				try {
-					after.evaluate();
-				} catch (Throwable e) {
-					errors.add(e);
+				for (FrameworkMethod m : methods) {
+					try {
+						m.invokeExplosively(target, getArgs(m));
+					} catch (Throwable e) {
+						errors.add(e);
+					}
 				}
 			}
 			MultipleFailureException.assertEmpty(errors);
 		});
-	}
-
-	private Statement createCleanupStatement(Object target, Class<? extends Annotation> annotation) {
-		List<FrameworkMethod> methods = getTestClass().getAnnotatedMethods(annotation);
-		if (methods.isEmpty()) {
-			return LambdaStatement.EMPTY;
-		}
-		Set<Statement> statements = methods.stream()
-				.map(m -> methodInvoker(m, target))
-				.collect(toSet());
-		return new LambdaStatement(() -> {
-			for (Statement statement : statements) {
-				statement.evaluate();
-			}
-		});
-	}
-
-	@Override
-	protected Object createTest() throws Exception {
-		Object instance = super.createTest();
-
-		Key<Object> self = Key.ofType(getTestClass().getJavaClass());
-
-		currentInjector = Injector.of(currentModule,
-				Module.create()
-						.scan(instance)
-						.bind(self).to(Binding.toInstance(instance).addDependencies(currentDependencies).addDependencies(staticDependencies))
-						// and also have all the dependencies from methods in binding for the test class instance
-						.postInjectInto(self));
-
-		currentInjector.getInstance(self);
-		currentInjector.createEagerSingletons();
-		currentInjector.postInjectInstances();
-		return instance;
-	}
-
-	@Override
-	protected void runChild(FrameworkMethod method, RunNotifier notifier) {
-		Description description = describeChild(method);
-		if (isIgnored(method)) {
-			notifier.fireTestIgnored(description);
-			return;
-		}
-
-		try {
-			Set<Module> modules = new HashSet<>();
-
-			addClassModules(modules);
-			addMethodModules(modules, method);
-			for (FrameworkMethod m : beforesAndAfters) {
-				addMethodModules(modules, m);
-			}
-			currentModule = Modules.combine(modules);
-			currentDependencies = new HashSet<>(asList(ReflectionUtils.toDependencies(getTestClass().getJavaClass(), method.getMethod().getParameters())));
-		} catch (Exception e) {
-			notifier.fireTestFailure(new Failure(description, e));
-			return;
-		}
-
-		runLeaf(methodBlock(method), description, notifier);
-	}
-
-	private void addClassModules(Set<Module> modules) throws IllegalAccessException, InstantiationException {
-		Class<?> currentClass = getTestClass().getJavaClass();
-		while (currentClass != null) {
-			UseModules useModules = currentClass.getAnnotation(UseModules.class);
-			if (useModules != null) {
-				for (Class<? extends Module> moduleClass : useModules.value()) {
-					modules.add(moduleClass.newInstance());
-				}
-			}
-			currentClass = currentClass.getSuperclass();
-		}
-	}
-
-	private void addMethodModules(Set<Module> modules, FrameworkMethod method) throws IllegalAccessException, InstantiationException {
-		UseModules useModules = method.getMethod().getAnnotation(UseModules.class);
-		if (useModules == null) {
-			return;
-		}
-		for (Class<? extends Module> moduleClass : useModules.value()) {
-			modules.add(moduleClass.newInstance());
-		}
 	}
 }
