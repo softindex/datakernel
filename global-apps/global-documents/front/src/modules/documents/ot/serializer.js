@@ -1,4 +1,4 @@
-import CreateOrDropDocument from './CreateOrDropDocument';
+import CreateOrDropDocuments from './CreateOrDropDocuments';
 import RenameDocument from "./RenameDocument";
 
 const documentsSerializer = {
@@ -14,7 +14,7 @@ const documentsSerializer = {
       case 'RenameRepo':
         return RenameDocument.createFromJson(value.value);
       case 'CreateOrDropRepo':
-        return CreateOrDropDocument.createFromJson(value.value);
+        return CreateOrDropDocuments.createFromJson(value.value);
       default:
         return value;
     }

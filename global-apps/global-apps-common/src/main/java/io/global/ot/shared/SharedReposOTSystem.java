@@ -4,7 +4,6 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.exceptions.OTTransformException;
-import io.datakernel.util.CollectionUtils;
 import io.global.ot.map.MapOTSystem;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
@@ -152,16 +151,16 @@ public final class SharedReposOTSystem {
 
 	@Nullable
 	private static SharedReposOperation doSquash(RenameRepos rename, CreateOrDropRepos createOrDrop) {
-		Set<String> renameKeys = rename.getRenames().getOperations().keySet();
-		Set<String> createOrDropKeys = createOrDrop.getRepoInfos().keySet();
-		if (!CollectionUtils.difference(createOrDropKeys, renameKeys).isEmpty()) {
+		Map<String, SetValue<String>> renameOps = rename.getRenames().getOperations();
+		Map<String, RepoInfo> repoInfos = createOrDrop.getRepoInfos();
+		if (!renameOps.keySet().containsAll(repoInfos.keySet())) {
 			return null;
 		}
-		return new CreateOrDropRepos(createOrDrop.getRepoInfos().entrySet()
+		return new CreateOrDropRepos(repoInfos.entrySet()
 				.stream()
 				.collect(toMap(Entry::getKey, e -> {
 					RepoInfo prev = e.getValue();
-					SetValue<String> setValue = rename.getRenames().getOperations().get(e.getKey());
+					SetValue<String> setValue = renameOps.get(e.getKey());
 					if (setValue == null || setValue.isEmpty()) {
 						return prev;
 					}

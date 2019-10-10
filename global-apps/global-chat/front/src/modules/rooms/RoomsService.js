@@ -1,5 +1,5 @@
 import RoomsOTOperation from "./ot/RoomsOTOperation";
-import {randomString, Service, delay} from 'global-apps-common';
+import {delay, randomString, Service} from 'global-apps-common';
 import {createDialogRoomId, RETRY_TIMEOUT} from '../../common/utils';
 
 const ROOM_ID_LENGTH = 32;
@@ -83,13 +83,25 @@ class RoomsService extends Service {
       return;
     }
 
-    const deleteRoomOperation = new RoomsOTOperation(roomId, room.participants, true);
+    const deleteRoomOperation = new RoomsOTOperation({
+      [roomId]: {
+        name: "",
+        participants: room.participants,
+        remove: true
+      }
+    });
     this._roomsOTStateManager.add([deleteRoomOperation]);
     await this._sync();
   }
 
   async _createRoom(roomId, participants) {
-    const addRoomOperation = new RoomsOTOperation(roomId, participants, false);
+    const addRoomOperation = new RoomsOTOperation({
+      [roomId]: {
+        name: "",
+        participants,
+        remove: false
+      }
+    });
     this._roomsOTStateManager.add([addRoomOperation]);
     await this._sync();
   }

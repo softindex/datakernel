@@ -39,10 +39,11 @@ public final class OTUtils {
 			"name", CreateSharedRepo::getName, STRING_CODEC,
 			"participants", CreateSharedRepo::getParticipants, ofSet(PUB_KEY_HEX_CODEC));
 
-	public static final StructuredCodec<CreateOrDropRepos> CREATE_OR_DROP_REPO_CODEC = ofMap(STRING_CODEC, REPO_INFO_CODEC)
+	@SuppressWarnings("RedundantTypeArguments")
+	public static final StructuredCodec<CreateOrDropRepos> CREATE_OR_DROP_REPOS_CODEC = ofMap(STRING_CODEC, REPO_INFO_CODEC)
 			.transform(CreateOrDropRepos::new, CreateOrDropRepos::getRepoInfos);
 
-	public static final StructuredCodec<RenameRepos> RENAME_REPO_CODEC = getMapOperationCodec(STRING_CODEC, STRING_CODEC)
+	public static final StructuredCodec<RenameRepos> RENAME_REPOS_CODEC = getMapOperationCodec(STRING_CODEC, STRING_CODEC)
 			.transform(RenameRepos::new, RenameRepos::getRenames);
 
 	public static <V> StructuredCodec<SetValue<V>> getSetValueCodec(StructuredCodec<V> valueCodec) {
@@ -52,8 +53,8 @@ public final class OTUtils {
 	}
 
 	public static final StructuredCodec<SharedReposOperation> SHARED_REPOS_OPERATION_CODEC = CodecSubtype.<SharedReposOperation>create()
-			.with(CreateOrDropRepos.class, "CreateOrDropRepo", CREATE_OR_DROP_REPO_CODEC)
-			.with(RenameRepos.class, "RenameRepo", RENAME_REPO_CODEC)
+			.with(CreateOrDropRepos.class, "CreateOrDropRepo", CREATE_OR_DROP_REPOS_CODEC)
+			.with(RenameRepos.class, "RenameRepo", RENAME_REPOS_CODEC)
 			.withTagName("type", "value");
 
 	public static <K, V> StructuredCodec<MapOperation<K, V>> getMapOperationCodec(StructuredCodec<K> keyCodec, StructuredCodec<V> valueCodec) {

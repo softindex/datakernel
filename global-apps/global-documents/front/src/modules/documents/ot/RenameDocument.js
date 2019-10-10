@@ -1,53 +1,48 @@
+import omitBy from "lodash/omitBy";
+import isEmpty from "lodash/isEmpty";
+import mapValues from "lodash/mapValues";
+import isEqual from "lodash/isEqual";
+
 class RenameDocument {
-  constructor(id, prev, next, timestamp) {
-    this.id = id;
-    this.prev = prev;
-    this.next = next;
-    this.timestamp = timestamp;
+  constructor(renames) {
+    this._renames = omitBy(renames, ({prev, next}) => prev === next);
   }
 
   static createFromJson(json) {
-    const {changeName} = json;
-    return new RenameDocument(json.id, changeName.prev, changeName.next, changeName.timestamp);
+    return new RenameDocument(json);
   }
 
   apply(state) {
-    const prevDocument = state.get(this.id);
-    if (prevDocument) {
-      state.set(this.id, {
-        participants: prevDocument.participants,
-        name: this.next
-      });
+    for (const [id, {next}] of Object.entries(this._renames)) {
+      state.get(id).name = next;
     }
+
     return state;
   }
 
+  get renames() {
+    return this._renames;
+  }
+
   isEmpty() {
-    return this.prev === this.next;
+    return isEmpty(this._renames);
   }
 
   invert() {
-    return new RenameDocument(this.id, this.next, this.prev, this.timestamp);
-  }
-
-  isEqual(renameDocument) {
-    return (
-      renameDocument.id === this.id
-      && renameDocument.prev === this.prev
-      && renameDocument.next === this.next
-      && renameDocument.timestamp === this.timestamp
+    return new RenameDocument(
+      mapValues(this._renames, ({prev, next}) => ({
+        prev: next,
+        next: prev
+      }))
     );
   }
 
+  isEqual(renameDocument) {
+    return isEqual(renameDocument._renames, this._renames);
+  }
+
   toJSON() {
-    return {
-      id: this.id,
-      changeName: {
-        prev: this.prev,
-        next: this.next,
-        timestamp: this.timestamp
-      }
-    };
+    return this._renames;
   }
 }
 

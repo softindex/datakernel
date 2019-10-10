@@ -1,7 +1,7 @@
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
 import documentsOTSystem from "./ot/DocumentsOTSystem";
 import documentsSerializer from "./ot/serializer";
-import CreateOrDropDocument from "./ot/CreateOrDropDocument";
+import CreateOrDropDocuments from "./ot/CreateOrDropDocuments";
 import {randomString, Service} from 'global-apps-common';
 import RenameDocument from "./ot/RenameDocument";
 import {delay} from "global-apps-common/lib";
@@ -77,7 +77,13 @@ class DocumentsService extends Service {
     if (!document) {
       return;
     }
-    const deleteDocumentOperation = new CreateOrDropDocument(documentId, document.name, document.participants, true);
+    const deleteDocumentOperation = new CreateOrDropDocuments({
+      [documentId]:{
+        name: document.name,
+        participants: document.participants,
+        remove: true
+      }
+    });
     this._documentsOTStateManager.add([deleteDocumentOperation]);
     await this._sync();
     return documentId;
@@ -95,7 +101,13 @@ class DocumentsService extends Service {
   }
 
   async _createDocument(documentId, documentName, participants) {
-    const addDocumentOperation = new CreateOrDropDocument(documentId, documentName, participants, false);
+    const addDocumentOperation = new CreateOrDropDocuments({
+      [documentId]:{
+        name: documentName,
+        participants: participants,
+        remove: false
+      }
+    });
     this._documentsOTStateManager.add([addDocumentOperation]);
     this.setState({
       ...this.state,

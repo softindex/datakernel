@@ -9,7 +9,7 @@ const roomsSerializer = {
    switch (value.type) {
       // TODO case 'RenameRepo':
       case 'CreateOrDropRepo':
-        return RoomsOTOperation.createFromJson(value);
+        return RoomsOTOperation.createFromJson(value.value);
     }
 
     throw new Error('Unknown type');

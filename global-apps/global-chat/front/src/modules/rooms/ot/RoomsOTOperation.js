@@ -1,59 +1,50 @@
-import isEmpty from 'lodash/isEmpty';
-import isEqual from 'lodash/isEqual';
+import mapValues from 'lodash/mapValues';
+import values from 'lodash/values';
 
 class RoomsOTOperation {
-  constructor(roomId, participants, remove) {
-    this._roomId = roomId;
-    this._participants = participants;
-    this._removed = remove;
+  constructor(rooms) {
+    this._rooms = rooms;
   }
 
-  static EMPTY = new RoomsOTOperation(null, [], false);
-
   static createFromJson(json) {
-    const room = json.value['shared_repo'];
-    return new RoomsOTOperation(room.id, room.participants, json.value.remove);
+    return new RoomsOTOperation(json);
   }
 
   apply(state) {
-    if (this._removed) {
-      state.delete(this._roomId);
-    } else {
-      state.set(this._roomId, {
-        participants: this._participants
-      });
-    }
+    Object.entries(this._rooms).forEach(([id, room]) => {
+      if (room.remove) {
+        state.delete(id);
+      } else {
+        state.set(id, {
+          name: room.name,
+          participants: room.participants
+        })
+      }
+    });
 
     return state;
   }
 
+  get rooms() {
+    return this._rooms;
+  }
+
   isEmpty() {
-    return isEmpty(this._participants);
+    return values(this._rooms).every(el => el.participants.length === 0);
   }
 
   invert() {
-    return new RoomsOTOperation(this._roomId, this._participants, !this._removed);
-  }
-
-  isEqual(roomOTOperation) {
-    return (
-      roomOTOperation._roomId === this._roomId
-      && isEqual(roomOTOperation._participants, this._participants)
-      && roomOTOperation._removed === this._removed
-    );
+    return new RoomsOTOperation(mapValues(this._rooms, room => ({
+      name: room.name,
+      participants: room.participants,
+      remove: !room.remove
+    })));
   }
 
   toJSON() {
     return {
       type: 'CreateOrDropRepo',
-      value: {
-        'shared_repo': {
-          id: this._roomId,
-          name: '', // TODO Add names to operation
-          participants: this._participants
-        },
-        remove: this._removed
-      }
+      value: this._rooms
     };
   }
 }
