@@ -77,7 +77,7 @@ public final class KvSessionStore<V> implements SessionStore<V>, EventloopServic
 		long timestamp = now.currentTimeMillis();
 		return kvClient.get(table, sessionId)
 				.then(kvItem -> {
-					if (kvItem == null || kvItem.getValue() == null) {
+					if (kvItem == null) {
 						return Promise.of(null);
 					}
 					if (kvItem.getTimestamp() + sessionLifetime.toMillis() < timestamp) {

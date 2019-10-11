@@ -79,7 +79,7 @@ public final class GlobalKvDriver<K, V> {
 
 	private Promise<@Nullable KvItem<K, V>> decrypt(@Nullable SignedData<RawKvItem> signedRawKvItem, @Nullable SimKey simKey) {
 		try {
-			if (signedRawKvItem == null) {
+			if (signedRawKvItem == null || signedRawKvItem.getValue().isTombstone()) {
 				return Promise.of(null);
 			}
 			RawKvItem raw = signedRawKvItem.getValue();
