@@ -78,7 +78,7 @@ class DocumentsService extends Service {
       return;
     }
     const deleteDocumentOperation = new CreateOrDropDocuments({
-      [documentId]:{
+      [documentId]: {
         name: document.name,
         participants: document.participants,
         remove: true
@@ -95,14 +95,20 @@ class DocumentsService extends Service {
       return;
     }
 
-    const renameDocumentOperation = new RenameDocument(documentId, document.name, newDocumentName, Date.now());
+    const renameDocumentOperation = new RenameDocument({
+      [documentId]: {
+        prev: document.name,
+        next: newDocumentName
+      }
+    });
+
     this._documentsOTStateManager.add([renameDocumentOperation]);
     await this._sync();
   }
 
   async _createDocument(documentId, documentName, participants) {
     const addDocumentOperation = new CreateOrDropDocuments({
-      [documentId]:{
+      [documentId]: {
         name: documentName,
         participants: participants,
         remove: false

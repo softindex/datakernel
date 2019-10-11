@@ -14,7 +14,7 @@ class RenameDocument {
 
   apply(state) {
     for (const [id, {next}] of Object.entries(this._renames)) {
-      state.get(id).name = next;
+      state.set(id, {...state.get(id), name: next});
     }
 
     return state;

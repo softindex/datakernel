@@ -5,6 +5,8 @@ import isEqual from "lodash/isEqual";
 import isEmpty from "lodash/isEmpty";
 import pickBy from "lodash/pickBy";
 import intersection from "lodash/intersection";
+import omitBy from 'lodash/omitBy';
+import transform from 'lodash/transform';
 
 const documentsOTSystem = new OTSystemBuilder()
   .withEmptyPredicate(CreateOrDropDocuments, operation => operation.isEmpty())
@@ -24,8 +26,8 @@ const documentsOTSystem = new OTSystemBuilder()
 
     const leftTransformed = [];
     const rightTransformed = [];
-    const leftDiffs = diff(rightDocuments, conflictingKeys);
-    const rightDiffs = diff(leftDocuments, conflictingKeys);
+    const leftDiffs = omitBy(rightDocuments, (value, key) => conflictingKeys.includes(key));
+    const rightDiffs = omitBy(leftDocuments, (value, key) => conflictingKeys.includes(key));
     if (!isEmpty(leftDiffs)) leftTransformed.push(new CreateOrDropDocuments(leftDiffs));
     if (!isEmpty(rightDiffs)) rightTransformed.push(new CreateOrDropDocuments(rightDiffs));
 
@@ -54,25 +56,25 @@ const documentsOTSystem = new OTSystemBuilder()
     return TransformResult.of(leftTransformed, rightTransformed);
   })
   .withTransformFunction(RenameDocument, RenameDocument, (operationLeft, operationRight) => {
-    const leftValues = operationLeft.values;
-    const rightValues = operationRight.values;
+    const leftRenames = operationLeft.renames;
+    const rightRenames = operationRight.renames;
 
-    if (isEqual(leftValues, rightValues)) {
+    if (isEqual(leftRenames, rightRenames)) {
       return TransformResult.empty();
     }
 
-    const conflictFields = intersection(Object.keys(leftValues), Object.keys(rightValues));
+    const conflictFields = intersection(Object.keys(leftRenames), Object.keys(rightRenames));
 
     if (!conflictFields.length) {
       return TransformResult.of([operationRight], [operationLeft]);
     }
 
-    const rightTransformed = pickBy(leftValues, (val, key) => !conflictFields.includes(key));
-    const leftTransformed = pickBy(rightValues, (val, key) => !conflictFields.includes(key));
+    const rightTransformed = pickBy(leftRenames, (val, key) => !conflictFields.includes(key));
+    const leftTransformed = pickBy(rightRenames, (val, key) => !conflictFields.includes(key));
 
     for (const key of conflictFields) {
-      const left = leftValues[key];
-      const right = rightValues[key];
+      const left = leftRenames[key];
+      const right = rightRenames[key];
 
       if (left.next === right.next) {
         continue;
@@ -105,8 +107,8 @@ const documentsOTSystem = new OTSystemBuilder()
       return TransformResult.of([right, left]);
     }
 
-    const leftRenames = pickBy(renames, (val, key) => !conflictKeys.contains(key));
-    const rightDocuments = pickBy(documents, (val, key) => !conflictKeys.contains(key));
+    const leftRenames = pickBy(renames, (val, key) => !conflictKeys.includes(key));
+    const rightDocuments = pickBy(documents, (val, key) => !conflictKeys.includes(key));
     for (const key of conflictKeys) {
       const {participants, remove} = documents[key];
       if (!remove) {
@@ -132,10 +134,10 @@ const documentsOTSystem = new OTSystemBuilder()
     const documentsB = opB.documents;
     const conflictingKeys = intersection(Object.keys(documentsA), Object.keys(documentsB));
 
-    return new CreateOrDropDocuments(Object.fromEntries(
-      Object.entries(documentsA).concat(Object.entries(documentsB))
-        .filter(([id, val]) => !conflictingKeys.contains(id))
-    ));
+    return new CreateOrDropDocuments({
+      ...omitBy(documentsA, (value, key) => conflictingKeys.includes(key)),
+      ...omitBy(documentsB, (value, key) => conflictingKeys.includes(key))
+    });
   })
   .withSquashFunction(RenameDocument, RenameDocument, (firstOperation, secondOperation) => {
     const nextValues = {...firstOperation.renames};
@@ -164,20 +166,14 @@ function doSquash(renameOp, createOrDropOp) {
     return null;
   }
 
-  return new CreateOrDropDocuments(Object.fromEntries(Object.entries(documents)
-    .map(([id, document]) => {
-      const rename = renames[id];
-      let newDocument = document;
-      if (rename) {
-        newDocument = {...document, name: rename.next};
-      }
-      return [id, newDocument]
-    })))
-}
-
-function diff(document, conflictingKeys) {
-  return Object.fromEntries(Object.entries(document)
-    .filter(([id, document]) => !conflictingKeys.contains(id)));
+  return new CreateOrDropDocuments(transform(documents, (result, value, key) => {
+    const rename = renames[key];
+    if (rename) {
+      result[key] = {...value, name: rename.next};
+    } else {
+      result[key] = value;
+    }
+  }, {}))
 }
 
 export default documentsOTSystem;

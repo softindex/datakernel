@@ -153,7 +153,7 @@ public final class SharedReposOTSystem {
 	private static SharedReposOperation doSquash(RenameRepos rename, CreateOrDropRepos createOrDrop) {
 		Map<String, SetValue<String>> renameOps = rename.getRenames().getOperations();
 		Map<String, RepoInfo> repoInfos = createOrDrop.getRepoInfos();
-		if (!renameOps.keySet().containsAll(repoInfos.keySet())) {
+		if (!repoInfos.keySet().containsAll(renameOps.keySet())) {
 			return null;
 		}
 		return new CreateOrDropRepos(repoInfos.entrySet()
