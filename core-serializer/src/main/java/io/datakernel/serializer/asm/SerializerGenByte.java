@@ -16,30 +16,24 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.util.BinaryOutputUtils2;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
 
 public final class SerializerGenByte extends SerializerGenPrimitive {
-
 	public SerializerGenByte() {
 		super(byte.class);
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return BinaryOutputUtils2.writeByte(byteArray, off, cast(value, byte.class));
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
+		return writeByte(byteArray, off, value);
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		if (targetType.isPrimitive())
-			return call(arg(0), "readByte");
-		else
-			return cast(call(arg(0), "readByte"), Byte.class);
+	protected Expression doDeserialize(Expression byteArray, Variable off) {
+		return readByte(byteArray, off);
 	}
 }

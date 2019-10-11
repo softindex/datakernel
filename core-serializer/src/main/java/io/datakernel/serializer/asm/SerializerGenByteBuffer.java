@@ -21,12 +21,12 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.nio.ByteBuffer;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
 public class SerializerGenByteBuffer implements SerializerGen, NullableOptimization {
@@ -72,63 +72,60 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 				cast(value, ByteBuffer.class),
 				buffer ->
 						let(call(buffer, "remaining"), remaining -> {
-							Expression write = sequence(
-									set(off,
-											callStatic(BinaryOutputUtils.class, "writeVarInt",
-													byteArray,
-													off,
-													!nullable ? remaining : inc(remaining))),
-									callStatic(BinaryOutputUtils.class, "write",
-											byteArray,
-											off,
-											call(buffer, "array"),
-											call(buffer, "position"),
-											remaining));
 
 							if (!nullable) {
-								return write;
+								return sequence(
+										writeVarInt(byteArray, off, remaining),
+										writeBytes(byteArray, off, call(buffer, "array"), call(buffer, "position"), remaining));
 							} else {
 								return ifThenElse(isNull(buffer),
-										callStatic(BinaryOutputUtils.class, "writeByte",
-												byteArray,
-												off,
-												value((byte) 0)),
-										write);
+										writeByte(byteArray, off, value((byte) 0)),
+										sequence(
+												writeVarInt(byteArray, off, inc(remaining)),
+												writeBytes(byteArray, off, call(buffer, "array"), call(buffer, "position"), remaining)));
 							}
 						}));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !wrapped ?
-				let(call(arg(0), "readVarInt"), length -> {
-					if (!nullable) {
-						return let(
-								newArray(byte[].class, length),
-								array ->
-										sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array)));
-					} else {
-						return let(
-								newArray(byte[].class, dec(length)),
-								array ->
-										ifThenElse(cmpEq(length, value(0)),
-												nullRef(ByteBuffer.class),
-												sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array))));
-					}
-				}) :
-				let(call(arg(0), "readVarInt"), length ->
-						let(call(arg(0), "pos"), position -> {
-							Expression setPosition = call(arg(0), "pos", add(position, (!nullable ? length : dec(length))));
-							Expression inputBuffer = property(arg(0), "array");
-
+				let(readVarInt(byteArray, off),
+						length -> {
 							if (!nullable) {
-								return sequence(setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
+								return let(
+										newArray(byte[].class, length),
+										array ->
+												sequence(length,
+														readBytes(byteArray, off, array),
+														callStatic(ByteBuffer.class, "wrap", array)));
+							} else {
+								return let(
+										newArray(byte[].class, dec(length)),
+										array ->
+												ifThenElse(cmpEq(length, value(0)),
+														nullRef(ByteBuffer.class),
+														sequence(length,
+																readBytes(byteArray, off, array),
+																callStatic(ByteBuffer.class, "wrap", array))));
+							}
+						}) :
+				let(readVarInt(byteArray, off),
+						length -> {
+							if (!nullable) {
+								return let(callStatic(ByteBuffer.class, "wrap", byteArray, off, length),
+										result -> sequence(
+												set(off, add(off, length)),
+												result));
 							} else {
 								return ifThenElse(cmpEq(length, value(0)),
 										nullRef(ByteBuffer.class),
-										sequence(setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, dec(length))));
+										let(callStatic(ByteBuffer.class, "wrap", byteArray, off, dec(length)),
+												result -> sequence(
+														set(off, add(off, dec(length))),
+														result)));
 							}
-						}));
+						});
 	}
 
 	@Override

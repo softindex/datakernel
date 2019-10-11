@@ -21,11 +21,11 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
 public class SerializerGenEnum implements SerializerGen, NullableOptimization {
@@ -66,29 +66,29 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 		if (isSmallEnum()) {
 			ordinal = cast(ordinal, byte.class);
 			return !nullable ?
-					callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, ordinal) :
+					writeByte(byteArray, off, ordinal) :
 					ifThenElse(isNull(value),
-							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0)),
-							callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), byte.class)));
+							writeByte(byteArray, off, value((byte) 0)),
+							writeByte(byteArray, off, cast(add(ordinal, value((byte) 1)), byte.class)));
+		} else {
+			return !nullable ?
+					writeVarInt(byteArray, off, ordinal) :
+					ifThenElse(isNull(value),
+							writeByte(byteArray, off, value((byte) 0)),
+							writeVarInt(byteArray, off, add(ordinal, value((byte) 1))));
 		}
-		return !nullable ?
-				callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, ordinal) :
-				ifThenElse(isNull(value),
-						callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0)),
-						callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, inc(ordinal)));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version,
-			CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return isSmallEnum() ?
-				let(call(arg(0), "readByte"), value ->
+				let(readByte(byteArray, off), value ->
 						!nullable ?
 								getArrayItem(callStatic(enumType, "values"), value) :
 								ifThenElse(cmpEq(value, value((byte) 0)),
 										nullRef(enumType),
 										getArrayItem(callStatic(enumType, "values"), dec(value)))) :
-				let(call(arg(0), "readVarInt"), value ->
+				let(readVarInt(byteArray, off), value ->
 						!nullable ?
 								getArrayItem(callStatic(enumType, "values"), value) :
 								ifThenElse(cmpEq(value, value(0)),
@@ -97,7 +97,9 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	}
 
 	private boolean isSmallEnum() {
-		return enumType.getEnumConstants().length <= Byte.MAX_VALUE - (nullable ? 1 : 0);
+		int size = enumType.getEnumConstants().length + (nullable ? 1 : 0);
+		if (size >= 16384) throw new IllegalArgumentException();
+		return size <= Byte.MAX_VALUE;
 	}
 
 	@Override

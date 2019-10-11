@@ -23,11 +23,11 @@ import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.util.BinaryOutputUtils;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.StringFormat.UTF8;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
 public class SerializerGenString implements SerializerGen {
@@ -40,7 +40,7 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	public SerializerGenString() {
-		this(false, StringFormat.UTF8);
+		this(false, UTF8);
 	}
 
 	public SerializerGenString(StringFormat format) {
@@ -74,62 +74,52 @@ public class SerializerGenString implements SerializerGen {
 		return String.class;
 	}
 
-	@SuppressWarnings("deprecation") // compatibility
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		List<Expression> list = new ArrayList<>();
-
 		Expression expression = cast(value, String.class);
-
-		if (format == StringFormat.UTF16) {
-			if (nullable)
-				list.add(callStatic(BinaryOutputUtils.class, "writeUTF16Nullable", byteArray, off, expression));
-			else
-				list.add(callStatic(BinaryOutputUtils.class, "writeUTF16", byteArray, off, expression));
-		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
-			if (nullable)
-				list.add(callStatic(BinaryOutputUtils.class, "writeIso88591Nullable", byteArray, off, expression));
-			else
-				list.add(callStatic(BinaryOutputUtils.class, "writeIso88591", byteArray, off, expression));
-		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
-			if (nullable)
-				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8Nullable", byteArray, off, expression));
-			else
-				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8", byteArray, off, expression));
-		} else {
-			if (nullable)
-				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8mb3Nullable", byteArray, off, expression));
-			else
-				list.add(callStatic(BinaryOutputUtils.class, "writeUTF8mb3", byteArray, off, expression));
+		switch (format) {
+			case UTF16:
+				return nullable ?
+						set(off, callStatic(BinaryOutputUtils.class, "writeUTF16Nullable", byteArray, off, expression)) :
+						set(off, callStatic(BinaryOutputUtils.class, "writeUTF16", byteArray, off, expression));
+			case ISO_8859_1:
+				return nullable ?
+						writeIso88591Nullable(byteArray, off, expression) :
+						writeIso88591(byteArray, off, expression);
+			case UTF8:
+				return nullable ?
+						writeUTF8Nullable(byteArray, off, expression) :
+						writeUTF8(byteArray, off, expression);
+			case UTF8_MB3:
+				return nullable ?
+						set(off, callStatic(BinaryOutputUtils.class, "writeUTF8mb3Nullable", byteArray, off, expression)) :
+						set(off, callStatic(BinaryOutputUtils.class, "writeUTF8mb3", byteArray, off, expression));
+			default:
+				throw new AssertionError();
 		}
-
-		return sequence(list);
-
 	}
 
-	@SuppressWarnings("deprecation") // compatibility
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		if (format == StringFormat.UTF16) {
-			if (nullable)
-				return call(arg(0), "readUTF16Nullable");
-			else
-				return call(arg(0), "readUTF16");
-		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
-			if (nullable)
-				return call(arg(0), "readIso88591Nullable");
-			else
-				return call(arg(0), "readIso88591");
-		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
-			if (nullable)
-				return call(arg(0), "readUTF8Nullable");
-			else
-				return call(arg(0), "readUTF8");
-		} else {
-			if (nullable)
-				return call(arg(0), "readUTF8mb3Nullable");
-			else
-				return call(arg(0), "readUTF8mb3");
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		switch (format) {
+			case UTF16:
+				return nullable ?
+						call(arg(0), "readUTF16Nullable") :
+						call(arg(0), "readUTF16");
+			case ISO_8859_1:
+				return nullable ?
+						call(arg(0), "readIso88591Nullable") :
+						call(arg(0), "readIso88591");
+			case UTF8:
+				return nullable ?
+						call(arg(0), "readUTF8Nullable") :
+						call(arg(0), "readUTF8");
+			case UTF8_MB3:
+				return nullable ?
+						call(arg(0), "readUTF8mb3Nullable") :
+						call(arg(0), "readUTF8mb3");
+			default:
+				throw new AssertionError();
 		}
 	}
 

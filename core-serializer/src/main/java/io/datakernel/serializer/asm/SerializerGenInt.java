@@ -16,16 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.util.BinaryOutputUtils2;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 
 public final class SerializerGenInt extends SerializerGenPrimitive {
-
 	private final boolean varLength;
 
 	public SerializerGenInt() {
@@ -56,26 +53,16 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		if (varLength) {
-			return BinaryOutputUtils2.writeVarInt(byteArray, off, cast(value, int.class));
-		} else {
-			return BinaryOutputUtils2.writeInt(byteArray, off, cast(value, int.class));
-		}
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
+		return varLength ?
+				writeVarInt(byteArray, off, cast(value, int.class)) :
+				writeInt(byteArray, off, cast(value, int.class));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		if (varLength) {
-			if (targetType.isPrimitive())
-				return call(arg(0), "readVarInt");
-			else
-				return cast(call(arg(0), "readVarInt"), Integer.class);
-		} else {
-			if (targetType.isPrimitive())
-				return call(arg(0), "readInt");
-			else
-				return cast(call(arg(0), "readInt"), Integer.class);
-		}
+	protected Expression doDeserialize(Expression byteArray, Variable off) {
+		return varLength ?
+				readVarInt(byteArray, off) :
+				readInt(byteArray, off);
 	}
 }

@@ -17,20 +17,38 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
  * Defines methods to create a constant value
  */
 final class ExpressionConstant implements Expression {
+	@NotNull
 	private final Object value;
+	@Nullable
+	private final Type type;
+
 	private String staticConstantField;
 
 	ExpressionConstant(Object value) {
-		this.value = value;
+		this.value = checkNotNull(value);
+		this.type = null;
+	}
+
+	ExpressionConstant(Object value, Type type) {
+		this.value = checkNotNull(value);
+		this.type = type;
+	}
+
+	ExpressionConstant(Object value, Class<?> type) {
+		this.value = checkNotNull(value);
+		this.type = getType(type);
 	}
 
 	public Object getValue() {
@@ -40,13 +58,15 @@ final class ExpressionConstant implements Expression {
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Type type;
-		if (value instanceof String) {
-			type = getType(String.class);
-		} else if (value instanceof Type) {
-			type = (Type) value;
-		} else {
-			type = getType(Primitives.unwrap(value.getClass()));
+		Type type = this.type;
+		if (type == null) {
+			if (value instanceof String) {
+				type = getType(String.class);
+			} else if (value instanceof Type) {
+				type = (Type) value;
+			} else {
+				type = getType(Primitives.unwrap(value.getClass()));
+			}
 		}
 		if (value instanceof Byte) {
 			g.push((Byte) value);

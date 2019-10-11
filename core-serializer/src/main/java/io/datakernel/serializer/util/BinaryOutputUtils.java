@@ -165,7 +165,6 @@ public final class BinaryOutputUtils {
 		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
 		off = writeVarInt(buf, off, bytes.length);
 		return write(buf, off, bytes);
-
 	}
 
 	public static int writeUTF8Nullable(byte[] buf, int off, String s) {

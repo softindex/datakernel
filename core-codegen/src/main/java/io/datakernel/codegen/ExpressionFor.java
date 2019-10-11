@@ -56,7 +56,11 @@ final class ExpressionFor implements Expression {
 
 		g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
 
-		forVar.apply(it).load(ctx);
+		Type forType = forVar.apply(it).load(ctx);
+		if (forType.getSize() == 1)
+			g.pop();
+		if (forType.getSize() == 2)
+			g.pop2();
 
 		it.load(ctx);
 		g.push(1);

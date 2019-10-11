@@ -54,10 +54,6 @@ public final class VarLocal implements Variable {
 		g.storeLocal(local);
 	}
 
-	public void storeLocal(GeneratorAdapter g) {
-		g.storeLocal(local);
-	}
-
 	public int getLocal() {
 		return local;
 	}

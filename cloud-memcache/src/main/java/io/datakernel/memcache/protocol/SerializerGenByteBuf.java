@@ -55,13 +55,14 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerGenByteBuf.class,
-				"write" + (writeWithRecycle ? "Recycle" : "") + (nullable ? "Nullable" : ""),
-				byteArray, off, cast(value, ByteBuf.class));
+		return set(off,
+				callStatic(SerializerGenByteBuf.class,
+						"write" + (writeWithRecycle ? "Recycle" : "") + (nullable ? "Nullable" : ""),
+						byteArray, off, cast(value, ByteBuf.class)));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenByteBuf.class,
 				"read" + (wrap ? "Slice" : "") + (nullable ? "Nullable" : ""),
 				arg(0));

@@ -71,7 +71,11 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 		VarLocal it = newLocal(ctx, getType(type));
 		it.store(ctx);
 
-		forEach.apply(getValue(it)).load(ctx);
+		Type forEachType = forEach.apply(getValue(it)).load(ctx);
+		if (forEachType.getSize() == 1)
+			g.pop();
+		if (forEachType.getSize() == 2)
+			g.pop2();
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);

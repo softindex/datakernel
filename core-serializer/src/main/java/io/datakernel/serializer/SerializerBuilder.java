@@ -25,7 +25,6 @@ import io.datakernel.serializer.asm.*;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutput;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -37,12 +36,12 @@ import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeVarInt;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 
@@ -50,7 +49,6 @@ import static java.util.Arrays.asList;
  * Scans fields of classes for serialization.
  */
 public final class SerializerBuilder {
-	private static final AtomicInteger counter = new AtomicInteger();
 	private final DefiningClassLoader definingClassLoader;
 	private String profile;
 	private int version = Integer.MAX_VALUE;
@@ -801,16 +799,20 @@ public final class SerializerBuilder {
 				getLatestVersion(versions);
 
 		classBuilder.withMethod("encode", int.class, asList(byte[].class, int.class, Object.class),
-				let(currentVersion == null ?
-								arg(1) :
-								callStatic(BinaryOutputUtils.class, "writeVarInt", arg(0), arg(1), value(currentVersion)),
-						pos ->
+				let(arg(1),
+						pos -> sequence(
+								currentVersion != null ?
+										writeVarInt(arg(0), pos, value(currentVersion)) :
+										sequence(),
+
 								serializerGen.serialize(definingClassLoader,
 										arg(0),
 										pos,
 										cast(arg(2), dataType),
 										nullToDefault(currentVersion, 0),
-										compatibilityLevel))
+										compatibilityLevel),
+
+								pos))
 		);
 
 		defineDeserialize(serializerGen, classBuilder, allVersions);
@@ -845,12 +847,18 @@ public final class SerializerBuilder {
 			Integer latestVersion) {
 		if (latestVersion == null) {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
-					serializerGen.deserialize(classBuilder.getClassLoader(), serializerGen.getRawType(), 0, compatibilityLevel));
+					serializerGen.deserialize(classBuilder.getClassLoader(),
+							property(arg(0), "array"),
+							property(arg(0), "pos"),
+							serializerGen.getRawType(), 0, compatibilityLevel));
 		} else {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
 					let(call(arg(0), "readVarInt"),
 							version -> ifThenElse(cmpEq(version, value(latestVersion)),
-									serializerGen.deserialize(classBuilder.getClassLoader(), serializerGen.getRawType(), latestVersion, compatibilityLevel),
+									serializerGen.deserialize(classBuilder.getClassLoader(),
+											property(arg(0), "array"),
+											property(arg(0), "pos"),
+											serializerGen.getRawType(), latestVersion, compatibilityLevel),
 									call(self(), "deserializeEarlierVersions", arg(0), version))));
 		}
 	}
@@ -875,7 +883,10 @@ public final class SerializerBuilder {
 		classBuilder.withMethod("deserializeVersion" + version,
 				serializerGen.getRawType(),
 				asList(BinaryInput.class),
-				sequence(serializerGen.deserialize(classBuilder.getClassLoader(), serializerGen.getRawType(), version, compatibilityLevel)));
+				sequence(serializerGen.deserialize(classBuilder.getClassLoader(),
+						property(arg(0), "array"),
+						property(arg(0), "pos"),
+						serializerGen.getRawType(), version, compatibilityLevel)));
 	}
 
 	@Nullable

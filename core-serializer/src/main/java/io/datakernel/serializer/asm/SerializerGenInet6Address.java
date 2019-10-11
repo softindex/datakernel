@@ -20,12 +20,13 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.net.Inet6Address;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.readBytes;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeBytes;
 import static java.util.Collections.emptySet;
 
 public class SerializerGenInet6Address implements SerializerGen {
@@ -50,14 +51,14 @@ public class SerializerGenInet6Address implements SerializerGen {
 
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(BinaryOutputUtils.class, "write", byteArray, off, call(value, "getAddress"));
+		return writeBytes(byteArray, off, call(value, "getAddress"));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return let(newArray(byte[].class, value(16)), local ->
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return let(newArray(byte[].class, value(16)), array ->
 				sequence(
-						call(arg(0), "read", local),
-						callStatic(getRawType(), "getByAddress", local)));
+						readBytes(byteArray, off, array),
+						callStatic(getRawType(), "getByAddress", array)));
 	}
 }

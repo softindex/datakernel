@@ -21,13 +21,13 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
 public final class SerializerGenArray implements SerializerGen, NullableOptimization {
@@ -83,57 +83,50 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 			CompatibilityLevel compatibilityLevel) {
 		Expression castedValue = cast(value, type);
 		Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
-		Expression writeLength = set(off,
-				callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
-		Expression writeZeroLength = set(off,
-				callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0)));
-		Expression writeByteArray = callStatic(BinaryOutputUtils.class, "write", byteArray, off, castedValue);
+		Expression writeLength = writeVarInt(byteArray, off, (!nullable ? length : inc(length)));
+		Expression writeZeroLength = writeByte(byteArray, off, value((byte) 0));
+		Expression writeByteArray = writeBytes(byteArray, off, castedValue);
 		Expression writeCollection = loop(value(0), length,
-				it -> set(off,
-						valueSerializer.serialize(classLoader, byteArray, off, getArrayItem(castedValue, it), version, compatibilityLevel)));
+				it -> valueSerializer.serialize(classLoader, byteArray, off, getArrayItem(castedValue, it), version, compatibilityLevel));
 
 		if (!nullable) {
-			if (type.getComponentType() == Byte.TYPE) {
-				return sequence(writeLength, writeByteArray);
-			} else {
-				return sequence(writeLength, writeCollection, off);
-			}
+			return type.getComponentType() == Byte.TYPE ?
+					sequence(writeLength, writeByteArray) :
+					sequence(writeLength, writeCollection);
 		} else {
-			if (type.getComponentType() == Byte.TYPE) {
-				return ifThenElse(isNull(value),
-						sequence(writeZeroLength, off),
-						sequence(writeLength, writeByteArray)
-				);
-			} else {
-				return ifThenElse(isNull(value),
-						sequence(writeZeroLength, off),
-						sequence(writeLength, writeCollection, off));
-			}
+			return type.getComponentType() == Byte.TYPE ?
+					ifThenElse(isNull(value),
+							writeZeroLength,
+							sequence(writeLength, writeByteArray)
+					) :
+					ifThenElse(isNull(value),
+							writeZeroLength,
+							sequence(writeLength, writeCollection));
 		}
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !nullable ?
-				let(call(arg(0), "readVarInt"), len ->
+				let(readVarInt(byteArray, off), len ->
 						let(newArray(type, len), array ->
 								sequence(
 										type.getComponentType() == Byte.TYPE ?
-												call(arg(0), "read", array) :
+												readBytes(byteArray, off, array) :
 												loop(value(0), len,
 														i -> setArrayItem(array, i,
-																cast(valueSerializer.deserialize(classLoader, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+																cast(valueSerializer.deserialize(classLoader, byteArray, off, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 										array))) :
-				let(call(arg(0), "readVarInt"), len ->
+				let(readVarInt(byteArray, off), len ->
 						ifThenElse(cmpEq(len, value(0)),
 								nullRef(type),
 								let(newArray(type, dec(len)), array ->
 										sequence(
 												type.getComponentType() == Byte.TYPE ?
-														call(arg(0), "read", array) :
+														readBytes(byteArray, off, array) :
 														loop(value(0), dec(len),
 																i -> setArrayItem(array, i,
-																		cast(valueSerializer.deserialize(classLoader, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+																		cast(valueSerializer.deserialize(classLoader, byteArray, off, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));
 	}

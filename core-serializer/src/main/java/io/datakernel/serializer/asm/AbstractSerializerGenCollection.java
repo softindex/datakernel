@@ -21,7 +21,6 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
@@ -29,6 +28,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, NullableOptimization {
@@ -77,28 +77,30 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	@Override
 	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
-				it -> set(off,
-						valueSerializer.serialize(classLoader, byteArray, off, cast(it, valueSerializer.getRawType()), version, compatibilityLevel)));
+				it -> valueSerializer.serialize(classLoader, byteArray, off, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		if (!nullable) {
 			return sequence(
-					set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, call(value, "size"))), forEach, off);
+					writeVarInt(byteArray, off, call(value, "size")),
+					forEach);
+		} else {
+			return ifThenElse(isNull(value),
+					writeByte(byteArray, off, value((byte) 0)),
+					sequence(writeVarInt(byteArray, off, inc(call(value, "size"))),
+							forEach));
 		}
-		return ifThenElse(isNull(value),
-				sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0))), off),
-				sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))), forEach, off));
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
-		return let(call(arg(0), "readVarInt"), length ->
+		return let(readVarInt(byteArray, off), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "add",
-														cast(valueSerializer.deserialize(classLoader, elementType, version, compatibilityLevel), elementType)),
+														cast(valueSerializer.deserialize(classLoader, byteArray, off, elementType, version, compatibilityLevel), elementType)),
 												voidExp())),
 								instance)) :
 						ifThenElse(
@@ -108,7 +110,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "add",
-																cast(valueSerializer.deserialize(classLoader, elementType, version, compatibilityLevel), elementType)),
+																cast(valueSerializer.deserialize(classLoader, byteArray, off, elementType, version, compatibilityLevel), elementType)),
 														voidExp())),
 										instance))));
 

@@ -1395,8 +1395,7 @@ public class AsmSerializerTest {
 		TestEnum2 testData2 = doTest(TestEnum2.class, testData1);
 		assertEquals(testData1, testData2);
 
-		BinarySerializer<EnumPojo> serializer = SerializerBuilder
-				.create(definingClassLoader)
+		BinarySerializer<EnumPojo> serializer = SerializerBuilder.create(definingClassLoader)
 				.build(EnumPojo.class);
 
 		byte[] array = new byte[2000];

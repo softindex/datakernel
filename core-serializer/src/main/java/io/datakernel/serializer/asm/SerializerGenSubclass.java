@@ -21,7 +21,6 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -31,6 +30,8 @@ import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Utils.of;
+import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
 import static java.util.Collections.emptySet;
 import static org.objectweb.asm.Type.getType;
 
@@ -91,7 +92,7 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
-					set(off, callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value(subClassIndex))),
+					writeByte(byteArray, off, value(subClassIndex)),
 					subclassSerializer.serialize(classLoader, byteArray, off, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
 			));
 
@@ -103,20 +104,20 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		if (nullable) {
 			return ifThenElse(isNotNull(value),
 					switchByKey(cast(call(cast(value, Object.class), "getClass"), Object.class), listKey, listValue),
-					callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0)));
+					writeByte(byteArray, off, value((byte) 0)));
 		} else {
 			return switchByKey(cast(call(cast(value, Object.class), "getClass"), Object.class), listKey, listValue);
 		}
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return cast(switchByIndex(
-				var(sub(call(arg(0), "readByte"), value(startIndex))),
+				var(sub(readByte(byteArray, off), value(startIndex))),
 				of(() -> {
 					List<Expression> versions = new ArrayList<>();
 					for (SerializerGen subclassSerializer : subclassSerializers.values()) {
-						versions.add(cast(subclassSerializer.deserialize(classLoader, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
+						versions.add(cast(subclassSerializer.deserialize(classLoader, byteArray, off, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
 					}
 					if (nullable) versions.add(-startIndex, nullRef(getRawType()));
 					return versions;

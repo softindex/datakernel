@@ -16,8 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
+
 import java.util.Set;
 
+import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.codegen.utils.Primitives.wrap;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
@@ -56,6 +62,21 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 
 	public final Class<?> getBoxedType() {
 		return wrap(primitiveType);
+	}
+
+	protected abstract Expression doSerialize(Expression byteArray, Variable off, Expression value);
+
+	protected abstract Expression doDeserialize(Expression byteArray, Variable off);
+
+	@Override
+	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return doSerialize(byteArray, off, cast(value, primitiveType));
+	}
+
+	@Override
+	public final Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		Expression expression = doDeserialize(byteArray, off);
+		return targetType.isPrimitive() ? expression : cast(expression, getBoxedType());
 	}
 
 	@Override

@@ -22,12 +22,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.codegen.ExpressionCast.SELF_TYPE;
 import static io.datakernel.codegen.ExpressionComparator.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.objectweb.asm.Type.getType;
@@ -44,6 +46,10 @@ public class Expressions {
 	 */
 	public static Expression value(Object value) {
 		return new ExpressionConstant(value);
+	}
+
+	public static Expression value(Object value, Class<?> type) {
+		return new ExpressionConstant(value, type);
 	}
 
 	/**
@@ -409,11 +415,11 @@ public class Expressions {
 		return ExpressionArithmeticOp.unifyArithmeticTypes(types.toArray(new Class<?>[0]));
 	}
 
-	public static ExpressionArithmeticOp arithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
+	public static Expression arithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
 		return new ExpressionArithmeticOp(op, left, right);
 	}
 
-	public static ExpressionArithmeticOp arithmeticOp(String op, Expression left, Expression right) {
+	public static Expression arithmeticOp(String op, Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.operation(op), left, right);
 	}
 
@@ -424,56 +430,67 @@ public class Expressions {
 	 * @param right second argument which will be added
 	 * @return new instance of the ExpressionArithmeticOp
 	 */
-	public static ExpressionArithmeticOp add(Expression left, Expression right) {
+	public static Expression add(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.ADD, left, right);
 	}
 
-	public static ExpressionArithmeticOp inc(Expression value) {
-		return new ExpressionArithmeticOp(ArithmeticOperation.ADD, value, value(1));
+	public static Expression inc(Expression value) {
+		return add(value, value(1));
 	}
 
-	public static ExpressionArithmeticOp sub(Expression left, Expression right) {
+	public static Expression sub(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.SUB, left, right);
 	}
 
-	public static ExpressionArithmeticOp dec(Expression value) {
-		return new ExpressionArithmeticOp(ArithmeticOperation.SUB, value, value(1));
+	public static Expression dec(Expression value) {
+		return sub(value, value(1));
 	}
 
-	public static ExpressionArithmeticOp mul(Expression left, Expression right) {
+	public static Expression mul(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.MUL, left, right);
 	}
 
-	public static ExpressionArithmeticOp div(Expression left, Expression right) {
+	public static Expression div(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.DIV, left, right);
 	}
 
-	public static ExpressionArithmeticOp rem(Expression left, Expression right) {
+	public static Expression rem(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.REM, left, right);
 	}
 
-	public static ExpressionArithmeticOp and(Expression left, Expression right) {
+	public static Expression and(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.AND, left, right);
 	}
 
-	public static ExpressionArithmeticOp or(Expression left, Expression right) {
+	public static Expression or(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.OR, left, right);
 	}
 
-	public static ExpressionArithmeticOp xor(Expression left, Expression right) {
+	public static Expression xor(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.XOR, left, right);
 	}
 
-	public static ExpressionArithmeticOp shl(Expression left, Expression right) {
+	public static Expression shl(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.SHL, left, right);
 	}
 
-	public static ExpressionArithmeticOp shr(Expression left, Expression right) {
+	public static Expression shr(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.SHR, left, right);
 	}
 
-	public static ExpressionArithmeticOp ushr(Expression left, Expression right) {
+	public static Expression ushr(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.USHR, left, right);
+	}
+
+	public static Expression fold(BiFunction<Expression, Expression, Expression> fn, Expression... arguments) {
+		return fold(fn, asList(arguments));
+	}
+
+	public static Expression fold(BiFunction<Expression, Expression, Expression> fn, List<? extends Expression> arguments) {
+		checkArgument(!arguments.isEmpty());
+		return arguments.size() == 1 ?
+				arguments.get(0) :
+				fn.apply(arguments.get(0), fold(fn, arguments.subList(1, arguments.size())));
 	}
 
 	/**
@@ -513,23 +530,13 @@ public class Expressions {
 	}
 
 	/**
-	 * Returns a new local variable which ordinal number is 'local'
-	 *
-	 * @param local ordinal number of local variable
-	 * @return new instance of the VarArg
-	 */
-	public static VarLocal local(int local) {
-		return new VarLocal(local);
-	}
-
-	/**
 	 * Returns a new local variable from a given context
 	 *
 	 * @param ctx  context of a dynamic class
 	 * @param type the type of the local variable to be created
 	 * @return new instance of {@link VarLocal}
 	 */
-	public static VarLocal newLocal(Context ctx, Type type) {
+	static VarLocal newLocal(Context ctx, Type type) {
 		int local = ctx.getGeneratorAdapter().newLocal(type);
 		return new VarLocal(local);
 	}

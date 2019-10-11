@@ -21,7 +21,6 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.NullableOptimization;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
@@ -29,6 +28,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
 public abstract class AbstractSerializerGenMap implements SerializerGen, NullableOptimization {
@@ -80,31 +80,29 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 	@Override
 	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
-		Expression writeLength = set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression writeLength = writeVarInt(byteArray, off, !nullable ? length : inc(length));
 		Expression forEach = mapForEach(value,
-				k -> set(off, keySerializer.serialize(classLoader, byteArray, off, cast(k, keySerializer.getRawType()), version, compatibilityLevel)),
-				v -> set(off, valueSerializer.serialize(classLoader, byteArray, off, cast(v, valueSerializer.getRawType()), version, compatibilityLevel)));
+				k -> keySerializer.serialize(classLoader, byteArray, off, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
+				v -> valueSerializer.serialize(classLoader, byteArray, off, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
 
-		if (!nullable) {
-			return sequence(writeLength, forEach, off);
-		} else {
-			return ifThenElse(isNull(value),
-					sequence(set(off, callStatic(BinaryOutputUtils.class, "writeVarInt", byteArray, off, value(0))), off),
-					sequence(writeLength, forEach, off));
-		}
+		return !nullable ?
+				sequence(writeLength, forEach) :
+				ifThenElse(isNull(value),
+						writeByte(byteArray, off, value((byte) 0)),
+						sequence(writeLength, forEach));
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
-		return let(call(arg(0), "readVarInt"), length ->
+		return let(readVarInt(byteArray, off), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "put",
-														cast(keySerializer.deserialize(classLoader, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-														cast(valueSerializer.deserialize(classLoader, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+														cast(keySerializer.deserialize(classLoader, byteArray, off, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+														cast(valueSerializer.deserialize(classLoader, byteArray, off, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 												),
 												voidExp())),
 								instance)) :
@@ -115,8 +113,8 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, Nullabl
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "put",
-																cast(keySerializer.deserialize(classLoader, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-																cast(valueSerializer.deserialize(classLoader, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+																cast(keySerializer.deserialize(classLoader, byteArray, off, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+																cast(valueSerializer.deserialize(classLoader, byteArray, off, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 														),
 														voidExp())),
 										instance))));

@@ -16,30 +16,24 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.util.BinaryOutputUtils2;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.readBoolean;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeBoolean;
 
 public final class SerializerGenBoolean extends SerializerGenPrimitive {
-
 	public SerializerGenBoolean() {
 		super(boolean.class);
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return BinaryOutputUtils2.writeBoolean(byteArray, off, cast(value, boolean.class));
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
+		return writeBoolean(byteArray, off, value);
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		if (targetType.isPrimitive())
-			return call(arg(0), "readBoolean");
-		else
-			return cast(call(arg(0), "readBoolean"), Boolean.class);
+	protected Expression doDeserialize(Expression byteArray, Variable off) {
+		return readBoolean(byteArray, off);
 	}
 }

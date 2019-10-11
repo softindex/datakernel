@@ -48,13 +48,14 @@ public class SerializerGenSlice implements SerializerGen, NullableOptimization {
 
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerGenSlice.class,
-				"write" + (nullable ? "Nullable" : ""),
-				byteArray, off, cast(value, Slice.class));
+		return set(off,
+				callStatic(SerializerGenSlice.class,
+						"write" + (nullable ? "Nullable" : ""),
+						byteArray, off, cast(value, Slice.class)));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenSlice.class,
 				"read" + (nullable ? "Nullable" : ""),
 				arg(0));

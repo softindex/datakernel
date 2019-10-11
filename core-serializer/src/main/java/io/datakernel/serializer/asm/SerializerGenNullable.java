@@ -20,12 +20,13 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
 import static java.util.Collections.emptySet;
 
 public class SerializerGenNullable implements SerializerGen {
@@ -58,17 +59,18 @@ public class SerializerGenNullable implements SerializerGen {
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return ifThenElse(isNotNull(value),
-				sequence(set(off, callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 1))),
+				sequence(
+						writeByte(byteArray, off, value((byte) 1)),
 						serializer.serialize(classLoader, byteArray, off, value, version, compatibilityLevel)),
-				callStatic(BinaryOutputUtils.class, "writeByte", byteArray, off, value((byte) 0))
+				writeByte(byteArray, off, value((byte) 0))
 		);
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return let(call(arg(0), "readByte"),
-				isNotNull -> ifThenElse(cmpEq(isNotNull, value((byte) 1)),
-						serializer.deserialize(classLoader, serializer.getRawType(), version, compatibilityLevel),
+	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return let(readByte(byteArray, off),
+				isNotNull -> ifThenElse(cmpNe(isNotNull, value((byte) 0)),
+						serializer.deserialize(classLoader, byteArray, off, serializer.getRawType(), version, compatibilityLevel),
 						nullRef(targetType)));
 	}
 

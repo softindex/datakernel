@@ -25,8 +25,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * and Strings from byte arrays
  */
 public final class BinaryInput {
-	private final byte[] array;
-	private int pos;
+	public final byte[] array;
+	public int pos;
 
 	public BinaryInput(byte[] array) {
 		this.array = array;

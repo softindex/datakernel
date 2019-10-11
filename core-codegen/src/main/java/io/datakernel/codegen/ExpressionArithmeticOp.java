@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.codegen.ArithmeticOperation.*;
 import static io.datakernel.codegen.Utils.*;
 import static org.objectweb.asm.Type.getType;
 
@@ -77,17 +78,25 @@ final class ExpressionArithmeticOp implements Expression {
 			rightType = unwrap(rightType);
 			g.unbox(rightType);
 		}
-		Type resultType = getType(unifyArithmeticTypes(getJavaType(leftType), getJavaType(rightType)));
-		if (leftType != resultType) {
-			int rightLocal = g.newLocal(rightType);
-			g.storeLocal(rightLocal);
-			g.cast(leftType, resultType);
-			g.loadLocal(rightLocal);
+		if (op != SHL && op != SHR && op != USHR) {
+			Type resultType = getType(unifyArithmeticTypes(getJavaType(leftType), getJavaType(rightType)));
+			if (leftType != resultType) {
+				int rightLocal = g.newLocal(rightType);
+				g.storeLocal(rightLocal);
+				g.cast(leftType, resultType);
+				g.loadLocal(rightLocal);
+			}
+			if (rightType != resultType) {
+				g.cast(rightType, resultType);
+			}
+			g.visitInsn(resultType.getOpcode(op.opCode));
+			return resultType;
+		} else {
+			if (rightType != Type.getType(int.class)) {
+				g.cast(rightType, Type.getType(int.class));
+			}
+			g.visitInsn(leftType.getOpcode(op.opCode));
+			return leftType;
 		}
-		if (rightType != resultType) {
-			g.cast(rightType, resultType);
-		}
-		g.visitInsn(resultType.getOpcode(op.opCode));
-		return resultType;
 	}
 }

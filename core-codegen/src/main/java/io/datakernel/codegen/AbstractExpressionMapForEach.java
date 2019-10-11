@@ -68,8 +68,17 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		VarLocal entry = newLocal(ctx, entryType);
 		entry.store(ctx);
 
-		forKey.apply(getKey(entry)).load(ctx);
-		forValue.apply(getValue(entry)).load(ctx);
+		Type forKeyType = forKey.apply(getKey(entry)).load(ctx);
+		if (forKeyType.getSize() == 1)
+			g.pop();
+		if (forKeyType.getSize() == 2)
+			g.pop2();
+
+		Type forValueType = forValue.apply(getValue(entry)).load(ctx);
+		if (forValueType.getSize() == 1)
+			g.pop();
+		if (forValueType.getSize() == 2)
+			g.pop2();
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);

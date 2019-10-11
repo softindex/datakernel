@@ -63,11 +63,14 @@ public interface SerializerGen {
 	/**
 	 * Deserializes object of {@code targetType} from byte array
 	 *
+	 *
+	 * @param byteArray
+	 * @param off
 	 * @param targetType         target type which is used to deserialize byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
-	Expression deserialize(DefiningClassLoader classLoader, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
+	Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
 
 	@Override
 	boolean equals(Object o);
