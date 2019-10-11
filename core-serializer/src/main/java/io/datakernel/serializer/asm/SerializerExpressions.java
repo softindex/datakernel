@@ -19,6 +19,9 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
+import org.jetbrains.annotations.NotNull;
+
+import java.nio.charset.Charset;
 
 import static io.datakernel.codegen.Expressions.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -157,6 +160,67 @@ public final class SerializerExpressions {
 								writeBytes(buf, pos, bytes))));
 	}
 
+	public static Expression writeUTF8mb3(Expression buf, Variable pos, Expression value) {
+		return writeUTF8mb3Impl(buf, pos, value, false);
+	}
+
+	public static Expression writeUTF8mb3Nullable(Expression buf, Variable pos, Expression value) {
+		return ifThenElse(isNull(value),
+				writeByte(buf, pos, value((byte) 0)),
+				writeUTF8mb3Impl(buf, pos, value, true));
+	}
+
+	public static Expression writeUTF8mb3Impl(Expression buf, Variable pos, Expression value, boolean nullable) {
+		return let(
+				call(value, "length"),
+				length -> sequence(
+						writeVarInt(buf, pos, nullable ? add(length, value(1)) : length),
+						ensureRemaining(buf, pos, length, sequence(
+								loop(value(0), length, i -> ifThenElse(cmpLe(
+										cast(call(value, "charAt", i), byte.class), cast(value(0x007F), byte.class)),
+										sequence(
+												setArrayItem(buf, pos, cast(call(value, "charAt", i), byte.class)),
+												set(pos, add(pos, value(1)))),
+										sequence(
+												writeUtfChar(buf, pos, cast(call(value, "charAt", i), byte.class)))))))));
+	}
+
+	private static Expression writeUtfChar(Expression buf, Variable pos, Expression value) {
+		return ifThenElse(cmpLe(cast(value, byte.class), cast(value(0x007F), byte.class)),
+				sequence(
+						setArrayItem(buf, pos, cast(or(value(0xC0), and(value(0x1F), shr(value, value(6)))), byte.class)),
+						setArrayItem(buf, add(pos, value(1)), cast(or(value(0x80), and(value(0x3F), value)), byte.class)),
+						set(pos, add(pos, value(2)))
+				),
+				sequence(
+						setArrayItem(buf, pos, cast(or(value(0xE0), and(value(0x0F), shr(value, value(12)))), byte.class)),
+						setArrayItem(buf, add(pos, value(1)), cast(or(value(0x80), and(value(0x3F), shr(value, value(6)))), byte.class)),
+						setArrayItem(buf, add(pos, value(2)), cast(or(value(0x80), and(value(0x3F), value)), byte.class)),
+						set(pos, add(pos, value(3)))));
+	}
+
+	public static Expression writeUTF16(Expression buf, Variable pos, Expression value) {
+		return writeUTF16Impl(buf, pos, value, false);
+	}
+
+	public static Expression writeUTF16Nullable(Expression buf, Variable pos, Expression value) {
+		return ifThenElse(isNull(value),
+				writeByte(buf, pos, value((byte) 0)),
+				writeUTF16Impl(buf, pos, value, true));
+	}
+
+	public static Expression writeUTF16Impl(Expression buf, Variable pos, Expression value, boolean nullable) {
+		return let(
+				call(value, "length"),
+				length -> sequence(
+						writeVarInt(buf, pos, nullable ? add(length, value(1)) : length),
+						ensureRemaining(buf, pos, length, sequence(
+								loop(value(0), length, i -> sequence(
+										setArrayItem(buf, pos, ushr(cast(call(value, "charAt", i), byte.class), value(8))),
+										setArrayItem(buf, add(pos, value(1)), cast(call(value, "charAt", i), byte.class)),
+										set(pos, add(pos, value(2)))))))));
+	}
+
 	public static Expression writeIso88591(Expression buf, Variable pos, Expression value) {
 		return writeIso88591Impl(buf, pos, value, false);
 	}
@@ -173,8 +237,8 @@ public final class SerializerExpressions {
 				length -> sequence(
 						writeVarInt(buf, pos, nullable ? add(length, value(1)) : length),
 						ensureRemaining(buf, pos, length, sequence(
-								loop(value(0), length,
-										i -> setArrayItem(buf, add(pos, i), cast(call(value, "charAt", i), byte.class))),
+								loop(value(0), length, i ->
+										setArrayItem(buf, add(pos, i), cast(call(value, "charAt", i), byte.class))),
 								set(pos, add(pos, length))))));
 	}
 
@@ -299,6 +363,112 @@ public final class SerializerExpressions {
 
 	public static Expression readDouble(Expression buf, Variable pos) {
 		return callStatic(Double.class, "longBitsToDouble", readLong(buf, pos));
+	}
+
+	public static Expression readUTF8(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len -> readUTF8Impl(buf, pos, len));
+	}
+
+	public static Expression readUTF8Nullable(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len ->
+				ifThenElse(cmpEq(len, value(0)),
+						nullRef(String.class),
+						readUTF8Impl(buf, pos, dec(len))));
+	}
+
+	private static Expression readUTF8Impl(Expression buf, Variable pos, Expression len) {
+		return ifThenElse(cmpEq(len, value(0)),
+				value(""),
+				sequence(
+						ensureRemaining(buf, pos, len,
+								constructor(String.class, buf, pos, len, value(UTF_8, Charset.class))),
+						set(pos, add(pos, len))));
+	}
+
+	public static Expression readUTF8mb3(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len -> readUTF8mb3Impl(buf, pos, len));
+	}
+
+	public static Expression readUTF8mb3Nullable(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len ->
+				ifThenElse(cmpEq(len, value(0)),
+						nullRef(String.class),
+						readUTF8mb3Impl(buf, pos, dec(len))));
+	}
+
+	private static Expression readUTF8mb3Impl(Expression buf, Variable pos, Expression len) {
+		return ifThenElse(cmpEq(len, value(0)),
+				value(""),
+				ensureRemaining(buf, pos, len, constructUTF8mb3String(buf, pos, len)));
+	}
+
+	private static Expression constructUTF8mb3String(Expression buf, Variable pos, Expression len) {
+		return constructor(String.class, let(newArray(char[].class, len), arr ->
+						sequence(loop(value(0), len, i ->
+										setArrayItem(arr, i, readUtfChar(buf, pos))),
+								arr)),
+				value(0), len);
+	}
+
+	private static Expression readUtfChar(Expression buf, Variable pos) {
+		return let(and(readByte(buf, pos), value(0xFF)), ch ->
+				ifThenElse(cmpGe(ch, value(0x80)),
+						ifThenElse(cmpLt(ch, value(0xE0)),
+								or(shl(and(ch, value(0x1F)), value(6)), and(readByte(buf, pos), value(0x3F))),
+								or(shl(and(ch, value(0x0F)), value(12)),
+										or(shl(and(ch, value(0x3F)), value(6)), and(readByte(buf, pos), value(0x3F))))),
+						ch));
+	}
+
+	public static Expression readUTF16(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len -> readUTF16Impl(buf, pos, len));
+	}
+
+	public static Expression readUTF16Nullable(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len ->
+				ifThenElse(cmpEq(len, value(0)),
+						nullRef(String.class),
+						readUTF16Impl(buf, pos, dec(len))));
+	}
+
+	private static Expression readUTF16Impl(Expression buf, Variable pos, Expression len) {
+		return ifThenElse(cmpEq(len, value(0)),
+				value(""),
+				ensureRemaining(buf, pos, len, constructUTF16String(buf, pos, len)));
+	}
+
+	@NotNull
+	private static Expression constructUTF16String(Expression buf, Variable pos, Expression len) {
+		return constructor(String.class, let(newArray(char[].class, len), arr ->
+						sequence(loop(value(0), len, i ->
+										setArrayItem(arr, i, cast(readShort(buf, pos), char.class))),
+								arr)),
+				value(0), len);
+	}
+
+	public static Expression readIso88591(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len -> readIso88591Impl(buf, pos, len));
+	}
+
+	public static Expression readIso88591Nullable(Expression buf, Variable pos) {
+		return let(readVarInt(buf, pos), len ->
+				ifThenElse(cmpEq(len, value(0)),
+						nullRef(String.class),
+						readIso88591Impl(buf, pos, dec(len))));
+	}
+
+	private static Expression readIso88591Impl(Expression buf, Variable pos, Expression len) {
+		return ifThenElse(cmpEq(len, value(0)),
+				value(""),
+				ensureRemaining(buf, pos, len, constructIso88591String(buf, pos, len)));
+	}
+
+	private static Expression constructIso88591String(Expression buf, Variable pos, Expression len) {
+		return constructor(String.class, let(newArray(char[].class, len), arr ->
+						sequence(loop(value(0), len, i ->
+										setArrayItem(arr, i, cast(and(readByte(buf, pos), value(0xFF)), char.class))),
+								arr)),
+				value(0), len);
 	}
 
 	private static int varintSize(int value) {

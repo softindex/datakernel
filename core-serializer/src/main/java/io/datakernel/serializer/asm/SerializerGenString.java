@@ -21,11 +21,10 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.serializer.StringFormat.UTF8;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
@@ -80,8 +79,8 @@ public class SerializerGenString implements SerializerGen {
 		switch (format) {
 			case UTF16:
 				return nullable ?
-						set(off, callStatic(BinaryOutputUtils.class, "writeUTF16Nullable", byteArray, off, expression)) :
-						set(off, callStatic(BinaryOutputUtils.class, "writeUTF16", byteArray, off, expression));
+						writeUTF16Nullable(byteArray, off, value) :
+						writeUTF16(byteArray, off, value);
 			case ISO_8859_1:
 				return nullable ?
 						writeIso88591Nullable(byteArray, off, expression) :
@@ -92,8 +91,8 @@ public class SerializerGenString implements SerializerGen {
 						writeUTF8(byteArray, off, expression);
 			case UTF8_MB3:
 				return nullable ?
-						set(off, callStatic(BinaryOutputUtils.class, "writeUTF8mb3Nullable", byteArray, off, expression)) :
-						set(off, callStatic(BinaryOutputUtils.class, "writeUTF8mb3", byteArray, off, expression));
+						writeUTF8mb3Nullable(byteArray, off, expression) :
+						writeUTF8mb3(byteArray, off, expression);
 			default:
 				throw new AssertionError();
 		}
@@ -104,20 +103,20 @@ public class SerializerGenString implements SerializerGen {
 		switch (format) {
 			case UTF16:
 				return nullable ?
-						call(arg(0), "readUTF16Nullable") :
-						call(arg(0), "readUTF16");
+						readUTF16Nullable(byteArray, off) :
+						readUTF16(byteArray, off);
 			case ISO_8859_1:
 				return nullable ?
-						call(arg(0), "readIso88591Nullable") :
-						call(arg(0), "readIso88591");
+						readIso88591Nullable(byteArray, off) :
+						readIso88591(byteArray, off);
 			case UTF8:
 				return nullable ?
-						call(arg(0), "readUTF8Nullable") :
-						call(arg(0), "readUTF8");
+						readUTF8Nullable(byteArray, off) :
+						readUTF8(byteArray, off);
 			case UTF8_MB3:
 				return nullable ?
-						call(arg(0), "readUTF8mb3Nullable") :
-						call(arg(0), "readUTF8mb3");
+						readUTF8mb3Nullable(byteArray, off) :
+						readUTF8mb3(byteArray, off);
 			default:
 				throw new AssertionError();
 		}

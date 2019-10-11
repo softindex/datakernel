@@ -187,6 +187,15 @@ public final class BinaryInput {
 		return doReadUTF8(length);
 	}
 
+	@Nullable
+	public String readUTF8Nullable() {
+		int length = readVarInt();
+		if (length == 0) {
+			return null;
+		}
+		return doReadUTF8(length - 1);
+	}
+
 	private String doReadUTF8(int length) {
 		if (length == 0)
 			return "";
@@ -246,18 +255,9 @@ public final class BinaryInput {
 		}
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
-			chars[i] = (char) ((readByte() << 8) + readByte());
+			chars[i] = (char) readShort();
 		}
 		return new String(chars, 0, length);
-	}
-
-	@Nullable
-	public String readUTF8Nullable() {
-		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
-		return doReadUTF8(length - 1);
 	}
 
 }
