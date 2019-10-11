@@ -1,9 +1,6 @@
-import {Service, delay} from 'global-apps-common';
+import {Service, delay, MapOTOperation, mapOperationSerializer} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import profileOTSystem from "./ot/ProfileOTSystem";
-import profileSerializer from "./ot/serializer";
-import ProfileOTOperation from "./ot/ProfileOTOperation";
-import {RETRY_TIMEOUT} from '../../common/utils';
+import {profileOTSystem, RETRY_TIMEOUT} from '../../common/utils';
 
 class MyProfileService extends Service {
   constructor(profileOTStateManager) {
@@ -19,7 +16,7 @@ class MyProfileService extends Service {
   static create() {
     const profileOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/myProfile',
-      serializer: profileSerializer
+      serializer: mapOperationSerializer
     });
     const profileOTStateManager = new OTStateManager(() => ({}), profileOTNode, profileOTSystem);
     return new MyProfileService(profileOTStateManager);
@@ -57,9 +54,9 @@ class MyProfileService extends Service {
   }
 
   async setProfileField(fieldName, value) {
-    const profileNameOperation = new ProfileOTOperation({
+    const profileNameOperation = new MapOTOperation({
       [fieldName]: {
-        prev: this.state.profile[fieldName],
+        prev: this.state.profile[fieldName] || null,
         next: value
       }
     });

@@ -1,7 +1,7 @@
-import createMapOtSystem from '../mapOTSystem'
+import createMapOTSystem from '../mapOTSystem';
 import MapOTOperation from "../MapOTOperation";
 
-const mapOtSystem = createMapOtSystem((left, right) => left.localeCompare(right));
+const mapOtSystem = createMapOTSystem((left, right) => left.localeCompare(right));
 
 describe('mapOTSystem', () => {
   it('isEmpty', () => {
@@ -217,7 +217,7 @@ describe('mapOTSystem', () => {
     expect(stateFirst).toEqual(stateSecond);
 
     expect(squashed.length).toEqual(1);
-    expect(squashed[0].values()).toEqual({
+    expect(squashed[0].getValues()).toEqual({
       a: {
         prev: null,
         next: 'aa'

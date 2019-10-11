@@ -4,7 +4,7 @@ import intersection from 'lodash/intersection';
 import isEqual from 'lodash/isEqual';
 import pickBy from 'lodash/pickBy';
 
-const createOTSystem = (comparator) => new OTSystemBuilder()
+const createMapOTSystem = (comparator) => new OTSystemBuilder()
   .withEmptyPredicate(MapOTOperation, operation => operation.isEmpty())
   .withInvertFunction(MapOTOperation, operation => operation.invert())
   .withSquashFunction(MapOTOperation, MapOTOperation, (firstOperation, secondOperation) => {
@@ -84,6 +84,4 @@ const createOTSystem = (comparator) => new OTSystemBuilder()
   })
   .build();
 
-const booleanMapOTSystem = createOTSystem((first, second) => (first === second) ? 0 : (first ? 1 : -1));
-
-export default booleanMapOTSystem;
+export default createMapOTSystem;

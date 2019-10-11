@@ -1,6 +1,6 @@
 import MapOTOperation from './MapOTOperation';
 
-const profileSerializer = {
+const mapOperationSerializer = {
   serialize(value) {
     return value.toJSON();
   },
@@ -10,4 +10,4 @@ const profileSerializer = {
   }
 };
 
-export default profileSerializer;
+export default mapOperationSerializer;

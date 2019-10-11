@@ -1,6 +1,9 @@
 import crypto from "crypto";
+import {createMapOTSystem} from 'global-apps-common';
 
 export const RETRY_TIMEOUT = 1000;
+
+export const profileOTSystem = createMapOTSystem((left, right) => left.localeCompare(right));
 
 export function getRoomName(participants, names, myPublicKey) {
   if (participants.length === 1) {

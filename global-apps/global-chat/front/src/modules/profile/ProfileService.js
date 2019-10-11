@@ -1,7 +1,6 @@
-import {Service} from 'global-apps-common';
+import {Service, mapOperationSerializer} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
-import profileOTSystem from "./ot/ProfileOTSystem";
-import profileSerializer from "./ot/serializer";
+import {profileOTSystem} from "../../common/utils";
 
 class ProfileService extends Service {
   constructor(profilesOTStateManager) {
@@ -12,7 +11,7 @@ class ProfileService extends Service {
   static createFrom(pubKey) {
     const profileOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/profile/' + pubKey,
-      serializer: profileSerializer
+      serializer: mapOperationSerializer
     });
     const profilesOTStateManager = new OTStateManager(() => ({}), profileOTNode, profileOTSystem);
     return new ProfileService(profilesOTStateManager);

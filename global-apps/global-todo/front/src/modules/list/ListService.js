@@ -1,10 +1,8 @@
-import {Service, delay} from 'global-apps-common';
+import {Service, delay, createMapOTSystem, MapOTOperation, mapOperationSerializer} from 'global-apps-common';
 import {ClientOTNode, OTStateManager} from "ot-core";
-import serializer from "./ot/serializer";
-import mapOTSystem from "./ot/mapOTSystem";
-import MapOTOperation from "./ot/MapOTOperation";
 
 const RETRY_TIMEOUT = 1000;
+const booleanMapOTSystem = createMapOTSystem((first, second) => (first === second) ? 0 : (first ? 1 : -1));
 
 class ListService extends Service {
   constructor(listOTStateManager) {
@@ -21,9 +19,9 @@ class ListService extends Service {
   static create() {
     const listOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/list/',
-      serializer: serializer
+      serializer: mapOperationSerializer
     });
-    const listOTStateManager = new OTStateManager(() => new Map(), listOTNode, mapOTSystem);
+    const listOTStateManager = new OTStateManager(() => new Map(), listOTNode, booleanMapOTSystem);
     return new ListService(listOTStateManager);
   }
 

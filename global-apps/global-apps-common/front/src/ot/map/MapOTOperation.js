@@ -1,11 +1,8 @@
-import isEqual from 'lodash/isEqual';
 import mapValues from 'lodash/mapValues';
 import omitBy from 'lodash/omitBy';
 import isEmpty from 'lodash/isEmpty';
 
 class MapOTOperation {
-  static EMPTY = new MapOTOperation({});
-
   constructor(values) {
     this._values = omitBy(values, ({prev, next}) => prev === next);
   }
@@ -42,10 +39,6 @@ class MapOTOperation {
         next: prev
       }))
     );
-  }
-
-  isEqual(mapOTOperation) {
-    return isEqual(mapOTOperation._values, this._values);
   }
 
   toJSON() {
