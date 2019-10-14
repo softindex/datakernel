@@ -30,7 +30,34 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Provides methods for writing primitives
  * and Strings to byte arrays
  */
+@SuppressWarnings({"unchecked"})
 public final class SerializerExpressions {
+
+	private static Class jdkUnsafe;
+	private static int byteArrayBaseOffset;
+
+	static {
+		ClassLoader classLoader = ClassLoader.getSystemClassLoader();
+
+		try {
+			jdkUnsafe = classLoader.loadClass("jdk.internal.misc.Unsafe");
+			Object unsafe = jdkUnsafe.getMethod("getUnsafe").invoke(null);
+			byteArrayBaseOffset = (int) jdkUnsafe.getMethod("arrayBaseOffset", Class.class).invoke(unsafe, byte[].class);
+			int byteArrayIndexScale = (int) jdkUnsafe.getMethod("arrayIndexScale", Class.class).invoke(unsafe, byte[].class);
+			if (byteArrayIndexScale != 1) jdkUnsafe = null;
+		} catch (Exception e) {
+			jdkUnsafe = null;
+		}
+	}
+
+	@NotNull
+	private static Expression getUnsafe() {
+		return callStatic(jdkUnsafe, "getUnsafe");
+	}
+
+	private static int varintSize(int value) {
+		return 1 + (31 - Integer.numberOfLeadingZeros(value)) / 7;
+	}
 
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes) {
 		return writeBytes(buf, pos, bytes, value(0), length(bytes));
@@ -59,35 +86,44 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression writeShort(Expression buf, Variable pos, Expression value) {
-		return ensureRemaining(buf, pos, 2,
-				sequence(
-						setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(8)), byte.class)),
-						setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(0)), byte.class)),
-						set(pos, add(pos, value(2)))));
+		return ensureRemaining(buf, pos, 2, sequence(
+				jdkUnsafe != null ?
+						call(getUnsafe(), "putShortUnaligned",
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), cast(value, short.class), value(true)) :
+						sequence(
+								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(8)), byte.class)),
+								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(0)), byte.class))),
+				set(pos, add(pos, value(2)))));
 	}
 
 	public static Expression writeInt(Expression buf, Variable pos, Expression value) {
-		return ensureRemaining(buf, pos, 4,
-				sequence(
-						setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(24)), byte.class)),
-						setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(16)), byte.class)),
-						setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(8)), byte.class)),
-						setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(0)), byte.class)),
-						set(pos, add(pos, value(4)))));
+		return ensureRemaining(buf, pos, 4, sequence(
+				jdkUnsafe != null ?
+						call(getUnsafe(), "putIntUnaligned",
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(true)) :
+						sequence(
+								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(24)), byte.class)),
+								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(16)), byte.class)),
+								setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(8)), byte.class)),
+								setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(0)), byte.class))),
+				set(pos, add(pos, value(4)))));
 	}
 
 	public static Expression writeLong(Expression buf, Variable pos, Expression value) {
-		return ensureRemaining(buf, pos, 8,
-				sequence(
-						setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(56)), byte.class)),
-						setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(48)), byte.class)),
-						setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(40)), byte.class)),
-						setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(32)), byte.class)),
-						setArrayItem(buf, add(pos, value(4)), cast(ushr(value, value(24)), byte.class)),
-						setArrayItem(buf, add(pos, value(5)), cast(ushr(value, value(16)), byte.class)),
-						setArrayItem(buf, add(pos, value(6)), cast(ushr(value, value(8)), byte.class)),
-						setArrayItem(buf, add(pos, value(7)), cast(ushr(value, value(0)), byte.class)),
-						set(pos, add(pos, value(8)))));
+		return ensureRemaining(buf, pos, 8, sequence(
+				jdkUnsafe != null ?
+						call(getUnsafe(), "putLongUnaligned",
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(true)) :
+						sequence(
+								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(56)), byte.class)),
+								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(48)), byte.class)),
+								setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(40)), byte.class)),
+								setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(32)), byte.class)),
+								setArrayItem(buf, add(pos, value(4)), cast(ushr(value, value(24)), byte.class)),
+								setArrayItem(buf, add(pos, value(5)), cast(ushr(value, value(16)), byte.class)),
+								setArrayItem(buf, add(pos, value(6)), cast(ushr(value, value(8)), byte.class)),
+								setArrayItem(buf, add(pos, value(7)), cast(ushr(value, value(0)), byte.class))),
+				set(pos, add(pos, value(8)))));
 	}
 
 	public static Expression writeVarInt(Expression buf, Variable pos, Expression value) {
@@ -279,7 +315,10 @@ public final class SerializerExpressions {
 
 	public static Expression readShort(Expression buf, Variable pos) {
 		return let(
-				or(shl(and(getArrayItem(buf, pos), value(0xFF)), value(8)), and(getArrayItem(buf, add(pos, value(1))), value(0xFF))),
+				jdkUnsafe != null ?
+						call(getUnsafe(), "getShortUnaligned",
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
+						or(shl(and(getArrayItem(buf, pos), value(0xFF)), value(8)), and(getArrayItem(buf, add(pos, value(1))), value(0xFF))),
 				result -> sequence(
 						set(pos, add(pos, value(2))),
 						result));
@@ -287,11 +326,14 @@ public final class SerializerExpressions {
 
 	public static Expression readInt(Expression buf, Variable pos) {
 		return let(
-				fold(Expressions::or,
-						shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(24)),
-						shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(16)),
-						shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFF)), value(8)),
-						shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFF)), value(0))),
+				jdkUnsafe != null ?
+						call(getUnsafe(), "getIntUnaligned",
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
+						fold(Expressions::or,
+								shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(24)),
+								shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(16)),
+								shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFF)), value(8)),
+								shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFF)), value(0))),
 				result -> sequence(
 						set(pos, add(pos, value(4))),
 						result));
@@ -299,15 +341,18 @@ public final class SerializerExpressions {
 
 	public static Expression readLong(Expression buf, Variable pos) {
 		return let(
-				fold(Expressions::or,
-						shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFFL)), value(56)),
-						shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFFL)), value(48)),
-						shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFFL)), value(40)),
-						shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFFL)), value(32)),
-						shl(and(getArrayItem(buf, add(pos, value(4))), value(0xFFL)), value(24)),
-						shl(and(getArrayItem(buf, add(pos, value(5))), value(0xFFL)), value(16)),
-						shl(and(getArrayItem(buf, add(pos, value(6))), value(0xFFL)), value(8)),
-						shl(and(getArrayItem(buf, add(pos, value(7))), value(0xFFL)), value(0))),
+				jdkUnsafe != null ?
+						call(getUnsafe(), "getLongUnaligned",
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
+						fold(Expressions::or,
+								shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFFL)), value(56)),
+								shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFFL)), value(48)),
+								shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFFL)), value(40)),
+								shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFFL)), value(32)),
+								shl(and(getArrayItem(buf, add(pos, value(4))), value(0xFFL)), value(24)),
+								shl(and(getArrayItem(buf, add(pos, value(5))), value(0xFFL)), value(16)),
+								shl(and(getArrayItem(buf, add(pos, value(6))), value(0xFFL)), value(8)),
+								shl(and(getArrayItem(buf, add(pos, value(7))), value(0xFFL)), value(0))),
 				result -> sequence(
 						set(pos, add(pos, value(8))),
 						result));
@@ -470,9 +515,4 @@ public final class SerializerExpressions {
 								arr)),
 				value(0), len);
 	}
-
-	private static int varintSize(int value) {
-		return 1 + (31 - Integer.numberOfLeadingZeros(value)) / 7;
-	}
-
 }
