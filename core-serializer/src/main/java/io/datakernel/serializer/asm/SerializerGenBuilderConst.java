@@ -28,7 +28,7 @@ public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 	}
 
 	@Override
-	public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
+	public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen target) {
 		checkArgument(generics.length == 0, "Type should have no generics");
 		return serializer;
 	}

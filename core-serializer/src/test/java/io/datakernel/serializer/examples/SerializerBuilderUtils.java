@@ -114,7 +114,7 @@ public class SerializerBuilderUtils {
 	private static SerializerGenBuilder serializerGenMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
 		String prefix = capitalize(keyType.getSimpleName()) + capitalize(valueType.getSimpleName());
 		checkArgument(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
-		return (type, generics, fallback) -> {
+		return (type, generics, target) -> {
 			SerializerGen keySerializer;
 			SerializerGen valueSerializer;
 			if (generics.length == 2) {
@@ -141,7 +141,7 @@ public class SerializerBuilderUtils {
 	private static SerializerGenBuilder serializerGenCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
 		String prefix = capitalize(valueType.getSimpleName());
 		checkArgument(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
-		return (type, generics, fallback) -> {
+		return (type, generics, target) -> {
 			SerializerGen valueSerializer;
 			if (generics.length == 1) {
 				checkArgument(valueType == Object.class, "valueType must be Object.class");

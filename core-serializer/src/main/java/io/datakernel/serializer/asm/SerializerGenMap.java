@@ -27,14 +27,12 @@ import static io.datakernel.codegen.Expressions.*;
 import static org.objectweb.asm.Type.getType;
 
 public final class SerializerGenMap extends AbstractSerializerGenMap {
-
-	public SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer, boolean nullable) {
+	private SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer, boolean nullable) {
 		super(keySerializer, valueSerializer, Map.class,
 				keySerializer.getRawType().isEnum() ?
 						EnumMap.class :
 						HashMap.class,
-				Object.class, Object.class, nullable
-		);
+				Object.class, Object.class, nullable);
 	}
 
 	public SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer) {
@@ -56,7 +54,7 @@ public final class SerializerGenMap extends AbstractSerializerGenMap {
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenMap(keySerializer, valueSerializer, true);
 	}
 }

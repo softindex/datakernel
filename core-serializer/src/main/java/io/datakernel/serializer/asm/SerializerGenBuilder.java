@@ -57,5 +57,5 @@ public interface SerializerGenBuilder {
 		}
 	}
 
-	SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback);
+	SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen target);
 }

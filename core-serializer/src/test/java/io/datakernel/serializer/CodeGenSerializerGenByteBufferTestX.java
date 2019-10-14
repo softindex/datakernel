@@ -100,7 +100,6 @@ public class CodeGenSerializerGenByteBufferTestX {
 
 	@Test
 	public void testWrap2() {
-
 		byte[] array = new byte[1024];
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;

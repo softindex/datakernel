@@ -36,6 +36,20 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 	}
 
 	@Override
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
+		return varLength ?
+				writeVarInt(byteArray, off, cast(value, int.class)) :
+				writeInt(byteArray, off, cast(value, int.class));
+	}
+
+	@Override
+	protected Expression doDeserialize(Expression byteArray, Variable off) {
+		return varLength ?
+				readVarInt(byteArray, off) :
+				readInt(byteArray, off);
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
@@ -50,19 +64,5 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 		int result = 0;
 		result = 31 * result + (varLength ? 1 : 0);
 		return result;
-	}
-
-	@Override
-	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
-		return varLength ?
-				writeVarInt(byteArray, off, cast(value, int.class)) :
-				writeInt(byteArray, off, cast(value, int.class));
-	}
-
-	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off) {
-		return varLength ?
-				readVarInt(byteArray, off) :
-				readInt(byteArray, off);
 	}
 }

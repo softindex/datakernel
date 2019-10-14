@@ -345,11 +345,14 @@ public class AsmSerializerTest {
 		public List<String> listOfNullableStrings;
 
 		@Serialize(order = 3)
-		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = 0), @SerializeNullable(path = {0, 0})})
+		@SerializeNullable
+		@SerializeNullable(path = 0)
+		@SerializeNullable(path = {0, 0})
 		public String[][] nullableArrayOfNullableArrayOfNullableStrings;
 
 		@Serialize(order = 4)
-		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = 1)})
+		@SerializeNullable(path = 0)
+		@SerializeNullable(path = 1)
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
@@ -542,7 +545,9 @@ public class AsmSerializerTest {
 
 	public static class TestDataGenericParameters {
 		@Serialize(order = 0)
-		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
+		@SerializeNullable(path = 0)
+		@SerializeNullable(path = {0, 0})
+		@SerializeNullable(path = {0, 1})
 		@SerializeVarLength(path = {0, 0})
 		@SerializeStringFormat(value = StringFormat.UTF16, path = {0, 1})
 		public List<TestDataGenericNested<Integer, String>> list;
@@ -1977,4 +1982,5 @@ public class AsmSerializerTest {
 		GenericImp deserialized = doTest(object, serializer, serializer);
 		assertEquals(100, deserialized.getValue().intValue());
 	}
+
 }

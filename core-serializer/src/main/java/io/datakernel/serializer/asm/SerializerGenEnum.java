@@ -20,7 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasNullable;
 
 import java.util.Set;
 
@@ -28,7 +28,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenEnum implements SerializerGen, NullableOptimization {
+public class SerializerGenEnum implements SerializerGen, HasNullable {
 	private final Class<?> enumType;
 	private final boolean nullable;
 
@@ -103,7 +103,7 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenEnum(enumType, true);
 	}
 

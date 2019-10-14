@@ -6,7 +6,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasNullable;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutputUtils;
@@ -17,21 +17,24 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
-public class SerializerGenByteBuf implements SerializerGen, NullableOptimization {
+public class SerializerGenByteBuf implements SerializerGen, HasNullable {
 	private final boolean writeWithRecycle;
 	private final boolean wrap;
 	private final boolean nullable;
 
 	public SerializerGenByteBuf(boolean writeWithRecycle, boolean wrap) {
-		this.writeWithRecycle = writeWithRecycle;
-		this.wrap = wrap;
-		this.nullable = false;
+		this(writeWithRecycle, wrap, false);
 	}
 
-	SerializerGenByteBuf(boolean writeWithRecycle, boolean wrap, boolean nullable) {
+	private SerializerGenByteBuf(boolean writeWithRecycle, boolean wrap, boolean nullable) {
 		this.writeWithRecycle = writeWithRecycle;
 		this.wrap = wrap;
 		this.nullable = nullable;
+	}
+
+	@Override
+	public SerializerGen withNullable() {
+		return new SerializerGenByteBuf(writeWithRecycle, wrap, true);
 	}
 
 	@Override
@@ -136,11 +139,6 @@ public class SerializerGenByteBuf implements SerializerGen, NullableOptimization
 		ByteBuf result = ByteBuf.wrap(input.array(), input.pos(), input.pos() + length);
 		input.pos(input.pos() + length);
 		return result;
-	}
-
-	@Override
-	public SerializerGen asNullable() {
-		return new SerializerGenByteBuf(writeWithRecycle, wrap, true);
 	}
 
 	@Override

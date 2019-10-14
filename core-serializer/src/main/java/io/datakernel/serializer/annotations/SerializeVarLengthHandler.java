@@ -27,7 +27,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
-		return (type, generics, fallback) -> {
+		return (type, generics, target) -> {
 			checkArgument(generics.length == 0, "Type should have no generics");
 			if (type == Integer.TYPE) {
 				return new SerializerGenInt(true);

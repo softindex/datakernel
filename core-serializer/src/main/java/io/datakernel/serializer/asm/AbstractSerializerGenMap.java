@@ -20,7 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasNullable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
@@ -31,7 +31,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public abstract class AbstractSerializerGenMap implements SerializerGen, NullableOptimization {
+public abstract class AbstractSerializerGenMap implements SerializerGen, HasNullable {
 	protected final SerializerGen keySerializer;
 	protected final SerializerGen valueSerializer;
 	protected final Class<?> mapType;

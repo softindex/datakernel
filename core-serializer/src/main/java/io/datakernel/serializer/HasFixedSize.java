@@ -18,7 +18,6 @@ package io.datakernel.serializer;
 
 import io.datakernel.serializer.asm.SerializerGen;
 
-public interface NullableOptimization {
-
-	SerializerGen asNullable();
+public interface HasFixedSize {
+	SerializerGen withFixedSize(int fixedSize);
 }

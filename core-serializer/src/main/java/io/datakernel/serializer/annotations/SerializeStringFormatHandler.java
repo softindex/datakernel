@@ -26,13 +26,13 @@ public class SerializeStringFormatHandler implements AnnotationHandler<Serialize
 	@SuppressWarnings("deprecation") // compatibility
 	@Override
 	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeStringFormat annotation, CompatibilityLevel compatibilityLevel) {
-		return (type, generics, fallback) -> {
+		return (type, generics, target) -> {
 			if (compatibilityLevel == CompatibilityLevel.LEVEL_1) {
 				if (annotation.value() == StringFormat.ISO_8859_1 || annotation.value() == StringFormat.UTF8) {
-					return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_MB3);
+					return ((SerializerGenString) target).encoding(StringFormat.UTF8_MB3);
 				}
 			}
-			return ((SerializerGenString) fallback).encoding(annotation.value());
+			return ((SerializerGenString) target).encoding(annotation.value());
 		};
 	}
 

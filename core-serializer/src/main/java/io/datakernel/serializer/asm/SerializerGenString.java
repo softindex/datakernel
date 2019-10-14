@@ -20,6 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.HasNullable;
 import io.datakernel.serializer.StringFormat;
 
 import java.util.Set;
@@ -29,29 +30,30 @@ import static io.datakernel.serializer.StringFormat.UTF8;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenString implements SerializerGen {
+public class SerializerGenString implements SerializerGen, HasNullable {
 	private final StringFormat format;
 	private final boolean nullable;
 
-	public SerializerGenString(boolean nullable, StringFormat format) {
+	private SerializerGenString(StringFormat format, boolean nullable) {
 		this.format = format;
 		this.nullable = nullable;
 	}
 
 	public SerializerGenString() {
-		this(false, UTF8);
+		this(UTF8, false);
 	}
 
 	public SerializerGenString(StringFormat format) {
-		this(false, format);
+		this(format, false);
 	}
 
-	public SerializerGenString nullable(boolean nullable) {
-		return new SerializerGenString(nullable, format);
+	@Override
+	public SerializerGenString withNullable() {
+		return new SerializerGenString(format, true);
 	}
 
 	public SerializerGenString encoding(StringFormat format) {
-		return new SerializerGenString(nullable, format);
+		return new SerializerGenString(format, nullable);
 	}
 
 	@Override

@@ -26,19 +26,17 @@ import static io.datakernel.codegen.Expressions.callStatic;
 import static io.datakernel.codegen.Expressions.value;
 
 public class SerializerGenSet extends AbstractSerializerGenCollection {
-	// region creators
-	public SerializerGenSet(SerializerGen valueSerializer, boolean nullable) {
+	public SerializerGenSet(SerializerGen valueSerializer) {
+		this(valueSerializer, false);
+	}
+
+	private SerializerGenSet(SerializerGen valueSerializer, boolean nullable) {
 		super(valueSerializer, Set.class,
 				valueSerializer.getRawType().isEnum() ?
 						EnumSet.class :
 						LinkedHashSet.class,
 				Object.class, nullable);
 	}
-
-	public SerializerGenSet(SerializerGen valueSerializer) {
-		this(valueSerializer, false);
-	}
-	// endregion
 
 	@Override
 	protected Expression createConstructor(Expression length) {
@@ -49,7 +47,7 @@ public class SerializerGenSet extends AbstractSerializerGenCollection {
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenSet(valueSerializer, true);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.annotations;
+package io.datakernel.serializer;
 
-import io.datakernel.serializer.StringFormat;
+import io.datakernel.serializer.asm.SerializerGen;
 
-import java.lang.annotation.*;
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target({
-		ElementType.FIELD,
-		ElementType.METHOD})
-@Repeatable(SerializeStringFormatEx.class)
-public @interface SerializeStringFormat {
-	StringFormat value();
-
-	int[] path() default {};
+public interface HasNullable {
+	SerializerGen withNullable();
 }

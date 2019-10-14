@@ -20,7 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasNullable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -35,12 +35,7 @@ import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
 import static java.util.Collections.emptySet;
 import static org.objectweb.asm.Type.getType;
 
-public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
-	@Override
-	public SerializerGen asNullable() {
-		return new SerializerGenSubclass(dataType, subclassSerializers, true, startIndex);
-	}
-
+public class SerializerGenSubclass implements SerializerGen, HasNullable {
 	private final Class<?> dataType;
 	private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers;
 	private final boolean nullable;
@@ -53,11 +48,16 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 		this.nullable = false;
 	}
 
-	public SerializerGenSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable, int startIndex) {
+	private SerializerGenSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable, int startIndex) {
 		this.startIndex = startIndex;
 		this.dataType = dataType;
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 		this.nullable = nullable;
+	}
+
+	@Override
+	public SerializerGen withNullable() {
+		return new SerializerGenSubclass(dataType, subclassSerializers, true, startIndex);
 	}
 
 	@Override

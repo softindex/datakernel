@@ -5,7 +5,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasNullable;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.util.BinaryInput;
 import io.datakernel.serializer.util.BinaryOutputUtils;
@@ -16,7 +16,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
-public class SerializerGenSlice implements SerializerGen, NullableOptimization {
+public class SerializerGenSlice implements SerializerGen, HasNullable {
 	private final boolean nullable;
 
 	public SerializerGenSlice() {
@@ -95,7 +95,7 @@ public class SerializerGenSlice implements SerializerGen, NullableOptimization {
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenSlice(true);
 	}
 

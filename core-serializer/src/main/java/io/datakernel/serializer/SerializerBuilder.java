@@ -89,9 +89,9 @@ public final class SerializerBuilder {
 	public static SerializerBuilder create(DefiningClassLoader definingClassLoader) {
 		SerializerBuilder builder = new SerializerBuilder(definingClassLoader);
 
-		builder.setSerializer(Object.class, (type, generics, fallback) -> {
+		builder.setSerializer(Object.class, (type, generics, target) -> {
 			checkArgument(type.getTypeParameters().length == generics.length, "Number of type parameters should be equal to number of generics");
-			checkArgument(fallback == null, "Fallback must be null");
+			checkArgument(target == null, "Target must be null");
 			SerializerGenClass serializer;
 			SerializeInterface annotation = Annotations.findAnnotation(SerializeInterface.class, type.getAnnotations());
 			if (annotation != null && annotation.impl() != void.class) {
@@ -102,23 +102,23 @@ public final class SerializerBuilder {
 			builder.initTasks.add(() -> builder.scanAnnotations(type, generics, serializer));
 			return serializer;
 		});
-		builder.setSerializer(List.class, (type, generics, fallback) -> {
+		builder.setSerializer(List.class, (type, generics, target) -> {
 			checkArgument(generics.length == 1, "List must have 1 generic type parameter");
 			return new SerializerGenList(generics[0].serializer);
 		});
-		builder.setSerializer(Collection.class, (type, generics, fallback) -> {
+		builder.setSerializer(Collection.class, (type, generics, target) -> {
 			checkArgument(generics.length == 1, "Collection must have 1 generic type parameter");
 			return new SerializerGenList(generics[0].serializer);
 		});
-		builder.setSerializer(Set.class, (type, generics, fallback) -> {
+		builder.setSerializer(Set.class, (type, generics, target) -> {
 			checkArgument(generics.length == 1, "Set must have 1 generic type parameter");
 			return new SerializerGenSet(generics[0].serializer);
 		});
-		builder.setSerializer(Map.class, (type, generics, fallback) -> {
+		builder.setSerializer(Map.class, (type, generics, target) -> {
 			checkArgument(generics.length == 2, "Map must have 2 generic type parameter");
 			return new SerializerGenMap(generics[0].serializer, generics[1].serializer);
 		});
-		builder.setSerializer(Enum.class, (type, generics, fallback) -> {
+		builder.setSerializer(Enum.class, (type, generics, target) -> {
 			List<FoundSerializer> foundSerializers = builder.scanSerializers(type, generics);
 			if (!foundSerializers.isEmpty()) {
 				SerializerGenClass serializer = new SerializerGenClass(type);

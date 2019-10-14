@@ -25,15 +25,13 @@ import java.util.function.Function;
 import static io.datakernel.serializer.examples.SerializerBuilderUtils.capitalize;
 
 public final class SerializerGenHppc7Map extends AbstractSerializerGenMap {
-	// region creators
-	public SerializerGenHppc7Map(SerializerGen keySerializer, SerializerGen valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType, boolean nullable) {
-		super(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, nullable);
-	}
-
 	public SerializerGenHppc7Map(SerializerGen keySerializer, SerializerGen valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
 		this(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, false);
 	}
-	// endregion
+
+	private SerializerGenHppc7Map(SerializerGen keySerializer, SerializerGen valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType, boolean nullable) {
+		super(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, nullable);
+	}
 
 	@Override
 	protected Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
@@ -47,7 +45,7 @@ public final class SerializerGenHppc7Map extends AbstractSerializerGenMap {
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenHppc7Map(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, true);
 	}
 }

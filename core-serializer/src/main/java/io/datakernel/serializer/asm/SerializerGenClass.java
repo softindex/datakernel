@@ -81,7 +81,7 @@ public class SerializerGenClass implements SerializerGen {
 	private final Class<?> dataTypeIn;
 	private final Class<?> dataTypeOut;
 
-	private final Map<String, FieldGen> fields = new LinkedHashMap<>();
+	private final LinkedHashMap<String, FieldGen> fields = new LinkedHashMap<>();
 
 	private Constructor<?> constructor;
 	private List<String> constructorParams;
@@ -235,9 +235,9 @@ public class SerializerGenClass implements SerializerGen {
 	@Override
 	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
-		for (String fieldName : fields.keySet()) {
 
-			FieldGen fieldGen = fields.get(fieldName);
+		for (String fieldName : this.fields.keySet()) {
+			FieldGen fieldGen = this.fields.get(fieldName);
 			if (!fieldGen.hasVersion(version)) continue;
 
 			Class<?> fieldType = fieldGen.serializer.getRawType();

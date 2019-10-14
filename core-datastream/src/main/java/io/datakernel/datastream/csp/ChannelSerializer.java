@@ -173,7 +173,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			this.skipSerializationErrors = skipSerializationErrors;
 			this.serializer = serializer;
 			this.maxMessageSize = maxMessageSize;
-			this.headerSize = varint32Size(maxMessageSize - 1);
+			this.headerSize = varintSize(maxMessageSize - 1);
 			this.estimatedMessageSize = 1;
 			this.initialBufferSize = initialBufferSize;
 			this.autoFlushIntervalMillis = autoFlushInterval == null ? -1 : (int) autoFlushInterval.toMillis();
@@ -308,12 +308,8 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		}
 	}
 
-	private static int varint32Size(int value) {
-		if ((value & 0xffffffff << 7) == 0) return 1;
-		if ((value & 0xffffffff << 14) == 0) return 2;
-		if ((value & 0xffffffff << 21) == 0) return 3;
-		if ((value & 0xffffffff << 28) == 0) return 4;
-		return 5;
+	private static int varintSize(int value) {
+		return 1 + (31 - Integer.numberOfLeadingZeros(value)) / 7;
 	}
 
 }

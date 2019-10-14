@@ -20,7 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasNullable;
 
 import java.nio.ByteBuffer;
 import java.util.Set;
@@ -29,7 +29,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenByteBuffer implements SerializerGen, NullableOptimization {
+public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 	private final boolean wrapped;
 	private final boolean nullable;
 
@@ -129,7 +129,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenByteBuffer(wrapped, true);
 	}
 

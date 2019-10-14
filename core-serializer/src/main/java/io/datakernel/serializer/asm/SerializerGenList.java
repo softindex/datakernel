@@ -21,18 +21,16 @@ import java.util.List;
 
 public final class SerializerGenList extends AbstractSerializerGenCollection {
 
-	// region creators
-	public SerializerGenList(SerializerGen valueSerializer, boolean nullable) {
-		super(valueSerializer, List.class, ArrayList.class, Object.class, nullable);
-	}
-
 	public SerializerGenList(SerializerGen valueSerializer) {
 		this(valueSerializer, false);
 	}
-	// endregion
+
+	private SerializerGenList(SerializerGen valueSerializer, boolean nullable) {
+		super(valueSerializer, List.class, ArrayList.class, Object.class, nullable);
+	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenList(valueSerializer, true);
 	}
 }

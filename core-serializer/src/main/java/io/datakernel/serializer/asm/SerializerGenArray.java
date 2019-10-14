@@ -20,7 +20,8 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
+import io.datakernel.serializer.HasFixedSize;
+import io.datakernel.serializer.HasNullable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
@@ -30,32 +31,34 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public final class SerializerGenArray implements SerializerGen, NullableOptimization {
+public final class SerializerGenArray implements SerializerGen, HasNullable, HasFixedSize {
 	private final SerializerGen valueSerializer;
 	private final int fixedSize;
 	private final Class<?> type;
 	private final boolean nullable;
 
-	public SerializerGenArray(@NotNull SerializerGen serializer, int fixedSize, Class<?> type, boolean nullable) {
+	public SerializerGenArray(SerializerGen serializer, Class<?> type) {
+		this.valueSerializer = serializer;
+		this.fixedSize = -1;
+		this.type = type;
+		this.nullable = false;
+	}
+
+	private SerializerGenArray(@NotNull SerializerGen serializer, int fixedSize, Class<?> type, boolean nullable) {
 		this.valueSerializer = serializer;
 		this.fixedSize = fixedSize;
 		this.type = type;
 		this.nullable = nullable;
 	}
 
-	public SerializerGenArray(@NotNull SerializerGen serializer, int fixedSize, Class<?> type) {
-		this.valueSerializer = serializer;
-		this.fixedSize = fixedSize;
-		this.type = type;
-		this.nullable = false;
+	@Override
+	public SerializerGenArray withFixedSize(int fixedSize) {
+		return new SerializerGenArray(valueSerializer, fixedSize, type, nullable);
 	}
 
-	public SerializerGenArray(SerializerGen serializer, Class<?> type) {
-		this(serializer, -1, type);
-	}
-
-	public SerializerGenArray fixedSize(int fixedSize, Class<?> nameOfClass) {
-		return new SerializerGenArray(valueSerializer, fixedSize, nameOfClass, nullable);
+	@Override
+	public SerializerGen withNullable() {
+		return new SerializerGenArray(valueSerializer, fixedSize, type, true);
 	}
 
 	@Override
@@ -156,8 +159,4 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 		return result;
 	}
 
-	@Override
-	public SerializerGen asNullable() {
-		return new SerializerGenArray(valueSerializer, fixedSize, type, true);
-	}
 }

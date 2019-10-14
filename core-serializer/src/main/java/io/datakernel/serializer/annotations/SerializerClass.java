@@ -18,15 +18,13 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.asm.SerializerGen;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({
 		ElementType.FIELD,
 		ElementType.METHOD})
+@Repeatable(SerializerClassEx.class)
 public @interface SerializerClass {
 	int[] path() default {};
 

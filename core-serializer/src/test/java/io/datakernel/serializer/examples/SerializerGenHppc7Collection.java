@@ -47,7 +47,7 @@ public final class SerializerGenHppc7Collection extends AbstractSerializerGenCol
 	}
 
 	@Override
-	public SerializerGen asNullable() {
+	public SerializerGen withNullable() {
 		return new SerializerGenHppc7Collection(valueSerializer, collectionType, elementType, collectionImplType, true);
 	}
 }
