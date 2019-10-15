@@ -6,7 +6,6 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 
 import java.util.concurrent.Executor;
 
-import static io.datakernel.http.AsyncServletDecorator.logged;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class StaticServletExample extends HttpServerLauncher {
@@ -18,9 +17,8 @@ public final class StaticServletExample extends HttpServerLauncher {
 	//[START EXAMPLE]
 	@Provides
 	AsyncServlet servlet(Executor executor) {
-		return logged()
-				.serve(StaticServlet.ofClassPath(executor, "static/site")
-						.withIndexHtml());
+		return StaticServlet.ofClassPath(executor, "static/site")
+				.withIndexHtml();
 	}
 	//[END EXAMPLE]
 

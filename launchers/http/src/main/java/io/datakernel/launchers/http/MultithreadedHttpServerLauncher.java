@@ -24,8 +24,6 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
-import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
@@ -123,7 +121,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 					@Provides
 					@Worker
 					AsyncServlet servlet(@WorkerId int workerId) {
-						return request -> HttpResponse.ok200().withBody(wrapForReading(encodeAscii("Hello, world! #" + workerId)));
+						return request -> HttpResponse.ok200().withPlainText("Hello, world! #" + workerId);
 					}
 				};
 

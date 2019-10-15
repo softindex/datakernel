@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
@@ -55,11 +56,13 @@ public final class FileDownloadExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		ExecutorService executor = newSingleThreadExecutor();
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
-						.streamTo(ChannelFileWriter.open(newSingleThreadExecutor(), clientStorage.resolve(DOWNLOADED_FILE)))
+						.streamTo(ChannelFileWriter.open(executor, clientStorage.resolve(DOWNLOADED_FILE)))
 		);
 		future.get();
+		executor.shutdown();
 	}
 
 	public static void main(String[] args) throws Exception {
