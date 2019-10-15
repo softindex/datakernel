@@ -6,7 +6,7 @@ You can add this module to your project by inserting the following dependency to
 <dependency>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel-uikernel</artifactId>
-    <version>3.0-SNAPSHOT</version>
+    <version>3.0.0</version>
 </dependency>
 ```
 

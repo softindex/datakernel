@@ -4,7 +4,7 @@
 
   <groupId>io.datakernel</groupId>
   <artifactId>advanced-react-integration</artifactId>
-  <version>3.0-SNAPSHOT</version>
+  <version>3.0.0</version>
 
   <name>Examples : Tutorials : Advanced-React-Integration</name>
 
@@ -17,7 +17,7 @@
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-launchers-http</artifactId>
-      <version>3.0-SNAPSHOT</version>
+      <version>3.0.0</version>
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
