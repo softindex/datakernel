@@ -33,6 +33,7 @@ public final class ReflectionUtils {
 
 	public static String getShortName(Type type) {
 		String defaultName = type.getTypeName()
+				.replaceAll("\\[L(.*?);", "$1[]")
 				.replaceAll("(?:" + IDENT + "\\.)*(?:" + IDENT + "\\$\\d*)?", "");
 		ShortTypeName override = Types.getRawType(type).getDeclaredAnnotation(ShortTypeName.class);
 		return override != null ?

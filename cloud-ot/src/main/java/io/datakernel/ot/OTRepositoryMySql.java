@@ -16,7 +16,6 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.aggregation.IdGenerator;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
@@ -24,6 +23,7 @@ import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.ot.util.IdGenerator;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.RetryPolicy;
 import io.datakernel.promise.jmx.PromiseStats;

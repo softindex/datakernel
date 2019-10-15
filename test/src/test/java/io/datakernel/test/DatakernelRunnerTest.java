@@ -9,6 +9,8 @@ import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.Utils;
 import io.datakernel.test.DatakernelRunnerTest.ClassModule;
+import org.jetbrains.annotations.Nullable;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -103,5 +105,33 @@ public class DatakernelRunnerTest {
 	public void testInjectable(InjectableClass obj) {
 		assertNotNull(obj);
 		assertEquals(HELLO, obj.s);
+	}
+
+	@RunWith(DatakernelRunner.class)
+	public static class TestBefore {
+
+		@Inject
+		public static class Setupable {
+			@Nullable String info = null;
+		}
+
+		public static class Dependant {
+			@Nullable String info;
+
+			@Inject
+			Dependant(Setupable setupable) {
+				info = setupable.info;
+			}
+		}
+
+		@Before
+		public void setup(Setupable setupable) {
+			setupable.info = "hello world";
+		}
+
+		@Test
+		public void testObjectCreationBetweenBeforeAndTest(Dependant obj) {
+			assertEquals("hello world", obj.info);
+		}
 	}
 }

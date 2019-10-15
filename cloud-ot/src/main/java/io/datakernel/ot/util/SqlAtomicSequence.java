@@ -1,4 +1,4 @@
-package io.datakernel.aggregation.util;
+package io.datakernel.ot.util;
 
 import java.sql.Connection;
 import java.sql.ResultSet;

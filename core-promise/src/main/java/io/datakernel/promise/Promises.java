@@ -1171,11 +1171,11 @@ public final class Promises {
 	 */
 
 	public static <T> Promise<T> loop(@Nullable T seed, @NotNull Predicate<T> loopCondition, @NotNull Function<T, Promise<T>> next) {
+		if (!loopCondition.test(seed)) return Promise.of(seed);
 		return until(seed, next, v -> !loopCondition.test(v));
 	}
 
-	private static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
-		if (breakCondition.test(seed)) return Promise.of(seed);
+	public static <T> Promise<T> until(@Nullable T seed, @NotNull Function<T, Promise<T>> next, @NotNull Predicate<T> breakCondition) {
 		return Promise.ofCallback(cb ->
 				untilImpl(seed, next, breakCondition, cb));
 	}

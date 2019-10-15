@@ -20,6 +20,7 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.ot.util.IdGenerator;
 import io.datakernel.promise.Promise;
 
 import java.util.List;
