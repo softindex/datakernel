@@ -93,7 +93,8 @@
                 <exclude>**/ReportingTest.java</exclude>
                 <exclude>**/CubeIntegrationTest.java</exclude>
                 <exclude>**/CubeMeasureRemovalTest.java</exclude>
-                <exclude>**/CubePartitioningTest.java</exclude>
+                <exclude>**/CubeCleanerControllerTest.java</exclude>
+                <exclude>**/LogToCubeTest.java</exclude>
               </excludes>
             </configuration>
           </plugin>
