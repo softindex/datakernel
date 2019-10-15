@@ -4,7 +4,7 @@ import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -16,8 +16,8 @@ import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ConstantConditions")
 public class StructuredCodecTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private <T> void test(StructuredCodec<T> codec, T item) throws ParseException {
 		String str = JsonUtils.toJson(codec, item);

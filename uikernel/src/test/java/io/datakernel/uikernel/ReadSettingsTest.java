@@ -20,15 +20,15 @@ import com.google.gson.Gson;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class ReadSettingsTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testParseEncoded() throws ParseException {

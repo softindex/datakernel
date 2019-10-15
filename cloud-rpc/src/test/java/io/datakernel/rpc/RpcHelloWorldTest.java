@@ -97,7 +97,7 @@ public final class RpcHelloWorldTest {
 					}
 					return "Hello, " + name + "!";
 				}))
-				.withListenPort(PORT);
+				.withListenPort(port);
 	}
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {
@@ -108,7 +108,7 @@ public final class RpcHelloWorldTest {
 			this.eventloop = eventloop;
 			this.rpcClient = RpcClient.create(eventloop)
 					.withMessageTypes(HelloRequest.class, HelloResponse.class)
-					.withStrategy(server(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT)));
+					.withStrategy(server(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port)));
 
 			rpcClient.startFuture().get();
 		}
@@ -133,12 +133,14 @@ public final class RpcHelloWorldTest {
 		}
 	}
 
-	private static final int PORT = getFreePort(), TIMEOUT = 1500;
+	private static final int TIMEOUT = 1500;
+	private static int port;
 	private RpcServer server;
 
 	@Before
 	public void setUp() throws Exception {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		port = getFreePort();
 		server = createServer(eventloop);
 		server.listen();
 		new Thread(eventloop).start();

@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.test.rules.ByteBufRule;
 import org.hamcrest.collection.IsEmptyCollection;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.*;
@@ -36,8 +36,8 @@ import static junit.framework.TestCase.assertNull;
 import static org.junit.Assert.*;
 
 public final class HttpUrlTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testSimple() {
