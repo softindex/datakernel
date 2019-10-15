@@ -22,6 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,8 +46,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class AsyncHttpServerTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,

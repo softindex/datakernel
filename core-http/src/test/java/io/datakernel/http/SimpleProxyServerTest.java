@@ -22,7 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.net.DatagramSocketSettings;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.InputStream;
@@ -45,8 +45,8 @@ public final class SimpleProxyServerTest {
 	private static final int ECHO_SERVER_PORT = getFreePort();
 	private static final int PROXY_SERVER_PORT = getFreePort();
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private void readAndAssert(InputStream is, String expected) {
 		byte[] bytes = new byte[expected.length()];

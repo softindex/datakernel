@@ -51,8 +51,8 @@ public final class RpcBlockingTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void setUp() throws Exception {

@@ -19,6 +19,7 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -34,8 +35,8 @@ public final class RoutingServletTest {
 	private static final String TEMPLATE = "http://www.site.org";
 	private static final String DELIM = "*****************************************************************************";
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();

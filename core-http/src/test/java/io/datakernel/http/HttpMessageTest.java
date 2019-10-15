@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -32,8 +32,8 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public final class HttpMessageTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	private static void assertHttpMessageEquals(String expected, HttpMessage message) {
 		ByteBuf buf = AbstractHttpConnection.renderHttpMessage(message);
