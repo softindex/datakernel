@@ -47,7 +47,7 @@ public final class ApplicationSettings {
 	}
 
 	public static boolean getBoolean(Class<?> type, String name, boolean defValue) {
-		return get(Boolean::parseBoolean, type, name, defValue);
+		return get(s -> s.trim().isEmpty() || Boolean.parseBoolean(s), type, name, defValue);
 	}
 
 	public static double getDouble(Class<?> type, String name, double defValue) {
