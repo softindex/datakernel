@@ -20,9 +20,9 @@ public class MemcacheLikeServer extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
-				.with("memcache.buffers", "8")
-				.with("memcache.bufferCapacity", "512")
-				.with("server.listenAddresses", "localhost:8080")
+				.with("memcache.buffers", "4")
+				.with("memcache.bufferCapacity", "256mb")
+				.with("server.listenAddresses", "localhost:9010")
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 

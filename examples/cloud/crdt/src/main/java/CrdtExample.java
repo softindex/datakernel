@@ -13,6 +13,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -31,11 +32,11 @@ public final class CrdtExample {
 		Map<Integer, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
 
 		for (int i = 0; i < 8; i++) {
-			clients.put(i, createClient(eventloop, i));
+			clients.put(i, createClient(eventloop, executor, i));
 		}
 
-		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, 8);
-		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, 9);
+		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
+		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
 
 		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients)
 				.withPartition(8, one)
@@ -76,8 +77,8 @@ public final class CrdtExample {
 		eventloop.run();
 	}
 
-	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, int n) {
-		FsClient storage = LocalFsClient.create(eventloop, Paths.get("/tmp/TESTS/crdt_" + n));
+	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, Executor executor, int n) {
+		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS/crdt_" + n));
 		return CrdtStorageFs.create(eventloop, storage, SERIALIZER);
 	}
 }

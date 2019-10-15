@@ -9,7 +9,6 @@ import io.datakernel.launchers.http.HttpServerLauncher;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
-import static io.datakernel.http.AsyncServletDecorator.logged;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -25,7 +24,7 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 	//[START REGION_1]
 	@Provides
 	AsyncServlet servlet(Executor executor) {
-		return logged().serve(RoutingServlet.create()
+		return RoutingServlet.create()
 				.map(POST, "/hello", loadBody()
 						.serve(request -> {
 							String name = request.getPostParameters().get("name");
@@ -38,7 +37,7 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 							.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>");
 				})
 				.map("/*", StaticServlet.ofClassPath(executor, RESOURCE_DIR)
-						.withIndexHtml()));
+						.withIndexHtml());
 	}
 	//[END REGION_1]
 

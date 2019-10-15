@@ -29,7 +29,7 @@ public class RpcExampleClientModule extends AbstractModule {
 		return RpcClient.create(eventloop)
 				.withConnectTimeout(Duration.ofSeconds(1))
 				.withSerializerBuilder(SerializerBuilder.create(Thread.currentThread().getContextClassLoader()))
-				.withMessageTypes(String.class, Integer.class)
+				.withMessageTypes(Integer.class)
 				.withStrategy(strategy);
 	}
 

@@ -1,9 +1,11 @@
 import io.datakernel.async.callback.Callback;
+import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -15,8 +17,10 @@ import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.server.MemcacheServerModule;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
+import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.service.ServiceGraphModuleSettings;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletionStage;
@@ -68,6 +72,12 @@ public class MemcacheRpcBenchmark extends Launcher {
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 
+	@ProvidesIntoSet
+	Initializer<ServiceGraphModuleSettings> configureServiceGraph() {
+		// add logical dependency so that service graph starts client only after it started the server
+		return settings -> settings.addDependency(Key.of(RpcClient.class), Key.of(RpcServer.class));
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -81,7 +91,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 	}
 
 	@Override
-	protected void onStart() throws Exception {
+	protected void onStart() {
 		this.totalRequests = config.get(ofInteger(), "benchmark.totalRequests", TOTAL_REQUESTS);
 		this.warmupRounds = config.get(ofInteger(), "benchmark.warmupRounds", WARMUP_ROUNDS);
 		this.benchmarkRounds = config.get(ofInteger(), "benchmark.benchmarkRounds", BENCHMARK_ROUNDS);
