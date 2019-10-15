@@ -31,6 +31,7 @@ import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Utils.of;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.*;
@@ -265,66 +266,69 @@ public class SerializerGenClass implements SerializerGen {
 			return deserializeClassSimple(classLoader, byteArray, off, version, compatibilityLevel);
 		}
 
-		List<Expression> list = new ArrayList<>();
-		Map<String, Expression> map = new HashMap<>();
-		for (String fieldName : fields.keySet()) {
-			FieldGen fieldGen = fields.get(fieldName);
-
-			if (!fieldGen.hasVersion(version)) continue;
-
-			Expression expression = var(fieldGen.serializer.deserialize(classLoader, byteArray, off, fieldGen.getRawType(), version, compatibilityLevel));
-			list.add(expression);
-			map.put(fieldName, cast(expression, fieldGen.getRawType()));
-		}
-
-		Expression constructor;
-		if (factory == null) {
-			constructor = callConstructor(dataTypeIn, map, version);
-		} else {
-			constructor = callFactory(map, version);
-		}
-
-		Expression local = var(constructor);
-		list.add(local);
-
-		for (Method method : setters.keySet()) {
-			boolean found = false;
-			for (String fieldName : setters.get(method)) {
-				FieldGen fieldGen = fields.get(fieldName);
-				checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, method);
-				if (fieldGen.hasVersion(version)) {
-					found = true;
-					break;
-				}
-			}
-			if (found) {
-				Expression[] temp = new Expression[method.getParameterTypes().length];
-				int i = 0;
-				for (String fieldName : setters.get(method)) {
-					FieldGen fieldGen = fields.get(fieldName);
-					assert fieldGen != null;
-					if (fieldGen.hasVersion(version)) {
-						temp[i++] = map.get(fieldName);
-					} else {
-						temp[i++] = pushDefaultValue(fieldGen.getAsmType());
+		return let(of(() -> {
+					List<Expression> fieldDeserializers = new ArrayList<>();
+					for (String fieldName : fields.keySet()) {
+						FieldGen fieldGen = fields.get(fieldName);
+						if (!fieldGen.hasVersion(version)) continue;
+						fieldDeserializers.add(
+								fieldGen.serializer.deserialize(classLoader, byteArray, off, fieldGen.getRawType(), version, compatibilityLevel));
 					}
-				}
-				list.add(call(local, method.getName(), temp));
-			}
-		}
+					return fieldDeserializers;
+				}),
+				fieldValues -> {
+					Map<String, Expression> map = new HashMap<>();
+					int i = 0;
+					for (String fieldName : fields.keySet()) {
+						FieldGen fieldGen = fields.get(fieldName);
+						if (!fieldGen.hasVersion(version)) continue;
+						map.put(fieldName, cast(fieldValues.get(i++), fieldGen.getRawType()));
+					}
 
-		for (String fieldName : fields.keySet()) {
-			FieldGen fieldGen = fields.get(fieldName);
-			if (!fieldGen.hasVersion(version))
-				continue;
-			if (fieldGen.field == null || isFinal(fieldGen.field.getModifiers()))
-				continue;
-			Variable property = property(local, fieldName);
-			list.add(set(property, map.get(fieldName)));
-		}
+					return let(factory == null ?
+									callConstructor(dataTypeIn, map, version) :
+									callFactory(map, version),
+							instance -> sequence(list -> {
+								for (Method method : setters.keySet()) {
+									boolean found = false;
+									for (String fieldName : setters.get(method)) {
+										FieldGen fieldGen = fields.get(fieldName);
+										checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, method);
+										if (fieldGen.hasVersion(version)) {
+											found = true;
+											break;
+										}
+									}
+									if (found) {
+										Expression[] temp = new Expression[method.getParameterTypes().length];
+										int j = 0;
+										for (String fieldName : setters.get(method)) {
+											FieldGen fieldGen = fields.get(fieldName);
+											assert fieldGen != null;
+											if (fieldGen.hasVersion(version)) {
+												temp[j++] = map.get(fieldName);
+											} else {
+												temp[j++] = pushDefaultValue(fieldGen.getAsmType());
+											}
+										}
+										list.add(call(instance, method.getName(), temp));
+									}
+								}
 
-		list.add(local);
-		return sequence(list);
+								for (String fieldName : fields.keySet()) {
+									FieldGen fieldGen = fields.get(fieldName);
+									if (!fieldGen.hasVersion(version))
+										continue;
+									if (fieldGen.field == null || isFinal(fieldGen.field.getModifiers()))
+										continue;
+									Variable property = property(instance, fieldName);
+									list.add(set(property, map.get(fieldName)));
+								}
+
+								list.add(instance);
+							}));
+
+				});
 	}
 
 	private Expression callFactory(Map<String, Expression> map, int version) {

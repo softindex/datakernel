@@ -112,17 +112,18 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 
 	@Override
 	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return cast(switchByIndex(
-				var(sub(readByte(byteArray, off), value(startIndex))),
-				of(() -> {
-					List<Expression> versions = new ArrayList<>();
-					for (SerializerGen subclassSerializer : subclassSerializers.values()) {
-						versions.add(cast(subclassSerializer.deserialize(classLoader, byteArray, off, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
-					}
-					if (nullable) versions.add(-startIndex, nullRef(getRawType()));
-					return versions;
-				})),
-				dataType);
+		return let(sub(readByte(byteArray, off), value(startIndex)),
+				idx -> cast(
+						switchByIndex(idx,
+								of(() -> {
+									List<Expression> versions = new ArrayList<>();
+									for (SerializerGen subclassSerializer : subclassSerializers.values()) {
+										versions.add(cast(subclassSerializer.deserialize(classLoader, byteArray, off, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
+									}
+									if (nullable) versions.add(-startIndex, nullRef(getRawType()));
+									return versions;
+								})),
+						dataType));
 	}
 
 	@Override

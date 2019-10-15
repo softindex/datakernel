@@ -91,47 +91,47 @@ public final class SerializerExpressions {
 
 	public static Expression writeVarInt(Expression buf, Variable pos, Expression value) {
 		return ensureRemaining(buf, pos, 5,
-				writeVarIntImpl(buf, pos, var(value), 0));
+				let(value, v -> writeVarIntImpl(buf, pos, v, 0)));
 	}
 
-	private static Expression writeVarIntImpl(Expression buf, Variable pos, Variable value, int n) {
+	private static Expression writeVarIntImpl(Expression buf, Variable pos, Variable v, int n) {
 		return n != 4 ?
 				ifThenElse(
-						cmpEq(and(value, value(~0x7F)), value(0)),
+						cmpEq(and(v, value(~0x7F)), value(0)),
 						sequence(
-								setArrayItem(buf, add(pos, value(n)), cast(value, byte.class)),
+								setArrayItem(buf, add(pos, value(n)), cast(v, byte.class)),
 								set(pos, add(pos, value(n + 1)))),
 						sequence(
-								setArrayItem(buf, add(pos, value(n)), cast(or(value, value(0x80)), byte.class)),
-								set(value, ushr(value, value(7))),
-								writeVarIntImpl(buf, pos, value, n + 1)
+								setArrayItem(buf, add(pos, value(n)), cast(or(v, value(0x80)), byte.class)),
+								set(v, ushr(v, value(7))),
+								writeVarIntImpl(buf, pos, v, n + 1)
 						)
 				) :
 				sequence(
-						setArrayItem(buf, add(pos, value(n)), cast(value, byte.class)),
+						setArrayItem(buf, add(pos, value(n)), cast(v, byte.class)),
 						set(pos, add(pos, value(n + 1))));
 	}
 
 	public static Expression writeVarLong(Expression buf, Variable pos, Expression value) {
 		return ensureRemaining(buf, pos, 10,
-				writeVarLongImpl(buf, pos, var(value), 0));
+				let(value, v -> writeVarLongImpl(buf, pos, v, 0)));
 	}
 
-	private static Expression writeVarLongImpl(Expression buf, Variable pos, Variable value, int n) {
+	private static Expression writeVarLongImpl(Expression buf, Variable pos, Variable v, int n) {
 		return n != 9 ?
 				ifThenElse(
-						cmpEq(and(value, value(~0x7FL)), value(0L)),
+						cmpEq(and(v, value(~0x7FL)), value(0L)),
 						sequence(
-								setArrayItem(buf, add(pos, value(n)), cast(value, byte.class)),
+								setArrayItem(buf, add(pos, value(n)), cast(v, byte.class)),
 								set(pos, add(pos, value(n + 1)))),
 						sequence(
-								setArrayItem(buf, add(pos, value(n)), cast(or(value, value(0x80L)), byte.class)),
-								set(value, ushr(value, value(7))),
-								writeVarLongImpl(buf, pos, value, n + 1)
+								setArrayItem(buf, add(pos, value(n)), cast(or(v, value(0x80L)), byte.class)),
+								set(v, ushr(v, value(7))),
+								writeVarLongImpl(buf, pos, v, n + 1)
 						)
 				) :
 				sequence(
-						setArrayItem(buf, add(pos, value(n)), cast(value, byte.class)),
+						setArrayItem(buf, add(pos, value(n)), cast(v, byte.class)),
 						set(pos, add(pos, value(n + 1))));
 	}
 
@@ -252,7 +252,7 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression readVarInt(Expression buf, Variable pos) {
-		return let(var(value(0)),
+		return let(value(0),
 				result -> sequence(
 						readVarIntImpl(buf, pos, result, 0),
 						result));

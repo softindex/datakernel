@@ -19,7 +19,6 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
@@ -80,27 +79,21 @@ public class Expressions {
 		return new ExpressionSequence(expressions);
 	}
 
-	/**
-	 * Returns a new variable which will process expression
-	 *
-	 * @param expression expression which will be processed when variable will be used
-	 * @return new instance of the Expression
-	 */
-	public static Variable var(Expression expression) {
-		return new ExpressionLet(expression);
-	}
-
 	public static Expression let(Expression expression, Function<Variable, Expression> fn) {
-		Variable variable = var(expression);
+		Variable variable = new ExpressionLet(expression);
 		return sequence(variable, fn.apply(variable));
 	}
 
-	public static Expression let(Expression[] expressions, Function<Variable[], Expression> fn) {
-		Variable[] variables = Arrays.stream(expressions).map(Expressions::var).toArray(Variable[]::new);
-		List<Expression> sequence = new ArrayList<>(variables.length + 1);
-		sequence.addAll(asList(variables));
+	public static Expression let(List<Expression> expressions, Function<List<Variable>, Expression> fn) {
+		List<Variable> variables = expressions.stream().map(ExpressionLet::new).collect(toList());
+		List<Expression> sequence = new ArrayList<>(expressions.size() + 1);
+		sequence.addAll(variables);
 		sequence.add(fn.apply(variables));
 		return sequence(sequence);
+	}
+
+	public static Expression let(Expression[] expressions, Function<Variable[], Expression> fn) {
+		return let(asList(expressions), variables -> fn.apply(variables.toArray(new Variable[0])));
 	}
 
 	/**
