@@ -23,10 +23,10 @@ public class RpcExampleServerModule extends AbstractModule {
 	RpcServer rpcServer(Eventloop eventloop, Config config) {
 		return RpcServer.create(eventloop)
 				.withSerializerBuilder(SerializerBuilder.create(Thread.currentThread().getContextClassLoader()))
-				.withMessageTypes(String.class, Integer.class)
-				.withHandler(String.class, Integer.class, in -> {
+				.withMessageTypes(Integer.class)
+				.withHandler(Integer.class, Integer.class, in -> {
 					System.out.println("Income message: " + in);
-					return Promise.of(in.length());
+					return Promise.of(in);
 				})
 				.withListenPort(config.get(ofInteger(), "server.port"));
 	}
