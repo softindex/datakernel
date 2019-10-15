@@ -57,7 +57,7 @@ public final class PublicServlet {
 						origin = request.getHeader(REFERER);
 					}
 					if (origin == null) {
-						origin = "/" + request.getAttachment(PubKey.class).asString();
+						origin = "/";
 					}
 
 					if (request.getAttachment(UserId.class) != null) {
@@ -97,11 +97,10 @@ public final class PublicServlet {
 											SessionStore<UserId> sessionStore = commDao.getSessionStore();
 											return sessionStore.save(sessionId, userId)
 													.map($2 -> {
-														String pk = containerPubKey.asString();
 														String origin = request.getQueryParameter("origin");
-														return redirect302(origin != null ? origin : "/" + pk)
+														return redirect302(origin != null ? origin : "/")
 																.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-																		.withPath("/" + pk)
+																		.withPath("/")
 																		.withMaxAge(sessionStore.getSessionLifetime()));
 													});
 										});
@@ -114,13 +113,10 @@ public final class PublicServlet {
 					}
 					CommDao commDao = request.getAttachment(CommDao.class);
 					return commDao.getSessionStore().remove(sessionId)
-							.map($ -> {
-								String pk = commDao.getKeys().getPubKey().asString();
-								return redirectToReferer(request, "/" + pk)
-										.withCookie(HttpCookie.of(SESSION_ID, "<unset>")
-												.withPath("/" + pk)
-												.withMaxAge(Duration.ZERO));
-							});
+							.map($ -> redirectToReferer(request, "/")
+									.withCookie(HttpCookie.of(SESSION_ID)
+											.withPath("/")
+											.withMaxAge(Duration.ZERO)));
 				})
 				.map(GET, "/new", request -> {
 					if (request.getAttachment(UserId.class) == null) {
@@ -159,11 +155,10 @@ public final class PublicServlet {
 											if ((content == null || content.matches(WHITESPACE)) && attachmentMap.isEmpty()) {
 												return Promise.ofException(new ParseException(PublicServlet.class, "'content' POST parameter is required"));
 											}
-											String pk = commDao.getKeys().getPubKey().asString();
 
 											return commDao.updateThread(tid, new ThreadMetadata(title))
 													.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
-													.map($2 -> redirect302("/" + pk + "/" + tid));
+													.map($2 -> redirect302("/" + tid));
 										})
 										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
 										.thenEx(revertIfException(() -> commDao.removeThread(tid)));
@@ -226,7 +221,7 @@ public final class PublicServlet {
 									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
 								}
 								return commDao.updateUser(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
-										.map($ -> redirectToReferer(request, "/" + commDao.getKeys().getPubKey().asString()));
+										.map($ -> redirectToReferer(request, "/"));
 							});
 				})
 				.map("/:threadID/*", RoutingServlet.create()
@@ -239,14 +234,13 @@ public final class PublicServlet {
 	}
 
 	private static HttpResponse redirectToLogin(HttpRequest request) {
-		return redirect302("/" + request.getAttachment(PubKey.class).asString() + "/login?origin=" + request.getPath());
+		return redirect302("/login?origin=" + request.getPath());
 	}
 
 	private static HttpResponse postOpRedirect(HttpRequest request) {
 		String tid = request.getPathParameter("threadID");
 		String pid = request.getPathParameter("postID");
-		PubKey pubKey = request.getAttachment(PubKey.class);
-		return redirectToReferer(request, "/" + pubKey.asString() + "/" + tid + "/" + pid);
+		return redirectToReferer(request, "/" + tid + "/" + pid);
 	}
 
 	@NotNull
@@ -360,7 +354,6 @@ public final class PublicServlet {
 			request.attach(PubKey.class, pubKey);
 			templater.clear();
 			templater.put("appStoreUrl", appStoreUrl);
-			templater.put("pubKey", pubKey.asString());
 
 			String host = request.getHeader(HOST);
 			if (host == null) {
@@ -406,7 +399,7 @@ public final class PublicServlet {
 													return response
 															.withCookie(HttpCookie.of(SESSION_ID, sessionId)
 																	.withMaxAge(m)
-																	.withPath("/" + commDao.getKeys().getPubKey().asString()));
+																	.withPath("/"));
 												}));
 							});
 				};

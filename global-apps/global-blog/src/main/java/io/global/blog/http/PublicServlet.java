@@ -55,10 +55,10 @@ public final class PublicServlet {
 	private static final StructuredCodec<Map<String, String>> PARAM_CODEC = StructuredCodecs.ofMap(STRING_CODEC, STRING_CODEC);
 
 	public static AsyncServlet create(String appStoreUrl, AppStore appStore,
-									  MustacheTemplater templater, Executor executor,
-									  Preprocessor<PostView> threadListPostViewPreprocessor,
-									  Preprocessor<PostView> postViewPreprocessor,
-									  Preprocessor<PostView> commentsPreprocessor) {
+			MustacheTemplater templater, Executor executor,
+			Preprocessor<PostView> threadListPostViewPreprocessor,
+			Preprocessor<PostView> postViewPreprocessor,
+			Preprocessor<PostView> commentsPreprocessor) {
 		return RoutingServlet.create()
 				.map("/auth/*", authServlet(appStore, templater))
 				.map("/owner/*", ownerServlet(templater))
@@ -129,7 +129,7 @@ public final class PublicServlet {
 								return commDao.getUser(updatingUserId).then(oldData -> oldData == null ?
 										Promise.ofException(HttpException.ofCode(400, "No such user")) :
 										commDao.updateUser(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
-												.map($1 -> redirectToReferer(request, "/" + commDao.getKeys().getPubKey().asString())));
+												.map($1 -> redirectToReferer(request, "/")));
 							});
 				})
 				.map("/:threadID/*", RoutingServlet.create()
@@ -163,7 +163,7 @@ public final class PublicServlet {
 											String pk = commDao.getKeys().getPubKey().asString();
 											return commDao.updateThread(tid, new ThreadMetadata(paramsMap.get("title")))
 													.then($2 -> threadDao.addRootPost(userId, paramsMap.get("content"), attachmentMap))
-													.map($2 -> redirect302("/" + pk + "/" + tid));
+													.map($2 -> redirect302("/" + tid));
 										})
 										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
 										.thenEx(revertIfException(() -> commDao.removeThread(tid)));
@@ -214,12 +214,9 @@ public final class PublicServlet {
 										String content = paramsMap.get("content");
 										Set<String> deleteAttachmentsSet = Stream.of(deleteAttachments.split(",")).collect(Collectors.toSet());
 										return validate(content, 65256, "Content", true)
-												.then($1 -> {
-													String pk = commDao.getKeys().getPubKey().asString();
-													return threadDao.updatePost("root", content, attachmentMap, deleteAttachmentsSet)
-															.then($2 -> threadDao.deleteAttachments("root", deleteAttachmentsSet))
-															.map($2 -> redirect302("/" + pk + "/" + threadID));
-												});
+												.then($1 -> threadDao.updatePost("root", content, attachmentMap, deleteAttachmentsSet)
+														.then($2 -> threadDao.deleteAttachments("root", deleteAttachmentsSet))
+														.map($2 -> redirect302("/" + threadID)));
 									})
 									.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())));
 						})
@@ -244,7 +241,7 @@ public final class PublicServlet {
 				.map(GET, "/login", request -> {
 					String origin = request.getQueryParameter("origin");
 					origin = origin != null ? origin : request.getHeader(REFERER);
-					origin = origin != null ? origin : "/" + request.getAttachment(PubKey.class).asString();
+					origin = origin != null ? origin : "/";
 					return request.getAttachment(UserId.class) != null ?
 							Promise.of(redirect302(origin)) :
 							templater.render("login", map("loginScreen", true, "origin", origin));
@@ -256,13 +253,10 @@ public final class PublicServlet {
 					}
 					CommDao commDao = request.getAttachment(CommDao.class);
 					return commDao.getSessionStore().remove(sessionId)
-							.map($ -> {
-								String pk = commDao.getKeys().getPubKey().asString();
-								return HttpResponse.redirect302("/" + pk + "/")
-										.withCookie(HttpCookie.of(SESSION_ID, "<unset>")
-												.withPath("/" + pk)
-												.withMaxAge(Duration.ZERO));
-							});
+							.map($ -> HttpResponse.redirect302("/")
+									.withCookie(HttpCookie.of(SESSION_ID)
+											.withPath("/")
+											.withMaxAge(Duration.ZERO)));
 				})
 				.map(GET, "/authorize", request -> {
 					String token = request.getQueryParameter("token");
@@ -289,11 +283,10 @@ public final class PublicServlet {
 								.then($ -> {
 									SessionStore<UserId> sessionStore = commDao.getSessionStore();
 									return sessionStore.save(sessionId, userId).map($2 -> {
-										String pk = containerPubKey.asString();
 										String origin = request.getQueryParameter("origin");
-										return redirect302(origin != null ? origin : "/" + pk)
+										return redirect302(origin != null ? origin : "/")
 												.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-														.withPath("/" + pk)
+														.withPath("/")
 														.withMaxAge(sessionStore.getSessionLifetime()));
 									});
 								});
@@ -302,14 +295,13 @@ public final class PublicServlet {
 	}
 
 	private static HttpResponse redirectToLogin(HttpRequest request) {
-		return redirect302("/" + request.getAttachment(PubKey.class).asString() + "/login?origin=" + request.getPath());
+		return redirect302("/login?origin=" + request.getPath());
 	}
 
 	private static HttpResponse postOpRedirect(HttpRequest request) {
 		String tid = request.getPathParameter("threadID");
 		String pid = request.getPathParameter("postID");
-		PubKey pubKey = request.getAttachment(PubKey.class);
-		return redirectToReferer(request, "/" + pubKey.asString() + "/" + tid + "/" + pid);
+		return redirectToReferer(request, "/" + tid + "/" + pid);
 	}
 
 	@NotNull
@@ -378,7 +370,7 @@ public final class PublicServlet {
 
 	@NotNull
 	private static AsyncServlet postViewServlet(MustacheTemplater templater, Executor executor, Preprocessor<PostView> postViewPreprocessor,
-												Preprocessor<PostView> commentsPreprocessor) {
+			Preprocessor<PostView> commentsPreprocessor) {
 		return request -> {
 			String tid = request.getPathParameter("threadID");
 			String pid = request.getPathParameters().get("postID");
@@ -414,7 +406,6 @@ public final class PublicServlet {
 			request.attach(PubKey.class, pubKey);
 			templater.clear();
 			templater.put("appStoreUrl", appStoreUrl);
-			templater.put("pubKey", pubKey.asString());
 			templater.put("url", request.toString());
 			templater.put("url.host", request.getHeader(HOST));
 			templater.put("blog", blogDao.getBlogMetadata());
@@ -444,7 +435,7 @@ public final class PublicServlet {
 										response :
 										response.withCookie(HttpCookie.of(SESSION_ID, sessionId)
 												.withMaxAge(m)
-												.withPath("/" + commDao.getKeys().getPubKey().asString()))));
+												.withPath("/"))));
 					});
 				};
 	}

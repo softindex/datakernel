@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
           integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="/{{pubKey}}/static/style.css">
+    <link rel="stylesheet" href="/static/style.css">
 
     <title>Global Forum</title>
     {{$head}}{{/head}}
@@ -14,7 +14,7 @@
 <body>
 <div class="container">
     <nav class="navbar navbar-expand-md navbar-light bg-light my-3">
-        <a class="navbar-brand" href="/{{pubKey}}/">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
+        <a class="navbar-brand" href="/">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
 
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,7 +27,7 @@
                     {{^creatingNewThread}}
                         {{#user.role.known}}
                             <li class="nav-item">
-                                <a class="nav-link" href="/{{pubKey}}/new">New thread</a>
+                                <a class="nav-link" href="/new">New thread</a>
                             </li>
                         {{/user.role.known}}
                     {{/creatingNewThread}}
@@ -37,7 +37,7 @@
                 {{^user}}
                     {{^loginScreen}}
                         <a class="btn btn-outline-success"
-                           href="{{appStoreUrl}}/oauth?redirectURI=http%3A//{{url.host}}/{{pubKey}}/authorize%3Forigin=http%3A//{{url}}"
+                           href="{{appStoreUrl}}/oauth?redirectURI=http%3A//{{url.host}}/authorize%3Forigin=http%3A//{{url}}"
                            id="login_button">
                             Log In
                         </a>
@@ -45,9 +45,9 @@
                 {{/user}}
                 {{#user}}
                     <span class="navbar-text mr-2" style="position: relative;">
-                        Hello, <a class="stretched-link" href="/{{pubKey}}/profile">{{username}}</a>
+                        Hello, <a class="stretched-link" href="/profile">{{username}}</a>
                     </span>
-                    <form action="/{{pubKey}}/logout" method="post">
+                    <form action="/logout" method="post">
                         <button class="btn btn-outline-success mx-2" type="submit">Log Out</button>
                     </form>
                 {{/user}}
@@ -56,7 +56,7 @@
     </nav>
 </div>
 {{$content}}{{/content}}
-<script src="/{{pubKey}}/static/main.js"></script>
+<script src="/static/main.js"></script>
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
         integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
         crossorigin="anonymous"></script>

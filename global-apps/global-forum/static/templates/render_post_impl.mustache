@@ -2,7 +2,7 @@
     <div class="card-body clearfix py-1">
         <div class="row mb-2">
             <div class="col pl-0">
-                <a href="/{{pubKey}}/{{threadId}}/{{postId}}{{^postId}}root{{/postId}}"
+                <a href="/{{threadId}}/{{postId}}{{^postId}}root{{/postId}}"
                    class="badge badge-secondary">#</a>
 
                 <span class="badge badge-primary badge-light">
@@ -30,7 +30,7 @@
 
                 <span class="row badge badge-primary badge-light text-wrap text-break">
                     {{#user.role.privileged}}{{#author}}
-                        <a href="/{{pubKey}}/profile/{{authorId}}">{{.}}</a>{{/author}}{{/user.role.privileged}}
+                        <a href="/profile/{{authorId}}">{{.}}</a>{{/author}}{{/user.role.privileged}}
                     {{^user.role.privileged}}{{author}}{{/user.role.privileged}}
                     {{^author}}<i>ghost</i>{{/author}}
                 </span>
@@ -52,8 +52,8 @@
         {{#attachments}}
             <div class="row m-2">
                 {{#image}}
-                    <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}">
-                        <img src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}"
+                    <a href="/{{threadId}}/{{postId}}/download/{{.}}">
+                        <img src="/{{threadId}}/{{postId}}/download/{{.}}"
                              alt="attachment"
                              class="img-thumbnail m-2">
                     </a>
@@ -64,7 +64,7 @@
                 {{#video}}
                     <div class="embed-responsive embed-responsive-16by9 m-2">
                         <video controls>
-                            <source src="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}">
+                            <source src="/{{threadId}}/{{postId}}/download/{{.}}">
                         </video>
                     </div>
                 {{/video}}
@@ -74,7 +74,7 @@
                 {{#document}}
                     <ul class="list-group col-auto">
                         <li class="list-group-item text-truncate">
-                            <a href="/{{pubKey}}/{{threadId}}/{{postId}}/download/{{.}}"
+                            <a href="/{{threadId}}/{{postId}}/download/{{.}}"
                                class="stretched-link">🠋</a>
                             {{.}}
                         </li>
@@ -87,7 +87,7 @@
             <div class="col-auto mx-2 mb-2">
                 <div class="row">
                     {{#deletedBy}}{{#editable}}
-                        <form action="/{{pubKey}}/{{threadId}}/{{postId}}/restore" method="post">
+                        <form action="/{{threadId}}/{{postId}}/restore" method="post">
                             <button class="btn btn-outline-primary btn-sm">restore</button>
                         </form>
                     {{/editable}}{{/deletedBy}}
@@ -102,11 +102,11 @@
                                         change
                                     </button>
                                     <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
-                                          action="/{{pubKey}}/{{threadId}}/{{postId}}/delete" method="post">
+                                          action="/{{threadId}}/{{postId}}/delete" method="post">
 
                                         <button class="edit-button dropdown-item" type="button"
                                                 data-edit="#content_{{postId}}"
-                                                data-edit-action="/{{pubKey}}/{{threadId}}/{{postId}}/edit">
+                                                data-edit-action="/{{threadId}}/{{postId}}/edit">
                                             edit
                                         </button>
                                         <button class="dropdown-item" type="submit">delete</button>
@@ -130,7 +130,7 @@
     {{^deletedBy}}
         {{#user}}
             <div class="collapse" id="reply_{{postId}}">
-                <form class="pt-3" action="/{{pubKey}}/{{threadId}}/{{postId}}"
+                <form class="pt-3" action="/{{threadId}}/{{postId}}"
                       method="post" enctype="multipart/form-data">
                     <div class="mx-3">
                         <textarea class="form-control" placeholder="Post your reply" name="content"
