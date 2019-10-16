@@ -8,7 +8,20 @@ const documentEditorStyles = theme => ({
     width: '100%',
     height: '100%',
     resize: 'none',
-    borderStyle: 'none'
+    borderStyle: 'none',
+    overflow: 'auto',
+    '&:hover': {
+      '&::-webkit-scrollbar-thumb': {
+        background: theme.palette.secondary.grey
+      }
+    }
+  },
+  scroller: {
+    scrollbarColor: 'transparent transparent',
+    scrollbarWidth: 'thin',
+    '&:hover': {
+      scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+    }
   },
   paper: {
     flexGrow: 1,

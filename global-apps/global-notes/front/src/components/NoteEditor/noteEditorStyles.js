@@ -9,7 +9,19 @@ const noteEditorStyles = theme => ({
     height: '100%',
     resize: 'none',
     borderStyle: 'none',
-    overflow: 'auto'
+    overflow: 'auto',
+    '&:hover': {
+      '&::-webkit-scrollbar-thumb': {
+        background: theme.palette.secondary.grey
+      }
+    }
+  },
+  scroller: {
+    scrollbarColor: 'transparent transparent',
+    scrollbarWidth: 'thin',
+    '&:hover': {
+      scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+    }
   },
   paper: {
     flexGrow: 1,

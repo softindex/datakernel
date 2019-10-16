@@ -16,7 +16,7 @@ function SideBarView({classes, documents, documentsReady, search, onSearchChange
         value={search}
         onChange={onSearchChange}
       />
-      <div className={`${classes.documentsList} scroller`}>
+      <div className={`${classes.documentsList} ${classes.scroller}`}>
         <DocumentsList
           documents={documents}
           ready={documentsReady}

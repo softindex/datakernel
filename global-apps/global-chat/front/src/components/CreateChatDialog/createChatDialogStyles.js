@@ -23,6 +23,13 @@ const createChatDialogStyles = theme => ({
       overflow: 'auto'
     }
   },
+  scroller: {
+    scrollbarColor: 'transparent transparent',
+    scrollbarWidth: 'thin',
+    '&:hover': {
+      scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+    }
+  },
   search: {
     padding: `${theme.spacing(1)}px 0px`,
     display: 'flex',

@@ -8,12 +8,12 @@ class ChatRoomOTOperation {
 
   static EMPTY = new ChatRoomOTOperation(0, null, null, false);
 
-  static createFromJson(json) {
+  static createFromJson({value}) {
     return new ChatRoomOTOperation(
-      json.message.timestamp,
-      json.message.author,
-      json.message.content,
-      json.remove
+      value.timestamp,
+      value.author,
+      value.content,
+      value.invert
     );
   }
 
@@ -52,12 +52,13 @@ class ChatRoomOTOperation {
 
   toJSON() {
     return {
-      message: {
+      type: 'Message',
+      value: {
         timestamp: this._timestamp,
         author: this._authorPublicKey,
-        content: this._content
-      },
-      remove: this._removed
+        content: this._content,
+        invert: this._removed
+      }
     };
   }
 }

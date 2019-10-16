@@ -50,7 +50,7 @@ function SideBarTabsView({
           <Tab value={CONTACTS_TAB} label="Contacts"/>
         </Tabs>
       </Paper>
-        <div className={classes.chatsList}>
+        <div className={`${classes.chatsList} ${classes.scroller}`}>
           <RoomsList
             rooms={rooms}
             contacts={contacts}

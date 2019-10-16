@@ -64,7 +64,7 @@ function CreateDocumentDialogView({
         )}
         {activeStep > 0 && (
           <DialogContent className={classes.dialogContent}>
-            <div className={`${classes.chipsContainer} scroller`}>
+            <div className={`${classes.chipsContainer} ${classes.scroller}`}>
               {[...participants].map(([publicKey, name]) => (
                 <ContactChip
                   color="primary"

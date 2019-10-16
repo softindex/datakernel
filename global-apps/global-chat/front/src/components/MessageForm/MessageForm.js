@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import Paper from '@material-ui/core/Paper';
 import SendIcon from '@material-ui/icons/Send';
 import messageFormStyles from './messageFormStyles';
@@ -20,6 +20,7 @@ function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
           }}
           className={classes.input}
           placeholder="Message"
+          autoFocus
           onChange={onChangeMessage.bind(this)}
           value={message}
         />
@@ -35,6 +36,10 @@ function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
 function MessageForm({classes, enqueueSnackbar}) {
   const chatRoomService = getInstance(ChatRoomService);
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    setMessage('');
+  }, [chatRoomService]);
 
   const props = {
     classes,

@@ -26,7 +26,7 @@ function DocumentEditorView({classes, onContentChange, content, ready}) {
       {ready && (
         <Paper className={classes.paper}>
           <textarea
-            className={classes.editor}
+            className={`${classes.editor} ${classes.scroller}`}
             value={content}
             onChange={onContentChange}
             ref={input => textInput = input}

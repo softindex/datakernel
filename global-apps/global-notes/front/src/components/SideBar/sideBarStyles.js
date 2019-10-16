@@ -12,16 +12,26 @@ const sideBarStyles = theme => ({
   },
   notesList: {
     flexGrow: 1,
-    overflow: 'hidden',
-    '&:hover': {
-      overflowY: 'auto'
-    },
     background: theme.palette.primary.contrastText,
-    marginBottom: theme.spacing(1)
+    marginBottom: theme.spacing(1),
+    '&:hover': {
+      '&::-webkit-scrollbar-thumb': {
+        background: theme.palette.secondary.grey
+      }
+    }
+  },
+  scroller: {
+    overflow: 'hidden',
+    scrollbarColor: 'transparent transparent',
+    scrollbarWidth: 'thin',
+    '&:hover': {
+      overflowY: 'auto',
+      scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+    }
   },
   button: {
     width: theme.spacing(41),
-    margin:  `${theme.spacing(2)}px auto`,
+    margin: `${theme.spacing(2)}px auto`,
     borderRadius: theme.spacing(9),
     marginTop: theme.spacing(2)
   },

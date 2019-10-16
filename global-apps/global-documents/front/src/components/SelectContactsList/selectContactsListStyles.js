@@ -2,12 +2,21 @@ const selectContactsListStyles = theme => {
   return {
     chatsList: {
       flexGrow: 1,
+      overflow: 'auto',
       '&:hover': {
-        overflow: 'auto'
+        '&::-webkit-scrollbar-thumb': {
+          background: theme.palette.secondary.grey
+        }
       },
-      overflow: 'hidden',
       height: theme.spacing(37),
       marginTop: theme.spacing(1)
+    },
+    scroller: {
+      scrollbarColor: 'transparent transparent',
+      scrollbarWidth: 'thin',
+      '&:hover': {
+        scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+      }
     },
     secondaryDividerText: {
       textAlign: 'center',

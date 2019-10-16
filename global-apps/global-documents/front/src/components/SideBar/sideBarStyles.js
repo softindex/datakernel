@@ -25,10 +25,20 @@ const sideBarStyles = theme => {
       flexGrow: 1,
       overflow: 'hidden',
       '&:hover': {
-        overflowY: 'auto'
+        overflowY: 'auto',
+        '&::-webkit-scrollbar-thumb': {
+          background: theme.palette.secondary.grey
+        }
       },
       background: theme.palette.primary.contrastText,
       marginBottom: theme.spacing(1)
+    },
+    scroller: {
+      scrollbarColor: 'transparent transparent',
+      scrollbarWidth: 'thin',
+      '&:hover': {
+        scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+      }
     },
     secondaryText: {
       textAlign: 'center',

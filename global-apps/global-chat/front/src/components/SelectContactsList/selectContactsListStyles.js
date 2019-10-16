@@ -9,6 +9,13 @@ const selectContactsListStyles = theme => {
         overflow: 'auto'
       },
     },
+    scroller: {
+      scrollbarColor: 'transparent transparent',
+      scrollbarWidth: 'thin',
+      '&:hover': {
+        scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+      }
+    },
     secondaryDividerText: {
       textAlign: 'center',
       margin: `${theme.spacing(2)}px 0px`

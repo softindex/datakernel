@@ -27,7 +27,7 @@ function NoteEditorView({classes, content, ready, onChange}) {
       {ready && (
         <Paper className={classes.paper}>
         <textarea
-          className={`${classes.noteEditor} scrollbar`}
+          className={`${classes.noteEditor} ${classes.scroller}`}
           value={content}
           onChange={onChange}
           ref={input => {

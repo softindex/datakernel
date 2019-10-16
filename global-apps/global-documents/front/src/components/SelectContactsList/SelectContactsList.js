@@ -26,7 +26,7 @@ function SelectContactsListView({
         <EmptySelectScreen/>
       )}
       {(search !== '' || filteredContacts.length !== 0) && (
-        <div className={`${classes.chatsList} scroller`}>
+        <div className={`${classes.chatsList} ${classes.scroller}`}>
           <List subheader={<li/>}>
             {filteredContacts.length > 0 && (
               <li>
