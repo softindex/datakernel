@@ -28,6 +28,7 @@
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-serializer</artifactId>
       <version>${project.version}</version>
+      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.openjdk.jmh</groupId>

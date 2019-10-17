@@ -17,7 +17,6 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import org.jetbrains.annotations.NotNull;
 
@@ -329,11 +328,13 @@ public final class SerializerExpressions {
 				jdkUnsafe != null ?
 						call(getUnsafe(), "getIntUnaligned",
 								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
-						fold(Expressions::or,
-								shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(24)),
-								shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(16)),
-								shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFF)), value(8)),
-								shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFF)), value(0))),
+						or(
+								or(
+										shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(24)),
+										shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(16))),
+								or(
+										shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFF)), value(8)),
+										shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFF)), value(0)))),
 				result -> sequence(
 						set(pos, add(pos, value(4))),
 						result));
@@ -344,15 +345,21 @@ public final class SerializerExpressions {
 				jdkUnsafe != null ?
 						call(getUnsafe(), "getLongUnaligned",
 								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
-						fold(Expressions::or,
-								shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFFL)), value(56)),
-								shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFFL)), value(48)),
-								shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFFL)), value(40)),
-								shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFFL)), value(32)),
-								shl(and(getArrayItem(buf, add(pos, value(4))), value(0xFFL)), value(24)),
-								shl(and(getArrayItem(buf, add(pos, value(5))), value(0xFFL)), value(16)),
-								shl(and(getArrayItem(buf, add(pos, value(6))), value(0xFFL)), value(8)),
-								shl(and(getArrayItem(buf, add(pos, value(7))), value(0xFFL)), value(0))),
+						or(
+								or(
+										or(
+												shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFFL)), value(56)),
+												shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFFL)), value(48))),
+										or(
+												shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFFL)), value(40)),
+												shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFFL)), value(32)))),
+								or(
+										or(
+												shl(and(getArrayItem(buf, add(pos, value(4))), value(0xFFL)), value(24)),
+												shl(and(getArrayItem(buf, add(pos, value(5))), value(0xFFL)), value(16))),
+										or(
+												shl(and(getArrayItem(buf, add(pos, value(6))), value(0xFFL)), value(8)),
+												shl(and(getArrayItem(buf, add(pos, value(7))), value(0xFFL)), value(0))))),
 				result -> sequence(
 						set(pos, add(pos, value(8))),
 						result));
@@ -486,7 +493,8 @@ public final class SerializerExpressions {
 	private static Expression constructUTF16String(Expression buf, Variable pos, Expression len) {
 		return constructor(String.class, let(newArray(char[].class, len), arr ->
 						sequence(loop(value(0), len, i ->
-										setArrayItem(arr, i, cast(readShort(buf, pos), char.class))),
+										setArrayItem(arr, i, let(add(pos, mul(i, value(2))), newPos -> readChar(buf, newPos)))),
+								set(pos, add(pos, mul(len, value(2)))),
 								arr)),
 				value(0), len);
 	}
