@@ -18,17 +18,9 @@ package io.datakernel.codegen;
 
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionCallStatic implements Expression {
@@ -44,34 +36,6 @@ final class ExpressionCallStatic implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		List<Class<?>> argumentClasses = new ArrayList<>();
-		for (Expression argument : arguments) {
-			Type argumentType = argument.load(ctx);
-			if (argumentType.equals(getType(Object[].class))) {
-				argumentClasses.add(Object[].class);
-			} else {
-				argumentClasses.add(getJavaType(ctx.getClassLoader(), argumentType));
-			}
-		}
-
-		Class<?>[] arguments = argumentClasses.toArray(new Class<?>[]{});
-		Type returnType;
-		Method method;
-		try {
-			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), Type.getType(owner));
-			method = ownerJavaType.getMethod(name, arguments);
-			Class<?> returnClass = method.getReturnType();
-			returnType = getType(returnClass);
-		} catch (NoSuchMethodException ignored) {
-			throw new RuntimeException(format("No static method %s.%s(%s). %s",
-					owner.getName(),
-					name,
-					argumentClasses.stream().map(Objects::toString).collect(joining(",")),
-					exceptionInGeneratedClass(ctx)));
-
-		}
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		g.invokeStatic(Type.getType(owner), org.objectweb.asm.commons.Method.getMethod(method));
-		return returnType;
+		return ctx.invokeStatic(getType(owner), name, arguments);
 	}
 }

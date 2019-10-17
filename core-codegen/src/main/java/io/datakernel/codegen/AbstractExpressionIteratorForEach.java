@@ -24,7 +24,6 @@ import java.util.Iterator;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.codegen.Utils.tryGetJavaType;
 import static org.objectweb.asm.Type.getType;
 
 public abstract class AbstractExpressionIteratorForEach implements Expression {
@@ -53,7 +52,7 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 
 		VarLocal varIter = newLocal(ctx, getType(Iterator.class));
 
-		Class<?> t = tryGetJavaType(collectionType);
+		Class<?> t = ctx.toJavaType(collectionType);
 		if (t.isInstance(Iterator.class) || t == Iterator.class) {
 			// do nothing
 		} else {

@@ -21,7 +21,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.INT_TYPE;
@@ -65,7 +64,7 @@ final class ExpressionNeg implements Expression {
 		}
 
 		throw new RuntimeException(format("%s is not primitive. %s",
-				getJavaType(ctx.getClassLoader(), argType),
+				ctx.toJavaType(argType),
 				exceptionInGeneratedClass(ctx))
 		);
 	}

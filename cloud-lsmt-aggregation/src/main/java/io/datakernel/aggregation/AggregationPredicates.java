@@ -1060,10 +1060,9 @@ public class AggregationPredicates {
 		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
 			return E.cmpNe(
 					E.value(false),
-					E.call(E.call(E.value(Pattern.compile(regexp)), "matcher", E.cast(
+					E.call(E.call(E.value(Pattern.compile(regexp)), "matcher",
 							E.callStatic(String.class, "valueOf",
-									E.cast(E.property(record, key.replace('.', '$')), Object.class)),
-							CharSequence.class)), "matches"));
+									E.property(record, key.replace('.', '$')))), "matches"));
 		}
 
 		@Override

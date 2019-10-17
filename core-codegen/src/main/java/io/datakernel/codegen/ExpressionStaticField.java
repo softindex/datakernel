@@ -23,7 +23,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
@@ -41,7 +40,7 @@ final class ExpressionStaticField implements Variable {
 		Type fieldType;
 		Field field;
 		try {
-			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), Type.getType(owner));
+			Class<?> ownerJavaType = ctx.toJavaType(Type.getType(owner));
 			field = ownerJavaType.getField(name);
 			Class<?> type = field.getType();
 			fieldType = getType(type);

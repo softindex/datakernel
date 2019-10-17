@@ -17,19 +17,10 @@
 package io.datakernel.codegen;
 
 import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.lang.reflect.Constructor;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
 import static org.objectweb.asm.Type.getType;
-import static org.objectweb.asm.commons.Method.getMethod;
 
 /**
  * Defines methods for using constructors from other classes
@@ -45,26 +36,6 @@ final class ExpressionConstructor implements Expression {
 
 	@Override
 	public Type load(Context ctx) {
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		g.newInstance(getType(type));
-		g.dup();
-
-		Class<?>[] fieldTypes = new Class<?>[fields.size()];
-		for (int i = 0; i < fields.size(); i++) {
-			Expression field = fields.get(i);
-			Type fieldType = field.load(ctx);
-			fieldTypes[i] = getJavaType(ctx.getClassLoader(), fieldType);
-		}
-
-		try {
-			Constructor<?> constructor = type.getConstructor(fieldTypes);
-			g.invokeConstructor(getType(type), getMethod(constructor));
-			return getType(type);
-		} catch (NoSuchMethodException ignored) {
-			throw new RuntimeException(format("No constructor %s.<init>(%s). %s",
-					type.getName(),
-					Arrays.stream(fieldTypes).map(Objects::toString).collect(joining(",")),
-					exceptionInGeneratedClass(ctx)));
-		}
+		return ctx.invokeConstructor(getType(type), fields);
 	}
 }

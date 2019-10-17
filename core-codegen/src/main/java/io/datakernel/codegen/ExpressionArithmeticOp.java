@@ -20,7 +20,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codegen.ArithmeticOperation.*;
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.isWrapperType;
+import static io.datakernel.codegen.Utils.unwrap;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArithmeticOp implements Expression {
@@ -79,7 +80,7 @@ final class ExpressionArithmeticOp implements Expression {
 			g.unbox(rightType);
 		}
 		if (op != SHL && op != SHR && op != USHR) {
-			Type resultType = getType(unifyArithmeticTypes(getJavaType(leftType), getJavaType(rightType)));
+			Type resultType = getType(unifyArithmeticTypes(ctx.toJavaType(leftType), ctx.toJavaType(rightType)));
 			if (leftType != resultType) {
 				int rightLocal = g.newLocal(rightType);
 				g.storeLocal(rightLocal);

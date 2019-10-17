@@ -26,7 +26,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Utils.invokeVirtualOrInterface;
 import static java.lang.Character.toUpperCase;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
@@ -65,7 +66,7 @@ final class Property implements Variable {
 	public static void setProperty(Context ctx, Type ownerType, String property, Type valueType) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		Class<?> valueClass = getJavaType(ctx.getClassLoader(), valueType);
+		Class<?> valueClass = ctx.toJavaType(valueType);
 
 		if (ctx.getSelfType().equals(ownerType)) {
 			Class<?> propertyClass = ctx.getFields().get(property);
@@ -81,7 +82,7 @@ final class Property implements Variable {
 			return;
 		}
 
-		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
+		Class<?> argumentClass = ctx.toJavaType(ownerType);
 
 		try {
 			Field javaProperty = argumentClass.getField(property);
@@ -185,7 +186,7 @@ final class Property implements Variable {
 			}
 		}
 
-		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
+		Class<?> argumentClass = ctx.toJavaType(ownerType);
 
 		try {
 			Field javaProperty = argumentClass.getField(property);

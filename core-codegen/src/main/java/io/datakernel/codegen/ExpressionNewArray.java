@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionNewArray implements Expression {
@@ -26,7 +27,7 @@ final class ExpressionNewArray implements Expression {
 	private final Expression length;
 
 	ExpressionNewArray(Class<?> type, Expression length) {
-		this.type = type;
+		this.type = checkArgument(type, Class::isArray);
 		this.length = length;
 	}
 
@@ -34,12 +35,8 @@ final class ExpressionNewArray implements Expression {
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		length.load(ctx);
-		if (getType(type).getSort() == Type.ARRAY) {
-			g.newArray(getType(getType(type).getDescriptor().substring(1)));
-			return getType(type);
-		} else {
-			g.newArray(getType(type));
-			return getType("[L" + type.getName() + ";");
-		}
+		assert getType(type).getSort() == Type.ARRAY;
+		g.newArray(getType(getType(type).getDescriptor().substring(1)));
+		return getType(type);
 	}
 }

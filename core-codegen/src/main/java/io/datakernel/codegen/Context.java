@@ -21,15 +21,18 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static io.datakernel.codegen.Utils.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
+import static java.lang.reflect.Modifier.isStatic;
+import static java.util.Arrays.asList;
+import static org.objectweb.asm.Type.VOID_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -123,44 +126,50 @@ public final class Context {
 		return method;
 	}
 
-	public Type invoke(Expression owner, String methodName, Expression... arguments) {
-		Type ownerType = owner.load(this);
-		Type[] argumentTypes = new Type[arguments.length];
-		for (int i = 0; i < arguments.length; i++) {
-			Expression argument = arguments[i];
-			argumentTypes[i] = argument.load(this);
-		}
-		return invoke(ownerType, methodName, argumentTypes);
-	}
-
-	public Type invoke(Type ownerType, String methodName, Type... argumentTypes) {
-		Class<?>[] argumentClasses = Stream.of(argumentTypes).map(type -> getJavaType(getClassLoader(), type)).toArray(Class[]::new);
-		try {
-			if (!getSelfType().equals(ownerType)) {
-				Class<?> javaOwnerType = getJavaType(getClassLoader(), ownerType);
-				java.lang.reflect.Method javaMethod = javaOwnerType.getMethod(methodName, argumentClasses);
-				Type returnType = getType(javaMethod.getReturnType());
-				invokeVirtualOrInterface(g, javaOwnerType, new org.objectweb.asm.commons.Method(methodName, returnType, argumentTypes));
-				return returnType;
+	public Class<?> toJavaType(Type type) {
+		if (type.equals(getSelfType()))
+			throw new IllegalArgumentException();
+		int sort = type.getSort();
+		if (sort == Type.BOOLEAN)
+			return boolean.class;
+		if (sort == Type.CHAR)
+			return char.class;
+		if (sort == Type.BYTE)
+			return byte.class;
+		if (sort == Type.SHORT)
+			return short.class;
+		if (sort == Type.INT)
+			return int.class;
+		if (sort == Type.FLOAT)
+			return float.class;
+		if (sort == Type.LONG)
+			return long.class;
+		if (sort == Type.DOUBLE)
+			return double.class;
+		if (sort == Type.VOID)
+			return void.class;
+		if (sort == Type.OBJECT) {
+			try {
+				return classLoader.loadClass(type.getClassName());
+			} catch (ClassNotFoundException e) {
+				throw new IllegalArgumentException(format("No class %s in class loader", type.getClassName()), e);
 			}
-			for (Method method : getMethods().keySet()) {
-				if (method.getName().equals(methodName) && method.getArgumentTypes().length == argumentTypes.length) {
-					Type[] methodTypes = method.getArgumentTypes();
-					if (IntStream.range(0, argumentTypes.length).allMatch(i -> methodTypes[i].equals(argumentTypes[i]))) {
-						g.invokeVirtual(ownerType, method);
-						return method.getReturnType();
-					}
+		}
+		if (sort == Type.ARRAY) {
+			Class<?> result;
+			if (type.equals(getType(Object[].class))) {
+				result = Object[].class;
+			} else {
+				String className = type.getDescriptor().replace('/', '.');
+				try {
+					result = Class.forName(className);
+				} catch (ClassNotFoundException e) {
+					throw new IllegalArgumentException(format("No class %s in Class.forName", className), e);
 				}
 			}
-			throw new NoSuchMethodException();
-		} catch (NoSuchMethodException ignored) {
-			throw new IllegalArgumentException(
-					format("No method %s.%s(%s). %s",
-							ownerType.getClassName(),
-							methodName,
-							Arrays.stream(argumentClasses).map(Objects::toString).collect(joining(",")),
-							exceptionInGeneratedClass(this)));
+			return result;
 		}
+		throw new IllegalArgumentException(format("No Java type for %s", type.getClassName()));
 	}
 
 	public void cast(Type type, Type targetType) {
@@ -170,7 +179,7 @@ public final class Context {
 			return;
 		}
 
-		if (targetType == Type.VOID_TYPE) {
+		if (targetType == VOID_TYPE) {
 			if (type.getSize() == 1)
 				g.pop();
 			if (type.getSize() == 2)
@@ -178,14 +187,14 @@ public final class Context {
 			return;
 		}
 
-		if (type == Type.VOID_TYPE) {
+		if (type == VOID_TYPE) {
 			throw new RuntimeException(format("Can't cast VOID_TYPE to %s. %s",
 					targetType.getClassName(),
 					exceptionInGeneratedClass(this)));
 		}
 
 		if (type.equals(getSelfType())) {
-			Class<?> javaType = getJavaType(getClassLoader(), targetType);
+			Class<?> javaType = toJavaType(targetType);
 			if (javaType.isAssignableFrom(getMainClass())) {
 				return;
 			}
@@ -201,7 +210,7 @@ public final class Context {
 		}
 
 		if (!type.equals(getSelfType()) && !targetType.equals(getSelfType()) &&
-				getJavaType(getClassLoader(), targetType).isAssignableFrom(getJavaType(getClassLoader(), type))) {
+				toJavaType(targetType).isAssignableFrom(toJavaType(type))) {
 			return;
 		}
 
@@ -235,6 +244,150 @@ public final class Context {
 		}
 
 		g.checkCast(targetType);
+	}
+
+	public Type invoke(Expression owner, String methodName, Expression... arguments) {
+		return invoke(owner, methodName, asList(arguments));
+	}
+
+	public Type invoke(Expression owner, String methodName, List<Expression> arguments) {
+		Type ownerType = owner.load(this);
+		Type[] argumentTypes = new Type[arguments.size()];
+		for (int i = 0; i < arguments.size(); i++) {
+			Expression argument = arguments.get(i);
+			argumentTypes[i] = argument.load(this);
+		}
+		return invoke(ownerType, methodName, argumentTypes);
+	}
+
+	public Type invoke(Type ownerType, String methodName, Type... argumentTypes) {
+		Class<?>[] arguments = Stream.of(argumentTypes).map(this::toJavaType).toArray(Class[]::new);
+		Method foundMethod;
+		if (ownerType.equals(getSelfType())) {
+			foundMethod = findMethod(
+					getMethods().keySet().stream(),
+					methodName,
+					arguments);
+			g.invokeVirtual(ownerType, foundMethod);
+		} else {
+			Class<?> javaOwnerType = toJavaType(ownerType);
+			foundMethod = findMethod(
+					Arrays.stream(javaOwnerType.getMethods())
+							.filter(m -> !isStatic(m.getModifiers()))
+							.map(m -> new Method(m.getName(),
+									getType(m.getReturnType()),
+									Arrays.stream(m.getParameterTypes()).map(Type::getType).toArray(Type[]::new))),
+					methodName,
+					arguments);
+			if (javaOwnerType.isInterface()) {
+				g.invokeInterface(ownerType, foundMethod);
+			} else {
+				g.invokeVirtual(ownerType, foundMethod);
+			}
+		}
+		return foundMethod.getReturnType();
+	}
+
+	public Type invokeStatic(Type ownerType, String methodName, Expression... arguments) {
+		return invokeStatic(ownerType, methodName, asList(arguments));
+	}
+
+	public Type invokeStatic(Type ownerType, String methodName, List<Expression> arguments) {
+		Type[] argumentTypes = new Type[arguments.size()];
+		for (int i = 0; i < arguments.size(); i++) {
+			Expression argument = arguments.get(i);
+			argumentTypes[i] = argument.load(this);
+		}
+		return invokeStatic(ownerType, methodName, argumentTypes);
+	}
+
+	public Type invokeStatic(Type ownerType, String methodName, Type... argumentTypes) {
+		Class<?>[] arguments = Stream.of(argumentTypes).map(this::toJavaType).toArray(Class[]::new);
+		Method foundMethod;
+		if (ownerType.equals(getSelfType())) {
+			foundMethod = findMethod(
+					getStaticMethods().keySet().stream(),
+					methodName,
+					arguments);
+		} else {
+			foundMethod = findMethod(
+					Arrays.stream(toJavaType(ownerType).getMethods())
+							.filter(m -> isStatic(m.getModifiers()))
+							.map(m -> new Method(m.getName(),
+									getType(m.getReturnType()),
+									Arrays.stream(m.getParameterTypes()).map(Type::getType).toArray(Type[]::new))),
+					methodName,
+					arguments);
+		}
+		g.invokeStatic(ownerType, foundMethod);
+		return foundMethod.getReturnType();
+	}
+
+	public Type invokeConstructor(Type ownerType, Expression... arguments) {
+		return invokeConstructor(ownerType, asList(arguments));
+	}
+
+	public Type invokeConstructor(Type ownerType, List<Expression> arguments) {
+		g.newInstance(ownerType);
+		g.dup();
+
+		Type[] argumentTypes = new Type[arguments.size()];
+		for (int i = 0; i < arguments.size(); i++) {
+			argumentTypes[i] = arguments.get(i).load(this);
+		}
+		return invokeConstructor(ownerType, argumentTypes);
+	}
+
+	public Type invokeConstructor(Type ownerType, Type... argumentTypes) {
+		Class<?>[] arguments = Stream.of(argumentTypes).map(this::toJavaType).toArray(Class[]::new);
+		checkArgument(!ownerType.equals(getSelfType()));
+		Method foundMethod = findMethod(
+				Arrays.stream(toJavaType(ownerType).getConstructors())
+						.map(m -> new Method("<init>", VOID_TYPE,
+								Arrays.stream(m.getParameterTypes()).map(Type::getType).toArray(Type[]::new))),
+				"<init>",
+				arguments);
+		g.invokeConstructor(ownerType, foundMethod);
+		return ownerType;
+	}
+
+	private Method findMethod(Stream<Method> methods, String name, Class<?>[] arguments) {
+		Method foundMethod = null;
+		Class<?>[] foundMethodArguments = null;
+
+		for (Iterator<Method> it = methods.iterator(); it.hasNext(); ) {
+			Method method = it.next();
+			if (!name.equals(method.getName())) continue;
+			Class[] methodArguments = Stream.of(method.getArgumentTypes()).map(this::toJavaType).toArray(Class[]::new);
+			if (!isAssignable(methodArguments, arguments)) {
+				continue;
+			}
+			if (foundMethod == null) {
+				foundMethod = method;
+				foundMethodArguments = methodArguments;
+			} else {
+				if (isAssignable(foundMethodArguments, methodArguments)) {
+					foundMethod = method;
+					foundMethodArguments = methodArguments;
+				} else if (isAssignable(methodArguments, foundMethodArguments)) {
+					// do nothing
+				} else {
+					throw new IllegalArgumentException("Ambiguous method: " + method + " " + Arrays.toString(arguments));
+				}
+			}
+		}
+
+		if (foundMethod == null) {
+			throw new IllegalArgumentException("Method not found: " + name + " " + Arrays.toString(arguments));
+		}
+
+		return foundMethod;
+	}
+
+	private static boolean isAssignable(Class<?>[] to, Class<?>[] from) {
+		if (to.length != from.length) return false;
+		return IntStream.range(0, from.length)
+				.allMatch(i -> to[i].isAssignableFrom(from[i]));
 	}
 
 }

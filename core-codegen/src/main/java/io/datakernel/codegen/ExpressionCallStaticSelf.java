@@ -18,16 +18,8 @@ package io.datakernel.codegen;
 
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
-import org.objectweb.asm.commons.Method;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
-
-import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.joining;
 
 final class ExpressionCallStaticSelf implements Expression {
 	private final String methodName;
@@ -38,41 +30,8 @@ final class ExpressionCallStaticSelf implements Expression {
 		this.arguments = expressions;
 	}
 
-	public Type type(Type[] argumentTypes, Context ctx) {
-		for (Method m : ctx.getStaticMethods().keySet()) {
-			if (m.getName().equals(methodName) && m.getArgumentTypes().length == argumentTypes.length) {
-				Type[] methodTypes = m.getArgumentTypes();
-				boolean found = true;
-				for (int i = 0; i < argumentTypes.length; i++) {
-					if (!methodTypes[i].equals(argumentTypes[i])) {
-						found = false;
-						break;
-					}
-				}
-				if (found) {
-					return m.getReturnType();
-				}
-			}
-		}
-		throw new RuntimeException(format("No method %s.%s(%s). %s",
-				ctx.getSelfType().getClassName(),
-				methodName,
-				Arrays.stream(argumentTypes).map(Objects::toString).collect(joining(",")),
-				exceptionInGeneratedClass(ctx)));
-	}
-
 	@Override
 	public Type load(Context ctx) {
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
-
-		Type[] argumentTypes = new Type[arguments.size()];
-		for (int i = 0; i < arguments.size(); i++) {
-			Type argumentType = arguments.get(i).load(ctx);
-			argumentTypes[i] = argumentType;
-		}
-
-		Type returnType = type(argumentTypes, ctx);
-		g.invokeStatic(ctx.getSelfType(), new Method(methodName, returnType, argumentTypes));
-		return returnType;
+		return ctx.invokeStatic(ctx.getSelfType(), methodName, arguments);
 	}
 }

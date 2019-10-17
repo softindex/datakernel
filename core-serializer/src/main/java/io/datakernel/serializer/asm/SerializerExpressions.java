@@ -20,10 +20,8 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-
 import static io.datakernel.codegen.Expressions.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Provides methods for writing primitives
@@ -38,7 +36,7 @@ public final class SerializerExpressions {
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes, Expression bytesOff, Expression bytesLen) {
 		return ensureRemaining(buf, pos, bytesLen,
 				sequence(
-						callStatic(System.class, "arraycopy", cast(bytes, Object.class), bytesOff, cast(buf, Object.class), pos, bytesLen),
+						callStatic(System.class, "arraycopy", bytes, bytesOff, buf, pos, bytesLen),
 						set(pos, add(pos, bytesLen))));
 	}
 
@@ -144,7 +142,7 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression writeUTF8(Expression buf, Variable pos, Expression value) {
-		return let(call(value, "getBytes", value(StandardCharsets.UTF_8, Charset.class)),
+		return let(call(value, "getBytes", value(UTF_8)),
 				bytes -> sequence(
 						writeVarInt(buf, pos, length(bytes)),
 						writeBytes(buf, pos, bytes)));
@@ -153,7 +151,7 @@ public final class SerializerExpressions {
 	public static Expression writeUTF8Nullable(Expression buf, Variable pos, Expression value) {
 		return ifThenElse(isNull(value),
 				writeByte(buf, pos, value((byte) 0)),
-				let(call(value, "getBytes", value(StandardCharsets.UTF_8, Charset.class)),
+				let(call(value, "getBytes", value(UTF_8)),
 						bytes -> sequence(
 								writeVarInt(buf, pos, add(length(bytes), value(1))),
 								writeBytes(buf, pos, bytes))));
@@ -196,7 +194,7 @@ public final class SerializerExpressions {
 
 	public static Expression readBytes(Expression buf, Variable pos, Expression result, Expression resultPos, Expression length) {
 		return sequence(
-				callStatic(System.class, "arraycopy", cast(buf, Object.class), pos, cast(result, Object.class), resultPos, length),
+				callStatic(System.class, "arraycopy", buf, pos, result, resultPos, length),
 				set(pos, add(pos, length)));
 	}
 
