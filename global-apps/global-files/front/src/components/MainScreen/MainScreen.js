@@ -1,32 +1,18 @@
 import React from 'react';
 import localforage from 'localforage';
-import checkAuth from './HOC/checkAuth';
-import FSService from '../modules/fs/FSService';
-import GlobalFS from '../common/GlobalFS';
-import OfflineGlobalFS from '../common/OfflineGlobalFS';
-import ItemList from './ItemList';
-import SideBar from './SideBar/SideBar';
-import Uploading from './Uploading';
-import FSContext from '../modules/fs/FSContext';
-import AuthContext from '../modules/auth/AuthContext';
-import connectService from '../common/connectService';
-import Header from "./Header";
+import checkAuth from '../HOC/checkAuth';
+import FSService from '../../modules/fs/FSService';
+import GlobalFS from '../../common/GlobalFS';
+import OfflineGlobalFS from '../../common/OfflineGlobalFS';
+import ItemList from '../ItemList';
+import SideBar from '../SideBar';
+import Uploading from '../Uploading';
+import FSContext from '../../modules/fs/FSContext';
+import AuthContext from '../../modules/auth/AuthContext';
+import connectService from '../../common/connectService';
+import Header from "../Header/Header";
 import {withStyles} from "@material-ui/core";
-
-const styles = theme => {
-  return {
-    root: {
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column'
-    },
-    row: {
-      display: 'flex',
-      flexDirection: 'row',
-      flexGrow: 1
-    }
-  }
-};
+import mainScreenStyles from "./mainScreenStyles";
 
 class MainScreen extends React.Component {
   constructor(props) {
@@ -77,6 +63,6 @@ class MainScreen extends React.Component {
   }
 }
 
-export default withStyles(styles)(
+export default withStyles(mainScreenStyles)(
   connectService(AuthContext, ({publicKey}) => ({publicKey}))(checkAuth(MainScreen))
 );

@@ -3,12 +3,7 @@ import MaterialButton from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import {withStyles} from "@material-ui/core";
 import classNames from 'classnames';
-
-const buttonStyles = theme => ({
-  rounded: {
-    borderRadius: theme.spacing.unit * 10
-  }
-});
+import buttonStyles from "./buttonStyles";
 
 class Button extends Component {
   state = {

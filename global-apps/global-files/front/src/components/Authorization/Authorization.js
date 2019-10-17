@@ -1,7 +1,7 @@
 import React from 'react';
 import {Redirect} from 'react-router-dom';
-import AuthContext from '../modules/auth/AuthContext';
-import connectService from '../common/connectService';
+import AuthContext from '../../modules/auth/AuthContext';
+import connectService from '../../common/connectService';
 
 function Authorization({authorized}) {
   if (authorized) {

@@ -6,13 +6,13 @@ import Typography from '@material-ui/core/Typography';
 import List from '@material-ui/core/List';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
-import CircularProgress from '../theme/CircularProgress';
+import CircularProgress from '../CircularProgress/CircularProgress';
 import CloseIcon from '@material-ui/icons/Close';
 import IconButton from '@material-ui/core/IconButton';
 import uploadingStyles from '../Uploading/uploadingStyles';
 import Paper from '@material-ui/core/Paper';
 import {getFileTypeByName} from '../../common/utils';
-import FileTypeIcon from '../theme/FileTypeIcon';
+import FileTypeIcon from '../FileTypeIcon/FileTypeIcon';
 
 function Uploading({files, uploads, classes, onClose}) {
   const items = uploads.map(item => {
@@ -61,7 +61,7 @@ function Uploading({files, uploads, classes, onClose}) {
 
   return null;
 }
-  
+
 export default withStyles(uploadingStyles)(connectService(FSContext, ({uploads, files}, fsService) => ({
   uploads: [...uploads.values()],
   files,

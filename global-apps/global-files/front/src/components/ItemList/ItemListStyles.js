@@ -4,7 +4,7 @@ const itemListStyles = theme => ({
     maxWidth: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: theme.spacing.unit * 2,
+    padding: theme.spacing(2),
     flexGrow: '1'
   },
   wrapper: {
@@ -20,17 +20,17 @@ const itemListStyles = theme => ({
     flexWrap: 'wrap'
   },
   section: {
-    margin: `${theme.spacing.unit * 2}px 0`,
+    margin: `${theme.spacing(2)}px 0`,
     flexDirection: 'column'
   },
   emptyIndicator: {
-    padding: theme.spacing.unit * 2,
-    width: theme.spacing.unit * 8,
-    height: theme.spacing.unit * 8,
+    padding: theme.spacing(2),
+    width: theme.spacing(8),
+    height: theme.spacing(8),
     backgroundColor: theme.palette.grey[300],
     color: theme.palette.grey[600],
     borderRadius: '50%',
-    marginRight: theme.spacing.unit * 2
+    marginRight: theme.spacing(2)
   }
 });
 

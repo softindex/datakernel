@@ -6,9 +6,9 @@ import {withStyles} from '@material-ui/core/styles';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
 import StoreIcon from '@material-ui/icons/Store';
 import Grid from '@material-ui/core/Grid';
-import SignUpAbstractionImage from './SignUpAbstractionImage';
-import Button from '../theme/Button';
-import Snackbar from '../theme/Snackbar';
+import {SignUpAbstractionImage} from 'global-apps-common';
+import Button from '../Button/Button';
+import Snackbar from '../Snackbar/Snackbar';
 import signUpStyles from './signUpStyles';
 
 class SignUp extends React.Component {

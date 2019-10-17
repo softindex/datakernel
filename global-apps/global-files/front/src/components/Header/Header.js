@@ -15,32 +15,9 @@ import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import MenuItem from '@material-ui/core/MenuItem';
 import FileSaver from 'file-saver';
-import AuthContext from '../modules/auth/AuthContext';
-import connectService from '../common/connectService';
-
-const styles = theme => {
-  return {
-    root: {
-      boxShadow: 'none',
-      backgroundColor: theme.palette.background.default
-    },
-    logo: {
-      [theme.breakpoints.down('md')]: {
-        display: 'none'
-      },
-    },
-    grow: {
-      flexGrow: 1
-    },
-    drawerTrigger: {
-      display: 'none',
-      marginRight: theme.spacing.unit * 2,
-      [theme.breakpoints.down('md')]: {
-        display: 'block'
-      },
-    }
-  };
-};
+import AuthContext from '../../modules/auth/AuthContext';
+import connectService from '../../common/connectService';
+import headerStyles from "./headerStyles";
 
 class Header extends React.Component {
   state = {
@@ -118,7 +95,7 @@ class Header extends React.Component {
 }
 
 export default withRouter(
-  withStyles(styles)(
+  withStyles(headerStyles)(
     connectService(AuthContext, (store, authService) => ({authService}))(Header)
   )
 );

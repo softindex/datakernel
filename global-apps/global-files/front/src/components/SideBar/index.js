@@ -1,7 +1,7 @@
 import React from 'react';
 import FSContext from '../../modules/fs/FSContext';
 import connectService from '../../common/connectService';
-import PromptDialog from '../theme/PromptDialog';
+import PromptDialog from '../PromptDialog/PromptDialog';
 import {withStyles} from "@material-ui/core";
 import Drawer from '@material-ui/core/Drawer';
 import List from '@material-ui/core/List';
@@ -17,12 +17,12 @@ import Menu from '@material-ui/core/Menu';
 import MenuList from '@material-ui/core/MenuList';
 import MenuItem from '@material-ui/core/MenuItem';
 import Divider from '@material-ui/core/Divider';
-import Snackbar from '../theme/Snackbar';
+import Snackbar from '../Snackbar/Snackbar';
 import withWidth, {isWidthDown} from '@material-ui/core/withWidth';
 import Link from "react-router-dom/es/Link";
 import sideBarStyles from './sideBarStyles';
 
-class SideBar extends React.Component {
+class Index extends React.Component {
   state = {
     fabElement: null,
     folderFormIsOpen: false,
@@ -184,5 +184,5 @@ class SideBar extends React.Component {
 }
 
 export default withWidth()(withStyles(sideBarStyles)(
-  connectService(FSContext, (state, fsService) => ({fsService}))(SideBar)
+  connectService(FSContext, (state, fsService) => ({fsService}))(Index)
 ));

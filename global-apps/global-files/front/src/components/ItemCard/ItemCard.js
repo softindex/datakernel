@@ -14,45 +14,7 @@ import Typography from '@material-ui/core/Typography';
 import {Link} from 'react-router-dom';
 import path from 'path';
 import {getFileTypeByName} from '../../common/utils';
-
-const itemCardStyles = theme => ({
-  root: {
-    width: theme.spacing.unit * 25,
-    marginRight: theme.spacing.unit * 2,
-    marginBottom: theme.spacing.unit * 2,
-    [theme.breakpoints.down('xs')]: {
-      width: `calc(50% - ${theme.spacing.unit / 2}px)`,
-      marginRight: theme.spacing.unit,
-      marginBottom: theme.spacing.unit,
-      '&:nth-child(even)': {
-        marginRight: 0
-      }
-    }
-  },
-  headerItem: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    height: theme.spacing.unit * 20,
-    backgroundColor: theme.palette.grey[200]
-  },
-  fileIcon: {
-    fontSize: 80,
-    color: theme.palette.grey[800]
-  },
-  folderIcon: {
-    fontSize: 40,
-    color: theme.palette.grey[800],
-    marginRight: theme.spacing.unit * 2
-  },
-  folderGroup: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: `${theme.spacing.unit}px ${theme.spacing.unit * 2}px`
-  }
-});
+import itemCardStyles from "./itemCardStyles";
 
 class ItemCard extends Component {
 

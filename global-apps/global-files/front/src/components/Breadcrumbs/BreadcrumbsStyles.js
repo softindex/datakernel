@@ -3,12 +3,12 @@ const breadcrumbsStyles = theme => ({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.unit,
-    minHeight: theme.spacing.unit * 6
+    marginBottom: theme.spacing(1),
+    minHeight: theme.spacing(6)
   },
   icon: {
-    marginRight: theme.spacing.unit,
-    marginLeft: theme.spacing.unit
+    marginRight: theme.spacing(1),
+    marginLeft: theme.spacing(1)
   },
   button: {
     textTransform: 'capitalize'
@@ -22,7 +22,7 @@ const breadcrumbsStyles = theme => ({
     flexGrow: 1
   },
   dropDownIcon: {
-    marginLeft: theme.spacing.unit
+    marginLeft: theme.spacing(1)
   }
 });
 

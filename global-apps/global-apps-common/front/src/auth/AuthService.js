@@ -71,5 +71,11 @@ export class AuthService extends Service {
     let keys = curve.keyFromPrivate(privateKey, 'hex');
     return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
   };
+
+  createKeysFile() {
+    return new File([this.state.publicKey + '-' + this.state.privateKey], 'keys.dat', {
+      type: 'text/plain;charset=utf-8'
+    }); // TODO remove publicKey
+  }
 }
 

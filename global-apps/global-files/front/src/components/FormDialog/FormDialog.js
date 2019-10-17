@@ -6,7 +6,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 
-class formDialog extends React.Component {
+class FormDialog extends React.Component {
 
   constructor(props) {
     super(props);
@@ -57,4 +57,4 @@ class formDialog extends React.Component {
   }
 }
 
-export default formDialog;
+export default FormDialog;
