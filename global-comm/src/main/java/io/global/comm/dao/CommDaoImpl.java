@@ -12,6 +12,7 @@ import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOTState;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;

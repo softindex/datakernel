@@ -1,6 +1,6 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import {withRouter} from "react-router-dom";
+import {withRouter, Redirect} from "react-router-dom";
 import {connectService} from "../../service/connectService";
 import {AuthContext} from "../../auth/AuthContext";
 import StoreIcon from '@material-ui/icons/Store';
@@ -8,6 +8,7 @@ import AttachFileIcon from '@material-ui/icons/AttachFile';
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Button from "@material-ui/core/Button";
+import CircularProgress from "@material-ui/core/CircularProgress";
 import signUpStyles from "./signUpStyles";
 import {SignUpAbstractionImage} from "../SignUpAbstractionImage/SignUpAbstractionImage";
 import {withSnackbar} from "notistack";
@@ -48,6 +49,17 @@ class SignUp extends React.Component {
   }
 
   render() {
+    if (this.props.error) {
+      this.props.enqueueSnackbar(this.props.error.message, {
+        variant: 'error'
+      });
+    }
+    if (this.props.authorized) {
+      return <Redirect to={"/"}/>
+    }
+    if (this.props.loading) {
+      return <CircularProgress/>
+    }
     return (
       <>
         <div className={this.props.classes.root}>
@@ -124,8 +136,8 @@ class SignUp extends React.Component {
 }
 
 export default connectService(
-  AuthContext, ({authorized, loading}, accountService) => (
-    {authorized, loading, accountService})
+  AuthContext, ({authorized, loading, error}, accountService) => (
+    {authorized, loading, error, accountService})
 )(
   withRouter(withSnackbar(withStyles(signUpStyles)(SignUp)))
 );

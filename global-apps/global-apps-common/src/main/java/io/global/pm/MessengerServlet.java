@@ -7,11 +7,12 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.global.common.KeyPair;
-import io.global.common.PrivKey;
 import io.global.common.PubKey;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
+import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.util.Preconditions.checkState;
 import static io.global.pm.PmUtils.getMessageCodec;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -51,18 +52,6 @@ public final class MessengerServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.then(servlet -> request -> {
-					String key = request.getCookie("Key");
-					if (key == null) {
-						return Promise.of(HttpResponse.ofCode(400).withPlainText("Cookie 'Key' is required"));
-					}
-					try {
-						PrivKey privKey = PrivKey.fromString(key);
-						request.attach(privKey.computeKeys());
-						return servlet.serve(request);
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				});
+				.then(onRequest(request -> checkState(request.getAttachmentKeys().contains(KeyPair.class), "Key pair should be attached to a request")));
 	}
 }

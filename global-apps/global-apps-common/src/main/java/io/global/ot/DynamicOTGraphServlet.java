@@ -52,23 +52,18 @@ public final class DynamicOTGraphServlet<D> implements AsyncServlet {
 	@NotNull
 	@Override
 	public Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException {
-		try {
-			String suffix = request.getPathParameters().get("suffix");
-			String repositoryName = repoPrefix + (suffix == null ? "" : ('/' + suffix));
-			String key = request.getCookie("Key");
-			if (key == null) return Promise.ofException(HttpException.ofCode(400, "Cookie 'Key' is required"));
-			KeyPair keys = PrivKey.fromString(key).computeKeys();
-			RepoID repoID = RepoID.of(keys, repositoryName);
-			MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
-			OTRepository<CommitId, D> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-			return repository.getHeads()
-					.then(heads -> loadGraph(repository, otSystem, heads, new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)))
-					.map(graph -> HttpResponse.ok200()
-							.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
-							.withBody(graph.toGraphViz().getBytes(UTF_8)));
-		} catch (ParseException e) {
-			return Promise.ofException(e);
-		}
+		String suffix = request.getPathParameters().get("suffix");
+		String repositoryName = repoPrefix + (suffix == null ? "" : ('/' + suffix));
+		KeyPair keys = request.getAttachment(KeyPair.class);
+		assert keys != null : "Key pair should be attached to request";
+		RepoID repoID = RepoID.of(keys, repositoryName);
+		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
+		OTRepository<CommitId, D> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
+		return repository.getHeads()
+				.then(heads -> loadGraph(repository, otSystem, heads, new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)))
+				.map(graph -> HttpResponse.ok200()
+						.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
+						.withBody(graph.toGraphViz().getBytes(UTF_8)));
 	}
 
 	private OTRepository<CommitId, D> getRepo(HttpRequest request) throws ParseException {

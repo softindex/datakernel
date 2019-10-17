@@ -84,10 +84,10 @@ function Drawer({classes, open, onClose, onLogout, publicKey}) {
 
 export default connectService(
   AuthContext,
-  ({publicKey}, contactsService) => ({
+  ({publicKey}, authService) => ({
     publicKey,
     onLogout() {
-      contactsService.logout();
+      authService.logout();
     }
   })
 )(

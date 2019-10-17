@@ -2,14 +2,13 @@ import path from 'path';
 import EventEmitter from 'events';
 
 class GlobalFS extends EventEmitter {
-  constructor(publicKey, url = '/') {
+  constructor(url = '/fs/') {
     super();
-    this._publicKey = publicKey;
     this._url = url;
   }
 
   async list() {
-    const response = await fetch(path.join(this._url, `list/${this._publicKey}`));
+    const response = await fetch(path.join(this._url, 'list'));
     const parsedResponse = await response.json();
     return parsedResponse
       .filter(item => !!item[3])
@@ -58,16 +57,12 @@ class GlobalFS extends EventEmitter {
     });
   }
 
-  async removeFile(fileName) {
-    await fetch(path.join(this._url, 'delete/' + fileName), {method: 'POST'});
-  }
-
   async remove(fileName) {
     await fetch(path.join(this._url, 'delete/' + fileName + '?revision=' + GlobalFS.getRevision()), {method: 'POST'});
   }
 
   _getDownloadLink(filepath) {
-    return path.join(this._url, 'download', this._publicKey, filepath);
+    return path.join(this._url, 'download', filepath);
   }
 
   static getRevision() {

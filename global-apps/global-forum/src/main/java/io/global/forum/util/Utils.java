@@ -1,7 +1,7 @@
 package io.global.forum.util;
 
 import io.datakernel.async.Promise;
-import io.datakernel.codec.registry.CodecRegistry;
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpException;
 import io.global.comm.pojo.IpRange;
@@ -22,7 +22,7 @@ public final class Utils {
 		throw new AssertionError();
 	}
 
-	public static final CodecRegistry REGISTRY = createCommRegistry()
+	public static final CodecFactory REGISTRY = createCommRegistry()
 			.with(ForumMetadata.class, registry -> tuple(ForumMetadata::new,
 					ForumMetadata::getName, STRING_CODEC,
 					ForumMetadata::getDescription, STRING_CODEC))

@@ -1,4 +1,4 @@
-package io.global.comm.pojo;
+package io.global.ot.session;
 
 import org.jetbrains.annotations.NotNull;
 

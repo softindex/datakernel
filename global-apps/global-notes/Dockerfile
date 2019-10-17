@@ -41,7 +41,7 @@ FROM openjdk:8-jre-alpine
 WORKDIR /app
 
 # properties layer
-COPY notes.properties* ./
+COPY global-notes.properties* ./
 
 COPY --from=build-java /build/target/notes.jar ./
 COPY --from=build-js /build/build ./front/build

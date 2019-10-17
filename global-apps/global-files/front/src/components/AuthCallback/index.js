@@ -1,28 +1,31 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import qs from 'query-string';
 import connectService from '../../common/connectService';
 import AuthContext from '../../modules/auth/AuthContext';
-import EC from 'elliptic';
-import {Redirect} from 'react-router-dom';
+import {Redirect, withRouter} from 'react-router-dom';
 
-const curve = new EC.ec('secp256k1');
+function AuthCallback({location, authWithToken}) {
+  const params = qs.parse(location.search);
 
-class AuthCallback extends React.Component {
-  render() {
-    let params = qs.parse(this.props.location.search);
-    let privateKey = params.privateKey;
-
-    if (privateKey) {
-      let keys = curve.keyFromPrivate(privateKey, 'hex');
-      const publicKey = `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
-
-      this.props.authService.authByKeys(publicKey, privateKey);
+  useEffect(() => {
+    if (params.token) {
+      authWithToken(params.token);
+    } else {
+      console.error('No token received');
     }
+  });
 
-    return <Redirect to='/'/>;
-  }
-
+  return <Redirect to='/'/>;
 }
 
-export default connectService(AuthContext, (state, authService) => ({authService}))(AuthCallback);
+export default connectService(
+  AuthContext, ({}, accountService) => ({
+    authWithToken(token) {
+      accountService.authWithToken(token);
+    }
+  })
+)
+(
+  withRouter(AuthCallback)
+);
 

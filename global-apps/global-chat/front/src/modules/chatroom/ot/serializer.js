@@ -2,11 +2,16 @@ import ChatRoomOTOperation from './ChatRoomOTOperation';
 
 const serializer = {
   serialize(value) {
-    return value;
+    return value.toJSON();
   },
 
   deserialize(value) {
-    return ChatRoomOTOperation.createFromJson(value);
+    switch (value.type) {
+      // TODO: case 'Call', case 'Drop', case 'Handle'
+      case 'Message':
+        return ChatRoomOTOperation.createFromJson(value);
+    }
+    throw new Error('Unknown type');
   }
 };
 

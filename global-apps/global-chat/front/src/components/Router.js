@@ -1,9 +1,8 @@
 import React from 'react';
 import {BrowserRouter as ReactRouter, Route, Switch} from 'react-router-dom';
 import MainScreen from "./MainScreen/MainScreen";
-import {SignUp} from "global-apps-common";
+import {OAuthCallback, SignUp} from "global-apps-common";
 import {withSnackbar} from 'notistack';
-import {OAuthCallback} from "global-apps-common";
 import InviteScreen from "./InviteScreen/InviteScreen";
 import InitAuthorizedServices from './InitAuthorizedServices/InitAuthorizedServices';
 
@@ -17,7 +16,7 @@ function Router() {
           component={() => (
             <SignUp
               title="Global Chat"
-              description="An application that allows you to chats with your friends.
+              description="An application that allows you to chat with your friends.
               It is easy to manage, and synchronize on all devices."
             />
           )}

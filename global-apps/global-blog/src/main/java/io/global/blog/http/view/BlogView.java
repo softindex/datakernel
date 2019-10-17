@@ -5,7 +5,7 @@ import io.datakernel.async.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

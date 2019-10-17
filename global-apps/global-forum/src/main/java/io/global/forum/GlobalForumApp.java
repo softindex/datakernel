@@ -49,7 +49,7 @@ public final class GlobalForumApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("ot.storage", DEFAULT_OT_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
-				.with("appStoreUrl", "http://127.0.0.1:8088")
+				// .with("appStoreUrl", "http://127.0.0.1:8088")
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}

@@ -9,7 +9,7 @@ import theme from "./components/themeConfig/themeConfig";
 import CssBaseline from '@material-ui/core/CssBaseline';
 import {SnackbarProvider} from "notistack";
 
-const accountService = new AuthService(process.env.REACT_APP_GLOBAL_OAUTH_LINK, cookies);
+const accountService = new AuthService(process.env.REACT_APP_GLOBAL_OAUTH_LINK, cookies, process.env.REACT_APP_SESSION_ID);
 accountService.init();
 
 ReactDOM.render((

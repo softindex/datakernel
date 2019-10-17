@@ -4,42 +4,51 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.RoutingServlet;
-import io.datakernel.http.StaticServlet;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.common.BinaryDataFormats;
+import io.global.common.PrivKey;
+import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.DynamicOTGraphServlet;
-import io.global.ot.DynamicOTNodeServlet;
-import io.global.ot.MapModule;
-import io.global.ot.OTAppCommonModule;
+import io.global.ot.*;
 import io.global.ot.client.OTDriver;
 import io.global.ot.edit.EditOperation;
 import io.global.ot.map.MapOperation;
+import io.global.ot.service.ContainerModule;
+import io.global.ot.service.SimpleUserContainer;
+import io.global.ot.session.AuthModule;
+import io.global.ot.session.KvSessionStore;
+import io.global.ot.session.UserId;
 
-import java.util.Comparator;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Objects;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiFunction;
 
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
 import static io.global.ot.edit.EditOTSystem.createOTSystem;
 
-public final class GlobalNotesLauncher extends Launcher {
-	private static final String PROPERTIES_FILE = "notes.properties";
+public final class GlobalNotesApp extends Launcher {
+	private static final String PROPERTIES_FILE = "global-notes.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	private static final String DEFAULT_SERVER_ID = "Global Notes";
 	private static final String NOTES_INDEX_REPO = "notes/index";
+	private static final String NOTES_SESSION_TABLE = "notes/session";
+	private static final String SESSION_ID = "NOTES_SID";
+	private static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
 	@Inject
 	AsyncHttpServer server;
@@ -54,22 +63,26 @@ public final class GlobalNotesLauncher extends Launcher {
 	}
 
 	@Provides
-	AsyncServlet mainServlet(
+	AsyncServlet containerServlet(
 			DynamicOTNodeServlet<MapOperation<String, String>> notesServlet,
 			DynamicOTNodeServlet<EditOperation> noteServlet,
 			DynamicOTGraphServlet<EditOperation> graphServlet,
+			@Named("authorization") RoutingServlet authorizationServlet,
+			@Named("session") AsyncServletDecorator sessionDecorator,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()
-				.map("/ot/notes/*", notesServlet)
-				.map("/ot/note/:suffix/*", noteServlet)
-				.map("/ot/graph/:suffix", graphServlet)
-				.map("/*", staticServlet);
+				.map("/ot/*", sessionDecorator.serve(RoutingServlet.create()
+						.map("/notes/*", notesServlet)
+						.map("/note/:suffix/*", noteServlet)
+						.map("/graph/:suffix", graphServlet)))
+				.map("/*", staticServlet)
+				.merge(authorizationServlet);
 	}
 
 	@Provides
 	CodecFactory codecFactory() {
-		return BinaryDataFormats.createGlobal()
+		return OTUtils.createOTRegistry()
 				.with(EditOperation.class, EDIT_OPERATION_CODEC);
 	}
 
@@ -83,6 +96,14 @@ public final class GlobalNotesLauncher extends Launcher {
 		return noteServlet.createGraphServlet(Objects::toString);
 	}
 
+	@Provides
+	BiFunction<Eventloop, PrivKey, SimpleUserContainer> factory(OTDriver driver, GlobalKvDriver<String, UserId> kvDriver) {
+		return (eventloop, privKey) -> {
+			KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), NOTES_SESSION_TABLE);
+			return SimpleUserContainer.create(eventloop, privKey.computeKeys(), sessionStore);
+		};
+	}
+
 	@Override
 	public Module getModule() {
 		return Modules.combine(
@@ -90,13 +111,10 @@ public final class GlobalNotesLauncher extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new OTAppCommonModule() {
-					@Override
-					protected void configure() {
-						bind(new Key<Comparator<String>>() {}).toInstance(String::compareTo);
-						super.configure();
-					}
-				},
+				new OTAppCommonModule(),
+				new AuthModule<SimpleUserContainer>(SESSION_ID) {},
+				new ContainerModule<SimpleUserContainer>() {}
+						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new MapModule<String, String>(NOTES_INDEX_REPO) {},
 				// override for debug purposes
 				override(new GlobalNodesModule(),
@@ -110,6 +128,6 @@ public final class GlobalNotesLauncher extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		new GlobalNotesLauncher().launch(args);
+		new GlobalNotesApp().launch(args);
 	}
 }

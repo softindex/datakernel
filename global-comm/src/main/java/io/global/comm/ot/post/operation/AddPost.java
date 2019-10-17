@@ -1,14 +1,14 @@
 package io.global.comm.ot.post.operation;
 
 import io.global.comm.pojo.Post;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Objects;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.global.comm.pojo.AuthService.DK_APP_STORE;
+import static io.global.ot.session.AuthService.DK_APP_STORE;
 
 public final class AddPost implements ThreadOperation {
 	public static final AddPost EMPTY = new AddPost("", null, new UserId(DK_APP_STORE, ""), -1, false);

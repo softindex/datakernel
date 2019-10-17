@@ -40,7 +40,7 @@ FROM openjdk:8-jre-alpine
 WORKDIR /app
 
 # properties layer
-COPY chat.properties* ./
+COPY global-chat.properties* ./
 
 COPY --from=build-java /build/target/chat.jar ./
 COPY --from=build-js /build/build ./front/build

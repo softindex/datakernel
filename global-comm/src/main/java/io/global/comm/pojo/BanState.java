@@ -1,5 +1,6 @@
 package io.global.comm.pojo;
 
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;

@@ -42,9 +42,9 @@ class OfflineGlobalFS extends EventEmitter {
     this._registerSync();
   }
 
-  async removeFile(fileName) {
+  async remove(fileName) {
     if (this._navigator.onLine) {
-      return await this._globalFS.removeFile(fileName);
+      return await this._globalFS.remove(fileName);
     }
 
     const fileOperation = await this._localforage.getItem(fileName);

@@ -20,9 +20,9 @@ import io.global.comm.http.AttachmentDataHandler;
 import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
-import io.global.comm.pojo.UserId;
 import io.global.common.PubKey;
 import io.global.mustache.MustacheTemplater;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
@@ -43,9 +43,9 @@ import static io.datakernel.util.CollectionUtils.map;
 import static io.datakernel.util.MemSize.kilobytes;
 import static io.global.Utils.*;
 import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
-import static io.global.comm.pojo.AuthService.DK_APP_STORE;
 import static io.global.comm.pojo.UserRole.COMMON;
 import static io.global.comm.pojo.UserRole.OWNER;
+import static io.global.ot.session.AuthService.DK_APP_STORE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 

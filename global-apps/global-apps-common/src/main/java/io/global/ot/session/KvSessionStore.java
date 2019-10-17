@@ -1,4 +1,4 @@
-package io.global.comm.ot.session;
+package io.global.ot.session;
 
 import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.EventloopTaskScheduler.Schedule;

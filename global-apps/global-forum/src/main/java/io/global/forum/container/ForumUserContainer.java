@@ -2,12 +2,12 @@ package io.global.forum.container;
 
 import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.util.TypeT;
 import io.global.comm.container.CommGlobalState;
 import io.global.comm.container.CommRepoNames;
-import io.global.comm.pojo.UserId;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.forum.dao.ForumDao;
@@ -17,6 +17,7 @@ import io.global.kv.api.KvClient;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.UserContainer;
+import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
 import io.global.ot.value.ChangeValueContainer;
 import io.global.ot.value.ChangeValueOTSystem;
@@ -88,5 +89,10 @@ public final class ForumUserContainer implements UserContainer {
 	@Override
 	public KeyPair getKeys() {
 		return keys;
+	}
+
+	@Override
+	public SessionStore<UserId> getSessionStore() {
+		return comm.getSessionStore();
 	}
 }

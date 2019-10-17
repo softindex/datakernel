@@ -32,7 +32,7 @@ class MainScreen extends React.Component {
   constructor(props) {
     super(props);
 
-    const globalFS = new GlobalFS(props.publicKey);
+    const globalFS = new GlobalFS();
     localforage.config({
       driver: localforage.INDEXEDDB,
       name: 'OperationsStore',

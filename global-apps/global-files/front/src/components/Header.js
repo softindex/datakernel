@@ -53,11 +53,6 @@ class Header extends React.Component {
     })
   };
 
-  downloadKey = () => {
-    FileSaver.saveAs(this.props.authService.createKeysFile());
-    this.closeMenu();
-  };
-
   logout = () => {
     this.props.authService.logout();
     this.closeMenu();
@@ -98,12 +93,6 @@ class Header extends React.Component {
           onClose={this.closeMenu}
         >
           <MenuList>
-            <MenuItem onClick={this.downloadKey}>
-              <ListItemIcon>
-                <DownloadIcon/>
-              </ListItemIcon>
-              <ListItemText inset primary="Download key"/>
-            </MenuItem>
             <MenuItem onClick={this.logout}>
               <ListItemIcon>
                 <ExitIcon/>
