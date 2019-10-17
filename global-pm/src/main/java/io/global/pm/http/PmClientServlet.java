@@ -7,7 +7,6 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
-import io.datakernel.time.CurrentTimeProvider;
 import io.global.common.PubKey;
 import io.global.pm.api.Message;
 import io.global.pm.api.PmClient;
@@ -19,7 +18,6 @@ import static io.global.pm.util.HttpDataFormats.getMessageCodec;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class PmClientServlet {
-	static CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	public static <T> AsyncServlet create(PmClient<T> client, StructuredCodec<T> payloadCodec) {
 		StructuredCodec<Message<T>> messageCodec = getMessageCodec(payloadCodec);
@@ -29,7 +27,7 @@ public final class PmClientServlet {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 						String mailbox = request.getPathParameter("mailbox");
 						T payload = fromJson(payloadCodec, request.getBody().asString(UTF_8));
-						return client.send(receiver, mailbox, now.currentTimeMillis(), payload)
+						return client.send(receiver, mailbox, payload)
 								.map(id -> HttpResponse.ok200()
 										.withPlainText(id.toString()));
 					} catch (ParseException e) {

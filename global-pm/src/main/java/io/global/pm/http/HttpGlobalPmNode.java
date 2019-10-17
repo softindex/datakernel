@@ -2,12 +2,14 @@ package io.global.pm.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.binary.BinaryUtils;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.exception.ParseException;
-import io.datakernel.http.HttpException;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.IAsyncHttpClient;
-import io.datakernel.http.UrlBuilder;
+import io.datakernel.http.*;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.pm.api.GlobalPmNode;
@@ -15,8 +17,12 @@ import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Set;
+
+import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
+import static io.global.pm.http.GlobalPmNodeServlet.SIGNED_MESSAGE_PARSER;
+import static io.global.pm.http.GlobalPmNodeServlet.STRING_SET_CODEC;
 import static io.global.pm.http.PmCommand.*;
-import static io.global.pm.util.BinaryDataFormats.SIGNED_LONG_CODEC;
 import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
 
 public class HttpGlobalPmNode implements GlobalPmNode {
@@ -32,6 +38,38 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 
 	public static HttpGlobalPmNode create(String url, IAsyncHttpClient client) {
 		return new HttpGlobalPmNode(url, client);
+	}
+
+	@Override
+	public Promise<ChannelConsumer<SignedData<RawMessage>>> upload(PubKey space, String mailBox) {
+		ChannelZeroBuffer<SignedData<RawMessage>> buffer = new ChannelZeroBuffer<>();
+		Promise<HttpResponse> request = client.request(
+				HttpRequest.post(
+						url + UrlBuilder.relative()
+								.appendPathPart(UPLOAD)
+								.appendPathPart(space.asString())
+								.appendPathPart(mailBox)
+								.build())
+						.withBodyStream(buffer.getSupplier()
+								.map(signedDbItem -> encodeWithSizePrefix(SIGNED_RAW_MSG_CODEC, signedDbItem))))
+				.then(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response));
+		return Promise.of(buffer.getConsumer().withAcknowledgement(ack -> ack.both(request)));
+
+	}
+
+	@Override
+	public Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String mailBox, long timestamp) {
+		return client.request(
+				HttpRequest.get(
+						url + UrlBuilder.relative()
+								.appendPathPart(DOWNLOAD)
+								.appendPathPart(space.asString())
+								.appendPathPart(mailBox)
+								.build()))
+				.then(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.map(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(SIGNED_MESSAGE_PARSER));
 	}
 
 	@NotNull
@@ -59,38 +97,28 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 						.appendPathPart(space.asString())
 						.appendPathPart(mailBox)
 						.build()))
-				.then(response -> {
-					if (response.getCode() == 200) {
-						return response.loadBody()
-								.then(buf -> {
-									try {
-										return Promise.of(BinaryUtils.decode(SIGNED_RAW_MSG_CODEC.nullable(), buf.getArray()));
-									} catch (ParseException e) {
-										return Promise.ofException(e);
-									}
-								});
-					}
-					if (response.getCode() == 404) {
-						return Promise.of(null);
-					}
-					return Promise.ofException(HttpException.ofCode(response.getCode()));
-				});
+				.then(response -> response.loadBody()
+						.then(body -> processResult(response, body, SIGNED_RAW_MSG_CODEC.nullable())));
 	}
 
 	@Override
-	public Promise<Void> drop(PubKey space, String mailBox, SignedData<Long> id) {
-		ByteBuf buf = BinaryUtils.encode(SIGNED_LONG_CODEC, id);
-		return client.request(HttpRequest.post(url +
-				UrlBuilder.relative()
-						.appendPathPart(DROP)
-						.appendPathPart(space.asString())
-						.appendPathPart(mailBox)
-						.build())
-				.withBody(buf))
-				.then(response -> response.getCode() == 200 ?
-						Promise.complete() :
-						Promise.ofException(HttpException.ofCode(response.getCode())))
-				.toVoid();
+	public Promise<Set<String>> list(PubKey space) {
+		return client.request(HttpRequest.get(url + UrlBuilder.relative()
+				.appendPathPart(LIST)
+				.appendPathPart(space.asString())
+				.build()))
+				.then(response -> response.loadBody()
+						.then(body -> processResult(response, body, STRING_SET_CODEC)));
+	}
 
+	private static <T> Promise<T> processResult(HttpResponse res, ByteBuf body, @Nullable StructuredCodec<T> codec) {
+		try {
+			if (res.getCode() != 200) {
+				return Promise.ofException(HttpException.ofCode(res.getCode()));
+			}
+			return Promise.of(codec != null ? BinaryUtils.decode(codec, body.slice()) : null);
+		} catch (ParseException e) {
+			return Promise.ofException(e);
+		}
 	}
 }

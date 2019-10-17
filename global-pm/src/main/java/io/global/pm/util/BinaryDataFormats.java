@@ -34,14 +34,14 @@ public final class BinaryDataFormats {
 	}
 
 	public static final CodecFactory REGISTRY = createGlobal()
-			.with(RawMessage.class, tuple(RawMessage::new,
-					RawMessage::getId, LONG64_CODEC,
+			.with(RawMessage.class, tuple(RawMessage::of,
+					RawMessage::getId, LONG_CODEC,
 					RawMessage::getTimestamp, LONG_CODEC,
-					RawMessage::getEncrypted, BYTES_CODEC));
+					rawMessage -> rawMessage.isTombstone() ? null : rawMessage.getEncrypted(), BYTES_CODEC.nullable()));
 
 	public static final StructuredCodec<SignedData<RawMessage>> SIGNED_RAW_MSG_CODEC = REGISTRY.get(new TypeT<SignedData<RawMessage>>() {});
 	public static final StructuredCodec<SignedData<Long>> SIGNED_LONG_CODEC =
-			tuple((bytes, signature) -> SignedData.parse(LONG64_CODEC, bytes, signature),
+			tuple((bytes, signature) -> SignedData.parse(LONG_CODEC, bytes, signature),
 					SignedData::getBytes, REGISTRY.get(byte[].class),
 					SignedData::getSignature, REGISTRY.get(Signature.class));
 	public static final StructuredCodec<RawMessage> RAW_MESSAGE_CODEC = REGISTRY.get(RawMessage.class);

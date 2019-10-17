@@ -46,6 +46,10 @@ public class GlobalNodesLauncher extends Launcher {
 	AsyncHttpServer server;
 
 	@Inject
+	@Named("OT push")
+	EventloopTaskScheduler otPushScheduler;
+
+	@Inject
 	@Named("FS push")
 	EventloopTaskScheduler fsPushScheduler;
 
@@ -60,6 +64,14 @@ public class GlobalNodesLauncher extends Launcher {
 	@Inject
 	@Named("KV catch up")
 	EventloopTaskScheduler kvCatchUpScheduler;
+
+	@Inject
+	@Named("PM push")
+	EventloopTaskScheduler pmPushScheduler;
+
+	@Inject
+	@Named("PM catch up")
+	EventloopTaskScheduler pmCatchUpScheduler;
 
 	@Provides
 	Config config() {

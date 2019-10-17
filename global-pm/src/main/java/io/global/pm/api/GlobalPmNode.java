@@ -21,30 +21,27 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Set;
 
 public interface GlobalPmNode {
 
-	@NotNull
-	Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message);
+	Promise<ChannelConsumer<SignedData<RawMessage>>> upload(PubKey space, String mailBox);
 
-	@NotNull
-	default Promise<ChannelConsumer<SignedData<RawMessage>>> multisend(PubKey receiver, String mailBox) {
-		return Promise.of(ChannelConsumer.of(message -> send(receiver, mailBox, message)));
+	Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String mailBox, long timestamp);
+
+	default Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String mailBox) {
+		return download(space, mailBox, 0);
 	}
 
-	@NotNull
+	// accepts tombstones
+	default Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
+		return ChannelSupplier.of(message).streamTo(ChannelConsumer.ofPromise(upload(space, mailBox)));
+	}
+
+	// does not return tombstones
 	Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox);
 
-	default Promise<ChannelSupplier<SignedData<RawMessage>>> multipoll(PubKey receiver, String mailBox) {
-		return Promise.of(ChannelSupplier.of(() -> poll(receiver, mailBox)));
-	}
-
-	Promise<Void> drop(PubKey space, String mailBox, SignedData<Long> id);
-
-	@NotNull
-	default Promise<ChannelConsumer<SignedData<Long>>> multidrop(PubKey receiver, String mailBox) {
-		return Promise.of(ChannelConsumer.of(id -> drop(receiver, mailBox, id)));
-	}
+	Promise<Set<String>> list(PubKey space);
 }

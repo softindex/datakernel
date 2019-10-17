@@ -83,6 +83,14 @@ public interface ByteBufsParser<T> {
 		return parseUntilTerminatorByte(CR, maxSize);
 	}
 
+	static ByteBufsParser<ByteBuf> ofLfTerminatedBytes() {
+		return ofLfTerminatedBytes(Integer.MAX_VALUE);
+	}
+
+	static ByteBufsParser<ByteBuf> ofLfTerminatedBytes(int maxSize) {
+		return parseUntilTerminatorByte(LF, maxSize);
+	}
+
 	static ByteBufsParser<ByteBuf> ofCrlfTerminatedBytes() {
 		return ofCrlfTerminatedBytes(Integer.MAX_VALUE);
 	}

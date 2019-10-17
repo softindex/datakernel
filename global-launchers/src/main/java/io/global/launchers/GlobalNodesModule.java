@@ -57,8 +57,8 @@ import io.global.ot.server.CommitStorage;
 import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
-import io.global.pm.FsMessageStorage;
 import io.global.pm.GlobalPmNodeImpl;
+import io.global.pm.RocksDbMessageStorage;
 import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.MessageStorage;
 import io.global.pm.http.GlobalPmNodeServlet;
@@ -82,6 +82,8 @@ public class GlobalNodesModule extends AbstractModule {
 	protected void configure() {
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
 		bind(GlobalKvNode.class).to(GlobalKvNodeImpl.class);
+		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
+		bind(GlobalPmNode.class).to(GlobalPmNodeImpl.class);
 	}
 
 	@Provides
@@ -92,7 +94,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalOTNode globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+	GlobalOTNodeImpl globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, commitStorage, factory)
 				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
@@ -114,7 +116,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalPmNode globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
+	GlobalPmNodeImpl globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
 		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
 				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
@@ -221,15 +223,8 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	@Named("PM")
-	FsClient pmStorage(Eventloop eventloop, Config config) {
-		return LocalFsClient.create(eventloop, config.get(ofPath(), "pm.storage"))
-				.withRevisions();
-	}
-
-	@Provides
-	MessageStorage messageStorage(@Named("PM") FsClient fsClient) {
-		return FsMessageStorage.create(fsClient);
+	MessageStorage messageStorage(Eventloop eventloop, Executor executor, Config config) {
+		return RocksDbMessageStorage.create(eventloop, executor, config.get("pm.storage"));
 	}
 
 	@Provides
@@ -279,6 +274,27 @@ public class GlobalNodesModule extends AbstractModule {
 	EventloopTaskScheduler kvCatchUpScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
 		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
+	}
+
+	@Provides
+	@Named("PM push")
+	EventloopTaskScheduler pmPushScheduler(Eventloop eventloop, GlobalPmNodeImpl node, Config config) {
+		return EventloopTaskScheduler.create(eventloop, node::push)
+				.initialize(ofEventloopTaskScheduler(config.getChild("pm.push")));
+	}
+
+	@Provides
+	@Named("PM catch up")
+	EventloopTaskScheduler pmCatchUpScheduler(Eventloop eventloop, GlobalPmNodeImpl node, Config config) {
+		return EventloopTaskScheduler.create(eventloop, node::push)
+				.initialize(ofEventloopTaskScheduler(config.getChild("pm.catchUp")));
+	}
+
+	@Provides
+	@Named("OT push")
+	EventloopTaskScheduler otPushScheduler(Eventloop eventloop, GlobalOTNodeImpl node, Config config) {
+		return EventloopTaskScheduler.create(eventloop, node::push)
+				.initialize(ofEventloopTaskScheduler(config.getChild("ot.push")));
 	}
 	//endregion
 }

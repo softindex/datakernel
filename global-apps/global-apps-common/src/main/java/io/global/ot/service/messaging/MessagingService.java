@@ -79,10 +79,8 @@ public final class MessagingService implements EventloopService {
 	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
 		MyRepositoryId<?> myRepositoryId = commonUserContainer.getMyRepositoryId();
 		PrivKey senderPrivKey = myRepositoryId.getPrivKey();
-		PubKey senderPubKey = senderPrivKey.computePubKey();
 		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
-		Message<CreateSharedRepo> message = Message.now(senderPubKey, payload);
-		return pmDriver.send(senderPrivKey, receiver, mailBox, message);
+		return pmDriver.send(senderPrivKey, receiver, mailBox, payload);
 	}
 
 	@SuppressWarnings("ConstantConditions")

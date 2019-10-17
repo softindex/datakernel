@@ -17,7 +17,6 @@
 package io.global.kv;
 
 import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Callback;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.datakernel.csp.ChannelConsumer;
@@ -97,7 +96,7 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 										if (doesUploadCaching || consumers.isEmpty()) {
 											splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
 													.withAcknowledgement(ack ->
-															ack.whenComplete((Callback<? super Void>) ($, e) -> {
+															ack.whenComplete(($, e) -> {
 																if (e == null) {
 																	localCompleted.set(true);
 																} else {
@@ -205,6 +204,6 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 
 	@Override
 	public String toString() {
-		return "GlobalDbNodeImpl{id=" + id + '}';
+		return "GlobalKvNodeImpl{id=" + id + '}';
 	}
 }

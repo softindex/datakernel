@@ -2,9 +2,12 @@ package io.global.pm.http;
 
 import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.binary.BinaryUtils;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
@@ -13,14 +16,21 @@ import io.global.common.SignedData;
 import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.RawMessage;
 
+import java.util.Set;
+
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
+import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.global.pm.http.PmCommand.*;
-import static io.global.pm.util.BinaryDataFormats.*;
+import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
 
 public class GlobalPmNodeServlet {
+	public static final StructuredCodec<Set<String>> STRING_SET_CODEC = StructuredCodecs.ofSet(STRING_CODEC);
+	public static final ByteBufsParser<SignedData<RawMessage>> SIGNED_MESSAGE_PARSER = ofDecoder(SIGNED_RAW_MSG_CODEC);
 
 	public static RoutingServlet create(GlobalPmNode node) {
 		return RoutingServlet.create()
@@ -42,18 +52,6 @@ public class GlobalPmNodeServlet {
 							}
 						})
 				)
-				.map(POST, "/" + MULTISEND + "/:space/:mailbox", request -> {
-					try {
-						PubKey space = PubKey.fromString(checkNotNull(request.getPathParameter("space")));
-						String mailBox = checkNotNull(request.getPathParameter("mailbox"));
-						return BinaryChannelSupplier.of(request.getBodyStream())
-								.parseStream(SIGNED_RAW_MSG_PARSER)
-								.streamTo(node.multisend(space, mailBox))
-								.map($ -> HttpResponse.ok200());
-					} catch (ParseException e) {
-						return Promise.ofException(e);
-					}
-				})
 				.map(GET, "/" + POLL + "/:space/:mailbox", request -> {
 					try {
 						PubKey space = PubKey.fromString(checkNotNull(request.getPathParameter("space")));
@@ -65,47 +63,42 @@ public class GlobalPmNodeServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.map(GET, "/" + MULTIPOLL + "/:space/:mailbox", request -> {
+				.map(GET, "/" + LIST + "/:space", request -> {
 					try {
-						ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
-
 						PubKey space = PubKey.fromString(checkNotNull(request.getPathParameter("space")));
-						String mailBox = checkNotNull(request.getPathParameter("mailbox"));
-						Promise<Void> process = node.multipoll(space, mailBox)
-								.then(supplier -> supplier
-										.map(message -> BinaryUtils.encode(SIGNED_RAW_MSG_CODEC, message))
-										.streamTo(buffer.getConsumer()));
-
-						return Promise.of(HttpResponse.ok200()
-								.withBodyStream(buffer.getSupplier()
-										.withEndOfStream(eos -> eos.both(process))));
+						return node.list(space)
+								.map(mailBoxes -> HttpResponse.ok200()
+										.withBody(BinaryUtils.encode(STRING_SET_CODEC.nullable(), mailBoxes)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
 				})
-				.map(POST, "/" + DROP + "/:space/:mailbox", loadBody()
-						.serve(request -> {
-							try {
-								PubKey space = PubKey.fromString(checkNotNull(request.getPathParameter("space")));
-								String mailBox = checkNotNull(request.getPathParameter("mailbox"));
-								try {
-									SignedData<Long> id = BinaryUtils.decode(SIGNED_LONG_CODEC, request.getBody().getArray());
-									return node.drop(space, mailBox, id)
-											.map($ -> HttpResponse.ok200());
-								} catch (ParseException e) {
-									return Promise.ofException(e);
-								}
-							} catch (ParseException e) {
-								return Promise.ofException(e);
-							}
-						}))
-				.map(POST, "/" + MULTIDROP + "/:space/:mailbox", request -> {
+				.map(GET, "/" + DOWNLOAD + "/:space/:mailbox", request -> {
 					try {
 						PubKey space = PubKey.fromString(checkNotNull(request.getPathParameter("space")));
 						String mailBox = checkNotNull(request.getPathParameter("mailbox"));
-						return BinaryChannelSupplier.of(request.getBodyStream())
-								.parseStream(SIGNED_LONG_PARSER)
-								.streamTo(node.multidrop(space, mailBox))
+						long timestamp;
+						try {
+							String timestampParam = request.getQueryParameter("timestamp");
+							timestamp = Long.parseUnsignedLong(timestampParam != null ? timestampParam : "0");
+						} catch (NumberFormatException e) {
+							throw new ParseException(e);
+						}
+						return node.download(space, mailBox, timestamp)
+								.map(supplier -> HttpResponse.ok200()
+										.withBodyStream(supplier.map(signedMessage -> encodeWithSizePrefix(SIGNED_RAW_MSG_CODEC, signedMessage))));
+					} catch (ParseException e) {
+						return Promise.ofException(e);
+					}
+				})
+				.map(POST, "/" + UPLOAD + "/:space/:mailbox", request -> {
+					try {
+						PubKey space = PubKey.fromString(checkNotNull(request.getPathParameter("space")));
+						String mailBox = checkNotNull(request.getPathParameter("mailbox"));
+						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
+						return node.upload(space, mailBox)
+								.then(consumer -> BinaryChannelSupplier.of(bodyStream).parseStream(SIGNED_MESSAGE_PARSER)
+										.streamTo(consumer))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);

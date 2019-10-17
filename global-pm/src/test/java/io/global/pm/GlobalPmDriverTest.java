@@ -31,7 +31,6 @@ import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.LocalDiscoveryService;
 import io.global.pm.api.GlobalPmNode;
-import io.global.pm.api.Message;
 import io.global.pm.api.MessageStorage;
 import io.global.pm.http.GlobalPmNodeServlet;
 import io.global.pm.http.HttpGlobalPmNode;
@@ -53,7 +52,7 @@ import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static org.junit.Assert.assertEquals;
 
-public final class GlobalPmTest {
+public final class GlobalPmDriverTest {
 
 	private static final RawServerId FIRST_ID = new RawServerId("http://127.0.0.1:1001");
 	private static final String MAIL_BOX = "test mail box";
@@ -83,7 +82,7 @@ public final class GlobalPmTest {
 
 		discovery = LocalDiscoveryService.create(getCurrentEventloop(), storage.subfolder("discovery"));
 
-		MessageStorage messageStorage = FsMessageStorage.create(storage.subfolder("messages"));
+		MessageStorage messageStorage = new MapMessageStorage();
 		Map<RawServerId, GlobalPmNode> nodes = new HashMap<>();
 
 		clientFactory = new Function<RawServerId, GlobalPmNode>() {
@@ -103,25 +102,25 @@ public final class GlobalPmTest {
 		GlobalPmNode node = clientFactory.apply(FIRST_ID);
 		GlobalPmDriver<String> driver = new GlobalPmDriver<>(node, STRING_CODEC);
 
-		Set<Message<String>> sent = new HashSet<>();
+		Set<String> sent = new HashSet<>();
 
 		for (int i = 0; i < 5; i++) {
 			KeyPair keys = KeyPair.generate();
-			Message<String> message = Message.now(keys.getPubKey(), "hello! #" + i);
+			String message = "hello! #" + i;
 			sent.add(message);
 			await(driver.send(keys.getPrivKey(), bob.getPubKey(), MAIL_BOX, message));
 		}
 
-		Message<String> msg = Message.now(alice.getPubKey(), "hello!");
-		sent.add(msg);
-		await(driver.send(alice.getPrivKey(), bob.getPubKey(), MAIL_BOX, msg));
+		String message = "hello!";
+		sent.add(message);
+		await(driver.send(alice.getPrivKey(), bob.getPubKey(), MAIL_BOX, message));
 
-		Set<Message<String>> received = new HashSet<>();
+		Set<String> received = new HashSet<>();
 
 		await(ChannelSupplier.ofPromise(driver.multipoll(bob, MAIL_BOX))
-				.streamTo(ChannelConsumer.of(message -> {
-					received.add(message);
-					return driver.drop(bob, MAIL_BOX, message.getId());
+				.streamTo(ChannelConsumer.of(msg -> {
+					received.add(msg.getPayload());
+					return driver.drop(bob, MAIL_BOX, msg.getId());
 				})));
 
 		assertEquals(sent, received);

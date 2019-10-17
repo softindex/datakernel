@@ -3,11 +3,14 @@ package io.global.pm.http;
 import io.datakernel.http.HttpPathPart;
 
 public enum PmCommand implements HttpPathPart {
+	UPLOAD,
+	DOWNLOAD,
 	SEND,
-	MULTISEND,
 	POLL,
-	MULTIPOLL,
+	LIST,
 	DROP,
+	MULTISEND,
+	MULTIPOLL,
 	MULTIDROP;
 
 	@Override

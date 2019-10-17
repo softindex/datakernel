@@ -20,8 +20,10 @@ import io.global.pm.util.BinaryDataFormats;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 
-import static io.datakernel.codec.StructuredCodecs.LONG64_CODEC;
+import java.util.concurrent.ThreadLocalRandom;
+
 import static io.datakernel.codec.StructuredCodecs.tuple;
+import static io.global.pm.util.BinaryDataFormats.RAW_MESSAGE_CODEC;
 
 public final class GlobalPmDriver<T> {
 	private static final StacklessException INVALID_SIGNATURE = new StacklessException("Received a message with invalid signature");
@@ -35,10 +37,12 @@ public final class GlobalPmDriver<T> {
 		codec = tuple(Tuple2::new, Tuple2::getValue1, BinaryDataFormats.PUB_KEY_CODEC, Tuple2::getValue2, payloadCodec);
 	}
 
-	private SignedData<RawMessage> encrypt(PrivKey sender, PubKey receiver, Message<T> message) {
-		byte[] encrypted = BinaryUtils.encodeAsArray(codec, new Tuple2<>(message.getSender(), message.getPayload()));
-		RawMessage msg = new RawMessage(message.getId(), message.getTimestamp(), receiver.encrypt(encrypted));
-		return SignedData.sign(BinaryDataFormats.RAW_MESSAGE_CODEC, msg, sender);
+	private SignedData<RawMessage> encrypt(PrivKey sender, PubKey receiver, Long id, Long timestamp, @Nullable T payload) {
+		byte[] encrypted = payload != null ?
+				receiver.encrypt(BinaryUtils.encodeAsArray(codec, new Tuple2<>(sender.computePubKey(), payload))) :
+				null;
+		RawMessage msg = RawMessage.of(id, timestamp, encrypted);
+		return SignedData.sign(RAW_MESSAGE_CODEC, msg, sender);
 	}
 
 	private Promise<Message<T>> decrypt(PrivKey receiver, SignedData<RawMessage> signedRawMessage) {
@@ -54,13 +58,19 @@ public final class GlobalPmDriver<T> {
 		}
 	}
 
-	public Promise<Void> send(PrivKey sender, PubKey receiver, String mailBox, Message<T> message) {
-		return node.send(receiver, mailBox, encrypt(sender, receiver, message));
+	public Promise<Void> send(PrivKey sender, PubKey receiver, String mailBox, T payload) {
+		long id = ThreadLocalRandom.current().nextLong();
+		long timestamp = System.currentTimeMillis();
+		return node.send(receiver, mailBox, encrypt(sender, receiver, id, timestamp, payload));
 	}
 
-	public Promise<ChannelConsumer<Message<T>>> multisend(PrivKey sender, PubKey receiver, String mailBox) {
-		return node.multisend(receiver, mailBox)
-				.map(consumer -> consumer.map(message -> encrypt(sender, receiver, message)));
+	public Promise<ChannelConsumer<T>> multisend(PrivKey sender, PubKey receiver, String mailBox) {
+		return node.upload(receiver, mailBox)
+				.map(consumer -> consumer.map(payload -> {
+					long id = ThreadLocalRandom.current().nextLong();
+					long timestamp = System.currentTimeMillis();
+					return encrypt(sender, receiver, id, timestamp, payload);
+				}));
 	}
 
 	public Promise<@Nullable Message<T>> poll(KeyPair keys, String mailBox) {
@@ -68,27 +78,33 @@ public final class GlobalPmDriver<T> {
 				.then(signedRawMessage -> signedRawMessage != null ? decrypt(keys.getPrivKey(), signedRawMessage) : Promise.of(null));
 	}
 
-	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys, String mailBox) {
+	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys, String mailBox, long timestamp) {
 		PrivKey privKey = keys.getPrivKey();
-		return node.multipoll(keys.getPubKey(), mailBox)
-				.map(supplier -> supplier.mapAsync(signedRawMessage -> decrypt(privKey, signedRawMessage)));
+		return node.download(keys.getPubKey(), mailBox, timestamp)
+				.map(supplier -> supplier
+						.filter(signedData -> signedData.getValue().isMessage())
+						.mapAsync(signedRawMessage -> decrypt(privKey, signedRawMessage)));
+	}
+
+	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys, String mailBox) {
+		return multipoll(keys, mailBox, 0);
 	}
 
 	public Promise<Void> drop(KeyPair keys, String mailBox, long id) {
-		return node.drop(keys.getPubKey(), mailBox, SignedData.sign(LONG64_CODEC, id, keys.getPrivKey()));
+		long timestamp = System.currentTimeMillis();
+		return node.send(keys.getPubKey(), mailBox, encrypt(keys.getPrivKey(), keys.getPubKey(), id, timestamp, null));
 	}
 
 	public Promise<ChannelConsumer<Long>> multidrop(KeyPair keys, String mailBox) {
-		PrivKey privKey = keys.getPrivKey();
-		return node.multidrop(keys.getPubKey(), mailBox)
-				.map(consumer -> consumer.map(id -> SignedData.sign(LONG64_CODEC, id, privKey)));
+		return node.upload(keys.getPubKey(), mailBox)
+				.map(consumer -> consumer.map(id -> encrypt(keys.getPrivKey(), keys.getPubKey(), id, System.currentTimeMillis(), null)));
 	}
 
-	public PmClient<T> adapt(PrivKey privKey, PubKey pubKey) {
-		return new GlobalPmAdapter<>(this, privKey, pubKey);
+	public PmClient<T> adapt(PrivKey privKey) {
+		return new GlobalPmAdapter<>(this, privKey);
 	}
 
 	public PmClient<T> adapt(KeyPair keys) {
-		return new GlobalPmAdapter<>(this, keys.getPrivKey(), keys.getPubKey());
+		return new GlobalPmAdapter<>(this, keys.getPrivKey());
 	}
 }

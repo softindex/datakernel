@@ -1,6 +1,7 @@
 package io.global.pm;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelSupplier;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.pm.api.MessageStorage;
@@ -9,30 +10,68 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Collections.emptyMap;
+import static java.util.Comparator.comparingLong;
 
 public final class MapMessageStorage implements MessageStorage {
 	private final Map<PubKey, Map<String, Map<Long, SignedData<RawMessage>>>> storage = new HashMap<>();
 
 	@Override
-	public Promise<Void> store(PubKey space, String mailBox, SignedData<RawMessage> message) {
-		storage.computeIfAbsent(space, $ -> new HashMap<>())
-				.computeIfAbsent(mailBox, $ -> new HashMap<>())
-				.put(message.getValue().getId(), message);
-		return Promise.complete();
+	public Promise<Boolean> put(PubKey space, String mailBox, SignedData<RawMessage> message) {
+		RawMessage newValue = message.getValue();
+		SignedData<RawMessage> computed = getMailBox(space, mailBox)
+				.compute(newValue.getId(), (id, old) -> {
+					if (old == null) {
+						return message;
+					}
+					RawMessage oldValue = old.getValue();
+					if (oldValue.isTombstone() || oldValue.getTimestamp() > newValue.getTimestamp()) {
+						return old;
+					}
+					return message;
+				});
+		return Promise.of(computed == message);
 	}
 
 	@Override
-	public Promise<@Nullable SignedData<RawMessage>> load(PubKey space, String mailBox) {
-		Map<Long, SignedData<RawMessage>> mailbox = storage.getOrDefault(space, emptyMap()).getOrDefault(mailBox, emptyMap());
-		return mailbox.isEmpty() ? Promise.of(null) : Promise.of(first(mailbox.values()));
+	public Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
+		return Promise.of(getMailBox(space, mailBox)
+				.values()
+				.stream()
+				.filter(signedData -> signedData.getValue().isMessage())
+				.sorted(comparingLong(signedData -> signedData.getValue().getTimestamp()))
+				.findAny()
+				.orElse(null));
 	}
 
 	@Override
-	public Promise<Void> delete(PubKey space, String mailBox, long id) {
-		storage.getOrDefault(space, emptyMap()).getOrDefault(mailBox, emptyMap()).remove(id);
+	public Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String mailBox, long timestamp) {
+		return Promise.of(ChannelSupplier.ofStream(getMailBox(space, mailBox).values()
+				.stream()
+				.filter(signedData -> signedData.getValue().getTimestamp() > timestamp)
+				.sorted(comparingLong(signed -> signed.getValue().getTimestamp()))));
+	}
+
+	@Override
+	public Promise<Set<String>> list(PubKey space) {
+		return Promise.of(storage.getOrDefault(space, emptyMap()).keySet());
+	}
+
+	@Override
+	public Promise<Void> cleanup(long timestamp) {
+		storage.forEach(($, mailBoxes) ->
+				mailBoxes.forEach(($2, mailBox) ->
+						mailBox.values().removeIf(signedData -> {
+							RawMessage rawMessage = signedData.getValue();
+							return rawMessage.isTombstone() && rawMessage.getTimestamp() < timestamp;
+						})));
 		return Promise.complete();
+	}
+
+	private Map<Long, SignedData<RawMessage>> getMailBox(PubKey space, String mailBox) {
+		return storage.computeIfAbsent(space, $ -> new HashMap<>())
+				.computeIfAbsent(mailBox, $ -> new HashMap<>());
 	}
 }
