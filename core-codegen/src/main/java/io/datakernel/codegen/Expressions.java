@@ -523,18 +523,6 @@ public class Expressions {
 		return new ExpressionNewArray(type, length);
 	}
 
-	/**
-	 * Returns a new local variable from a given context
-	 *
-	 * @param ctx  context of a dynamic class
-	 * @param type the type of the local variable to be created
-	 * @return new instance of {@link VarLocal}
-	 */
-	static VarLocal newLocal(Context ctx, Type type) {
-		int local = ctx.getGeneratorAdapter().newLocal(type);
-		return new VarLocal(local);
-	}
-
 	public static Expression callStatic(Class<?> owner, String method, Expression... arguments) {
 		return new ExpressionCallStatic(owner, method, asList(arguments));
 	}

@@ -23,8 +23,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.Iterator;
 import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.newLocal;
-import static org.objectweb.asm.Type.getType;
+import static org.objectweb.asm.Type.*;
 
 public abstract class AbstractExpressionIteratorForEach implements Expression {
 	protected final Expression collection;
@@ -46,11 +45,11 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 		Label labelExit = new Label();
 
 		Type collectionType = collection.load(ctx);
-		if (collectionType.getSort() == Type.ARRAY) {
+		if (collectionType.getSort() == ARRAY) {
 			return arrayForEach(ctx, g, labelLoop, labelExit);
 		}
 
-		VarLocal varIter = newLocal(ctx, getType(Iterator.class));
+		VarLocal varIter = ctx.newLocal(getType(Iterator.class));
 
 		Class<?> t = ctx.toJavaType(collectionType);
 		if (t.isInstance(Iterator.class) || t == Iterator.class) {
@@ -64,10 +63,10 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 
 		ctx.invoke(varIter, "hasNext");
 		g.push(false);
-		g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
+		g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
 		ctx.cast(ctx.invoke(varIter, "next"), getType(type));
-		VarLocal it = newLocal(ctx, getType(type));
+		VarLocal it = ctx.newLocal(getType(type));
 		it.store(ctx);
 
 		Type forEachType = forEach.apply(getValue(it)).load(ctx);
@@ -78,17 +77,17 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
-		return Type.VOID_TYPE;
+		return VOID_TYPE;
 
 	}
 
 	public Type arrayForEach(Context ctx, GeneratorAdapter g, Label labelLoop, Label labelExit) {
-		VarLocal len = newLocal(ctx, Type.INT_TYPE);
+		VarLocal len = ctx.newLocal(INT_TYPE);
 		g.arrayLength();
 		len.store(ctx);
 
 		g.push(0);
-		VarLocal varPosition = newLocal(ctx, Type.INT_TYPE);
+		VarLocal varPosition = ctx.newLocal(INT_TYPE);
 		varPosition.store(ctx);
 
 		g.mark(labelLoop);
@@ -96,25 +95,25 @@ public abstract class AbstractExpressionIteratorForEach implements Expression {
 		varPosition.load(ctx);
 		len.load(ctx);
 
-		g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
+		g.ifCmp(INT_TYPE, GeneratorAdapter.GE, labelExit);
 
 		collection.load(ctx);
 		varPosition.load(ctx);
 		g.arrayLoad(getType(type));
 
-		VarLocal it = newLocal(ctx, getType(type));
+		VarLocal it = ctx.newLocal(getType(type));
 		it.store(ctx);
 
 		forEach.apply(getValue(it)).load(ctx);
 
 		varPosition.load(ctx);
 		g.push(1);
-		g.math(GeneratorAdapter.ADD, Type.INT_TYPE);
+		g.math(GeneratorAdapter.ADD, INT_TYPE);
 		varPosition.store(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
 
-		return Type.VOID_TYPE;
+		return VOID_TYPE;
 	}
 }

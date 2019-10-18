@@ -22,7 +22,8 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.newLocal;
+import static org.objectweb.asm.Type.INT_TYPE;
+import static org.objectweb.asm.Type.VOID_TYPE;
 
 final class ExpressionFor implements Expression {
 	private final Expression from;
@@ -41,12 +42,12 @@ final class ExpressionFor implements Expression {
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		VarLocal to = newLocal(ctx, Type.INT_TYPE);
+		VarLocal to = ctx.newLocal(INT_TYPE);
 		this.to.load(ctx);
 		to.store(ctx);
 
 		from.load(ctx);
-		VarLocal it = newLocal(ctx, Type.INT_TYPE);
+		VarLocal it = ctx.newLocal(INT_TYPE);
 		it.store(ctx);
 
 		g.mark(labelLoop);
@@ -54,7 +55,7 @@ final class ExpressionFor implements Expression {
 		it.load(ctx);
 		to.load(ctx);
 
-		g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
+		g.ifCmp(INT_TYPE, GeneratorAdapter.GE, labelExit);
 
 		Type forType = forVar.apply(it).load(ctx);
 		if (forType.getSize() == 1)
@@ -64,12 +65,12 @@ final class ExpressionFor implements Expression {
 
 		it.load(ctx);
 		g.push(1);
-		g.math(GeneratorAdapter.ADD, Type.INT_TYPE);
+		g.math(GeneratorAdapter.ADD, INT_TYPE);
 		it.store(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
 
-		return Type.VOID_TYPE;
+		return VOID_TYPE;
 	}
 }

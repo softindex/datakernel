@@ -23,7 +23,6 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.Iterator;
 import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.newLocal;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
@@ -53,7 +52,7 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		Label labelExit = new Label();
 
 		ctx.invoke(getEntries(), "iterator");
-		VarLocal iterator = newLocal(ctx, getType(Iterator.class));
+		VarLocal iterator = ctx.newLocal(getType(Iterator.class));
 		iterator.store(ctx);
 
 		g.mark(labelLoop);
@@ -65,7 +64,7 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 		Type entryType = getType(entryClazz);
 		ctx.cast(ctx.invoke(iterator, "next"), entryType);
 
-		VarLocal entry = newLocal(ctx, entryType);
+		VarLocal entry = ctx.newLocal(entryType);
 		entry.store(ctx);
 
 		Type forKeyType = forKey.apply(getKey(entry)).load(ctx);

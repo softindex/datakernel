@@ -23,7 +23,6 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.exception;
-import static io.datakernel.codegen.Expressions.newLocal;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.getType;
 
@@ -47,7 +46,7 @@ final class ExpressionSwitch implements Expression {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
 		Type keyType = this.value.load(ctx);
-		VarLocal value = newLocal(ctx, keyType);
+		VarLocal value = ctx.newLocal(keyType);
 		value.store(ctx);
 
 		Label labelExit = new Label();

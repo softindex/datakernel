@@ -19,8 +19,6 @@ package io.datakernel.codegen;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 
-import static io.datakernel.codegen.Expressions.newLocal;
-
 final class ExpressionLet implements Variable {
 	private final Expression field;
 	private VarLocal var;
@@ -32,7 +30,7 @@ final class ExpressionLet implements Variable {
 	@Override
 	public Type load(Context ctx) {
 		if (var == null) {
-			var = newLocal(ctx, field.load(ctx));
+			var = ctx.newLocal(field.load(ctx));
 			var.store(ctx);
 		}
 		return var.load(ctx);
@@ -48,7 +46,7 @@ final class ExpressionLet implements Variable {
 	public void store(Context ctx, Object storeContext, Type type) {
 		if (var == null) {
 			Type fieldType = field.load(ctx);
-			var = newLocal(ctx, fieldType);
+			var = ctx.newLocal(fieldType);
 			var.store(ctx);
 		}
 

@@ -124,10 +124,10 @@ public final class ExpressionComparator implements Expression {
 				g.ifZCmp(NE, labelReturn);
 				g.pop();
 			} else {
-				VarLocal varRight = newLocal(ctx, rightPropertyType);
+				VarLocal varRight = ctx.newLocal(rightPropertyType);
 				varRight.store(ctx);
 
-				VarLocal varLeft = newLocal(ctx, leftPropertyType);
+				VarLocal varLeft = ctx.newLocal(leftPropertyType);
 				varLeft.store(ctx);
 
 				Label continueLabel = new Label();

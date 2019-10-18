@@ -32,8 +32,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.asList;
-import static org.objectweb.asm.Type.VOID_TYPE;
-import static org.objectweb.asm.Type.getType;
+import static org.objectweb.asm.Type.*;
 
 /**
  * Contains information about a dynamic class
@@ -116,36 +115,41 @@ public final class Context {
 		staticConstants.put(field, value);
 	}
 
+	public VarLocal newLocal(Type type) {
+		int local = getGeneratorAdapter().newLocal(type);
+		return new VarLocal(local);
+	}
+
 	public Class<?> toJavaType(Type type) {
 		if (type.equals(getSelfType()))
 			throw new IllegalArgumentException();
 		int sort = type.getSort();
-		if (sort == Type.BOOLEAN)
+		if (sort == BOOLEAN)
 			return boolean.class;
-		if (sort == Type.CHAR)
+		if (sort == CHAR)
 			return char.class;
-		if (sort == Type.BYTE)
+		if (sort == BYTE)
 			return byte.class;
-		if (sort == Type.SHORT)
+		if (sort == SHORT)
 			return short.class;
-		if (sort == Type.INT)
+		if (sort == INT)
 			return int.class;
-		if (sort == Type.FLOAT)
+		if (sort == FLOAT)
 			return float.class;
-		if (sort == Type.LONG)
+		if (sort == LONG)
 			return long.class;
-		if (sort == Type.DOUBLE)
+		if (sort == DOUBLE)
 			return double.class;
-		if (sort == Type.VOID)
+		if (sort == VOID)
 			return void.class;
-		if (sort == Type.OBJECT) {
+		if (sort == OBJECT) {
 			try {
 				return classLoader.loadClass(type.getClassName());
 			} catch (ClassNotFoundException e) {
 				throw new IllegalArgumentException(format("No class %s in class loader", type.getClassName()), e);
 			}
 		}
-		if (sort == Type.ARRAY) {
+		if (sort == ARRAY) {
 			Class<?> result;
 			if (type.equals(getType(Object[].class))) {
 				result = Object[].class;
@@ -216,7 +220,7 @@ public final class Context {
 			Type targetTypePrimitive = isPrimitiveType(typeTo) ? typeTo : unwrap(typeTo);
 
 			if (isWrapperType(typeFrom)) {
-				g.invokeVirtual(typeFrom, primitiveValueMethod(typeTo));
+				g.invokeVirtual(typeFrom, toPrimitive(typeTo));
 				return;
 			}
 

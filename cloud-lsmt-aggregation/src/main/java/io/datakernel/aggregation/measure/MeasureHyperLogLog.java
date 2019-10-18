@@ -31,6 +31,7 @@ import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.isWrapperType;
 import static java.util.Collections.singletonList;
+import static org.objectweb.asm.Type.*;
 
 public final class MeasureHyperLogLog extends Measure {
 	private final int registers;
@@ -119,15 +120,15 @@ public final class MeasureHyperLogLog extends Measure {
 			Type valueType = value.load(ctx);
 			String methodName;
 			Type methodParameterType;
-			if (valueType == Type.LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
+			if (valueType == LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
 				methodName = "addLong";
-				methodParameterType = Type.LONG_TYPE;
-			} else if (valueType == Type.INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
+				methodParameterType = LONG_TYPE;
+			} else if (valueType == INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
 				methodName = "addInt";
-				methodParameterType = Type.INT_TYPE;
+				methodParameterType = INT_TYPE;
 			} else {
 				methodName = "addObject";
-				methodParameterType = Type.getType(Object.class);
+				methodParameterType = getType(Object.class);
 			}
 
 			if (isWrapperType(valueType)) {
@@ -136,7 +137,7 @@ public final class MeasureHyperLogLog extends Measure {
 
 			ctx.invoke(accumulatorType, methodName, methodParameterType);
 
-			return Type.VOID_TYPE;
+			return VOID_TYPE;
 		}
 	}
 }

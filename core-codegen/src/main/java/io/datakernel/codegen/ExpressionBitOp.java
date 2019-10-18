@@ -19,7 +19,7 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.newLocal;
+import static org.objectweb.asm.Type.*;
 
 final class ExpressionBitOp implements Expression {
 	private final BitOperation op;
@@ -66,16 +66,16 @@ final class ExpressionBitOp implements Expression {
 	private Type loadShift(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		VarLocal varIntShift = newLocal(ctx, Type.INT_TYPE);
+		VarLocal varIntShift = ctx.newLocal(INT_TYPE);
 		Type rightType = right.load(ctx);
 		switch (rightType.getSort()) {
-			case Type.BOOLEAN:
-			case Type.SHORT:
-			case Type.CHAR:
-			case Type.BYTE:
+			case BOOLEAN:
+			case SHORT:
+			case CHAR:
+			case BYTE:
 //				g.cast(right.type(ctx), Type.INT_TYPE);
 //				break;
-			case Type.INT:
+			case INT:
 				break;
 			default:
 				throw new IllegalArgumentException("Right type is not an integral type");
@@ -85,24 +85,24 @@ final class ExpressionBitOp implements Expression {
 		Type leftType = left.load(ctx);
 		int valueSort = leftType.getSort();
 
-		if (valueSort == Type.LONG) {
+		if (valueSort == LONG) {
 			varIntShift.load(ctx);
-			g.visitInsn(Type.LONG_TYPE.getOpcode(op.opCode));
-			return Type.LONG_TYPE;
+			g.visitInsn(LONG_TYPE.getOpcode(op.opCode));
+			return LONG_TYPE;
 		}
 
-		if (valueSort == Type.INT) {
+		if (valueSort == INT) {
 			varIntShift.load(ctx);
-			g.visitInsn(Type.INT_TYPE.getOpcode(op.opCode));
-			return Type.INT_TYPE;
+			g.visitInsn(INT_TYPE.getOpcode(op.opCode));
+			return INT_TYPE;
 		}
 
-		if (valueSort == Type.BYTE || valueSort == Type.SHORT || valueSort == Type.CHAR || valueSort == Type.BOOLEAN) {
+		if (valueSort == BYTE || valueSort == SHORT || valueSort == CHAR || valueSort == BOOLEAN) {
 //			g.cast(left.type(ctx), Type.INT_TYPE);
 			varIntShift.load(ctx);
 
-			g.visitInsn(Type.INT_TYPE.getOpcode(op.opCode));
-			return Type.INT_TYPE;
+			g.visitInsn(INT_TYPE.getOpcode(op.opCode));
+			return INT_TYPE;
 		}
 
 		throw new IllegalArgumentException("Left type if not an integral type");
@@ -110,18 +110,18 @@ final class ExpressionBitOp implements Expression {
 
 	private Type unifyType(int leftSort, int rightSort) {
 		if (op == BitOperation.AND || op == BitOperation.OR || op == BitOperation.XOR) {
-			if (leftSort == Type.LONG || rightSort == Type.LONG) return Type.LONG_TYPE;
-			if (leftSort == Type.VOID || rightSort == Type.VOID)
+			if (leftSort == LONG || rightSort == LONG) return LONG_TYPE;
+			if (leftSort == VOID || rightSort == VOID)
 				throw new IllegalArgumentException("One of types of bit operation arguments is void");
-			if (leftSort <= Type.INT && rightSort <= Type.INT) return Type.INT_TYPE;
+			if (leftSort <= INT && rightSort <= INT) return INT_TYPE;
 			throw new IllegalArgumentException("One of types of bit operation arguments is not integral");
 		} else {
-			if (rightSort == Type.VOID || rightSort > Type.INT)
+			if (rightSort == VOID || rightSort > INT)
 				throw new IllegalArgumentException("Right argument of a bit operation arguments is void or not integral");
-			if (leftSort == Type.LONG) return Type.LONG_TYPE;
-			if (leftSort == Type.VOID || leftSort > Type.INT)
+			if (leftSort == LONG) return LONG_TYPE;
+			if (leftSort == VOID || leftSort > INT)
 				throw new IllegalArgumentException("Left argument of a bit operation arguments is void or not integral");
-			return Type.INT_TYPE;
+			return INT_TYPE;
 		}
 	}
 }

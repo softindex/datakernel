@@ -28,8 +28,8 @@ import java.util.Map;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.String.format;
-import static org.objectweb.asm.Type.CHAR_TYPE;
-import static org.objectweb.asm.Type.getType;
+import static org.objectweb.asm.Type.*;
+import static org.objectweb.asm.commons.Method.getMethod;
 
 @SuppressWarnings("WeakerAccess")
 public final class Utils {
@@ -42,90 +42,81 @@ public final class Utils {
 		}
 	}
 
-	private static final Method BOOLEAN_VALUE = Method.getMethod("boolean booleanValue()");
-	private static final Method CHAR_VALUE = Method.getMethod("char charValue()");
-	private static final Method INT_VALUE = Method.getMethod("int intValue()");
-	private static final Method FLOAT_VALUE = Method.getMethod("float floatValue()");
-	private static final Method LONG_VALUE = Method.getMethod("long longValue()");
-	private static final Method DOUBLE_VALUE = Method.getMethod("double doubleValue()");
-	private static final Method SHORT_VALUE = Method.getMethod("short shortValue()");
-	private static final Method BYTE_VALUE = Method.getMethod("byte byteValue()");
-
-	private static final Type BOOLEAN_TYPE = getType(Boolean.class);
-	private static final Type CHARACTER_TYPE = getType(Character.class);
-	private static final Type BYTE_TYPE = getType(Byte.class);
-	private static final Type SHORT_TYPE = getType(Short.class);
-	private static final Type INT_TYPE = getType(Integer.class);
-	private static final Type FLOAT_TYPE = getType(Float.class);
-	private static final Type LONG_TYPE = getType(Long.class);
-	private static final Type DOUBLE_TYPE = getType(Double.class);
-	private static final Type VOID_TYPE = getType(Void.class);
+	private static final Type WRAPPED_BOOLEAN_TYPE = getType(Boolean.class);
+	private static final Type WRAPPED_CHAR_TYPE = getType(Character.class);
+	private static final Type WRAPPED_BYTE_TYPE = getType(Byte.class);
+	private static final Type WRAPPED_SHORT_TYPE = getType(Short.class);
+	private static final Type WRAPPED_INT_TYPE = getType(Integer.class);
+	private static final Type WRAPPED_FLOAT_TYPE = getType(Float.class);
+	private static final Type WRAPPED_LONG_TYPE = getType(Long.class);
+	private static final Type WRAPPED_DOUBLE_TYPE = getType(Double.class);
+	private static final Type WRAPPED_VOID_TYPE = getType(Void.class);
 
 	public static boolean isPrimitiveType(Type type) {
 		int sort = type.getSort();
-		return sort == Type.BOOLEAN ||
-				sort == Type.CHAR ||
-				sort == Type.BYTE ||
-				sort == Type.SHORT ||
-				sort == Type.INT ||
-				sort == Type.FLOAT ||
-				sort == Type.LONG ||
-				sort == Type.DOUBLE ||
-				sort == Type.VOID;
+		return sort == BOOLEAN ||
+				sort == CHAR ||
+				sort == BYTE ||
+				sort == SHORT ||
+				sort == INT ||
+				sort == FLOAT ||
+				sort == LONG ||
+				sort == DOUBLE ||
+				sort == VOID;
 	}
 
 	public static boolean isWrapperType(Type type) {
-		return type.getSort() == Type.OBJECT &&
+		return type.getSort() == OBJECT &&
 				WRAPPER_TO_PRIMITIVE.containsKey(type.getClassName());
 	}
 
-	public static Method primitiveValueMethod(Type type) {
-		if (type.equals(getType(char.class)) || type.equals(CHAR_TYPE))
-			return CHAR_VALUE;
-		if (type.equals(getType(boolean.class)) || type.equals(BOOLEAN_TYPE))
-			return BOOLEAN_VALUE;
-		if (type.equals(getType(double.class)) || type.equals(DOUBLE_TYPE))
-			return DOUBLE_VALUE;
-		if (type.equals(getType(float.class)) || type.equals(FLOAT_TYPE))
-			return FLOAT_VALUE;
-		if (type.equals(getType(long.class)) || type.equals(LONG_TYPE))
-			return LONG_VALUE;
-		if (type.equals(getType(int.class)) || type.equals(INT_TYPE))
-			return INT_VALUE;
-		if (type.equals(getType(short.class)) || type.equals(SHORT_TYPE))
-			return SHORT_VALUE;
-		if (type.equals(getType(byte.class)) || type.equals(BYTE_TYPE))
-			return BYTE_VALUE;
+	public static Method toPrimitive(Type type) {
+		if (type.getSort() == BOOLEAN || type.equals(WRAPPED_BOOLEAN_TYPE))
+			return getMethod("boolean booleanValue()");
+		if (type.getSort() == CHAR || type.equals(WRAPPED_CHAR_TYPE))
+			return getMethod("char charValue()");
+		if (type.getSort() == BYTE || type.equals(WRAPPED_BYTE_TYPE))
+			return getMethod("byte byteValue()");
+		if (type.getSort() == SHORT || type.equals(WRAPPED_SHORT_TYPE))
+			return getMethod("short shortValue()");
+		if (type.getSort() == INT || type.equals(WRAPPED_INT_TYPE))
+			return getMethod("int intValue()");
+		if (type.getSort() == FLOAT || type.equals(WRAPPED_FLOAT_TYPE))
+			return getMethod("float floatValue()");
+		if (type.getSort() == LONG || type.equals(WRAPPED_LONG_TYPE))
+			return getMethod("long longValue()");
+		if (type.getSort() == DOUBLE || type.equals(WRAPPED_DOUBLE_TYPE))
+			return getMethod("double doubleValue()");
 
 		throw new IllegalArgumentException(format("No primitive value method for %s ", type.getClassName()));
 	}
 
 	public static Type wrap(Type type) {
 		int sort = type.getSort();
-		if (sort == Type.BOOLEAN)
-			return BOOLEAN_TYPE;
-		if (sort == Type.CHAR)
-			return CHARACTER_TYPE;
-		if (sort == Type.BYTE)
-			return BYTE_TYPE;
-		if (sort == Type.SHORT)
-			return SHORT_TYPE;
-		if (sort == Type.INT)
-			return INT_TYPE;
-		if (sort == Type.FLOAT)
-			return FLOAT_TYPE;
-		if (sort == Type.LONG)
-			return LONG_TYPE;
-		if (sort == Type.DOUBLE)
-			return DOUBLE_TYPE;
-		if (sort == Type.VOID)
-			return VOID_TYPE;
+		if (sort == BOOLEAN)
+			return WRAPPED_BOOLEAN_TYPE;
+		if (sort == CHAR)
+			return WRAPPED_CHAR_TYPE;
+		if (sort == BYTE)
+			return WRAPPED_BYTE_TYPE;
+		if (sort == SHORT)
+			return WRAPPED_SHORT_TYPE;
+		if (sort == INT)
+			return WRAPPED_INT_TYPE;
+		if (sort == FLOAT)
+			return WRAPPED_FLOAT_TYPE;
+		if (sort == LONG)
+			return WRAPPED_LONG_TYPE;
+		if (sort == DOUBLE)
+			return WRAPPED_DOUBLE_TYPE;
+		if (sort == VOID)
+			return WRAPPED_VOID_TYPE;
 
 		throw new IllegalArgumentException(format("%s is not primitive", type.getClassName()));
 	}
 
 	public static Type unwrap(@NotNull Type type) {
-		checkArgument(type.getSort() == Type.OBJECT, "Cannot unwrap type that is not an object reference");
+		checkArgument(type.getSort() == OBJECT, "Cannot unwrap type that is not an object reference");
 		return checkNotNull(WRAPPER_TO_PRIMITIVE.get(type.getClassName()));
 	}
 
@@ -146,9 +137,9 @@ public final class Utils {
 	public static boolean isValidCast(Type from, Type to) {
 		return from.getSort() != to.getSort()
 				&&
-				!(from.getSort() < Type.BOOLEAN
-						|| from.getSort() > Type.DOUBLE
-						|| to.getSort() < Type.BOOLEAN
-						|| to.getSort() > Type.DOUBLE);
+				!(from.getSort() < BOOLEAN
+						|| from.getSort() > DOUBLE
+						|| to.getSort() < BOOLEAN
+						|| to.getSort() > DOUBLE);
 	}
 }

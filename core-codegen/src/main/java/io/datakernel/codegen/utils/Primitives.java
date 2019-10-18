@@ -34,11 +34,11 @@ public final class Primitives {
 		add(primToWrap, wrapToPrim, Boolean.TYPE, Boolean.class);
 		add(primToWrap, wrapToPrim, Byte.TYPE, Byte.class);
 		add(primToWrap, wrapToPrim, Character.TYPE, Character.class);
-		add(primToWrap, wrapToPrim, Double.TYPE, Double.class);
-		add(primToWrap, wrapToPrim, Float.TYPE, Float.class);
+		add(primToWrap, wrapToPrim, Short.TYPE, Short.class);
 		add(primToWrap, wrapToPrim, Integer.TYPE, Integer.class);
 		add(primToWrap, wrapToPrim, Long.TYPE, Long.class);
-		add(primToWrap, wrapToPrim, Short.TYPE, Short.class);
+		add(primToWrap, wrapToPrim, Float.TYPE, Float.class);
+		add(primToWrap, wrapToPrim, Double.TYPE, Double.class);
 		add(primToWrap, wrapToPrim, Void.TYPE, Void.class);
 
 		PRIMITIVE = Collections.unmodifiableMap(primToWrap);
