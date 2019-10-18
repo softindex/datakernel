@@ -24,19 +24,21 @@ import java.util.List;
 
 import static io.datakernel.codegen.Expressions.exception;
 import static io.datakernel.codegen.Expressions.newLocal;
-import static org.objectweb.asm.Type.INT_TYPE;
+import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.getType;
 
-final class ExpressionSwitchByIndex implements Expression {
+final class ExpressionSwitch implements Expression {
 	public static final Expression DEFAULT_EXPRESSION = exception(IllegalArgumentException.class);
 
-	private final Expression index;
-	private final List<Expression> expressions;
+	private final Expression value;
+	private final List<Expression> matchCases;
+	private final List<Expression> matchExpressions;
 	private final Expression defaultExpression;
 
-	ExpressionSwitchByIndex(Expression index, List<Expression> expressions, Expression defaultExpression) {
-		this.index = index;
-		this.expressions = expressions;
+	ExpressionSwitch(Expression value, List<Expression> matchCases, List<Expression> matchExpressions, Expression defaultExpression) {
+		this.value = value;
+		this.matchCases = matchCases;
+		this.matchExpressions = matchExpressions;
 		this.defaultExpression = defaultExpression;
 	}
 
@@ -44,21 +46,26 @@ final class ExpressionSwitchByIndex implements Expression {
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		VarLocal index = newLocal(ctx, this.index.load(ctx));
-		index.store(ctx);
+		Type keyType = this.value.load(ctx);
+		VarLocal value = newLocal(ctx, keyType);
+		value.store(ctx);
 
 		Label labelExit = new Label();
 
-		Type listItemType = getType(Object.class);
-
-		for (int i = 0; i < expressions.size(); i++) {
+		Type resultType = getType(Object.class);
+		for (int i = 0; i < matchCases.size(); i++) {
 			Label labelNext = new Label();
+			if (isPrimitiveType(keyType)) {
+				matchCases.get(i).load(ctx);
+				value.load(ctx);
+				g.ifCmp(keyType, GeneratorAdapter.NE, labelNext);
+			} else {
+				ctx.invoke(matchCases.get(i), "equals", value);
+				g.push(true);
+				g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, labelNext);
+			}
 
-			g.push(i);
-			index.load(ctx);
-			g.ifCmp(INT_TYPE, GeneratorAdapter.NE, labelNext);
-
-			listItemType = expressions.get(i).load(ctx);
+			resultType = matchExpressions.get(i).load(ctx);
 			g.goTo(labelExit);
 
 			g.mark(labelNext);
@@ -68,6 +75,6 @@ final class ExpressionSwitchByIndex implements Expression {
 
 		g.mark(labelExit);
 
-		return listItemType;
+		return resultType;
 	}
 }

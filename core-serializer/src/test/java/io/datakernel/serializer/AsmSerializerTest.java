@@ -1633,7 +1633,6 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testInetAddress() throws UnknownHostException {
-
 		TestInetAddress testInetAddress = new TestInetAddress();
 		testInetAddress.inetAddress = Inet6Address.getByName("2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d");
 		testInetAddress.inet4Address = (Inet4Address) Inet4Address.getByName("127.0.0.1");
@@ -1655,7 +1654,6 @@ public class AsmSerializerTest {
 		assertEquals(testInetAddress.inet4Address, genTestInetAddress2.inet4Address);
 		assertEquals(testInetAddress.inet6Address, genTestInetAddress2.inet6Address);
 		assertEquals(testInetAddress.inetAddress2, genTestInetAddress.inetAddress2);
-
 	}
 
 	public static class TestObject {

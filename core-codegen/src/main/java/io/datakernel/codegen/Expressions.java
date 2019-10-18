@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static io.datakernel.codegen.ExpressionCast.SELF_TYPE;
@@ -574,28 +575,28 @@ public class Expressions {
 		return new ExpressionThrow(exception, message);
 	}
 
-	public static Expression switchByIndex(Expression index, List<Expression> expressions) {
-		return new ExpressionSwitchByIndex(index, expressions, ExpressionSwitchByIndex.DEFAULT_EXPRESSION);
+	public static Expression switchByIndex(Expression index, Expression... expressions) {
+		return switchByIndex(index, asList(expressions), ExpressionSwitch.DEFAULT_EXPRESSION);
 	}
 
-	public static Expression switchByIndex(Expression index, Expression... expressions) {
-		return new ExpressionSwitchByIndex(index, asList(expressions), ExpressionSwitchByIndex.DEFAULT_EXPRESSION);
+	public static Expression switchByIndex(Expression index, List<Expression> expressions) {
+		return switchByIndex(index, expressions, ExpressionSwitch.DEFAULT_EXPRESSION);
 	}
 
 	public static Expression switchByIndex(Expression index, List<Expression> expressions, Expression defaultExpression) {
-		return new ExpressionSwitchByIndex(index, expressions, defaultExpression);
+		return new ExpressionSwitch(index, IntStream.range(0, expressions.size()).mapToObj(Expressions::value).collect(toList()), expressions, defaultExpression);
 	}
 
 	public static Expression switchByKey(Expression key, List<Expression> matchCases, List<Expression> matchExpressions) {
-		return new ExpressionSwitchByKey(key, matchCases, matchExpressions, ExpressionSwitchByKey.DEFAULT_EXPRESSION);
+		return new ExpressionSwitch(key, matchCases, matchExpressions, ExpressionSwitch.DEFAULT_EXPRESSION);
 	}
 
 	public static Expression switchByKey(Expression key, List<Expression> matchCases, List<Expression> matchExpressions, Expression defaultExpression) {
-		return new ExpressionSwitchByKey(key, matchCases, matchExpressions, defaultExpression);
+		return new ExpressionSwitch(key, matchCases, matchExpressions, defaultExpression);
 	}
 
 	public static Expression switchByKey(Expression key, Map<Expression, Expression> cases) {
-		return switchByKey(key, cases, ExpressionSwitchByKey.DEFAULT_EXPRESSION);
+		return switchByKey(key, cases, ExpressionSwitch.DEFAULT_EXPRESSION);
 	}
 
 	public static Expression switchByKey(Expression key, Map<Expression, Expression> cases, Expression defaultExpression) {
@@ -605,7 +606,7 @@ public class Expressions {
 			matchCases.add(entry.getKey());
 			matchExpressions.add(entry.getValue());
 		}
-		return new ExpressionSwitchByKey(key, matchCases, matchExpressions, defaultExpression);
+		return new ExpressionSwitch(key, matchCases, matchExpressions, defaultExpression);
 	}
 
 	public static Expression setArrayItem(Expression array, Expression position, Expression newElement) {
