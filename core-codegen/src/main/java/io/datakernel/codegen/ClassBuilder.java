@@ -19,6 +19,7 @@ package io.datakernel.codegen;
 import io.datakernel.codegen.DefiningClassLoader.ClassKey;
 import io.datakernel.codegen.utils.DefiningClassWriter;
 import io.datakernel.common.Initializable;
+import io.datakernel.common.collection.CollectionUtils;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -35,7 +36,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.getInternalName;
@@ -56,16 +56,16 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 	private final DefiningClassLoader classLoader;
 
-	private final Class<? super T> mainClass;
-	private final List<Class<?>> otherClasses;
+	private final Class<?> superclass;
+	private final List<Class<?>> interfaces;
 	private ClassKey key;
 	private Path bytecodeSaveDir;
+	private final Map<String, Object> staticConstants = new LinkedHashMap<>();
 
 	private String className;
 
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
 	private final Map<String, Class<?>> staticFields = new LinkedHashMap<>();
-	private final Map<String, Object> staticConstants = new LinkedHashMap<>();
 	private final Map<Method, Expression> methods = new LinkedHashMap<>();
 	private final Map<Method, Expression> staticMethods = new LinkedHashMap<>();
 
@@ -75,25 +75,30 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	 * Creates a new instance of AsmFunctionFactory
 	 *
 	 * @param classLoader class loader
-	 * @param mainClass   type of dynamic class
+	 * @param superclass  type of dynamic class
 	 */
-	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainClass) {
-		this(classLoader, mainClass, emptyList());
-	}
-
-	private ClassBuilder(DefiningClassLoader classLoader, Class<? super T> mainClass, List<Class<?>> types) {
+	private ClassBuilder(DefiningClassLoader classLoader, Class<?> superclass, List<Class<?>> types) {
 		this.classLoader = classLoader;
-		this.mainClass = mainClass;
-		this.otherClasses = types;
-		this.key = new ClassKey(mainClass, new HashSet<>(otherClasses), singletonList(new Object()));
+		this.superclass = superclass;
+		this.interfaces = types;
+		this.key = new ClassKey(superclass, new HashSet<>(interfaces), singletonList(new Object()));
 	}
 
-	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<? super T> type) {
-		return new ClassBuilder<>(classLoader, type);
+	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<? super T> implementation, Class<?>... interfaces) {
+		return create(classLoader, implementation, asList(interfaces));
 	}
 
-	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<T> mainType, List<Class<?>> types) {
-		return new ClassBuilder<>(classLoader, mainType, types);
+	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<? super T> implementation, List<Class<?>> interfaces) {
+		checkArgument(interfaces.stream().allMatch(Class::isInterface));
+		if (implementation.isInterface()) {
+			return new ClassBuilder<>(classLoader,
+					Object.class,
+					CollectionUtils.concat(singletonList(implementation), interfaces));
+		} else {
+			return new ClassBuilder<>(classLoader,
+					implementation,
+					interfaces);
+		}
 	}
 
 	public ClassBuilder<T> withBytecodeSaveDir(Path bytecodeSaveDir) {
@@ -102,7 +107,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	}
 
 	public ClassBuilder<T> withClassKey(Object... parameters) {
-		this.key = new ClassKey(mainClass, new HashSet<>(otherClasses), asList(parameters));
+		this.key = new ClassKey(superclass, new HashSet<>(interfaces), asList(parameters));
 		return this;
 	}
 
@@ -159,9 +164,9 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		Method foundMethod = null;
 		List<List<java.lang.reflect.Method>> listOfMethods = new ArrayList<>();
 		listOfMethods.add(asList(Object.class.getMethods()));
-		listOfMethods.add(asList(mainClass.getMethods()));
-		listOfMethods.add(asList(mainClass.getDeclaredMethods()));
-		for (Class<?> type : otherClasses) {
+		listOfMethods.add(asList(superclass.getMethods()));
+		listOfMethods.add(asList(superclass.getDeclaredMethods()));
+		for (Class<?> type : interfaces) {
 			listOfMethods.add(asList(type.getMethods()));
 			listOfMethods.add(asList(type.getDeclaredMethods()));
 		}
@@ -227,35 +232,17 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 		Type classType = getType('L' + actualClassName.replace('.', '/') + ';');
 
-		String[] internalNames = new String[1 + otherClasses.size()];
-		internalNames[0] = getInternalName(mainClass);
-		for (int i = 0; i < otherClasses.size(); i++) {
-			internalNames[1 + i] = getInternalName(otherClasses.get(i));
-		}
-		if (mainClass.isInterface()) {
-			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
-					classType.getInternalName(),
-					null,
-					"java/lang/Object",
-					internalNames);
-		} else {
-			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
-					classType.getInternalName(),
-					null,
-					internalNames[0],
-					Arrays.copyOfRange(internalNames, 1, internalNames.length));
-		}
+		cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
+				classType.getInternalName(),
+				null,
+				getInternalName(superclass),
+				interfaces.stream().map(Type::getInternalName).toArray(String[]::new));
 
 		{
 			Method m = getMethod("void <init> ()");
 			GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 			g.loadThis();
-
-			if (mainClass.isInterface()) {
-				g.invokeConstructor(getType(Object.class), m);
-			} else {
-				g.invokeConstructor(getType(mainClass), m);
-			}
+			g.invokeConstructor(getType(superclass), m);
 
 			g.returnValue();
 			g.endMethod();
@@ -270,7 +257,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticConstants, m.getArgumentTypes(), m, methods, staticMethods);
+				Context ctx = new Context(classLoader, g, classType, superclass, interfaces, fields, methods, staticMethods, m, staticConstants);
 
 				Expression expression = staticMethods.get(m);
 				ctx.cast(expression.load(ctx), m.getReturnType());
@@ -286,7 +273,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, mainClass, otherClasses, fields, staticConstants, m.getArgumentTypes(), m, methods, staticMethods);
+				Context ctx = new Context(classLoader, g, classType, superclass, interfaces, fields, methods, staticMethods, m, staticConstants);
 
 				Expression expression = methods.get(m);
 				ctx.cast(expression.load(ctx), m.getReturnType());

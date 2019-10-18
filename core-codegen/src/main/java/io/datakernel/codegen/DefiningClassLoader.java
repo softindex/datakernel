@@ -31,13 +31,13 @@ import static java.util.stream.Collectors.groupingBy;
 public final class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
 
 	public static final class ClassKey {
-		private final Class<?> mainClass;
-		private final Set<Class<?>> relatedClasses;
+		private final Class<?> superclass;
+		private final Set<Class<?>> interfaces;
 		private final List<Object> parameters;
 
-		ClassKey(Class<?> mainClass, Set<Class<?>> relatedClasses, List<Object> parameters) {
-			this.mainClass = mainClass;
-			this.relatedClasses = relatedClasses;
+		ClassKey(Class<?> superclass, Set<Class<?>> interfaces, List<Object> parameters) {
+			this.superclass = superclass;
+			this.interfaces = interfaces;
 			this.parameters = parameters;
 		}
 
@@ -46,14 +46,14 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 			ClassKey key = (ClassKey) o;
-			return mainClass.equals(key.mainClass) &&
-					relatedClasses.equals(key.relatedClasses) &&
+			return superclass.equals(key.superclass) &&
+					interfaces.equals(key.interfaces) &&
 					parameters.equals(key.parameters);
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(mainClass, relatedClasses, parameters);
+			return Objects.hash(superclass, interfaces, parameters);
 		}
 	}
 
@@ -91,7 +91,7 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 	@Override
 	synchronized public Map<String, Long> getDefinedClassesCountByType() {
 		return definedClasses.keySet().stream()
-				.map(key -> concat(singletonList(key.mainClass), key.relatedClasses).toString())
+				.map(key -> concat(singletonList(key.superclass), key.interfaces).toString())
 				.collect(groupingBy(identity(), counting()));
 	}
 

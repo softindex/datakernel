@@ -42,36 +42,34 @@ public final class Context {
 	private final DefiningClassLoader classLoader;
 	private final GeneratorAdapter g;
 	private final Type selfType;
-	private final Method method;
-	private final Class<?> mainClass;
-	private final List<Class<?>> otherClasses;
+	private final Class<?> superclass;
+	private final List<Class<?>> interfaces;
 	private final Map<String, Class<?>> fields;
-	private final Map<String, Object> staticConstants;
-	private final Type[] argumentTypes;
 	private final Map<Method, Expression> methods;
 	private final Map<Method, Expression> staticMethods;
+	private final Method method;
+	private final Map<String, Object> staticConstants;
 
-	public Context(DefiningClassLoader classLoader, GeneratorAdapter g,
+	public Context(DefiningClassLoader classLoader,
+			GeneratorAdapter g,
 			Type selfType,
-			Class<?> mainClass,
-			List<Class<?>> otherClasses,
+			Class<?> superclass,
+			List<Class<?>> interfaces,
 			Map<String, Class<?>> fields,
-			Map<String, Object> staticConstants,
-			Type[] argumentTypes,
-			Method method,
 			Map<Method, Expression> methods,
-			Map<Method, Expression> staticMethods) {
+			Map<Method, Expression> staticMethods,
+			Method method,
+			Map<String, Object> staticConstants) {
 		this.classLoader = classLoader;
 		this.g = g;
-		this.method = method;
-		this.mainClass = mainClass;
-		this.otherClasses = otherClasses;
-		this.argumentTypes = argumentTypes;
 		this.selfType = selfType;
+		this.superclass = superclass;
+		this.interfaces = interfaces;
 		this.fields = fields;
-		this.staticConstants = staticConstants;
 		this.methods = methods;
 		this.staticMethods = staticMethods;
+		this.method = method;
+		this.staticConstants = staticConstants;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -82,20 +80,32 @@ public final class Context {
 		return g;
 	}
 
-	public Class<?> getMainClass() {
-		return mainClass;
-	}
-
-	public List<Class<?>> getOtherClasses() {
-		return otherClasses;
-	}
-
 	public Type getSelfType() {
 		return selfType;
 	}
 
+	public Class<?> getSuperclass() {
+		return superclass;
+	}
+
+	public List<Class<?>> getInterfaces() {
+		return interfaces;
+	}
+
 	public Map<String, Class<?>> getFields() {
 		return fields;
+	}
+
+	public Map<Method, Expression> getMethods() {
+		return methods;
+	}
+
+	public Map<Method, Expression> getStaticMethods() {
+		return staticMethods;
+	}
+
+	public Method getMethod() {
+		return method;
 	}
 
 	public Map<String, Object> getStaticConstants() {
@@ -104,26 +114,6 @@ public final class Context {
 
 	public void addStaticConstant(String field, Object value) {
 		staticConstants.put(field, value);
-	}
-
-	public Type[] getArgumentTypes() {
-		return argumentTypes;
-	}
-
-	public Type getArgumentType(int argument) {
-		return argumentTypes[argument];
-	}
-
-	public Map<Method, Expression> getStaticMethods() {
-		return staticMethods;
-	}
-
-	public Map<Method, Expression> getMethods() {
-		return methods;
-	}
-
-	public Method getMethod() {
-		return method;
 	}
 
 	public Class<?> toJavaType(Type type) {
@@ -172,78 +162,78 @@ public final class Context {
 		throw new IllegalArgumentException(format("No Java type for %s", type.getClassName()));
 	}
 
-	public void cast(Type type, Type targetType) {
+	public void cast(Type typeFrom, Type typeTo) {
 		GeneratorAdapter g = getGeneratorAdapter();
 
-		if (type.equals(targetType)) {
+		if (typeFrom.equals(typeTo)) {
 			return;
 		}
 
-		if (targetType == VOID_TYPE) {
-			if (type.getSize() == 1)
+		if (typeTo == VOID_TYPE) {
+			if (typeFrom.getSize() == 1)
 				g.pop();
-			if (type.getSize() == 2)
+			if (typeFrom.getSize() == 2)
 				g.pop2();
 			return;
 		}
 
-		if (type == VOID_TYPE) {
-			throw new RuntimeException(format("Can't cast VOID_TYPE to %s. %s",
-					targetType.getClassName(),
+		if (typeFrom == VOID_TYPE) {
+			throw new RuntimeException(format("Can't cast VOID_TYPE typeTo %s. %s",
+					typeTo.getClassName(),
 					exceptionInGeneratedClass(this)));
 		}
 
-		if (type.equals(getSelfType())) {
-			Class<?> javaType = toJavaType(targetType);
-			if (javaType.isAssignableFrom(getMainClass())) {
+		if (typeFrom.equals(getSelfType())) {
+			Class<?> javaType = toJavaType(typeTo);
+			if (javaType.isAssignableFrom(getSuperclass())) {
 				return;
 			}
-			for (Class<?> aClass : getOtherClasses()) {
-				if (javaType.isAssignableFrom(aClass)) {
+			for (Class<?> type : getInterfaces()) {
+				if (javaType.isAssignableFrom(type)) {
 					return;
 				}
 			}
-			throw new RuntimeException(format("Can't cast self %s to %s, %s",
-					type.getClassName(),
-					targetType.getClassName(),
+			throw new RuntimeException(format("Can't cast self %s typeTo %s, %s",
+					typeFrom.getClassName(),
+					typeTo.getClassName(),
 					exceptionInGeneratedClass(this)));
 		}
 
-		if (!type.equals(getSelfType()) && !targetType.equals(getSelfType()) &&
-				toJavaType(targetType).isAssignableFrom(toJavaType(type))) {
+		if (!typeFrom.equals(getSelfType()) && !typeTo.equals(getSelfType()) &&
+				toJavaType(typeTo).isAssignableFrom(toJavaType(typeFrom))) {
 			return;
 		}
 
-		if (targetType.equals(getType(Object.class)) && isPrimitiveType(type)) {
-			g.box(type);
-//			g.cast(wrap(type), getType(Object.class));
+		if (typeTo.equals(getType(Object.class)) && isPrimitiveType(typeFrom)) {
+			g.box(typeFrom);
+//			g.cast(wrap(typeFrom), getType(Object.class));
 			return;
 		}
 
-		if ((isPrimitiveType(type) || isWrapperType(type)) &&
-				(isPrimitiveType(targetType) || isWrapperType(targetType))) {
+		if ((isPrimitiveType(typeFrom) || isWrapperType(typeFrom)) &&
+				(isPrimitiveType(typeTo) || isWrapperType(typeTo))) {
 
-			Type targetTypePrimitive = isPrimitiveType(targetType) ? targetType : unwrap(targetType);
+			Type targetTypePrimitive = isPrimitiveType(typeTo) ? typeTo : unwrap(typeTo);
 
-			if (isWrapperType(type)) {
-				g.invokeVirtual(type, primitiveValueMethod(targetType));
+			if (isWrapperType(typeFrom)) {
+				g.invokeVirtual(typeFrom, primitiveValueMethod(typeTo));
 				return;
 			}
 
-			assert isPrimitiveType(type);
+			assert isPrimitiveType(typeFrom);
 
-			if (isValidCast(type, targetTypePrimitive)) {
-				g.cast(type, targetTypePrimitive);
+			if (isValidCast(typeFrom, targetTypePrimitive)) {
+				g.cast(typeFrom, targetTypePrimitive);
 			}
 
-			if (isWrapperType(targetType)) {
+			if (isWrapperType(typeTo)) {
 				g.valueOf(targetTypePrimitive);
 			}
 
 			return;
 		}
 
-		g.checkCast(targetType);
+		g.checkCast(typeTo);
 	}
 
 	public Type invoke(Expression owner, String methodName, Expression... arguments) {
