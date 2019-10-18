@@ -1,0 +1,58 @@
+{{<base}}
+    {{$content}}
+        <div class="container d-flex">
+            <div class="row justify-content-center">
+                {{#rootAlbum}}
+                    <div class="border m-1" style="width:180px; height: 180px; position: relative">
+                        <a href="/new/{{album.id}}" class="btn btn-link" id="uploadImageButton">
+                            <div>
+                                <i class="fas fa-plus fa-2x"
+                                   style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                                <p class="text-center"
+                                   style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                                    Upload new images</p>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="border m-1" style="width:180px; height: 180px; position: relative">
+                        <button type="button" class="btn btn-link" id="create-album">
+                            <i class="fas fa-images fa-2x"
+                               style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                            <p class="text-center"
+                               style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, 0%);">Create new album</p>
+                        </button>
+                    </div>
+                {{/rootAlbum}}
+                {{#album}}
+                    {{#photos}}
+                        <label class="image-checkbox" id="image_checkbox_{{key}}" data-id="{{key}}">
+                            <img class="img-fluid img-thumbnail" style="width:180px; height: 180px"
+                                 src="/download/base/{{id}}/{{key}}" id="{{key}}"
+                                 data-url="/update/{{id}}/{{key}}"
+                                 data-full-img="/download/full/{{id}}/{{key}}"
+                                 data-description="{{value.photoDescription}}">
+                            <input type="checkbox" name="image" value=""/>
+                        </label>
+                    {{/photos}}
+                {{/album}}
+            </div>
+        </div>
+
+        <div id="modal" class="modal">
+            <span class="close"
+                  style="position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px;font-weight: bold; transition: 0.3s;"
+                  id="close">&times;</span>
+            <img class="modal-content" id="modalImg" src="" alt="photo">
+            <textarea readonly class="mt-2 mb-2 modal-content p-1" maxlength="1024" id="photo_description"
+                      placeholder="Description"></textarea>
+            <div class="row justify-content-end animation-fade" style="width: 80%; max-width: 700px; margin: auto;">
+                <button class="col-3 col-auto btn btn btn-primary" type="submit" id="editPhotoDescription">Edit</button>
+                <div id="editDescriptionButtonGroup" class="row" style="display: none">
+                    <button class="col btn btn btn-success m-1" type="submit" id="savePhotoDescription">Save</button>
+                    <button class="col btn btn btn-danger m-1" type="submit" id="cancelEditingPhotoDescription">Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

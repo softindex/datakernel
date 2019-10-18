@@ -7,6 +7,7 @@ import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.ot.TransformResult;
 import io.datakernel.util.Tuple2;
 import io.global.appstore.pojo.AppInfo;
 import io.global.appstore.pojo.HostingInfo;
@@ -20,8 +21,10 @@ import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.HttpHeaders.REFERER;
@@ -128,5 +131,15 @@ public final class Utils {
 		} catch (NumberFormatException e) {
 			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
 		}
+	}
+
+	public static <O, S> TransformResult<O> collect(TransformResult<S> subResult, Function<S, O> constructor) {
+		return TransformResult.of(doCollect(subResult.left, constructor), doCollect(subResult.right, constructor));
+	}
+
+	public static <O, S> List<O> doCollect(List<S> ops, Function<S, O> constructor) {
+		return ops.stream()
+				.map(constructor)
+				.collect(toList());
 	}
 }
