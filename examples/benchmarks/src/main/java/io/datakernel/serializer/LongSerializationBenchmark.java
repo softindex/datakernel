@@ -10,7 +10,6 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ALL")
@@ -19,7 +18,7 @@ public class LongSerializationBenchmark {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 	private static final BinarySerializer<TestDataScalars> serializer = SerializerBuilder.create(definingClassLoader)
 			.build(TestDataScalars.class);
-	private static byte[] array;
+	private static final byte[] array = new byte[5000];
 
 	public static class TestDataScalars {
 		public enum TestEnum {
@@ -69,8 +68,6 @@ public class LongSerializationBenchmark {
 		public long ai;
 		@Serialize(order = 20)
 		public long aj;
-		@Serialize(order = 21)
-		public long[] arr;
 	}
 
 	TestDataScalars testData1 = new TestDataScalars();
@@ -98,19 +95,12 @@ public class LongSerializationBenchmark {
 		testData1.ak = Long.MAX_VALUE;
 		testData1.ai = Long.MAX_VALUE;
 		testData1.aj = Long.MAX_VALUE;
-		testData1.arr = new long[500];
-		for (int i = 0; i < 500; ++i) {
-			testData1.arr[i] = new Random().nextLong();
-		}
 	}
 
 	@Benchmark
 	public void measureNewSerializer(Blackhole blackhole) {
-		array = new byte[5000];
 		serializer.encode(array, 0, testData1);
-		testData2 = serializer.decode(array, 0);
-		blackhole.consume(testData1);
-		blackhole.consume(testData2);
+		blackhole.consume(serializer.decode(array, 0));
 	}
 
 	public static void main(String[] args) throws RunnerException {

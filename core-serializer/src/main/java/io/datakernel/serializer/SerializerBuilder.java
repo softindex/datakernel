@@ -53,7 +53,7 @@ public final class SerializerBuilder {
 	private String profile;
 	private int version = Integer.MAX_VALUE;
 	private Path saveBytecodePath;
-	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_3;
+	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_4;
 
 	private final Map<Class<?>, SerializerGenBuilder> typeMap = new LinkedHashMap<>();
 	private final Map<Class<? extends Annotation>, Class<? extends Annotation>> annotationsExMap = new LinkedHashMap<>();

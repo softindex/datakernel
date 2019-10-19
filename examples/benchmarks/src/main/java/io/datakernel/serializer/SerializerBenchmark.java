@@ -45,9 +45,6 @@ public class SerializerBenchmark {
 		@Serialize(order = 8)
 		public double d;
 
-		@Serialize(order = 17)
-		public byte[] bytes;
-
 		@Serialize(order = 18)
 		public String string;
 		@Serialize(order = 19)
@@ -68,7 +65,6 @@ public class SerializerBenchmark {
 		testData1.f = Float.MIN_VALUE;
 		testData1.d = Double.MIN_VALUE;
 
-		testData1.bytes = "Hello, World!".getBytes();
 		testData1.string = "Hello, World!";
 		testData1.testEnum = TestDataScalars.TestEnum.TWO;
 	}
