@@ -1,10 +1,10 @@
+import React from "react";
 import PhotoIcon from '@material-ui/icons/PhotoOutlined';
 import AudioIcon from '@material-ui/icons/AudiotrackOutlined';
 import VideoIcon from '@material-ui/icons/VideocamOutlined';
 import PdfIcon from '@material-ui/icons/PictureAsPdfOutlined';
 import TextIcon from '@material-ui/icons/TextFormatOutlined';
 import FileIcon from '@material-ui/icons/InsertDriveFileOutlined';
-import React from "react";
 
 function FileTypeIcon({type, className}) {
   switch (type) {
@@ -22,4 +22,5 @@ function FileTypeIcon({type, className}) {
       return <FileIcon className={className}/>;
   }
 }
+
 export default FileTypeIcon;

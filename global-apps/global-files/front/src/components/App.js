@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
 import cookies from 'js-cookie';
-import MainScreen from './MainScreen/MainScreen';
+import MainScreen from './MainScreen';
 import SignUp from './SignUp';
 import AuthService from '../modules/auth/AuthService';
 import AuthContext from '../modules/auth/AuthContext';

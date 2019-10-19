@@ -2,8 +2,8 @@ import React from 'react';
 import {withRouter} from 'react-router-dom';
 import FSContext from '../../modules/fs/FSContext';
 import connectService from '../../common/connectService';
-import ContextMenu from '../ContextMenu/ContextMenu';
-import ItemCard from '../ItemCard/ItemCard';
+import DeleteMenu from '../DeleteMenu';
+import ItemCard from '../ItemCard';
 import {withStyles} from "@material-ui/core";
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Typography from '@material-ui/core/Typography';
@@ -80,15 +80,14 @@ class ItemList extends React.Component {
     let files = [];
 
     for (const item of this.props.fileList) {
-
       if (item.isDirectory) {
         folders.push(
-            <ItemCard
-              name={item.name}
-              isDirectory={true}
-              path={this.props.path}
-              onContextMenu={this.handleContextMenu.bind(null, item.name, item.isDirectory)}
-            />
+          <ItemCard
+            name={item.name}
+            isDirectory={true}
+            filePath={this.props.path}
+            onContextMenu={this.handleContextMenu.bind(null, item.name, item.isDirectory)}
+          />
         )
       } else {
         files.push(
@@ -106,14 +105,13 @@ class ItemList extends React.Component {
       folders,
       files
     }
-
   };
 
   getItemContainer = () => {
     const items = this.getItemsByType();
 
     return (
-      <React.Fragment>
+      <>
         {items.folders.length > 0 && (
           <div className={this.props.classes.section}>
             <Typography variant="h6" gutterBottom>
@@ -134,7 +132,7 @@ class ItemList extends React.Component {
             </div>
           </div>
         )}
-      </React.Fragment>
+      </>
     );
   };
 
@@ -155,18 +153,14 @@ class ItemList extends React.Component {
   render() {
     return (
       <div className={this.props.classes.root}>
-
         <Breadcrumbs fsService={this.props.fsService}/>
         <Divider/>
-
         {this.props.loading && (
           <div className={this.props.classes.wrapper}>
             <CircularProgress/>
           </div>
         )}
-
         {this.props.fileList.length > 0 && !this.props.loading && this.getItemContainer()}
-
         {this.props.fileList.length <= 0 && !this.props.loading && (
           <div className={this.props.classes.wrapper}>
             <FolderIcon className={this.props.classes.emptyIndicator}/>
@@ -175,7 +169,6 @@ class ItemList extends React.Component {
             </Typography>
           </div>
         )}
-
         {this.state.selectedItem && this.state.isFileViewerOpen && (
           <FileViewer
             open={this.state.isFileViewerOpen}
@@ -184,17 +177,24 @@ class ItemList extends React.Component {
             onDelete={this.onDeleteItem}
           />
         )}
-
-        <ContextMenu deleteHandler={this.onDeleteItem} style={this.state.contextStyles}/>
-
+        <DeleteMenu
+          deleteHandler={this.onDeleteItem}
+          style={this.state.contextStyles}
+        />
       </div>
     );
   }
 }
 
-export default withStyles(itemListStyles)(connectService(FSContext, ({directories, files, path, loading}, fsService) => ({
-  fileList: [...directories, ...files],
-  path,
-  loading,
-  fsService
-}))(withRouter(ItemList)));
+export default withStyles(itemListStyles)(
+  connectService(FSContext, (
+    {directories, files, path, loading}, fsService) => ({
+      fileList: [...directories, ...files],
+      path,
+      loading,
+      fsService
+    })
+  )(
+    withRouter(ItemList)
+  )
+);

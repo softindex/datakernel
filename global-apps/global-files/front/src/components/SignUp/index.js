@@ -7,8 +7,8 @@ import AttachFileIcon from '@material-ui/icons/AttachFile';
 import StoreIcon from '@material-ui/icons/Store';
 import Grid from '@material-ui/core/Grid';
 import {SignUpAbstractionImage} from 'global-apps-common';
-import Button from '../Button/Button';
-import Snackbar from '../Snackbar/Snackbar';
+import Button from '@material-ui/core/Button';
+import Snackbar from '../Snackbar';
 import signUpStyles from './signUpStyles';
 
 class SignUp extends React.Component {
@@ -61,7 +61,7 @@ class SignUp extends React.Component {
               They are easy to manage, and synchronize themselves on all devices.
             </Typography>
             <Grid container spacing={32}>
-              <Grid item xs={12} lg={6} md={6}>
+              <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
                 <Button
                   variant="outlined"
                   color="inherit"
@@ -75,7 +75,7 @@ class SignUp extends React.Component {
                   Auth by App Store
                 </Button>
               </Grid>
-              <Grid item xs={12} lg={6} md={6}>
+              <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
                 <Button
                   variant="outlined"
                   color="inherit"

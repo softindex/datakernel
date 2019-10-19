@@ -1,7 +1,7 @@
-import React from 'react';
+import React, {useRef, useState} from 'react';
 import FSContext from '../../modules/fs/FSContext';
 import connectService from '../../common/connectService';
-import PromptDialog from '../PromptDialog/PromptDialog';
+import PromptDialog from '../PromptDialog';
 import {withStyles} from "@material-ui/core";
 import Drawer from '@material-ui/core/Drawer';
 import List from '@material-ui/core/List';
@@ -17,142 +17,130 @@ import Menu from '@material-ui/core/Menu';
 import MenuList from '@material-ui/core/MenuList';
 import MenuItem from '@material-ui/core/MenuItem';
 import Divider from '@material-ui/core/Divider';
-import Snackbar from '../Snackbar/Snackbar';
+import Snackbar from '../Snackbar';
 import withWidth, {isWidthDown} from '@material-ui/core/withWidth';
 import Link from "react-router-dom/es/Link";
 import sideBarStyles from './sideBarStyles';
 
-class Index extends React.Component {
-  state = {
-    fabElement: null,
-    folderFormIsOpen: false,
-    isOpen: false,
-    error: null
-  };
+function SideBar({classes, fsService, width, isDrawerOpen, onDrawerClose}) {
+  const [fabElement, setFabElement] = useState(null);
+  const [folderFormIsOpen, setFolderFormIsOpen] = useState(false);
+  const [error, setError] = useState(null);
+  const inputRef = useRef();
 
-  onFileUpload = () => {
-    this.closeFabMenu();
-    this.props.onDrawerClose();
-
-
-    Promise.all([...this.input.files].map(async file => {
+  const onFileUpload = () => {
+    onCloseFabMenu();
+    onDrawerClose();
+    Promise.all([...inputRef.current.files].map(async file => {
       try {
-        await this.props.fsService.writeFile(file)
+        await fsService.writeFile(file)
       } catch (e) {
-        console.error(e);
+        console.error(e); //TODO Snackbar
       }
     }));
   };
 
-  createFolder = async (name) => {
-    this.props.onDrawerClose();
+  const onCreateFolder = async (name) => {
+    onDrawerClose();
 
     if (!name) {
       return;
     }
 
     try {
-      await this.props.fsService.mkdir(name);
+      await fsService.mkdir(name);
     } catch (e) {
-      this.setState({
-        error: e.message
-      })
+      setError(e.message);
     }
   };
 
-  openFabMenu = (event) => {
-    this.setState({
-      fabElement: event.currentTarget
-    })
+  const onOpenFabMenu = (event) => {
+    setFabElement(event.currentTarget);
   };
 
-  closeFabMenu = () => {
-    this.setState({
-      fabElement: null
-    })
+  const onCloseFabMenu = () => {
+    setFabElement(null);
   };
 
-  formOpen = () => {
-    this.closeFabMenu();
-    this.setState({
-      folderFormIsOpen: true
-    });
+  const onDialogOpen = () => {
+    onCloseFabMenu();
+    setFolderFormIsOpen(true);
   };
 
-  formClose = () => {
-    this.setState({
-      folderFormIsOpen: false
-    })
+  const onDialogClose = () => {
+    setFolderFormIsOpen(false);
   };
 
-  formSubmit = (name) => {
+  const onSubmit = (name) => {
     if (name) {
-      this.setState({
-        folderFormIsOpen: false
-      });
-      this.createFolder(name);
+      setFolderFormIsOpen(false);
+      onCreateFolder(name); // TODO catch error
     }
   };
 
-  render() {
     return (
       <Drawer
         classes={{
-          paper: this.props.classes.root
+          paper: classes.root
         }}
-        variant={isWidthDown('md', this.props.width) ? 'persistant' : 'permanent'}
-        open={this.props.isDrawerOpen}
-        onClose={this.props.onDrawerClose}
+        variant={isWidthDown('md', width) ? 'persistant' : 'permanent'}
+        open={isDrawerOpen}
+        onClose={onDrawerClose}
       >
         <Fab
           variant="extended"
-          aria-label="Add"
-          className={this.props.classes.fab}
-          onClick={this.openFabMenu}
+          className={classes.fab}
+          onClick={onOpenFabMenu}
         >
-          <AddIcon className={this.props.classes.icon}/>
+          <AddIcon className={classes.icon}/>
           Create
         </Fab>
         <Menu
-          open={Boolean(this.state.fabElement)}
-          onClose={this.closeFabMenu}
+          open={Boolean(fabElement)}
+          onClose={onCloseFabMenu}
           disableAutoFocusItem
-          anchorEl={this.state.fabElement}
+          anchorEl={fabElement}
         >
           <MenuList>
-            <MenuItem onClick={this.formOpen}>
-              <ListItemIcon>
+            <MenuItem onClick={onDialogOpen}>
+              <ListItemIcon className={classes.listItemIcon}>
                 <CreateFolderIcon/>
               </ListItemIcon>
-              <ListItemText inset primary="Create folder"/>
+              <ListItemText
+                className={classes.litItemText}
+                primary="Create folder"
+              />
             </MenuItem>
             <Divider/>
             <input
-              onChange={this.onFileUpload}
-              ref={ref => this.input = ref}
+              onChange={onFileUpload}
+              ref={inputRef}
               multiple type="file"
               id="file"
-              className={this.props.classes.uploadInput}
+              className={classes.uploadInput}
             />
             <label htmlFor="file">
               <MenuItem>
-                <ListItemIcon>
+                <ListItemIcon className={classes.listItemIcon}>
                   <FileIcon/>
                 </ListItemIcon>
-                <ListItemText inset primary="Upload File"/>
+                <ListItemText
+                  className={classes.litItemText}
+                  primary="Upload File"
+                />
               </MenuItem>
             </label>
           </MenuList>
         </Menu>
-        <List className={this.props.classes.menuList}>
-          <Link to="/folders" style={{textDecoration: 'none'}}>
+        <List className={classes.menuList}>
+          <Link to="/folders" className={classes.foldersLink}>
             <ListItem
               button
               selected={true}
-              onClick={this.props.onDrawerClose}
+              onClick={onDrawerClose}
               classes={{
-                root: this.props.classes.listItem,
-                selected: this.props.classes.listItemSelected
+                root: classes.listItem,
+                selected: classes.listItemSelected
               }}
             >
               <ListItemIcon>
@@ -161,7 +149,7 @@ class Index extends React.Component {
               <ListItemText
                 primaryTypographyProps={{
                   classes: {
-                    root: this.props.classes.listTypography
+                    root: classes.listTypography
                   }
                 }}
                 primary="My files"
@@ -171,18 +159,17 @@ class Index extends React.Component {
         </List>
         <PromptDialog
           title="Create folder"
-          open={this.state.folderFormIsOpen}
-          onClose={this.formClose}
-          onSubmit={this.formSubmit}
+          open={folderFormIsOpen}
+          onClose={onDialogClose}
+          onSubmit={onSubmit}
         />
         <Snackbar
-          error={this.state.error}
+          error={error}
         />
       </Drawer>
     );
-  }
 }
 
 export default withWidth()(withStyles(sideBarStyles)(
-  connectService(FSContext, (state, fsService) => ({fsService}))(Index)
+  connectService(FSContext, (state, fsService) => ({fsService}))(SideBar)
 ));

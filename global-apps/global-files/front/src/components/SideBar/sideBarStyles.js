@@ -33,6 +33,17 @@ const sideBarStyles = theme => {
     listTypography: {
       fontWeight: 'inherit',
       color: 'inherit'
+    },
+    listItemIcon: {
+      marginRight: theme.spacing(2),
+      minWidth: 0
+    },
+    litItemText: {
+      padding: `0px ${theme.spacing(2)}px`
+    },
+    foldersLink: {
+      textDecoration: 'none',
+      color: theme.palette.secondary.contrastText
     }
   }
 };

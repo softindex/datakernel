@@ -34,6 +34,10 @@ const itemCardStyles = theme => ({
     flexDirection: 'row',
     alignItems: 'center',
     padding: `${theme.spacing(1)}px ${theme.spacing(2)}px`
+  },
+  foldersLink: {
+    textDecoration: 'none',
+    color: theme.palette.secondary.contrastText
   }
 });
 

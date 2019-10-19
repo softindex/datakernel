@@ -18,6 +18,13 @@ const headerStyles = theme => {
       [theme.breakpoints.down('md')]: {
         display: 'block'
       },
+    },
+    listItemIcon: {
+      marginRight: theme.spacing(2),
+      minWidth: 0
+    },
+    litItemText: {
+      padding: `0px ${theme.spacing(2)}px`
     }
   };
 };

@@ -14,77 +14,80 @@ import {getFileTypeByName} from '../../common/utils';
 import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 
-class FileViewer extends React.Component {
-  render() {
-    return (
-      <Dialog
-        fullScreen
-        open={this.props.open}
-        onClose={this.props.onClose}
-        TransitionComponent={Fade}
-        className={this.props.classes.root}
+function FileViewer({classes, open, onClose, file, onDelete}) {
+  return (
+    <Dialog
+      fullScreen
+      open={open}
+      onClose={onClose}
+      TransitionComponent={Fade}
+      className={classes.root}
+    >
+      <AppBar
+        className={classes.appBar}
+        color="default"
+        position="static"
       >
-        <AppBar
-          className={this.props.classes.appBar} color="default"
-          position="static"
-        >
-          <Toolbar>
-            <IconButton
-              color="inherit"
-              onClick={this.props.onClose}
-              aria-label="Close"
-              className={this.props.classes.closeIcon}
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            onClick={onClose}
+            className={classes.closeIcon}
+          >
+            <CloseIcon color="inherit"/>
+          </IconButton>
+          <Typography
+            className={classes.title}
+            variant="subtitle1"
+            color="inherit"
+          >
+            {file.name}
+          </Typography>
+          <div className={classes.grow}/>
+          <IconButton
+            className={classes.icon}
+            onClick={onDelete}
+          >
+            <DeleteIcon/>
+          </IconButton>
+          <IconButton
+            className={classes.icon}
+            download
+            href={file.downloadLink}
+          >
+            <DownloadIcon/>
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+      <div className={classes.content}>
+        {(getFileTypeByName(file.name) === 'image') && (
+          <img
+            className={classes.image}
+            alt={file.name}
+            src={file.downloadLink}
+          />
+        )}
+        {(getFileTypeByName(file.name) !== 'image') && (
+          <Paper elevation={10} className={classes.noPreviewContainer}>
+            <Typography
+              gutterBottom
+              variant="subtitle1"
             >
-              <CloseIcon color="inherit"/>
-            </IconButton>
-            <Typography className={this.props.classes.title} variant="subtitle1" color="inherit">
-              {this.props.file.name}
+              No preview available
             </Typography>
-            <div className={this.props.classes.grow}/>
-            <IconButton
-              className={this.props.classes.icon}
-              aria-label="Delete"
-              onClick={this.props.onDelete}
-            >
-              <DeleteIcon/>
-            </IconButton>
-            <IconButton
-              className={this.props.classes.icon}
+            <Button
               download
-              href={this.props.file.downloadLink}
-              aria-label="Download"
+              href={file.downloadLink}
+              variant="outlined"
             >
-              <DownloadIcon/>
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-
-        <div className={this.props.classes.content}>
-          {(getFileTypeByName(this.props.file.name) === 'image') && (
-            <img
-              className={this.props.classes.image}
-              alt={this.props.file.name}
-              src={this.props.file.downloadLink}
-            />
-          )}
-          {(getFileTypeByName(this.props.file.name) !== 'image') && (
-            <Paper elevation={10} className={this.props.classes.noPreviewContainer}>
-              <Typography gutterBottom variant="subtitle1"> No preview available </Typography>
-              <Button
-                download
-                href={this.props.file.downloadLink}
-                variant="outlined"
-              >
-                <DownloadIcon className={this.props.classes.downloadIcon}/>
-                Download
-              </Button>
-            </Paper>
-          )}
-        </div>
-
-      </Dialog>
-    )
-  }
+              <DownloadIcon className={classes.downloadIcon}/>
+              Download
+            </Button>
+          </Paper>
+        )}
+      </div>
+    </Dialog>
+  )
 }
 
 export default withStyles(fileViewerStyles)(FileViewer);

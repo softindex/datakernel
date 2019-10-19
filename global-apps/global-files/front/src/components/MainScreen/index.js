@@ -10,7 +10,7 @@ import Uploading from '../Uploading';
 import FSContext from '../../modules/fs/FSContext';
 import AuthContext from '../../modules/auth/AuthContext';
 import connectService from '../../common/connectService';
-import Header from "../Header/Header";
+import Header from "../Header";
 import {withStyles} from "@material-ui/core";
 import mainScreenStyles from "./mainScreenStyles";
 

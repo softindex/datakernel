@@ -12,6 +12,7 @@ const signUpStyles = theme => {
     },
     button: {
       minHeight: theme.spacing(7.5),
+      borderRadius: 70
     },
     signupButton: {
       '&:hover': {
@@ -93,6 +94,9 @@ const signUpStyles = theme => {
     },
     input: {
       display: 'none'
+    },
+    gridItem: {
+      padding: theme.spacing(2)
     }
   }
 };
