@@ -17,7 +17,6 @@
 package io.datakernel.common;
 
 import io.datakernel.common.parse.ParseException;
-import io.datakernel.common.ref.Ref;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -41,12 +40,6 @@ public class Utils {
 
 	public static <T> T of(Supplier<T> supplier) {
 		return supplier.get();
-	}
-
-	public static <T> T of(Consumer<Consumer<T>> consumer) {
-		Ref<T> ref = new Ref<>();
-		consumer.accept(ref::set);
-		return ref.get();
 	}
 
 	public static <T> T firstNonNull(@Nullable T a, T b) {

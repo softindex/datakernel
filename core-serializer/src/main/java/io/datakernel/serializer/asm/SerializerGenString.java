@@ -26,6 +26,7 @@ import io.datakernel.serializer.StringFormat;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_4;
 import static io.datakernel.serializer.StringFormat.UTF8;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
@@ -81,8 +82,8 @@ public class SerializerGenString implements SerializerGen, HasNullable {
 		switch (format) {
 			case UTF16:
 				return nullable ?
-						writeUTF16Nullable(byteArray, off, value) :
-						writeUTF16(byteArray, off, value);
+						writeUTF16Nullable(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0) :
+						writeUTF16(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0);
 			case ISO_8859_1:
 				return nullable ?
 						writeIso88591Nullable(byteArray, off, expression) :
@@ -105,8 +106,8 @@ public class SerializerGenString implements SerializerGen, HasNullable {
 		switch (format) {
 			case UTF16:
 				return nullable ?
-						readUTF16Nullable(byteArray, off) :
-						readUTF16(byteArray, off);
+						readUTF16Nullable(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0) :
+						readUTF16(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0);
 			case ISO_8859_1:
 				return nullable ?
 						readIso88591Nullable(byteArray, off) :

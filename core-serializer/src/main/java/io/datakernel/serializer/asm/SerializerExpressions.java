@@ -58,80 +58,96 @@ public final class SerializerExpressions {
 		return 1 + (31 - Integer.numberOfLeadingZeros(value)) / 7;
 	}
 
+	private static Expression get(Expression buf, Expression pos) {
+		return jdkUnsafe != null ?
+				call(getUnsafe(), "getByteUnaligned",
+						cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class)) :
+				getArrayItem(buf, pos);
+	}
+
+	private static Expression put(Expression buf, Expression pos, Expression value) {
+		return jdkUnsafe != null ?
+				call(getUnsafe(), "putByteUnaligned",
+						cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), cast(value, byte.class)) :
+				setArrayItem(buf, pos, cast(value, byte.class));
+	}
+
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes) {
 		return writeBytes(buf, pos, bytes, value(0), length(bytes));
 	}
 
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes, Expression bytesOff, Expression bytesLen) {
-		return ensureRemaining(buf, pos, bytesLen,
-				sequence(
-						callStatic(System.class, "arraycopy", bytes, bytesOff, buf, pos, bytesLen),
-						set(pos, add(pos, bytesLen))));
+		return ensureRemaining(buf, pos, bytesLen, sequence(
+				callStatic(System.class, "arraycopy", bytes, bytesOff, buf, pos, bytesLen),
+				set(pos, add(pos, bytesLen))));
 	}
 
 	public static Expression writeByte(Expression buf, Variable pos, Expression value) {
-		return ensureRemaining(buf, pos, 1,
-				sequence(
-						setArrayItem(buf, pos, value),
-						set(pos, add(pos, value(1)))));
+		return ensureRemaining(buf, pos, 1, sequence(
+				setArrayItem(buf, pos, value),
+				set(pos, add(pos, value(1)))));
 	}
 
 	public static Expression writeBoolean(Expression buf, Variable pos, Expression value) {
 		return writeByte(buf, pos, value);
 	}
 
-	public static Expression writeChar(Expression buf, Variable pos, Expression value) {
-		return writeShort(buf, pos, value);
+	public static Expression writeChar(Expression buf, Variable pos, Expression value, boolean bigEndian) {
+		return writeShort(buf, pos, value, bigEndian);
 	}
 
-	public static Expression writeShort(Expression buf, Variable pos, Expression value) {
+	public static Expression writeShort(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return ensureRemaining(buf, pos, 2, sequence(
 				jdkUnsafe != null ?
 						call(getUnsafe(), "putShortUnaligned",
-								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), cast(value, short.class), value(true)) :
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), cast(value, short.class), value(bigEndian)) :
 						sequence(
-								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(8)), byte.class)),
-								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(0)), byte.class))),
+								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(bigEndian ? 8 : 0)), byte.class)),
+								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(bigEndian ? 0 : 8)), byte.class))),
 				set(pos, add(pos, value(2)))));
 	}
 
-	public static Expression writeInt(Expression buf, Variable pos, Expression value) {
+	public static Expression writeInt(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return ensureRemaining(buf, pos, 4, sequence(
 				jdkUnsafe != null ?
 						call(getUnsafe(), "putIntUnaligned",
-								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(true)) :
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)) :
 						sequence(
-								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(24)), byte.class)),
-								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(16)), byte.class)),
-								setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(8)), byte.class)),
-								setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(0)), byte.class))),
+								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(bigEndian ? 24 : 0)), byte.class)),
+								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(bigEndian ? 16 : 8)), byte.class)),
+								setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(bigEndian ? 8 : 16)), byte.class)),
+								setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(bigEndian ? 0 : 24)), byte.class))),
 				set(pos, add(pos, value(4)))));
 	}
 
-	public static Expression writeLong(Expression buf, Variable pos, Expression value) {
+	public static Expression writeLong(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return ensureRemaining(buf, pos, 8, sequence(
 				jdkUnsafe != null ?
 						call(getUnsafe(), "putLongUnaligned",
-								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(true)) :
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)) :
 						sequence(
-								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(56)), byte.class)),
-								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(48)), byte.class)),
-								setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(40)), byte.class)),
-								setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(32)), byte.class)),
-								setArrayItem(buf, add(pos, value(4)), cast(ushr(value, value(24)), byte.class)),
-								setArrayItem(buf, add(pos, value(5)), cast(ushr(value, value(16)), byte.class)),
-								setArrayItem(buf, add(pos, value(6)), cast(ushr(value, value(8)), byte.class)),
-								setArrayItem(buf, add(pos, value(7)), cast(ushr(value, value(0)), byte.class))),
+								setArrayItem(buf, add(pos, value(0)), cast(ushr(value, value(bigEndian ? 56 : 0)), byte.class)),
+								setArrayItem(buf, add(pos, value(1)), cast(ushr(value, value(bigEndian ? 48 : 8)), byte.class)),
+								setArrayItem(buf, add(pos, value(2)), cast(ushr(value, value(bigEndian ? 40 : 16)), byte.class)),
+								setArrayItem(buf, add(pos, value(3)), cast(ushr(value, value(bigEndian ? 32 : 24)), byte.class)),
+								setArrayItem(buf, add(pos, value(4)), cast(ushr(value, value(bigEndian ? 24 : 32)), byte.class)),
+								setArrayItem(buf, add(pos, value(5)), cast(ushr(value, value(bigEndian ? 16 : 40)), byte.class)),
+								setArrayItem(buf, add(pos, value(6)), cast(ushr(value, value(bigEndian ? 8 : 48)), byte.class)),
+								setArrayItem(buf, add(pos, value(7)), cast(ushr(value, value(bigEndian ? 0 : 56)), byte.class))),
 				set(pos, add(pos, value(8)))));
 	}
 
 	public static Expression writeVarInt(Expression buf, Variable pos, Expression value) {
-		return ensureRemaining(buf, pos, 5,
-				let(value, v -> writeVarIntImpl(buf, pos, v, 0)));
+		return writeVarInt(buf, pos, value, 5);
 	}
 
-	private static Expression writeVarIntImpl(Expression buf, Variable pos, Variable v, int n) {
-		return n != 4 ?
+	public static Expression writeVarInt(Expression buf, Variable pos, Expression value, int bytes) {
+		return ensureRemaining(buf, pos, 5,
+				let(value, v -> writeVarIntImpl(buf, pos, v, 0, bytes)));
+	}
+
+	private static Expression writeVarIntImpl(Expression buf, Variable pos, Variable v, int n, int bytes) {
+		return n != (bytes - 1) ?
 				ifThenElse(
 						cmpEq(and(v, value(~0x7F)), value(0)),
 						sequence(
@@ -140,7 +156,7 @@ public final class SerializerExpressions {
 						sequence(
 								setArrayItem(buf, add(pos, value(n)), cast(or(v, value(0x80)), byte.class)),
 								set(v, ushr(v, value(7))),
-								writeVarIntImpl(buf, pos, v, n + 1)
+								writeVarIntImpl(buf, pos, v, n + 1, bytes)
 						)
 				) :
 				sequence(
@@ -148,13 +164,13 @@ public final class SerializerExpressions {
 						set(pos, add(pos, value(n + 1))));
 	}
 
-	public static Expression writeVarLong(Expression buf, Variable pos, Expression value) {
-		return ensureRemaining(buf, pos, 10,
-				let(value, v -> writeVarLongImpl(buf, pos, v, 0)));
+	public static Expression writeVarLong(Expression buf, Variable pos, Expression value, int bytes) {
+		return ensureRemaining(buf, pos, bytes,
+				let(value, v -> writeVarLongImpl(buf, pos, v, 0, bytes)));
 	}
 
-	private static Expression writeVarLongImpl(Expression buf, Variable pos, Variable v, int n) {
-		return n != 9 ?
+	private static Expression writeVarLongImpl(Expression buf, Variable pos, Variable v, int n, int bytes) {
+		return n != (bytes - 1) ?
 				ifThenElse(
 						cmpEq(and(v, value(~0x7FL)), value(0L)),
 						sequence(
@@ -163,7 +179,7 @@ public final class SerializerExpressions {
 						sequence(
 								setArrayItem(buf, add(pos, value(n)), cast(or(v, value(0x80L)), byte.class)),
 								set(v, ushr(v, value(7))),
-								writeVarLongImpl(buf, pos, v, n + 1)
+								writeVarLongImpl(buf, pos, v, n + 1, bytes)
 						)
 				) :
 				sequence(
@@ -171,12 +187,12 @@ public final class SerializerExpressions {
 						set(pos, add(pos, value(n + 1))));
 	}
 
-	public static Expression writeFloat(Expression buf, Variable pos, Expression value) {
-		return writeInt(buf, pos, callStatic(Float.class, "floatToIntBits", cast(value, float.class)));
+	public static Expression writeFloat(Expression buf, Variable pos, Expression value, boolean bigEndian) {
+		return writeInt(buf, pos, callStatic(Float.class, "floatToIntBits", cast(value, float.class)), bigEndian);
 	}
 
-	public static Expression writeDouble(Expression buf, Variable pos, Expression value) {
-		return writeLong(buf, pos, callStatic(Double.class, "doubleToLongBits", cast(value, double.class)));
+	public static Expression writeDouble(Expression buf, Variable pos, Expression value, boolean bigEndian) {
+		return writeLong(buf, pos, callStatic(Double.class, "doubleToLongBits", cast(value, double.class)), bigEndian);
 	}
 
 	public static Expression writeUTF8(Expression buf, Variable pos, Expression value) {
@@ -210,50 +226,52 @@ public final class SerializerExpressions {
 				call(value, "length"),
 				length -> sequence(
 						writeVarInt(buf, pos, nullable ? add(length, value(1)) : length),
-						ensureRemaining(buf, pos, length, sequence(
-								loop(value(0), length, i -> ifThenElse(cmpLe(
-										cast(call(value, "charAt", i), byte.class), cast(value(0x007F), byte.class)),
-										sequence(
-												setArrayItem(buf, pos, cast(call(value, "charAt", i), byte.class)),
-												set(pos, add(pos, value(1)))),
-										sequence(
-												writeUtfChar(buf, pos, cast(call(value, "charAt", i), byte.class)))))))));
+						ensureRemaining(buf, pos, mul(length, value(3)), sequence(
+								loop(value(0), length,
+										i -> let(call(value, "charAt", i),
+												c -> writeUtfMb3Char(buf, pos, cast(c, int.class))))))));
 	}
 
-	private static Expression writeUtfChar(Expression buf, Variable pos, Expression value) {
-		return ifThenElse(cmpLe(cast(value, byte.class), cast(value(0x007F), byte.class)),
+	@NotNull
+	private static Expression writeUtfMb3Char(Expression buf, Variable pos, Expression c) {
+		return ifThenElse(cmpLe(c, value(0x007F)),
 				sequence(
-						setArrayItem(buf, pos, cast(or(value(0xC0), and(value(0x1F), shr(value, value(6)))), byte.class)),
-						setArrayItem(buf, add(pos, value(1)), cast(or(value(0x80), and(value(0x3F), value)), byte.class)),
-						set(pos, add(pos, value(2)))
-				),
-				sequence(
-						setArrayItem(buf, pos, cast(or(value(0xE0), and(value(0x0F), shr(value, value(12)))), byte.class)),
-						setArrayItem(buf, add(pos, value(1)), cast(or(value(0x80), and(value(0x3F), shr(value, value(6)))), byte.class)),
-						setArrayItem(buf, add(pos, value(2)), cast(or(value(0x80), and(value(0x3F), value)), byte.class)),
-						set(pos, add(pos, value(3)))));
+						put(buf, pos, cast(c, byte.class)),
+						set(pos, add(pos, value(1)))),
+				ifThenElse(cmpLe(c, value(0x07FF)),
+						sequence(
+								put(buf, pos, cast(or(value(0xC0), and(shr(c, value(6)), value(0x1F))), byte.class)),
+								put(buf, add(pos, value(1)), cast(or(value(0x80), and(c, value(0x3F))), byte.class)),
+								set(pos, add(pos, value(2)))),
+						sequence(
+								put(buf, pos, cast(or(value(0xE0), and(shr(c, value(12)), value(0x0F))), byte.class)),
+								put(buf, add(pos, value(1)), cast(or(value(0x80), and(shr(c, value(6)), value(0x3F))), byte.class)),
+								put(buf, add(pos, value(2)), cast(or(value(0x80), and(c, value(0x3F))), byte.class)),
+								set(pos, add(pos, value(3))))
+				)
+		);
 	}
 
-	public static Expression writeUTF16(Expression buf, Variable pos, Expression value) {
-		return writeUTF16Impl(buf, pos, value, false);
+	public static Expression writeUTF16(Expression buf, Variable pos, Expression value, boolean bigEndian) {
+		return writeUTF16Impl(buf, pos, value, false, bigEndian);
 	}
 
-	public static Expression writeUTF16Nullable(Expression buf, Variable pos, Expression value) {
+	public static Expression writeUTF16Nullable(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return ifThenElse(isNull(value),
 				writeByte(buf, pos, value((byte) 0)),
-				writeUTF16Impl(buf, pos, value, true));
+				writeUTF16Impl(buf, pos, value, true, bigEndian));
 	}
 
-	public static Expression writeUTF16Impl(Expression buf, Variable pos, Expression value, boolean nullable) {
+	public static Expression writeUTF16Impl(Expression buf, Variable pos, Expression value, boolean nullable, boolean bigEndian) {
 		return let(
 				call(value, "length"),
 				length -> sequence(
 						writeVarInt(buf, pos, nullable ? add(length, value(1)) : length),
-						ensureRemaining(buf, pos, length, sequence(
-								loop(value(0), length, i -> sequence(
-										setArrayItem(buf, pos, ushr(cast(call(value, "charAt", i), byte.class), value(8))),
-										setArrayItem(buf, add(pos, value(1)), cast(call(value, "charAt", i), byte.class)),
-										set(pos, add(pos, value(2)))))))));
+						ensureRemaining(buf, pos, mul(length, value(2)), sequence(
+								loop(value(0), length,
+										i -> let(add(pos, mul(i, value(2))),
+												p -> writeChar(buf, p, call(value, "charAt", i), bigEndian))),
+								set(pos, add(pos, mul(length, value(2))))))));
 	}
 
 	public static Expression writeIso88591(Expression buf, Variable pos, Expression value) {
@@ -272,8 +290,8 @@ public final class SerializerExpressions {
 				length -> sequence(
 						writeVarInt(buf, pos, nullable ? add(length, value(1)) : length),
 						ensureRemaining(buf, pos, length, sequence(
-								loop(value(0), length, i ->
-										setArrayItem(buf, add(pos, i), cast(call(value, "charAt", i), byte.class))),
+								loop(value(0), length,
+										i -> put(buf, add(pos, i), cast(call(value, "charAt", i), byte.class))),
 								set(pos, add(pos, length))))));
 	}
 
@@ -298,7 +316,7 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression readByte(Expression buf, Variable pos) {
-		return let(getArrayItem(buf, pos),
+		return let(get(buf, pos),
 				b -> sequence(
 						set(pos, inc(pos)),
 						b));
@@ -308,113 +326,127 @@ public final class SerializerExpressions {
 		return cast(readByte(buf, pos), boolean.class);
 	}
 
-	public static Expression readChar(Expression buf, Variable pos) {
-		return cast(readShort(buf, pos), char.class);
+	public static Expression readChar(Expression buf, Variable pos, boolean bigEndian) {
+		return cast(readShort(buf, pos, bigEndian), char.class);
 	}
 
-	public static Expression readShort(Expression buf, Variable pos) {
+	public static Expression readShort(Expression buf, Variable pos, boolean bigEndian) {
 		return let(
 				jdkUnsafe != null ?
 						call(getUnsafe(), "getShortUnaligned",
-								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
-						or(shl(and(getArrayItem(buf, pos), value(0xFF)), value(8)), and(getArrayItem(buf, add(pos, value(1))), value(0xFF))),
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(bigEndian)) :
+						or(
+								shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(bigEndian ? 8 : 0)),
+								shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(bigEndian ? 0 : 8))),
 				result -> sequence(
 						set(pos, add(pos, value(2))),
 						result));
 	}
 
-	public static Expression readInt(Expression buf, Variable pos) {
+	public static Expression readInt(Expression buf, Variable pos, boolean bigEndian) {
 		return let(
 				jdkUnsafe != null ?
 						call(getUnsafe(), "getIntUnaligned",
-								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(bigEndian)) :
 						or(
 								or(
-										shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(24)),
-										shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(16))),
+										shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFF)), value(bigEndian ? 24 : 0)),
+										shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFF)), value(bigEndian ? 16 : 8))),
 								or(
-										shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFF)), value(8)),
-										shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFF)), value(0)))),
+										shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFF)), value(bigEndian ? 8 : 16)),
+										shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFF)), value(bigEndian ? 0 : 24)))),
 				result -> sequence(
 						set(pos, add(pos, value(4))),
 						result));
 	}
 
-	public static Expression readLong(Expression buf, Variable pos) {
+	public static Expression readLong(Expression buf, Variable pos, boolean bigEndian) {
 		return let(
 				jdkUnsafe != null ?
 						call(getUnsafe(), "getLongUnaligned",
-								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(true)) :
+								cast(buf, Object.class), cast(add(value(byteArrayBaseOffset), pos), long.class), value(bigEndian)) :
 						or(
 								or(
 										or(
-												shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFFL)), value(56)),
-												shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFFL)), value(48))),
+												shl(and(getArrayItem(buf, add(pos, value(0))), value(0xFFL)), value(bigEndian ? 56 : 0)),
+												shl(and(getArrayItem(buf, add(pos, value(1))), value(0xFFL)), value(bigEndian ? 48 : 8))),
 										or(
-												shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFFL)), value(40)),
-												shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFFL)), value(32)))),
+												shl(and(getArrayItem(buf, add(pos, value(2))), value(0xFFL)), value(bigEndian ? 40 : 16)),
+												shl(and(getArrayItem(buf, add(pos, value(3))), value(0xFFL)), value(bigEndian ? 32 : 24)))),
 								or(
 										or(
-												shl(and(getArrayItem(buf, add(pos, value(4))), value(0xFFL)), value(24)),
-												shl(and(getArrayItem(buf, add(pos, value(5))), value(0xFFL)), value(16))),
+												shl(and(getArrayItem(buf, add(pos, value(4))), value(0xFFL)), value(bigEndian ? 24 : 32)),
+												shl(and(getArrayItem(buf, add(pos, value(5))), value(0xFFL)), value(bigEndian ? 16 : 40))),
 										or(
-												shl(and(getArrayItem(buf, add(pos, value(6))), value(0xFFL)), value(8)),
-												shl(and(getArrayItem(buf, add(pos, value(7))), value(0xFFL)), value(0))))),
+												shl(and(getArrayItem(buf, add(pos, value(6))), value(0xFFL)), value(bigEndian ? 8 : 48)),
+												shl(and(getArrayItem(buf, add(pos, value(7))), value(0xFFL)), value(bigEndian ? 0 : 56))))),
 				result -> sequence(
 						set(pos, add(pos, value(8))),
 						result));
 	}
 
 	public static Expression readVarInt(Expression buf, Variable pos) {
-		return let(value(0),
-				result -> sequence(
-						readVarIntImpl(buf, pos, result, 0),
-						result));
+		return readVarInt(buf, pos, 5, false);
 	}
 
-	private static Expression readVarIntImpl(Expression buf, Variable pos, Variable result, int n) {
+	public static Expression readVarInt(Expression buf, Variable pos, int bytes, boolean checkLastByte) {
+		return let(value(0), result -> sequence(readVarIntImpl(buf, pos, result, 0, bytes, checkLastByte), result));
+	}
+
+	private static Expression readVarIntImpl(Expression buf, Variable pos, Variable result, int n, int bytes, boolean checkLastByte) {
 		return let(getArrayItem(buf, add(pos, value(n))),
-				b -> n < 4 ?
+				b -> n < (bytes - 1) ?
 						ifThenElse(cmpGe(b, value((byte) 0)),
 								sequence(
-										set(result, or(result, shl(and(b, value(0xFF)), value(n * 7)))),
+										set(result, or(result, shl(cast(b, int.class), value(n * 7)))),
 										set(pos, add(pos, value(n + 1)))),
 								sequence(
 										set(result, or(result, shl(and(b, value(0x7F)), value(n * 7)))),
-										readVarIntImpl(buf, pos, result, n + 1))) :
-						sequence(
-								set(result, or(result, shl(and(b, value(0xFF)), value(n * 7)))),
-								set(pos, add(pos, value(n + 1)))));
+										readVarIntImpl(buf, pos, result, n + 1, bytes, checkLastByte))) :
+						!checkLastByte ?
+								sequence(
+										set(result, or(result, shl(cast(b, int.class), value(n * 7)))),
+										set(pos, add(pos, value(n + 1)))) :
+								ifThenElse(cmpEq(and(b, value(-1 << (n * 7))), value(0)),
+										sequence(
+												set(result, or(result, shl(cast(b, int.class), value(n * 7)))),
+												set(pos, add(pos, value(n + 1)))),
+										exception(IllegalArgumentException.class))
+		);
 	}
 
-	public static Expression readVarLong(Expression buf, Variable pos) {
-		return let(value(0L),
-				result -> sequence(
-						readVarLongImpl(buf, pos, result, 0),
-						result));
+	public static Expression readVarLong(Expression buf, Variable pos, int bytes, boolean checkLastByte) {
+		return let(value(0L), result -> sequence(readVarLongImpl(buf, pos, result, 0, bytes, checkLastByte), result));
 	}
 
-	private static Expression readVarLongImpl(Expression buf, Variable pos, Variable result, int n) {
+	private static Expression readVarLongImpl(Expression buf, Variable pos, Variable result, int n, int bytes, boolean checkLastByte) {
 		return let(getArrayItem(buf, add(pos, value(n))),
-				b -> n < 9 ?
+				b -> n < (bytes - 1) ?
 						ifThenElse(cmpGe(b, value((byte) 0)),
 								sequence(
-										set(result, or(result, shl(and(b, value(0xFFL)), value(n * 7)))),
+										set(result, or(result, shl(cast(b, long.class), value(n * 7)))),
 										set(pos, add(pos, value(n + 1)))),
 								sequence(
 										set(result, or(result, shl(and(b, value(0x7FL)), value(n * 7)))),
-										readVarLongImpl(buf, pos, result, n + 1))) :
-						sequence(
-								set(result, or(result, shl(and(b, value(0xFFL)), value(n * 7)))),
-								set(pos, add(pos, value(n + 1)))));
+										readVarLongImpl(buf, pos, result, n + 1, bytes, checkLastByte))) :
+						!checkLastByte ?
+								sequence(
+										set(result, or(result, shl(cast(b, long.class), value(n * 7)))),
+										set(pos, add(pos, value(n + 1)))) :
+								ifThenElse(cmpEq(and(b, value(-1L << (n * 7))), value(0L)),
+										sequence(
+												set(result, or(result, shl(cast(b, long.class), value(n * 7)))),
+												set(pos, add(pos, value(n + 1)))),
+										exception(IllegalArgumentException.class))
+		);
 	}
 
-	public static Expression readFloat(Expression buf, Variable pos) {
-		return callStatic(Float.class, "intBitsToFloat", readInt(buf, pos));
+	public static Expression readFloat(Expression buf, Variable pos, boolean bigEndian) {
+		return callStatic(Float.class, "intBitsToFloat", readInt(buf, pos, bigEndian));
 	}
 
-	public static Expression readDouble(Expression buf, Variable pos) {
-		return callStatic(Double.class, "longBitsToDouble", readLong(buf, pos));
+	public static Expression readDouble(Expression buf, Variable pos, boolean bigEndian) {
+		return callStatic(Double.class, "longBitsToDouble", readLong(buf, pos, bigEndian));
 	}
 
 	public static Expression readUTF8(Expression buf, Variable pos) {
@@ -451,52 +483,50 @@ public final class SerializerExpressions {
 	private static Expression readUTF8mb3Impl(Expression buf, Variable pos, Expression len) {
 		return ifThenElse(cmpEq(len, value(0)),
 				value(""),
-				ensureRemaining(buf, pos, len, constructUTF8mb3String(buf, pos, len)));
-	}
-
-	private static Expression constructUTF8mb3String(Expression buf, Variable pos, Expression len) {
-		return constructor(String.class, let(newArray(char[].class, len), arr ->
-						sequence(loop(value(0), len, i ->
-										setArrayItem(arr, i, readUtfChar(buf, pos))),
+				constructor(String.class, let(newArray(char[].class, len),
+						arr -> sequence(loop(value(0), len,
+								i -> setArrayItem(arr, i, readUtf8mb3Char(buf, pos))),
 								arr)),
-				value(0), len);
+						value(0), len));
 	}
 
-	private static Expression readUtfChar(Expression buf, Variable pos) {
-		return let(and(readByte(buf, pos), value(0xFF)), ch ->
-				ifThenElse(cmpGe(ch, value(0x80)),
-						ifThenElse(cmpLt(ch, value(0xE0)),
-								or(shl(and(ch, value(0x1F)), value(6)), and(readByte(buf, pos), value(0x3F))),
-								or(shl(and(ch, value(0x0F)), value(12)),
-										or(shl(and(ch, value(0x3F)), value(6)), and(readByte(buf, pos), value(0x3F))))),
-						ch));
+	private static Expression readUtf8mb3Char(Expression buf, Variable pos) {
+		return let(and(readByte(buf, pos), value(0xFF)), c ->
+				ifThenElse(cmpLt(c, value(0x80)),
+						c,
+						ifThenElse(cmpLt(c, value(0xE0)),
+								or(
+										shl(and(c, value(0x1F)), value(6)),
+										and(readByte(buf, pos), value(0x3F))),
+								or(
+										shl(and(c, value(0x0F)), value(12)),
+										or(
+												shl(and(readByte(buf, pos), value(0x3F)), value(6)),
+												and(readByte(buf, pos), value(0x3F)))))));
 	}
 
-	public static Expression readUTF16(Expression buf, Variable pos) {
-		return let(readVarInt(buf, pos), len -> readUTF16Impl(buf, pos, len));
+	public static Expression readUTF16(Expression buf, Variable pos, boolean bigEndian) {
+		return let(readVarInt(buf, pos), len -> readUTF16Impl(buf, pos, len, bigEndian));
 	}
 
-	public static Expression readUTF16Nullable(Expression buf, Variable pos) {
+	public static Expression readUTF16Nullable(Expression buf, Variable pos, boolean bigEndian) {
 		return let(readVarInt(buf, pos), len ->
 				ifThenElse(cmpEq(len, value(0)),
 						nullRef(String.class),
-						readUTF16Impl(buf, pos, dec(len))));
+						readUTF16Impl(buf, pos, dec(len), bigEndian)));
 	}
 
-	private static Expression readUTF16Impl(Expression buf, Variable pos, Expression len) {
+	private static Expression readUTF16Impl(Expression buf, Variable pos, Expression len, boolean bigEndian) {
 		return ifThenElse(cmpEq(len, value(0)),
 				value(""),
-				ensureRemaining(buf, pos, len, constructUTF16String(buf, pos, len)));
-	}
-
-	@NotNull
-	private static Expression constructUTF16String(Expression buf, Variable pos, Expression len) {
-		return constructor(String.class, let(newArray(char[].class, len), arr ->
-						sequence(loop(value(0), len, i ->
-										setArrayItem(arr, i, let(add(pos, mul(i, value(2))), newPos -> readChar(buf, newPos)))),
-								set(pos, add(pos, mul(len, value(2)))),
-								arr)),
-				value(0), len);
+				ensureRemaining(buf, pos, mul(len, value(2)),
+						constructor(String.class, let(newArray(char[].class, len),
+								arr -> sequence(loop(value(0), len,
+										i -> setArrayItem(arr, i,
+												let(add(pos, mul(i, value(2))), p -> readChar(buf, p, bigEndian)))),
+										set(pos, add(pos, mul(len, value(2)))),
+										arr)),
+								value(0), len)));
 	}
 
 	public static Expression readIso88591(Expression buf, Variable pos) {
@@ -513,14 +543,13 @@ public final class SerializerExpressions {
 	private static Expression readIso88591Impl(Expression buf, Variable pos, Expression len) {
 		return ifThenElse(cmpEq(len, value(0)),
 				value(""),
-				ensureRemaining(buf, pos, len, constructIso88591String(buf, pos, len)));
+				ensureRemaining(buf, pos, len,
+						constructor(String.class, let(newArray(char[].class, len),
+								arr -> sequence(loop(value(0), len,
+										i -> setArrayItem(arr, i, cast(and(get(buf, add(pos, i)), value(0xFF)), char.class))),
+										set(pos, add(pos, len)),
+										arr)),
+								value(0), len)));
 	}
 
-	private static Expression constructIso88591String(Expression buf, Variable pos, Expression len) {
-		return constructor(String.class, let(newArray(char[].class, len), arr ->
-						sequence(loop(value(0), len, i ->
-										setArrayItem(arr, i, cast(and(readByte(buf, pos), value(0xFF)), char.class))),
-								arr)),
-				value(0), len);
-	}
 }

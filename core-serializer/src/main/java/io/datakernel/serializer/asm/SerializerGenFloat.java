@@ -18,7 +18,9 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_4;
 import static io.datakernel.serializer.asm.SerializerExpressions.readFloat;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeFloat;
 
@@ -28,13 +30,13 @@ public final class SerializerGenFloat extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
-		return writeFloat(byteArray, off, value);
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
+		return writeFloat(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0);
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off) {
-		return readFloat(byteArray, off);
+	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
+		return readFloat(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0);
 	}
 }
 

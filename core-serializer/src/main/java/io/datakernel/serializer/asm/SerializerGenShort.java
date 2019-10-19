@@ -18,7 +18,9 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_4;
 import static io.datakernel.serializer.asm.SerializerExpressions.readShort;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeShort;
 
@@ -28,12 +30,12 @@ public final class SerializerGenShort extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
-		return writeShort(byteArray, off, value);
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
+		return writeShort(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0);
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off) {
-		return readShort(byteArray, off);
+	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
+		return readShort(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0);
 	}
 }

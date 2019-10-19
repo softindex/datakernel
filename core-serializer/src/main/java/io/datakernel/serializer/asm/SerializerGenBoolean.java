@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 
 import static io.datakernel.serializer.asm.SerializerExpressions.readBoolean;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeBoolean;
@@ -28,12 +29,12 @@ public final class SerializerGenBoolean extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
 		return writeBoolean(byteArray, off, value);
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off) {
+	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
 		return readBoolean(byteArray, off);
 	}
 }

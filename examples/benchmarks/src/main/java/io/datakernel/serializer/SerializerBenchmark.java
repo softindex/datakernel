@@ -10,8 +10,6 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("ALL")
@@ -20,7 +18,7 @@ public class SerializerBenchmark {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 	private static final BinarySerializer<TestDataScalars> serializer = SerializerBuilder.create(definingClassLoader)
 			.build(TestDataScalars.class);
-	private static byte[] array;
+	private static final byte[] array = new byte[100];
 
 	public static class TestDataScalars {
 		public enum TestEnum {
@@ -47,23 +45,6 @@ public class SerializerBenchmark {
 		@Serialize(order = 8)
 		public double d;
 
-		@Serialize(order = 9)
-		public Boolean zBoxed;
-		@Serialize(order = 10)
-		public Character cBoxed;
-		@Serialize(order = 11)
-		public Byte bBoxed;
-		@Serialize(order = 12)
-		public Short sBoxed;
-		@Serialize(order = 13)
-		public Integer iBoxed;
-		@Serialize(order = 14)
-		public Long lBoxed;
-		@Serialize(order = 15)
-		public Float fBoxed;
-		@Serialize(order = 16)
-		public Double dBoxed;
-
 		@Serialize(order = 17)
 		public byte[] bytes;
 
@@ -71,8 +52,6 @@ public class SerializerBenchmark {
 		public String string;
 		@Serialize(order = 19)
 		public TestEnum testEnum;
-		@Serialize(order = 20)
-		public InetAddress address;
 	}
 
 	TestDataScalars testData1 = new TestDataScalars();
@@ -89,31 +68,14 @@ public class SerializerBenchmark {
 		testData1.f = Float.MIN_VALUE;
 		testData1.d = Double.MIN_VALUE;
 
-		testData1.zBoxed = true;
-		testData1.cBoxed = Character.MAX_VALUE;
-		testData1.bBoxed = Byte.MIN_VALUE;
-		testData1.sBoxed = Short.MIN_VALUE;
-		testData1.iBoxed = Integer.MIN_VALUE;
-		testData1.lBoxed = Long.MIN_VALUE;
-		testData1.fBoxed = Float.MIN_VALUE;
-		testData1.dBoxed = Double.MIN_VALUE;
-
-		testData1.bytes = new byte[]{1, 2, 3};
-		testData1.string = "abc";
+		testData1.bytes = "Hello, World!".getBytes();
+		testData1.string = "Hello, World!";
 		testData1.testEnum = TestDataScalars.TestEnum.TWO;
-		try {
-			testData1.address = InetAddress.getByName("127.0.0.1");
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-
 	}
 
 	@Benchmark
 	public void measureSerialization(Blackhole blackhole) {
-		array = new byte[1000];
 		serializer.encode(array, 0, testData1);
-		blackhole.consume(testData1);
 		blackhole.consume(serializer.decode(array, 0));
 	}
 

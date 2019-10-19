@@ -18,7 +18,9 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_4;
 import static io.datakernel.serializer.asm.SerializerExpressions.readDouble;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeDouble;
 
@@ -28,13 +30,13 @@ public final class SerializerGenDouble extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected Expression doSerialize(Expression byteArray, Variable off, Expression value) {
-		return writeDouble(byteArray, off, value);
+	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
+		return writeDouble(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0);
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off) {
-		return readDouble(byteArray, off);
+	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
+		return readDouble(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0);
 	}
 }
 

@@ -24,6 +24,7 @@ import io.datakernel.serializer.asm.SerializerGenNullable;
 import io.datakernel.serializer.asm.SerializerGenString;
 
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
@@ -32,7 +33,7 @@ public final class SerializeNullableHandler implements AnnotationHandler<Seriali
 			checkArgument(!type.isPrimitive(), "Type must not represent a primitive type");
 			if (target instanceof SerializerGenString)
 				return ((SerializerGenString) target).withNullable();
-			if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && target instanceof HasNullable) {
+			if (compatibilityLevel.compareTo(LEVEL_3) >= 0 && target instanceof HasNullable) {
 				return ((HasNullable) target).withNullable();
 			}
 			return new SerializerGenNullable(target);

@@ -64,18 +64,18 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 		return wrap(primitiveType);
 	}
 
-	protected abstract Expression doSerialize(Expression byteArray, Variable off, Expression value);
+	protected abstract Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel);
 
-	protected abstract Expression doDeserialize(Expression byteArray, Variable off);
+	protected abstract Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel);
 
 	@Override
 	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return doSerialize(byteArray, off, cast(value, primitiveType));
+		return doSerialize(byteArray, off, cast(value, primitiveType), compatibilityLevel);
 	}
 
 	@Override
 	public final Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		Expression expression = doDeserialize(byteArray, off);
+		Expression expression = doDeserialize(byteArray, off, compatibilityLevel);
 		return targetType.isPrimitive() ? expression : cast(expression, getBoxedType());
 	}
 
