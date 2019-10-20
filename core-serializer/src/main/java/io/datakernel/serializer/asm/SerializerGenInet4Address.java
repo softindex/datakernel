@@ -50,15 +50,15 @@ public class SerializerGenInet4Address implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return writeBytes(byteArray, off, call(value, "getAddress"));
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return writeBytes(buf, pos, call(value, "getAddress"));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return let(newArray(byte[].class, value(4)), array ->
 				sequence(
-						readBytes(byteArray, off, array),
+						readBytes(in, array),
 						callStatic(getRawType(), "getByAddress", array)));
 	}
 }

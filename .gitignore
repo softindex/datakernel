@@ -4,6 +4,7 @@
 target/
 build/
 bin/
+/tmp/
 .DS_Store
 .attach_pid*
 logback.xml

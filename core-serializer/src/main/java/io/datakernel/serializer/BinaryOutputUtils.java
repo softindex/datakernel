@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.util;
+package io.datakernel.serializer;
 
-import java.nio.charset.StandardCharsets;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Provides methods for writing primitives
@@ -48,11 +48,31 @@ public final class BinaryOutputUtils {
 		return off + 2;
 	}
 
+	public static int writeShortLE(byte[] buf, int off, short v) {
+		buf[off] = (byte) v;
+		buf[off + 1] = (byte) (v >>> 8);
+		return off + 2;
+	}
+
+	public static int writeChar(byte[] buf, int off, char v) {
+		buf[off] = (byte) (v >>> 8);
+		buf[off + 1] = (byte) v;
+		return off + 2;
+	}
+
 	public static int writeInt(byte[] buf, int off, int v) {
 		buf[off] = (byte) (v >>> 24);
 		buf[off + 1] = (byte) (v >>> 16);
 		buf[off + 2] = (byte) (v >>> 8);
 		buf[off + 3] = (byte) v;
+		return off + 4;
+	}
+
+	public static int writeIntLE(byte[] buf, int off, int v) {
+		buf[off] = (byte) v;
+		buf[off + 1] = (byte) (v >>> 8);
+		buf[off + 2] = (byte) (v >>> 16);
+		buf[off + 3] = (byte) ((v >>> 24));
 		return off + 4;
 	}
 
@@ -67,6 +87,20 @@ public final class BinaryOutputUtils {
 		buf[off + 5] = (byte) (low >>> 16);
 		buf[off + 6] = (byte) (low >>> 8);
 		buf[off + 7] = (byte) low;
+		return off + 8;
+	}
+
+	public static int writeLongLE(byte[] buf, int off, long v) {
+		int low = (int) v;
+		int high = (int) (v >>> 32);
+		buf[off] = (byte) low;
+		buf[off + 1] = (byte) (low >>> 8);
+		buf[off + 2] = (byte) (low >>> 16);
+		buf[off + 3] = (byte) (low >>> 24);
+		buf[off + 4] = (byte) high;
+		buf[off + 5] = (byte) (high >>> 8);
+		buf[off + 6] = (byte) (high >>> 16);
+		buf[off + 7] = (byte) (high >>> 24);
 		return off + 8;
 	}
 
@@ -106,19 +140,13 @@ public final class BinaryOutputUtils {
 		}
 		buf[off] = (byte) (v | 0x80);
 		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
-			buf[off + 1] = (byte) v;
-			return off + 2;
-		}
-		buf[off + 1] = (byte) (v | 0x80);
-		v >>>= 7;
-		off += 2;
+		off++;
 		for (; ; ) {
-			if ((v & ~0x7FL) == 0) {
-				off = writeByte(buf, off, (byte) v);
-				return off;
+			if ((v & ~0x7F) == 0) {
+				buf[off] = (byte) v;
+				return off + 1;
 			} else {
-				off = writeByte(buf, off, (byte) (v | 0x80));
+				buf[off++] = (byte) (v | 0x80);
 				v >>>= 7;
 			}
 		}
@@ -130,12 +158,6 @@ public final class BinaryOutputUtils {
 
 	public static int writeDouble(byte[] buf, int off, double v) {
 		return writeLong(buf, off, Double.doubleToLongBits(v));
-	}
-
-	public static int writeChar(byte[] buf, int off, char v) {
-		writeByte(buf, off, (byte) (v >>> 8));
-		writeByte(buf, off + 1, (byte) v);
-		return off + 2;
 	}
 
 	public static int writeIso88591(byte[] buf, int off, String s) {
@@ -150,7 +172,8 @@ public final class BinaryOutputUtils {
 
 	public static int writeIso88591Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
-			return writeByte(buf, off, (byte) 0);
+			buf[off] = (byte) 0;
+			return off + 1;
 		}
 		int length = s.length();
 		off = writeVarInt(buf, off, length + 1);
@@ -162,18 +185,21 @@ public final class BinaryOutputUtils {
 	}
 
 	public static int writeUTF8(byte[] buf, int off, String s) {
-		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		byte[] bytes = s.getBytes(UTF_8);
 		off = writeVarInt(buf, off, bytes.length);
-		return write(buf, off, bytes);
+		System.arraycopy(bytes, 0, buf, off, bytes.length);
+		return off + bytes.length;
 	}
 
 	public static int writeUTF8Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
-			return writeByte(buf, off, (byte) 0);
+			buf[off] = (byte) 0;
+			return off + 1;
 		}
-		byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+		byte[] bytes = s.getBytes(UTF_8);
 		off = writeVarInt(buf, off, bytes.length + 1);
-		return write(buf, off, bytes);
+		System.arraycopy(bytes, 0, buf, off, bytes.length);
+		return off + bytes.length;
 	}
 
 	public static int writeUTF8mb3(byte[] buf, int off, String s) {
@@ -192,7 +218,8 @@ public final class BinaryOutputUtils {
 
 	public static int writeUTF8mb3Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
-			return writeByte(buf, off, (byte) 0);
+			buf[off] = (byte) 0;
+			return off + 1;
 		}
 		int length = s.length();
 		off = writeVarInt(buf, off, length + 1);
@@ -225,23 +252,24 @@ public final class BinaryOutputUtils {
 		off = writeVarInt(buf, off, length);
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
-			off = writeByte(buf, off, (byte) (v >>> 8));
-			off = writeByte(buf, off, (byte) v);
+			buf[off + i * 2] = (byte) (v >>> 8);
+			buf[off + i * 2 + 1] = (byte) v;
 		}
-		return off;
+		return off + length * 2;
 	}
 
 	public static int writeUTF16Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
-			return writeByte(buf, off, (byte) 0);
+			buf[off] = (byte) 0;
+			return off + 1;
 		}
 		int length = s.length();
 		off = writeVarInt(buf, off, length + 1);
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
-			off = writeByte(buf, off, (byte) (v >>> 8));
-			off = writeByte(buf, off, (byte) v);
+			buf[off + i * 2] = (byte) (v >>> 8);
+			buf[off + i * 2 + 1] = (byte) v;
 		}
-		return off;
+		return off + length * 2;
 	}
 }

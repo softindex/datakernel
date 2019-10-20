@@ -12,8 +12,8 @@ import io.datakernel.net.AsyncTcpSocketImpl;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 /**
  * Demonstrates server ("Server #2" from the picture) which receives some data from clients,

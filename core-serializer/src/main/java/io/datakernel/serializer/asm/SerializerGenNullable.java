@@ -57,20 +57,20 @@ public class SerializerGenNullable implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return ifThenElse(isNotNull(value),
 				sequence(
-						writeByte(byteArray, off, value((byte) 1)),
-						serializer.serialize(classLoader, byteArray, off, value, version, compatibilityLevel)),
-				writeByte(byteArray, off, value((byte) 0))
+						writeByte(buf, pos, value((byte) 1)),
+						serializer.serialize(classLoader, buf, pos, value, version, compatibilityLevel)),
+				writeByte(buf, pos, value((byte) 0))
 		);
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return let(readByte(byteArray, off),
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return let(readByte(in),
 				isNotNull -> ifThenElse(cmpNe(isNotNull, value((byte) 0)),
-						serializer.deserialize(classLoader, byteArray, off, serializer.getRawType(), version, compatibilityLevel),
+						serializer.deserialize(classLoader, in, serializer.getRawType(), version, compatibilityLevel),
 						nullRef(targetType)));
 	}
 

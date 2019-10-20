@@ -42,8 +42,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)

@@ -15,8 +15,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 /**
  * Demonstrates client ("Server #1" from the picture) which sends some data to other server

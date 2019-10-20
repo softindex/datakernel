@@ -78,31 +78,31 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 	}
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
-		Expression writeLength = writeVarInt(byteArray, off, !nullable ? length : inc(length));
+		Expression writeLength = writeVarInt(buf, pos, !nullable ? length : inc(length));
 		Expression forEach = mapForEach(value,
-				k -> keySerializer.serialize(classLoader, byteArray, off, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
-				v -> valueSerializer.serialize(classLoader, byteArray, off, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
+				k -> keySerializer.serialize(classLoader, buf, pos, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
+				v -> valueSerializer.serialize(classLoader, buf, pos, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		return !nullable ?
 				sequence(writeLength, forEach) :
 				ifThenElse(isNull(value),
-						writeByte(byteArray, off, value((byte) 0)),
+						writeByte(buf, pos, value((byte) 0)),
 						sequence(writeLength, forEach));
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
-		return let(readVarInt(byteArray, off), length ->
+		return let(readVarInt(in), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "put",
-														cast(keySerializer.deserialize(classLoader, byteArray, off, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-														cast(valueSerializer.deserialize(classLoader, byteArray, off, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+														cast(keySerializer.deserialize(classLoader, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+														cast(valueSerializer.deserialize(classLoader, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 												),
 												voidExp())),
 								instance)) :
@@ -113,8 +113,8 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "put",
-																cast(keySerializer.deserialize(classLoader, byteArray, off, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-																cast(valueSerializer.deserialize(classLoader, byteArray, off, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+																cast(keySerializer.deserialize(classLoader, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+																cast(valueSerializer.deserialize(classLoader, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 														),
 														voidExp())),
 										instance))));

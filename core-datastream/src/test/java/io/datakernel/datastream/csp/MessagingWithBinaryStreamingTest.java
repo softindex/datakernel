@@ -38,7 +38,7 @@ import java.util.stream.LongStream;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.serializer.util.BinarySerializers.LONG_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.LONG_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.stream.Collectors.toList;

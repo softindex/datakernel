@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.util;
+package io.datakernel.serializer;
 
 public final class BinaryOutput {
 	private final byte[] array;
@@ -41,6 +41,10 @@ public final class BinaryOutput {
 		this.pos = pos;
 	}
 
+	public void move(int delta) {
+		this.pos += delta;
+	}
+
 	public void write(byte[] bytes) {
 		pos = BinaryOutputUtils.write(array, pos, bytes);
 	}
@@ -59,6 +63,10 @@ public final class BinaryOutput {
 
 	public void writeShort(short v) {
 		pos = BinaryOutputUtils.writeShort(array, pos, v);
+	}
+
+	public void writeChar(char v) {
+		pos = BinaryOutputUtils.writeChar(array, pos, v);
 	}
 
 	public void writeInt(int v) {
@@ -83,10 +91,6 @@ public final class BinaryOutput {
 
 	public void writeDouble(double v) {
 		pos = BinaryOutputUtils.writeDouble(array, pos, v);
-	}
-
-	public void writeChar(char v) {
-		pos = BinaryOutputUtils.writeChar(array, pos, v);
 	}
 
 	public void writeIso88591(String s) {

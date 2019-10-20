@@ -20,7 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 
-import static io.datakernel.serializer.CompatibilityLevel.LEVEL_4;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 
 public final class SerializerGenLong extends SerializerGenPrimitive {
@@ -39,15 +39,15 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
 		return varLength ?
-				writeVarLong(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0 ? 10 : 9) :
-				writeLong(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_4) < 0);
+				writeVarLong(byteArray, off, value) :
+				writeLong(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
+	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
 		return varLength ?
-				readVarLong(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0 ? 10 : 9, false) :
-				readLong(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0);
+				readVarLong(in) :
+				readLong(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override

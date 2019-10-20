@@ -52,25 +52,23 @@ public interface SerializerGen {
 	/**
 	 * Serializes provided {@link Expression} {@code value} to byte array
 	 *
-	 * @param byteArray          byte array to which the value will be serialized
-	 * @param off                an offset in the byte array
+	 * @param buf                byte array to which the value will be serialized
+	 * @param pos                an offset in the byte array
 	 * @param value              the value to be serialized to byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return serialized to byte array value
 	 */
-	Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel);
+	Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
 
 	/**
 	 * Deserializes object of {@code targetType} from byte array
 	 *
-	 *
-	 * @param byteArray
-	 * @param off
+	 * @param in                 BinaryInput
 	 * @param targetType         target type which is used to deserialize byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
-	Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
+	Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
 
 	@Override
 	boolean equals(Object o);

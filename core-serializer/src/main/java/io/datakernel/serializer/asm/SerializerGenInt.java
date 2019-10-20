@@ -21,7 +21,7 @@ import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 
 import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.serializer.CompatibilityLevel.LEVEL_4;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 
 public final class SerializerGenInt extends SerializerGenPrimitive {
@@ -41,14 +41,14 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
 		return varLength ?
 				writeVarInt(byteArray, off, cast(value, int.class)) :
-				writeInt(byteArray, off, cast(value, int.class), compatibilityLevel.compareTo(LEVEL_4) < 0);
+				writeInt(byteArray, off, cast(value, int.class), compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
+	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
 		return varLength ?
-				readVarInt(byteArray, off) :
-				readInt(byteArray, off, compatibilityLevel.compareTo(LEVEL_4) < 0);
+				readVarInt(in) :
+				readInt(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override

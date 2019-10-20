@@ -6,7 +6,7 @@ import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.StreamSupplierWithResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.serializer.util.BinarySerializers;
+import io.datakernel.serializer.BinarySerializers;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;

@@ -36,8 +36,8 @@ import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.promise.Promise;
+import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinaryInput;
 import org.jetbrains.annotations.NotNull;
 import org.rocksdb.*;
 

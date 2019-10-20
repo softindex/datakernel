@@ -22,7 +22,7 @@ import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinarySerializers;
+import io.datakernel.serializer.BinarySerializers;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -33,8 +33,8 @@ import java.net.InetSocketAddress;
 import java.util.*;
 
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.Collections.singleton;
 
 public final class TestCrdtCluster {

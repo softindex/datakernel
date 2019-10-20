@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.util;
-
-import io.datakernel.serializer.BinarySerializer;
+package io.datakernel.serializer;
 
 import java.util.*;
 import java.util.function.Supplier;

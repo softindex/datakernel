@@ -83,7 +83,7 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		byte subClassIndex = (byte) (nullable && startIndex == 0 ? 1 : startIndex);
 
 		List<Expression> listKey = new ArrayList<>();
@@ -92,8 +92,8 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
-					writeByte(byteArray, off, value(subClassIndex)),
-					subclassSerializer.serialize(classLoader, byteArray, off, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
+					writeByte(buf, pos, value(subClassIndex)),
+					subclassSerializer.serialize(classLoader, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
 			));
 
 			subClassIndex++;
@@ -104,21 +104,21 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 		if (nullable) {
 			return ifThenElse(isNotNull(value),
 					switchByKey(cast(call(cast(value, Object.class), "getClass"), Object.class), listKey, listValue),
-					writeByte(byteArray, off, value((byte) 0)));
+					writeByte(buf, pos, value((byte) 0)));
 		} else {
 			return switchByKey(cast(call(cast(value, Object.class), "getClass"), Object.class), listKey, listValue);
 		}
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return let(sub(readByte(byteArray, off), value(startIndex)),
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return let(sub(readByte(in), value(startIndex)),
 				idx -> cast(
 						switchByIndex(idx,
 								of(() -> {
 									List<Expression> versions = new ArrayList<>();
 									for (SerializerGen subclassSerializer : subclassSerializers.values()) {
-										versions.add(cast(subclassSerializer.deserialize(classLoader, byteArray, off, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
+										versions.add(cast(subclassSerializer.deserialize(classLoader, in, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
 									}
 									if (nullable) versions.add(-startIndex, nullRef(getRawType()));
 									return versions;

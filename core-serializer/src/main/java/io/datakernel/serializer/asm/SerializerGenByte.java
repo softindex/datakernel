@@ -34,7 +34,7 @@ public final class SerializerGenByte extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
-		return readByte(byteArray, off);
+	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
+		return readByte(in);
 	}
 }

@@ -34,7 +34,7 @@ public final class SerializerGenBoolean extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected Expression doDeserialize(Expression byteArray, Variable off, CompatibilityLevel compatibilityLevel) {
-		return readBoolean(byteArray, off);
+	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
+		return readBoolean(in);
 	}
 }

@@ -105,14 +105,16 @@ public class AsmSerializerTest {
 	public void testScalars() throws UnknownHostException {
 		TestDataScalars testData1 = new TestDataScalars();
 
-		testData1.z = true;
-		testData1.c = Character.MAX_VALUE;
-		testData1.b = Byte.MIN_VALUE;
-		testData1.s = Short.MIN_VALUE;
-		testData1.i = Integer.MIN_VALUE;
-		testData1.l = Long.MIN_VALUE;
-		testData1.f = Float.MIN_VALUE;
-		testData1.d = Double.MIN_VALUE;
+		Random rnd = new Random();
+
+		testData1.z = rnd.nextBoolean();
+		testData1.c = (char) rnd.nextInt(Character.MAX_VALUE);
+		testData1.b = (byte) rnd.nextInt(1 << 8);
+		testData1.s = (byte) rnd.nextInt(1 << 16);
+		testData1.i = rnd.nextInt();
+		testData1.l = rnd.nextLong();
+		testData1.f = rnd.nextFloat();
+		testData1.d = rnd.nextDouble();
 
 		testData1.zBoxed = true;
 		testData1.cBoxed = Character.MAX_VALUE;

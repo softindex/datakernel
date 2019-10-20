@@ -67,7 +67,7 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return let(
 				cast(value, ByteBuffer.class),
 				buffer ->
@@ -75,29 +75,29 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 
 							if (!nullable) {
 								return sequence(
-										writeVarInt(byteArray, off, remaining),
-										writeBytes(byteArray, off, call(buffer, "array"), call(buffer, "position"), remaining));
+										writeVarInt(buf, pos, remaining),
+										writeBytes(buf, pos, call(buffer, "array"), call(buffer, "position"), remaining));
 							} else {
 								return ifThenElse(isNull(buffer),
-										writeByte(byteArray, off, value((byte) 0)),
+										writeByte(buf, pos, value((byte) 0)),
 										sequence(
-												writeVarInt(byteArray, off, inc(remaining)),
-												writeBytes(byteArray, off, call(buffer, "array"), call(buffer, "position"), remaining)));
+												writeVarInt(buf, pos, inc(remaining)),
+												writeBytes(buf, pos, call(buffer, "array"), call(buffer, "position"), remaining)));
 							}
 						}));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !wrapped ?
-				let(readVarInt(byteArray, off),
+				let(readVarInt(in),
 						length -> {
 							if (!nullable) {
 								return let(
 										newArray(byte[].class, length),
 										array ->
 												sequence(length,
-														readBytes(byteArray, off, array),
+														readBytes(in, array),
 														callStatic(ByteBuffer.class, "wrap", array)));
 							} else {
 								return let(
@@ -106,23 +106,23 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 												ifThenElse(cmpEq(length, value(0)),
 														nullRef(ByteBuffer.class),
 														sequence(length,
-																readBytes(byteArray, off, array),
+																readBytes(in, array),
 																callStatic(ByteBuffer.class, "wrap", array))));
 							}
 						}) :
-				let(readVarInt(byteArray, off),
+				let(readVarInt(in),
 						length -> {
 							if (!nullable) {
-								return let(callStatic(ByteBuffer.class, "wrap", byteArray, off, length),
-										result -> sequence(
-												set(off, add(off, length)),
-												result));
+								return let(callStatic(ByteBuffer.class, "wrap", array(in), pos(in), length),
+										buf -> sequence(
+												move(in, length),
+												buf));
 							} else {
 								return ifThenElse(cmpEq(length, value(0)),
 										nullRef(ByteBuffer.class),
-										let(callStatic(ByteBuffer.class, "wrap", byteArray, off, dec(length)),
+										let(callStatic(ByteBuffer.class, "wrap", array(in), pos(in), dec(length)),
 												result -> sequence(
-														set(off, add(off, dec(length))),
+														move(in, length),
 														result)));
 							}
 						});

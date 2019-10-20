@@ -75,32 +75,32 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
-				it -> valueSerializer.serialize(classLoader, byteArray, off, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
+				it -> valueSerializer.serialize(classLoader, buf, pos, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		if (!nullable) {
 			return sequence(
-					writeVarInt(byteArray, off, call(value, "size")),
+					writeVarInt(buf, pos, call(value, "size")),
 					forEach);
 		} else {
 			return ifThenElse(isNull(value),
-					writeByte(byteArray, off, value((byte) 0)),
-					sequence(writeVarInt(byteArray, off, inc(call(value, "size"))),
+					writeByte(buf, pos, value((byte) 0)),
+					sequence(writeVarInt(buf, pos, inc(call(value, "size"))),
 							forEach));
 		}
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
-		return let(readVarInt(byteArray, off), length ->
+		return let(readVarInt(in), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "add",
-														cast(valueSerializer.deserialize(classLoader, byteArray, off, elementType, version, compatibilityLevel), elementType)),
+														cast(valueSerializer.deserialize(classLoader, in, elementType, version, compatibilityLevel), elementType)),
 												voidExp())),
 								instance)) :
 						ifThenElse(
@@ -110,7 +110,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "add",
-																cast(valueSerializer.deserialize(classLoader, byteArray, off, elementType, version, compatibilityLevel), elementType)),
+																cast(valueSerializer.deserialize(classLoader, in, elementType, version, compatibilityLevel), elementType)),
 														voidExp())),
 										instance))));
 

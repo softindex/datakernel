@@ -4,11 +4,11 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
+import io.datakernel.serializer.BinaryInput;
+import io.datakernel.serializer.BinaryOutputUtils;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.HasNullable;
 import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.Set;
 
@@ -47,18 +47,18 @@ public class SerializerGenSlice implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		return set(off,
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return set(pos,
 				callStatic(SerializerGenSlice.class,
 						"write" + (nullable ? "Nullable" : ""),
-						byteArray, off, cast(value, Slice.class)));
+						buf, pos, cast(value, Slice.class)));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenSlice.class,
 				"read" + (nullable ? "Nullable" : ""),
-				arg(0));
+				in);
 	}
 
 	public static int write(byte[] output, int offset, Slice slice) {
@@ -78,19 +78,19 @@ public class SerializerGenSlice implements SerializerGen, HasNullable {
 		}
 	}
 
-	public static Slice read(BinaryInput input) {
-		int length = input.readVarInt();
-		Slice result = new Slice(input.array(), input.pos(), length);
-		input.pos(input.pos() + length);
+	public static Slice read(BinaryInput in) {
+		int length = in.readVarInt();
+		Slice result = new Slice(in.array(), in.pos(), length);
+		in.pos(in.pos() + length);
 		return result;
 	}
 
-	public static Slice readNullable(BinaryInput input) {
-		int length = input.readVarInt();
+	public static Slice readNullable(BinaryInput in) {
+		int length = in.readVarInt();
 		if (length == 0) return null;
 		length--;
-		Slice result = new Slice(input.array(), input.pos(), length);
-		input.pos(input.pos() + length);
+		Slice result = new Slice(in.array(), in.pos(), length);
+		in.pos(in.pos() + length);
 		return result;
 	}
 

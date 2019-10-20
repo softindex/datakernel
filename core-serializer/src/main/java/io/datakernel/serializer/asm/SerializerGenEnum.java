@@ -61,34 +61,33 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = call(cast(value, Enum.class), "ordinal");
 		if (isSmallEnum()) {
-			ordinal = cast(ordinal, byte.class);
 			return !nullable ?
-					writeByte(byteArray, off, ordinal) :
+					writeByte(buf, pos, cast(ordinal, byte.class)) :
 					ifThenElse(isNull(value),
-							writeByte(byteArray, off, value((byte) 0)),
-							writeByte(byteArray, off, cast(add(ordinal, value((byte) 1)), byte.class)));
+							writeByte(buf, pos, value((byte) 0)),
+							writeByte(buf, pos, cast(add(ordinal, value(1)), byte.class)));
 		} else {
 			return !nullable ?
-					writeVarInt(byteArray, off, ordinal) :
+					writeVarInt(buf, pos, ordinal) :
 					ifThenElse(isNull(value),
-							writeByte(byteArray, off, value((byte) 0)),
-							writeVarInt(byteArray, off, add(ordinal, value((byte) 1))));
+							writeByte(buf, pos, value((byte) 0)),
+							writeVarInt(buf, pos, add(ordinal, value((byte) 1))));
 		}
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return isSmallEnum() ?
-				let(readByte(byteArray, off), value ->
+				let(readByte(in), b ->
 						!nullable ?
-								getArrayItem(callStatic(enumType, "values"), value) :
-								ifThenElse(cmpEq(value, value((byte) 0)),
+								getArrayItem(callStatic(enumType, "values"), b) :
+								ifThenElse(cmpEq(b, value((byte) 0)),
 										nullRef(enumType),
-										getArrayItem(callStatic(enumType, "values"), dec(value)))) :
-				let(readVarInt(byteArray, off), value ->
+										getArrayItem(callStatic(enumType, "values"), dec(b)))) :
+				let(readVarInt(in), value ->
 						!nullable ?
 								getArrayItem(callStatic(enumType, "values"), value) :
 								ifThenElse(cmpEq(value, value(0)),

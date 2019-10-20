@@ -23,8 +23,6 @@ import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutput;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -53,7 +51,7 @@ public final class SerializerBuilder {
 	private String profile;
 	private int version = Integer.MAX_VALUE;
 	private Path saveBytecodePath;
-	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_4;
+	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_3;
 
 	private final Map<Class<?>, SerializerGenBuilder> typeMap = new LinkedHashMap<>();
 	private final Map<Class<? extends Annotation>, Class<? extends Annotation>> annotationsExMap = new LinkedHashMap<>();
@@ -848,16 +846,14 @@ public final class SerializerBuilder {
 		if (latestVersion == null) {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
 					serializerGen.deserialize(classBuilder.getClassLoader(),
-							property(arg(0), "array"),
-							property(arg(0), "pos"),
+							arg(0),
 							serializerGen.getRawType(), 0, compatibilityLevel));
 		} else {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
 					let(call(arg(0), "readVarInt"),
 							version -> ifThenElse(cmpEq(version, value(latestVersion)),
 									serializerGen.deserialize(classBuilder.getClassLoader(),
-											property(arg(0), "array"),
-											property(arg(0), "pos"),
+											arg(0),
 											serializerGen.getRawType(), latestVersion, compatibilityLevel),
 									call(self(), "deserializeEarlierVersions", arg(0), version))));
 		}
@@ -884,8 +880,7 @@ public final class SerializerBuilder {
 				serializerGen.getRawType(),
 				asList(BinaryInput.class),
 				sequence(serializerGen.deserialize(classBuilder.getClassLoader(),
-						property(arg(0), "array"),
-						property(arg(0), "pos"),
+						arg(0),
 						serializerGen.getRawType(), version, compatibilityLevel)));
 	}
 

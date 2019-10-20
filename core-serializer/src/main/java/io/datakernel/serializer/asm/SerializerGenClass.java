@@ -233,7 +233,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
 
 		for (String fieldName : this.fields.keySet()) {
@@ -245,10 +245,10 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (fieldGen.field != null) {
 				list.add(
-						fieldGen.serializer.serialize(classLoader, byteArray, off, cast(property(value, fieldName), fieldType), version, compatibilityLevel));
+						fieldGen.serializer.serialize(classLoader, buf, pos, cast(property(value, fieldName), fieldType), version, compatibilityLevel));
 			} else if (fieldGen.method != null) {
 				list.add(
-						fieldGen.serializer.serialize(classLoader, byteArray, off, cast(call(value, fieldGen.method.getName()), fieldType), version, compatibilityLevel));
+						fieldGen.serializer.serialize(classLoader, buf, pos, cast(call(value, fieldGen.method.getName()), fieldType), version, compatibilityLevel));
 			} else {
 				throw new AssertionError();
 			}
@@ -258,12 +258,12 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		if (!implInterface && dataTypeIn.isInterface()) {
-			return deserializeInterface(classLoader, byteArray, off, dataTypeIn, version, compatibilityLevel);
+			return deserializeInterface(classLoader, in, dataTypeIn, version, compatibilityLevel);
 		}
 		if (!implInterface && constructor == null && factory == null && setters.isEmpty()) {
-			return deserializeClassSimple(classLoader, byteArray, off, version, compatibilityLevel);
+			return deserializeClassSimple(classLoader, in, version, compatibilityLevel);
 		}
 
 		return let(of(() -> {
@@ -272,7 +272,7 @@ public class SerializerGenClass implements SerializerGen {
 						FieldGen fieldGen = fields.get(fieldName);
 						if (!fieldGen.hasVersion(version)) continue;
 						fieldDeserializers.add(
-								fieldGen.serializer.deserialize(classLoader, byteArray, off, fieldGen.getRawType(), version, compatibilityLevel));
+								fieldGen.serializer.deserialize(classLoader, in, fieldGen.getRawType(), version, compatibilityLevel));
 					}
 					return fieldDeserializers;
 				}),
@@ -369,7 +369,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Expression deserializeInterface(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType,
+	private Expression deserializeInterface(DefiningClassLoader classLoader, Expression in, Class<?> targetType,
 			int version, CompatibilityLevel compatibilityLevel) {
 		ClassBuilder<?> classBuilder = ClassBuilder.create(classLoader, (Class<Object>) targetType);
 		for (String fieldName : fields.keySet()) {
@@ -394,14 +394,14 @@ public class SerializerGenClass implements SerializerGen {
 						Variable property = property(instance, fieldName);
 
 						Expression expression =
-								fieldGen.serializer.deserialize(classLoader, byteArray, off, fieldGen.getRawType(), version, compatibilityLevel);
+								fieldGen.serializer.deserialize(classLoader, in, fieldGen.getRawType(), version, compatibilityLevel);
 						expressions.add(set(property, expression));
 					}
 					expressions.add(instance);
 				}));
 	}
 
-	private Expression deserializeClassSimple(DefiningClassLoader classLoader, Expression byteArray, Variable off,
+	private Expression deserializeClassSimple(DefiningClassLoader classLoader, Expression in,
 			int version, CompatibilityLevel compatibilityLevel) {
 		return let(
 				constructor(dataTypeIn),
@@ -413,7 +413,7 @@ public class SerializerGenClass implements SerializerGen {
 								if (!fieldGen.hasVersion(version)) continue;
 
 								Variable property = property(instance, fieldName);
-								expressions.add(set(property, fieldGen.serializer.deserialize(classLoader, byteArray, off, fieldGen.getRawType(), version, compatibilityLevel)));
+								expressions.add(set(property, fieldGen.serializer.deserialize(classLoader, in, fieldGen.getRawType(), version, compatibilityLevel)));
 							}
 							expressions.add(instance);
 						}));

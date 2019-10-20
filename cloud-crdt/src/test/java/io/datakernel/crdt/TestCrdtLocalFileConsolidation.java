@@ -36,7 +36,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.serializer.util.BinarySerializers.*;
+import static io.datakernel.serializer.BinarySerializers.*;
 
 public final class TestCrdtLocalFileConsolidation {
 	private LocalFsClient fsClient;

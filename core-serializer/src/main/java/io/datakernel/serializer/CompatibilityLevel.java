@@ -36,5 +36,5 @@ public enum CompatibilityLevel {
 	/**
 	 * Includes previous optimizations and provides little endian format for JVM intrinsics
 	 */
-	LEVEL_4
+	LEVEL_3_LE
 }

@@ -31,8 +31,8 @@ import java.net.InetSocketAddress;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static org.junit.Assert.assertEquals;
 
 public final class TestSimpleCrdt {

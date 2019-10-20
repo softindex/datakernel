@@ -82,15 +82,15 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Expression value, int version,
+	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version,
 			CompatibilityLevel compatibilityLevel) {
 		Expression castedValue = cast(value, type);
 		Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
-		Expression writeLength = writeVarInt(byteArray, off, (!nullable ? length : inc(length)));
-		Expression writeZeroLength = writeByte(byteArray, off, value((byte) 0));
-		Expression writeByteArray = writeBytes(byteArray, off, castedValue);
+		Expression writeLength = writeVarInt(buf, pos, (!nullable ? length : inc(length)));
+		Expression writeZeroLength = writeByte(buf, pos, value((byte) 0));
+		Expression writeByteArray = writeBytes(buf, pos, castedValue);
 		Expression writeCollection = loop(value(0), length,
-				it -> valueSerializer.serialize(classLoader, byteArray, off, getArrayItem(castedValue, it), version, compatibilityLevel));
+				it -> valueSerializer.serialize(classLoader, buf, pos, getArrayItem(castedValue, it), version, compatibilityLevel));
 
 		if (!nullable) {
 			return type.getComponentType() == Byte.TYPE ?
@@ -109,27 +109,27 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression byteArray, Variable off, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !nullable ?
-				let(readVarInt(byteArray, off), len ->
+				let(readVarInt(in), len ->
 						let(newArray(type, len), array ->
 								sequence(
 										type.getComponentType() == Byte.TYPE ?
-												readBytes(byteArray, off, array) :
+												readBytes(in, array) :
 												loop(value(0), len,
 														i -> setArrayItem(array, i,
-																cast(valueSerializer.deserialize(classLoader, byteArray, off, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+																cast(valueSerializer.deserialize(classLoader, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 										array))) :
-				let(readVarInt(byteArray, off), len ->
+				let(readVarInt(in), len ->
 						ifThenElse(cmpEq(len, value(0)),
 								nullRef(type),
 								let(newArray(type, dec(len)), array ->
 										sequence(
 												type.getComponentType() == Byte.TYPE ?
-														readBytes(byteArray, off, array) :
+														readBytes(in, array) :
 														loop(value(0), dec(len),
 																i -> setArrayItem(array, i,
-																		cast(valueSerializer.deserialize(classLoader, byteArray, off, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+																		cast(valueSerializer.deserialize(classLoader, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));
 	}
