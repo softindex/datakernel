@@ -51,17 +51,12 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public boolean isInline() {
-		return true;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return enumType;
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = call(cast(value, Enum.class), "ordinal");
 		if (isSmallEnum()) {
 			return !nullable ?
@@ -79,7 +74,7 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return isSmallEnum() ?
 				let(readByte(in), b ->
 						!nullable ?

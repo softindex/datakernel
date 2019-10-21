@@ -74,41 +74,41 @@ public final class SerializerExpressions {
 
 	public static Expression writeChar(Expression buf, Variable pos, Expression value) {
 		return jdkUnsafe != null ?
-				sequence(
+				ensureRemaining(buf, pos, 2, sequence(
 						call(getUnsafe(), "putCharUnaligned",
 								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(true)),
 						set(pos, add(pos, value(2)))
-				) :
+				)) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeChar", buf, pos, cast(value, char.class)));
 	}
 
 	public static Expression writeShort(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return jdkUnsafe != null ?
-				sequence(
+				ensureRemaining(buf, pos, 2, sequence(
 						call(getUnsafe(), "putShortUnaligned",
 								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
-						set(pos, add(pos, value(4)))
-				) :
+						set(pos, add(pos, value(2)))
+				)) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeShort" + (bigEndian ? "" : "LE"), buf, pos, cast(value, short.class)));
 	}
 
 	public static Expression writeInt(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return jdkUnsafe != null ?
-				sequence(
+				ensureRemaining(buf, pos, 4, sequence(
 						call(getUnsafe(), "putIntUnaligned",
 								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
 						set(pos, add(pos, value(4)))
-				) :
+				)) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeInt" + (bigEndian ? "" : "LE"), buf, pos, cast(value, int.class)));
 	}
 
 	public static Expression writeLong(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return jdkUnsafe != null ?
-				sequence(
+				ensureRemaining(buf, pos, 8, sequence(
 						call(getUnsafe(), "putLongUnaligned",
 								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
 						set(pos, add(pos, value(8)))
-				) :
+				)) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeLong" + (bigEndian ? "" : "LE"), buf, pos, cast(value, long.class)));
 	}
 
@@ -122,30 +122,22 @@ public final class SerializerExpressions {
 				callStatic(BinaryOutputUtils.class, "writeVarLong", buf, pos, cast(value, long.class)));
 	}
 
-	private static Expression writeVarLongImpl(Expression buf, Variable pos, Variable v, int n, int bytes) {
-		return n != (bytes - 1) ?
-				ifThenElse(
-						cmpEq(and(v, value(~0x7FL)), value(0L)),
-						sequence(
-								setArrayItem(buf, add(pos, value(n)), cast(v, byte.class)),
-								set(pos, add(pos, value(n + 1)))),
-						sequence(
-								setArrayItem(buf, add(pos, value(n)), cast(or(v, value(0x80L)), byte.class)),
-								set(v, ushr(v, value(7))),
-								writeVarLongImpl(buf, pos, v, n + 1, bytes)
-						)
-				) :
-				sequence(
-						setArrayItem(buf, add(pos, value(n)), cast(v, byte.class)),
-						set(pos, add(pos, value(n + 1))));
-	}
-
 	public static Expression writeFloat(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return writeInt(buf, pos, callStatic(Float.class, "floatToIntBits", cast(value, float.class)), bigEndian);
 	}
 
 	public static Expression writeDouble(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return writeLong(buf, pos, callStatic(Double.class, "doubleToLongBits", cast(value, double.class)), bigEndian);
+	}
+
+	public static Expression ensureRemaining(Expression buf, Variable pos, int size, Expression next) {
+		return ensureRemaining(buf, pos, value(size), next);
+	}
+
+	public static Expression ensureRemaining(Expression buf, Variable pos, Expression size, Expression next) {
+		return ifThenElse(cmpGt(add(pos, size), length(buf)),
+				exception(ArrayIndexOutOfBoundsException.class),
+				next);
 	}
 
 	public static Expression array(Expression in) {

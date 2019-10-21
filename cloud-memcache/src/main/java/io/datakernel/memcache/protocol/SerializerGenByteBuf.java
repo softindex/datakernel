@@ -47,17 +47,12 @@ public class SerializerGenByteBuf implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public boolean isInline() {
-		return true;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return ByteBuf.class;
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos,
 				callStatic(SerializerGenByteBuf.class,
 						"write" + (writeWithRecycle ? "Recycle" : "") + (nullable ? "Nullable" : ""),
@@ -65,7 +60,7 @@ public class SerializerGenByteBuf implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return callStatic(SerializerGenByteBuf.class,
 				"read" + (wrap ? "Slice" : "") + (nullable ? "Nullable" : ""),
 				in);

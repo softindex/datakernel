@@ -21,9 +21,9 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -32,6 +32,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toSet;
 import static org.objectweb.asm.Type.*;
 
 /**
@@ -268,9 +269,7 @@ public final class Context {
 			foundMethod = findMethod(
 					Arrays.stream(javaOwnerType.getMethods())
 							.filter(m -> !isStatic(m.getModifiers()))
-							.map(m -> new Method(m.getName(),
-									getType(m.getReturnType()),
-									Arrays.stream(m.getParameterTypes()).map(Type::getType).toArray(Type[]::new))),
+							.map(Method::getMethod),
 					methodName,
 					arguments);
 			if (javaOwnerType.isInterface()) {
@@ -307,9 +306,7 @@ public final class Context {
 			foundMethod = findMethod(
 					Arrays.stream(toJavaType(ownerType).getMethods())
 							.filter(m -> isStatic(m.getModifiers()))
-							.map(m -> new Method(m.getName(),
-									getType(m.getReturnType()),
-									Arrays.stream(m.getParameterTypes()).map(Type::getType).toArray(Type[]::new))),
+							.map(Method::getMethod),
 					methodName,
 					arguments);
 		}
@@ -337,8 +334,7 @@ public final class Context {
 		checkArgument(!ownerType.equals(getSelfType()));
 		Method foundMethod = findMethod(
 				Arrays.stream(toJavaType(ownerType).getConstructors())
-						.map(m -> new Method("<init>", VOID_TYPE,
-								Arrays.stream(m.getParameterTypes()).map(Type::getType).toArray(Type[]::new))),
+						.map(Method::getMethod),
 				"<init>",
 				arguments);
 		g.invokeConstructor(ownerType, foundMethod);
@@ -346,11 +342,17 @@ public final class Context {
 	}
 
 	private Method findMethod(Stream<Method> methods, String name, Class<?>[] arguments) {
+		Set<Method> methodSet = methods.collect(toSet());
+
+		methodSet.addAll(Arrays.stream(Object.class.getMethods())
+				.filter(m -> !isStatic(m.getModifiers()))
+				.map(Method::getMethod)
+				.collect(toSet()));
+
 		Method foundMethod = null;
 		Class<?>[] foundMethodArguments = null;
 
-		for (Iterator<Method> it = methods.iterator(); it.hasNext(); ) {
-			Method method = it.next();
+		for (Method method : methodSet) {
 			if (!name.equals(method.getName())) continue;
 			Class[] methodArguments = Stream.of(method.getArgumentTypes()).map(this::toJavaType).toArray(Class[]::new);
 			if (!isAssignable(methodArguments, arguments)) {

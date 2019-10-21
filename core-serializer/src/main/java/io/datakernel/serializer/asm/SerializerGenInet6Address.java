@@ -40,22 +40,17 @@ public class SerializerGenInet6Address implements SerializerGen {
 	}
 
 	@Override
-	public boolean isInline() {
-		return true;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return Inet6Address.class;
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return writeBytes(buf, pos, call(value, "getAddress"));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return let(newArray(byte[].class, value(16)), array ->
 				sequence(
 						readBytes(in, array),

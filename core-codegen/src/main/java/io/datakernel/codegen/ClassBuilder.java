@@ -35,6 +35,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.difference;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.objectweb.asm.Opcodes.*;
@@ -186,14 +187,34 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	}
 
 	public ClassBuilder<T> withStaticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
-		staticMethods.put(new Method(methodName, getType(returnClass), argumentTypes.stream().map(Type::getType).toArray(Type[]::new)), expression);
+		setStaticMethod(methodName, returnClass, argumentTypes, expression);
 		return this;
+	}
+
+	public void setStaticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+		staticMethods.put(new Method(methodName, getType(returnClass), argumentTypes.stream().map(Type::getType).toArray(Type[]::new)), expression);
 	}
 
 	public ClassBuilder<T> withStaticField(String fieldName, Class<?> type, Object value) {
 		this.staticFields.put(fieldName, type);
 		this.staticConstants.put(fieldName, value);
 		return this;
+	}
+
+	public Map<Method, Expression> getMethods() {
+		return methods;
+	}
+
+	public Map<String, Class<?>> getFields() {
+		return fields;
+	}
+
+	public Map<Method, Expression> getStaticMethods() {
+		return staticMethods;
+	}
+
+	public Map<String, Class<?>> getStaticFields() {
+		return staticFields;
 	}
 
 	// endregion
@@ -253,38 +274,50 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 			cw.visitField(ACC_PUBLIC, field, getType(fieldClass).getDescriptor(), null, null);
 		}
 
-		for (Method m : staticMethods.keySet()) {
-			try {
-				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
+		Set<Method> methods = new HashSet<>();
+		Set<Method> staticMethods = new HashSet<>();
 
-				Context ctx = new Context(classLoader, g, classType, superclass, interfaces, fields, methods, staticMethods, m, staticConstants);
-
-				Expression expression = staticMethods.get(m);
-				ctx.cast(expression.load(ctx), m.getReturnType());
-				g.returnValue();
-
-				g.endMethod();
-			} catch (Exception e) {
-				throw new RuntimeException(e);
+		while (true) {
+			Set<Method> newMethods = difference(this.methods.keySet(), methods);
+			Set<Method> newStaticMethods = difference(this.staticMethods.keySet(), staticMethods);
+			if (newMethods.isEmpty() && newStaticMethods.isEmpty()) {
+				break;
 			}
-		}
 
-		for (Method m : methods.keySet()) {
-			try {
-				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
+			for (Method m : newMethods) {
+				try {
+					GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, superclass, interfaces, fields, methods, staticMethods, m, staticConstants);
+					Context ctx = new Context(classLoader, g, classType, superclass, interfaces, fields, this.methods, this.staticMethods, m, staticConstants);
 
-				Expression expression = methods.get(m);
-				ctx.cast(expression.load(ctx), m.getReturnType());
-				g.returnValue();
+					Expression expression = this.methods.get(m);
+					ctx.cast(expression.load(ctx), m.getReturnType());
+					g.returnValue();
 
-				g.endMethod();
-			} catch (RuntimeException e) {
-				throw e;
-			} catch (Exception e) {
-				throw new RuntimeException(e);
+					g.endMethod();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
 			}
+
+			for (Method m : newStaticMethods) {
+				try {
+					GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
+
+					Context ctx = new Context(classLoader, g, classType, superclass, interfaces, fields, this.methods, this.staticMethods, m, staticConstants);
+
+					Expression expression = this.staticMethods.get(m);
+					ctx.cast(expression.load(ctx), m.getReturnType());
+					g.returnValue();
+
+					g.endMethod();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}
+
+			methods.addAll(newMethods);
+			staticMethods.addAll(newStaticMethods);
 		}
 
 		for (String staticField : staticFields.keySet()) {

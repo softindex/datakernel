@@ -29,6 +29,8 @@ import java.util.function.Function;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
+import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 
 public abstract class AbstractSerializerGenMap implements SerializerGen, HasNullable {
@@ -73,17 +75,17 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 	}
 
 	@Override
-	public boolean isInline() {
-		return true;
+	public final Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return staticEncoders.define(mapType, buf, pos, value,
+				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
 	}
 
-	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	private Expression serializeImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression length = length(value);
 		Expression writeLength = writeVarInt(buf, pos, !nullable ? length : inc(length));
 		Expression forEach = mapForEach(value,
-				k -> keySerializer.serialize(classLoader, buf, pos, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
-				v -> valueSerializer.serialize(classLoader, buf, pos, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
+				k -> keySerializer.serialize(classLoader, staticEncoders, buf, pos, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
+				v -> valueSerializer.serialize(classLoader, staticEncoders, buf, pos, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		return !nullable ?
 				sequence(writeLength, forEach) :
@@ -93,16 +95,21 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
+		return staticDecoders.define(targetType, in,
+				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
+	}
+
+	private Expression deserializeImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return let(readVarInt(in), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "put",
-														cast(keySerializer.deserialize(classLoader, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-														cast(valueSerializer.deserialize(classLoader, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+														cast(keySerializer.deserialize(classLoader, staticDecoders, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+														cast(valueSerializer.deserialize(classLoader, staticDecoders, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 												),
 												voidExp())),
 								instance)) :
@@ -113,8 +120,8 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "put",
-																cast(keySerializer.deserialize(classLoader, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-																cast(valueSerializer.deserialize(classLoader, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+																cast(keySerializer.deserialize(classLoader, staticDecoders, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+																cast(valueSerializer.deserialize(classLoader, staticDecoders, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 														),
 														voidExp())),
 										instance))));

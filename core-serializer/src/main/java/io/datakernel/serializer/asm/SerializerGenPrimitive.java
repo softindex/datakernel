@@ -47,11 +47,6 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	}
 
 	@Override
-	public final boolean isInline() {
-		return true;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return getBoxedType();
 	}
@@ -69,12 +64,12 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	protected abstract Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel);
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return doSerialize(buf, pos, cast(value, primitiveType), compatibilityLevel);
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		Expression expression = doDeserialize(in, compatibilityLevel);
 		return targetType.isPrimitive() ? expression : cast(expression, getBoxedType());
 	}

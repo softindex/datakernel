@@ -23,6 +23,8 @@ import io.datakernel.serializer.CompatibilityLevel;
 
 import java.util.Set;
 
+import static io.datakernel.codegen.Expressions.arg;
+
 /**
  * Represents a serializer and deserializer of a particular class to byte arrays
  */
@@ -40,8 +42,6 @@ public interface SerializerGen {
 
 	Set<Integer> getVersions();
 
-	boolean isInline();
-
 	/**
 	 * Returns the raw type of object which will be serialized
 	 *
@@ -49,26 +49,45 @@ public interface SerializerGen {
 	 */
 	Class<?> getRawType();
 
+	interface StaticEncoders {
+		static Expression methodBuf() { return arg(0);}
+
+		static Variable methodPos() { return arg(1);}
+
+		static Expression methodValue() { return arg(2);}
+
+		Expression define(Class<?> valueClazz, Expression buf, Variable pos, Expression value, Expression method);
+	}
+
 	/**
 	 * Serializes provided {@link Expression} {@code value} to byte array
 	 *
+	 * @param staticEncoders
 	 * @param buf                byte array to which the value will be serialized
 	 * @param pos                an offset in the byte array
 	 * @param value              the value to be serialized to byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return serialized to byte array value
 	 */
-	Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
+	Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
+
+	interface StaticDecoders {
+		static Expression methodIn() { return arg(0);}
+
+		Expression define(Class<?> valueClazz, Expression in, Expression method);
+	}
 
 	/**
 	 * Deserializes object of {@code targetType} from byte array
 	 *
+	 *
+	 * @param staticDecoders
 	 * @param in                 BinaryInput
 	 * @param targetType         target type which is used to deserialize byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
-	Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
+	Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
 
 	@Override
 	boolean equals(Object o);

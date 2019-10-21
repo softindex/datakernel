@@ -29,6 +29,8 @@ import java.util.function.Function;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
+import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 
 public abstract class AbstractSerializerGenCollection implements SerializerGen, HasNullable {
@@ -65,19 +67,19 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public boolean isInline() {
-		return true;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return collectionType;
 	}
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return staticEncoders.define(collectionType, buf, pos, value,
+				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+	}
+
+	private Expression serializeImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
-				it -> valueSerializer.serialize(classLoader, buf, pos, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
+				it -> valueSerializer.serialize(classLoader, staticEncoders, buf, pos, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		if (!nullable) {
 			return sequence(
@@ -86,34 +88,38 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 		} else {
 			return ifThenElse(isNull(value),
 					writeByte(buf, pos, value((byte) 0)),
-					sequence(writeVarInt(buf, pos, inc(call(value, "size"))),
+					sequence(
+							writeVarInt(buf, pos, inc(call(value, "size"))),
 							forEach));
 		}
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
+		return staticDecoders.define(collectionImplType, in,
+				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
+	}
+
+	private Expression deserializeImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return let(readVarInt(in), length ->
 				!nullable ?
 						let(createConstructor(length), instance -> sequence(
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "add",
-														cast(valueSerializer.deserialize(classLoader, in, elementType, version, compatibilityLevel), elementType)),
+														cast(valueSerializer.deserialize(classLoader, staticDecoders, in, elementType, version, compatibilityLevel), elementType)),
 												voidExp())),
 								instance)) :
-						ifThenElse(
-								cmpEq(length, value(0)),
+						ifThenElse(cmpEq(length, value(0)),
 								nullRef(collectionImplType),
 								let(createConstructor(length), instance -> sequence(
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "add",
-																cast(valueSerializer.deserialize(classLoader, in, elementType, version, compatibilityLevel), elementType)),
+																cast(valueSerializer.deserialize(classLoader, staticDecoders, in, elementType, version, compatibilityLevel), elementType)),
 														voidExp())),
 										instance))));
-
 	}
 
 	@Override

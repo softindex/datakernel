@@ -19,9 +19,11 @@ package io.datakernel.serializer;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
+import io.datakernel.serializer.asm.SerializerGen.StaticDecoders;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,12 +42,14 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeVarInt;
+import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.methodPos;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 
 /**
  * Scans fields of classes for serialization.
  */
+@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public final class SerializerBuilder {
 	private final DefiningClassLoader definingClassLoader;
 	private String profile;
@@ -804,11 +808,27 @@ public final class SerializerBuilder {
 										sequence(),
 
 								serializerGen.serialize(definingClassLoader,
+										new SerializerGen.StaticEncoders() {
+											@Override
+											public Expression define(Class<?> valueClazz, Expression buf, Variable pos, Expression value, Expression method) {
+												String methodName;
+												for (int i = 1; ; i++) {
+													methodName = "encode_" +
+															valueClazz.getSimpleName().replace('[', 's').replace(']', '_') +
+															(i == 1 ? "" : "_" + i);
+													String _methodName = methodName;
+													if (classBuilder.getStaticMethods().keySet().stream().noneMatch(m -> m.getName().equals(_methodName)))
+														break;
+												}
+												classBuilder.withStaticMethod(methodName, int.class, asList(byte[].class, int.class, valueClazz),
+														sequence(method, methodPos()));
+												return set(pos, callStaticSelf(methodName, buf, pos, cast(value, valueClazz)));
+											}
+										},
 										arg(0),
 										pos,
 										cast(arg(2), dataType),
-										nullToDefault(currentVersion, 0),
-										compatibilityLevel),
+										nullToDefault(currentVersion, 0), compatibilityLevel),
 
 								pos))
 		);
@@ -828,6 +848,27 @@ public final class SerializerBuilder {
 		return classBuilder.buildClassAndCreateNewInstance();
 	}
 
+	private StaticDecoders staticDecoder(ClassBuilder<BinarySerializer<?>> classBuilder, @Nullable Integer version) {
+		return new StaticDecoders() {
+			@Override
+			public Expression define(Class<?> valueClazz, Expression in, Expression method) {
+				String methodName;
+				for (int i = 1; ; i++) {
+					methodName = "decode_" +
+							valueClazz.getSimpleName().replace('[', 's').replace(']', '_') +
+							(version == null ? "" : "_V" + version) +
+							(i == 1 ? "" : "_" + i);
+					String _methodName = methodName;
+					if (classBuilder.getStaticMethods().keySet().stream().noneMatch(m -> m.getName().equals(_methodName)))
+						break;
+				}
+
+				classBuilder.withStaticMethod(methodName, valueClazz, asList(BinaryInput.class), method);
+				return callStaticSelf(methodName, in);
+			}
+		};
+	}
+
 	private void defineDeserialize(SerializerGen serializerGen,
 			ClassBuilder<BinarySerializer<?>> classBuilder,
 			List<Integer> allVersions) {
@@ -845,17 +886,15 @@ public final class SerializerBuilder {
 			Integer latestVersion) {
 		if (latestVersion == null) {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
-					serializerGen.deserialize(classBuilder.getClassLoader(),
-							arg(0),
-							serializerGen.getRawType(), 0, compatibilityLevel));
+					serializerGen.deserialize(classBuilder.getClassLoader(), staticDecoder(classBuilder, null),
+							arg(0), serializerGen.getRawType(), 0, compatibilityLevel));
 		} else {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
 					let(call(arg(0), "readVarInt"),
 							version -> ifThenElse(cmpEq(version, value(latestVersion)),
-									serializerGen.deserialize(classBuilder.getClassLoader(),
-											arg(0),
-											serializerGen.getRawType(), latestVersion, compatibilityLevel),
-									call(self(), "deserializeEarlierVersions", arg(0), version))));
+									serializerGen.deserialize(classBuilder.getClassLoader(), staticDecoder(classBuilder, null),
+											arg(0), serializerGen.getRawType(), latestVersion, compatibilityLevel),
+									call(self(), "decodeEarlierVersions", arg(0), version))));
 		}
 	}
 
@@ -869,7 +908,7 @@ public final class SerializerBuilder {
 			listKey.add(value(version));
 			listValue.add(call(self(), "deserializeVersion" + version, arg(0)));
 		}
-		classBuilder.withMethod("deserializeEarlierVersions", serializerGen.getRawType(), asList(BinaryInput.class, int.class),
+		classBuilder.withMethod("decodeEarlierVersions", serializerGen.getRawType(), asList(BinaryInput.class, int.class),
 				switchByKey(arg(1), listKey, listValue));
 	}
 
@@ -879,9 +918,8 @@ public final class SerializerBuilder {
 		classBuilder.withMethod("deserializeVersion" + version,
 				serializerGen.getRawType(),
 				asList(BinaryInput.class),
-				sequence(serializerGen.deserialize(classBuilder.getClassLoader(),
-						arg(0),
-						serializerGen.getRawType(), version, compatibilityLevel)));
+				sequence(serializerGen.deserialize(classBuilder.getClassLoader(), staticDecoder(classBuilder, version),
+						arg(0), serializerGen.getRawType(), version, compatibilityLevel)));
 	}
 
 	@Nullable

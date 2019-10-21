@@ -32,6 +32,8 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Utils.of;
 import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
+import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 import static org.objectweb.asm.Type.getType;
 
@@ -73,18 +75,18 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public boolean isInline() {
-		return false;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return dataType;
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		byte subClassIndex = (byte) (nullable && startIndex == 0 ? 1 : startIndex);
+	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return staticEncoders.define(dataType, buf, pos, value,
+				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+	}
+
+	private Expression serializeImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		int subClassIndex = (nullable && startIndex == 0 ? 1 : startIndex);
 
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
@@ -93,7 +95,7 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
 					writeByte(buf, pos, value(subClassIndex)),
-					subclassSerializer.serialize(classLoader, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
+					subclassSerializer.serialize(classLoader, staticEncoders, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
 			));
 
 			subClassIndex++;
@@ -103,22 +105,28 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 		}
 		if (nullable) {
 			return ifThenElse(isNotNull(value),
-					switchByKey(cast(call(cast(value, Object.class), "getClass"), Object.class), listKey, listValue),
+					switchByKey(call(value, "getClass"), listKey, listValue),
 					writeByte(buf, pos, value((byte) 0)));
 		} else {
-			return switchByKey(cast(call(cast(value, Object.class), "getClass"), Object.class), listKey, listValue);
+			return switchByKey(call(value, "getClass"), listKey, listValue);
 		}
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return let(sub(readByte(in), value(startIndex)),
+	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return staticDecoders.define(dataType, in,
+				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
+
+	}
+
+	private Expression deserializeImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		return let(startIndex != 0 ? sub(cast(readByte(in), int.class), value(startIndex)) : cast(readByte(in), int.class),
 				idx -> cast(
 						switchByIndex(idx,
 								of(() -> {
 									List<Expression> versions = new ArrayList<>();
 									for (SerializerGen subclassSerializer : subclassSerializers.values()) {
-										versions.add(cast(subclassSerializer.deserialize(classLoader, in, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
+										versions.add(cast(subclassSerializer.deserialize(classLoader, staticDecoders, in, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
 									}
 									if (nullable) versions.add(-startIndex, nullRef(getRawType()));
 									return versions;

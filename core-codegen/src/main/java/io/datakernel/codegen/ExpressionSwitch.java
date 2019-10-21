@@ -54,7 +54,7 @@ final class ExpressionSwitch implements Expression {
 		Type resultType = getType(Object.class);
 		for (int i = 0; i < matchCases.size(); i++) {
 			Label labelNext = new Label();
-			if (isPrimitiveType(keyType)) {
+			if (isPrimitiveType(keyType) || keyType.equals(getType(Class.class))) {
 				matchCases.get(i).load(ctx);
 				value.load(ctx);
 				g.ifCmp(keyType, GeneratorAdapter.NE, labelNext);

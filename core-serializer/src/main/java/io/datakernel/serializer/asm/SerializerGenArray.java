@@ -29,6 +29,8 @@ import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
+import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 
 public final class SerializerGenArray implements SerializerGen, HasNullable, HasFixedSize {
@@ -72,64 +74,93 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 	}
 
 	@Override
-	public boolean isInline() {
-		return true;
-	}
-
-	@Override
 	public Class<?> getRawType() {
 		return Object.class;
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, Expression buf, Variable pos, Expression value, int version,
-			CompatibilityLevel compatibilityLevel) {
-		Expression castedValue = cast(value, type);
-		Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
-		Expression writeLength = writeVarInt(buf, pos, (!nullable ? length : inc(length)));
-		Expression writeZeroLength = writeByte(buf, pos, value((byte) 0));
-		Expression writeByteArray = writeBytes(buf, pos, castedValue);
-		Expression writeCollection = loop(value(0), length,
-				it -> valueSerializer.serialize(classLoader, buf, pos, getArrayItem(castedValue, it), version, compatibilityLevel));
+	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		if (type.getComponentType() == Byte.TYPE) {
+			Expression castedValue = cast(value, type);
+			Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
+
+			if (!nullable) {
+				return sequence(
+						writeVarInt(buf, pos, length),
+						writeBytes(buf, pos, castedValue));
+			} else {
+				return ifThenElse(isNull(value),
+						writeByte(buf, pos, value((byte) 0)),
+						sequence(
+								writeVarInt(buf, pos, inc(length)),
+								writeBytes(buf, pos, castedValue))
+				);
+			}
+		} else {
+			return staticEncoders.define(type, buf, pos, value,
+					serializeArrayImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+		}
+	}
+
+	private Expression serializeArrayImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		Expression methodLength = fixedSize != -1 ? value(fixedSize) : length(cast(value, type));
+
+		Expression writeCollection = loop(value(0), methodLength,
+				it -> valueSerializer.serialize(classLoader, staticEncoders, buf, pos, getArrayItem(cast(value, type), it), version, compatibilityLevel));
 
 		if (!nullable) {
-			return type.getComponentType() == Byte.TYPE ?
-					sequence(writeLength, writeByteArray) :
-					sequence(writeLength, writeCollection);
+			return sequence(
+					writeVarInt(buf, pos, methodLength),
+					writeCollection);
 		} else {
-			return type.getComponentType() == Byte.TYPE ?
-					ifThenElse(isNull(value),
-							writeZeroLength,
-							sequence(writeLength, writeByteArray)
-					) :
-					ifThenElse(isNull(value),
-							writeZeroLength,
-							sequence(writeLength, writeCollection));
+			return ifThenElse(isNull(value),
+					writeByte(buf, pos, value((byte) 0)),
+					sequence(
+							writeVarInt(buf, pos, inc(methodLength)),
+							writeCollection));
 		}
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		if (type.getComponentType() == Byte.TYPE) {
+			return !nullable ?
+					let(readVarInt(in), len ->
+							let(newArray(type, len), array ->
+									sequence(
+											readBytes(in, array),
+											array))) :
+					let(readVarInt(in), len ->
+							ifThenElse(cmpEq(len, value(0)),
+									nullRef(type),
+									let(newArray(type, dec(len)), array ->
+											sequence(
+													readBytes(in, array),
+													array)
+									)));
+		} else {
+			return staticDecoders.define(type, in,
+					deserializeArrayImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
+		}
+	}
+
+	private Expression deserializeArrayImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return !nullable ?
 				let(readVarInt(in), len ->
 						let(newArray(type, len), array ->
 								sequence(
-										type.getComponentType() == Byte.TYPE ?
-												readBytes(in, array) :
-												loop(value(0), len,
-														i -> setArrayItem(array, i,
-																cast(valueSerializer.deserialize(classLoader, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+										loop(value(0), len,
+												i -> setArrayItem(array, i,
+														cast(valueSerializer.deserialize(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 										array))) :
 				let(readVarInt(in), len ->
 						ifThenElse(cmpEq(len, value(0)),
 								nullRef(type),
 								let(newArray(type, dec(len)), array ->
 										sequence(
-												type.getComponentType() == Byte.TYPE ?
-														readBytes(in, array) :
-														loop(value(0), dec(len),
-																i -> setArrayItem(array, i,
-																		cast(valueSerializer.deserialize(classLoader, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+												loop(value(0), dec(len),
+														i -> setArrayItem(array, i,
+																cast(valueSerializer.deserialize(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));
 	}
