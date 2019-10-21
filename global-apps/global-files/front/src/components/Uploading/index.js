@@ -1,6 +1,5 @@
 import React from 'react';
-import {connectService} from 'global-apps-common';
-import FSContext from '../../modules/fs/FSContext';
+import {getInstance, useService} from 'global-apps-common';
 import {withStyles} from "@material-ui/core";
 import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
@@ -9,11 +8,12 @@ import uploadingStyles from '../Uploading/uploadingStyles';
 import {getFileTypeByName} from '../../common/utils';
 import FileTypeIcon from '../FileTypeIcon';
 import UploadingAlert from "../UploadingAlert";
+import FSService from "../../modules/fs/FSService";
 
 /**
  * @return {null}
  */
-function Uploading({files, uploads, classes, onClose}) {
+function UploadingView({files, uploads, classes, onClose}) {
   const items = uploads.map(item => {
     const fileIsFinallyAdd = Boolean(files.find(({name}) => name === item.name));
     return (
@@ -52,13 +52,18 @@ function Uploading({files, uploads, classes, onClose}) {
   return null;
 }
 
-export default withStyles(uploadingStyles)(
-  connectService(FSContext, ({uploads, files}, fsService) => ({
-      uploads: [...uploads.values()],
-      files,
-      onClose: () => fsService.clearUploads()
-    })
-  )(
-    Uploading
-  )
-);
+function Uploading({classes}) {
+  const fsService = getInstance(FSService);
+  const {files, uploads} = useService(fsService);
+
+  const props = {
+    classes,
+    uploads: [...uploads.values()],
+    files,
+    onClose: () => fsService.clearUploads()
+  };
+
+  return <UploadingView {...props}/>
+}
+
+export default withStyles(uploadingStyles)(Uploading);

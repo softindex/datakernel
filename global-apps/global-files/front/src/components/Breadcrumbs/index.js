@@ -11,31 +11,20 @@ import breadcrumbsStyles from './breadcrumbsStyles';
 import BreadcrumbsMenu from '../BreadcrumbsMenu';
 import BreadcrumbItem from "../BreadcrumbItem";
 import {withSnackbar} from "notistack";
+import FSService from "../../modules/fs/FSService";
+import {getInstance} from "global-apps-common";
 
-function Breadcrumbs({classes, breadcrumbs, fsService, location, history, width, enqueueSnackbar}) {
-  const [anchorElement, setAnchorElement] = useState(null);
-
-  const onRemoveDir = async (prevCrumb) => {
-    try {
-      await fsService.rmdir();
-    } catch (err) {
-      enqueueSnackbar(err.message, {
-        variant: 'error'
-      });
-    }
-
-    setAnchorElement(null);
-    history.push(prevCrumb.key);
-  };
-
-  const contextMenuHandler = async (e) => {
-    setAnchorElement(e.currentTarget);
-  };
-
-  const onContextMenuClose = () => {
-    setAnchorElement(null);
-  };
-
+function BreadcrumbsView({
+                           classes,
+                           breadcrumbs,
+                           location,
+                           history,
+                           width,
+                           anchorElement,
+                           onRemoveDir,
+                           onContextMenuClose,
+                           onOpenContextMenu
+                         }) {
   let crumbs = breadcrumbs.map((breadcrumb, index) => {
     if (breadcrumb.props.match.url === location.pathname) {
       return (
@@ -49,7 +38,7 @@ function Breadcrumbs({classes, breadcrumbs, fsService, location, history, width,
           )}
           <div className={classes.breadcrumbLastItem}>
             <Button
-              onClick={contextMenuHandler}
+              onClick={onOpenContextMenu}
               className={classes.button}
               disabled={breadcrumbs.length === 1}
             >
@@ -84,6 +73,43 @@ function Breadcrumbs({classes, breadcrumbs, fsService, location, history, width,
       {crumbs}
     </div>
   )
+}
+
+function Breadcrumbs({classes, width, enqueueSnackbar, breadcrumbs, location, history}) {
+  const fsService = getInstance(FSService);
+  const [anchorElement, setAnchorElement] = useState(null);
+
+  const props = {
+    classes,
+    width,
+    breadcrumbs,
+    location,
+    history,
+    anchorElement,
+
+    onRemoveDir(prevCrumb) {
+      fsService.rmdir()
+        .then(() => {
+          setAnchorElement(null);
+          history.push(prevCrumb.key);
+        })
+        .catch((err) => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        });
+    },
+
+    onOpenContextMenu(e) {
+      setAnchorElement(e.currentTarget);
+    },
+
+    onContextMenuClose() {
+      setAnchorElement(null);
+    }
+  };
+
+  return <BreadcrumbsView {...props}/>
 }
 
 export default withWidth()(

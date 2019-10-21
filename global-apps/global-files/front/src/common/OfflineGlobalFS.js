@@ -108,7 +108,6 @@ class OfflineGlobalFS extends EventEmitter {
           break;
         }
         case 'DELETE_FOLDER': {
-          // removing glob /**
           const folderPath = key.slice(0, key.length - 3);
           files = files.filter(file => {
             return file.name.indexOf(folderPath) !== 0;

@@ -125,7 +125,7 @@ class FSService extends Service {
         continue;
       }
 
-      let nextSlashPos = name.indexOf('/', path.length);
+      const nextSlashPos = name.indexOf('/', path.length);
       if (nextSlashPos !== -1) {
         directoriesSet.add(name.slice(path.length, nextSlashPos));
         continue;
@@ -158,7 +158,7 @@ class FSService extends Service {
 
   _subscribeForProgress() {
     this._globalFSGateway.addListener('progress', ({progress, fileName}) => {
-      let uploads = new Map(this.state.uploads);
+      const uploads = new Map(this.state.uploads);
       const file = uploads.get(fileName);
 
       // if it's folder

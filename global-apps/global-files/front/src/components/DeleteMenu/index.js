@@ -17,14 +17,6 @@ function DeleteMenu({style, classes, deleteHandler}) {
         top: style.top,
         left: style.left
       }}
-      anchorOrigin={{
-        vertical: 'top',
-        horizontal: 'left',
-      }}
-      transformOrigin={{
-        vertical: 'top',
-        horizontal: 'left',
-      }}
     >
       <MenuList>
         <MenuItem button onClick={deleteHandler}>

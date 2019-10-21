@@ -110,8 +110,6 @@ export default withRouter(
           return authService.createKeysFile();
         }
       })
-    )(
-      Header
-    )
+    )(Header)
   )
 );

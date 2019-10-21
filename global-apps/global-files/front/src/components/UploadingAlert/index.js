@@ -14,7 +14,11 @@ function UploadingAlert({classes, items, uploads, onClose}) {
   return (
     <Paper className={classes.root}>
       <div className={classes.header}>
-        <Typography color="inherit" variant="subtitle1" className={classes.title}>
+        <Typography
+          color="inherit"
+          variant="subtitle1"
+          className={classes.title}
+        >
           {uploads.length} uploads complete
         </Typography>
         <IconButton color="inherit" onClick={onClose}>

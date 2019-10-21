@@ -1,7 +1,6 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {withRouter} from 'react-router-dom';
-import FSContext from '../../modules/fs/FSContext';
-import {connectService} from 'global-apps-common';
+import {getInstance, useService} from 'global-apps-common';
 import DeleteMenu from '../DeleteMenu';
 import {withStyles} from "@material-ui/core";
 import CircularProgress from '@material-ui/core/CircularProgress';
@@ -13,139 +12,142 @@ import FolderIcon from '@material-ui/icons/FolderOpenOutlined';
 import FileViewer from '../FileViewer';
 import {getItemContainer} from "./getItemContainer";
 import {withSnackbar} from "notistack";
+import FSService from "../../modules/fs/FSService";
 
-class ItemList extends React.Component {
-  state = {
-    contextStyles: {},
-    isFileViewerOpen: false,
-    selectedItem: null
-  };
+function ItemListView({
+                        classes,
+                        fileList,
+                        loading,
+                        path,
+                        contextStyles,
+                        isFileViewerOpen,
+                        selectedItem,
+                        openFileViewer,
+                        onOpenDeleteMenu,
+                        onFileViewerClose,
+                        onDeleteItem
+                      }) {
+  return (
+    <div className={classes.root}>
+      <Breadcrumbs/>
+      <Divider/>
+      {loading && (
+        <div className={classes.wrapper}>
+          <CircularProgress/>
+        </div>
+      )}
+      {fileList.length > 0 && !loading &&
+      getItemContainer(
+        path,
+        fileList,
+        openFileViewer,
+        onOpenDeleteMenu,
+        classes
+      )
+      }
+      {fileList.length <= 0 && !loading && (
+        <div className={classes.wrapper}>
+          <FolderIcon className={classes.emptyIndicator}/>
+          <Typography variant="h5">
+            Directory is empty
+          </Typography>
+        </div>
+      )}
+      {selectedItem && isFileViewerOpen && (
+        <FileViewer
+          file={selectedItem}
+          onClose={onFileViewerClose}
+          onDelete={onDeleteItem}
+        />
+      )}
+      <DeleteMenu
+        deleteHandler={onDeleteItem}
+        style={contextStyles}
+      />
+    </div>
+  );
+}
 
-  async componentDidMount() {
-    await this.props.fsService.fetch(this.getCurrentPath());
-    window.addEventListener('click', this.removeContextMenu);
+function ItemList({classes, enqueueSnackbar, match}) {
+  const fsService = getInstance(FSService);
+  const {directories, files, path, loading} = useService(fsService);
+  const [contextStyles, setContextStyles] = useState({});
+  const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  useEffect(() => {
+    fsService.fetch(getCurrentPath())
+      .then(() => window.addEventListener('click', removeContextMenu))
+      .catch(error => enqueueSnackbar(error.message, {
+        variant: 'error'
+      }));
+    return window.removeEventListener('click', removeContextMenu)
+  }, [match]);
+
+  function getCurrentPath() {
+    return match.params[0] || '/';
   }
 
-  componentWillUnmount() {
-    window.removeEventListener('click', this.removeContextMenu);
+  function removeContextMenu() {
+    setContextStyles({open: false});
   }
 
-  componentDidUpdate(prevProps) {
-    if (this.props.match !== prevProps.match) {
-      this.props.fsService.fetch(this.getCurrentPath());
-    }
-  }
+  const props = {
+    classes,
+    fileList: [...directories, ...files],
+    loading,
+    path,
+    match,
+    contextStyles,
+    isFileViewerOpen,
+    selectedItem,
 
-  removeContextMenu = () => {
-    this.setState({contextStyles: {open: false}});
-  };
-
-  handleContextMenu = (name, isDirectory, e) => {
-    e.preventDefault();
-    const {clientX, clientY} = e;
-    this.setState({
-      contextStyles: {
+    onOpenDeleteMenu(name, isDirectory, e) {
+      e.preventDefault();
+      const {clientX, clientY} = e;
+      setContextStyles({
         open: true,
         top: clientY,
         left: clientX
-      },
-      selectedItem: {
+      });
+      setSelectedItem({
         name: name,
         isDirectory
-      }
-    });
-  };
-
-  onDeleteItem = async () => {
-    try {
-      if (this.state.selectedItem.isDirectory) {
-        await this.props.fsService.rmdir(this.state.selectedItem.name);
-      } else {
-        await this.props.fsService.rmfile(this.state.selectedItem.name);
-        this.setState({
-          isFileViewerOpen: false,
-          selectedItem: null
-        });
-      }
-    } catch (err) {
-      this.props.enqueueSnackbar(err.message, {
-        variant: 'error'
       });
+    },
+
+    onDeleteItem() {
+      if (selectedItem.isDirectory) {
+        fsService.rmdir(selectedItem.name)
+          .catch(error => enqueueSnackbar(error.message, {
+            variant: 'error'
+          }));
+      } else {
+        fsService.rmfile(selectedItem.name)
+          .catch(error => enqueueSnackbar(error.message, {
+            variant: 'error'
+          }));
+        setIsFileViewerOpen(false);
+        setSelectedItem(null);
+      }
+    },
+
+    openFileViewer(item) {
+      setSelectedItem(item);
+      setIsFileViewerOpen(true);
+    },
+
+    onFileViewerClose() {
+      setSelectedItem(null);
+      setIsFileViewerOpen(false);
     }
   };
 
-  getCurrentPath() {
-    return this.props.match.params[0] || '/';
-  }
-
-  openFileViewer = (item) => {
-    this.setState({
-      selectedItem: item,
-      isFileViewerOpen: true
-    })
-  };
-
-  onFileViewerClose = () => {
-    this.setState({
-      selectedItem: null,
-      isFileViewerOpen: false
-    })
-  };
-
-  render() {
-    return (
-      <div className={this.props.classes.root}>
-        <Breadcrumbs fsService={this.props.fsService}/>
-        <Divider/>
-        {this.props.loading && (
-          <div className={this.props.classes.wrapper}>
-            <CircularProgress/>
-          </div>
-        )}
-        {this.props.fileList.length > 0 && !this.props.loading &&
-        getItemContainer(
-          this.props.path,
-          this.props.fileList,
-          this.openFileViewer,
-          this.handleContextMenu,
-          this.props.classes
-        )
-        }
-        {this.props.fileList.length <= 0 && !this.props.loading && (
-          <div className={this.props.classes.wrapper}>
-            <FolderIcon className={this.props.classes.emptyIndicator}/>
-            <Typography variant="h5">
-              Directory is empty
-            </Typography>
-          </div>
-        )}
-        {this.state.selectedItem && this.state.isFileViewerOpen && (
-          <FileViewer
-            file={this.state.selectedItem}
-            onClose={this.onFileViewerClose}
-            onDelete={this.onDeleteItem}
-          />
-        )}
-        <DeleteMenu
-          deleteHandler={this.onDeleteItem}
-          style={this.state.contextStyles}
-        />
-      </div>
-    );
-  }
+  return <ItemListView {...props}/>
 }
 
 export default withSnackbar(
   withStyles(itemListStyles)(
-    connectService(FSContext, (
-      {directories, files, path, loading}, fsService) => ({
-        fileList: [...directories, ...files],
-        path,
-        loading,
-        fsService
-      })
-    )(
-      withRouter(ItemList)
-    )
+    withRouter(ItemList)
   )
 );
