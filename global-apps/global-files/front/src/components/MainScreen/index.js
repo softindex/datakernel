@@ -1,6 +1,5 @@
 import React from 'react';
 import localforage from 'localforage';
-import checkAuth from '../HOC/checkAuth';
 import FSService from '../../modules/fs/FSService';
 import GlobalFS from '../../common/GlobalFS';
 import OfflineGlobalFS from '../../common/OfflineGlobalFS';
@@ -8,8 +7,7 @@ import ItemList from '../ItemList';
 import SideBar from '../SideBar';
 import Uploading from '../Uploading';
 import FSContext from '../../modules/fs/FSContext';
-import AuthContext from '../../modules/auth/AuthContext';
-import connectService from '../../common/connectService';
+import {connectService, AuthContext, checkAuth} from 'global-apps-common';
 import Header from "../Header";
 import {withStyles} from "@material-ui/core";
 import mainScreenStyles from "./mainScreenStyles";
@@ -71,7 +69,6 @@ export default withStyles(mainScreenStyles)(
 
 // import React, {useEffect, useState} from 'react';
 // import localforage from 'localforage';
-// import checkAuth from '../HOC/checkAuth';
 // import FSService from '../../modules/fs/FSService';
 // import GlobalFS from '../../common/GlobalFS';
 // import OfflineGlobalFS from '../../common/OfflineGlobalFS';
@@ -79,8 +76,7 @@ export default withStyles(mainScreenStyles)(
 // import SideBar from '../SideBar';
 // import Uploading from '../Uploading';
 // import FSContext from '../../modules/fs/FSContext';
-// import AuthContext from '../../modules/auth/AuthContext';
-// import connectService from '../../common/connectService';
+// import {connectService, AuthContext, checkAuth} from 'global-apps-common';
 // import Header from "../Header";
 // import {withStyles} from "@material-ui/core";
 // import mainScreenStyles from "./mainScreenStyles";

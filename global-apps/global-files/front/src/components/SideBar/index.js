@@ -1,6 +1,6 @@
 import React, {useRef, useState} from 'react';
 import FSContext from '../../modules/fs/FSContext';
-import connectService from '../../common/connectService';
+import {connectService} from 'global-apps-common';
 import PromptDialog from '../PromptDialog';
 import {withStyles} from "@material-ui/core";
 import Drawer from '@material-ui/core/Drawer';
@@ -165,12 +165,13 @@ function SideBar({classes, fsService, width, isDrawerOpen, onDrawerClose, enqueu
           </ListItem>
         </Link>
       </List>
-      <PromptDialog
-        title="Create folder"
-        open={folderFormIsOpen}
-        onClose={onDialogClose}
-        onSubmit={onSubmit}
-      />
+      {folderFormIsOpen && (
+        <PromptDialog
+          title="Create folder"
+          onClose={onDialogClose}
+          onSubmit={onSubmit}
+        />
+      )}
       <Snackbar error={error}/>
     </Drawer>
   );

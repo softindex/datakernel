@@ -1,5 +1,5 @@
 import React from 'react';
-import connectService from '../../common/connectService';
+import {connectService} from 'global-apps-common';
 import FSContext from '../../modules/fs/FSContext';
 import {withStyles} from "@material-ui/core";
 import ListItem from '@material-ui/core/ListItem';

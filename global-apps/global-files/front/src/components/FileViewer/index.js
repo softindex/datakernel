@@ -14,11 +14,11 @@ import {getFileTypeByName} from '../../common/utils';
 import Paper from '@material-ui/core/Paper';
 import Button from '@material-ui/core/Button';
 
-function FileViewer({classes, open, onClose, file, onDelete}) {
+function FileViewer({classes, onClose, file, onDelete}) {
   return (
     <Dialog
       fullScreen
-      open={open}
+      open={true}
       onClose={onClose}
       TransitionComponent={Fade}
       className={classes.root}

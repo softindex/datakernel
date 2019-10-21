@@ -15,8 +15,7 @@ import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import MenuItem from '@material-ui/core/MenuItem';
 import FileSaver from 'file-saver';
-import AuthContext from '../../modules/auth/AuthContext';
-import connectService from '../../common/connectService';
+import {connectService, AuthContext} from 'global-apps-common';
 import headerStyles from "./headerStyles";
 
 function Header({classes, history, onLogout, openDrawer, onCreateKeysFile}) {

@@ -1,12 +1,10 @@
 import React from 'react';
-import AuthContext from '../../modules/auth/AuthContext';
-import connectService from '../../common/connectService';
+import {connectService, AuthContext, SignUpAbstractionImage} from 'global-apps-common';
 import Typography from '@material-ui/core/Typography';
 import {withStyles} from '@material-ui/core/styles';
 import AttachFileIcon from '@material-ui/icons/AttachFile';
 import StoreIcon from '@material-ui/icons/Store';
 import Grid from '@material-ui/core/Grid';
-import {SignUpAbstractionImage} from 'global-apps-common';
 import Button from '@material-ui/core/Button';
 import Snackbar from '../Snackbar';
 import signUpStyles from './signUpStyles';
@@ -103,7 +101,12 @@ class SignUp extends React.Component {
         <Snackbar
           error={this.props.auth.error && this.props.auth.error.message}
           action={[
-            <Button key="undo" color="secondary" size="small" onClick={this.onAuthByAppStore}>
+            <Button
+              key="undo"
+              color="secondary"
+              size="small"
+              onClick={this.onAuthByAppStore}
+            >
               RETRY
             </Button>,
           ]}

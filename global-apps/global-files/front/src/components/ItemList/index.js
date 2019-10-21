@@ -1,7 +1,7 @@
 import React from 'react';
 import {withRouter} from 'react-router-dom';
 import FSContext from '../../modules/fs/FSContext';
-import connectService from '../../common/connectService';
+import {connectService} from 'global-apps-common';
 import DeleteMenu from '../DeleteMenu';
 import {withStyles} from "@material-ui/core";
 import CircularProgress from '@material-ui/core/CircularProgress';
@@ -121,7 +121,6 @@ class ItemList extends React.Component {
         )}
         {this.state.selectedItem && this.state.isFileViewerOpen && (
           <FileViewer
-            open={this.state.isFileViewerOpen}
             file={this.state.selectedItem}
             onClose={this.onFileViewerClose}
             onDelete={this.onDeleteItem}

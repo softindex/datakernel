@@ -43,7 +43,7 @@ export class AuthService extends Service {
       const fileReader = new FileReader();
       fileReader.readAsText(file);
       fileReader.onload = () => {
-        const privateKey = fileReader.result.charAt(0);
+        const privateKey = fileReader.result;
         this.authByPrivateKey(privateKey);
         resolve();
       };
@@ -73,9 +73,9 @@ export class AuthService extends Service {
   };
 
   createKeysFile() {
-    return new File([this.state.publicKey + '-' + this.state.privateKey], 'keys.dat', {
+    return new File([this.state.privateKey], 'key.dat', {
       type: 'text/plain;charset=utf-8'
-    }); // TODO remove publicKey
+    });
   }
 }
 

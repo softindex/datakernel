@@ -6,7 +6,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 
-function PromptDialog({title, open, onClose, onSubmit}) {
+function PromptDialog({title, onClose, onSubmit}) {
   const [value, setValue] = useState('');
 
   const onChange = (event) => {
@@ -19,7 +19,7 @@ function PromptDialog({title, open, onClose, onSubmit}) {
 
   return (
     <Dialog
-      open={open}
+      open={true}
       onClose={onClose}
     >
       <DialogTitle>{title}</DialogTitle>

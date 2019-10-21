@@ -1,7 +1,7 @@
-import Store from '../../common/Store';
+import {Service} from 'global-apps-common';
 import {ascStringComparator, escapeSpecialChars, PREFIX_TO_IGNORE} from "../../common/utils";
 
-class FSService extends Store {
+class FSService extends Service {
   constructor(globalFSGateway) {
     super({
       files: [],
@@ -15,12 +15,12 @@ class FSService extends Store {
   }
 
   async fetch(path) {
-    this.setStore({
+    this.setState({
       loading: true
     });
     const list = await this._globalFSGateway.list();
     const {files, directories} = this._getFilesAndDirectories(list, path);
-    this.setStore({
+    this.setState({
       path,
       files,
       directories,
@@ -31,54 +31,54 @@ class FSService extends Store {
   async writeFile(file) {
     let uploads;
 
-    if (this.store.files.find(({name}) => name === file.name)) {
+    if (this.state.files.find(({name}) => name === file.name)) {
       throw new Error('File already exists');
     }
 
-    uploads = new Map(this.store.uploads);
+    uploads = new Map(this.state.uploads);
     uploads.set(file.name, {
       isDirectory: false,
       name: file.name,
       upload: 0,
       error: null
     });
-    this.setStore({uploads});
+    this.setState({uploads});
 
     let downloadURL;
     try {
-      downloadURL = await this._globalFSGateway.upload(this.store.path, file, progress => {
-        uploads = new Map(this.store.uploads);
+      downloadURL = await this._globalFSGateway.upload(this.state.path, file, progress => {
+        uploads = new Map(this.state.uploads);
         uploads.get(file.name).upload = progress;
-        this.setStore({uploads});
+        this.setState({uploads});
       });
     } catch (e) {
-      uploads = new Map(this.store.uploads);
+      uploads = new Map(this.state.uploads);
       uploads.get(file.name).error = e;
-      this.setStore({uploads});
+      this.setState({uploads});
 
       throw e;
     }
 
-    const newFile = this.store.uploads.get(file.name);
+    const newFile = this.state.uploads.get(file.name);
     newFile.downloadLink = downloadURL;
-    this.setStore({
-      files: [...this.store.files, newFile]
+    this.setState({
+      files: [...this.state.files, newFile]
         .sort(ascStringComparator)
     });
   }
 
   async mkdir(dirName) {
-    if (this.store.directories.find(dir => dir.name === dirName)) {
+    if (this.state.directories.find(dir => dir.name === dirName)) {
       throw new Error('Such folder exists');
     }
 
     const file = new File([], PREFIX_TO_IGNORE);
-    const fullDirName = this.store.path === '/' ? dirName : this.store.path.match(/^\/?(.*?)\/?$/)[1] + '/' + dirName;
+    const fullDirName = this.state.path === '/' ? dirName : this.state.path.match(/^\/?(.*?)\/?$/)[1] + '/' + dirName;
 
     await this._globalFSGateway.upload(fullDirName, file);
 
-    this.setStore({
-      directories: [...this.store.directories, {
+    this.setState({
+      directories: [...this.state.directories, {
         isDirectory: true,
         name: dirName,
         upload: 100,
@@ -88,28 +88,26 @@ class FSService extends Store {
   }
 
   async rmfile(fileName) {
-    // formatting path to 'foo/bar/'
-    let path = this.store.path.match(/^\/?(.*?)\/?$/)[1] + '/';
+    let path = this.state.path.match(/^\/?(.*?)\/?$/)[1] + '/';
     path = path === '/' ? '' : path;
 
     const fileToDelete = path + fileName;
     await this._globalFSGateway.removeFile(escapeSpecialChars(fileToDelete));
-    this.setStore({files: this.store.files.filter(file => file.name !== fileName)});
+    this.setState({files: this.state.files.filter(file => file.name !== fileName)});
   }
 
   async rmdir(dirName = '') {
-    // formatting path to 'foo/bar/'
-    let path = this.store.path.match(/^\/?(.*?)\/?$/)[1] + '/';
+    let path = this.state.path.match(/^\/?(.*?)\/?$/)[1] + '/';
     path = path === '/' ? '' : path;
     const dirToDelete = escapeSpecialChars(path + dirName) + (dirName ? '/**' : '**');
     await this._globalFSGateway.removeDir(dirToDelete);
-    this.setStore({
-      directories: this.store.directories.filter(directory => directory.name !== dirName)
+    this.setState({
+      directories: this.state.directories.filter(directory => directory.name !== dirName)
     });
   }
 
   clearUploads() {
-    this.setStore({
+    this.setState({
       uploads: []
     });
   }
@@ -160,7 +158,7 @@ class FSService extends Store {
 
   _subscribeForProgress() {
     this._globalFSGateway.addListener('progress', ({progress, fileName}) => {
-      let uploads = new Map(this.store.uploads);
+      let uploads = new Map(this.state.uploads);
       const file = uploads.get(fileName);
 
       // if it's folder
@@ -169,7 +167,7 @@ class FSService extends Store {
       }
 
       file.upload = progress;
-      this.setStore({uploads});
+      this.setState({uploads});
     });
   }
 }
