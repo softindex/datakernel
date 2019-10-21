@@ -26,7 +26,7 @@ import static java.util.stream.Collectors.toSet;
  * @see AbstractModule
  */
 public interface Module {
-	Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings();
+	Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings();
 
 	Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers();
 
@@ -130,14 +130,14 @@ public interface Module {
 	/**
 	 * Creates a {@link Module module} out of given binding graph trie
 	 */
-	static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings) {
+	static Module of(Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings) {
 		return new SimpleModule(bindings, emptyMap(), emptyMap(), emptyMap());
 	}
 
 	/**
 	 * Creates a {@link Module module} out of given binding graph trie, transformers, generators and multibinders
 	 */
-	static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+	static Module of(Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings,
 			Map<Integer, Set<BindingTransformer<?>>> transformers,
 			Map<Class<?>, Set<BindingGenerator<?>>> generators,
 			Map<Key<?>, Multibinder<?>> multibinders) {

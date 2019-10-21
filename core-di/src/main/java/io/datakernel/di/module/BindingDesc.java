@@ -4,17 +4,21 @@ import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 
+import static io.datakernel.di.core.Scope.UNSCOPED;
+
 public final class BindingDesc {
 	private Key<?> key;
 	private Binding<?> binding;
 	private Scope[] scope;
 	private boolean exported;
+	private boolean isTransient;
 
-	public BindingDesc(Key<?> key, Binding<?> binding, Scope[] scope, boolean exported) {
+	public BindingDesc(Key<?> key, Binding<?> binding) {
 		this.key = key;
 		this.binding = binding;
-		this.scope = scope;
-		this.exported = exported;
+		this.scope = UNSCOPED;
+		this.exported = false;
+		this.isTransient = false;
 	}
 
 	public void setKey(Key<?> key) {
@@ -33,6 +37,10 @@ public final class BindingDesc {
 		exported = true;
 	}
 
+	public void setTransient() {
+		isTransient = true;
+	}
+
 	public Key<?> getKey() {
 		return key;
 	}
@@ -47,5 +55,9 @@ public final class BindingDesc {
 
 	public boolean isExported() {
 		return exported;
+	}
+
+	public boolean isTransient() {
+		return isTransient;
 	}
 }

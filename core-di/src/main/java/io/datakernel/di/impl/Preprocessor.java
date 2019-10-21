@@ -1,6 +1,7 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
+import io.datakernel.di.module.BindingSet;
 import io.datakernel.di.module.UniqueNameImpl;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
@@ -16,6 +17,7 @@ import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
@@ -36,7 +38,7 @@ public final class Preprocessor {
 	 * @see BindingTransformer#combinedTransformer
 	 */
 	public static Trie<Scope, Map<Key<?>, Binding<?>>> reduce(
-			Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+			Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings,
 			Multibinder<?> multibinder,
 			BindingTransformer<?> transformer,
 			BindingGenerator<?> generator) {
@@ -48,12 +50,12 @@ public final class Preprocessor {
 
 	private static void reduce(
 			Scope[] scope, Map<Key<?>, Binding<?>> upper,
-			Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings, Trie<Scope, Map<Key<?>, Binding<?>>> reduced,
+			Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings, Trie<Scope, Map<Key<?>, Binding<?>>> reduced,
 			Multibinder<?> multibinder,
 			BindingTransformer<?> transformer,
 			BindingGenerator<?> generator) {
 
-		Map<Key<?>, Set<Binding<?>>> localBindings = bindings.get();
+		Map<Key<?>, BindingSet<?>> localBindings = bindings.get();
 
 		localBindings.forEach((key, bindingSet) -> resolve(upper, localBindings, reduced.get(), scope, key, bindingSet, multibinder, transformer, generator));
 
@@ -66,8 +68,8 @@ public final class Preprocessor {
 	@SuppressWarnings("unchecked")
 	@Nullable
 	private static Binding<?> resolve(
-			Map<Key<?>, Binding<?>> upper, Map<Key<?>, Set<Binding<?>>> localBindings, Map<Key<?>, Binding<?>> resolved,
-			Scope[] scope, Key<?> key, @Nullable Set<Binding<?>> bindingSet,
+			Map<Key<?>, Binding<?>> upper, Map<Key<?>, BindingSet<?>> localBindings, Map<Key<?>, Binding<?>> resolved,
+			Scope[] scope, Key<?> key, @Nullable BindingSet<?> bindingSet,
 			Multibinder<?> multibinder, BindingTransformer<?> transformer, BindingGenerator<?> generator) {
 
 		// shortest path - if it was already resolved, just return it (also serves as a visited set so graph loops dont cause infinite recursion)
@@ -86,17 +88,17 @@ public final class Preprocessor {
 
 		// if it was explicitly bound
 		if (bindingSet != null) {
-			switch (bindingSet.size()) {
+			switch (bindingSet.getBindings().size()) {
 				case 0:
 					// try to recursively generate a requested binding
 					reduced = ((BindingGenerator<Object>) generator).generate(recursiveLocator, scope, (Key<Object>) key);
-					// when empty set is explicitly provided it means that a plain `bind(...)` request was used, and we fail fast then
+					// fail fast because this generation was explicitly requested (though plain `bind(...)` call)
 					if (reduced == null) {
 						throw new DIException("Refused to generate an explicitly requested binding for key " + key.getDisplayString());
 					}
 					break;
 				case 1:
-					reduced = bindingSet.iterator().next();
+					reduced = bindingSet.getBindings().iterator().next();
 					break;
 				default:
 					reduced = ((Multibinder) multibinder).multibind(key, bindingSet);
@@ -118,6 +120,11 @@ public final class Preprocessor {
 
 		// transform it (once!)
 		reduced = ((BindingTransformer) transformer).transform(recursiveLocator, scope, key, reduced);
+
+		// and ensure it is transient if requested so
+		if (bindingSet != null && bindingSet.getType() == BindingSet.BindingType.TRANSIENT) {
+			reduced = reduced.transiently();
+		}
 
 		// and store it as resolved (also mark as visited)
 		resolved.put(key, reduced);
@@ -296,9 +303,9 @@ public final class Preprocessor {
 		String getHintFor(Entry<Key<?>, Binding<?>> keybind, Key<?> missing, Set<Key<?>> upperKnown, Trie<Scope, Map<Key<?>, Binding<?>>> bindings);
 	}
 
-	private static final List<MissingKeyHint> missingKeyHints = asList(
+	private static final List<MissingKeyHint> missingKeyHints = singletonList(
 			(missing, upperKnown, bindings) -> {
-				if (missing.getRawType() != InstanceFactory.class && missing.getRawType() != InstanceProvider.class) {
+				if (missing.getRawType() != InstanceProvider.class) {
 					return null;
 				}
 				return "it was not generated because there were no *exported* binding for key " + missing.getTypeParameter(0).getDisplayString();

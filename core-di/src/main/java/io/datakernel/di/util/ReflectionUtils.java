@@ -17,6 +17,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Name.uniqueName;
@@ -31,14 +32,31 @@ import static java.util.stream.Collectors.toSet;
 public final class ReflectionUtils {
 	private static final String IDENT = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
 
-	public static String getShortName(Type type) {
-		String defaultName = type.getTypeName()
-				.replaceAll("\\[L(.*?);", "$1[]")
-				.replaceAll("(?:" + IDENT + "\\.)*(?:" + IDENT + "\\$\\d*)?", "");
-		ShortTypeName override = Types.getRawType(type).getDeclaredAnnotation(ShortTypeName.class);
+	private static final Pattern PACKAGE = Pattern.compile("(?:" + IDENT + "\\.)*");
+	private static final Pattern PACKAGE_AND_PARENT = Pattern.compile(PACKAGE.pattern() + "(?:" + IDENT + "\\$\\d*)?");
+	private static final Pattern ARRAY_SIGNATURE = Pattern.compile("\\[L(.*?);");
+	private static final Pattern RAW_PART = Pattern.compile("^" + IDENT);
+
+	public static String getDisplayName(Type type) {
+		Class<?> raw = Types.getRawType(type);
+		String typeName;
+		if (raw.isAnonymousClass()) {
+			Type superclass = raw.getGenericSuperclass();
+			typeName = "? extends " + superclass.getTypeName();
+		} else {
+			typeName = type.getTypeName();
+		}
+
+		String defaultName = PACKAGE_AND_PARENT.matcher(ARRAY_SIGNATURE.matcher(typeName).replaceAll("$1[]")).replaceAll("");
+
+		ShortTypeName override = raw.getDeclaredAnnotation(ShortTypeName.class);
 		return override != null ?
-				defaultName.replaceAll("^" + IDENT, override.value()) :
+				RAW_PART.matcher(defaultName).replaceFirst(override.value()) :
 				defaultName;
+	}
+
+	public static String getShortName(Type type) {
+		return PACKAGE.matcher(ARRAY_SIGNATURE.matcher(type.getTypeName()).replaceAll("$1[]")).replaceAll("");
 	}
 
 	@Nullable
@@ -113,6 +131,47 @@ public final class ReflectionUtils {
 		}
 		return result;
 	}
+
+//	private static class Found extends RuntimeException {
+//		private final int lineNumber;
+//
+//		public Found(int lineNumber) {
+//			this.lineNumber = lineNumber;
+//		}
+//	}
+//
+//	public int getLineNumber(Method method) {
+//		try {
+//			String resource = method.getDeclaringClass().getName().replace('.', '/') + ".class";
+//			InputStream is = ClassLoader.getSystemClassLoader().getResourceAsStream(resource);
+//			if (is == null) {
+//				return 0;
+//			}
+//
+//			Type target = Type.getType(method);
+//			ClassReader cr = new ClassReader(is);
+//			cr.accept(new ClassVisitor(ASM5) {
+//				@Override
+//				public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+//					MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+//					if (!Type.getType(descriptor).equals(target)) {
+//						return mv;
+//					}
+//					return new MethodVisitor(ASM5, mv) {
+//						@Override
+//						public void visitLineNumber(int line, Label start) {
+//							throw new Found(line);
+//						}
+//					};
+//				}
+//			}, 0);
+//			return 0;
+//		} catch (Found found) {
+//			return found.lineNumber;
+//		} catch (IOException ignored) {
+//			return 0;
+//		}
+//	}
 
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
 		Binding<T> binding = generateConstructorBinding(key);
@@ -362,6 +421,7 @@ public final class ReflectionUtils {
 				Set<Name> keySets = keySetsOf(method);
 				Scope[] methodScope = getScope(method);
 				boolean exported = method.isAnnotationPresent(Export.class);
+				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
 				Type returnType = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass);
 				TypeVariable<Method>[] typeVars = method.getTypeParameters();
@@ -373,6 +433,9 @@ public final class ReflectionUtils {
 					keySets.forEach(binder::as);
 					if (exported) {
 						binder.export();
+					}
+					if (isTransient) {
+						binder.transiently();
 					}
 					continue;
 				}
@@ -389,7 +452,7 @@ public final class ReflectionUtils {
 					throw new IllegalStateException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported");
 				}
 
-				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
+				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType, isTransient));
 
 			} else if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
@@ -403,6 +466,7 @@ public final class ReflectionUtils {
 				Scope[] methodScope = getScope(method);
 				Set<Name> keySets = keySetsOf(method);
 				boolean exported = method.isAnnotationPresent(Export.class);
+				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
 				Key<Object> key = Key.ofType(type, uniqueName());
 				ModuleBuilderBinder<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
@@ -418,6 +482,9 @@ public final class ReflectionUtils {
 				keySets.forEach(setBinder::as);
 				if (exported) {
 					setBinder.export();
+				}
+				if (isTransient) {
+					setBinder.transiently();
 				}
 				builder.multibind(setKey, Multibinder.toSet());
 			}
@@ -444,13 +511,15 @@ public final class ReflectionUtils {
 
 		private final Object module;
 		private final Type returnType;
+		private final boolean isTransient;
 
-		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Name name, Method method, Object module, Type returnType) {
+		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Name name, Method method, Object module, Type returnType, boolean isTransient) {
 			this.methodScope = methodScope;
 			this.name = name;
 			this.method = method;
 			this.module = module;
 			this.returnType = returnType;
+			this.isTransient = isTransient;
 		}
 
 		@Override
@@ -463,7 +532,8 @@ public final class ReflectionUtils {
 					return null;
 				}
 			}
-			return bindingFromGenericMethod(module, key, method);
+			Binding<Object> binding = bindingFromGenericMethod(module, key, method);
+			return isTransient ? binding.transiently() : binding;
 		}
 
 		@Override

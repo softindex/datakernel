@@ -43,6 +43,6 @@ public final class LocationInfo {
 			return "module " + module;
 		}
 		String shortName = ReflectionUtils.getShortName(provider.getDeclaringClass());
-		return "module " + module + ", provider method " + shortName + "." + provider.getName() + "(" + shortName + ".java:0)";
+		return "object " + module + ", provider method " + shortName + "." + provider.getName() + "(" + shortName + ".java:0)";
 	}
 }

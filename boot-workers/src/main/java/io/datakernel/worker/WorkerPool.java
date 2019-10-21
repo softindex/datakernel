@@ -16,6 +16,7 @@
 
 package io.datakernel.worker;
 
+import io.datakernel.di.annotation.ShortTypeName;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
@@ -35,6 +36,7 @@ public final class WorkerPool {
 	private final Injector[] scopeInjectors;
 	private final Set<Key<?>> scopeBindings;
 
+	@ShortTypeName("WorkerInstances")
 	@SuppressWarnings("unchecked")
 	public static final class Instances<T> implements Iterable<T> {
 		private final Object[] instances;

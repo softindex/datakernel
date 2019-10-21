@@ -8,6 +8,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.InstanceConsumerModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.Constructors.Constructor0;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
@@ -54,32 +55,6 @@ public final class TestDI {
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
-	}
-
-	@Test
-	public void factory() {
-		AtomicInteger ref = new AtomicInteger(41);
-		Injector injector = Injector.of(Module.create()
-				.bind(Integer.class).to(ref::incrementAndGet)
-				.bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceFactory<Integer>>() {})
-				.bindInstanceFactory(String.class));
-
-		assertEquals("str: 42", injector.getInstance(String.class));
-		assertEquals("str: 42", injector.getInstance(String.class));
-		assertEquals("str: 42", injector.getInstance(String.class));
-
-		InstanceFactory<String> provider = injector.getInstance(new Key<InstanceFactory<String>>() {});
-		assertEquals("str: 43", provider.create());
-		assertEquals("str: 44", provider.create());
-		assertEquals("str: 45", provider.create());
-
-		// the first getInstance call was cached, non-pure mutability affects results only when using .create
-		assertEquals("str: 42", injector.getInstance(String.class));
-
-		// but the integer getInstance or even provideSingleton were never called and so it was never cached
-		// mutable factory is only to indicate multiple factory calls in testing, in reality nobody
-		// should really do non-pure factories unless they know what hack they're trying to accomplish
-		assertEquals(46, injector.getInstance(Integer.class).intValue());
 	}
 
 	@Test
@@ -1081,6 +1056,8 @@ public final class TestDI {
 		Module module4 = new GenericModule<String, Integer>() {};
 		Module module5 = new OtherModule();
 
+		System.out.println(module2.toString());
+
 		assertTrue(module.toString().startsWith("AbstractModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 		assertTrue(module2.toString().startsWith("MyModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 		assertTrue(module3.toString().startsWith("InheritedModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
@@ -1299,6 +1276,7 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str #" + i, Integer.class).export()
 				.bind(Integer.class).toInstance(123)
 				.transform(1, (bindings, scope, key, binding) -> {
+					//noinspection RedundantCast - does not compile without this
 					if (key.getRawType() != (Class) Integer.class) {
 						return binding;
 					}
@@ -1465,37 +1443,6 @@ public final class TestDI {
 		assertEquals(1, StringInterface.counter); // bug: 1 != 2
 	}
 
-	public static class TestManyInstance {
-		static int counter = 0;
-
-		@Inject
-		public TestManyInstance() {
-			++counter;
-		}
-	}
-
-	@Test
-	public void instanceFactoryBug() {
-		Key<InstanceFactory<TestManyInstance>> factoryKey = new Key<InstanceFactory<TestManyInstance>>() {};
-
-		Injector injector = Injector.of(Module.create().bind(TestManyInstance.class).bind(factoryKey));
-
-		TestManyInstance instance0 = injector.getInstance(new Key<TestManyInstance>() {});
-
-		assertEquals(1, TestManyInstance.counter);
-
-		InstanceFactory<TestManyInstance> factory = injector.getInstanceOrNull(factoryKey);
-		assertNotNull(factory);
-
-		TestManyInstance instance1 = factory.create();
-		assertNotSame(instance0, instance1);
-		assertEquals(2, TestManyInstance.counter);
-
-		TestManyInstance instance2 = factory.create();
-		assertNotSame(instance1, instance2);
-		assertEquals(3, TestManyInstance.counter);
-	}
-
 	public interface PostConstruct {
 		void init();
 	}
@@ -1535,23 +1482,133 @@ public final class TestDI {
 	}
 
 	@Test
-	public void mapInstanceWithFactoryBug() {
+	public void transientMap() {
 		AtomicInteger mut = new AtomicInteger();
 		Injector injector = Injector.of(Module.create()
-						.bind(PostConstructed.class).to(() -> new PostConstructed("str_" + mut.incrementAndGet()))
-						.bindInstanceFactory(PostConstructed.class),
+						.bind(PostConstructed.class).to(() -> new PostConstructed("str_" + mut.incrementAndGet())).transiently(),
 				new PostConstructModule());
 
-		InstanceFactory<PostConstructed> factory = injector.getInstanceFactory(PostConstructed.class);
-
-		PostConstructed instance1 = factory.create();
+		PostConstructed instance1 = injector.getInstance(PostConstructed.class);
 		assertEquals("str_1", instance1.s);
 		assertTrue(instance1.inited);
-		PostConstructed instance2 = factory.create();
+		PostConstructed instance2 = injector.getInstance(PostConstructed.class);
 		assertEquals("str_2", instance2.s);
 		assertTrue(instance2.inited);
-		PostConstructed instance3 = factory.create();
+		PostConstructed instance3 = injector.getInstance(PostConstructed.class);
 		assertEquals("str_3", instance3.s);
 		assertTrue(instance3.inited);
+	}
+
+	@Test
+	public void transientBinding() {
+		AtomicInteger mut = new AtomicInteger();
+		Injector injector = Injector.of(Module.create()
+				.bind(Integer.class).to(mut::incrementAndGet).transiently()
+				.bind(String.class, "fixed").to(i -> "str_" + i, Integer.class)
+				.bind(String.class).to(i -> "str_" + i, Integer.class).transiently());
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(Integer.class)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "fixed"))).limit(5).collect(toSet()).size());
+		assertEquals(5, Stream.generate(() -> injector.getInstance(String.class)).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void transientDsl() {
+		AtomicInteger counter = new AtomicInteger();
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+				.bind(String.class).to(() -> {
+					counter.incrementAndGet();
+					return "str_";
+				})
+				.bind(Integer.class).to(mut::incrementAndGet).transiently()
+				.scan(new Object() {
+
+					@Provides
+					@Named("t")
+					@Transient
+					String string(String s, Integer i) {
+						return s + i;
+					}
+
+					@Provides
+					@Named("nt")
+					String string2(String s, Integer i) {
+						return s + i;
+					}
+				}));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(Key.of(String.class, "t"))).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "nt"))).limit(5).collect(toSet()).size());
+		assertEquals(7, injector.getInstance(Integer.class).intValue());
+		assertEquals(1, counter.get());
+	}
+
+	@Test
+	public void transientGenerators() {
+		Key<List<String>> stringListKey = new Key<List<String>>() {};
+		Key<Set<String>> stringSetKey = new Key<Set<String>>() {};
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+
+				.bind(stringListKey)
+				.bind(stringSetKey)
+
+				.generate(String.class, (bindings, scope, key) ->
+						Binding.<Object>to(() -> "str_" + mut.incrementAndGet()).transiently())
+
+				.scan(new Object() {
+					@Provides
+					@Transient
+					<T> List<T> transientList(T t) {
+						return singletonList(t);
+					}
+
+					@Provides
+					<T> Set<T> notSoTransientSet(T t) {
+						return singleton(t);
+					}
+				}));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(stringListKey)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(stringSetKey)).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void transientPlainBind() {
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+				.bind(String.class).transiently()
+				.bind(String.class, "nt")
+				.generate(String.class, (bindings, scope, key) ->
+						Binding.to(() -> "str_" + mut.incrementAndGet())));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(String.class)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "nt"))).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void partiallyTransientMultibind() {
+		AtomicInteger mut = new AtomicInteger();
+		Constructor0<Set<String>> constructor = () -> singleton("str_" + mut.incrementAndGet());
+
+		Key<Set<String>> setKey = new Key<Set<String>>() {};
+		Key<Set<String>> setKeyNt = setKey.named("nt");
+
+		Injector injector = Injector.of(Module.create()
+				.bind(setKey).to(constructor).transiently()
+				.bind(setKey).toInstance(singleton("other one"))
+
+				.bind(setKeyNt).to(constructor)
+				.bind(setKeyNt).toInstance(singleton("other one"))
+
+				.multibindToSet(String.class)
+				.multibindToSet(Key.of(String.class, "nt")));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(setKey)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(setKeyNt)).limit(5).collect(toSet()).size());
 	}
 }

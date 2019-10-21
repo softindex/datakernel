@@ -2,6 +2,7 @@ package io.datakernel.di.util;
 
 import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
+import io.datakernel.di.module.BindingSet;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
@@ -11,13 +12,18 @@ import java.util.Map.Entry;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
+import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 
 public final class Utils {
+
+	private static final BiConsumer<Map<Key<?>, BindingSet<?>>, Map<Key<?>, BindingSet<?>>> BINDING_MULTIMAP_MERGER =
+			(into, from) -> from.forEach((k, v) -> into.merge(k, v, (first, second) -> BindingSet.merge(k, first, second)));
 
 	private static final BiConsumer<Map<Object, Set<Object>>, Map<Object, Set<Object>>> MULTIMAP_MERGER =
 			(into, from) -> from.forEach((k, v) -> into.computeIfAbsent(k, $ -> new HashSet<>()).addAll(v));
@@ -27,6 +33,10 @@ public final class Utils {
 		return (BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>>) (BiConsumer) MULTIMAP_MERGER;
 	}
 
+	public static BiConsumer<Map<Key<?>, BindingSet<?>>, Map<Key<?>, BindingSet<?>>> bindingMultimapMerger() {
+		return BINDING_MULTIMAP_MERGER;
+	}
+
 	public static <T> T[] next(T[] items, T item) {
 		T[] next = Arrays.copyOf(items, items.length + 1);
 		next[items.length] = item;
@@ -34,7 +44,7 @@ public final class Utils {
 	}
 
 	public static String getScopeDisplayString(Scope[] scope) {
-		return scope.length != 0 ? Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", "")) : "()";
+		return Stream.concat(Stream.of("()"), Arrays.stream(scope).map(Scope::getDisplayString)).collect(joining("->"));
 	}
 
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
@@ -69,10 +79,6 @@ public final class Utils {
 		return toMap(keyMapper, t -> singleton(valueMapper.apply(t)), Utils::union);
 	}
 
-	public static <K, V> Map<K, Set<V>> toMultimap(Map<K, V> map) {
-		return map.entrySet().stream().collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())));
-	}
-
 	public static <K, V, V1> Map<K, Set<V1>> transformMultimapValues(Map<K, Set<V>> multimap, BiFunction<? super K, ? super V, ? extends V1> fn) {
 		return transformMultimap(multimap, Function.identity(), fn);
 	}
@@ -86,6 +92,28 @@ public final class Utils {
 								.stream()
 								.map(v -> fnValue.apply(entry.getKey(), v))
 								.collect(toSet())));
+	}
+
+	public static Map<Key<?>, BindingSet<?>> transformBindingMultimapValues(Map<Key<?>, BindingSet<?>> multimap, BiFunction<Key<?>, Binding<?>, Binding<?>> fn) {
+		return transformBindingMultimap(multimap, UnaryOperator.identity(), fn);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Map<Key<?>, BindingSet<?>> transformBindingMultimap(Map<Key<?>, BindingSet<?>> multimap, UnaryOperator<Key<?>> fnKey, BiFunction<Key<?>, Binding<?>, Binding<?>> fnValue) {
+		return multimap.entrySet()
+				.stream()
+				.collect(toMap(
+						entry -> fnKey.apply(entry.getKey()),
+						entry -> {
+							BindingSet<?> bindingSet = entry.getValue();
+							return new BindingSet(
+									bindingSet
+											.getBindings()
+											.stream()
+											.map(v -> fnValue.apply(entry.getKey(), v))
+											.collect(toSet()),
+									bindingSet.getType());
+						}));
 	}
 
 	public static <K, V> Map<K, V> squash(Map<K, Set<V>> multimap, BiFunction<K, Set<V>, V> squasher) {

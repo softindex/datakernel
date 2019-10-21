@@ -11,6 +11,7 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.di.core.Name.uniqueName;
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.module.BindingSet.BindingType.COMMON;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.function.Function.identity;
@@ -29,7 +30,7 @@ public final class Modules {
 		if (modules.size() == 1) {
 			return modules.iterator().next();
 		}
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(multimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindings));
+		Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings = Trie.merge(bindingMultimapMerger(), new HashMap<>(), modules.stream().map(Module::getBindings));
 
 		Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
 		Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
@@ -70,7 +71,7 @@ public final class Modules {
 	 * replaced with bindings, transformers, generators and multibinders from the second module.
 	 */
 	public static Module override(Module into, Module replacements) {
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindings(), replacements.getBindings());
+		Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings = Trie.merge(Map::putAll, new HashMap<>(), into.getBindings(), replacements.getBindings());
 
 		Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>(into.getBindingTransformers());
 		bindingTransformers.putAll(replacements.getBindingTransformers());
@@ -90,7 +91,7 @@ public final class Modules {
 	 * This is useful for some tests.
 	 */
 	public static Module ignoreScopes(Module from) {
-		Map<Key<?>, Set<Binding<?>>> bindings = new HashMap<>();
+		Map<Key<?>, BindingSet<?>> bindings = new HashMap<>();
 		Map<Key<?>, Scope[]> scopes = new HashMap<>();
 		from.getBindings().dfs(UNSCOPED, (scope, localBindings) ->
 				localBindings.forEach((k, b) -> {
@@ -145,13 +146,13 @@ public final class Modules {
 		});
 
 		Module renamed = doRebind(module, originalToNew);
-		Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = renamed.getBindings();
-		Map<Key<?>, Set<Binding<?>>> localBindings = new HashMap<>(bindings.get());
+		Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings = renamed.getBindings();
+		Map<Key<?>, BindingSet<?>> localBindings = new HashMap<>(bindings.get());
 
 		rebinds.forEach((k, b) -> {
-			Set<Binding<?>> bindingSet = localBindings.computeIfAbsent(originalToNew.get(k), $ -> new HashSet<>());
-			bindingSet.clear();
+			Set<Binding<?>> bindingSet = new HashSet<>();
 			bindingSet.add(b);
+			localBindings.put(originalToNew.get(k), new BindingSet(bindingSet, COMMON));
 		});
 
 		return Module.of(Trie.of(localBindings, bindings.getChildren()), renamed.getBindingTransformers(), renamed.getBindingGenerators(), renamed.getMultibinders());
@@ -164,7 +165,7 @@ public final class Modules {
 	@SuppressWarnings("unchecked")
 	static Module rebindImports(Module module, BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
 		return new SimpleModule(
-				module.getBindings().map(bindingsMap -> transformMultimapValues(bindingsMap, rebinder)),
+				module.getBindings().map(bindingsMap -> transformBindingMultimapValues(bindingsMap, rebinder)),
 				transformMultimapValues(module.getBindingTransformers(),
 						(priority, bindingTransformer) ->
 								(bindings, scope, key, binding) -> {
@@ -196,7 +197,7 @@ public final class Modules {
 		return new SimpleModule(
 				module.getBindings()
 						.map(bindingsMap ->
-								transformMultimap(bindingsMap,
+								transformBindingMultimap(bindingsMap,
 										key -> originalToNew.getOrDefault(key, key),
 										(key, binding) -> {
 											if (isKeySet(key)) {

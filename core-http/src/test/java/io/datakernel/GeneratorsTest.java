@@ -29,7 +29,7 @@ public final class GeneratorsTest {
 		Injector injector = Injector.of(module1);
 		Promise<String> instance = injector.getInstance(new Key<Promise<String>>() {});
 		assertEquals("Hello, World", instance.getResult());
-		assertFalse(injector.hasInstance(new Key<Promise<Integer>>() {}));
+		assertFalse(injector.hasBinding(new Key<Promise<Integer>>() {}));
 	}
 
 	@Test

@@ -100,14 +100,6 @@ public interface ModuleBuilder extends Module {
 		return bind(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getName()));
 	}
 
-	default <T> ModuleBuilder bindInstanceFactory(Class<T> type) {
-		return bindInstanceFactory(Key.of(type));
-	}
-
-	default <T> ModuleBuilder bindInstanceFactory(Key<T> key) {
-		return bind(Key.ofType(Types.parameterized(InstanceFactory.class, key.getType()), key.getName()));
-	}
-
 	default <T> ModuleBuilder bindInstanceInjector(Class<T> type) {
 		return bindInstanceInjector(Key.of(type));
 	}

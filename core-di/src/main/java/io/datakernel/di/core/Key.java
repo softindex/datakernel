@@ -207,7 +207,7 @@ public abstract class Key<T> {
 	 * and prepended name display string if this key has a name.
 	 */
 	public String getDisplayString() {
-		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getShortName(type);
+		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getDisplayName(type);
 	}
 
 	@Override

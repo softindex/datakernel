@@ -2,7 +2,7 @@ package io.datakernel.di.impl;
 
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-public abstract class AbstractUnsyncCompiledBinding<R> implements CompiledBinding<R> {
+public abstract class AbstractUnsyncCompiledBinding<R> extends CompiledBinding<R> {
 	protected final int scope;
 	protected final int index;
 
@@ -20,11 +20,6 @@ public abstract class AbstractUnsyncCompiledBinding<R> implements CompiledBindin
 		instance = doCreateInstance(scopedInstances, synchronizedScope);
 		array.lazySet(index, instance);
 		return instance;
-	}
-
-	@Override
-	public final R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-		return doCreateInstance(scopedInstances, synchronizedScope);
 	}
 
 	protected abstract R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);

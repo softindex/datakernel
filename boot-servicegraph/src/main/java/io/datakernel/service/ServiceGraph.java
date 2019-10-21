@@ -38,7 +38,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.common.collection.CollectionUtils.difference;
-import static io.datakernel.di.util.ReflectionUtils.getShortName;
+import static io.datakernel.di.util.ReflectionUtils.getDisplayName;
 import static io.datakernel.di.util.Utils.union;
 import static io.datakernel.service.util.Utils.combineAll;
 import static java.lang.System.currentTimeMillis;
@@ -526,7 +526,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		String keyIndex = key.getIndex();
 		NodeStatus status = nodeStatuses.get(key);
 		String label = (name != null ? name.getDisplayString() + "\\n" : "") +
-				getShortName(key.getType()) +
+				getDisplayName(key.getType()) +
 				(keySuffix == null ? "" :
 						"[" + keySuffix + "]") +
 				(keyIndex == null ? "" :

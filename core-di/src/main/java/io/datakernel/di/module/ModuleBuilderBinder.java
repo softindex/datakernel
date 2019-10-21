@@ -260,4 +260,6 @@ public interface ModuleBuilderBinder<T> extends ModuleBuilder {
 	}
 
 	ModuleBuilderBinder<T> export();
+
+	ModuleBuilderBinder<T> transiently();
 }

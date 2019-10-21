@@ -311,7 +311,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 	private void doStart(ServiceGraph serviceGraph, Injector injector) {
 		logger.trace("Initializing ServiceGraph ...");
 
-		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
+		WorkerPools workerPools = injector.hasBinding(WorkerPools.class) ? injector.peekInstance(WorkerPools.class) : null;
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
 		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
@@ -330,10 +330,14 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 					instanceDependencies.put(serviceKey,
 							scopeDependencies.get(key)
 									.stream()
-									.filter(scopedDependency -> scopedDependency.get().isRequired() ||
-											(scopedDependency.isScoped() ?
-													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
-													injector.hasInstance(scopedDependency.get().getKey())))
+									.filter(scopedDependency -> {
+										if (scopedDependency.get().isRequired()) {
+											return true;
+										}
+										Injector container = scopedDependency.isScoped() ? pool.getScopeInjectors()[0] : injector;
+										Key<?> k = scopedDependency.get().getKey();
+										return container.hasBinding(k) && container.hasInstance(k);
+									})
 									.map(scopedDependency -> scopedDependency.isScoped() ?
 											new ServiceKey(scopedDependency.get().getKey(), pool) :
 											new ServiceKey(scopedDependency.get().getKey()))

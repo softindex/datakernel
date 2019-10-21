@@ -7,7 +7,6 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.util.Utils;
 import io.datakernel.test.DatakernelRunnerTest.ClassModule;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Before;
@@ -61,8 +60,6 @@ public class DatakernelRunnerTest {
 
 	@Test
 	public void testCommon(Injector injector) {
-		Utils.printGraphVizGraph(injector.getBindingsTrie());
-
 		assertEquals(asList(HELLO, HELLO, HELLO), hellos);
 		assertEquals(asList(42, 42, 42), numbers);
 

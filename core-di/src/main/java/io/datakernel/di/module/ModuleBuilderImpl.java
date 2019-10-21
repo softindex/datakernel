@@ -14,8 +14,9 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
+import static io.datakernel.di.module.BindingSet.BindingType.COMMON;
+import static io.datakernel.di.module.BindingSet.BindingType.TRANSIENT;
 import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
@@ -28,7 +29,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 
 	private final List<BindingDesc> bindingDescs = new ArrayList<>();
 
-	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings = Trie.leaf(new HashMap<>());
+	private Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings = Trie.leaf(new HashMap<>());
 	private Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
 	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
 	private Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
@@ -38,14 +39,21 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	@Nullable
 	private volatile BindingDesc current = null;
 
+	private final String name;
 	@Nullable
 	private final StackTraceElement location;
 
 	ModuleBuilderImpl() {
 		// builder module is (and should be) never instantiated directly,
-		// only by some factory methods (mainly the Module.create() ofc)
+		// only by Module.create() and AbstractModule actually
 		StackTraceElement[] trace = Thread.currentThread().getStackTrace();
 		location = trace.length >= 3 ? trace[3] : null;
+		name = getClass().getName();
+	}
+
+	ModuleBuilderImpl(String name, @Nullable StackTraceElement location) {
+		this.name = name;
+		this.location = location;
 	}
 
 	private void completeCurrent() {
@@ -61,7 +69,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	public <U> ModuleBuilderBinder<U> bind(@NotNull Key<U> key) {
 		checkState(!configured.get(), "Cannot bind after the module builder was used as a module");
 		completeCurrent();
-		current = new BindingDesc(key, TO_BE_GENERATED, UNSCOPED, false);
+		current = new BindingDesc(key, TO_BE_GENERATED);
 		return (ModuleBuilderBinder<U>) this;
 	}
 
@@ -128,7 +136,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		BindingDesc desc = ensureCurrent();
 
 		// binding constructor closes over the desc because the key could be modified after the .as() call
-		bindingDescs.add(new BindingDesc(setKey, Binding.to(() -> singleton(desc.getKey())), UNSCOPED, false));
+		bindingDescs.add(new BindingDesc(setKey, Binding.to(() -> singleton(desc.getKey()))));
 
 		multibinders.put(setKey, Multibinder.toSet());
 		return this;
@@ -143,6 +151,14 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
+	public ModuleBuilderBinder<T> transiently() {
+		BindingDesc current = ensureCurrent();
+		checkState(!current.isExported(), "Binding was already set to transient");
+		current.setTransient();
+		return this;
+	}
+
+	@Override
 	public ModuleBuilder scan(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
 		return install(scanClassHierarchy(moduleClass, module).values());
@@ -153,7 +169,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		checkState(!configured.get(), "Cannot install modules after the module builder was used as a module");
 		completeCurrent();
 		for (Module module : modules) {
-			bindings.addAll(module.getBindings(), multimapMerger());
+			bindings.addAll(module.getBindings(), bindingMultimapMerger());
 			combineMultimap(bindingTransformers, module.getBindingTransformers());
 			combineMultimap(bindingGenerators, module.getBindingGenerators());
 			mergeMultibinders(multibinders, module.getMultibinders());
@@ -169,27 +185,43 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 
 		Key<Set<S>> set = Key.ofType(Types.parameterized(Set.class, setOf.getType()), setOf.getName());
 
-		bindingDescs.add(new BindingDesc(set, binding.mapInstance(Collections::singleton), UNSCOPED, false));
+		bindingDescs.add(new BindingDesc(set, binding.mapInstance(Collections::singleton)));
 
 		multibinders.put(set, Multibinder.toSet());
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> ModuleBuilder transform(int priority, BindingTransformer<E> bindingTransformer) {
 		checkState(!configured.get(), "Cannot add transformers after the module builder was used as a module");
 		completeCurrent();
 
-		bindingTransformers.computeIfAbsent(priority, $ -> new HashSet<>()).add(bindingTransformer);
+		bindingTransformers.computeIfAbsent(priority, $ -> new HashSet<>())
+				.add((bindings, scope, key, binding) -> {
+					Binding<Object> transformed = (Binding<Object>) bindingTransformer.transform(bindings, scope, (Key<E>) key, (Binding<E>) binding);
+					if (!binding.equals(transformed) && transformed.getLocation() == null) {
+						transformed.at(LocationInfo.from(this));
+					}
+					return transformed;
+				});
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public <E> ModuleBuilder generate(Class<?> pattern, BindingGenerator<E> bindingGenerator) {
 		checkState(!configured.get(), "Cannot add generators after the module builder was used as a module");
 		completeCurrent();
 
-		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>()).add(bindingGenerator);
+		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>())
+				.add((bindings, scope, key) -> {
+					Binding<Object> generated = (Binding<Object>) bindingGenerator.generate(bindings, scope, (Key<E>) key);
+					if (generated != null && generated.getLocation() == null) {
+						generated.at(LocationInfo.from(this));
+					}
+					return generated;
+				});
 		return this;
 	}
 
@@ -202,6 +234,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		return this;
 	}
 
+	@SuppressWarnings("unchecked")
 	private void finish() {
 		if (!configured.compareAndSet(false, true)) {
 			return;
@@ -209,12 +242,13 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		completeCurrent(); // finish the last binding
 
 		bindingDescs.forEach(b -> {
-			Set<Binding<?>> bindingSet = this.bindings.computeIfAbsent(b.getScope(), $ -> new HashMap<>())
-					.get()
-					.computeIfAbsent(b.getKey(), $ -> new HashSet<>());
+			Map<Key<?>, BindingSet<?>> multimap = bindings.computeIfAbsent(b.getScope(), $ -> new HashMap<>()).get();
+			BindingSet<?> bindingSet = multimap.computeIfAbsent(b.getKey(), $ -> new BindingSet<>(new HashSet<>(), COMMON));
 			Binding<?> binding = b.getBinding();
 			if (binding != TO_BE_GENERATED) {
-				bindingSet.add(binding);
+				bindingSet.getBindings().add((Binding) (b.isTransient() ? binding.transiently() : binding));
+			} else if (b.isTransient()) {
+				multimap.put(b.getKey(), new BindingSet<>(bindingSet.getBindings(), TRANSIENT));
 			}
 		});
 
@@ -240,7 +274,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
+	public final Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings() {
 		finish();
 		return bindings;
 	}
@@ -265,6 +299,6 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 
 	@Override
 	public String toString() {
-		return "BuilderModule(at " + (location != null ? location : "<unknown module location>") + ')';
+		return name + "(at " + (location != null ? location : "<unknown module location>") + ')';
 	}
 }

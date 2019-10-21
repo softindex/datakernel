@@ -48,11 +48,11 @@ public abstract class AbstractAnnotation {
 
 	public String getDisplayString() {
 		if (annotation == null) {
-			return "@" + ReflectionUtils.getShortName(annotationType);
+			return "@" + ReflectionUtils.getDisplayName(annotationType);
 		}
 		String typeName = annotationType.getName();
 		String str = annotation.toString();
-		return str.startsWith("@" + typeName) ? "@" + ReflectionUtils.getShortName(annotationType) + str.substring(typeName.length() + 1) : str;
+		return str.startsWith("@" + typeName) ? "@" + ReflectionUtils.getDisplayName(annotationType) + str.substring(typeName.length() + 1) : str;
 	}
 
 	@Override

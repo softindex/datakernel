@@ -2,8 +2,8 @@ package io.datakernel.di.core;
 
 import io.datakernel.di.impl.AbstractCompiledBinding;
 import io.datakernel.di.impl.CompiledBinding;
+import io.datakernel.di.module.BindingSet;
 import io.datakernel.di.util.Utils;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -12,6 +12,7 @@ import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.module.BindingSet.BindingType.TRANSIENT;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -19,13 +20,13 @@ import static java.util.stream.Collectors.joining;
  */
 @FunctionalInterface
 public interface Multibinder<T> {
-	Binding<T> multibind(Key<T> key, Set<@NotNull Binding<T>> bindings);
+	Binding<T> multibind(Key<T> key, BindingSet<?> bindings);
 
 	/**
 	 * Default multibinder that just throws an exception if there is more than one binding per key.
 	 */
 	Multibinder<Object> ERROR_ON_DUPLICATE = (key, bindings) -> {
-		throw new DIException(bindings.stream()
+		throw new DIException(bindings.getBindings().stream()
 				.map(Utils::getLocation)
 				.collect(joining("\n\t", "Duplicate bindings for key " + key.getDisplayString() + ":\n\t", "\n")));
 	};
@@ -40,21 +41,31 @@ public interface Multibinder<T> {
 	 */
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
 		return (key, bindings) ->
-				new Binding<>(bindings.stream().map(Binding::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
-						(compiledBindings, threadsafe, scope, index) ->
-								new AbstractCompiledBinding<T>(scope, index) {
-									final CompiledBinding[] conflictedBindings = bindings.stream()
-											.map(Binding::getCompiler)
-											.map(bindingCompiler -> bindingCompiler.compile(compiledBindings, true, scope, index))
-											.toArray(CompiledBinding[]::new);
+				new Binding<>(bindings.getBindings().stream().map(Binding::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
+						(compiledBindings, threadsafe, scope, index) -> {
+							final CompiledBinding[] conflictedBindings = bindings.getBindings().stream()
+									.map(Binding::getCompiler)
+									.map(bindingCompiler -> bindingCompiler.compile(compiledBindings, true, scope, null))
+									.toArray(CompiledBinding[]::new);
 
-									@SuppressWarnings("unchecked")
-									@Override
-									protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-										return reducerFunction.apply(key, Arrays.stream(conflictedBindings)
-												.map(binding -> (T) binding.createInstance(scopedInstances, synchronizedScope)));
-									}
-								});
+							return index == null || bindings.getType() == TRANSIENT || bindings.getBindings().stream().anyMatch(b -> !b.isCached()) ?
+									new CompiledBinding<T>() {
+										@SuppressWarnings("unchecked")
+										@Override
+										public T getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+											return reducerFunction.apply(key, Arrays.stream(conflictedBindings)
+													.map(binding -> (T) binding.getInstance(scopedInstances, synchronizedScope)));
+										}
+									} :
+									new AbstractCompiledBinding<T>(scope, index) {
+										@SuppressWarnings("unchecked")
+										@Override
+										protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+											return reducerFunction.apply(key, Arrays.stream(conflictedBindings)
+													.map(binding -> (T) binding.getInstance(scopedInstances, synchronizedScope)));
+										}
+									};
+						});
 	}
 
 	/**
