@@ -241,7 +241,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 		}
 
 		// register workers
-		WorkerPools workerPools = injector.hasBinding(WorkerPools.class) ? injector.peekInstance(WorkerPools.class) : null;
+		WorkerPools workerPools = injector.hasCachedBinding(WorkerPools.class) ? injector.peekInstance(WorkerPools.class) : null;
 		if (workerPools != null) {
 			// populating workerPoolKeys map
 			injector.peekInstances().entrySet().stream()

@@ -28,13 +28,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptySet;
+import static java.util.Collections.emptyMap;
 
 public final class WorkerPool {
 	private final int id;
 	private final Scope scope;
 	private final Injector[] scopeInjectors;
-	private final Set<Key<?>> scopeBindings;
+	private final Map<Key<?>, Binding<?>> scopeBindings;
 
 	@ShortTypeName("WorkerInstances")
 	@SuppressWarnings("unchecked")
@@ -75,7 +75,7 @@ public final class WorkerPool {
 		this.scopeInjectors = new Injector[workers];
 
 		Trie<Scope, Map<Key<?>, Binding<?>>> subtrie = injector.getBindingsTrie().get(scope);
-		this.scopeBindings = subtrie != null ? subtrie.get().keySet() : emptySet();
+		this.scopeBindings = subtrie != null ? subtrie.get() : emptyMap();
 
 		for (int i = 0; i < workers; i++) {
 			scopeInjectors[i] = injector.enterScope(scope);
@@ -112,7 +112,8 @@ public final class WorkerPool {
 
 	@Nullable
 	public <T> Instances<T> peekInstances(Key<T> key) {
-		if (!scopeBindings.contains(key)) {
+		Binding<?> binding = scopeBindings.get(key);
+		if (binding == null || !binding.isCached()) {
 			return null;
 		}
 		Object[] instances = doPeekInstances(key);
@@ -125,10 +126,13 @@ public final class WorkerPool {
 	@NotNull
 	public Map<Key<?>, Instances<?>> peekInstances() {
 		Map<Key<?>, Instances<?>> map = new HashMap<>();
-		for (Key<?> key : scopeBindings) {
-			Object[] instances = doPeekInstances(key);
+		for (Map.Entry<Key<?>, Binding<?>> entry : scopeBindings.entrySet()) {
+			if (!entry.getValue().isCached()) {
+				continue;
+			}
+			Object[] instances = doPeekInstances(entry.getKey());
 			if (Arrays.stream(instances).noneMatch(Objects::isNull)) {
-				map.put(key, new Instances<>(instances));
+				map.put(entry.getKey(), new Instances<>(instances));
 			}
 		}
 		return map;

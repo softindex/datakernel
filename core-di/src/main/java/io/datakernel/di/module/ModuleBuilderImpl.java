@@ -1,11 +1,9 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
-import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,17 +13,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
-import static io.datakernel.di.module.BindingSet.BindingType.COMMON;
-import static io.datakernel.di.module.BindingSet.BindingType.TRANSIENT;
+import static io.datakernel.di.module.BindingSet.BindingType.*;
 import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
-import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("UnusedReturnValue")
 final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
-	private static final Binding<?> TO_BE_GENERATED = new Binding<>(emptySet(), (compiledBindings, threadsafe, scope, index) -> missingOptionalBinding());
+	private static final Binding<?> TO_BE_GENERATED = new Binding<>(emptySet(), (compiledBindings, threadsafe, scope, slot) -> missingOptionalBinding());
 
 	private final List<BindingDesc> bindingDescs = new ArrayList<>();
 
@@ -127,22 +123,6 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> as(@NotNull Name name) {
-		checkArgument(name.isMarkedBy(KeySetAnnotation.class), "Should be a key set name");
-		checkState(!configured.get(), "Cannot use the module builder DSL after the module was used");
-
-		Key<Set<Key<?>>> setKey = new Key<Set<Key<?>>>(name) {};
-
-		BindingDesc desc = ensureCurrent();
-
-		// binding constructor closes over the desc because the key could be modified after the .as() call
-		bindingDescs.add(new BindingDesc(setKey, Binding.to(() -> singleton(desc.getKey()))));
-
-		multibinders.put(setKey, Multibinder.toSet());
-		return this;
-	}
-
-	@Override
 	public ModuleBuilderBinder<T> export() {
 		BindingDesc current = ensureCurrent();
 		checkState(!current.isExported(), "Binding was already exported");
@@ -151,9 +131,19 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
+	public ModuleBuilderBinder<T> eagerly() {
+		BindingDesc current = ensureCurrent();
+		checkState(!current.isEager(), "Binding was already set to eager");
+		checkState(!current.isTransient(), "Binding is transient, bindings cannot be both eager and transient");
+		current.setEager();
+		return this;
+	}
+
+	@Override
 	public ModuleBuilderBinder<T> transiently() {
 		BindingDesc current = ensureCurrent();
-		checkState(!current.isExported(), "Binding was already set to transient");
+		checkState(!current.isTransient(), "Binding was already set to transient");
+		checkState(!current.isEager(), "Binding is eager, bindings cannot be both transient and eager");
 		current.setTransient();
 		return this;
 	}
@@ -246,9 +236,16 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 			BindingSet<?> bindingSet = multimap.computeIfAbsent(b.getKey(), $ -> new BindingSet<>(new HashSet<>(), COMMON));
 			Binding<?> binding = b.getBinding();
 			if (binding != TO_BE_GENERATED) {
-				bindingSet.getBindings().add((Binding) (b.isTransient() ? binding.transiently() : binding));
-			} else if (b.isTransient()) {
+				bindingSet.getBindings().add((Binding) binding);
+			}
+			if (b.isTransient()) {
 				multimap.put(b.getKey(), new BindingSet<>(bindingSet.getBindings(), TRANSIENT));
+			}
+			if (b.isEager()) {
+				if (b.isTransient()) {
+					throw new DIException("Binding cannot be bound as both transient and eager singleton");
+				}
+				multimap.put(b.getKey(), new BindingSet<>(bindingSet.getBindings(), EAGER));
 			}
 		});
 
@@ -258,10 +255,6 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 				.collect(toSet());
 
 		if (!exportedKeys.isEmpty()) {
-
-			// key sets are always exported
-			bindings.dfs(bindings -> bindings.keySet().stream().filter(Utils::isKeySet).forEach(exportedKeys::add));
-
 			Module exported = Modules.export(this, exportedKeys);
 			// it would not recurse because we have the `finished` flag
 			// and it's ok to reassign all of that below in the last moment

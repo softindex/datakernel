@@ -1,12 +1,9 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
 import io.datakernel.di.module.BindingSet;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
-import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
@@ -14,7 +11,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
@@ -24,14 +20,6 @@ public final class Utils {
 
 	private static final BiConsumer<Map<Key<?>, BindingSet<?>>, Map<Key<?>, BindingSet<?>>> BINDING_MULTIMAP_MERGER =
 			(into, from) -> from.forEach((k, v) -> into.merge(k, v, (first, second) -> BindingSet.merge(k, first, second)));
-
-	private static final BiConsumer<Map<Object, Set<Object>>, Map<Object, Set<Object>>> MULTIMAP_MERGER =
-			(into, from) -> from.forEach((k, v) -> into.computeIfAbsent(k, $ -> new HashSet<>()).addAll(v));
-
-	@SuppressWarnings("unchecked")
-	public static <K, V> BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>> multimapMerger() {
-		return (BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>>) (BiConsumer) MULTIMAP_MERGER;
-	}
 
 	public static BiConsumer<Map<Key<?>, BindingSet<?>>, Map<Key<?>, BindingSet<?>>> bindingMultimapMerger() {
 		return BINDING_MULTIMAP_MERGER;
@@ -44,7 +32,7 @@ public final class Utils {
 	}
 
 	public static String getScopeDisplayString(Scope[] scope) {
-		return Stream.concat(Stream.of("()"), Arrays.stream(scope).map(Scope::getDisplayString)).collect(joining("->"));
+		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()", ""));
 	}
 
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
@@ -131,32 +119,6 @@ public final class Utils {
 		if (!condition) {
 			throw new IllegalStateException(message);
 		}
-	}
-
-	public static boolean isKeySet(Key<?> key) {
-		if (Types.getRawType(key.getType()) != Set.class) {
-			return false;
-		}
-		Name name = key.getName();
-		if (name == null || !name.isMarkedBy(KeySetAnnotation.class)) {
-			return false;
-		}
-		Key<?> param = key.getTypeParameter(0);
-		if (Types.getRawType(param.getType()) != Key.class) {
-			return false;
-		}
-		Type subparam = param.getTypeParameter(0).getType();
-		if (!(subparam instanceof WildcardType)) {
-			return false;
-		}
-		WildcardType wildcard = (WildcardType) subparam;
-		if (wildcard.getLowerBounds().length != 0) {
-			return false;
-		}
-		if (wildcard.getUpperBounds().length != 1) {
-			return false;
-		}
-		return wildcard.getUpperBounds()[0] == Object.class;
 	}
 
 	public static String getLocation(@Nullable Binding<?> binding) {

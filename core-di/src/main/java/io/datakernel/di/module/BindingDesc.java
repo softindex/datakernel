@@ -11,6 +11,7 @@ public final class BindingDesc {
 	private Binding<?> binding;
 	private Scope[] scope;
 	private boolean exported;
+	private boolean eager;
 	private boolean isTransient;
 
 	public BindingDesc(Key<?> key, Binding<?> binding) {
@@ -18,6 +19,7 @@ public final class BindingDesc {
 		this.binding = binding;
 		this.scope = UNSCOPED;
 		this.exported = false;
+		this.eager = false;
 		this.isTransient = false;
 	}
 
@@ -35,6 +37,10 @@ public final class BindingDesc {
 
 	public void setExported() {
 		exported = true;
+	}
+
+	public void setEager() {
+		this.eager = true;
 	}
 
 	public void setTransient() {
@@ -55,6 +61,10 @@ public final class BindingDesc {
 
 	public boolean isExported() {
 		return exported;
+	}
+
+	public boolean isEager() {
+		return eager;
 	}
 
 	public boolean isTransient() {

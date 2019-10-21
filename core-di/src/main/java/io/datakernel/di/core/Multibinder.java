@@ -42,13 +42,13 @@ public interface Multibinder<T> {
 	static <T> Multibinder<T> ofReducer(BiFunction<Key<T>, Stream<T>, T> reducerFunction) {
 		return (key, bindings) ->
 				new Binding<>(bindings.getBindings().stream().map(Binding::getDependencies).flatMap(Collection::stream).collect(Collectors.toSet()),
-						(compiledBindings, threadsafe, scope, index) -> {
+						(compiledBindings, threadsafe, scope, slot) -> {
 							final CompiledBinding[] conflictedBindings = bindings.getBindings().stream()
 									.map(Binding::getCompiler)
 									.map(bindingCompiler -> bindingCompiler.compile(compiledBindings, true, scope, null))
 									.toArray(CompiledBinding[]::new);
 
-							return index == null || bindings.getType() == TRANSIENT || bindings.getBindings().stream().anyMatch(b -> !b.isCached()) ?
+							return slot == null || bindings.getType() == TRANSIENT || bindings.getBindings().stream().anyMatch(b -> !b.isCached()) ?
 									new CompiledBinding<T>() {
 										@SuppressWarnings("unchecked")
 										@Override
@@ -57,7 +57,7 @@ public interface Multibinder<T> {
 													.map(binding -> (T) binding.getInstance(scopedInstances, synchronizedScope)));
 										}
 									} :
-									new AbstractCompiledBinding<T>(scope, index) {
+									new AbstractCompiledBinding<T>(scope, slot) {
 										@SuppressWarnings("unchecked")
 										@Override
 										protected T doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {

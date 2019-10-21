@@ -311,7 +311,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 	private void doStart(ServiceGraph serviceGraph, Injector injector) {
 		logger.trace("Initializing ServiceGraph ...");
 
-		WorkerPools workerPools = injector.hasBinding(WorkerPools.class) ? injector.peekInstance(WorkerPools.class) : null;
+		WorkerPools workerPools = injector.hasCachedBinding(WorkerPools.class) ? injector.peekInstance(WorkerPools.class) : null;
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
 		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
@@ -323,7 +323,9 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : pool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
 					WorkerPool.Instances<?> workerInstances = entry.getValue();
-					if (!scopeDependencies.containsKey(key)) continue;
+					if (!scopeDependencies.containsKey(key)) {
+						continue;
+					}
 					ServiceKey serviceKey = new ServiceKey(key, pool);
 					instances.put(serviceKey, workerInstances.getList());
 					workerInstanceToKey.put(workerInstances.get(0), serviceKey);
@@ -336,7 +338,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 										}
 										Injector container = scopedDependency.isScoped() ? pool.getScopeInjectors()[0] : injector;
 										Key<?> k = scopedDependency.get().getKey();
-										return container.hasBinding(k) && container.hasInstance(k);
+										return container.hasCachedBinding(k) && container.hasInstance(k);
 									})
 									.map(scopedDependency -> scopedDependency.isScoped() ?
 											new ServiceKey(scopedDependency.get().getKey(), pool) :
@@ -351,13 +353,16 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 			Object instance = entry.getValue();
 			if (instance == null) continue;
 			Binding<?> binding = injector.getBinding(key);
-			if (binding == null) continue;
+			if (binding == null || !binding.isCached()) continue;
 			ServiceKey serviceKey = new ServiceKey(key);
 			instances.put(serviceKey, singletonList(instance));
 			instanceDependencies.put(serviceKey,
 					binding.getDependencies().stream()
-							.filter(dependency -> dependency.isRequired() ||
-									injector.hasInstance(dependency.getKey()))
+							.filter(dependency -> {
+								Key<?> k = dependency.getKey();
+								return dependency.isRequired() ||
+										(injector.hasCachedBinding(k) && injector.hasInstance(k));
+							})
 							.map(dependency -> {
 								Class<?> dependencyRawType = dependency.getKey().getRawType();
 								boolean rawTypeMatches = dependencyRawType == WorkerPool.class || dependencyRawType == WorkerPools.class;

@@ -3,10 +3,19 @@ package io.datakernel.di.module;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.DIException;
 import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Multibinder;
 
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * This class represents a set of bindings for the same key.
+ * It also contains the {@link BindingType} - it is mostly used for plain binds with extra calls,
+ * such as {@link ModuleBuilderBinder#transiently transient} or {@link ModuleBuilderBinder#eagerly eager}.
+ * <p>
+ * Note that one of the bindings itself may still be transient while the type of the set is {@link BindingType#COMMON COMMON},
+ * this case should be handled properly (e.g. {@link Multibinder#toSet toSet()} multibinder is transient if at least one of its peers is transient).
+ */
 public final class BindingSet<K> {
 	private final Set<Binding<K>> bindings;
 	private final BindingType type;

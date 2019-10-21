@@ -6,6 +6,7 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.impl.BindingInitializer;
 import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.impl.CompiledBinding;
+import io.datakernel.di.impl.CompiledBindingInitializer;
 import io.datakernel.di.module.BindingDesc;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
@@ -16,6 +17,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -72,13 +74,6 @@ public final class ReflectionUtils {
 			default:
 				throw new DIException("More than one name annotation on " + annotatedElement);
 		}
-	}
-
-	public static Set<Name> keySetsOf(AnnotatedElement annotatedElement) {
-		return Arrays.stream(annotatedElement.getDeclaredAnnotations())
-				.filter(annotation -> annotation.annotationType().isAnnotationPresent(KeySetAnnotation.class))
-				.map(Name::of)
-				.collect(toSet());
 	}
 
 	public static <T> Key<T> keyOf(@Nullable Type container, Type type, AnnotatedElement annotatedElement) {
@@ -259,15 +254,18 @@ public final class ReflectionUtils {
 				singleton(Dependency.toKey(key, required)),
 				compiledBindings -> {
 					CompiledBinding<Object> binding = compiledBindings.get(key);
-					return (instance, instances, synchronizedScope) -> {
-						Object arg = binding.getInstance(instances, synchronizedScope);
-						if (arg == null) {
-							return;
-						}
-						try {
-							field.set(instance, arg);
-						} catch (IllegalAccessException e) {
-							throw new DIException("Not allowed to set injectable field " + field, e);
+					return new CompiledBindingInitializer<T>() {
+						@Override
+						public void initInstance(T instance, AtomicReferenceArray[] instances, int synchronizedScope) {
+							Object arg = binding.getInstance(instances, synchronizedScope);
+							if (arg == null) {
+								return;
+							}
+							try {
+								field.set(instance, arg);
+							} catch (IllegalAccessException e) {
+								throw new DIException("Not allowed to set injectable field " + field, e);
+							}
 						}
 					};
 				});
@@ -282,17 +280,20 @@ public final class ReflectionUtils {
 					CompiledBinding[] argBindings = Stream.of(dependencies)
 							.map(dependency -> compiledBindings.get(dependency.getKey()))
 							.toArray(CompiledBinding[]::new);
-					return (instance, instances, synchronizedScope) -> {
-						Object[] args = new Object[argBindings.length];
-						for (int i = 0; i < argBindings.length; i++) {
-							args[i] = argBindings[i].getInstance(instances, synchronizedScope);
-						}
-						try {
-							method.invoke(instance, args);
-						} catch (IllegalAccessException e) {
-							throw new DIException("Not allowed to call injectable method " + method, e);
-						} catch (InvocationTargetException e) {
-							throw new DIException("Failed to call injectable method " + method, e.getCause());
+					return new CompiledBindingInitializer<T>() {
+						@Override
+						public void initInstance(T instance, AtomicReferenceArray[] instances, int synchronizedScope) {
+							Object[] args = new Object[argBindings.length];
+							for (int i = 0; i < argBindings.length; i++) {
+								args[i] = argBindings[i].getInstance(instances, synchronizedScope);
+							}
+							try {
+								method.invoke(instance, args);
+							} catch (IllegalAccessException e) {
+								throw new DIException("Not allowed to call injectable method " + method, e);
+							} catch (InvocationTargetException e) {
+								throw new DIException("Failed to call injectable method " + method, e.getCause());
+							}
 						}
 					};
 				});
@@ -414,13 +415,14 @@ public final class ReflectionUtils {
 		for (Method method : moduleClass.getDeclaredMethods()) {
 			if (method.isAnnotationPresent(Provides.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
-					throw new IllegalStateException("Found non-static provider method while scanning for statics");
+					throw new DIException("Found non-static provider method while scanning for statics, method " + method);
 				}
 
 				Name name = nameOf(method);
-				Set<Name> keySets = keySetsOf(method);
 				Scope[] methodScope = getScope(method);
-				boolean exported = method.isAnnotationPresent(Export.class);
+
+				boolean isExported = method.isAnnotationPresent(Export.class);
+				boolean isEager = method.isAnnotationPresent(Eager.class);
 				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
 				Type returnType = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass);
@@ -430,9 +432,11 @@ public final class ReflectionUtils {
 					Key<Object> key = Key.ofType(returnType, name);
 
 					ModuleBuilderBinder<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
-					keySets.forEach(binder::as);
-					if (exported) {
+					if (isExported) {
 						binder.export();
+					}
+					if (isEager) {
+						binder.eagerly();
 					}
 					if (isTransient) {
 						binder.transiently();
@@ -443,45 +447,51 @@ public final class ReflectionUtils {
 						.filter(typeVar -> !Types.contains(returnType, typeVar))
 						.collect(toSet());
 				if (!unused.isEmpty()) {
-					throw new IllegalStateException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
+					throw new DIException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
 				}
-				if (!keySets.isEmpty()) {
-					throw new IllegalStateException("Key set annotations are not supported by templated methods, method " + method);
+				if (isExported) {
+					throw new DIException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported, method " + method);
 				}
-				if (exported) {
-					throw new IllegalStateException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported");
+				if (isEager) {
+					throw new DIException("@Eager annotation is not applicable for templated methods because they are generators and cannot be eagerly created. " +
+							"You can bind real key as eager singleton though, or depend on generated binding from some other real eager singleton. Method " + method);
 				}
 
 				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType, isTransient));
 
 			} else if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
-					throw new IllegalStateException("Found non-static provider method while scanning for statics");
+					throw new DIException("Found non-static provider method while scanning for statics, method " + method);
 				}
 				if (method.getTypeParameters().length != 0) {
-					throw new IllegalStateException("@ProvidesIntoSet does not support templated methods, method " + method);
+					throw new DIException("@ProvidesIntoSet does not support templated methods, method " + method);
 				}
 
 				Type type = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass);
 				Scope[] methodScope = getScope(method);
-				Set<Name> keySets = keySetsOf(method);
-				boolean exported = method.isAnnotationPresent(Export.class);
+
+				boolean isExported = method.isAnnotationPresent(Export.class);
+				boolean isEager = method.isAnnotationPresent(Eager.class);
 				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
 				Key<Object> key = Key.ofType(type, uniqueName());
-				ModuleBuilderBinder<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
-				keySets.forEach(binder::as);
+
+				builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
 
 				Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
+
 				Binding<Set<Object>> binding = Binding.to(Collections::singleton, key);
+
 				if (module != null) {
 					binding.at(LocationInfo.from(module, method));
 				}
 
 				ModuleBuilderBinder<Set<Object>> setBinder = builder.bind(setKey).to(binding).in(methodScope);
-				keySets.forEach(setBinder::as);
-				if (exported) {
+				if (isExported) {
 					setBinder.export();
+				}
+				if (isEager) {
+					setBinder.eagerly();
 				}
 				if (isTransient) {
 					setBinder.transiently();

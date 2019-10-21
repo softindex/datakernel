@@ -132,8 +132,6 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 
 			onInit(injector);
 
-			logger0.info("EagerSingletons: " + injector.createEagerSingletons());
-
 			Set<LauncherService> services = injector.getInstanceOr(new Key<Set<LauncherService>>() {}, emptySet());
 			Set<LauncherService> startedServices = new HashSet<>();
 

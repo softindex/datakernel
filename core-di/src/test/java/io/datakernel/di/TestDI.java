@@ -4,10 +4,7 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
 import io.datakernel.di.impl.Preprocessor;
-import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.InstanceConsumerModule;
-import io.datakernel.di.module.Module;
-import io.datakernel.di.module.Modules;
+import io.datakernel.di.module.*;
 import io.datakernel.di.util.Constructors.Constructor0;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
@@ -76,6 +73,25 @@ public final class TestDI {
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals(42, injector.getInstance(Integer.class).intValue());
+	}
+
+	@Test
+	public void eagerSingletons() {
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+				.bind(String.class).to(() -> "str_" + mut.incrementAndGet()).eagerly()
+				.bind(Object.class).to(() -> "whatever"));
+
+		assertEquals("str_1", injector.peekInstance(String.class));
+		assertNull(injector.peekInstance(Object.class));
+
+		try {
+			injector.peekInstance(Float.class);
+			fail("Should've failed");
+		} catch (DIException e) {
+			assertTrue(e.getMessage().startsWith("No cached binding was bound for key Float in scope ()"));
+		}
 	}
 
 	@Test
@@ -715,57 +731,6 @@ public final class TestDI {
 		}
 	}
 
-	@Target(ElementType.METHOD)
-	@Retention(RetentionPolicy.RUNTIME)
-	@KeySetAnnotation
-	@interface MyKeySet {
-	}
-
-	@Target(ElementType.METHOD)
-	@Retention(RetentionPolicy.RUNTIME)
-	@KeySetAnnotation
-	@interface MyKeySet2 {
-	}
-
-	@Test
-	public void keySets() {
-		Injector injector = Injector.of(Module.create()
-				.bind(Integer.class).named("test").toInstance(123).as(MyKeySet2.class)
-				.bind(String.class).named("test").toInstance("123").as(MyKeySet2.class)
-				.scan(new Object() {
-
-					@Provides
-					@MyKeySet
-					Integer integer() {
-						return 42;
-					}
-
-					@Provides
-					@MyKeySet
-					Float f() {
-						return 42f;
-					}
-
-					@Provides
-					@MyKeySet
-					Double d() {
-						return 42d;
-					}
-
-					@Provides
-					String string(Integer integer) {
-						return "str: " + integer;
-					}
-				}));
-
-		Set<Key<?>> keys = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet.class)) {});
-		assertEquals(Stream.of(Float.class, Double.class, Integer.class).map(Key::of).collect(toSet()), keys);
-
-		Set<Key<?>> keys2 = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet2.class)) {});
-
-		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
-	}
-
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
 	@ScopeAnnotation
@@ -1360,35 +1325,6 @@ public final class TestDI {
 	}
 
 	@Test
-	public void keySetExports() {
-		Injector injector = Injector.of(
-				Module.create()
-						.bind(Integer.class).toInstance(3000).export()
-						.bind(String.class).toInstance("hello").as(EagerSingleton.class));
-
-		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
-		assertEquals(1, keySet.size());
-		Name name = keySet.iterator().next().getName();
-		assertNotNull(name);
-		assertTrue(name.isUnique());
-	}
-
-	@Test
-	public void installedKeySetExport() {
-		Injector injector = Injector.of(
-				Module.create()
-						.bind(Integer.class).toInstance(3000).export()
-						.install(Module.create()
-								.bind(String.class).toInstance("hello").as(EagerSingleton.class)));
-
-		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
-		assertEquals(1, keySet.size());
-		Name name = keySet.iterator().next().getName();
-		assertNotNull(name);
-		assertTrue(name.isUnique());
-	}
-
-	@Test
 	public void moduleInstallReexport() {
 		Injector injector = Injector.of(
 				Module.create()
@@ -1610,5 +1546,29 @@ public final class TestDI {
 
 		assertEquals(5, Stream.generate(() -> injector.getInstance(setKey)).limit(5).collect(toSet()).size());
 		assertEquals(1, Stream.generate(() -> injector.getInstance(setKeyNt)).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void instanceProviderMap() {
+		AtomicInteger mut = new AtomicInteger();
+
+		Key<java.util.Optional<InstanceProvider<String>>> key = new Key<java.util.Optional<InstanceProvider<String>>>() {};
+
+		Injector injector = Injector.of(OptionalGeneratorModule.create(), Module.create()
+				.bind(String.class).to(() -> "str_" + mut.incrementAndGet())
+				.bind(key));
+
+		// OptionalGeneratorModule calls mapInstance on provider binding and it causes it to compile
+		// an intermediate transient binding for the InstanceProvider
+		// and that means that we cannot just ban transient InstanceProviders sadly
+
+		java.util.Optional<InstanceProvider<String>> optional = injector.getInstance(key);
+
+		assertTrue(optional.isPresent());
+
+		InstanceProvider<String> provider = optional.get();
+
+		System.out.println(provider.get());
+		System.out.println(provider.get());
 	}
 }
