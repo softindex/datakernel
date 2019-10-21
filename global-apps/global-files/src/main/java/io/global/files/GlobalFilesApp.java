@@ -20,7 +20,6 @@ import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.launchers.GlobalNodesModule;
 
-import java.nio.file.Paths;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
@@ -56,7 +55,7 @@ public final class GlobalFilesApp extends Launcher {
 
 	@Provides
 	StaticLoader staticLoader(Executor executor, Config config) {
-		return StaticLoader.ofPath(executor, Paths.get("front/build"));
+		return StaticLoader.ofClassPath(executor, config.get("app.http.staticPath"));
 	}
 
 	@Provides
