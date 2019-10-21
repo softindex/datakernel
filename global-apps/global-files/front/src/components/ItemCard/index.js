@@ -16,7 +16,7 @@ import path from 'path';
 import {getFileTypeByName} from '../../common/utils';
 import itemCardStyles from "./itemCardStyles";
 
-function ItemCard({classes, filePath, isDirectory, onClick, name}) {
+function ItemCard({classes, filePath, isDirectory, name, ...otherProps}) {
   const getIconByType = () => {
     switch (getFileTypeByName(name)) {
       case 'image':
@@ -37,7 +37,7 @@ function ItemCard({classes, filePath, isDirectory, onClick, name}) {
   return (
     <>
       {isDirectory && (
-        <Card className={classes.root}>
+        <Card className={classes.root} {...otherProps}>
           <Link
             to={path.join('/folders', filePath, name)}
             className={classes.foldersLink}
@@ -53,8 +53,8 @@ function ItemCard({classes, filePath, isDirectory, onClick, name}) {
       )}
       {!isDirectory && (
         <Card
-          onClick={onClick}
           className={classes.root}
+          {...otherProps}
         >
           <CardActionArea>
             <div className={classes.headerItem}>

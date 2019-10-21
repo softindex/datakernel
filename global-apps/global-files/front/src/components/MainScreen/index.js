@@ -66,3 +66,66 @@ class MainScreen extends React.Component {
 export default withStyles(mainScreenStyles)(
   connectService(AuthContext, ({publicKey}) => ({publicKey}))(checkAuth(MainScreen))
 );
+
+
+
+// import React, {useEffect, useState} from 'react';
+// import localforage from 'localforage';
+// import checkAuth from '../HOC/checkAuth';
+// import FSService from '../../modules/fs/FSService';
+// import GlobalFS from '../../common/GlobalFS';
+// import OfflineGlobalFS from '../../common/OfflineGlobalFS';
+// import ItemList from '../ItemList';
+// import SideBar from '../SideBar';
+// import Uploading from '../Uploading';
+// import FSContext from '../../modules/fs/FSContext';
+// import AuthContext from '../../modules/auth/AuthContext';
+// import connectService from '../../common/connectService';
+// import Header from "../Header";
+// import {withStyles} from "@material-ui/core";
+// import mainScreenStyles from "./mainScreenStyles";
+//
+// function MainScreen({classes, publicKey}) {
+//   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+//   const globalFS = new GlobalFS(publicKey);
+//   localforage.config({
+//     driver: localforage.INDEXEDDB,
+//     name: 'OperationsStore',
+//     storeName: 'OperationsStore'
+//   });
+//   const offlineGlobalFS = new OfflineGlobalFS(globalFS, localforage, window.navigator);
+//   offlineGlobalFS.init();
+//   let fsService = new FSService(offlineGlobalFS);
+//
+//   const openDrawer = () => {
+//     setIsDrawerOpen(true);
+//   };
+//
+//   const closeDrawer = () => {
+//     setIsDrawerOpen(false);
+//   };
+//
+//   return (
+//     <FSContext.Provider value={fsService}>
+//       <div className={classes.root}>
+//         <Header openDrawer={openDrawer}/>
+//         <div className={classes.row}>
+//           <SideBar
+//             isDrawerOpen={isDrawerOpen}
+//             onDrawerClose={closeDrawer}
+//           />
+//           <ItemList/>
+//         </div>
+//       </div>
+//       <Uploading/>
+//     </FSContext.Provider>
+//   );
+// }
+//
+// export default withStyles(mainScreenStyles)(
+//   connectService(AuthContext, ({publicKey}) =>
+//     ({publicKey})
+//   )(
+//     checkAuth(MainScreen)
+//   )
+// );

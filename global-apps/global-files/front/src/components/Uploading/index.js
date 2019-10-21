@@ -39,17 +39,17 @@ function Uploading({files, uploads, classes, onClose}) {
     );
   });
 
-  return (
-    <>
-      {uploads.length && (
-        <UploadingAlert
-          items={items}
-          onClose={onClose}
-          uploads={uploads}
-        />
-      )}
-    </>
-  );
+  if (uploads.length) {
+    return (
+      <UploadingAlert
+        items={items}
+        onClose={onClose}
+        uploads={uploads}
+      />
+    )
+  }
+
+  return null;
 }
 
 export default withStyles(uploadingStyles)(

@@ -9,10 +9,11 @@ const breadcrumbsStyles = theme => ({
   button: {
     textTransform: 'capitalize'
   },
-  breadcrumbItem: {
+  breadcrumbLastItem: {
     display: 'flex',
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    overflowX: 'hidden'
   },
   dropDownIcon: {
     marginLeft: theme.spacing(1)

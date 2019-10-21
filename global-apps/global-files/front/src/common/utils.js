@@ -1,4 +1,4 @@
-function getFileTypeByName(name) {
+export function getFileTypeByName(name) {
   const nameParsed = name.match(/^.*\.(.+)$/mi);
   const fileFormat = nameParsed && nameParsed[1];
 
@@ -19,4 +19,19 @@ function getFileTypeByName(name) {
   }
 }
 
-export { getFileTypeByName }
+export const PREFIX_TO_IGNORE = '.~#!HIDDEN!#~.';
+
+export function ascStringComparator(a, b) {
+  return a.name.localeCompare(b.name);
+}
+
+export function escapeSpecialChars(unsafe) {
+  return unsafe
+    .replace(/\*/g, '\\*')
+    .replace(/\?/g, '\\?')
+    .replace(/\{/g, '\\{')
+    .replace(/\}/g, '\\}')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+}
+

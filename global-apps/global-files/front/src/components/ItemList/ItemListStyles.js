@@ -5,7 +5,8 @@ const itemListStyles = theme => ({
     display: 'flex',
     flexDirection: 'column',
     padding: theme.spacing(2),
-    flexGrow: '1'
+    flexGrow: 1,
+    overflowX: 'hidden'
   },
   wrapper: {
     display: 'flex',

@@ -3,7 +3,6 @@ import {withRouter} from 'react-router-dom';
 import FSContext from '../../modules/fs/FSContext';
 import connectService from '../../common/connectService';
 import DeleteMenu from '../DeleteMenu';
-import ItemCard from '../ItemCard';
 import {withStyles} from "@material-ui/core";
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Typography from '@material-ui/core/Typography';
@@ -12,6 +11,8 @@ import Breadcrumbs from '../Breadcrumbs';
 import itemListStyles from './ItemListStyles';
 import FolderIcon from '@material-ui/icons/FolderOpenOutlined';
 import FileViewer from '../FileViewer';
+import {getItemContainer} from "./getItemContainer";
+import {withSnackbar} from "notistack";
 
 class ItemList extends React.Component {
   state = {
@@ -66,75 +67,16 @@ class ItemList extends React.Component {
           selectedItem: null
         });
       }
-    } catch (e) {
-      alert(e.message);
+    } catch (err) {
+      this.props.enqueueSnackbar(err.message, {
+        variant: 'error'
+      });
     }
   };
 
   getCurrentPath() {
     return this.props.match.params[0] || '/';
   }
-
-  getItemsByType = () => {
-    let folders = [];
-    let files = [];
-
-    for (const item of this.props.fileList) {
-      if (item.isDirectory) {
-        folders.push(
-          <ItemCard
-            name={item.name}
-            isDirectory={true}
-            filePath={this.props.path}
-            onContextMenu={this.handleContextMenu.bind(null, item.name, item.isDirectory)}
-          />
-        )
-      } else {
-        files.push(
-          <ItemCard
-            name={item.name}
-            isDirectory={false}
-            onClick={this.openFileViewer.bind(null, item)}
-            onContextMenu={this.handleContextMenu.bind(null, item.name, item.isDirectory)}
-          />
-        )
-      }
-    }
-
-    return {
-      folders,
-      files
-    }
-  };
-
-  getItemContainer = () => {
-    const items = this.getItemsByType();
-
-    return (
-      <>
-        {items.folders.length > 0 && (
-          <div className={this.props.classes.section}>
-            <Typography variant="h6" gutterBottom>
-              Folders
-            </Typography>
-            <div className={this.props.classes.listWrapper}>
-              {items.folders}
-            </div>
-          </div>
-        )}
-        {items.files.length > 0 && (
-          <div className={this.props.classes.section}>
-            <Typography variant="h6" gutterBottom>
-              Files
-            </Typography>
-            <div className={this.props.classes.listWrapper}>
-              {items.files}
-            </div>
-          </div>
-        )}
-      </>
-    );
-  };
 
   openFileViewer = (item) => {
     this.setState({
@@ -160,7 +102,15 @@ class ItemList extends React.Component {
             <CircularProgress/>
           </div>
         )}
-        {this.props.fileList.length > 0 && !this.props.loading && this.getItemContainer()}
+        {this.props.fileList.length > 0 && !this.props.loading &&
+        getItemContainer(
+          this.props.path,
+          this.props.fileList,
+          this.openFileViewer,
+          this.handleContextMenu,
+          this.props.classes
+        )
+        }
         {this.props.fileList.length <= 0 && !this.props.loading && (
           <div className={this.props.classes.wrapper}>
             <FolderIcon className={this.props.classes.emptyIndicator}/>
@@ -186,15 +136,17 @@ class ItemList extends React.Component {
   }
 }
 
-export default withStyles(itemListStyles)(
-  connectService(FSContext, (
-    {directories, files, path, loading}, fsService) => ({
-      fileList: [...directories, ...files],
-      path,
-      loading,
-      fsService
-    })
-  )(
-    withRouter(ItemList)
+export default withSnackbar(
+  withStyles(itemListStyles)(
+    connectService(FSContext, (
+      {directories, files, path, loading}, fsService) => ({
+        fileList: [...directories, ...files],
+        path,
+        loading,
+        fsService
+      })
+    )(
+      withRouter(ItemList)
+    )
   )
 );

@@ -22,8 +22,8 @@ import headerStyles from "./headerStyles";
 function Header({classes, history, onLogout, openDrawer, onCreateKeysFile}) {
   const [menuAnchor, setMenuAnchor] = useState(false);
 
-  const onOpenMenu = () => {
-    setMenuAnchor(true);
+  const onOpenMenu = event => {
+    setMenuAnchor(event.currentTarget);
   };
 
   const onCloseMenu = () => {

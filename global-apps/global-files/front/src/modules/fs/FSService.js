@@ -1,20 +1,5 @@
 import Store from '../../common/Store';
-
-const PREFIX_TO_IGNORE = '.~#!HIDDEN!#~.';
-
-function ascStringComparator(a, b) {
-  return a.name.localeCompare(b.name);
-}
-
-function escapeSpecialChars(unsafe) {
-  return unsafe
-    .replace(/\*/g, '\\*')
-    .replace(/\?/g, '\\?')
-    .replace(/\{/g, '\\{')
-    .replace(/\}/g, '\\}')
-    .replace(/\[/g, '\\[')
-    .replace(/\]/g, '\\]')
-}
+import {ascStringComparator, escapeSpecialChars, PREFIX_TO_IGNORE} from "../../common/utils";
 
 class FSService extends Store {
   constructor(globalFSGateway) {

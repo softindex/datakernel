@@ -58,11 +58,11 @@ class GlobalFS extends EventEmitter {
     });
   }
 
-  async removeFile(fileName) {
-    await fetch(path.join(this._url, 'delete/' + fileName), {method: 'POST'});
+  async removeDir(fileName) {
+    //await fetch(path.join(this._url, 'delete/' + fileName), {method: 'POST'});
   }
 
-  async remove(fileName) {
+  async removeFile(fileName) {
     await fetch(path.join(this._url, 'delete/' + fileName + '?revision=' + GlobalFS.getRevision()), {method: 'POST'});
   }
 

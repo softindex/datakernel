@@ -1,4 +1,4 @@
-const mainScreenStyles = theme => {
+const mainScreenStyles = () => {
   return {
     root: {
       height: '100vh',
