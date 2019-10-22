@@ -206,7 +206,7 @@ public final class SerializerBuilder {
 	}
 
 	private void setSerializer(Class<?> type, SerializerGen serializer) {
-		setSerializer(type, new SerializerGenBuilderConst(serializer));
+		setSerializer(type, SerializerGenBuilder.of(serializer));
 	}
 
 	private void setSerializer(Class<?> type, SerializerGenBuilder serializer) {
@@ -219,7 +219,7 @@ public final class SerializerBuilder {
 	}
 
 	public SerializerBuilder withSerializer(Class<?> type, SerializerGen serializer) {
-		return withSerializer(type, new SerializerGenBuilderConst(serializer));
+		return withSerializer(type, SerializerGenBuilder.of(serializer));
 	}
 
 	public SerializerBuilder withSubclasses(String subclassesId, List<Class<?>> subclasses) {

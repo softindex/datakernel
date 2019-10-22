@@ -18,6 +18,8 @@ package io.datakernel.serializer.asm;
 
 import org.jetbrains.annotations.NotNull;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+
 @FunctionalInterface
 public interface SerializerGenBuilder {
 
@@ -58,4 +60,11 @@ public interface SerializerGenBuilder {
 	}
 
 	SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen target);
+
+	static SerializerGenBuilder of(SerializerGen serializer) {
+		return (type, generics, target) -> {
+			checkArgument(generics.length == 0, "Type should have no generics");
+			return serializer;
+		};
+	}
 }

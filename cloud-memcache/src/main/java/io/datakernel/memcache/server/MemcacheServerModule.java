@@ -9,7 +9,6 @@ import io.datakernel.memcache.protocol.SerializerGenSlice;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.config.ConfigConverters.*;
@@ -49,7 +48,7 @@ public class MemcacheServerModule extends AbstractModule {
 							return Promise.of(PutResponse.INSTANCE);
 						})
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(Slice.class, new SerializerGenBuilderConst(new SerializerGenSlice())))
+						.withSerializer(Slice.class, new SerializerGenSlice()))
 				.withMessageTypes(MESSAGE_TYPES)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),

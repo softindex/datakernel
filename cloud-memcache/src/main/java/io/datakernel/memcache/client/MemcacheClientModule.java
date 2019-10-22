@@ -9,7 +9,6 @@ import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.memcache.protocol.SerializerGenSlice;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 import java.time.Duration;
 
@@ -33,7 +32,7 @@ public class MemcacheClientModule extends AbstractModule {
 						.withShards(config.get(ofList(ofInetSocketAddress()), "client.addresses")))
 				.withMessageTypes(MemcacheRpcMessage.MESSAGE_TYPES)
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(Slice.class, new SerializerGenBuilderConst(new SerializerGenSlice())))
+						.withSerializer(Slice.class, new SerializerGenSlice()))
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
 						config.get(ofMemSize(), "protocol.packetSizeMax", kilobytes(64)),
