@@ -16,24 +16,24 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
-import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
+import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.asm.SerializerDefBuilder;
+import io.datakernel.serializer.asm.SerializerDefBuilder.SerializerForType;
 
 import java.util.*;
 
 final class TypedModsMap {
 	private static final TypedModsMap EMPTY = new TypedModsMap();
 
-	private final List<SerializerGenBuilder> mods;
+	private final List<SerializerDefBuilder> mods;
 	private final Map<Integer, TypedModsMap> children;
 
 	public static class Builder {
-		private final List<SerializerGenBuilder> mods = new ArrayList<>();
+		private final List<SerializerDefBuilder> mods = new ArrayList<>();
 		private final Map<Integer, Builder> children = new LinkedHashMap<>();
 
-		public void add(SerializerGenBuilder serializerGenBuilder) {
-			mods.add(serializerGenBuilder);
+		public void add(SerializerDefBuilder serializerDefBuilder) {
+			mods.add(serializerDefBuilder);
 		}
 
 		private Builder ensureChild(int childKey) {
@@ -86,7 +86,7 @@ final class TypedModsMap {
 		return !children.isEmpty();
 	}
 
-	public List<SerializerGenBuilder> getMods() {
+	public List<SerializerDefBuilder> getMods() {
 		return mods;
 	}
 
@@ -99,9 +99,9 @@ final class TypedModsMap {
 		return result == null ? empty() : result;
 	}
 
-	public SerializerGen rewrite(Class<?> type, SerializerForType[] generics, SerializerGen serializer) {
-		SerializerGen result = serializer;
-		for (SerializerGenBuilder mod : mods) {
+	public SerializerDef rewrite(Class<?> type, SerializerForType[] generics, SerializerDef serializer) {
+		SerializerDef result = serializer;
+		for (SerializerDefBuilder mod : mods) {
 			result = mod.serializer(type, generics, result);
 		}
 		return result;

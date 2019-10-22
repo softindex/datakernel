@@ -1634,7 +1634,7 @@ public class AsmSerializerTest {
 		public Inet6Address inet6Address;
 
 		@Serialize(order = 3)
-		@SerializerClass(SerializerGenInet4Address.class)
+		@SerializerClass(SerializerDefInet4Address.class)
 		public InetAddress inetAddress2;
 	}
 
@@ -1672,32 +1672,32 @@ public class AsmSerializerTest {
 		}
 
 		@Serialize(order = 1)
-		@SerializerClass(SerializerGenBoolean.class)
+		@SerializerClass(SerializerDefBoolean.class)
 		public Object zBoxed;
 		@Serialize(order = 2)
-		@SerializerClass(SerializerGenChar.class)
+		@SerializerClass(SerializerDefChar.class)
 		public Object cBoxed;
 		@Serialize(order = 3)
-		@SerializerClass(SerializerGenByte.class)
+		@SerializerClass(SerializerDefByte.class)
 		public Object bBoxed;
 		@Serialize(order = 4)
-		@SerializerClass(SerializerGenShort.class)
+		@SerializerClass(SerializerDefShort.class)
 		public Object sBoxed;
 		@Serialize(order = 5)
-		@SerializerClass(SerializerGenInt.class)
+		@SerializerClass(SerializerDefInt.class)
 		public Object iBoxed;
 		@Serialize(order = 6)
-		@SerializerClass(SerializerGenLong.class)
+		@SerializerClass(SerializerDefLong.class)
 		public Object lBoxed;
 		@Serialize(order = 7)
-		@SerializerClass(SerializerGenFloat.class)
+		@SerializerClass(SerializerDefFloat.class)
 		public Object fBoxed;
 		@Serialize(order = 8)
-		@SerializerClass(SerializerGenDouble.class)
+		@SerializerClass(SerializerDefDouble.class)
 		public Object dBoxed;
 
 		@Serialize(order = 9)
-		@SerializerClass(SerializerGenString.class)
+		@SerializerClass(SerializerDefString.class)
 		public Object string;
 		@Serialize(order = 10)
 		@SerializeSubclasses({Inet4Address.class, Inet6Address.class})
@@ -1708,7 +1708,7 @@ public class AsmSerializerTest {
 		public Object address2;
 
 		@Serialize(order = 12)
-		@SerializerClass(path = 0, value = SerializerGenInt.class)
+		@SerializerClass(path = 0, value = SerializerDefInt.class)
 		public List<Object> list;
 	}
 

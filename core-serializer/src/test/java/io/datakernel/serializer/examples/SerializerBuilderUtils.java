@@ -33,14 +33,14 @@ public class SerializerBuilderUtils {
 	public static final List<Class<?>> TYPES = asList(
 			byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
 	);
-	private static Map<Class<?>, SerializerGen> primitiveSerializers = new HashMap<Class<?>, SerializerGen>() {{
-		put(byte.class, new SerializerGenByte());
-		put(short.class, new SerializerGenShort());
-		put(int.class, new SerializerGenInt(true));
-		put(long.class, new SerializerGenLong(false));
-		put(float.class, new SerializerGenFloat());
-		put(double.class, new SerializerGenDouble());
-		put(char.class, new SerializerGenChar());
+	private static Map<Class<?>, SerializerDef> primitiveSerializers = new HashMap<Class<?>, SerializerDef>() {{
+		put(byte.class, new SerializerDefByte());
+		put(short.class, new SerializerDefShort());
+		put(int.class, new SerializerDefInt(true));
+		put(long.class, new SerializerDefLong(false));
+		put(float.class, new SerializerDefFloat());
+		put(double.class, new SerializerDefDouble());
+		put(char.class, new SerializerDefChar());
 	}};
 
 	private static Map<String, String> collectionImplSuffix = new HashMap<String, String>() {{
@@ -83,7 +83,7 @@ public class SerializerBuilderUtils {
 				} catch (ClassNotFoundException e) {
 					throw new IllegalStateException("There is no collection with given name" + e.getClass().getName(), e);
 				}
-				builder.withSerializer(hppcMapType, serializerGenMapBuilder(hppcMapType, hppcMapImplType, keyType, valueType));
+				builder.withSerializer(hppcMapType, serializerDefMapBuilder(hppcMapType, hppcMapImplType, keyType, valueType));
 			}
 		}
 	}
@@ -102,7 +102,7 @@ public class SerializerBuilderUtils {
 				} catch (ClassNotFoundException e) {
 					throw new IllegalStateException("There is no collection with given name", e);
 				}
-				builder.withSerializer(hppcCollectionType, serializerGenCollectionBuilder(hppcCollectionType, hppcCollectionTypeImpl, valueType));
+				builder.withSerializer(hppcCollectionType, serializerDefCollectionBuilder(hppcCollectionType, hppcCollectionTypeImpl, valueType));
 			}
 		}
 	}
@@ -111,12 +111,12 @@ public class SerializerBuilderUtils {
 		return toUpperCase(str.charAt(0)) + str.substring(1);
 	}
 
-	private static SerializerGenBuilder serializerGenMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
+	private static SerializerDefBuilder serializerDefMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
 		String prefix = capitalize(keyType.getSimpleName()) + capitalize(valueType.getSimpleName());
 		checkArgument(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
 		return (type, generics, target) -> {
-			SerializerGen keySerializer;
-			SerializerGen valueSerializer;
+			SerializerDef keySerializer;
+			SerializerDef valueSerializer;
 			if (generics.length == 2) {
 				checkArgument((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
 				keySerializer = generics[0].serializer;
@@ -134,22 +134,22 @@ public class SerializerBuilderUtils {
 				keySerializer = primitiveSerializers.get(keyType);
 				valueSerializer = primitiveSerializers.get(valueType);
 			}
-			return new SerializerGenHppc7Map(checkNotNull(keySerializer), checkNotNull(valueSerializer), mapType, mapImplType, keyType, valueType);
+			return new SerializerDefHppc7Map(checkNotNull(keySerializer), checkNotNull(valueSerializer), mapType, mapImplType, keyType, valueType);
 		};
 	}
 
-	private static SerializerGenBuilder serializerGenCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
+	private static SerializerDefBuilder serializerDefCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
 		String prefix = capitalize(valueType.getSimpleName());
 		checkArgument(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
 		return (type, generics, target) -> {
-			SerializerGen valueSerializer;
+			SerializerDef valueSerializer;
 			if (generics.length == 1) {
 				checkArgument(valueType == Object.class, "valueType must be Object.class");
 				valueSerializer = generics[0].serializer;
 			} else {
 				valueSerializer = primitiveSerializers.get(valueType);
 			}
-			return new SerializerGenHppc7Collection(collectionType, collectionImplType, valueType, checkNotNull(valueSerializer));
+			return new SerializerDefHppc7Collection(collectionType, collectionImplType, valueType, checkNotNull(valueSerializer));
 		};
 	}
 }

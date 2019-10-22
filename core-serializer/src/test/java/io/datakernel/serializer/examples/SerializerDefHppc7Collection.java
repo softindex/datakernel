@@ -17,20 +17,20 @@
 package io.datakernel.serializer.examples;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.serializer.asm.AbstractSerializerGenCollection;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.AbstractSerializerDefCollection;
+import io.datakernel.serializer.asm.SerializerDef;
 
 import java.util.function.Function;
 
 import static io.datakernel.serializer.examples.SerializerBuilderUtils.capitalize;
 
-public final class SerializerGenHppc7Collection extends AbstractSerializerGenCollection {
+public final class SerializerDefHppc7Collection extends AbstractSerializerDefCollection {
 	// region creators
-	public SerializerGenHppc7Collection(SerializerGen valueSerializer, Class<?> collectionType, Class<?> elementType, Class<?> collectionImplType, boolean nullable) {
+	public SerializerDefHppc7Collection(SerializerDef valueSerializer, Class<?> collectionType, Class<?> elementType, Class<?> collectionImplType, boolean nullable) {
 		super(valueSerializer, collectionType, collectionImplType, elementType, nullable);
 	}
 
-	public SerializerGenHppc7Collection(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType, SerializerGen valueSerializer) {
+	public SerializerDefHppc7Collection(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType, SerializerDef valueSerializer) {
 		this(valueSerializer, collectionType, valueType, collectionImplType, false);
 	}
 	// endregion
@@ -47,7 +47,7 @@ public final class SerializerGenHppc7Collection extends AbstractSerializerGenCol
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenHppc7Collection(valueSerializer, collectionType, elementType, collectionImplType, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefHppc7Collection(valueSerializer, collectionType, elementType, collectionImplType, true);
 	}
 }

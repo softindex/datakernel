@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.annotations;
 
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerDef;
 
 import java.lang.annotation.*;
 
@@ -28,5 +28,5 @@ import java.lang.annotation.*;
 public @interface SerializerClass {
 	int[] path() default {};
 
-	Class<? extends SerializerGen> value();
+	Class<? extends SerializerDef> value();
 }

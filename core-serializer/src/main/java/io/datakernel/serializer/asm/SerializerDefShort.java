@@ -24,8 +24,8 @@ import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.asm.SerializerExpressions.readShort;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeShort;
 
-public final class SerializerGenShort extends SerializerGenPrimitive {
-	public SerializerGenShort() {
+public final class SerializerDefShort extends SerializerDefPrimitive {
+	public SerializerDefShort() {
 		super(short.class);
 	}
 

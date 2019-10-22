@@ -24,15 +24,15 @@ import static io.datakernel.codegen.Expressions.cast;
 import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 
-public final class SerializerGenInt extends SerializerGenPrimitive {
+public final class SerializerDefInt extends SerializerDefPrimitive {
 	private final boolean varLength;
 
-	public SerializerGenInt() {
+	public SerializerDefInt() {
 		super(int.class);
 		this.varLength = false;
 	}
 
-	public SerializerGenInt(boolean varLength) {
+	public SerializerDefInt(boolean varLength) {
 		super(int.class);
 		this.varLength = varLength;
 	}
@@ -56,7 +56,7 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenInt that = (SerializerGenInt) o;
+		SerializerDefInt that = (SerializerDefInt) o;
 
 		return varLength == that.varLength;
 	}

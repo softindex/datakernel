@@ -28,13 +28,13 @@ import static io.datakernel.codegen.Expressions.arg;
 /**
  * Represents a serializer and deserializer of a particular class to byte arrays
  */
-public interface SerializerGen {
+public interface SerializerDef {
 
 	interface Visitor {
-		void visit(String subcomponentId, SerializerGen site);
+		void visit(String serializerId, SerializerDef serializer);
 
-		default void visit(SerializerGen site) {
-			visit("", site);
+		default void visit(SerializerDef serializer) {
+			visit("", serializer);
 		}
 	}
 
@@ -69,7 +69,7 @@ public interface SerializerGen {
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return serialized to byte array value
 	 */
-	Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
+	Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
 
 	interface StaticDecoders {
 		static Expression methodIn() { return arg(0);}
@@ -87,7 +87,7 @@ public interface SerializerGen {
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
-	Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
+	Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
 
 	@Override
 	boolean equals(Object o);

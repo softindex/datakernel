@@ -6,7 +6,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
-import io.datakernel.memcache.protocol.SerializerGenSlice;
+import io.datakernel.memcache.protocol.SerializerDefSlice;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -32,7 +32,7 @@ public class MemcacheClientModule extends AbstractModule {
 						.withShards(config.get(ofList(ofInetSocketAddress()), "client.addresses")))
 				.withMessageTypes(MemcacheRpcMessage.MESSAGE_TYPES)
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(Slice.class, new SerializerGenSlice()))
+						.withSerializer(Slice.class, new SerializerDefSlice()))
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
 						config.get(ofMemSize(), "protocol.packetSizeMax", kilobytes(64)),

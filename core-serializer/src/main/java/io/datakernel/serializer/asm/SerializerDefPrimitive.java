@@ -28,11 +28,11 @@ import static io.datakernel.codegen.utils.Primitives.wrap;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 
-public abstract class SerializerGenPrimitive implements SerializerGen {
+public abstract class SerializerDefPrimitive implements SerializerDef {
 
 	private final Class<?> primitiveType;
 
-	protected SerializerGenPrimitive(Class<?> primitiveType) {
+	protected SerializerDefPrimitive(Class<?> primitiveType) {
 		checkArgument(primitiveType.isPrimitive(), "Not a primitive type");
 		this.primitiveType = primitiveType;
 	}
@@ -64,12 +64,12 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 	protected abstract Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel);
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return doSerialize(buf, pos, cast(value, primitiveType), compatibilityLevel);
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		Expression expression = doDeserialize(in, compatibilityLevel);
 		return targetType.isPrimitive() ? expression : cast(expression, getBoxedType());
 	}

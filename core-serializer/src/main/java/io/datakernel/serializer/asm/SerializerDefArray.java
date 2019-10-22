@@ -28,25 +28,25 @@ import java.util.Objects;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
-import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 
-public final class SerializerGenArray implements SerializerGen, HasNullable, HasFixedSize {
-	private final SerializerGen valueSerializer;
+public final class SerializerDefArray implements SerializerDef, HasNullable, HasFixedSize {
+	private final SerializerDef valueSerializer;
 	private final int fixedSize;
 	private final Class<?> type;
 	private final boolean nullable;
 
-	public SerializerGenArray(SerializerGen serializer, Class<?> type) {
+	public SerializerDefArray(SerializerDef serializer, Class<?> type) {
 		this.valueSerializer = serializer;
 		this.fixedSize = -1;
 		this.type = type;
 		this.nullable = false;
 	}
 
-	private SerializerGenArray(@NotNull SerializerGen serializer, int fixedSize, Class<?> type, boolean nullable) {
+	private SerializerDefArray(@NotNull SerializerDef serializer, int fixedSize, Class<?> type, boolean nullable) {
 		this.valueSerializer = serializer;
 		this.fixedSize = fixedSize;
 		this.type = type;
@@ -54,13 +54,13 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 	}
 
 	@Override
-	public SerializerGenArray withFixedSize(int fixedSize) {
-		return new SerializerGenArray(valueSerializer, fixedSize, type, nullable);
+	public SerializerDefArray withFixedSize(int fixedSize) {
+		return new SerializerDefArray(valueSerializer, fixedSize, type, nullable);
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenArray(valueSerializer, fixedSize, type, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefArray(valueSerializer, fixedSize, type, true);
 	}
 
 	@Override
@@ -79,7 +79,7 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		if (type.getComponentType() == Byte.TYPE) {
 			Expression castedValue = cast(value, type);
 			Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
@@ -106,7 +106,7 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 		Expression methodLength = fixedSize != -1 ? value(fixedSize) : length(cast(value, type));
 
 		Expression writeCollection = loop(value(0), methodLength,
-				it -> valueSerializer.serialize(classLoader, staticEncoders, buf, pos, getArrayItem(cast(value, type), it), version, compatibilityLevel));
+				it -> valueSerializer.encoder(classLoader, staticEncoders, buf, pos, getArrayItem(cast(value, type), it), version, compatibilityLevel));
 
 		if (!nullable) {
 			return sequence(
@@ -122,7 +122,7 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		if (type.getComponentType() == Byte.TYPE) {
 			return !nullable ?
 					let(readVarInt(in), len ->
@@ -151,7 +151,7 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 								sequence(
 										loop(value(0), len,
 												i -> setArrayItem(array, i,
-														cast(valueSerializer.deserialize(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+														cast(valueSerializer.decoder(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 										array))) :
 				let(readVarInt(in), len ->
 						ifThenElse(cmpEq(len, value(0)),
@@ -160,7 +160,7 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 										sequence(
 												loop(value(0), dec(len),
 														i -> setArrayItem(array, i,
-																cast(valueSerializer.deserialize(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+																cast(valueSerializer.decoder(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));
 	}
@@ -171,7 +171,7 @@ public final class SerializerGenArray implements SerializerGen, HasNullable, Has
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenArray that = (SerializerGenArray) o;
+		SerializerDefArray that = (SerializerDefArray) o;
 
 		if (fixedSize != that.fixedSize) return false;
 		if (nullable != that.nullable) return false;

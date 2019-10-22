@@ -16,8 +16,8 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerDef;
 
 public interface HasNullable {
-	SerializerGen withNullable();
+	SerializerDef withNullable();
 }

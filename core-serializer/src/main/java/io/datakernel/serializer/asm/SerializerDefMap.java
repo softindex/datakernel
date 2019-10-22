@@ -26,8 +26,8 @@ import java.util.function.Function;
 import static io.datakernel.codegen.Expressions.*;
 import static org.objectweb.asm.Type.getType;
 
-public final class SerializerGenMap extends AbstractSerializerGenMap {
-	private SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer, boolean nullable) {
+public final class SerializerDefMap extends AbstractSerializerDefMap {
+	private SerializerDefMap(SerializerDef keySerializer, SerializerDef valueSerializer, boolean nullable) {
 		super(keySerializer, valueSerializer, Map.class,
 				keySerializer.getRawType().isEnum() ?
 						EnumMap.class :
@@ -35,7 +35,7 @@ public final class SerializerGenMap extends AbstractSerializerGenMap {
 				Object.class, Object.class, nullable);
 	}
 
-	public SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer) {
+	public SerializerDefMap(SerializerDef keySerializer, SerializerDef valueSerializer) {
 		this(keySerializer, valueSerializer, false);
 	}
 
@@ -54,7 +54,7 @@ public final class SerializerGenMap extends AbstractSerializerGenMap {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenMap(keySerializer, valueSerializer, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefMap(keySerializer, valueSerializer, true);
 	}
 }

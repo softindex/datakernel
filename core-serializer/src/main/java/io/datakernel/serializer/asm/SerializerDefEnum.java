@@ -28,16 +28,16 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenEnum implements SerializerGen, HasNullable {
+public class SerializerDefEnum implements SerializerDef, HasNullable {
 	private final Class<?> enumType;
 	private final boolean nullable;
 
-	public SerializerGenEnum(Class<?> enumType, boolean nullable) {
+	public SerializerDefEnum(Class<?> enumType, boolean nullable) {
 		this.enumType = enumType;
 		this.nullable = nullable;
 	}
 
-	public SerializerGenEnum(Class<?> enumType) {
+	public SerializerDefEnum(Class<?> enumType) {
 		this(enumType, false);
 	}
 
@@ -56,7 +56,7 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = call(cast(value, Enum.class), "ordinal");
 		if (isSmallEnum()) {
 			return !nullable ?
@@ -74,7 +74,7 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return isSmallEnum() ?
 				let(readByte(in), b ->
 						!nullable ?
@@ -97,8 +97,8 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenEnum(enumType, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefEnum(enumType, true);
 	}
 
 	@Override
@@ -106,7 +106,7 @@ public class SerializerGenEnum implements SerializerGen, HasNullable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenEnum that = (SerializerGenEnum) o;
+		SerializerDefEnum that = (SerializerDefEnum) o;
 
 		return nullable == that.nullable && enumType.equals(that.enumType);
 	}

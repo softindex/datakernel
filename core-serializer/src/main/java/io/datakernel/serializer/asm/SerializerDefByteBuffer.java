@@ -29,20 +29,20 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
+public class SerializerDefByteBuffer implements SerializerDef, HasNullable {
 	private final boolean wrapped;
 	private final boolean nullable;
 
-	public SerializerGenByteBuffer() {
+	public SerializerDefByteBuffer() {
 		this(false);
 	}
 
-	public SerializerGenByteBuffer(boolean wrapped) {
+	public SerializerDefByteBuffer(boolean wrapped) {
 		this.wrapped = wrapped;
 		this.nullable = false;
 	}
 
-	private SerializerGenByteBuffer(boolean wrapped, boolean nullable) {
+	private SerializerDefByteBuffer(boolean wrapped, boolean nullable) {
 		this.wrapped = wrapped;
 		this.nullable = nullable;
 	}
@@ -62,7 +62,7 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return let(
 				cast(value, ByteBuffer.class),
 				buffer ->
@@ -83,7 +83,7 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return !wrapped ?
 				let(readVarInt(in),
 						length -> {
@@ -124,8 +124,8 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenByteBuffer(wrapped, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefByteBuffer(wrapped, true);
 	}
 
 	@Override
@@ -133,7 +133,7 @@ public class SerializerGenByteBuffer implements SerializerGen, HasNullable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenByteBuffer that = (SerializerGenByteBuffer) o;
+		SerializerDefByteBuffer that = (SerializerDefByteBuffer) o;
 
 		if (wrapped != that.wrapped) return false;
 		return nullable == that.nullable;

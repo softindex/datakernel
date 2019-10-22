@@ -18,13 +18,13 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
+import io.datakernel.serializer.asm.SerializerDefBuilder;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class SerializeSubclassesHandler implements AnnotationHandler<SerializeSubclasses, SerializeSubclassesEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeSubclasses annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeSubclasses annotation, CompatibilityLevel compatibilityLevel) {
 		return (superclass, superclassGenerics, target) -> {
 			checkArgument(superclass.getTypeParameters().length == 0, "Superclass must have no type parameters");
 			checkArgument(superclassGenerics.length == 0, "Superclass must have no generics");

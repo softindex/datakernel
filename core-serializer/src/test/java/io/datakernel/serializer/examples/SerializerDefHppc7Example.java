@@ -26,7 +26,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-public final class SerializerGenHppc7Example {
+public final class SerializerDefHppc7Example {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 

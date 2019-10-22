@@ -19,18 +19,18 @@ package io.datakernel.serializer.asm;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SerializerGenList extends AbstractSerializerGenCollection {
+public final class SerializerDefList extends AbstractSerializerDefCollection {
 
-	public SerializerGenList(SerializerGen valueSerializer) {
+	public SerializerDefList(SerializerDef valueSerializer) {
 		this(valueSerializer, false);
 	}
 
-	private SerializerGenList(SerializerGen valueSerializer, boolean nullable) {
+	private SerializerDefList(SerializerDef valueSerializer, boolean nullable) {
 		super(valueSerializer, List.class, ArrayList.class, Object.class, nullable);
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenList(valueSerializer, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefList(valueSerializer, true);
 	}
 }

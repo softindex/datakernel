@@ -21,22 +21,22 @@ import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 
 import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
-import static io.datakernel.serializer.asm.SerializerExpressions.readFloat;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeFloat;
+import static io.datakernel.serializer.asm.SerializerExpressions.readDouble;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeDouble;
 
-public final class SerializerGenFloat extends SerializerGenPrimitive {
-	public SerializerGenFloat() {
-		super(float.class);
+public final class SerializerDefDouble extends SerializerDefPrimitive {
+	public SerializerDefDouble() {
+		super(double.class);
 	}
 
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
-		return writeFloat(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+		return writeDouble(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
 	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
-		return readFloat(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+		return readDouble(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 }
 

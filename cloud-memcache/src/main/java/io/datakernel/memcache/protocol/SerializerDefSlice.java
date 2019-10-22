@@ -8,7 +8,7 @@ import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutputUtils;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.HasNullable;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerDef;
 
 import java.util.Set;
 
@@ -16,14 +16,14 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
-public class SerializerGenSlice implements SerializerGen, HasNullable {
+public class SerializerDefSlice implements SerializerDef, HasNullable {
 	private final boolean nullable;
 
-	public SerializerGenSlice() {
+	public SerializerDefSlice() {
 		this.nullable = false;
 	}
 
-	SerializerGenSlice(boolean nullable) {
+	SerializerDefSlice(boolean nullable) {
 		this.nullable = nullable;
 	}
 
@@ -42,16 +42,16 @@ public class SerializerGenSlice implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos,
-				callStatic(SerializerGenSlice.class,
+				callStatic(SerializerDefSlice.class,
 						"write" + (nullable ? "Nullable" : ""),
 						buf, pos, cast(value, Slice.class)));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerGenSlice.class,
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return callStatic(SerializerDefSlice.class,
 				"read" + (nullable ? "Nullable" : ""),
 				in);
 	}
@@ -90,8 +90,8 @@ public class SerializerGenSlice implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenSlice(true);
+	public SerializerDef withNullable() {
+		return new SerializerDefSlice(true);
 	}
 
 	@Override
@@ -99,7 +99,7 @@ public class SerializerGenSlice implements SerializerGen, HasNullable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenSlice that = (SerializerGenSlice) o;
+		SerializerDefSlice that = (SerializerDefSlice) o;
 
 		return nullable == that.nullable;
 

@@ -23,8 +23,8 @@ import io.datakernel.serializer.CompatibilityLevel;
 import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
 
-public final class SerializerGenByte extends SerializerGenPrimitive {
-	public SerializerGenByte() {
+public final class SerializerDefByte extends SerializerDefPrimitive {
+	public SerializerDefByte() {
 		super(byte.class);
 	}
 

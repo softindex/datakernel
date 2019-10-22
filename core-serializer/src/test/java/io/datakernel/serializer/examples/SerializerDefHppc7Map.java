@@ -17,19 +17,19 @@
 package io.datakernel.serializer.examples;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.serializer.asm.AbstractSerializerGenMap;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.AbstractSerializerDefMap;
+import io.datakernel.serializer.asm.SerializerDef;
 
 import java.util.function.Function;
 
 import static io.datakernel.serializer.examples.SerializerBuilderUtils.capitalize;
 
-public final class SerializerGenHppc7Map extends AbstractSerializerGenMap {
-	public SerializerGenHppc7Map(SerializerGen keySerializer, SerializerGen valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
+public final class SerializerDefHppc7Map extends AbstractSerializerDefMap {
+	public SerializerDefHppc7Map(SerializerDef keySerializer, SerializerDef valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
 		this(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, false);
 	}
 
-	private SerializerGenHppc7Map(SerializerGen keySerializer, SerializerGen valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType, boolean nullable) {
+	private SerializerDefHppc7Map(SerializerDef keySerializer, SerializerDef valueSerializer, Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType, boolean nullable) {
 		super(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, nullable);
 	}
 
@@ -45,7 +45,7 @@ public final class SerializerGenHppc7Map extends AbstractSerializerGenMap {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenHppc7Map(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefHppc7Map(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, true);
 	}
 }

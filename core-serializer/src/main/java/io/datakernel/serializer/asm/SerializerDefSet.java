@@ -25,12 +25,12 @@ import java.util.Set;
 import static io.datakernel.codegen.Expressions.callStatic;
 import static io.datakernel.codegen.Expressions.value;
 
-public class SerializerGenSet extends AbstractSerializerGenCollection {
-	public SerializerGenSet(SerializerGen valueSerializer) {
+public class SerializerDefSet extends AbstractSerializerDefCollection {
+	public SerializerDefSet(SerializerDef valueSerializer) {
 		this(valueSerializer, false);
 	}
 
-	private SerializerGenSet(SerializerGen valueSerializer, boolean nullable) {
+	private SerializerDefSet(SerializerDef valueSerializer, boolean nullable) {
 		super(valueSerializer, Set.class,
 				valueSerializer.getRawType().isEnum() ?
 						EnumSet.class :
@@ -47,7 +47,7 @@ public class SerializerGenSet extends AbstractSerializerGenCollection {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenSet(valueSerializer, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefSet(valueSerializer, true);
 	}
 }

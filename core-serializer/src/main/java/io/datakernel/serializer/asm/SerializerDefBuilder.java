@@ -21,13 +21,13 @@ import org.jetbrains.annotations.NotNull;
 import static io.datakernel.common.Preconditions.checkArgument;
 
 @FunctionalInterface
-public interface SerializerGenBuilder {
+public interface SerializerDefBuilder {
 
 	final class SerializerForType {
 		public final Class<?> rawType;
-		public final SerializerGen serializer;
+		public final SerializerDef serializer;
 
-		public SerializerForType(@NotNull Class<?> rawType, @NotNull SerializerGen serializer) {
+		public SerializerForType(@NotNull Class<?> rawType, @NotNull SerializerDef serializer) {
 			this.rawType = rawType;
 			this.serializer = serializer;
 		}
@@ -59,9 +59,9 @@ public interface SerializerGenBuilder {
 		}
 	}
 
-	SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen target);
+	SerializerDef serializer(Class<?> type, SerializerForType[] generics, SerializerDef target);
 
-	static SerializerGenBuilder of(SerializerGen serializer) {
+	static SerializerDefBuilder of(SerializerDef serializer) {
 		return (type, generics, target) -> {
 			checkArgument(generics.length == 0, "Type should have no generics");
 			return serializer;

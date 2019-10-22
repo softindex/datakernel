@@ -9,7 +9,7 @@ import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutputUtils;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.HasNullable;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerDef;
 
 import java.util.Set;
 
@@ -17,24 +17,24 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
-public class SerializerGenByteBuf implements SerializerGen, HasNullable {
+public class SerializerDefByteBuf implements SerializerDef, HasNullable {
 	private final boolean writeWithRecycle;
 	private final boolean wrap;
 	private final boolean nullable;
 
-	public SerializerGenByteBuf(boolean writeWithRecycle, boolean wrap) {
+	public SerializerDefByteBuf(boolean writeWithRecycle, boolean wrap) {
 		this(writeWithRecycle, wrap, false);
 	}
 
-	private SerializerGenByteBuf(boolean writeWithRecycle, boolean wrap, boolean nullable) {
+	private SerializerDefByteBuf(boolean writeWithRecycle, boolean wrap, boolean nullable) {
 		this.writeWithRecycle = writeWithRecycle;
 		this.wrap = wrap;
 		this.nullable = nullable;
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenByteBuf(writeWithRecycle, wrap, true);
+	public SerializerDef withNullable() {
+		return new SerializerDefByteBuf(writeWithRecycle, wrap, true);
 	}
 
 	@Override
@@ -52,16 +52,16 @@ public class SerializerGenByteBuf implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos,
-				callStatic(SerializerGenByteBuf.class,
+				callStatic(SerializerDefByteBuf.class,
 						"write" + (writeWithRecycle ? "Recycle" : "") + (nullable ? "Nullable" : ""),
 						buf, pos, cast(value, ByteBuf.class)));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerGenByteBuf.class,
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+		return callStatic(SerializerDefByteBuf.class,
 				"read" + (wrap ? "Slice" : "") + (nullable ? "Nullable" : ""),
 				in);
 	}
@@ -141,7 +141,7 @@ public class SerializerGenByteBuf implements SerializerGen, HasNullable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenByteBuf that = (SerializerGenByteBuf) o;
+		SerializerDefByteBuf that = (SerializerDefByteBuf) o;
 
 		if (wrap != that.wrap) return false;
 		return nullable == that.nullable;

@@ -23,8 +23,8 @@ import io.datakernel.serializer.CompatibilityLevel;
 import static io.datakernel.serializer.asm.SerializerExpressions.readBoolean;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeBoolean;
 
-public final class SerializerGenBoolean extends SerializerGenPrimitive {
-	public SerializerGenBoolean() {
+public final class SerializerDefBoolean extends SerializerDefPrimitive {
+	public SerializerDefBoolean() {
 		super(boolean.class);
 	}
 

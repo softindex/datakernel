@@ -5,7 +5,7 @@ import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.memcache.protocol.SerializerGenSlice;
+import io.datakernel.memcache.protocol.SerializerDefSlice;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -48,7 +48,7 @@ public class MemcacheServerModule extends AbstractModule {
 							return Promise.of(PutResponse.INSTANCE);
 						})
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(Slice.class, new SerializerGenSlice()))
+						.withSerializer(Slice.class, new SerializerDefSlice()))
 				.withMessageTypes(MESSAGE_TYPES)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),

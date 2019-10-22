@@ -20,10 +20,10 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenArray;
-import io.datakernel.serializer.asm.SerializerGenByte;
-import io.datakernel.serializer.asm.SerializerGenClass;
+import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.asm.SerializerDefArray;
+import io.datakernel.serializer.asm.SerializerDefByte;
+import io.datakernel.serializer.asm.SerializerDefClass;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -38,20 +38,20 @@ public final class MeasureHyperLogLog extends Measure {
 
 	private static final class FieldTypeHyperLogLog extends FieldType<Integer> {
 		public FieldTypeHyperLogLog() {
-			super(HyperLogLog.class, int.class, serializerGen(), INT_CODEC, null);
+			super(HyperLogLog.class, int.class, serializerDef(), INT_CODEC, null);
 		}
 
-		private static SerializerGen serializerGen() {
-			SerializerGenClass serializerGenClass = new SerializerGenClass(HyperLogLog.class);
+		private static SerializerDef serializerDef() {
+			SerializerDefClass serializer = new SerializerDefClass(HyperLogLog.class);
 			try {
-				serializerGenClass.addGetter(HyperLogLog.class.getMethod("getRegisters"),
-						new SerializerGenArray(new SerializerGenByte(), byte[].class), -1, -1);
-				serializerGenClass.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
+				serializer.addGetter(HyperLogLog.class.getMethod("getRegisters"),
+						new SerializerDefArray(new SerializerDefByte(), byte[].class), -1, -1);
+				serializer.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
 						singletonList("registers"));
 			} catch (NoSuchMethodException ignored) {
-				throw new RuntimeException("Unable to construct SerializerGen for HyperLogLog");
+				throw new RuntimeException("Unable to construct SerializerDef for HyperLogLog");
 			}
-			return serializerGenClass;
+			return serializer;
 		}
 	}
 

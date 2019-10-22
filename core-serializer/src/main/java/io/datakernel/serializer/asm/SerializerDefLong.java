@@ -20,21 +20,50 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 
-import static io.datakernel.serializer.asm.SerializerExpressions.readChar;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeChar;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
+import static io.datakernel.serializer.asm.SerializerExpressions.*;
 
-public final class SerializerGenChar extends SerializerGenPrimitive {
-	public SerializerGenChar() {
-		super(char.class);
+public final class SerializerDefLong extends SerializerDefPrimitive {
+	private final boolean varLength;
+
+	public SerializerDefLong() {
+		super(long.class);
+		this.varLength = false;
+	}
+
+	public SerializerDefLong(boolean varLength) {
+		super(long.class);
+		this.varLength = varLength;
 	}
 
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
-		return writeChar(byteArray, off, value);
+		return varLength ?
+				writeVarLong(byteArray, off, value) :
+				writeLong(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
 	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
-		return readChar(in);
+		return varLength ?
+				readVarLong(in) :
+				readLong(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		SerializerDefLong that = (SerializerDefLong) o;
+
+		return varLength == that.varLength;
+	}
+
+	@Override
+	public int hashCode() {
+		int result = 0;
+		result = 31 * result + (varLength ? 1 : 0);
+		return result;
 	}
 }

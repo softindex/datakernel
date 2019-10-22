@@ -28,19 +28,19 @@ import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
-import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 
-public abstract class AbstractSerializerGenCollection implements SerializerGen, HasNullable {
-	protected final SerializerGen valueSerializer;
+public abstract class AbstractSerializerDefCollection implements SerializerDef, HasNullable {
+	protected final SerializerDef valueSerializer;
 	protected final Class<?> collectionType;
 	protected final Class<?> collectionImplType;
 	protected final Class<?> elementType;
 	protected final boolean nullable;
 
-	protected AbstractSerializerGenCollection(@NotNull SerializerGen valueSerializer, @NotNull Class<?> collectionType, @NotNull Class<?> collectionImplType, @NotNull Class<?> elementType, boolean nullable) {
+	protected AbstractSerializerDefCollection(@NotNull SerializerDef valueSerializer, @NotNull Class<?> collectionType, @NotNull Class<?> collectionImplType, @NotNull Class<?> elementType, boolean nullable) {
 		this.valueSerializer = valueSerializer;
 		this.collectionType = collectionType;
 		this.collectionImplType = collectionImplType;
@@ -72,14 +72,14 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return staticEncoders.define(collectionType, buf, pos, value,
 				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
 	}
 
 	private Expression serializeImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression forEach = collectionForEach(value, valueSerializer.getRawType(),
-				it -> valueSerializer.serialize(classLoader, staticEncoders, buf, pos, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
+				it -> valueSerializer.encoder(classLoader, staticEncoders, buf, pos, cast(it, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		if (!nullable) {
 			return sequence(
@@ -95,7 +95,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(collectionImplType), "Target(%s) should be assignable from collection implementation type(%s)", targetType, collectionImplType);
 		return staticDecoders.define(collectionImplType, in,
 				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
@@ -108,7 +108,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "add",
-														cast(valueSerializer.deserialize(classLoader, staticDecoders, in, elementType, version, compatibilityLevel), elementType)),
+														cast(valueSerializer.decoder(classLoader, staticDecoders, in, elementType, version, compatibilityLevel), elementType)),
 												voidExp())),
 								instance)) :
 						ifThenElse(cmpEq(length, value(0)),
@@ -117,7 +117,7 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "add",
-																cast(valueSerializer.deserialize(classLoader, staticDecoders, in, elementType, version, compatibilityLevel), elementType)),
+																cast(valueSerializer.decoder(classLoader, staticDecoders, in, elementType, version, compatibilityLevel), elementType)),
 														voidExp())),
 										instance))));
 	}
@@ -125,8 +125,8 @@ public abstract class AbstractSerializerGenCollection implements SerializerGen, 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof AbstractSerializerGenCollection)) return false;
-		AbstractSerializerGenCollection that = (AbstractSerializerGenCollection) o;
+		if (!(o instanceof AbstractSerializerDefCollection)) return false;
+		AbstractSerializerDefCollection that = (AbstractSerializerDefCollection) o;
 		if (nullable != that.nullable) return false;
 		if (!valueSerializer.equals(that.valueSerializer)) return false;
 		if (!collectionType.equals(that.collectionType)) return false;

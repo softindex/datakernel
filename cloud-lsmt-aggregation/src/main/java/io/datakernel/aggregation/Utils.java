@@ -28,7 +28,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGenClass;
+import io.datakernel.serializer.asm.SerializerDefClass;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -137,12 +137,12 @@ public class Utils {
 	private static <T> BinarySerializer<T> createBinarySerializer(Class<T> recordClass,
 			Map<String, FieldType> keys, Map<String, FieldType> fields,
 			DefiningClassLoader classLoader) {
-		SerializerGenClass serializerGenClass = new SerializerGenClass(recordClass);
+		SerializerDefClass serializer = new SerializerDefClass(recordClass);
 		for (String key : keys.keySet()) {
 			FieldType keyType = keys.get(key);
 			try {
 				Field recordClassKey = recordClass.getField(key);
-				serializerGenClass.addField(recordClassKey, keyType.getSerializer(), -1, -1);
+				serializer.addField(recordClassKey, keyType.getSerializer(), -1, -1);
 			} catch (NoSuchFieldException e) {
 				throw new RuntimeException(e);
 			}
@@ -150,12 +150,12 @@ public class Utils {
 		for (String field : fields.keySet()) {
 			try {
 				Field recordClassField = recordClass.getField(field);
-				serializerGenClass.addField(recordClassField, fields.get(field).getSerializer(), -1, -1);
+				serializer.addField(recordClassField, fields.get(field).getSerializer(), -1, -1);
 			} catch (NoSuchFieldException e) {
 				throw new RuntimeException(e);
 			}
 		}
-		return SerializerBuilder.create(classLoader).build(serializerGenClass);
+		return SerializerBuilder.create(classLoader).build(serializer);
 	}
 
 	public static <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,

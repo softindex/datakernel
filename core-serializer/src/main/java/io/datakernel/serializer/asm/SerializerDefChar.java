@@ -20,23 +20,21 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 
-import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
-import static io.datakernel.serializer.asm.SerializerExpressions.readDouble;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeDouble;
+import static io.datakernel.serializer.asm.SerializerExpressions.readChar;
+import static io.datakernel.serializer.asm.SerializerExpressions.writeChar;
 
-public final class SerializerGenDouble extends SerializerGenPrimitive {
-	public SerializerGenDouble() {
-		super(double.class);
+public final class SerializerDefChar extends SerializerDefPrimitive {
+	public SerializerDefChar() {
+		super(char.class);
 	}
 
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
-		return writeDouble(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+		return writeChar(byteArray, off, value);
 	}
 
 	@Override
 	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
-		return readDouble(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+		return readChar(in);
 	}
 }
-

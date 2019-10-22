@@ -28,21 +28,21 @@ import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.*;
-import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 
-public abstract class AbstractSerializerGenMap implements SerializerGen, HasNullable {
-	protected final SerializerGen keySerializer;
-	protected final SerializerGen valueSerializer;
+public abstract class AbstractSerializerDefMap implements SerializerDef, HasNullable {
+	protected final SerializerDef keySerializer;
+	protected final SerializerDef valueSerializer;
 	protected final Class<?> mapType;
 	protected final Class<?> mapImplType;
 	protected final Class<?> keyType;
 	protected final Class<?> valueType;
 	protected final boolean nullable;
 
-	protected AbstractSerializerGenMap(@NotNull SerializerGen keySerializer, @NotNull SerializerGen valueSerializer, @NotNull Class<?> mapType, @NotNull Class<?> mapImplType, @NotNull Class<?> keyType, @NotNull Class<?> valueType, boolean nullable) {
+	protected AbstractSerializerDefMap(@NotNull SerializerDef keySerializer, @NotNull SerializerDef valueSerializer, @NotNull Class<?> mapType, @NotNull Class<?> mapImplType, @NotNull Class<?> keyType, @NotNull Class<?> valueType, boolean nullable) {
 		this.keySerializer = keySerializer;
 		this.valueSerializer = valueSerializer;
 		this.mapType = mapType;
@@ -75,7 +75,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 	}
 
 	@Override
-	public final Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return staticEncoders.define(mapType, buf, pos, value,
 				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
 	}
@@ -84,8 +84,8 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 		Expression length = length(value);
 		Expression writeLength = writeVarInt(buf, pos, !nullable ? length : inc(length));
 		Expression forEach = mapForEach(value,
-				k -> keySerializer.serialize(classLoader, staticEncoders, buf, pos, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
-				v -> valueSerializer.serialize(classLoader, staticEncoders, buf, pos, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
+				k -> keySerializer.encoder(classLoader, staticEncoders, buf, pos, cast(k, keySerializer.getRawType()), version, compatibilityLevel),
+				v -> valueSerializer.encoder(classLoader, staticEncoders, buf, pos, cast(v, valueSerializer.getRawType()), version, compatibilityLevel));
 
 		return !nullable ?
 				sequence(writeLength, forEach) :
@@ -95,7 +95,7 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 	}
 
 	@Override
-	public final Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		checkArgument(targetType.isAssignableFrom(mapImplType), "Target(%s) should be assignable from map implementation type(%s)", targetType, mapImplType);
 		return staticDecoders.define(targetType, in,
 				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
@@ -108,8 +108,8 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 								loop(value(0), length,
 										it -> sequence(
 												call(instance, "put",
-														cast(keySerializer.deserialize(classLoader, staticDecoders, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-														cast(valueSerializer.deserialize(classLoader, staticDecoders, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+														cast(keySerializer.decoder(classLoader, staticDecoders, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+														cast(valueSerializer.decoder(classLoader, staticDecoders, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 												),
 												voidExp())),
 								instance)) :
@@ -120,8 +120,8 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 										loop(value(0), dec(length),
 												it -> sequence(
 														call(instance, "put",
-																cast(keySerializer.deserialize(classLoader, staticDecoders, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
-																cast(valueSerializer.deserialize(classLoader, staticDecoders, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
+																cast(keySerializer.decoder(classLoader, staticDecoders, in, keySerializer.getRawType(), version, compatibilityLevel), keyType),
+																cast(valueSerializer.decoder(classLoader, staticDecoders, in, valueSerializer.getRawType(), version, compatibilityLevel), valueType)
 														),
 														voidExp())),
 										instance))));
@@ -130,9 +130,9 @@ public abstract class AbstractSerializerGenMap implements SerializerGen, HasNull
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
-		if (!(o instanceof AbstractSerializerGenMap)) return false;
+		if (!(o instanceof AbstractSerializerDefMap)) return false;
 
-		AbstractSerializerGenMap that = (AbstractSerializerGenMap) o;
+		AbstractSerializerDefMap that = (AbstractSerializerDefMap) o;
 
 		if (nullable != that.nullable) return false;
 		if (!keySerializer.equals(that.keySerializer)) return false;

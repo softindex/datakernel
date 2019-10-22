@@ -29,10 +29,10 @@ import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenNullable implements SerializerGen {
-	private final SerializerGen serializer;
+public class SerializerDefNullable implements SerializerDef {
+	private final SerializerDef serializer;
 
-	public SerializerGenNullable(@NotNull SerializerGen serializer) {
+	public SerializerDefNullable(@NotNull SerializerDef serializer) {
 		this.serializer = serializer;
 	}
 
@@ -52,20 +52,20 @@ public class SerializerGenNullable implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return ifThenElse(isNotNull(value),
 				sequence(
 						writeByte(buf, pos, value((byte) 1)),
-						serializer.serialize(classLoader, staticEncoders, buf, pos, value, version, compatibilityLevel)),
+						serializer.encoder(classLoader, staticEncoders, buf, pos, value, version, compatibilityLevel)),
 				writeByte(buf, pos, value((byte) 0))
 		);
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return let(readByte(in),
 				isNotNull -> ifThenElse(cmpNe(isNotNull, value((byte) 0)),
-						serializer.deserialize(classLoader, staticDecoders, in, serializer.getRawType(), version, compatibilityLevel),
+						serializer.decoder(classLoader, staticDecoders, in, serializer.getRawType(), version, compatibilityLevel),
 						nullRef(targetType)));
 	}
 
@@ -74,7 +74,7 @@ public class SerializerGenNullable implements SerializerGen {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenNullable that = (SerializerGenNullable) o;
+		SerializerDefNullable that = (SerializerDefNullable) o;
 
 		return serializer.equals(that.serializer);
 	}

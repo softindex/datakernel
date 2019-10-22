@@ -19,7 +19,7 @@ package io.datakernel.serializer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
-import io.datakernel.serializer.asm.SerializerGenByteBuffer;
+import io.datakernel.serializer.asm.SerializerDefByteBuffer;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
-public class CodeGenSerializerGenByteBufferTestX {
+public class CodeGenSerializerDefByteBufferTestX {
 
 	private static <T> T doTest(T testData1, BinarySerializer<T> serializer, BinarySerializer<T> deserializer) {
 		byte[] array = new byte[1000];
@@ -62,7 +62,7 @@ public class CodeGenSerializerGenByteBufferTestX {
 
 		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializer(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.withSerializer(ByteBuffer.class, new SerializerDefByteBuffer(true))
 				.build(ByteBuffer.class);
 
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
@@ -107,7 +107,7 @@ public class CodeGenSerializerGenByteBufferTestX {
 
 		BinarySerializer<ByteBuffer> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializer(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.withSerializer(ByteBuffer.class, new SerializerDefByteBuffer(true))
 				.build(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -174,7 +174,7 @@ public class CodeGenSerializerGenByteBufferTestX {
 
 		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder
 				.create(ClassLoader.getSystemClassLoader())
-				.withSerializer(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.withSerializer(ByteBuffer.class, new SerializerDefByteBuffer(true))
 				.build(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];

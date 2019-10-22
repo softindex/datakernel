@@ -30,27 +30,27 @@ import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Utils.of;
+import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
-import static io.datakernel.serializer.asm.SerializerGen.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerGen.StaticEncoders.*;
 import static java.util.Collections.emptySet;
 import static org.objectweb.asm.Type.getType;
 
-public class SerializerGenSubclass implements SerializerGen, HasNullable {
+public class SerializerDefSubclass implements SerializerDef, HasNullable {
 	private final Class<?> dataType;
-	private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers;
+	private final LinkedHashMap<Class<?>, SerializerDef> subclassSerializers;
 	private final boolean nullable;
 	private final int startIndex;
 
-	public SerializerGenSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, int startIndex) {
+	public SerializerDefSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerDef> subclassSerializers, int startIndex) {
 		this.startIndex = startIndex;
 		this.dataType = dataType;
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 		this.nullable = false;
 	}
 
-	private SerializerGenSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable, int startIndex) {
+	private SerializerDefSubclass(@NotNull Class<?> dataType, LinkedHashMap<Class<?>, SerializerDef> subclassSerializers, boolean nullable, int startIndex) {
 		this.startIndex = startIndex;
 		this.dataType = dataType;
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
@@ -58,8 +58,8 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public SerializerGen withNullable() {
-		return new SerializerGenSubclass(dataType, subclassSerializers, true, startIndex);
+	public SerializerDef withNullable() {
+		return new SerializerDefSubclass(dataType, subclassSerializers, true, startIndex);
 	}
 
 	@Override
@@ -80,7 +80,7 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return staticEncoders.define(dataType, buf, pos, value,
 				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
 	}
@@ -91,11 +91,11 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
-			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
+			SerializerDef subclassSerializer = subclassSerializers.get(subclass);
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
 					writeByte(buf, pos, value(subClassIndex)),
-					subclassSerializer.serialize(classLoader, staticEncoders, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
+					subclassSerializer.encoder(classLoader, staticEncoders, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
 			));
 
 			subClassIndex++;
@@ -113,7 +113,7 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return staticDecoders.define(dataType, in,
 				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
 
@@ -125,8 +125,8 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 						switchByIndex(idx,
 								of(() -> {
 									List<Expression> versions = new ArrayList<>();
-									for (SerializerGen subclassSerializer : subclassSerializers.values()) {
-										versions.add(cast(subclassSerializer.deserialize(classLoader, staticDecoders, in, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
+									for (SerializerDef subclassSerializer : subclassSerializers.values()) {
+										versions.add(cast(subclassSerializer.decoder(classLoader, staticDecoders, in, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
 									}
 									if (nullable) versions.add(-startIndex, nullRef(getRawType()));
 									return versions;
@@ -139,7 +139,7 @@ public class SerializerGenSubclass implements SerializerGen, HasNullable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenSubclass that = (SerializerGenSubclass) o;
+		SerializerDefSubclass that = (SerializerDefSubclass) o;
 
 		if (!dataType.equals(that.dataType)) return false;
 		return subclassSerializers.equals(that.subclassSerializers);

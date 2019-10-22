@@ -19,11 +19,11 @@ package io.datakernel.serializer.annotations;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.HasFixedSize;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
+import io.datakernel.serializer.asm.SerializerDefBuilder;
 
 public final class SerializeFixedSizeHandler implements AnnotationHandler<SerializeFixedSize, SerializeFixedSizeEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
+	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, target) -> {
 			if (target instanceof HasFixedSize) {
 				return ((HasFixedSize) target).withFixedSize(annotation.value());

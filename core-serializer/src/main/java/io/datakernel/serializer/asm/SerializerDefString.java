@@ -31,30 +31,30 @@ import static io.datakernel.common.Utils.of;
 import static io.datakernel.serializer.StringFormat.UTF8;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenString implements SerializerGen, HasNullable {
+public class SerializerDefString implements SerializerDef, HasNullable {
 	private final StringFormat format;
 	private final boolean nullable;
 
-	private SerializerGenString(StringFormat format, boolean nullable) {
+	private SerializerDefString(StringFormat format, boolean nullable) {
 		this.format = format;
 		this.nullable = nullable;
 	}
 
-	public SerializerGenString() {
+	public SerializerDefString() {
 		this(UTF8, false);
 	}
 
-	public SerializerGenString(StringFormat format) {
+	public SerializerDefString(StringFormat format) {
 		this(format, false);
 	}
 
 	@Override
-	public SerializerGenString withNullable() {
-		return new SerializerGenString(format, true);
+	public SerializerDefString withNullable() {
+		return new SerializerDefString(format, true);
 	}
 
-	public SerializerGenString encoding(StringFormat format) {
-		return new SerializerGenString(format, nullable);
+	public SerializerDefString encoding(StringFormat format) {
+		return new SerializerDefString(format, nullable);
 	}
 
 	@Override
@@ -72,7 +72,7 @@ public class SerializerGenString implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos, of(() -> {
 			Expression string = cast(value, String.class);
 			switch (format) {
@@ -99,7 +99,7 @@ public class SerializerGenString implements SerializerGen, HasNullable {
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		switch (format) {
 			case ISO_8859_1:
 				return nullable ?
@@ -127,7 +127,7 @@ public class SerializerGenString implements SerializerGen, HasNullable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		SerializerGenString that = (SerializerGenString) o;
+		SerializerDefString that = (SerializerDefString) o;
 
 		if (nullable != that.nullable) return false;
 		return format == that.format;

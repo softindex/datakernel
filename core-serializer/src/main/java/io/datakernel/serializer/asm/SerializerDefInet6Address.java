@@ -29,7 +29,7 @@ import static io.datakernel.serializer.asm.SerializerExpressions.readBytes;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeBytes;
 import static java.util.Collections.emptySet;
 
-public class SerializerGenInet6Address implements SerializerGen {
+public class SerializerDefInet6Address implements SerializerDef {
 	@Override
 	public void accept(Visitor visitor) {
 	}
@@ -45,12 +45,12 @@ public class SerializerGenInet6Address implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return writeBytes(buf, pos, call(value, "getAddress"));
 	}
 
 	@Override
-	public Expression deserialize(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
 		return let(newArray(byte[].class, value(16)), array ->
 				sequence(
 						readBytes(in, array),
