@@ -99,10 +99,6 @@ public final class Injector {
 		scopeCache[scopeCache.length - 1] = localCache;
 
 		this.scopeCache = scopeCache;
-
-		for (CompiledBinding<?> compiledBinding : localGraph.eagerSingletons) {
-			compiledBinding.getInstance(scopeCache, -1);
-		}
 	}
 
 	/**
@@ -410,6 +406,12 @@ public final class Injector {
 		return getInstanceInjector(Key.of(type));
 	}
 
+	public void createEagerInstances() {
+		for (CompiledBinding<?> compiledBinding : scopeDataTree.get().eagerSingletons) {
+			compiledBinding.getInstance(scopeCache, -1);
+		}
+	}
+
 	/**
 	 * The key of type Set&lt;InstanceInjector&lt;?&gt;&gt; (note the wildcard type) is treated specially by this method,
 	 * it calls all of the instance injectors the set contains on instances of their respective keys, if such instances
@@ -443,7 +445,7 @@ public final class Injector {
 		if (index != null) {
 			return (T) scopeCache[scopeCache.length - 1].get(index);
 		}
-		throw DIException.noCachedBidning(key, getScope());
+		throw DIException.noCachedBinding(key, getScope());
 	}
 
 	/**
@@ -462,7 +464,7 @@ public final class Injector {
 		if (index != null) {
 			return scopeCache[scopeCache.length - 1].get(index) != null;
 		}
-		throw DIException.noCachedBidning(key, getScope());
+		throw DIException.noCachedBinding(key, getScope());
 	}
 
 	/**
@@ -498,7 +500,7 @@ public final class Injector {
 	public <T> void putInstance(Key<T> key, T instance) {
 		Integer index = localSlotMapping.get(key);
 		if (index == null) {
-			throw DIException.noCachedBidning(key, getScope());
+			throw DIException.noCachedBinding(key, getScope());
 		}
 		scopeCache[scopeCache.length - 1].set(index, instance);
 	}

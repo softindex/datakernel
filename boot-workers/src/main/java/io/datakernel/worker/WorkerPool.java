@@ -81,6 +81,7 @@ public final class WorkerPool {
 		for (int i = 0; i < workers; i++) {
 			scopeInjectors[i] = injector.enterScope(scope);
 			scopeInjectors[i].putInstance(Key.of(int.class, WorkerId.class), i);
+			scopeInjectors[i].createEagerInstances();
 		}
 	}
 

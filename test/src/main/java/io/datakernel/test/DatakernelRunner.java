@@ -125,6 +125,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 				// and make it post-injectable
 				.postInjectInto(self));
 
+		currentInjector.createEagerInstances();
 		currentInjector.postInjectInstances();
 		return instance;
 	}

@@ -75,12 +75,14 @@ public final class TestDI {
 	}
 
 	@Test
-	public void eagerSingletons() {
+	public void eagers() {
 		AtomicInteger mut = new AtomicInteger();
 
 		Injector injector = Injector.of(Module.create()
 				.bind(String.class).to(() -> "str_" + mut.incrementAndGet()).eagerly()
 				.bind(Object.class).to(() -> "whatever"));
+
+		injector.createEagerInstances();
 
 		assertEquals("str_1", injector.peekInstance(String.class));
 		assertNull(injector.peekInstance(Object.class));

@@ -15,7 +15,7 @@ public final class DIException extends RuntimeException {
 				key.getDisplayString() + (info != null && info.getLocation() != null ? ("\n\t at" + info.getLocation()) : ""));
 	}
 
-	public static DIException noCachedBidning(Key<?> key, Scope[] scope) {
+	public static DIException noCachedBinding(Key<?> key, Scope[] scope) {
 		throw new DIException("No cached binding was bound for key " + key.getDisplayString() + " in scope " + getScopeDisplayString(scope) + ". " +
 				"Either bind it or check if a binding for such key exists with hasBinding() call.");
 	}

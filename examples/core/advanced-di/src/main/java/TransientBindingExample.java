@@ -5,7 +5,7 @@ import io.datakernel.di.module.AbstractModule;
 
 import java.util.Random;
 
-public class TransientBidningExample {
+public class TransientBindingExample {
 
 	public static void main(String[] args) {
 		Random random = new Random(System.currentTimeMillis());
