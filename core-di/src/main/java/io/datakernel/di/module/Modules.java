@@ -11,7 +11,7 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.di.core.Name.uniqueName;
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static io.datakernel.di.module.BindingSet.BindingType.COMMON;
+import static io.datakernel.di.module.BindingType.COMMON;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 import static java.util.function.Function.identity;

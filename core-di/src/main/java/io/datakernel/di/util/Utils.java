@@ -129,7 +129,7 @@ public final class Utils {
 	/**
 	 * A shortcut for printing the result of {@link #makeGraphVizGraph} into the standard output.
 	 */
-	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, BindingInfo>> trie) {
 //		System.out.println("https://somegraphvizurl/#" + URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20"));
 		System.out.println(makeGraphVizGraph(trie));
 	}
@@ -138,7 +138,7 @@ public final class Utils {
 	 * Makes a GraphViz graph representation of the binding graph.
 	 * Scopes are grouped nicely into subgraph boxes and dependencies are properly drawn from lower to upper scopes.
 	 */
-	public static String makeGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+	public static String makeGraphVizGraph(Trie<Scope, Map<Key<?>, BindingInfo>> trie) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n	rankdir=BT;\n");
 		Set<ScopedValue<Key<?>>> known = new HashSet<>();
@@ -148,20 +148,20 @@ public final class Utils {
 		return sb.toString();
 	}
 
-	private static void writeNodes(Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> trie, Set<ScopedValue<Key<?>>> known, String indent, int[] scopeCount, StringBuilder sb) {
+	private static void writeNodes(Scope[] scope, Trie<Scope, Map<Key<?>, BindingInfo>> trie, Set<ScopedValue<Key<?>>> known, String indent, int[] scopeCount, StringBuilder sb) {
 		if (scope != UNSCOPED) {
 			sb.append('\n').append(indent)
 					.append("subgraph cluster_").append(scopeCount[0]++).append(" {\n")
 					.append(indent).append("\tlabel=\"").append(scope[scope.length - 1].getDisplayString().replace("\"", "\\\"")).append("\"\n");
 		}
 
-		for (Entry<Scope, Trie<Scope, Map<Key<?>, Binding<?>>>> entry : trie.getChildren().entrySet()) {
+		for (Entry<Scope, Trie<Scope, Map<Key<?>, BindingInfo>>> entry : trie.getChildren().entrySet()) {
 			writeNodes(next(scope, entry.getKey()), entry.getValue(), known, indent + '\t', scopeCount, sb);
 		}
 
 		Set<Key<?>> leafs = new HashSet<>();
 
-		for (Entry<Key<?>, Binding<?>> entry : trie.get().entrySet()) {
+		for (Entry<Key<?>, BindingInfo> entry : trie.get().entrySet()) {
 			Key<?> key = entry.getKey();
 			if (entry.getValue().getDependencies().size() == 0) {
 				leafs.add(key);
@@ -187,10 +187,10 @@ public final class Utils {
 		}
 	}
 
-	private static void writeEdges(Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> trie, Set<ScopedValue<Key<?>>> known, StringBuilder sb) {
+	private static void writeEdges(Scope[] scope, Trie<Scope, Map<Key<?>, BindingInfo>> trie, Set<ScopedValue<Key<?>>> known, StringBuilder sb) {
 		String scopePath = getScopeId(scope);
 
-		for (Entry<Key<?>, Binding<?>> entry : trie.get().entrySet()) {
+		for (Entry<Key<?>, BindingInfo> entry : trie.get().entrySet()) {
 			String key = "\"" + scopePath + entry.getKey().toString().replace("\"", "\\\"") + "\"";
 			for (Dependency dependency : entry.getValue().getDependencies()) {
 				Key<?> depKey = dependency.getKey();
@@ -222,7 +222,7 @@ public final class Utils {
 				sb.append(";\n");
 			}
 		}
-		for (Entry<Scope, Trie<Scope, Map<Key<?>, Binding<?>>>> entry : trie.getChildren().entrySet()) {
+		for (Entry<Scope, Trie<Scope, Map<Key<?>, BindingInfo>>> entry : trie.getChildren().entrySet()) {
 			writeEdges(next(scope, entry.getKey()), entry.getValue(), known, sb);
 		}
 	}

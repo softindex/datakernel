@@ -17,7 +17,7 @@
 package io.datakernel.worker;
 
 import io.datakernel.di.annotation.ShortTypeName;
-import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.BindingInfo;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
@@ -27,6 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
+import static io.datakernel.di.module.BindingType.TRANSIENT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 
@@ -34,7 +35,7 @@ public final class WorkerPool {
 	private final int id;
 	private final Scope scope;
 	private final Injector[] scopeInjectors;
-	private final Map<Key<?>, Binding<?>> scopeBindings;
+	private final Map<Key<?>, BindingInfo> scopeBindings;
 
 	@ShortTypeName("WorkerInstances")
 	@SuppressWarnings("unchecked")
@@ -74,7 +75,7 @@ public final class WorkerPool {
 		this.scope = scope;
 		this.scopeInjectors = new Injector[workers];
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> subtrie = injector.getBindingsTrie().get(scope);
+		Trie<Scope, Map<Key<?>, BindingInfo>> subtrie = injector.getBindingsTrie().get(scope);
 		this.scopeBindings = subtrie != null ? subtrie.get() : emptyMap();
 
 		for (int i = 0; i < workers; i++) {
@@ -112,8 +113,8 @@ public final class WorkerPool {
 
 	@Nullable
 	public <T> Instances<T> peekInstances(Key<T> key) {
-		Binding<?> binding = scopeBindings.get(key);
-		if (binding == null || !binding.isCached()) {
+		BindingInfo binding = scopeBindings.get(key);
+		if (binding == null || binding.getType() == TRANSIENT) {
 			return null;
 		}
 		Object[] instances = doPeekInstances(key);
@@ -126,8 +127,8 @@ public final class WorkerPool {
 	@NotNull
 	public Map<Key<?>, Instances<?>> peekInstances() {
 		Map<Key<?>, Instances<?>> map = new HashMap<>();
-		for (Map.Entry<Key<?>, Binding<?>> entry : scopeBindings.entrySet()) {
-			if (!entry.getValue().isCached()) {
+		for (Map.Entry<Key<?>, BindingInfo> entry : scopeBindings.entrySet()) {
+			if (entry.getValue().getType() == TRANSIENT) {
 				continue;
 			}
 			Object[] instances = doPeekInstances(entry.getKey());

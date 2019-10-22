@@ -3,7 +3,6 @@ package io.datakernel.di;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
-import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.module.*;
 import io.datakernel.di.util.Constructors.Constructor0;
 import io.datakernel.di.util.Trie;
@@ -160,17 +159,11 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str: " + i, Float.class)
 				.bind(Float.class).to(i -> (float) i, Integer.class);
 
-		Set<Key<?>> expected1 = cyclic1.getReducedBindings().get().keySet();
-
 		try {
 			Injector.of(branch, cyclic1);
 			fail("should've failed here");
 		} catch (DIException e) {
 			e.printStackTrace();
-
-			Set<Key<?>[]> cycles = Preprocessor.collectCycles(combine(branch, cyclic1).getReducedBindings().get());
-			assertEquals(1, cycles.size());
-			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
 
 		Module cyclic2 = Module.create()
@@ -178,19 +171,11 @@ public final class TestDI {
 				.bind(Character.class).to($ -> 'k', Boolean.class)
 				.bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
 
-		Set<Key<?>> expected2 = cyclic2.getReducedBindings().get().keySet();
-
 		try {
 			Injector.of(branch, cyclic1, cyclic2);
 			fail("should've failed here");
 		} catch (DIException e) {
 			e.printStackTrace();
-
-			Set<Key<?>[]> cycles = Preprocessor.collectCycles(combine(branch, cyclic1, cyclic2).getReducedBindings().get());
-			assertEquals(2, cycles.size());
-
-			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
-			assertEquals(Stream.of(expected1, expected2).collect(toSet()), unorderedCycles);
 		}
 	}
 
@@ -772,9 +757,9 @@ public final class TestDI {
 			}
 		});
 
-		printGraphVizGraph(module.getReducedBindings());
+		printGraphVizGraph(module.getReducedBindingInfo());
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getReducedBindings();
+		Trie<Scope, Map<Key<?>, BindingInfo>> flattened = Modules.ignoreScopes(module).getReducedBindingInfo();
 
 		printGraphVizGraph(flattened);
 
@@ -1091,7 +1076,7 @@ public final class TestDI {
 				Module.create().bind(Integer.class).toInstance(3000),
 				importingModule.rebindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
 
-		printGraphVizGraph(m.getReducedBindings());
+		printGraphVizGraph(m.getReducedBindingInfo());
 
 		Injector injector = Injector.of(m);
 
@@ -1489,15 +1474,16 @@ public final class TestDI {
 
 		Injector injector = Injector.of(Module.create()
 
-				.bind(stringListKey)
+				.bind(stringListKey).transiently()
 				.bind(stringSetKey)
 
+				.bind(String.class).transiently()
+
 				.generate(String.class, (bindings, scope, key) ->
-						Binding.<Object>to(() -> "str_" + mut.incrementAndGet()).transiently())
+						Binding.to(() -> "str_" + mut.incrementAndGet()))
 
 				.scan(new Object() {
 					@Provides
-					@Transient
 					<T> List<T> transientList(T t) {
 						return singletonList(t);
 					}
@@ -1540,6 +1526,8 @@ public final class TestDI {
 
 				.bind(setKeyNt).to(constructor)
 				.bind(setKeyNt).toInstance(singleton("other one"))
+
+				.bind(new Key<Set<String>>() {}).transiently()
 
 				.multibindToSet(String.class)
 				.multibindToSet(Key.of(String.class, "nt")));

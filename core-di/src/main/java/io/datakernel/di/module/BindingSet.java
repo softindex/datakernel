@@ -18,7 +18,7 @@ import java.util.Set;
  */
 public final class BindingSet<K> {
 	private final Set<Binding<K>> bindings;
-	private final BindingType type;
+	private BindingType type;
 
 	public BindingSet(Set<Binding<K>> bindings, BindingType type) {
 		this.bindings = bindings;
@@ -33,8 +33,8 @@ public final class BindingSet<K> {
 		return type;
 	}
 
-	public enum BindingType {
-		COMMON, TRANSIENT, EAGER
+	public void setType(BindingType type) {
+		this.type = type;
 	}
 
 	@SuppressWarnings("unchecked")

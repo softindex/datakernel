@@ -12,7 +12,7 @@ import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.module.BindingSet.BindingType.TRANSIENT;
+import static io.datakernel.di.module.BindingType.TRANSIENT;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -48,7 +48,7 @@ public interface Multibinder<T> {
 									.map(bindingCompiler -> bindingCompiler.compile(compiledBindings, true, scope, null))
 									.toArray(CompiledBinding[]::new);
 
-							return slot == null || bindings.getType() == TRANSIENT || bindings.getBindings().stream().anyMatch(b -> !b.isCached()) ?
+							return slot == null || bindings.getType() == TRANSIENT ?
 									new CompiledBinding<T>() {
 										@SuppressWarnings("unchecked")
 										@Override

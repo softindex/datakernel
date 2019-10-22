@@ -36,8 +36,8 @@ public final class TestInjectorIternals {
 				.bind(SomeService.class).to(SomeServiceImpl.class));
 
 		assertSame(injector.getInstanceOrNull(SomeService.class), injector.getInstanceOrNull(SomeServiceImpl.class));
-		assertEquals(2, injector.scopedInstances[0].length()); // always the injector itself + only one instance
-		assertEquals(Stream.of(0, 1, 1).collect(toSet()), new HashSet<>(injector.slotMapping.values())); // the injector + 2 entries pointing to same index
+		assertEquals(2, injector.scopeCache[0].length()); // always the injector itself + only one instance
+		assertEquals(Stream.of(0, 1, 1).collect(toSet()), new HashSet<>(injector.localSlotMapping.values())); // the injector + 2 entries pointing to same index
 	}
 
 	@Test
@@ -54,9 +54,9 @@ public final class TestInjectorIternals {
 		assertSame(injector.getInstanceOrNull(SomeService.class), injector.getInstanceOrNull(SomeServiceImpl.class));
 		assertSame(injector.getInstanceOrNull(SomeServiceImpl.class), injector.getInstanceOrNull(SomeService.class));
 
-		assertEquals(3, injector.scopedInstances[0].length()); // the injector + impl instance + string
+		assertEquals(3, injector.scopeCache[0].length()); // the injector + impl instance + string
 
-		assertEquals(Stream.of(0, 1, 1, 2).collect(toSet()), new HashSet<>(injector.slotMapping.values())); // the injector + 2 entries pointing to same index + 1 entry for string
+		assertEquals(Stream.of(0, 1, 1, 2).collect(toSet()), new HashSet<>(injector.localSlotMapping.values())); // the injector + 2 entries pointing to same index + 1 entry for string
 	}
 
 	@Test

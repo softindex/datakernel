@@ -454,10 +454,14 @@ public final class ReflectionUtils {
 				}
 				if (isEager) {
 					throw new DIException("@Eager annotation is not applicable for templated methods because they are generators and cannot be eagerly created. " +
-							"You can bind real key as eager singleton though, or depend on generated binding from some other real eager singleton. Method " + method);
+							"You can bind real key eagerly though. Method " + method);
+				}
+				if (isTransient) {
+					throw new DIException("@Transient annotation is not applicable for templated methods because they are generators and cannot be transiently created. " +
+							"You can bind real key transiently though. Method " + method);
 				}
 
-				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType, isTransient));
+				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
 
 			} else if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
@@ -521,15 +525,13 @@ public final class ReflectionUtils {
 
 		private final Object module;
 		private final Type returnType;
-		private final boolean isTransient;
 
-		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Name name, Method method, Object module, Type returnType, boolean isTransient) {
+		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Name name, Method method, Object module, Type returnType) {
 			this.methodScope = methodScope;
 			this.name = name;
 			this.method = method;
 			this.module = module;
 			this.returnType = returnType;
-			this.isTransient = isTransient;
 		}
 
 		@Override
@@ -542,8 +544,7 @@ public final class ReflectionUtils {
 					return null;
 				}
 			}
-			Binding<Object> binding = bindingFromGenericMethod(module, key, method);
-			return isTransient ? binding.transiently() : binding;
+			return bindingFromGenericMethod(module, key, method);
 		}
 
 		@Override

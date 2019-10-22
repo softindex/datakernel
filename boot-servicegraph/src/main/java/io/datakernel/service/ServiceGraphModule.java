@@ -47,6 +47,7 @@ import java.util.function.Supplier;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.common.collection.CollectionUtils.intersection;
+import static io.datakernel.di.module.BindingType.TRANSIENT;
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.service.util.Utils.combineAll;
 import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
@@ -352,12 +353,15 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 			Key<?> key = entry.getKey();
 			Object instance = entry.getValue();
 			if (instance == null) continue;
-			Binding<?> binding = injector.getBinding(key);
-			if (binding == null || !binding.isCached()) continue;
+
+			BindingInfo bindingInfo = injector.getBindingInfo(key);
+
+			if (bindingInfo == null || bindingInfo.getType() == TRANSIENT) continue;
+
 			ServiceKey serviceKey = new ServiceKey(key);
 			instances.put(serviceKey, singletonList(instance));
 			instanceDependencies.put(serviceKey,
-					binding.getDependencies().stream()
+					bindingInfo.getDependencies().stream()
 							.filter(dependency -> {
 								Key<?> k = dependency.getKey();
 								return dependency.isRequired() ||
@@ -374,11 +378,11 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 								}
 
 								if (rawTypeMatches && !(instance instanceof WorkerPool)) {
-									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
+									logger.warn("Unsupported service " + key + " at " + bindingInfo.getLocation() + " : worker instances is expected");
 								}
 
 								if (instanceMatches) {
-									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
+									logger.warn("Unsupported service " + key + " at " + bindingInfo.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
 								}
 								return new ServiceKey(dependency.getKey());
 							})
@@ -389,7 +393,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 	}
 
 	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
-		Trie<Scope, Map<Key<?>, Binding<?>>> scopeBindings = injector.getBindingsTrie().getOrDefault(scope, emptyMap());
+		Trie<Scope, Map<Key<?>, BindingInfo>> scopeBindings = injector.getBindingsTrie().getOrDefault(scope, emptyMap());
 		return scopeBindings.get()
 				.entrySet()
 				.stream()

@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
-import static io.datakernel.di.module.BindingSet.BindingType.*;
+import static io.datakernel.di.module.BindingType.*;
 import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
@@ -133,18 +133,16 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	@Override
 	public ModuleBuilderBinder<T> eagerly() {
 		BindingDesc current = ensureCurrent();
-		checkState(!current.isEager(), "Binding was already set to eager");
-		checkState(!current.isTransient(), "Binding is transient, bindings cannot be both eager and transient");
-		current.setEager();
+		checkState(current.getType() == COMMON, "Binding was already set to eager or transient");
+		current.setType(EAGER);
 		return this;
 	}
 
 	@Override
 	public ModuleBuilderBinder<T> transiently() {
 		BindingDesc current = ensureCurrent();
-		checkState(!current.isTransient(), "Binding was already set to transient");
-		checkState(!current.isEager(), "Binding is eager, bindings cannot be both transient and eager");
-		current.setTransient();
+		checkState(current.getType() == COMMON, "Binding was already set to transient or eager");
+		current.setType(TRANSIENT);
 		return this;
 	}
 
@@ -232,20 +230,16 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		completeCurrent(); // finish the last binding
 
 		bindingDescs.forEach(b -> {
-			Map<Key<?>, BindingSet<?>> multimap = bindings.computeIfAbsent(b.getScope(), $ -> new HashMap<>()).get();
-			BindingSet<?> bindingSet = multimap.computeIfAbsent(b.getKey(), $ -> new BindingSet<>(new HashSet<>(), COMMON));
+			BindingSet<?> bindingSet = bindings
+					.computeIfAbsent(b.getScope(), $1 -> new HashMap<>())
+					.get()
+					.computeIfAbsent(b.getKey(), $ -> new BindingSet<>(new HashSet<>(), COMMON));
+
+			bindingSet.setType(b.getType());
+
 			Binding<?> binding = b.getBinding();
 			if (binding != TO_BE_GENERATED) {
 				bindingSet.getBindings().add((Binding) binding);
-			}
-			if (b.isTransient()) {
-				multimap.put(b.getKey(), new BindingSet<>(bindingSet.getBindings(), TRANSIENT));
-			}
-			if (b.isEager()) {
-				if (b.isTransient()) {
-					throw new DIException("Binding cannot be bound as both transient and eager singleton");
-				}
-				multimap.put(b.getKey(), new BindingSet<>(bindingSet.getBindings(), EAGER));
 			}
 		});
 

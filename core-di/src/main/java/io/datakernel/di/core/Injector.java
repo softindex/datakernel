@@ -19,8 +19,7 @@ import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
-import static io.datakernel.di.module.BindingSet.BindingType.COMMON;
-import static io.datakernel.di.module.BindingSet.BindingType.EAGER;
+import static io.datakernel.di.module.BindingType.*;
 import static io.datakernel.di.util.Utils.getScopeDisplayString;
 import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.*;
@@ -42,58 +41,67 @@ import static java.util.stream.Collectors.toSet;
 public final class Injector {
 	public static final Key<Set<InstanceInjector<?>>> INSTANCE_INJECTORS_KEY = new Key<Set<InstanceInjector<?>>>() {};
 
-	private static final class DependencyGraph {
+	private static final class ScopeLocalData {
 		final Scope[] scope;
-		final Map<Key<?>, Binding<?>> bindings;
+		final Map<Key<?>, BindingInfo> bindingInfo;
 		final Map<Key<?>, CompiledBinding<?>> compiledBindings;
 		final Map<Key<?>, Integer> slotMapping;
-		final CompiledBinding<?>[] eagerSingletons;
-		final int numberOfSlots;
+		final int slots;
 
-		private DependencyGraph(
+		final CompiledBinding<?>[] eagerSingletons;
+
+		private ScopeLocalData(
 				Scope[] scope,
-				Map<Key<?>, Binding<?>> bindings, Map<Key<?>, CompiledBinding<?>> compiledBindings,
+				Map<Key<?>, BindingInfo> bindingInfo,
+				Map<Key<?>, CompiledBinding<?>> compiledBindings,
 				Map<Key<?>, Integer> slotMapping,
-				CompiledBinding<?>[] eagerSingletons,
-				int numberOfSlots
+				int slots,
+				CompiledBinding<?>[] eagerSingletons
 		) {
 			this.scope = scope;
-			this.bindings = bindings;
+			this.bindingInfo = bindingInfo;
 			this.compiledBindings = compiledBindings;
-			this.eagerSingletons = eagerSingletons;
 			this.slotMapping = slotMapping;
-			this.numberOfSlots = numberOfSlots;
+			this.slots = slots;
+			this.eagerSingletons = eagerSingletons;
 		}
 	}
 
-	final Map<Key<?>, CompiledBinding<?>> compiledBindings;
-	final Map<Key<?>, Integer> slotMapping;
-	final AtomicReferenceArray[] scopedInstances;
-	final Trie<Scope, DependencyGraph> scopeTree;
 	@Nullable
 	final Injector parent;
+	final Trie<Scope, ScopeLocalData> scopeDataTree;
+
+	final Scope[] scope;
+	final Map<Key<?>, BindingInfo> localBindingInfo;
+	final Map<Key<?>, Integer> localSlotMapping;
+	final Map<Key<?>, CompiledBinding<?>> localCompiledBindings;
+
+	final AtomicReferenceArray[] scopeCache;
 
 	@SuppressWarnings("unchecked")
-	private Injector(@Nullable Injector parent, Trie<Scope, DependencyGraph> scopeTree) {
+	private Injector(@Nullable Injector parent, Trie<Scope, ScopeLocalData> scopeDataTree) {
 		this.parent = parent;
-		this.scopeTree = scopeTree;
+		this.scopeDataTree = scopeDataTree;
 
-		DependencyGraph localGraph = scopeTree.get();
+		ScopeLocalData localGraph = scopeDataTree.get();
 
-		this.compiledBindings = localGraph.compiledBindings;
-		this.slotMapping = localGraph.slotMapping;
+		this.scope = localGraph.scope;
+		this.localBindingInfo = localGraph.bindingInfo;
+		this.localSlotMapping = localGraph.slotMapping;
+		this.localCompiledBindings = localGraph.compiledBindings;
 
-		AtomicReferenceArray[] scopedInstances = parent == null ?
+		AtomicReferenceArray[] scopeCache = parent == null ?
 				new AtomicReferenceArray[1] :
-				Arrays.copyOf(parent.scopedInstances, parent.scopedInstances.length + 1);
+				Arrays.copyOf(parent.scopeCache, parent.scopeCache.length + 1);
 
-		scopedInstances[scopedInstances.length - 1] = new AtomicReferenceArray(localGraph.numberOfSlots);
-		scopedInstances[scopedInstances.length - 1].set(0, this);
+		AtomicReferenceArray localCache = new AtomicReferenceArray(localGraph.slots);
+		localCache.set(0, this);
+		scopeCache[scopeCache.length - 1] = localCache;
 
-		this.scopedInstances = scopedInstances;
+		this.scopeCache = scopeCache;
 
 		for (CompiledBinding<?> compiledBinding : localGraph.eagerSingletons) {
-			compiledBinding.getInstance(scopedInstances, -1);
+			compiledBinding.getInstance(scopeCache, -1);
 		}
 	}
 
@@ -154,46 +162,44 @@ public final class Injector {
 			@NotNull BindingTransformer<?> transformer,
 			@NotNull BindingGenerator<?> generator) {
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> bindings = Preprocessor.reduce(bindingsMultimap, multibinder, transformer, generator);
+		Trie<Scope, Map<Key<?>, MarkedBinding<?>>> bindings = Preprocessor.reduce(bindingsMultimap, multibinder, transformer, generator);
 
 		Set<Key<?>> known = new HashSet<>();
 		known.add(Key.of(Injector.class)); // injector is hardcoded in and will always be present
 		if (parent != null) {
-			known.addAll(parent.compiledBindings.keySet());
+			known.addAll(parent.localCompiledBindings.keySet());
 		}
 
-		Preprocessor.check(known, bindings);
+		Trie<Scope, Map<Key<?>, Binding<?>>> justBindings = bindings.map(m -> m.entrySet().stream().collect(toMap(Entry::getKey, e -> e.getValue().getBinding())));
+		Preprocessor.check(known, justBindings);
 
 		return new Injector(parent, compileBindingsTrie(
-				parent != null ? parent.scopedInstances.length : 0,
+				parent != null ? parent.scopeCache.length : 0,
 				UNSCOPED,
 				bindings,
-				bindingsMultimap,
-				parent != null ? parent.compiledBindings : emptyMap()
+				parent != null ? parent.localCompiledBindings : emptyMap()
 		));
 	}
 
-	protected static Trie<Scope, DependencyGraph> compileBindingsTrie(int scope, Scope[] path,
-			Trie<Scope, Map<Key<?>, Binding<?>>> bindingsTrie,
-			Trie<Scope, Map<Key<?>, BindingSet<?>>> bindingsMultimap,
+	protected static Trie<Scope, ScopeLocalData> compileBindingsTrie(int scope, Scope[] path,
+			Trie<Scope, Map<Key<?>, MarkedBinding<?>>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent) {
 
-		DependencyGraph dependencyGraph = compileBindings(scope, path, bindingsTrie.get(), bindingsMultimap.get(), compiledBindingsOfParent);
+		ScopeLocalData scopeLocalData = compileBindings(scope, path, bindings.get(), compiledBindingsOfParent);
 
-		Map<Scope, Trie<Scope, DependencyGraph>> children = new HashMap<>();
+		Map<Scope, Trie<Scope, ScopeLocalData>> children = new HashMap<>();
 
-		bindingsTrie.getChildren().forEach((childScope, trie) -> {
+		bindings.getChildren().forEach((childScope, trie) -> {
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsCopy = new HashMap<>(compiledBindingsOfParent);
-			compiledBindingsCopy.putAll(dependencyGraph.compiledBindings);
-			children.put(childScope, compileBindingsTrie(scope + 1, next(path, childScope), bindingsTrie.get(childScope), bindingsMultimap.get(childScope), compiledBindingsCopy));
+			compiledBindingsCopy.putAll(scopeLocalData.compiledBindings);
+			children.put(childScope, compileBindingsTrie(scope + 1, next(path, childScope), bindings.get(childScope), compiledBindingsCopy));
 		});
 
-		return new Trie<>(dependencyGraph, children);
+		return new Trie<>(scopeLocalData, children);
 	}
 
-	protected static DependencyGraph compileBindings(int scope, Scope[] path,
-			Map<Key<?>, Binding<?>> bindings,
-			Map<Key<?>, BindingSet<?>> bindingSets,
+	protected static ScopeLocalData compileBindings(int scope, Scope[] path,
+			Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent
 	) {
 		boolean threadsafe = path.length == 0 || path[path.length - 1].isThreadsafe();
@@ -226,34 +232,37 @@ public final class Injector {
 
 		List<CompiledBinding<?>> eagerSingletons = new ArrayList<>();
 
-		for (Entry<Key<?>, Binding<?>> e : bindings.entrySet()) {
+		bindings.forEach((key, binding) -> {
 			CompiledBinding<?> compiledBinding = compileBinding(
-					scope, path,
-					threadsafe, e.getKey(),
-					bindings, compiledBindingsOfParent, compiledBindings,
+					scope, path, threadsafe,
+					key, bindings,
+					compiledBindings, compiledBindingsOfParent,
 					slotMapping, nextSlot
 			);
-			BindingSet<?> bindingSet = bindingSets.get(e.getKey());
-			if (bindingSet != null && bindingSet.getType() == EAGER) {
+			if (binding.getType() == EAGER) {
 				eagerSingletons.add(compiledBinding);
 			}
-		}
+		});
 
-		bindings.put(Key.of(Injector.class), Binding.to(() -> {
+		bindings.put(Key.of(Injector.class), new MarkedBinding<>(Binding.to(() -> {
 			throw new AssertionError("Injector constructor must never be called since it's instance is always put in the cache manually");
-		}));
+		}), EAGER));
+
 		compiledBindingsOfParent.forEach(compiledBindings::putIfAbsent);
+
 		int size = nextSlot[0];
 		nextSlot[0] = -1;
-		return new DependencyGraph(path, bindings, compiledBindings, slotMapping, eagerSingletons.toArray(new CompiledBinding[0]), size);
+
+		Map<Key<?>, BindingInfo> bindingInfo = bindings.entrySet().stream()
+				.collect(toMap(Entry::getKey, e -> BindingInfo.from(e.getValue())));
+
+		return new ScopeLocalData(path, bindingInfo, compiledBindings, slotMapping, size, eagerSingletons.toArray(new CompiledBinding[0]));
 	}
 
 	private static CompiledBinding<?> compileBinding(
-			int scope, Scope[] path,
-			boolean threadsafe, Key<?> key,
-			Map<Key<?>, Binding<?>> bindings,
-			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent,
-			Map<Key<?>, CompiledBinding<?>> compiledBindings,
+			int scope, Scope[] path, boolean threadsafe,
+			Key<?> key, Map<Key<?>, MarkedBinding<?>> bindings,
+			Map<Key<?>, CompiledBinding<?>> compiledBindings, Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent,
 			Map<Key<?>, Integer> slotMapping, int[] nextSlot
 	) {
 
@@ -266,18 +275,18 @@ public final class Injector {
 			throw new DIException("Failed to locate a binding for " + key.getDisplayString() + " after scope " + getScopeDisplayString(path) + " was fully compiled");
 		}
 
-		Binding<?> binding = bindings.get(key);
-
-		if (binding == null) {
+		MarkedBinding<?> markedBinding = bindings.get(key);
+		if (markedBinding == null) {
 			CompiledBinding<?> compiled = compiledBindingsOfParent.getOrDefault(key, missingOptionalBinding());
 			compiledBindings.put(key, compiled);
 			return compiled;
 		}
 
+		Binding<?> binding = markedBinding.getBinding();
 		BindingCompiler<?> compiler = binding.getCompiler();
 
 		Integer index;
-		if (binding.isCached() && !(compiler instanceof PlainCompiler)) {
+		if (markedBinding.getType() != TRANSIENT && !(compiler instanceof PlainCompiler)) {
 			slotMapping.put(key, index = nextSlot[0]++);
 		} else {
 			index = null;
@@ -294,8 +303,8 @@ public final class Injector {
 								threadsafe,
 								key,
 								bindings,
-								compiledBindingsOfParent,
 								compiledBindings,
+								compiledBindingsOfParent,
 								slotMapping,
 								nextSlot
 						);
@@ -317,13 +326,13 @@ public final class Injector {
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
-		CompiledBinding<?> binding = compiledBindings.get(key);
+		CompiledBinding<?> binding = localCompiledBindings.get(key);
 		if (binding != null) {
-			Object instance = binding.getInstance(scopedInstances, -1);
+			Object instance = binding.getInstance(scopeCache, -1);
 			if (instance != null) {
 				return (T) instance;
 			}
-			throw DIException.cannotConstruct(key, scopeTree.get().bindings.get(key));
+			throw DIException.cannotConstruct(key, localBindingInfo.get(key));
 		}
 		throw DIException.cannotConstruct(key, null);
 	}
@@ -342,8 +351,8 @@ public final class Injector {
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
-		CompiledBinding<?> binding = compiledBindings.get(key);
-		return binding != null ? (T) binding.getInstance(scopedInstances, -1) : null;
+		CompiledBinding<?> binding = localCompiledBindings.get(key);
+		return binding != null ? (T) binding.getInstance(scopeCache, -1) : null;
 	}
 
 	/**
@@ -430,9 +439,9 @@ public final class Injector {
 	@Nullable
 	@SuppressWarnings("unchecked")
 	public <T> T peekInstance(@NotNull Key<T> key) {
-		Integer index = slotMapping.get(key);
+		Integer index = localSlotMapping.get(key);
 		if (index != null) {
-			return (T) scopedInstances[scopedInstances.length - 1].get(index);
+			return (T) scopeCache[scopeCache.length - 1].get(index);
 		}
 		throw DIException.noCachedBidning(key, getScope());
 	}
@@ -449,9 +458,9 @@ public final class Injector {
 	 * This method checks if an instance for this key was created by a {@link #getInstance} call before.
 	 */
 	public boolean hasInstance(@NotNull Key<?> key) {
-		Integer index = slotMapping.get(key);
+		Integer index = localSlotMapping.get(key);
 		if (index != null) {
-			return scopedInstances[scopedInstances.length - 1].get(index) != null;
+			return scopeCache[scopeCache.length - 1].get(index) != null;
 		}
 		throw DIException.noCachedBidning(key, getScope());
 	}
@@ -468,10 +477,10 @@ public final class Injector {
 	 */
 	public Map<Key<?>, Object> peekInstances() {
 		Map<Key<?>, Object> result = new HashMap<>();
-		for (Entry<Key<?>, Integer> entry : slotMapping.entrySet()) {
+		for (Entry<Key<?>, Integer> entry : localSlotMapping.entrySet()) {
 			Key<?> key = entry.getKey();
 			Integer index = entry.getValue();
-			Object value = scopedInstances[scopedInstances.length - 1].get(index);
+			Object value = scopeCache[scopeCache.length - 1].get(index);
 			if (value != null) {
 				result.put(key, value);
 			}
@@ -487,11 +496,11 @@ public final class Injector {
 	 */
 	@SuppressWarnings("unchecked")
 	public <T> void putInstance(Key<T> key, T instance) {
-		Integer index = slotMapping.get(key);
+		Integer index = localSlotMapping.get(key);
 		if (index == null) {
 			throw DIException.noCachedBidning(key, getScope());
 		}
-		scopedInstances[scopedInstances.length - 1].set(index, instance);
+		scopeCache[scopeCache.length - 1].set(index, instance);
 	}
 
 	/**
@@ -502,21 +511,20 @@ public final class Injector {
 	}
 
 	@Nullable
-	public <T> Binding<T> getBinding(Class<T> type) {
-		return getBinding(Key.of(type));
+	public BindingInfo getBindingInfo(Class<?> type) {
+		return getBindingInfo(Key.of(type));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Nullable
-	public <T> Binding<T> getBinding(Key<T> key) {
-		return (Binding<T>) scopeTree.get().bindings.get(key);
+	public BindingInfo getBindingInfo(Key<?> key) {
+		return localBindingInfo.get(key);
 	}
 
 	/**
 	 * This method returns true if a binding was bound for given key.
 	 */
 	public boolean hasBinding(Key<?> key) {
-		return scopeTree.get().bindings.containsKey(key);
+		return localBindingInfo.containsKey(key);
 	}
 
 	/**
@@ -530,8 +538,8 @@ public final class Injector {
 	 * This method returns true only if a non-transient binding of given key was bound.
 	 */
 	public boolean hasCachedBinding(Key<?> key) {
-		Binding<?> binding = scopeTree.get().bindings.get(key);
-		return binding != null && binding.isCached();
+		BindingInfo info = localBindingInfo.get(key);
+		return info != null && info.getType() != TRANSIENT;
 	}
 
 	/**
@@ -545,7 +553,7 @@ public final class Injector {
 	 * Creates an injector that operates on a binding graph at a given prefix (scope) of the binding graph trie and this injector as its parent.
 	 */
 	public Injector enterScope(@NotNull Scope scope) {
-		return new Injector(this, scopeTree.get(scope));
+		return new Injector(this, scopeDataTree.get(scope));
 	}
 
 	@Nullable
@@ -554,21 +562,20 @@ public final class Injector {
 	}
 
 	public Scope[] getScope() {
-		return scopeTree.get().scope;
+		return scopeDataTree.get().scope;
 	}
 
 	/**
-	 * This method returns a trie of bindings, similar to {@link Module#getReducedBindings()}
+	 * This method returns a trie of bindings, similar to {@link Module#getReducedBindingInfo()}
 	 * <p>
-	 * Note that it is somewhat expensive to call that method multiple times and also the result wont change.
-	 * It is intended mostly for debugging or introspective purposes
+	 * Note that this method expensive to call repeatedly
 	 */
-	public Trie<Scope, Map<Key<?>, Binding<?>>> getBindingsTrie() {
-		return scopeTree.map(graph -> graph.bindings);
+	public Trie<Scope, Map<Key<?>, BindingInfo>> getBindingsTrie() {
+		return scopeDataTree.map(graph -> graph.bindingInfo);
 	}
 
 	@Override
 	public String toString() {
-		return "Injector{scope=" + getScopeDisplayString(scopeTree.get().scope) + '}';
+		return "Injector{scope=" + getScopeDisplayString(scopeDataTree.get().scope) + '}';
 	}
 }

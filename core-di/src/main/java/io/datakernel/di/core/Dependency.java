@@ -61,6 +61,6 @@ public final class Dependency {
 
 	@Override
 	public String toString() {
-		return "{" + (required ? "" : "optional ") + key + "}";
+		return (required ? "" : "optional ") + key;
 	}
 }

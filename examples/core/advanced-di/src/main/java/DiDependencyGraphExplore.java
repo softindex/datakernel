@@ -186,7 +186,7 @@ public class DiDependencyGraphExplore {
 		/// bindings check
 		// FYI: getBinding().toString() gives us a dependencies of current binding.
 		//[START REGION_3]
-		System.out.println("Pastry binding check : " + subinjector.getBinding(Pastry.class));
+		System.out.println("Pastry binding check : " + subinjector.getBindingInfo(Pastry.class));
 		//[END REGION_3]
 		System.out.println();
 		System.out.println("============================ ");

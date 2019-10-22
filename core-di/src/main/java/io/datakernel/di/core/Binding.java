@@ -33,17 +33,15 @@ public final class Binding<T> {
 
 	@Nullable
 	private LocationInfo location;
-	private final boolean cached;
 
 	public Binding(@NotNull Set<Dependency> dependencies, @NotNull BindingCompiler<T> compiler) {
-		this(dependencies, compiler, null, true);
+		this(dependencies, compiler, null);
 	}
 
-	private Binding(@NotNull Set<Dependency> dependencies, @NotNull BindingCompiler<T> compiler, @Nullable LocationInfo location, boolean cached) {
+	private Binding(@NotNull Set<Dependency> dependencies, @NotNull BindingCompiler<T> compiler, @Nullable LocationInfo location) {
 		this.dependencies = dependencies;
 		this.compiler = compiler;
 		this.location = location;
-		this.cached = cached;
 	}
 
 	public static <T> Binding<T> toInstance(@NotNull T instance) {
@@ -599,7 +597,7 @@ public final class Binding<T> {
 											return instance != null ? fn.apply(null, instance) : null;
 										}
 									};
-				}, location, cached);
+				}, location);
 	}
 
 	public <K> Binding<T> onDependency(@NotNull Class<K> dependency, @NotNull Consumer<? super K> consumer) {
@@ -635,7 +633,7 @@ public final class Binding<T> {
 									}
 								};
 							}
-						}, threadsafe, scope, slot), location, cached);
+						}, threadsafe, scope, slot), location);
 	}
 
 	public Binding<T> addDependencies(@NotNull Class<?>... extraDependencies) {
@@ -666,7 +664,7 @@ public final class Binding<T> {
 									return compiledBinding.getInstance(scopedInstances, synchronizedScope);
 								}
 							};
-						}, location, cached);
+						}, location);
 	}
 
 	public <K> Binding<T> rebindDependency(@NotNull Key<K> from, @NotNull Key<? extends K> to) {
@@ -713,7 +711,7 @@ public final class Binding<T> {
 										return compiler.compile(compiledBindings, threadsafe, scope, slot);
 									}
 								},
-								threadsafe, scope, slot), location, cached);
+								threadsafe, scope, slot), location);
 	}
 
 	public Binding<T> initializeWith(BindingInitializer<T> bindingInitializer) {
@@ -741,11 +739,7 @@ public final class Binding<T> {
 											return instance;
 										}
 									};
-						}, location, cached);
-	}
-
-	public Binding<T> transiently() {
-		return cached ? new Binding<>(dependencies, compiler, location, false) : this;
+						}, location);
 	}
 
 	@NotNull
@@ -772,10 +766,6 @@ public final class Binding<T> {
 		return location;
 	}
 
-	public boolean isCached() {
-		return cached;
-	}
-
 	public String getDisplayString() {
 		return dependencies.stream().map(Dependency::getDisplayString).collect(joining(", ", "[", "]"));
 	}
@@ -797,6 +787,6 @@ public final class Binding<T> {
 
 	@Override
 	public String toString() {
-		return (cached ? "" : "*") + "Binding" + dependencies.toString();
+		return "Binding" + dependencies.toString();
 	}
 }
