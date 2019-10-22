@@ -13,6 +13,8 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.module.BindingType.EAGER;
+import static io.datakernel.di.module.BindingType.TRANSIENT;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 
@@ -163,14 +165,19 @@ public final class Utils {
 
 		for (Entry<Key<?>, BindingInfo> entry : trie.get().entrySet()) {
 			Key<?> key = entry.getKey();
-			if (entry.getValue().getDependencies().size() == 0) {
+			BindingInfo bindingInfo = entry.getValue();
+
+			if (bindingInfo.getDependencies().size() == 0) {
 				leafs.add(key);
 			}
 			known.add(ScopedValue.of(scope, key));
 			sb.append(indent)
 					.append('\t')
 					.append('"').append(getScopeId(scope)).append(key.toString().replace("\"", "\\\"")).append('"')
-					.append(" [label=\"").append(key.getDisplayString().replace("\"", "\\\"")).append("\"];\n");
+					.append(" [label=\"").append(key.getDisplayString().replace("\"", "\\\""))
+					.append("\"")
+					.append(bindingInfo.getType() == TRANSIENT ? " style=dotted" : bindingInfo.getType() == EAGER ? " style=bold" : "")
+					.append("];\n");
 		}
 
 		if (!leafs.isEmpty()) {
@@ -196,19 +203,19 @@ public final class Utils {
 				Key<?> depKey = dependency.getKey();
 
 				Scope[] depScope = scope;
-				while (!known.contains(ScopedValue.of(depScope, depKey)) & depScope.length != 0) {
+				while (!known.contains(ScopedValue.of(depScope, depKey)) && depScope.length != 0) {
 					depScope = Arrays.copyOfRange(depScope, 0, depScope.length - 1);
 				}
 
 				if (depScope.length == 0) {
-					String dep = "\"" + scopePath + depKey.toString().replace("\"", "\\\"") + '"';
+					String dep = "\"" + getScopeId(depScope) + depKey.toString().replace("\"", "\\\"") + '"';
 
-					if (known.add(ScopedValue.of(scope, depKey))) {
+					if (known.add(ScopedValue.of(depScope, depKey))) {
 						sb.append('\t')
 								.append(dep)
 								.append(" [label=\"")
 								.append(depKey.getDisplayString().replace("\"", "\\\""))
-								.append("\", style=dashed, color=")
+								.append("\" style=dashed, color=")
 								.append(dependency.isRequired() ? "red" : "orange")
 								.append("];\n");
 					}
