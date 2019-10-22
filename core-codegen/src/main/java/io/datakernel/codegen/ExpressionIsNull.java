@@ -21,11 +21,11 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-final class ExpressionCmpNull implements PredicateDef {
-	private final Expression value;
+final class ExpressionIsNull implements Expression {
+	private final Expression expression;
 
-	ExpressionCmpNull(@NotNull Expression value) {
-		this.value = value;
+	ExpressionIsNull(@NotNull Expression expression) {
+		this.expression = expression;
 	}
 
 	@Override
@@ -35,7 +35,7 @@ final class ExpressionCmpNull implements PredicateDef {
 		Label labelNull = new Label();
 		Label labelExit = new Label();
 
-		value.load(ctx);
+		expression.load(ctx);
 		g.ifNull(labelNull);
 		g.push(false);
 		g.goTo(labelExit);

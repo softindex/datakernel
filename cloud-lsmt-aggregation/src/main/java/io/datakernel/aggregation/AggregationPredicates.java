@@ -19,7 +19,6 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
-import io.datakernel.codegen.PredicateDef;
 import io.datakernel.codegen.Variable;
 import org.jetbrains.annotations.Nullable;
 
@@ -480,7 +479,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return E.alwaysFalse();
 		}
 
@@ -512,7 +511,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return E.alwaysTrue();
 		}
 
@@ -558,8 +557,8 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return E.not(predicate.createPredicateDef(record, fields));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return E.not(predicate.createPredicate(record, fields));
 		}
 
 		@Override
@@ -617,7 +616,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return fields.get(key) == null ?
 					E.isNull(E.property(record, key.replace('.', '$'))) :
 					E.and(
@@ -682,7 +681,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return fields.get(key) == null ?
 					E.isNotNull(
 							E.property(record, key.replace('.', '$'))) :
@@ -750,7 +749,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			Variable property = E.property(record, key.replace('.', '$'));
 			return E.and(
 					isNotNull(property, fields.get(key)),
@@ -814,7 +813,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			Variable property = E.property(record, key.replace('.', '$'));
 			return E.and(isNotNull(property, fields.get(key)),
 					E.cmpLt(property, E.value(toInternalValue(fields, key, value))));
@@ -877,7 +876,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			Variable property = E.property(record, key.replace('.', '$'));
 			return E.and(isNotNull(property, fields.get(key)),
 					E.cmpGe(property, E.value(toInternalValue(fields, key, value))));
@@ -940,7 +939,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			Variable property = E.property(record, key.replace('.', '$'));
 			return E.and(isNotNull(property, fields.get(key)),
 					E.cmpGt(property, E.value(toInternalValue(fields, key, value))));
@@ -997,7 +996,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return fields.containsKey(key) ? E.alwaysTrue() : E.alwaysFalse();
 		}
 
@@ -1057,7 +1056,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return E.cmpNe(
 					E.value(false),
 					E.call(E.call(E.value(Pattern.compile(regexp)), "matcher",
@@ -1123,7 +1122,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			return E.cmpNe(
 					E.value(false),
 					E.call(E.value(values), "contains",
@@ -1197,7 +1196,7 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
 			Variable property = E.property(record, key.replace('.', '$'));
 			return E.and(isNotNull(property, fields.get(key)),
 					E.cmpGe(property, E.value(toInternalValue(fields, key, from))),
@@ -1299,10 +1298,10 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			List<PredicateDef> predicateDefs = new ArrayList<>();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			List<Expression> predicateDefs = new ArrayList<>();
 			for (AggregationPredicate predicate : predicates) {
-				predicateDefs.add(predicate.createPredicateDef(record, fields));
+				predicateDefs.add(predicate.createPredicate(record, fields));
 			}
 			return E.and(predicateDefs);
 		}
@@ -1377,10 +1376,10 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			List<PredicateDef> predicateDefs = new ArrayList<>();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			List<Expression> predicateDefs = new ArrayList<>();
 			for (AggregationPredicate predicate : predicates) {
-				predicateDefs.add(predicate.createPredicateDef(record, fields));
+				predicateDefs.add(predicate.createPredicate(record, fields));
 			}
 			return E.or(predicateDefs);
 		}
@@ -1529,11 +1528,11 @@ public class AggregationPredicates {
 		}
 	}
 
-	private static PredicateDef isNotNull(Expression field, FieldType fieldType) {
+	private static Expression isNotNull(Expression field, FieldType fieldType) {
 		return fieldType != null && fieldType.getInternalDataType().isPrimitive() ? E.alwaysTrue() : E.isNotNull(field);
 	}
 
-	private static PredicateDef isNull(Expression field, FieldType fieldType) {
+	private static Expression isNull(Expression field, FieldType fieldType) {
 		return fieldType != null && fieldType.getInternalDataType().isPrimitive() ? E.alwaysFalse() : E.isNull(field);
 	}
 

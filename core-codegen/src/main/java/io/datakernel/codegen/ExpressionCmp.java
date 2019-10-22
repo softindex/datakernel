@@ -32,13 +32,13 @@ import static org.objectweb.asm.Type.INT_TYPE;
 /**
  * Defines methods for comparing functions
  */
-final class PredicateDefCmp implements PredicateDef {
+final class ExpressionCmp implements Expression {
 	private final Expression left;
 	private final Expression right;
 	private final CompareOperation operation;
 
 	// region builders
-	PredicateDefCmp(CompareOperation operation, Expression left, Expression right) {
+	ExpressionCmp(CompareOperation operation, Expression left, Expression right) {
 		this.left = left;
 		this.right = right;
 		this.operation = operation;

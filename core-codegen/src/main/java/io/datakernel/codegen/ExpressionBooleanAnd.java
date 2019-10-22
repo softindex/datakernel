@@ -22,16 +22,17 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.List;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 /**
  * Defines methods for using logical 'and' for boolean type
  */
-final class PredicateDefAnd implements PredicateDef {
-	private final List<PredicateDef> predicates;
+final class ExpressionBooleanAnd implements Expression {
+	private final List<Expression> expressions;
 
-	PredicateDefAnd(List<PredicateDef> predicates) {
-		this.predicates = predicates;
+	ExpressionBooleanAnd(List<Expression> expressions) {
+		this.expressions = expressions;
 	}
 
 	@Override
@@ -39,9 +40,9 @@ final class PredicateDefAnd implements PredicateDef {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label exit = new Label();
 		Label labelFalse = new Label();
-		for (PredicateDef predicate : predicates) {
+		for (Expression predicate : expressions) {
 			Type type = predicate.load(ctx);
-			assert type == BOOLEAN_TYPE;
+			checkArgument(type == BOOLEAN_TYPE);
 			g.ifZCmp(GeneratorAdapter.EQ, labelFalse);
 		}
 		g.push(true);

@@ -562,7 +562,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return ClassBuilder.create(classLoader, Predicate.class)
 				.withClassKey(inputClass, predicate)
 				.withMethod("test", boolean.class, singletonList(Object.class),
-						predicate.createPredicateDef(cast(arg(0), inputClass), keyTypes))
+						predicate.createPredicate(cast(arg(0), inputClass), keyTypes))
 				.buildClassAndCreateNewInstance();
 	}
 
@@ -973,7 +973,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return ClassBuilder.create(queryClassLoader, Predicate.class)
 					.withClassKey(resultClass, queryHaving)
 					.withMethod("test",
-							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldTypes))
+							queryHaving.createPredicate(cast(arg(0), resultClass), fieldTypes))
 					.buildClassAndCreateNewInstance();
 		}
 

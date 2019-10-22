@@ -16,29 +16,36 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-final class PredicateDefNot implements PredicateDef {
-	private final PredicateDef predicateDef;
+final class ExpressionIsNotNull implements Expression {
+	private final Expression expression;
 
-	public PredicateDefNot(PredicateDef predicateDef) {
-		this.predicateDef = predicateDef;
+	ExpressionIsNotNull(@NotNull Expression expression) {
+		this.expression = expression;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Label labelFalse = g.newLabel();
-		Label labelExit = g.newLabel();
-		predicateDef.load(ctx);
-		g.ifZCmp(GeneratorAdapter.EQ, labelFalse);
+
+		Label labelNotNull = new Label();
+		Label labelExit = new Label();
+
+		expression.load(ctx);
+		g.ifNonNull(labelNotNull);
 		g.push(false);
 		g.goTo(labelExit);
-		g.visitLabel(labelFalse);
+
+		g.mark(labelNotNull);
 		g.push(true);
-		g.visitLabel(labelExit);
+
+		g.mark(labelExit);
+
 		return Type.BOOLEAN_TYPE;
 	}
 }
+

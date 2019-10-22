@@ -490,7 +490,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		return ClassBuilder.create(classLoader, Predicate.class)
 				.withClassKey(chunkRecordClass, where)
 				.withMethod("test", boolean.class, singletonList(Object.class),
-						where.createPredicateDef(cast(arg(0), chunkRecordClass), getKeyTypes()))
+						where.createPredicate(cast(arg(0), chunkRecordClass), getKeyTypes()))
 				.buildClassAndCreateNewInstance();
 	}
 

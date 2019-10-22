@@ -20,37 +20,25 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.List;
+final class ExpressionBooleanNot implements Expression {
+	private final Expression expression;
 
-import static org.objectweb.asm.Type.BOOLEAN_TYPE;
-
-/**
- * Defines methods for using logical 'or' for boolean type
- */
-final class PredicateDefOr implements PredicateDef {
-	private final List<PredicateDef> predicates;
-
-	PredicateDefOr(List<PredicateDef> predicates) {
-		this.predicates = predicates;
+	public ExpressionBooleanNot(Expression expression) {
+		this.expression = expression;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Label exit = new Label();
-		Label labelTrue = new Label();
-		for (PredicateDef predicate : predicates) {
-			Type localType = predicate.load(ctx);
-			assert localType == BOOLEAN_TYPE;
-			g.ifZCmp(GeneratorAdapter.NE, labelTrue);
-		}
+		Label labelFalse = g.newLabel();
+		Label labelExit = g.newLabel();
+		expression.load(ctx);
+		g.ifZCmp(GeneratorAdapter.EQ, labelFalse);
 		g.push(false);
-		g.goTo(exit);
-
-		g.mark(labelTrue);
+		g.goTo(labelExit);
+		g.visitLabel(labelFalse);
 		g.push(true);
-
-		g.mark(exit);
-		return BOOLEAN_TYPE;
+		g.visitLabel(labelExit);
+		return Type.BOOLEAN_TYPE;
 	}
 }

@@ -22,11 +22,11 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 final class ExpressionIf implements Expression {
-	private final PredicateDef condition;
+	private final Expression condition;
 	private final Expression left;
 	private final Expression right;
 
-	ExpressionIf(@NotNull PredicateDef condition, @NotNull Expression left, @NotNull Expression right) {
+	ExpressionIf(@NotNull Expression condition, @NotNull Expression left, @NotNull Expression right) {
 		this.condition = condition;
 		this.left = left;
 		this.right = right;

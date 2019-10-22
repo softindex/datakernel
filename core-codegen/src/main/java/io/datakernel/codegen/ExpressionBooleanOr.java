@@ -16,20 +16,42 @@
 
 package io.datakernel.codegen;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-final class PredicateDefConst implements PredicateDef {
-	private final boolean value;
+import java.util.List;
 
-	public PredicateDefConst(boolean value) {
-		this.value = value;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static org.objectweb.asm.Type.BOOLEAN_TYPE;
+
+/**
+ * Defines methods for using logical 'or' for boolean type
+ */
+final class ExpressionBooleanOr implements Expression {
+	private final List<Expression> expressions;
+
+	ExpressionBooleanOr(List<Expression> expressions) {
+		this.expressions = expressions;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		g.push(value);
-		return Type.BOOLEAN_TYPE;
+		Label exit = new Label();
+		Label labelTrue = new Label();
+		for (Expression predicate : expressions) {
+			Type type = predicate.load(ctx);
+			checkArgument(type == BOOLEAN_TYPE);
+			g.ifZCmp(GeneratorAdapter.NE, labelTrue);
+		}
+		g.push(false);
+		g.goTo(exit);
+
+		g.mark(labelTrue);
+		g.push(true);
+
+		g.mark(exit);
+		return BOOLEAN_TYPE;
 	}
 }

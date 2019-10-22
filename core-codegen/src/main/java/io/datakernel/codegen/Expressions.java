@@ -164,16 +164,16 @@ public class Expressions {
 		return new VarArg(argument);
 	}
 
-	public static PredicateDef alwaysFalse() {
-		return new PredicateDefConst(false);
+	public static Expression alwaysFalse() {
+		return value(false);
 	}
 
-	public static PredicateDef alwaysTrue() {
-		return new PredicateDefConst(true);
+	public static Expression alwaysTrue() {
+		return value(true);
 	}
 
-	public static PredicateDef not(PredicateDef predicateDef) {
-		return new PredicateDefNot(predicateDef);
+	public static Expression not(Expression expression) {
+		return new ExpressionBooleanNot(expression);
 	}
 
 	/**
@@ -184,12 +184,12 @@ public class Expressions {
 	 * @param right second argument which will be compared
 	 * @return new instance of the PredicateDefCmp
 	 */
-	public static PredicateDef cmp(CompareOperation eq, Expression left, Expression right) {
-		return new PredicateDefCmp(eq, left, right);
+	public static Expression cmp(CompareOperation eq, Expression left, Expression right) {
+		return new ExpressionCmp(eq, left, right);
 	}
 
-	public static PredicateDef cmp(String eq, Expression left, Expression right) {
-		return new PredicateDefCmp(CompareOperation.operation(eq), left, right);
+	public static Expression cmp(String eq, Expression left, Expression right) {
+		return new ExpressionCmp(CompareOperation.operation(eq), left, right);
 	}
 
 	/**
@@ -199,27 +199,27 @@ public class Expressions {
 	 * @param right second argument which will be compared
 	 * @return new instance of the PredicateDefCmp
 	 */
-	public static PredicateDef cmpEq(Expression left, Expression right) {
+	public static Expression cmpEq(Expression left, Expression right) {
 		return cmp(CompareOperation.EQ, left, right);
 	}
 
-	public static PredicateDef cmpGe(Expression left, Expression right) {
+	public static Expression cmpGe(Expression left, Expression right) {
 		return cmp(CompareOperation.GE, left, right);
 	}
 
-	public static PredicateDef cmpLe(Expression left, Expression right) {
+	public static Expression cmpLe(Expression left, Expression right) {
 		return cmp(CompareOperation.LE, left, right);
 	}
 
-	public static PredicateDef cmpLt(Expression left, Expression right) {
+	public static Expression cmpLt(Expression left, Expression right) {
 		return cmp(CompareOperation.LT, left, right);
 	}
 
-	public static PredicateDef cmpGt(Expression left, Expression right) {
+	public static Expression cmpGt(Expression left, Expression right) {
 		return cmp(CompareOperation.GT, left, right);
 	}
 
-	public static PredicateDef cmpNe(Expression left, Expression right) {
+	public static Expression cmpNe(Expression left, Expression right) {
 		return cmp(CompareOperation.NE, left, right);
 	}
 
@@ -229,19 +229,19 @@ public class Expressions {
 	 * @param predicateDefs list of the predicate
 	 * @return new instance of the PredicateDefAnd
 	 */
-	public static PredicateDef and(List<PredicateDef> predicateDefs) {
-		return new PredicateDefAnd(predicateDefs);
+	public static Expression and(List<Expression> predicateDefs) {
+		return new ExpressionBooleanAnd(predicateDefs);
 	}
 
-	public static PredicateDef and(Stream<PredicateDef> predicateDefs) {
+	public static Expression and(Stream<Expression> predicateDefs) {
 		return and(predicateDefs.collect(toList()));
 	}
 
-	public static PredicateDef and(PredicateDef... predicateDefs) {
+	public static Expression and(Expression... predicateDefs) {
 		return and(asList(predicateDefs));
 	}
 
-	public static PredicateDef and(PredicateDef predicate1, PredicateDef predicate2) {
+	public static Expression and(Expression predicate1, Expression predicate2) {
 		return and(asList(predicate1, predicate2));
 	}
 
@@ -251,19 +251,19 @@ public class Expressions {
 	 * @param predicateDefs list of the predicate
 	 * @return new instance of the PredicateDefOr
 	 */
-	public static PredicateDefOr or(List<PredicateDef> predicateDefs) {
-		return new PredicateDefOr(predicateDefs);
+	public static ExpressionBooleanOr or(List<Expression> predicateDefs) {
+		return new ExpressionBooleanOr(predicateDefs);
 	}
 
-	public static PredicateDefOr or(Stream<PredicateDef> predicateDefs) {
+	public static ExpressionBooleanOr or(Stream<Expression> predicateDefs) {
 		return or(predicateDefs.collect(toList()));
 	}
 
-	public static PredicateDefOr or(PredicateDef... predicateDefs) {
+	public static ExpressionBooleanOr or(Expression... predicateDefs) {
 		return or(asList(predicateDefs));
 	}
 
-	public static PredicateDefOr or(PredicateDef predicate1, PredicateDef predicate2) {
+	public static ExpressionBooleanOr or(Expression predicate1, Expression predicate2) {
 		return or(asList(predicate1, predicate2));
 	}
 
@@ -452,11 +452,11 @@ public class Expressions {
 		return new ExpressionArithmeticOp(ArithmeticOperation.REM, left, right);
 	}
 
-	public static Expression and(Expression left, Expression right) {
+	public static Expression bitwiseAnd(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.AND, left, right);
 	}
 
-	public static Expression or(Expression left, Expression right) {
+	public static Expression bitwiseOr(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.OR, left, right);
 	}
 
@@ -511,7 +511,7 @@ public class Expressions {
 		return new ExpressionCall(owner, methodName, arguments);
 	}
 
-	public static Expression ifThenElse(PredicateDef condition, Expression left, Expression right) {
+	public static Expression ifThenElse(Expression condition, Expression left, Expression right) {
 		return new ExpressionIf(condition, left, right);
 	}
 
@@ -535,12 +535,12 @@ public class Expressions {
 		return new ExpressionArrayGet(array, nom);
 	}
 
-	public static PredicateDef isNull(Expression field) {
-		return new ExpressionCmpNull(field);
+	public static Expression isNull(Expression field) {
+		return new ExpressionIsNull(field);
 	}
 
-	public static PredicateDef isNotNull(Expression field) {
-		return new ExpressionCmpNotNull(field);
+	public static Expression isNotNull(Expression field) {
+		return new ExpressionIsNotNull(field);
 	}
 
 	public static Expression nullRef(Class<?> type) {
