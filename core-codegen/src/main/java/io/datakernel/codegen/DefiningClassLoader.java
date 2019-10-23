@@ -16,7 +16,11 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static java.util.Collections.singletonList;
@@ -28,14 +32,19 @@ import static java.util.stream.Collectors.groupingBy;
  * Represents a loader for defining dynamically generated classes.
  * Also contains cache, that speeds up loading of classes, which have the same structure as the ones already loaded.
  */
+@SuppressWarnings("WeakerAccess")
 public final class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
+
+	private final AtomicInteger definedClasses = new AtomicInteger();
+
+	private final Map<@NotNull ClassKey, Class<?>> cachedClasses = new HashMap<>();
 
 	public static final class ClassKey {
 		private final Class<?> superclass;
 		private final Set<Class<?>> interfaces;
 		private final List<Object> parameters;
 
-		ClassKey(Class<?> superclass, Set<Class<?>> interfaces, List<Object> parameters) {
+		public ClassKey(Class<?> superclass, Set<Class<?>> interfaces, List<Object> parameters) {
 			this.superclass = superclass;
 			this.interfaces = interfaces;
 			this.parameters = parameters;
@@ -57,8 +66,6 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 		}
 	}
 
-	private final Map<ClassKey, Class<?>> definedClasses = new HashMap<>();
-
 	// region builders
 	private DefiningClassLoader() {
 	}
@@ -72,31 +79,45 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 	public static DefiningClassLoader create(ClassLoader parent) {return new DefiningClassLoader(parent);}
 	// endregion
 
-	public Class<?> defineClass(ClassKey key, String className, byte[] bytecode) {
+	public Class<?> defineClass(String className, byte[] bytecode) {
 		Class<?> definedClass = defineClass(className, bytecode, 0, bytecode.length);
-		definedClasses.put(key, definedClass);
+		definedClasses.incrementAndGet();
 		return definedClass;
 	}
 
-	Class<?> getClassByKey(ClassKey key) {
-		return definedClasses.get(key);
+	synchronized public Class<?> defineAndCacheClass(@Nullable ClassKey key, String className, byte[] bytecode) {
+		Class<?> definedClass = defineClass(className, bytecode);
+		if (key != null) {
+			cachedClasses.put(key, definedClass);
+		}
+		return definedClass;
+	}
+
+	@Nullable
+	synchronized public Class<?> getCachedClass(@NotNull ClassKey key) {
+		return cachedClasses.get(key);
 	}
 
 	// jmx
 	@Override
-	public int getDefinedClassesCount() {
-		return definedClasses.size();
+	synchronized public int getDefinedClassesCount() {
+		return cachedClasses.size();
 	}
 
 	@Override
-	synchronized public Map<String, Long> getDefinedClassesCountByType() {
-		return definedClasses.keySet().stream()
+	synchronized public int getCachedClassesCount() {
+		return cachedClasses.size();
+	}
+
+	@Override
+	synchronized public Map<String, Long> getCachedClassesCountByType() {
+		return cachedClasses.keySet().stream()
 				.map(key -> concat(singletonList(key.superclass), key.interfaces).toString())
 				.collect(groupingBy(identity(), counting()));
 	}
 
 	@Override
 	public String toString() {
-		return "{classes=" + definedClasses.size() + ", byType=" + getDefinedClassesCountByType() + '}';
+		return "{classes=" + cachedClasses.size() + ", byType=" + getCachedClassesCountByType() + '}';
 	}
 }

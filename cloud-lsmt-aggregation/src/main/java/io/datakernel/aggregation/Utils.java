@@ -155,7 +155,7 @@ public class Utils {
 				throw new RuntimeException(e);
 			}
 		}
-		return SerializerBuilder.create(classLoader).build(serializer);
+		return SerializerBuilder.create(classLoader).withClassKey(recordClass, keys.keySet(), fields.keySet()).build(serializer);
 	}
 
 	public static <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,

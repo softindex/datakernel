@@ -52,11 +52,12 @@ import static java.util.Arrays.asList;
  */
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public final class SerializerBuilder {
-	private final DefiningClassLoader definingClassLoader;
+	private final DefiningClassLoader classLoader;
 	private String profile;
 	private int version = Integer.MAX_VALUE;
 	private Path saveBytecodePath;
 	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_3;
+	private Object[] classKey = null;
 
 	private final Map<Class<?>, SerializerDefBuilder> typeMap = new LinkedHashMap<>();
 	private final Map<Class<? extends Annotation>, Class<? extends Annotation>> annotationsExMap = new LinkedHashMap<>();
@@ -73,8 +74,8 @@ public final class SerializerBuilder {
 
 	private final Helper helper = this::createSubclassesSerializer;
 
-	private SerializerBuilder(DefiningClassLoader definingClassLoader) {
-		this.definingClassLoader = definingClassLoader;
+	private SerializerBuilder(DefiningClassLoader classLoader) {
+		this.classLoader = classLoader;
 	}
 
 	public static SerializerBuilder create(ClassLoader classLoader) {
@@ -203,6 +204,11 @@ public final class SerializerBuilder {
 
 	public SerializerBuilder withProfile(String profile) {
 		this.profile = profile;
+		return this;
+	}
+
+	public SerializerBuilder withClassKey(Object... classKeyParameters) {
+		this.classKey = classKeyParameters;
 		return this;
 	}
 
@@ -767,7 +773,7 @@ public final class SerializerBuilder {
 	private BinarySerializer<?> buildImpl(SerializerDef serializer, int serializeVersion) {
 		checkArgument(serializeVersion >= 0, "serializerVersion is negative");
 
-		ClassBuilder<BinarySerializer<?>> classBuilder = ClassBuilder.create(definingClassLoader, BinarySerializer.class);
+		ClassBuilder<BinarySerializer> classBuilder = ClassBuilder.create(classLoader, BinarySerializer.class).withClassKey(classKey);
 		if (saveBytecodePath != null) {
 			classBuilder.withBytecodeSaveDir(saveBytecodePath);
 		}
@@ -808,7 +814,7 @@ public final class SerializerBuilder {
 		return classBuilder.buildClassAndCreateNewInstance();
 	}
 
-	private void defineEncoder(ClassBuilder<BinarySerializer<?>> classBuilder, SerializerDef serializer, @Nullable Integer currentVersion) {
+	private void defineEncoder(ClassBuilder<?> classBuilder, SerializerDef serializer, @Nullable Integer currentVersion) {
 		classBuilder.withMethod("encode", int.class, asList(byte[].class, int.class, Object.class),
 				let(arg(1),
 						pos -> sequence(
@@ -816,7 +822,7 @@ public final class SerializerBuilder {
 										writeVarInt(arg(0), pos, value(currentVersion)) :
 										sequence(),
 
-								serializer.encoder(definingClassLoader,
+								serializer.encoder(classLoader,
 										staticEncoders(classBuilder),
 										arg(0),
 										pos,
@@ -827,7 +833,7 @@ public final class SerializerBuilder {
 		);
 	}
 
-	private void defineDecoders(ClassBuilder<BinarySerializer<?>> classBuilder, SerializerDef serializer, List<Integer> allVersions) {
+	private void defineDecoders(ClassBuilder<?> classBuilder, SerializerDef serializer, List<Integer> allVersions) {
 		Integer latestVersion = getLatestVersion(allVersions);
 		if (latestVersion == null) {
 			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
@@ -861,7 +867,7 @@ public final class SerializerBuilder {
 		}
 	}
 
-	private static SerializerDef.StaticEncoders staticEncoders(ClassBuilder<BinarySerializer<?>> classBuilder) {
+	private static SerializerDef.StaticEncoders staticEncoders(ClassBuilder<?> classBuilder) {
 		return new SerializerDef.StaticEncoders() {
 			@Override
 			public Expression define(Class<?> valueClazz, Expression buf, Variable pos, Expression value, Expression method) {
@@ -881,7 +887,7 @@ public final class SerializerBuilder {
 		};
 	}
 
-	private static StaticDecoders staticDecoders(ClassBuilder<BinarySerializer<?>> classBuilder, @Nullable Integer version) {
+	private static StaticDecoders staticDecoders(ClassBuilder<?> classBuilder, @Nullable Integer version) {
 		return new StaticDecoders() {
 			@Override
 			public Expression define(Class<?> valueClazz, Expression in, Expression method) {

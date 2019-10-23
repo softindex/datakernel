@@ -43,8 +43,7 @@ public class CodeGenSerializerDefByteBufferTestX {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
+		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
 				.build(ByteBuffer.class);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
@@ -60,8 +59,7 @@ public class CodeGenSerializerDefByteBufferTestX {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
+		BinarySerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
 				.withSerializer(ByteBuffer.class, new SerializerDefByteBuffer(true))
 				.build(ByteBuffer.class);
 
@@ -80,8 +78,7 @@ public class CodeGenSerializerDefByteBufferTestX {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
 
-		BinarySerializer<ByteBuffer> serializer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
+		BinarySerializer<ByteBuffer> serializer = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
 				.build(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -105,8 +102,7 @@ public class CodeGenSerializerDefByteBufferTestX {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
 
-		BinarySerializer<ByteBuffer> serializer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
+		BinarySerializer<ByteBuffer> serializer = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
 				.withSerializer(ByteBuffer.class, new SerializerDefByteBuffer(true))
 				.build(ByteBuffer.class);
 
@@ -150,8 +146,7 @@ public class CodeGenSerializerDefByteBufferTestX {
 
 		TestByteBufferData testBuffer1 = new TestByteBufferData(ByteBuffer.wrap(array, 10, 2));
 
-		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
+		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
 				.build(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
@@ -172,8 +167,7 @@ public class CodeGenSerializerDefByteBufferTestX {
 
 		TestByteBufferData testBuffer1 = new TestByteBufferData(ByteBuffer.wrap(array, 10, 100));
 
-		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder
-				.create(ClassLoader.getSystemClassLoader())
+		BinarySerializer<TestByteBufferData> serializer = SerializerBuilder.create(ClassLoader.getSystemClassLoader())
 				.withSerializer(ByteBuffer.class, new SerializerDefByteBuffer(true))
 				.build(TestByteBufferData.class);
 

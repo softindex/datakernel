@@ -27,8 +27,7 @@ public final class FixedSizeFieldsExample {
 
 	@SuppressWarnings("SameParameterValue")
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<T> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.build(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}

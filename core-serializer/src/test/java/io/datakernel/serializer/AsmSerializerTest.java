@@ -914,21 +914,17 @@ public class AsmSerializerTest {
 	@Test
 	public void testProfilesVersions() {
 		Class<TestDataProfiles2> type = TestDataProfiles2.class;
-		BinarySerializer<TestDataProfiles2> serializer1 = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer1 = SerializerBuilder.create(getSystemClassLoader())
 				.withVersion(1)
 				.build(type);
-		BinarySerializer<TestDataProfiles2> serializer2 = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer2 = SerializerBuilder.create(getSystemClassLoader())
 				.withVersion(2)
 				.build(type);
 
-		BinarySerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder
-				.create("profile", getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder.create("profile", getSystemClassLoader())
 				.withVersion(1)
 				.build(type);
-		BinarySerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder
-				.create("profile", getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder.create("profile", getSystemClassLoader())
 				.withVersion(2)
 				.build(type);
 
@@ -1052,8 +1048,7 @@ public class AsmSerializerTest {
 		testData1.object1 = 10;
 		testData1.object2 = "object2";
 
-		BinarySerializer<TestDataExtraSubclasses> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataExtraSubclasses> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses("extraSubclasses1", Integer.class)
 				.build(TestDataExtraSubclasses.class);
 		TestDataExtraSubclasses testData2 = doTest(testData1, serializer, serializer);
@@ -1081,8 +1076,7 @@ public class AsmSerializerTest {
 		TestDataExtraSubclasses2 testData1 = new TestDataExtraSubclasses2();
 		testData1.i = 10;
 
-		BinarySerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses("extraSubclasses", TestDataExtraSubclasses2.class)
 				.build(TestDataExtraSubclassesInterface.class);
 		TestDataExtraSubclassesInterface testData2 = doTest(testData1, serializer, serializer);
@@ -1147,8 +1141,7 @@ public class AsmSerializerTest {
 		testData1.setDoubleValue(1.23);
 		testData1.setStringValue("test");
 
-		BinarySerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.build(TestInheritAnnotationsInterface3.class);
 		TestInheritAnnotationsInterface3 testData2 = doTest(testData1, serializer, serializer);
 
@@ -1156,8 +1149,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.getDoubleValue(), testData2.getDoubleValue(), Double.MIN_VALUE);
 		assertEquals(testData1.getStringValue(), testData2.getStringValue());
 
-		BinarySerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder.create(getSystemClassLoader())
 				.build(TestInheritAnnotationsInterfacesImpl.class);
 		TestInheritAnnotationsInterfacesImpl testData3 = doTest(testData1, serializer2, serializer2);
 

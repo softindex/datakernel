@@ -3,6 +3,7 @@ package io.datakernel.di;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
+import io.datakernel.di.module.Module;
 import io.datakernel.di.module.*;
 import io.datakernel.di.util.Constructors.Constructor0;
 import io.datakernel.di.util.Trie;

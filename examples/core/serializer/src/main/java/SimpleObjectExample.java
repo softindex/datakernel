@@ -30,8 +30,7 @@ public final class SimpleObjectExample {
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		//[START REGION_2]
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getContextClassLoader())
+		BinarySerializer<T> serializer = SerializerBuilder.create(getContextClassLoader())
 				.build(typeToken);
 		//[END REGION_2]
 		return serializeAndDeserialize(testData1, serializer, serializer);

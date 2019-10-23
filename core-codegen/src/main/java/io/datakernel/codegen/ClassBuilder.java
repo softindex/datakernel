@@ -20,6 +20,7 @@ import io.datakernel.codegen.DefiningClassLoader.ClassKey;
 import io.datakernel.codegen.utils.DefiningClassWriter;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.collection.CollectionUtils;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -48,7 +49,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
  *
  * @param <T> type of item
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked", "WeakerAccess", "unused"})
 public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -59,16 +60,17 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 	private final Class<?> superclass;
 	private final List<Class<?>> interfaces;
-	private ClassKey key;
+	@Nullable
+	private ClassKey classKey;
 	private Path bytecodeSaveDir;
-	private final Map<String, Object> staticConstants = new LinkedHashMap<>();
 
 	private String className;
-
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
 	private final Map<String, Class<?>> staticFields = new LinkedHashMap<>();
 	private final Map<Method, Expression> methods = new LinkedHashMap<>();
 	private final Map<Method, Expression> staticMethods = new LinkedHashMap<>();
+
+	private final Map<String, Object> staticConstants = new LinkedHashMap<>();
 
 	// region builders
 
@@ -82,7 +84,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		this.classLoader = classLoader;
 		this.superclass = superclass;
 		this.interfaces = types;
-		this.key = new ClassKey(superclass, new HashSet<>(interfaces), singletonList(new Object()));
+		this.classKey = null;
 	}
 
 	public static <T> ClassBuilder<T> create(DefiningClassLoader classLoader, Class<? super T> implementation, Class<?>... interfaces) {
@@ -107,8 +109,8 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		return this;
 	}
 
-	public ClassBuilder<T> withClassKey(Object... parameters) {
-		this.key = new ClassKey(superclass, new HashSet<>(interfaces), asList(parameters));
+	public ClassBuilder<T> withClassKey(Object... keyParameters) {
+		this.classKey = keyParameters != null ? new ClassKey(superclass, new HashSet<>(interfaces), asList(keyParameters)) : null;
 		return this;
 	}
 
@@ -219,37 +221,43 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 	// endregion
 	public Class<T> build() {
-		synchronized (classLoader) {
-			Class<?> cachedClass = classLoader.getClassByKey(key);
+		if (classKey != null) {
+			Class<?> cachedClass = classLoader.getCachedClass(classKey);
 
 			if (cachedClass != null) {
-				logger.trace("Fetching {} for key {} from cache", cachedClass, key);
 				return (Class<T>) cachedClass;
 			}
+		}
 
-			Class<T> newClass = defineNewClass(key);
+		byte[] bytecode = defineNewClass(className != null ? className : DEFAULT_CLASS_NAME + COUNTER.incrementAndGet());
+
+		synchronized (classLoader) {
+			if (classKey != null) {
+				Class<?> cachedClass = classLoader.getCachedClass(classKey);
+
+				if (cachedClass != null) {
+					return (Class<T>) cachedClass;
+				}
+			}
+
+			Class<T> definedClass = (Class<T>) classLoader.defineAndCacheClass(classKey, className, bytecode);
+
 			for (String staticField : staticConstants.keySet()) {
 				Object staticValue = staticConstants.get(staticField);
 				try {
-					Field field = newClass.getField(staticField);
+					Field field = definedClass.getField(staticField);
 					field.set(null, staticValue);
 				} catch (NoSuchFieldException | IllegalAccessException e) {
 					throw new AssertionError(e);
 				}
 			}
-			return newClass;
+
+			return definedClass;
 		}
 	}
 
-	private Class<T> defineNewClass(ClassKey key) {
+	private byte[] defineNewClass(String actualClassName) {
 		DefiningClassWriter cw = DefiningClassWriter.create(classLoader);
-
-		String actualClassName;
-		if (className == null) {
-			actualClassName = DEFAULT_CLASS_NAME + COUNTER.incrementAndGet();
-		} else {
-			actualClassName = className;
-		}
 
 		Type classType = getType('L' + actualClassName.replace('.', '/') + ';');
 
@@ -338,9 +346,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 		cw.visitEnd();
 
-		Class<?> definedClass = classLoader.defineClass(key, actualClassName, cw.toByteArray());
-		logger.trace("Defined new {} for key {}", definedClass, key);
-		return (Class<T>) definedClass;
+		return cw.toByteArray();
 	}
 
 	public T buildClassAndCreateNewInstance() {

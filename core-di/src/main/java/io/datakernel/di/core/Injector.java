@@ -1,6 +1,7 @@
 package io.datakernel.di.core;
 
 import io.datakernel.di.impl.*;
+import io.datakernel.di.module.Module;
 import io.datakernel.di.module.*;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
