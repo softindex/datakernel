@@ -223,10 +223,14 @@ public final class Utils {
 				} else {
 					sb.append('\t').append(key).append(" -> \"").append(getScopeId(depScope)).append(depKey.toString().replace("\"", "\\\"")).append('"');
 				}
+				sb.append(" [");
 				if (!dependency.isRequired()) {
-					sb.append(" [style=dashed]");
+					sb.append("style=dashed,");
 				}
-				sb.append(";\n");
+				if (dependency.isImplicit()) {
+					sb.append("color=gray");
+				}
+				sb.append("];\n");
 			}
 		}
 		for (Entry<Scope, Trie<Scope, Map<Key<?>, BindingInfo>>> entry : trie.getChildren().entrySet()) {

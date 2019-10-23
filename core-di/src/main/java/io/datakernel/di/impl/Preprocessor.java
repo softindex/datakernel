@@ -268,7 +268,7 @@ public final class Preprocessor {
 		// standard dfs with visited (black) and visiting (grey) sets
 		if (visiting.add(key)) {
 			for (Dependency dependency : binding.getDependencies()) {
-				if (!visited.contains(dependency.getKey())) {
+				if (!(visited.contains(dependency.getKey()) || dependency.isImplicit())) {
 					collectCycles(bindings, visited, visiting, cycles, dependency.getKey());
 				}
 			}

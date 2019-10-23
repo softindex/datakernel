@@ -15,7 +15,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import static io.datakernel.di.util.ReflectionUtils.generateInjectingInitializer;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singleton;
 
 /**
  * This module provides a set of default generators.
@@ -27,6 +28,7 @@ import static java.util.Collections.*;
  * <p>
  * The last two generate appropriate instances for {@link InstanceProvider} and {@link InstanceInjector} requests.
  */
+@SuppressWarnings("Convert2Lambda")
 public final class DefaultModule implements Module {
 	private static final Trie<Scope, Map<Key<?>, BindingSet<?>>> emptyTrie = Trie.leaf(new HashMap<>());
 	private static final Map<Class<?>, Set<BindingGenerator<?>>> generators = new HashMap<>();
@@ -47,7 +49,7 @@ public final class DefaultModule implements Module {
 						return null;
 					}
 					return new Binding<>(
-							emptySet(),
+							singleton(Dependency.implicit(instanceKey, true)),
 							(compiledBindings, threadsafe, scope, slot) ->
 									slot != null ?
 											new AbstractCompiledBinding<Object>(scope, slot) {
