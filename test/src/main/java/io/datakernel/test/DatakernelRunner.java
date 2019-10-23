@@ -1,12 +1,10 @@
 package io.datakernel.test;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Dependency;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.core.*;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.ReflectionUtils;
+import io.datakernel.di.util.Types;
 import io.datakernel.test.rules.LambdaStatement;
 import org.junit.After;
 import org.junit.Before;
@@ -112,21 +110,29 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 		Key<Object> self = Key.ofType(getTestClass().getJavaClass());
 
+		Key<InstanceInjector<Object>> instanceInjectorKey = Key.ofType(Types.parameterized(InstanceInjector.class, getTestClass().getJavaClass()));
+
 		currentInjector = Injector.of(currentModule, Module.create()
+				// scan the test class for @Provide's
 				.scan(instance)
 
-				// bind unusable private type and add all the extra dependencies to it so that injector knows about them
+				// bind unusable private type with all the extra dependencies so that injector knows about them
 				.bind(DependencyToken.class).to(Binding.<DependencyToken>to(() -> {
 					throw new AssertionError("should never be instantiated");
 				}).addDependencies(union(currentDependencies, staticDependencies)))
 
-				// bind test class to existing instance, and make it eager for the postInject
-				.bind(self).toInstance(instance).asEager()
-				// and make it post-injectable
-				.postInjectInto(self));
+				// bind test class to existing instance if whoever needs it (e.g. for implicit parameter of non-static inner classes)
+				.bind(self).toInstance(instance)
 
+				// and generate one of those to handle @Inject's
+				.bind(instanceInjectorKey));
+
+		// creating eager stuff right away
 		currentInjector.createEagerInstances();
-		currentInjector.postInjectInstances();
+
+		// and also actually handle the @Inject's
+		currentInjector.getInstance(instanceInjectorKey).injectInto(instance);
+
 		return instance;
 	}
 

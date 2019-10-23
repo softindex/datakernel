@@ -17,8 +17,10 @@
 package io.datakernel.launcher;
 
 import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.InstanceInjector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.util.Types;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
 import org.jetbrains.annotations.NotNull;
@@ -33,6 +35,7 @@ import java.util.concurrent.*;
 import static io.datakernel.di.util.Utils.makeGraphVizGraph;
 import static java.util.Collections.emptySet;
 import static java.util.Comparator.comparingInt;
+import static java.util.stream.Collectors.toSet;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -70,6 +73,8 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings({"WeakerAccess", "RedundantThrows", "unused"})
 public abstract class Launcher implements ConcurrentJmxMBean {
+	public static final Key<Set<InstanceInjector<?>>> INSTANCE_INJECTORS_KEY = new Key<Set<InstanceInjector<?>>>() {};
+
 	protected final Logger logger = getLogger(getClass());
 	protected final Logger logger0 = getLogger(getClass().getName() + ".0");
 
@@ -138,7 +143,7 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			Set<LauncherService> services = injector.getInstanceOr(new Key<Set<LauncherService>>() {}, emptySet());
 			Set<LauncherService> startedServices = new HashSet<>();
 
-			logger0.info("Post-inject instances: " + injector.postInjectInstances());
+			logger0.info("Post-injected instances: " + postInjectInstances(injector));
 
 			logger.info("=== STARTING APPLICATION");
 			try {
@@ -197,6 +202,18 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 			instantOfComplete = Instant.now();
 			completeLatch.countDown();
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private Set<Key<?>> postInjectInstances(Injector injector) {
+		Set<InstanceInjector<?>> postInjectors = injector.getInstanceOr(INSTANCE_INJECTORS_KEY, emptySet());
+		for (InstanceInjector<?> instanceInjector : postInjectors) {
+			Object instance = injector.peekInstance(instanceInjector.key());
+			if (instance != null) {
+				((InstanceInjector<Object>) instanceInjector).injectInto(instance);
+			}
+		}
+		return postInjectors.stream().map(InstanceInjector::key).collect(toSet());
 	}
 
 	private void startServices(Collection<LauncherService> services, Collection<LauncherService> startedServices) throws Throwable {
@@ -266,7 +283,8 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 				.bind(Launcher.class).to(launcherClass)
 				.bind(launcherClass).toInstance(this)
 
-				.postInjectInto(launcherClass)
+				.bindIntoSet(INSTANCE_INJECTORS_KEY.getTypeParameter(0), Key.ofType(Types.parameterized(InstanceInjector.class, launcherClass)))
+
 				.bind(completionStageKey.named(OnStart.class)).toInstance(onStartFuture)
 				.bind(completionStageKey.named(OnRun.class)).toInstance(onRunFuture)
 				.bind(completionStageKey.named(OnComplete.class)).toInstance(onCompleteFuture)

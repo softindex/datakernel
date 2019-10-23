@@ -22,9 +22,9 @@ import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.module.BindingType.*;
 import static io.datakernel.di.util.Utils.getScopeDisplayString;
 import static io.datakernel.di.util.Utils.next;
-import static java.util.Collections.*;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
 
 /**
  * Injector is the main working component of the DataKernel DI.
@@ -39,8 +39,6 @@ import static java.util.stream.Collectors.toSet;
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class Injector {
-	public static final Key<Set<InstanceInjector<?>>> INSTANCE_INJECTORS_KEY = new Key<Set<InstanceInjector<?>>>() {};
-
 	private static final class ScopeLocalData {
 		final Scope[] scope;
 		final Map<Key<?>, BindingInfo> bindingInfo;
@@ -407,25 +405,6 @@ public final class Injector {
 		for (CompiledBinding<?> compiledBinding : scopeDataTree.get().eagerSingletons) {
 			compiledBinding.getInstance(scopeCaches, -1);
 		}
-	}
-
-	/**
-	 * The key of type Set&lt;InstanceInjector&lt;?&gt;&gt; (note the wildcard type) is treated specially by this method,
-	 * it calls all of the instance injectors the set contains on instances of their respective keys, if such instances
-	 * were already made by this injector.
-	 *
-	 * @see ModuleBuilder#postInjectInto(Key)
-	 */
-	@SuppressWarnings("unchecked")
-	public Set<Key<?>> postInjectInstances() {
-		Set<InstanceInjector<?>> postInjectors = getInstanceOr(INSTANCE_INJECTORS_KEY, emptySet());
-		for (InstanceInjector<?> instanceInjector : postInjectors) {
-			Object instance = peekInstance(instanceInjector.key());
-			if (instance != null) {
-				((InstanceInjector<Object>) instanceInjector).injectInto(instance);
-			}
-		}
-		return postInjectors.stream().map(InstanceInjector::key).collect(toSet());
 	}
 
 	/**

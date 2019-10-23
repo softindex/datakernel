@@ -62,7 +62,7 @@ public abstract class Key<T> {
 	}
 
 	/**
-	 * A default sublass to be used by {@link #of Key.of*} and {@link #ofType Key.ofType*} constructors
+	 * A default subclass to be used by {@link #of Key.of*} and {@link #ofType Key.ofType*} constructors
 	 */
 	private static final class KeyImpl<T> extends Key<T> {
 		private KeyImpl(Type type, Name name) {
@@ -172,7 +172,7 @@ public abstract class Key<T> {
 	/**
 	 * Returns a type parameter of the underlying type wrapped as a key with no name.
 	 *
-	 * @throws IllegalStateException when undelying type is not a parameterized one.
+	 * @throws IllegalStateException when underlying type is not a parameterized one.
 	 */
 	public <U> Key<U> getTypeParameter(int index) {
 		if (type instanceof ParameterizedType) {

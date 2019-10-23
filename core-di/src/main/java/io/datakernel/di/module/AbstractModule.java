@@ -210,21 +210,6 @@ public abstract class AbstractModule implements Module {
 		bindIntoSet(setOf, Binding.toInstance(element));
 	}
 
-	/**
-	 * @see ModuleBuilder#postInjectInto(Key)
-	 */
-	protected final <T> void postInjectInto(Key<T> key) {
-		checkState(builder != null, "Cannot post inject into something before or after configure() call");
-		builder.postInjectInto(key);
-	}
-
-	/**
-	 * @see ModuleBuilder#postInjectInto(Key)
-	 */
-	protected final <T> void postInjectInto(Class<T> type) {
-		postInjectInto(Key.of(type));
-	}
-
 	protected final void scan(Object object) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
 		builder.scan(object);

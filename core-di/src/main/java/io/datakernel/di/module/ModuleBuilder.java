@@ -124,27 +124,6 @@ public interface ModuleBuilder extends Module {
 	}
 
 	/**
-	 * @see #postInjectInto(Key)
-	 */
-	default ModuleBuilder postInjectInto(Class<?> type) {
-		return postInjectInto(Key.of(type));
-	}
-
-	/**
-	 * {@link #bindIntoSet(Key, Key) Binds into set} a key of instance injector for given type at a {@link Injector#postInjectInstances special}
-	 * key Set&lt;InstanceInjector&lt;?&gt;&gt;.
-	 * <p>
-	 * Instance injector bindings are {@link DefaultModule generated automatically}.
-	 *
-	 * @see Injector#postInjectInstances
-	 */
-	default ModuleBuilder postInjectInto(Key<?> key) {
-		Key<InstanceInjector<?>> instanceInjectorKey = Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName());
-		bind(instanceInjectorKey); // so that its location is set to this module
-		return bindIntoSet(new Key<InstanceInjector<?>>() {}, instanceInjectorKey);
-	}
-
-	/**
 	 * Adds a {@link BindingTransformer transformer} with a given priority to this module.
 	 */
 	<E> ModuleBuilder transform(int priority, BindingTransformer<E> bindingTransformer);
