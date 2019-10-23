@@ -131,7 +131,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> eagerly() {
+	public ModuleBuilderBinder<T> asEager() {
 		BindingDesc current = ensureCurrent();
 		checkState(current.getType() == COMMON, "Binding was already set to eager or transient");
 		current.setType(EAGER);
@@ -139,7 +139,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> transiently() {
+	public ModuleBuilderBinder<T> asTransient() {
 		BindingDesc current = ensureCurrent();
 		checkState(current.getType() == COMMON, "Binding was already set to transient or eager");
 		current.setType(TRANSIENT);

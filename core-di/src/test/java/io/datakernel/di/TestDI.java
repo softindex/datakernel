@@ -79,7 +79,7 @@ public final class TestDI {
 		AtomicInteger mut = new AtomicInteger();
 
 		Injector injector = Injector.of(Module.create()
-				.bind(String.class).to(() -> "str_" + mut.incrementAndGet()).eagerly()
+				.bind(String.class).to(() -> "str_" + mut.incrementAndGet()).asEager()
 				.bind(Object.class).to(() -> "whatever"));
 
 		injector.createEagerInstances();
@@ -1408,7 +1408,7 @@ public final class TestDI {
 	public void transientMap() {
 		AtomicInteger mut = new AtomicInteger();
 		Injector injector = Injector.of(Module.create()
-						.bind(PostConstructed.class).to(() -> new PostConstructed("str_" + mut.incrementAndGet())).transiently(),
+						.bind(PostConstructed.class).to(() -> new PostConstructed("str_" + mut.incrementAndGet())).asTransient(),
 				new PostConstructModule());
 
 		PostConstructed instance1 = injector.getInstance(PostConstructed.class);
@@ -1426,9 +1426,9 @@ public final class TestDI {
 	public void transientBinding() {
 		AtomicInteger mut = new AtomicInteger();
 		Injector injector = Injector.of(Module.create()
-				.bind(Integer.class).to(mut::incrementAndGet).transiently()
+				.bind(Integer.class).to(mut::incrementAndGet).asTransient()
 				.bind(String.class, "fixed").to(i -> "str_" + i, Integer.class)
-				.bind(String.class).to(i -> "str_" + i, Integer.class).transiently());
+				.bind(String.class).to(i -> "str_" + i, Integer.class).asTransient());
 
 		assertEquals(5, Stream.generate(() -> injector.getInstance(Integer.class)).limit(5).collect(toSet()).size());
 		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "fixed"))).limit(5).collect(toSet()).size());
@@ -1445,7 +1445,7 @@ public final class TestDI {
 					counter.incrementAndGet();
 					return "str_";
 				})
-				.bind(Integer.class).to(mut::incrementAndGet).transiently()
+				.bind(Integer.class).to(mut::incrementAndGet).asTransient()
 				.scan(new Object() {
 
 					@Provides
@@ -1476,10 +1476,10 @@ public final class TestDI {
 
 		Injector injector = Injector.of(Module.create()
 
-				.bind(stringListKey).transiently()
+				.bind(stringListKey).asTransient()
 				.bind(stringSetKey)
 
-				.bind(String.class).transiently()
+				.bind(String.class).asTransient()
 
 				.generate(String.class, (bindings, scope, key) ->
 						Binding.to(() -> "str_" + mut.incrementAndGet()))
@@ -1505,7 +1505,7 @@ public final class TestDI {
 		AtomicInteger mut = new AtomicInteger();
 
 		Injector injector = Injector.of(Module.create()
-				.bind(String.class).transiently()
+				.bind(String.class).asTransient()
 				.bind(String.class, "nt")
 				.generate(String.class, (bindings, scope, key) ->
 						Binding.to(() -> "str_" + mut.incrementAndGet())));
@@ -1523,13 +1523,13 @@ public final class TestDI {
 		Key<Set<String>> setKeyNt = setKey.named("nt");
 
 		Injector injector = Injector.of(Module.create()
-				.bind(setKey).to(constructor).transiently()
+				.bind(setKey).to(constructor).asTransient()
 				.bind(setKey).toInstance(singleton("other one"))
 
 				.bind(setKeyNt).to(constructor)
 				.bind(setKeyNt).toInstance(singleton("other one"))
 
-				.bind(new Key<Set<String>>() {}).transiently()
+				.bind(new Key<Set<String>>() {}).asTransient()
 
 				.multibindToSet(String.class)
 				.multibindToSet(Key.of(String.class, "nt")));

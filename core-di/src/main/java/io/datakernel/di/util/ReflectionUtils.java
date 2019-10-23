@@ -436,10 +436,10 @@ public final class ReflectionUtils {
 						binder.export();
 					}
 					if (isEager) {
-						binder.eagerly();
+						binder.asEager();
 					}
 					if (isTransient) {
-						binder.transiently();
+						binder.asTransient();
 					}
 					continue;
 				}
@@ -495,10 +495,10 @@ public final class ReflectionUtils {
 					setBinder.export();
 				}
 				if (isEager) {
-					setBinder.eagerly();
+					setBinder.asEager();
 				}
 				if (isTransient) {
-					setBinder.transiently();
+					setBinder.asTransient();
 				}
 				builder.multibind(setKey, Multibinder.toSet());
 			}

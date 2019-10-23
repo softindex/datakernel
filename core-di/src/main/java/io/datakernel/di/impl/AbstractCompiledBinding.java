@@ -2,7 +2,7 @@ package io.datakernel.di.impl;
 
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
-public abstract class AbstractCompiledBinding<R> extends CompiledBinding<R> {
+public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 	protected final int scope;
 
 	protected final int index;

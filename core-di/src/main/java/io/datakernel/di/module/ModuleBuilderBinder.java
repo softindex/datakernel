@@ -231,10 +231,10 @@ public interface ModuleBuilderBinder<T> extends ModuleBuilder {
 	 * <p>
 	 * Note that bindings cannot be both {@link Eager eager} and {@link Transient transient}.
 	 */
-	ModuleBuilderBinder<T> eagerly();
+	ModuleBuilderBinder<T> asEager();
 
 	/**
 	 * Marks this binding as {@link Transient transient}.
 	 */
-	ModuleBuilderBinder<T> transiently();
+	ModuleBuilderBinder<T> asTransient();
 }

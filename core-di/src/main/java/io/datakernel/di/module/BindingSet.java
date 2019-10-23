@@ -11,7 +11,7 @@ import java.util.Set;
 /**
  * This class represents a set of bindings for the same key.
  * It also contains the {@link BindingType} - it is mostly used for plain binds with extra calls,
- * such as {@link ModuleBuilderBinder#transiently transient} or {@link ModuleBuilderBinder#eagerly eager}.
+ * such as {@link ModuleBuilderBinder#asTransient transient} or {@link ModuleBuilderBinder#asEager eager}.
  * <p>
  * Note that one of the bindings itself may still be transient while the type of the set is {@link BindingType#COMMON COMMON},
  * this case should be handled properly (e.g. {@link Multibinder#toSet toSet()} multibinder is transient if at least one of its peers is transient).

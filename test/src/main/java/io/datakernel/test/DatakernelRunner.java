@@ -121,7 +121,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 				}).addDependencies(union(currentDependencies, staticDependencies)))
 
 				// bind test class to existing instance, and make it eager for the postInject
-				.bind(self).toInstance(instance).eagerly()
+				.bind(self).toInstance(instance).asEager()
 				// and make it post-injectable
 				.postInjectInto(self));
 
