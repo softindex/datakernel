@@ -31,7 +31,6 @@ import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.ConnectException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -40,7 +39,7 @@ import java.time.Duration;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.test.TestUtils.getFreePort;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertSame;
 
 public final class RpcNoServerTest {
 	@ClassRule
@@ -137,7 +136,7 @@ public final class RpcNoServerTest {
 					.whenComplete(($, e) -> {
 						if (e != null) {
 							System.err.println(e.getMessage());
-							assertTrue(e instanceof ConnectException); // connectTimeout
+							assertSame(e, RpcClient.START_EXCEPTION); // connectTimeout
 						}
 					})
 					.thenEx(($1, $2) -> rpcClient.stop())
