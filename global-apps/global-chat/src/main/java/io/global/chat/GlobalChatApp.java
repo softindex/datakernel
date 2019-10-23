@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
@@ -62,8 +63,7 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.util.CollectionUtils.concat;
-import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
-import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
+import static io.global.chat.Utils.*;
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toMap;
@@ -150,12 +150,13 @@ public final class GlobalChatApp extends Launcher {
 
 	@Provides
 	GlobalPmDriver<String> callsPMDriver(GlobalPmNode node) {
-		return new GlobalPmDriver<>(node, STRING_CODEC);
+		return GlobalPmDriver.create(node, STRING_CODEC)
+				.withIdGenerator(() -> ThreadLocalRandom.current().nextLong(JS_MIN_SAFE_INTEGER, JS_MAX_SAFE_INTEGER));
 	}
 
 	@Provides
 	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode node) {
-		return new GlobalPmDriver<>(node, SHARED_REPO_MESSAGE_CODEC);
+		return GlobalPmDriver.create(node, SHARED_REPO_MESSAGE_CODEC);
 	}
 
 	@Provides

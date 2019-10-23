@@ -100,7 +100,7 @@ public final class GlobalPmDriverTest {
 	@Test
 	public void test() {
 		GlobalPmNode node = clientFactory.apply(FIRST_ID);
-		GlobalPmDriver<String> driver = new GlobalPmDriver<>(node, STRING_CODEC);
+		GlobalPmDriver<String> driver = GlobalPmDriver.create(node, STRING_CODEC);
 
 		Set<String> sent = new HashSet<>();
 

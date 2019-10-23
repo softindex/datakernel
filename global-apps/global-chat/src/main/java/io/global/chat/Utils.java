@@ -80,4 +80,8 @@ public final class Utils {
 		return new Message(DROP, dropCallOperation.getDropTimestamp(), callInfo.getPubKey(), content);
 	}
 
+	// https://www.ecma-international.org/ecma-262/6.0/#sec-number-objects
+	public static final Long JS_MAX_SAFE_INTEGER = (long) Math.pow(2, 53) - 1;
+	public static final Long JS_MIN_SAFE_INTEGER = -JS_MAX_SAFE_INTEGER;
+
 }

@@ -28,8 +28,7 @@ public final class PmClientServlet {
 						String mailbox = request.getPathParameter("mailbox");
 						T payload = fromJson(payloadCodec, request.getBody().asString(UTF_8));
 						return client.send(receiver, mailbox, payload)
-								.map(id -> HttpResponse.ok200()
-										.withPlainText(id.toString()));
+								.map(id -> HttpResponse.ok200());
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

@@ -92,7 +92,7 @@ public final class GlobalDocumentsApp extends Launcher {
 
 	@Provides
 	GlobalPmDriver<CreateSharedRepo> providePmDriver(GlobalPmNode node) {
-		return new GlobalPmDriver<>(node, SHARED_REPO_MESSAGE_CODEC);
+		return GlobalPmDriver.create(node, SHARED_REPO_MESSAGE_CODEC);
 	}
 
 	@Provides

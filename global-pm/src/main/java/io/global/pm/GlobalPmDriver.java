@@ -21,20 +21,33 @@ import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Supplier;
 
 import static io.datakernel.codec.StructuredCodecs.tuple;
 import static io.global.pm.util.BinaryDataFormats.RAW_MESSAGE_CODEC;
 
 public final class GlobalPmDriver<T> {
 	private static final StacklessException INVALID_SIGNATURE = new StacklessException("Received a message with invalid signature");
+	private static final Supplier<Long> DEFAULT_ID_GENERATOR = ThreadLocalRandom.current()::nextLong;
 
 	private final GlobalPmNode node;
 	private final StructuredCodec<Tuple2<PubKey, T>> codec;
 
-	public GlobalPmDriver(GlobalPmNode node, StructuredCodec<T> payloadCodec) {
+	private Supplier<Long> idGenerator = DEFAULT_ID_GENERATOR;
+
+	private GlobalPmDriver(GlobalPmNode node, StructuredCodec<T> payloadCodec) {
 		this.node = node;
 
 		codec = tuple(Tuple2::new, Tuple2::getValue1, BinaryDataFormats.PUB_KEY_CODEC, Tuple2::getValue2, payloadCodec);
+	}
+
+	public static <T> GlobalPmDriver<T> create(GlobalPmNode node, StructuredCodec<T> payloadCodec) {
+		return new GlobalPmDriver<>(node, payloadCodec);
+	}
+
+	public GlobalPmDriver<T> withIdGenerator(Supplier<Long> idGenerator) {
+		this.idGenerator = idGenerator;
+		return this;
 	}
 
 	private SignedData<RawMessage> encrypt(PrivKey sender, PubKey receiver, Long id, Long timestamp, @Nullable T payload) {
@@ -59,7 +72,7 @@ public final class GlobalPmDriver<T> {
 	}
 
 	public Promise<Void> send(PrivKey sender, PubKey receiver, String mailBox, T payload) {
-		long id = ThreadLocalRandom.current().nextLong();
+		long id = idGenerator.get();
 		long timestamp = System.currentTimeMillis();
 		return node.send(receiver, mailBox, encrypt(sender, receiver, id, timestamp, payload));
 	}
@@ -67,7 +80,7 @@ public final class GlobalPmDriver<T> {
 	public Promise<ChannelConsumer<T>> multisend(PrivKey sender, PubKey receiver, String mailBox) {
 		return node.upload(receiver, mailBox)
 				.map(consumer -> consumer.map(payload -> {
-					long id = ThreadLocalRandom.current().nextLong();
+					long id = idGenerator.get();
 					long timestamp = System.currentTimeMillis();
 					return encrypt(sender, receiver, id, timestamp, payload);
 				}));
