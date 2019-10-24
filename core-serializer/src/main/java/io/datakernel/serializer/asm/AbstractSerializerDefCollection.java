@@ -121,26 +121,4 @@ public abstract class AbstractSerializerDefCollection implements SerializerDef, 
 														voidExp())),
 										instance))));
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof AbstractSerializerDefCollection)) return false;
-		AbstractSerializerDefCollection that = (AbstractSerializerDefCollection) o;
-		if (nullable != that.nullable) return false;
-		if (!valueSerializer.equals(that.valueSerializer)) return false;
-		if (!collectionType.equals(that.collectionType)) return false;
-		if (!collectionImplType.equals(that.collectionImplType)) return false;
-		return elementType.equals(that.elementType);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = valueSerializer.hashCode();
-		result = 31 * result + collectionType.hashCode();
-		result = 31 * result + collectionImplType.hashCode();
-		result = 31 * result + elementType.hashCode();
-		result = 31 * result + (nullable ? 1 : 0);
-		return result;
-	}
 }

@@ -68,19 +68,4 @@ public class SerializerDefNullable implements SerializerDef {
 						serializer.decoder(classLoader, staticDecoders, in, serializer.getRawType(), version, compatibilityLevel),
 						nullRef(targetType)));
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefNullable that = (SerializerDefNullable) o;
-
-		return serializer.equals(that.serializer);
-	}
-
-	@Override
-	public int hashCode() {
-		return serializer.hashCode();
-	}
 }

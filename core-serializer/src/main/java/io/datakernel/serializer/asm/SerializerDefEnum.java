@@ -100,19 +100,4 @@ public class SerializerDefEnum implements SerializerDef, HasNullable {
 	public SerializerDef withNullable() {
 		return new SerializerDefEnum(enumType, true);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefEnum that = (SerializerDefEnum) o;
-
-		return nullable == that.nullable && enumType.equals(that.enumType);
-	}
-
-	@Override
-	public int hashCode() {
-		return 31 * enumType.hashCode() + (nullable ? 1 : 0);
-	}
 }

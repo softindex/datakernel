@@ -455,21 +455,4 @@ public class SerializerDefClass implements SerializerDef {
 				throw new IllegalArgumentException("Unsupported type " + type);
 		}
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		SerializerDefClass that = (SerializerDefClass) o;
-		if (!dataTypeIn.equals(that.dataTypeIn)) return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = dataTypeIn.hashCode();
-		return result;
-	}
-
 }

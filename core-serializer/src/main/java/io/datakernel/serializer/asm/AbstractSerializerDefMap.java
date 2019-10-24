@@ -126,33 +126,4 @@ public abstract class AbstractSerializerDefMap implements SerializerDef, HasNull
 														voidExp())),
 										instance))));
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (!(o instanceof AbstractSerializerDefMap)) return false;
-
-		AbstractSerializerDefMap that = (AbstractSerializerDefMap) o;
-
-		if (nullable != that.nullable) return false;
-		if (!keySerializer.equals(that.keySerializer)) return false;
-		if (!valueSerializer.equals(that.valueSerializer)) return false;
-		if (!mapType.equals(that.mapType)) return false;
-		if (!keyType.equals(that.keyType)) return false;
-		if (!valueType.equals(that.valueType)) return false;
-		if (!mapImplType.equals(that.mapImplType)) return false;
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = keySerializer.hashCode();
-		result = 31 * result + valueSerializer.hashCode();
-		result = 31 * result + (nullable ? 1 : 0);
-		result = 31 * result + mapType.hashCode();
-		result = 31 * result + keyType.hashCode();
-		result = 31 * result + valueType.hashCode();
-		result = 31 * result + mapImplType.hashCode();
-		return result;
-	}
 }

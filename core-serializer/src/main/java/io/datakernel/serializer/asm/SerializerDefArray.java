@@ -24,7 +24,6 @@ import io.datakernel.serializer.HasFixedSize;
 import io.datakernel.serializer.HasNullable;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Objects;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -164,30 +163,4 @@ public final class SerializerDefArray implements SerializerDef, HasNullable, Has
 												array)
 								)));
 	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefArray that = (SerializerDefArray) o;
-
-		if (fixedSize != that.fixedSize) return false;
-		if (nullable != that.nullable) return false;
-		if (!Objects.equals(valueSerializer, that.valueSerializer)) return false;
-		if (!Objects.equals(type, that.type)) return false;
-		return true;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = valueSerializer != null ? valueSerializer.hashCode() : 0;
-		result = 31 * result + fixedSize;
-		result = 31 * result + (type != null ? type.hashCode() : 0);
-		result = 31 * result + (nullable ? 1 : 0);
-		return result;
-	}
-
 }

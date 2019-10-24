@@ -73,15 +73,4 @@ public abstract class SerializerDefPrimitive implements SerializerDef {
 		Expression expression = doDeserialize(in, compatibilityLevel);
 		return targetType.isPrimitive() ? expression : cast(expression, getBoxedType());
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		return o != null && getClass() == o.getClass();
-	}
-
-	@Override
-	public int hashCode() {
-		return 0;
-	}
 }

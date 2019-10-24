@@ -133,22 +133,4 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 								})),
 						dataType));
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefSubclass that = (SerializerDefSubclass) o;
-
-		if (!dataType.equals(that.dataType)) return false;
-		return subclassSerializers.equals(that.subclassSerializers);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = dataType.hashCode();
-		result = 31 * result + subclassSerializers.hashCode();
-		return result;
-	}
 }

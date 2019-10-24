@@ -127,23 +127,4 @@ public class SerializerDefByteBuffer implements SerializerDef, HasNullable {
 	public SerializerDef withNullable() {
 		return new SerializerDefByteBuffer(wrapped, true);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefByteBuffer that = (SerializerDefByteBuffer) o;
-
-		if (wrapped != that.wrapped) return false;
-		return nullable == that.nullable;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = wrapped ? 1 : 0;
-		result = 31 * result + (nullable ? 1 : 0);
-		return result;
-	}
 }

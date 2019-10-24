@@ -93,20 +93,4 @@ public class SerializerDefSlice implements SerializerDef, HasNullable {
 	public SerializerDef withNullable() {
 		return new SerializerDefSlice(true);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefSlice that = (SerializerDefSlice) o;
-
-		return nullable == that.nullable;
-
-	}
-
-	@Override
-	public int hashCode() {
-		return nullable ? 1 : 0;
-	}
 }

@@ -124,22 +124,4 @@ public class SerializerDefString implements SerializerDef, HasNullable {
 				throw new AssertionError();
 		}
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefString that = (SerializerDefString) o;
-
-		if (nullable != that.nullable) return false;
-		return format == that.format;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = format != null ? format.hashCode() : 0;
-		result = 31 * result + (nullable ? 1 : 0);
-		return result;
-	}
 }

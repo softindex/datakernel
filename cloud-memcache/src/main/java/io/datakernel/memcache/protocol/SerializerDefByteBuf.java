@@ -135,23 +135,4 @@ public class SerializerDefByteBuf implements SerializerDef, HasNullable {
 		in.pos(in.pos() + length);
 		return result;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefByteBuf that = (SerializerDefByteBuf) o;
-
-		if (wrap != that.wrap) return false;
-		return nullable == that.nullable;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = (wrap ? 1 : 0);
-		result = 31 * result + (nullable ? 1 : 0);
-		return result;
-	}
 }
