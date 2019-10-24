@@ -246,8 +246,9 @@ public final class BinaryInput {
 		}
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
-			chars[i] = (char) ((readByte() << 8) + readByte());
+			chars[i] = (char) (short) (((array[pos + i * 2] & 0xFF) << 8) | (array[pos + i * 2 + 1] & 0xFF));
 		}
+		pos += length * 2;
 		return new String(chars, 0, length);
 	}
 

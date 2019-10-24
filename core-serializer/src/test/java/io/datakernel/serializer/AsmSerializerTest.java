@@ -736,10 +736,10 @@ public class AsmSerializerTest {
 	@Test
 	public void testSerializerStringFormat() {
 		TestDataSerializerFormat testData1 = new TestDataSerializerFormat();
-		testData1.stringsUtf16 = asList("abc", null, "123");
-		testData1.stringsUtf8 = asList("abc", null, "123");
-		testData1.stringsUtf8Custom = asList("abc", null, "123");
-		testData1.stringsIso88591 = asList("abc", null, "123");
+		testData1.stringsUtf16 = asList("Abc-äöß-Абв", null, "123");
+		testData1.stringsUtf8 = asList("Abc-äöß-Абв", null, "123");
+		testData1.stringsUtf8Custom = asList("Abc-äöß-Абв", null, "123");
+		testData1.stringsIso88591 = asList("Abc-äöß", null, "123");
 
 		TestDataSerializerFormat testData2 = doTest(TestDataSerializerFormat.class, testData1);
 
