@@ -1,41 +1,39 @@
+package memcached;
+
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
-import io.datakernel.memcache.server.MemcacheServerModule;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-
-import java.util.concurrent.CompletionStage;
-
-import static io.datakernel.di.module.Modules.combine;
+import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
 
 //[START REGION_1]
 public class MemcacheLikeServer extends Launcher {
+	@Inject
+	WorkerPool.Instances<RpcServer> instances;
+
+	@Provides
+	WorkerPool workerPool(WorkerPools workerPools) {
+		return workerPools.createPool(3);
+	}
 
 	@Provides
 	Config config() {
 		return Config.create()
 				.with("memcache.buffers", "4")
-				.with("memcache.bufferCapacity", "256mb")
-				.with("server.listenAddresses", "localhost:9010")
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.with("memcache.bufferCapacity", "64mb");
 	}
-
-	@Inject
-	RpcServer memcacheServer;
 
 	@Override
 	protected Module getModule() {
-		return combine(ServiceGraphModule.create(),
-				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				MemcacheServerModule.create());
+		return Module.create()
+				.install(ServiceGraphModule.create())
+				.install(MemcacheMultiServerModule.create())
+				.install(WorkerPoolModule.create());
 	}
 
 	@Override

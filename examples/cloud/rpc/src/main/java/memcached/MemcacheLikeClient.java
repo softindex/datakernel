@@ -1,3 +1,5 @@
+package memcached;
+
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -16,7 +18,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.promise.Promises.sequence;
 import static java.util.stream.IntStream.range;
 
@@ -36,8 +37,7 @@ public class MemcacheLikeClient extends Launcher {
 	Config config() {
 		return Config.create()
 				.with("protocol.compression", "false")
-				.with("client.addresses", "localhost:9010, localhost:9020, localhost:9030")
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.with("client.addresses", "localhost:9000, localhost:9001, localhost:9002");
 	}
 
 	@Inject
@@ -48,11 +48,13 @@ public class MemcacheLikeClient extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return combine(ServiceGraphModule.create(),
-				ConfigModule.create()
+		return Module.create()
+				.install(ServiceGraphModule.create())
+				.install(MemcacheClientModule.create())
+				.install(ConfigModule.create()
 						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				MemcacheClientModule.create());
+						.rebindImport(new Key<CompletionStage<Void>>() {},
+								new Key<CompletionStage<Void>>(OnStart.class) {}));
 	}
 
 	@Override

@@ -1,3 +1,5 @@
+package memcached;
+
 import io.datakernel.memcache.client.RawMemcacheClient;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.promise.Promise;

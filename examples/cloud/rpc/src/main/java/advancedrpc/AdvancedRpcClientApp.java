@@ -1,4 +1,4 @@
-package rpcexample;
+package advancedrpc;
 
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
@@ -13,7 +13,7 @@ import java.util.concurrent.ExecutionException;
 
 import static java.util.stream.IntStream.range;
 
-public class RpcClientApp extends Launcher {
+public class AdvancedRpcClientApp extends Launcher {
 	@Inject
 	RpcClient client;
 
@@ -24,7 +24,7 @@ public class RpcClientApp extends Launcher {
 	protected Module getModule() {
 		return Module.create()
 				.install(ServiceGraphModule.create())
-				.install(RpcExampleClientModule.create());
+				.install(AdvancedRpcClientModule.create());
 	}
 
 	@Override
@@ -37,7 +37,7 @@ public class RpcClientApp extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		RpcClientApp app = new RpcClientApp();
+		AdvancedRpcClientApp app = new AdvancedRpcClientApp();
 		app.launch(args);
 	}
 }

@@ -1,4 +1,4 @@
-package rpcexample;
+package advancedrpc;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -16,12 +16,12 @@ import java.util.List;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 
-public class RpcExampleClientModule extends AbstractModule {
-	private RpcExampleClientModule() {
+public class AdvancedRpcClientModule extends AbstractModule {
+	private AdvancedRpcClientModule() {
 	}
 
-	public static RpcExampleClientModule create() {
-		return new RpcExampleClientModule();
+	public static AdvancedRpcClientModule create() {
+		return new AdvancedRpcClientModule();
 	}
 
 	@Provides
@@ -58,7 +58,7 @@ public class RpcExampleClientModule extends AbstractModule {
 	Config config() {
 		return Config.create()
 				.with("protocol.compression", "false")
-				.with("client.addresses", "localhost:9010, localhost:9020, localhost:9030, localhost:9040")
+				.with("client.addresses", "localhost:9000, localhost:9001, localhost:9002, localhost:9003")
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 }
