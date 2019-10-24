@@ -20,6 +20,7 @@ import io.datakernel.async.callback.Callback;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
@@ -32,6 +33,7 @@ import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.net.AsyncTcpSocketImpl;
 import io.datakernel.net.AsyncTcpSocketImpl.JmxInspector;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
@@ -82,6 +84,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
 	public static final MemSize DEFAULT_PACKET_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = ChannelSerializer.MAX_SIZE;
+	public static final StacklessException START_EXCEPTION = new StacklessException("Could not establish initial connection");
 
 	private Logger logger = getLogger(getClass());
 
@@ -104,16 +107,15 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private List<Class<?>> messageTypes;
 	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT.toMillis();
 	private long reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL.toMillis();
-	private boolean immediateStart;
+
+	private boolean forcedStart;
 
 	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private BinarySerializer<RpcMessage> serializer;
 
-	private RpcSender requestSender;
+	private RpcSender requestSender = new NoSenderAvailable();
 
-	@Nullable
-	private SettablePromise<Void> startPromise;
 	@Nullable
 	private SettablePromise<Void> stopPromise;
 
@@ -255,14 +257,20 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return this;
 	}
 
+	@Deprecated
+	public RpcClient withImmediateStart() {
+		// do nothing
+		return this;
+	}
+
 	/**
 	 * Starts client in case of absence of connections
 	 *
 	 * @return the RPC client, which starts regardless of connection
 	 * availability
 	 */
-	public RpcClient withImmediateStart() {
-		this.immediateStart = true;
+	public RpcClient withForcedStart() {
+		this.forcedStart = true;
 		return this;
 	}
 	// endregion
@@ -283,25 +291,20 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkNotNull(messageTypes, "Message types must be specified");
 
-		if (startPromise != null) return startPromise;
 		checkState(stopPromise == null);
-		checkState(requestSender == null);
 
 		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 
-		if (immediateStart) {
-			requestSender = nullToDefault(strategy.createSender(pool), new NoSenderAvailable());
-			return Promise.complete();
-		}
-
-		startPromise = new SettablePromise<>();
-
-		for (InetSocketAddress address : addresses) {
-			logger.info("Connecting: {}", address);
-			connect(address);
-		}
-
-		return startPromise;
+		return Promises.all(
+				addresses.stream()
+						.map(address -> {
+							logger.info("Connecting: {}", address);
+							return connect(address)
+									.thenEx(($, e) -> Promise.complete());
+						}))
+				.then($ -> !forcedStart && requestSender instanceof NoSenderAvailable ?
+						Promise.ofException(START_EXCEPTION) :
+						Promise.complete());
 	}
 
 	@NotNull
@@ -309,21 +312,20 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (stopPromise != null) return stopPromise;
-		checkState(startPromise == null);
 
 		stopPromise = new SettablePromise<>();
 		if (connections.size() == 0) {
 			stopPromise.set(null);
 			return stopPromise;
 		}
-		for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
+		for (RpcClientConnection connection : connections.values()) {
 			connection.shutdown();
 		}
 		return stopPromise;
 	}
 
-	private void connect(InetSocketAddress address) {
-		AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
+	private Promise<Void> connect(InetSocketAddress address) {
+		return AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
 				.whenResult(asyncTcpSocketImpl -> {
 					if (stopPromise != null) {
 						asyncTcpSocketImpl.close();
@@ -352,20 +354,14 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					connectsStatsPerAddress.get(address).successfulConnects++;
 
 					logger.info("Connection to {} established", address);
-					if (startPromise != null && !(requestSender instanceof NoSenderAvailable)) {
-						startPromise.set(null);
-						startPromise = null;
-					}
 				})
 				.whenException(e -> {
 					logger.warn("Connection {} failed: {}", address, e);
-					if (startPromise != null) {
-						startPromise.setException(e);
-						startPromise = null;
-					} else {
+					if (stopPromise == null) {
 						processClosedConnection(address);
 					}
-				});
+				})
+				.toVoid();
 	}
 
 	void removeConnection(InetSocketAddress address) {
