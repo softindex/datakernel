@@ -20,6 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.asm.SerializerExpressions.readChar;
 import static io.datakernel.serializer.asm.SerializerExpressions.writeChar;
 
@@ -30,11 +31,11 @@ public final class SerializerDefChar extends SerializerDefPrimitive {
 
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
-		return writeChar(byteArray, off, value);
+		return writeChar(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
 	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
-		return readChar(in);
+		return readChar(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 }

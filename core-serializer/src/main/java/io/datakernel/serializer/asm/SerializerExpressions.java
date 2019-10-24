@@ -72,16 +72,6 @@ public final class SerializerExpressions {
 		return writeByte(buf, pos, value);
 	}
 
-	public static Expression writeChar(Expression buf, Variable pos, Expression value) {
-		return jdkUnsafe != null ?
-				ensureRemaining(buf, pos, 2, sequence(
-						call(getUnsafe(), "putCharUnaligned",
-								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(true)),
-						set(pos, add(pos, value(2)))
-				)) :
-				set(pos, callStatic(BinaryOutputUtils.class, "writeChar", buf, pos, cast(value, char.class)));
-	}
-
 	public static Expression writeShort(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return jdkUnsafe != null ?
 				ensureRemaining(buf, pos, 2, sequence(
@@ -90,6 +80,16 @@ public final class SerializerExpressions {
 						set(pos, add(pos, value(2)))
 				)) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeShort" + (bigEndian ? "" : "LE"), buf, pos, cast(value, short.class)));
+	}
+
+	public static Expression writeChar(Expression buf, Variable pos, Expression value, boolean bigEndian) {
+		return jdkUnsafe != null ?
+				ensureRemaining(buf, pos, 2, sequence(
+						call(getUnsafe(), "putCharUnaligned",
+								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
+						set(pos, add(pos, value(2)))
+				)) :
+				set(pos, callStatic(BinaryOutputUtils.class, "writeChar" + (bigEndian ? "" : "LE"), buf, pos, cast(value, char.class)));
 	}
 
 	public static Expression writeInt(Expression buf, Variable pos, Expression value, boolean bigEndian) {
@@ -187,15 +187,15 @@ public final class SerializerExpressions {
 				call(in, "readShort" + (bigEndian ? "" : "LE"));
 	}
 
-	public static Expression readChar(Expression in) {
+	public static Expression readChar(Expression in, boolean bigEndian) {
 		return jdkUnsafe != null ?
 				let(call(getUnsafe(), "getCharUnaligned",
-						array(in), cast(add(value(byteArrayBaseOffset), pos(in)), long.class), value(true)),
+						array(in), cast(add(value(byteArrayBaseOffset), pos(in)), long.class), value(bigEndian)),
 						result -> sequence(
 								move(in, 2),
 								result)
 				) :
-				call(in, "readChar");
+				call(in, "readChar" + (bigEndian ? "" : "LE"));
 	}
 
 	public static Expression readInt(Expression in, boolean bigEndian) {

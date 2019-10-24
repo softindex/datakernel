@@ -121,8 +121,16 @@ public final class BinaryOutput {
 		pos = BinaryOutputUtils.writeUTF16(array, pos, s);
 	}
 
+	public void writeUTF16LE(String s) {
+		pos = BinaryOutputUtils.writeUTF16LE(array, pos, s);
+	}
+
 	public void writeUTF16Nullable(String s) {
 		pos = BinaryOutputUtils.writeUTF16Nullable(array, pos, s);
+	}
+
+	public void writeUTF16NullableLE(String s) {
+		pos = BinaryOutputUtils.writeUTF16NullableLE(array, pos, s);
 	}
 
 }

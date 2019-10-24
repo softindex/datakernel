@@ -258,6 +258,17 @@ public final class BinaryOutputUtils {
 		return off + length * 2;
 	}
 
+	public static int writeUTF16LE(byte[] buf, int off, String s) {
+		int length = s.length();
+		off = writeVarInt(buf, off, length);
+		for (int i = 0; i < length; i++) {
+			char v = s.charAt(i);
+			buf[off + i * 2] = (byte) v;
+			buf[off + i * 2 + 1] = (byte) (v >>> 8);
+		}
+		return off + length * 2;
+	}
+
 	public static int writeUTF16Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			buf[off] = (byte) 0;
@@ -269,6 +280,21 @@ public final class BinaryOutputUtils {
 			char v = s.charAt(i);
 			buf[off + i * 2] = (byte) (v >>> 8);
 			buf[off + i * 2 + 1] = (byte) v;
+		}
+		return off + length * 2;
+	}
+
+	public static int writeUTF16NullableLE(byte[] buf, int off, String s) {
+		if (s == null) {
+			buf[off] = (byte) 0;
+			return off + 1;
+		}
+		int length = s.length();
+		off = writeVarInt(buf, off, length + 1);
+		for (int i = 0; i < length; i++) {
+			char v = s.charAt(i);
+			buf[off + i * 2] = (byte) v;
+			buf[off + i * 2 + 1] = (byte) (v >>> 8);
 		}
 		return off + length * 2;
 	}

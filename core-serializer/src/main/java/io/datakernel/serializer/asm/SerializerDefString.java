@@ -28,6 +28,7 @@ import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Utils.of;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.StringFormat.UTF8;
 import static java.util.Collections.emptySet;
 
@@ -85,9 +86,10 @@ public class SerializerDefString implements SerializerDef, HasNullable {
 							callStatic(BinaryOutputUtils.class, "writeUTF8Nullable", buf, pos, string) :
 							callStatic(BinaryOutputUtils.class, "writeUTF8", buf, pos, string);
 				case UTF16:
+					String LE = compatibilityLevel.compareTo(LEVEL_3_LE) < 0 ? "" : "LE";
 					return nullable ?
-							callStatic(BinaryOutputUtils.class, "writeUTF16Nullable", buf, pos, string) :
-							callStatic(BinaryOutputUtils.class, "writeUTF16", buf, pos, string);
+							callStatic(BinaryOutputUtils.class, "writeUTF16Nullable" + LE, buf, pos, string) :
+							callStatic(BinaryOutputUtils.class, "writeUTF16" + LE, buf, pos, string);
 				case UTF8_MB3:
 					return nullable ?
 							callStatic(BinaryOutputUtils.class, "writeUTF8mb3Nullable", buf, pos, string) :
@@ -110,9 +112,10 @@ public class SerializerDefString implements SerializerDef, HasNullable {
 						call(in, "readUTF8Nullable") :
 						call(in, "readUTF8");
 			case UTF16:
+				String LE = compatibilityLevel.compareTo(LEVEL_3_LE) < 0 ? "" : "LE";
 				return nullable ?
-						call(in, "readUTF16Nullable") :
-						call(in, "readUTF16");
+						call(in, "readUTF16Nullable" + LE) :
+						call(in, "readUTF16" + LE);
 			case UTF8_MB3:
 				return nullable ?
 						call(in, "readUTF8mb3Nullable") :

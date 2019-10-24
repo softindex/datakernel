@@ -89,6 +89,12 @@ public final class BinaryInput {
 		return c;
 	}
 
+	public char readCharLE() {
+		char c = (char) (array[pos] & 0xFF | (array[pos + 1] & 0xFF) << 8);
+		pos += 2;
+		return c;
+	}
+
 	public int readInt() {
 		//noinspection PointlessBitwiseExpression
 		int result = 0 |
@@ -344,6 +350,19 @@ public final class BinaryInput {
 		return new String(chars, 0, length);
 	}
 
+	public String readUTF16LE() {
+		int length = readVarInt();
+		if (length == 0) {
+			return "";
+		}
+		char[] chars = new char[length];
+		for (int i = 0; i < length; i++) {
+			chars[i] = (char) (array[pos + i * 2] & 0xFF | (array[pos + i * 2 + 1] & 0xFF) << 8);
+		}
+		pos += length * 2;
+		return new String(chars, 0, length);
+	}
+
 	@Nullable
 	public String readUTF16Nullable() {
 		int length = readVarInt();
@@ -357,6 +376,24 @@ public final class BinaryInput {
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			chars[i] = (char) ((array[pos + i * 2] & 0xFF) << 8 | array[pos + i * 2 + 1] & 0xFF);
+		}
+		pos += length * 2;
+		return new String(chars, 0, length);
+	}
+
+	@Nullable
+	public String readUTF16NullableLE() {
+		int length = readVarInt();
+		if (length == 0) {
+			return null;
+		}
+		length--;
+		if (length == 0) {
+			return "";
+		}
+		char[] chars = new char[length];
+		for (int i = 0; i < length; i++) {
+			chars[i] = (char) (array[pos + i * 2] & 0xFF | (array[pos + i * 2 + 1] & 0xFF) << 8);
 		}
 		pos += length * 2;
 		return new String(chars, 0, length);
