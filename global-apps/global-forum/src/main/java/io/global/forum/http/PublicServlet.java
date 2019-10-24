@@ -34,8 +34,7 @@ import java.util.Set;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
 import static io.datakernel.http.HttpHeaders.REFERER;
-import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.util.CollectionUtils.map;
@@ -182,7 +181,7 @@ public final class PublicServlet {
 					CommDao commDao = request.getAttachment(CommDao.class);
 
 					return commDao.generateThreadId()
-							.then(id -> commDao.getThreads().put(id, new ThreadMetadata("<unnamed>", 0))
+							.then(id -> commDao.getThreads().put(id, ThreadMetadata.of("<unnamed>", 0))
 									.map($ -> id))
 							.then(tid -> {
 								ThreadDao threadDao = commDao.getThreadDao(tid);
@@ -197,7 +196,7 @@ public final class PublicServlet {
 												String title = getPostParameter(paramsMap, "title", 120);
 												String content = getPostParameter(paramsMap, "content", 4000);
 
-												return commDao.getThreads().put(tid, new ThreadMetadata(title, Instant.now().toEpochMilli()))
+												return commDao.getThreads().put(tid, ThreadMetadata.of(title, Instant.now().toEpochMilli()))
 														.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
 														.then($2 -> threadDao.updateRating(userId, "root", Rating.LIKE))
 														.map($2 -> redirect302("/" + tid));
@@ -275,9 +274,55 @@ public final class PublicServlet {
 	private static AsyncServlet threadServlet(MustacheTemplater templater) {
 		return RoutingServlet.create()
 				.map(GET, "/", postViewServlet(templater))
+				.map("/*", threadOperations())
 				.map(GET, "/:postID/", postViewServlet(templater))
 				.map("/:postID/*", postOperations(templater))
 				.then(attachThreadDao());
+	}
+
+	private static AsyncServlet threadOperations() {
+		return RoutingServlet.create()
+				.map(POST, "/rename", request -> {
+					String tid = request.getPathParameter("threadID");
+					CommDao commDao = request.getAttachment(CommDao.class);
+					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
+					UserId userId = request.getAttachment(UserId.class);
+					UserRole userRole = request.getAttachment(UserRole.class);
+
+					return threadDao.getPost("root")
+							.then(post -> {
+								if (!userRole.isPrivileged() && !post.getAuthor().equals(userId)) {
+									return Promise.ofException(HttpException.ofCode(403, "Not privileged"));
+								}
+								if (post == null) {
+									return Promise.ofException(HttpException.ofCode(500, "No root post"));
+								}
+								try {
+									String title = getPostParameter(request.getPostParameters(), "title", 120);
+									return threadDao.getThreadMetadata()
+											.then(threadMeta -> commDao.getThreads().put(tid, ThreadMetadata.of(title, threadMeta.getLastUpdate())));
+								} catch (ParseException e) {
+									return Promise.ofException(e);
+								}
+							})
+							.map($2 -> redirect302("/" + tid));
+				})
+				.map(DELETE, "/", request -> {
+					String tid = request.getPathParameter("threadID");
+					CommDao commDao = request.getAttachment(CommDao.class);
+					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
+					UserId userId = request.getAttachment(UserId.class);
+					UserRole userRole = request.getAttachment(UserRole.class);
+
+					return threadDao.getPost("root")
+							.then(post -> {
+								if (!userRole.isPrivileged() && !post.getAuthor().equals(userId)) {
+									return Promise.ofException(HttpException.ofCode(403, "Not privileged"));
+								}
+								return commDao.getThreads().remove(tid);
+							})
+							.map($2 -> redirect302("/" + tid));
+				});
 	}
 
 	private static HttpResponse redirectToLogin(HttpRequest request) {

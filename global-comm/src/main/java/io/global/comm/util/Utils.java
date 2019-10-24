@@ -39,7 +39,7 @@ public final class Utils {
 						throw new ParseException(e);
 					}
 				}, InetAddress::getAddress))
-				.with(ThreadMetadata.class, tuple(ThreadMetadata::new,
+				.with(ThreadMetadata.class, tuple(ThreadMetadata::parse,
 						ThreadMetadata::getTitle, STRING_CODEC,
 						ThreadMetadata::getLastUpdate, LONG_CODEC))
 				.with(UserId.class, registry -> tuple(UserId::new,

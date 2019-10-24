@@ -4,7 +4,7 @@ public final class ThreadMetadata {
 	private final String title;
 	private final long lastUpdate;
 
-	public ThreadMetadata(String title, long lastUpdate) {
+	private ThreadMetadata(String title, long lastUpdate) {
 		this.title = title;
 		this.lastUpdate = lastUpdate;
 	}
@@ -15,6 +15,10 @@ public final class ThreadMetadata {
 
 	public ThreadMetadata updated(long timestamp) {
 		return new ThreadMetadata(title, timestamp);
+	}
+
+	public static ThreadMetadata parse(String title, long lastUpdate) {
+		return new ThreadMetadata(title, lastUpdate);
 	}
 
 	public String getTitle() {

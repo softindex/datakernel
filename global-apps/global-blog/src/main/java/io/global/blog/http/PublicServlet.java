@@ -149,7 +149,7 @@ public final class PublicServlet {
 					UserId userId = request.getAttachment(UserId.class);
 					CommDao commDao = request.getAttachment(CommDao.class);
 					return commDao.generateThreadId()
-							.then(id -> commDao.getThreads().put(id, new ThreadMetadata("<unnamed>", 0))
+							.then(id -> commDao.getThreads().put(id, ThreadMetadata.of("<unnamed>", 0))
 									.map($ -> id))
 							.then(tid -> {
 								ThreadDao threadDao = commDao.getThreadDao(tid);
@@ -193,7 +193,7 @@ public final class PublicServlet {
 										String title = params.get("title");
 										return validate(title, 120, "Title", true)
 												.then($ -> request.getAttachment(CommDao.class)
-														.getThreads().put(request.getPathParameter("threadID"), new ThreadMetadata(title, 0))
+														.getThreads().put(request.getPathParameter("threadID"), ThreadMetadata.of(title, 0))
 														.map($1 -> HttpResponse.ok200()));
 									} catch (ParseException e) {
 										return Promise.ofException(new ParseException("Illegal arguments", e));

@@ -10,7 +10,7 @@ window.onload = () => {
   }
 
   function addPostCallbacks($element) {
-    // region handle deleting and restoring
+    // region * handle deleting and restoring
     $element.find('[data-post]').click(e => {
       let element = $(e.target.dataset.post);
 
@@ -24,8 +24,8 @@ window.onload = () => {
     });
     // endregion
 
-    // region handle editing
-    $('[data-edit]').click((e) => {
+    // region * handle editing
+    $('[data-edit]').click(e => {
       let element = $(e.target.dataset.edit);
       let lineHeight = parseFloat(element.css('line-height'));
       let lines = Math.round(element.height() / lineHeight);
@@ -90,7 +90,7 @@ window.onload = () => {
     });
     // endregion
 
-    // region handle likes and dislikes
+    // region * handle likes and dislikes
     $element.find('.like').click(e => {
       let parent = $(e.target).parent();
       let prefix = parent.data('prefix');
@@ -139,7 +139,7 @@ window.onload = () => {
     });
     // endregion
 
-    // region handle replies
+    // region * handle replies
     $element.find('.post-button').click(e => {
       let postId = e.target.dataset.postId;
       let threadId = e.target.dataset.threadId;
@@ -178,7 +178,70 @@ window.onload = () => {
 
   addPostCallbacks($(document));
 
-  // region auto-submit forms when pressing ctrl+enter
+  //region * handle thread editing and deleting
+  let $title = $('#thread-title');
+  let $input = $('#thread-title-input');
+  let inputForm = $input.parent();
+
+  let $edit = $('#edit-thread');
+  let $cancel = $('#edit-thread-cancel');
+
+  let $delete = $('#delete-thread');
+  let $deleteConfirm = $('#delete-thread-confirm');
+  let $save = $('#edit-thread-save');
+
+  $edit.click(() => {
+    $title.addClass('d-none');
+    $input.val($title.text().trim());
+    $input.removeClass('d-none');
+
+    $edit.addClass('d-none');
+    $cancel.removeClass('d-none');
+
+    $delete.addClass('d-none');
+    $save.removeClass('d-none');
+  });
+
+  function cancelEditingThread() {
+    $title.removeClass('d-none');
+    $input.addClass('d-none');
+    inputForm.removeClass('was-validated');
+
+    $edit.removeClass('d-none');
+    $cancel.addClass('d-none');
+
+    $delete.removeClass('d-none');
+    $save.addClass('d-none');
+  }
+
+  $cancel.click(cancelEditingThread);
+
+  $save.click(() => {
+    let threadId = $save.data('threadId');
+
+    let renamed = $input.val();
+    if (renamed.length === 0 || renamed.length > 120) {
+      inputForm.submit();
+      return;
+    }
+
+    $title.text(renamed);
+
+    let params = new URLSearchParams();
+    params.append('title', renamed);
+    fetch('/' + threadId + '/rename', {method: 'POST', body: params})
+      .then(() => cancelEditingThread(), console.error);
+  });
+
+  $deleteConfirm.click(() => {
+    let threadId = $deleteConfirm.data('threadId');
+
+    fetch('/' + threadId, {method: 'DELETE'})
+      .then(() => location.href = '/', console.error);
+  });
+  // endregion
+
+  // region * auto-submit forms when pressing ctrl+enter
   $('[data-post-button]').keydown((e) => {
     if (e.keyCode === 13) {
       if (e.ctrlKey) {
@@ -189,7 +252,7 @@ window.onload = () => {
   });
   // endregion
 
-  // region store scroll position
+  // region * store scroll position
   $(window).on('beforeunload', () => localStorage.setItem('scroll', $(document).scrollTop()));
   let scroll = localStorage.getItem('scroll');
   if (scroll) {
@@ -197,7 +260,7 @@ window.onload = () => {
   }
   // endregion
 
-  // region imitating anchor-links without mandatory scroll-jumps and with yellowfade
+  // region * imitating anchor-links without mandatory scroll-jumps and with yellowfade
   function handleReferences($element) {
     $element.find('[data-post-reference]').on('click', e => {
       let post = $(e.target.dataset.postReference);
@@ -220,7 +283,7 @@ window.onload = () => {
   handleReferences($(document));
   // endregion
 
-  // region handle filenames in attachments
+  // region * handle filenames in attachments
   $('.custom-file input').change(() => {
     const thisElement = $(this)[0];
     const files = thisElement.files;
@@ -238,7 +301,7 @@ window.onload = () => {
   });
   // endregion
 
-  // region handle copy-on-click functionality
+  // region * handle copy-on-click functionality
   let autocopied = $('.autocopy');
   autocopied.popover({
     content: 'Copied to clipboard',
@@ -255,21 +318,21 @@ window.onload = () => {
   });
   // endregion
 
-  // region handle textarea focus when reply button is pressed
+  // region * handle textarea focus when reply button is pressed
   $('.collapse').on('show.bs.collapse', e => {
     let textarea = $(e.target).find('textarea');
     setTimeout(() => textarea.focus(), 0);
   });
   // endregion
 
-  // region configure datetimepicker
+  // region * configure datetimepicker
   $('.date').datetimepicker({
     format: 'HH:mm:ss/DD.MM.YYYY',
     useCurrent: false,
   });
   // endregion
 
-  // region check validity on form submit
+  // region * check validity on form submit
   $('.validate').submit(e => {
     let form = e.target;
     if (form.checkValidity() === false) {
