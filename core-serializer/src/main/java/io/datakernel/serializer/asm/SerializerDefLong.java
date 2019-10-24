@@ -49,21 +49,4 @@ public final class SerializerDefLong extends SerializerDefPrimitive {
 				readVarLong(in) :
 				readLong(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		SerializerDefLong that = (SerializerDefLong) o;
-
-		return varLength == that.varLength;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = 0;
-		result = 31 * result + (varLength ? 1 : 0);
-		return result;
-	}
 }

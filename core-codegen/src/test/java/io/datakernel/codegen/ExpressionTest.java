@@ -409,11 +409,11 @@ public class ExpressionTest {
 		long l = 4;
 
 		TestSH testClass = ClassBuilder.create(DefiningClassLoader.create(), TestSH.class)
-				.withMethod("shlInt", bitOp(BitOperation.SHL, value(b), value(i)))
-				.withMethod("shlLong", bitOp(BitOperation.SHL, value(l), value(b)))
-				.withMethod("shrInt", bitOp(BitOperation.SHR, value(b), value(i)))
-				.withMethod("shrLong", bitOp(BitOperation.SHR, value(l), value(i)))
-				.withMethod("ushrInt", bitOp(BitOperation.USHR, value(b), value(i)))
+				.withMethod("shlInt", shl(value(b), value(i)))
+				.withMethod("shlLong", shl(value(l), value(b)))
+				.withMethod("shrInt", shr(value(b), value(i)))
+				.withMethod("shrLong", shr(value(l), value(i)))
+				.withMethod("ushrInt", ushr(value(b), value(i)))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(testClass.shlInt(), b << i);
@@ -440,12 +440,12 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBitMask() {
 		TestBitMask testClass = ClassBuilder.create(DefiningClassLoader.create(), TestBitMask.class)
-				.withMethod("andInt", bitOp(BitOperation.AND, value(2), value(4)))
-				.withMethod("orInt", bitOp(BitOperation.OR, value(2), value(4)))
-				.withMethod("xorInt", bitOp(BitOperation.XOR, value(2), value(4)))
-				.withMethod("andLong", bitOp(BitOperation.AND, value(2), value(4L)))
-				.withMethod("orLong", bitOp(BitOperation.OR, value((byte) 2), value(4L)))
-				.withMethod("xorLong", bitOp(BitOperation.XOR, value(2L), value(4L)))
+				.withMethod("andInt", bitAnd(value(2), value(4)))
+				.withMethod("orInt", bitOr(value(2), value(4)))
+				.withMethod("xorInt", bitXor(value(2), value(4)))
+				.withMethod("andLong", bitAnd(value(2), value(4L)))
+				.withMethod("orLong", bitOr(value((byte) 2), value(4L)))
+				.withMethod("xorLong", bitXor(value(2L), value(4L)))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(testClass.andInt(), 2 & 4);

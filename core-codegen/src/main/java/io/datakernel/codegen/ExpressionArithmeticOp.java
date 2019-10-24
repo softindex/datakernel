@@ -35,7 +35,7 @@ final class ExpressionArithmeticOp implements Expression {
 		this.right = right;
 	}
 
-	public static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {
+	static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {
 		Class<?> resultType = null;
 		int maxOrder = 0;
 

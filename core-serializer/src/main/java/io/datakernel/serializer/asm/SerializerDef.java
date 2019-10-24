@@ -88,10 +88,4 @@ public interface SerializerDef {
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
 	Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
-
-	@Override
-	boolean equals(Object o);
-
-	@Override
-	int hashCode();
 }

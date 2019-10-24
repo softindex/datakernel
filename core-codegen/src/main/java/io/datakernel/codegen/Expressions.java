@@ -21,7 +21,6 @@ import org.objectweb.asm.Type;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.IntStream;
@@ -29,7 +28,6 @@ import java.util.stream.Stream;
 
 import static io.datakernel.codegen.ExpressionCast.SELF_TYPE;
 import static io.datakernel.codegen.ExpressionComparator.*;
-import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 import static org.objectweb.asm.Type.getType;
@@ -452,15 +450,15 @@ public class Expressions {
 		return new ExpressionArithmeticOp(ArithmeticOperation.REM, left, right);
 	}
 
-	public static Expression bitwiseAnd(Expression left, Expression right) {
+	public static Expression bitAnd(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.AND, left, right);
 	}
 
-	public static Expression bitwiseOr(Expression left, Expression right) {
+	public static Expression bitOr(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.OR, left, right);
 	}
 
-	public static Expression xor(Expression left, Expression right) {
+	public static Expression bitXor(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.XOR, left, right);
 	}
 
@@ -474,17 +472,6 @@ public class Expressions {
 
 	public static Expression ushr(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ArithmeticOperation.USHR, left, right);
-	}
-
-	public static Expression fold(BiFunction<Expression, Expression, Expression> fn, Expression... arguments) {
-		return fold(fn, asList(arguments));
-	}
-
-	public static Expression fold(BiFunction<Expression, Expression, Expression> fn, List<? extends Expression> arguments) {
-		checkArgument(!arguments.isEmpty());
-		return arguments.size() == 1 ?
-				arguments.get(0) :
-				fn.apply(arguments.get(0), fold(fn, arguments.subList(1, arguments.size())));
 	}
 
 	/**
@@ -619,14 +606,6 @@ public class Expressions {
 
 	public static Expression neg(Expression arg) {
 		return new ExpressionNeg(arg);
-	}
-
-	public static Expression bitOp(BitOperation op, Expression value, Expression shift) {
-		return new ExpressionBitOp(op, value, shift);
-	}
-
-	public static Expression bitOp(String op, Expression value, Expression shift) {
-		return new ExpressionBitOp(BitOperation.operation(op), value, shift);
 	}
 
 	public static Expression setListItem(Expression list, Expression index, Expression value) {

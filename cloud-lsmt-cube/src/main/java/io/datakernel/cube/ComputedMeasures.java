@@ -79,8 +79,6 @@ public class ComputedMeasures {
 			}
 			return E.unifyArithmeticTypes(types);
 		}
-
-
 	}
 
 	public static ComputedMeasure value(Object value) {
