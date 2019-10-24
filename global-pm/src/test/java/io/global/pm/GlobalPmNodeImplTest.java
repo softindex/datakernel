@@ -30,10 +30,11 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.util.CollectionUtils.concat;
 import static io.datakernel.util.CollectionUtils.set;
 import static io.global.pm.util.BinaryDataFormats.RAW_MESSAGE_CODEC;
 import static io.global.pm.util.BinaryDataFormats.REGISTRY;
-import static java.util.Collections.emptyList;
+import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -55,6 +56,7 @@ public final class GlobalPmNodeImplTest {
 	private GlobalPmNodeImpl master1;
 	private MessageStorage master2Storage;
 	private GlobalPmNodeImpl master2;
+	private FailingPmNode failing;
 	private DiscoveryService discoveryService;
 	private CurrentTimeProvider now;
 
@@ -67,8 +69,8 @@ public final class GlobalPmNodeImplTest {
 		intermediateStorage = new MapMessageStorage();
 		master1Storage = new MapMessageStorage();
 		master2Storage = new MapMessageStorage();
-		intermediate = createNode("intermediate", intermediateStorage);
 		now = CurrentTimeProvider.ofTimeSequence(10, 10);
+		intermediate = createNode("intermediate", intermediateStorage);
 		master1 = createNode("master1", master1Storage);
 		master2 = createNode("master2", master2Storage);
 		announceMasters();
@@ -150,6 +152,25 @@ public final class GlobalPmNodeImplTest {
 		assertNodes(set("test1", "test2", "test3"), node -> node.list(KEYS.getPubKey()));
 	}
 
+	@Test
+	public void testWithFailingNode() {
+		announceFailing();
+		assertEquals(emptySet(), await(intermediate.list(KEYS.getPubKey())));
+		SignedData<RawMessage> message = createMessage(1, false);
+		await(intermediate.send(KEYS.getPubKey(), "test", message));
+		assertEquals(singleton("test"), await(intermediate.list(KEYS.getPubKey())));
+		assertEquals(message, await(intermediate.poll(KEYS.getPubKey(), "test")));
+		List<SignedData<RawMessage>> messages = Arrays.asList(
+				createMessage(2, false),
+				createMessage(3, false),
+				createMessage(4, false),
+				createMessage(5, false)
+		);
+		await(ChannelSupplier.ofIterable(messages).streamTo(intermediate.upload(KEYS.getPubKey(), "test")));
+		List<SignedData<RawMessage>> received = await(ChannelSupplier.ofPromise(intermediate.download(KEYS.getPubKey(), "test")).toList());
+		assertEquals(concat(singletonList(message), messages), received);
+	}
+
 	private <T> void assertStorages(@Nullable T expected, Function<MessageStorage, Promise<T>> action) {
 		assertEquals(expected, await(action.apply(intermediateStorage)));
 		assertEquals(expected, await(action.apply(master1Storage)));
@@ -164,7 +185,17 @@ public final class GlobalPmNodeImplTest {
 
 	private void announceMasters() {
 		Set<RawServerId> rawServerIds = set(master1.getId(), master2.getId());
-		AnnounceData announceData = AnnounceData.of(0, rawServerIds);
+		doAnnounce(rawServerIds);
+	}
+
+	private void announceFailing() {
+		failing = new FailingPmNode();
+		Set<RawServerId> rawServerIds = singleton(new RawServerId("failing"));
+		doAnnounce(rawServerIds);
+	}
+
+	private void doAnnounce(Set<RawServerId> rawServerIds) {
+		AnnounceData announceData = AnnounceData.of(now.currentTimeMillis(), rawServerIds);
 		SignedData<AnnounceData> signedData = SignedData.sign(REGISTRY.get(AnnounceData.class), announceData, KEYS.getPrivKey());
 		await(discoveryService.announce(KEYS.getPubKey(), signedData));
 	}
@@ -175,6 +206,8 @@ public final class GlobalPmNodeImplTest {
 				return master1;
 			case "master2":
 				return master2;
+			case "failing":
+				return failing;
 			default:
 				throw new AssertionError();
 		}
@@ -184,7 +217,6 @@ public final class GlobalPmNodeImplTest {
 		return GlobalPmNodeImpl.create(new RawServerId(serverId), discoveryService, this::getNode, messageStorage)
 				.withUploadCaching(true)
 				.withUploadCall(2)
-				.withUploadSuccess(2)
 				.withLatencyMargin(Duration.ZERO)
 				.withCurrentTimeProvider(now);
 	}

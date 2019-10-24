@@ -149,21 +149,15 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	@Override
 	public Promise<@Nullable SignedData<RawKvItem>> get(PubKey space, String table, byte[] key) {
 		GlobalKvNamespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.then(masters -> ns.ensureRepository(table)
-						.then(repo -> {
-							if (isMasterFor(space)) {
-								return repo.storage.get(key);
+		return ns.ensureRepository(table)
+				.then(repo -> simpleMethod(space, master -> master.get(space, table, key)
+						.then(item -> {
+							if (item != null && doesDownloadCaching) {
+								return repo.storage.put(item)
+										.map($ -> item);
 							}
-							return Promises.firstSuccessful(masters.stream()
-									.map(node -> AsyncSupplier.cast(
-											doesDownloadCaching ?
-													() -> node.get(space, table, key)
-															.then(item ->
-																	repo.storage.put(item)
-																			.map($ -> item)) :
-													() -> node.get(space, table, key))));
-						}));
+							return Promise.of(item);
+						}), $ -> repo.storage.get(key)));
 	}
 
 	@Override

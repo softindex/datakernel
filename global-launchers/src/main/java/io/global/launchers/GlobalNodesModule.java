@@ -286,7 +286,7 @@ public class GlobalNodesModule extends AbstractModule {
 	@Provides
 	@Named("PM catch up")
 	EventloopTaskScheduler pmCatchUpScheduler(Eventloop eventloop, GlobalPmNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
+		return EventloopTaskScheduler.create(eventloop, node::catchUp)
 				.initialize(ofEventloopTaskScheduler(config.getChild("pm.catchUp")));
 	}
 

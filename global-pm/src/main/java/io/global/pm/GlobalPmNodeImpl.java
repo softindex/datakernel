@@ -14,6 +14,7 @@ import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
+import io.global.pm.GlobalPmNamespace.MailBox;
 import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.MessageStorage;
 import io.global.pm.api.RawMessage;
@@ -96,8 +97,9 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 		GlobalPmNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
+					MailBox box = ns.ensureMailBox(mailBox);
 					if (isMasterFor(space)) {
-						return ns.upload(mailBox);
+						return box.upload();
 					}
 					return nSuccessesOrLess(uploadCallNumber, masters.stream()
 							.map(master -> AsyncSupplier.cast(() -> master.upload(space, mailBox))))
@@ -109,7 +111,7 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 
 								RefBoolean localCompleted = new RefBoolean(false);
 								if (doesUploadCaching || consumers.isEmpty()) {
-									splitter.addOutput().set(ChannelConsumer.ofPromise(ns.upload(mailBox))
+									splitter.addOutput().set(ChannelConsumer.ofPromise(box.upload())
 											.withAcknowledgement(ack ->
 													ack.whenComplete(($, e) -> {
 														if (e == null) {
@@ -126,56 +128,53 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
 							});
 				});
-
 	}
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String mailBox, long timestamp) {
 		GlobalPmNamespace ns = ensureNamespace(space);
-		return ns.download(mailBox, timestamp)
-				.then(supplier -> {
-					if (supplier != null) {
-						return Promise.of(supplier);
-					}
-					return ns.ensureMasterNodes()
-							.then(masters -> {
-								if (isMasterFor(space) || masters.isEmpty()) {
-									return ns.download(mailBox, timestamp);
-								}
-								if (!doesDownloadCaching) {
-									return Promises.firstSuccessful(masters.stream()
-											.map(node -> AsyncSupplier.cast(() ->
-													node.download(space, mailBox, timestamp))));
-								}
-								return Promises.firstSuccessful(masters.stream()
-										.map(node -> AsyncSupplier.cast(() ->
-												Promises.toTuple(node.download(space, mailBox, timestamp), node.upload(space, mailBox))
-														.map(t -> {
-															ChannelSplitter<SignedData<RawMessage>> splitter = ChannelSplitter.create();
-															ChannelOutput<SignedData<RawMessage>> output = splitter.addOutput();
-															splitter.addOutput().set(t.getValue2());
-															splitter.getInput().set(t.getValue1());
-															return output.getSupplier();
-														}))));
-							});
-				});
+		MailBox box = ns.ensureMailBox(mailBox);
+		if (box.isCacheValid()) {
+			return box.download(timestamp);
+		}
+
+		return simpleMethod(space,
+				master -> master.download(space, mailBox, timestamp)
+						.map(supplier -> {
+							if (doesDownloadCaching) {
+								ChannelSplitter<SignedData<RawMessage>> splitter = ChannelSplitter.create();
+								ChannelOutput<SignedData<RawMessage>> output = splitter.addOutput();
+								splitter.addOutput().set(box.upload());
+								splitter.getInput().set(supplier);
+								return output.getSupplier();
+							}
+							return supplier;
+						}),
+				$ -> box.download(timestamp));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
 		GlobalPmNamespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.then(masters -> {
-					if (isMasterFor(space) || masters.isEmpty()) {
-						return ns.poll(mailBox);
-					}
-					return fetch(space).thenEx(($, e) -> ns.poll(mailBox));
-				});
+		MailBox box = ns.ensureMailBox(mailBox);
+		if (box.isCacheValid()) {
+			return box.poll();
+		}
+		return simpleMethod(space,
+				master -> master.poll(space, mailBox)
+						.then(message -> {
+							if (message != null && doesDownloadCaching) {
+								return storage.put(space, mailBox, message)
+										.map($ -> message);
+							}
+							return Promise.of(message);
+						}),
+				$ -> box.poll());
 	}
 
 	@Override
 	public Promise<Set<String>> list(PubKey space) {
-		return simpleMethod(space, node -> node.list(space), ns -> ns.list(space));
+		return simpleMethod(space, node -> node.list(space), GlobalPmNamespace::list);
 	}
 
 	public Promise<Void> fetch() {

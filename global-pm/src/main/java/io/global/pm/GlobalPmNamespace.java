@@ -11,72 +11,92 @@ import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNamespace, GlobalPmNodeImpl, GlobalPmNode> {
-	private Set<String> mailBoxes;
-	private long lastFetchTimestamp = 0;
-	private long lastPushTimestamp = 0;
+	private final Map<String, MailBox> mailBoxes = new HashMap<>();
+	private boolean listUpdated;
 
 	public GlobalPmNamespace(GlobalPmNodeImpl node, PubKey space) {
 		super(node, space);
 	}
 
-	public Promise<ChannelConsumer<SignedData<RawMessage>>> upload(String mailBox) {
-		return node.getStorage().upload(space, mailBox)
-				.whenResult($ -> {
-					if (mailBoxes != null) {
-						mailBoxes.add(mailBox);
-					}
+	public MailBox ensureMailBox(String mailBox) {
+		return mailBoxes.computeIfAbsent(mailBox, MailBox::new);
+	}
+
+	public Promise<Set<String>> list() {
+		if (listUpdated) {
+			return Promise.of(mailBoxes.keySet());
+		}
+		return node.getStorage().list(space)
+				.whenResult(list -> {
+					list.forEach(this::ensureMailBox);
+					listUpdated = true;
 				});
 	}
 
-	public Promise<ChannelSupplier<SignedData<RawMessage>>> download(String mailBox, long timestamp) {
-		return node.getStorage().download(space, mailBox, timestamp);
-	}
-
-	public Promise<@Nullable SignedData<RawMessage>> poll(String mailBox) {
-		return node.getStorage().poll(space, mailBox);
-	}
-
-	public Promise<Set<String>> list(PubKey space) {
-		if (mailBoxes != null) {
-			return Promise.of(mailBoxes);
-		}
-		return node.getStorage().list(space)
-				.whenResult(list -> mailBoxes = new HashSet<>(list));
-	}
-
 	public Promise<Void> fetch() {
-		long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
-		long fetchFromTimestamp = lastFetchTimestamp - node.getSyncMargin().toMillis();
 		return ensureMasterNodes()
 				.then(masters ->
 						Promises.all(masters.stream()
 								.map(master -> master.list(space)
 										.then(mailBoxes -> Promises.all(mailBoxes.stream()
-												.map(mailBox -> ChannelSupplier.ofPromise(master.download(space, mailBox, fetchFromTimestamp))
-														.streamTo(ChannelConsumer.ofPromise(node.getStorage().upload(space, mailBox)))
-														.whenResult($ -> {
-															if (this.mailBoxes != null) {
-																this.mailBoxes.add(mailBox);
-															}
-														})))))))
-				.whenResult($ -> lastFetchTimestamp = currentTimestamp);
+												.map(mailBox -> ensureMailBox(mailBox).fetch(master)))))));
 	}
 
 	public Promise<Void> push() {
-		long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
-		long pushFromTimestamp = lastPushTimestamp - node.getSyncMargin().toMillis();
 		return ensureMasterNodes()
 				.then(masters ->
 						Promises.all(masters
 								.stream()
-								.map(master -> Promises.all(node.getStorage().list(space)
-										.map(mailBoxes -> Promises.all(mailBoxes.stream()
-												.map(mailBox -> ChannelSupplier.ofPromise(node.getStorage().download(space, mailBox, pushFromTimestamp))
-														.streamTo(ChannelConsumer.ofPromise(master.upload(space, mailBox))))))))))
-				.whenResult($ -> lastPushTimestamp = currentTimestamp);
+								.map(master -> Promises.all(mailBoxes.values().stream()
+										.map(mailBox -> mailBox.push(master))))));
+	}
+
+	class MailBox {
+		private final String mailBox;
+		private long lastFetchTimestamp;
+		private long lastPushTimestamp;
+		private long cacheTimestamp;
+
+		MailBox(String mailBox) {
+			this.mailBox = mailBox;
+		}
+
+		Promise<ChannelConsumer<SignedData<RawMessage>>> upload() {
+			return node.getStorage().upload(space, mailBox)
+					.whenResult($ -> cacheTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
+		}
+
+		Promise<ChannelSupplier<SignedData<RawMessage>>> download(long timestamp) {
+			return node.getStorage().download(space, mailBox, timestamp);
+		}
+
+		Promise<@Nullable SignedData<RawMessage>> poll() {
+			return node.getStorage().poll(space, mailBox);
+		}
+
+		Promise<Void> fetch(GlobalPmNode from) {
+			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
+			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getSyncMargin().toMillis());
+			return ChannelSupplier.ofPromise(from.download(space, mailBox, fetchFromTimestamp))
+					.streamTo(upload())
+					.whenResult($ -> lastFetchTimestamp = currentTimestamp);
+		}
+
+		Promise<Void> push(GlobalPmNode to) {
+			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
+			long pushFromTimestamp = Math.max(0, lastPushTimestamp - node.getSyncMargin().toMillis());
+			return ChannelSupplier.ofPromise(node.getStorage().download(space, mailBox, pushFromTimestamp))
+					.streamTo(ChannelConsumer.ofPromise(to.upload(space, mailBox)))
+					.whenResult($ -> lastPushTimestamp = currentTimestamp);
+		}
+
+		boolean isCacheValid() {
+			return node.getCurrentTimeProvider().currentTimeMillis() - cacheTimestamp < node.getLatencyMargin().toMillis();
+		}
 	}
 }
