@@ -1,8 +1,10 @@
 package io.datakernel.di.core;
 
 import io.datakernel.di.impl.*;
+import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.di.module.*;
+import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
@@ -16,11 +18,11 @@ import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
 import static io.datakernel.di.core.BindingTransformer.IDENTITY;
 import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
+import static io.datakernel.di.core.BindingType.*;
 import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
-import static io.datakernel.di.module.BindingType.*;
 import static io.datakernel.di.util.Utils.getScopeDisplayString;
 import static io.datakernel.di.util.Utils.next;
 import static java.util.Collections.emptyMap;
@@ -411,18 +413,12 @@ public final class Injector {
 	/**
 	 * This method returns an instance only if it already was created by a {@link #getInstance} call before,
 	 * it does not trigger instance creation.
-	 * <p>
-	 * Note that an exception is thrown if no binding was bound for given key, use {@link #hasBinding(Key)} to check that
-	 * when dealing with statically-unproven keys.
 	 */
 	@Nullable
 	@SuppressWarnings("unchecked")
 	public <T> T peekInstance(@NotNull Key<T> key) {
 		Integer index = localSlotMapping.get(key);
-		if (index != null) {
-			return (T) scopeCaches[scopeCaches.length - 1].get(index);
-		}
-		throw DIException.noCachedBinding(key, getScope());
+		return index != null ? (T) scopeCaches[scopeCaches.length - 1].get(index) : null;
 	}
 
 	/**
@@ -437,18 +433,14 @@ public final class Injector {
 	 * This method checks if an instance for this key was created by a {@link #getInstance} call before.
 	 */
 	public boolean hasInstance(@NotNull Key<?> key) {
-		Integer index = localSlotMapping.get(key);
-		if (index != null) {
-			return scopeCaches[scopeCaches.length - 1].get(index) != null;
-		}
-		throw DIException.noCachedBinding(key, getScope());
+		return peekInstance(key) != null;
 	}
 
 	/**
 	 * @see #hasInstance(Key)
 	 */
 	public boolean hasInstance(@NotNull Class<?> type) {
-		return hasInstance(Key.of(type));
+		return peekInstance(type) != null;
 	}
 
 	/**
@@ -479,7 +471,7 @@ public final class Injector {
 		if (index == null) {
 			throw DIException.noCachedBinding(key, getScope());
 		}
-		scopeCaches[scopeCaches.length - 1].set(index, instance);
+		scopeCaches[scopeCaches.length - 1].lazySet(index, instance);
 	}
 
 	/**
@@ -490,12 +482,12 @@ public final class Injector {
 	}
 
 	@Nullable
-	public BindingInfo getBindingInfo(Class<?> type) {
-		return getBindingInfo(Key.of(type));
+	public BindingInfo getBinding(Class<?> type) {
+		return getBinding(Key.of(type));
 	}
 
 	@Nullable
-	public BindingInfo getBindingInfo(Key<?> key) {
+	public BindingInfo getBinding(Key<?> key) {
 		return scopeDataTree.get().bindingInfo.get(key);
 	}
 
@@ -514,21 +506,6 @@ public final class Injector {
 	}
 
 	/**
-	 * This method returns true only if a non-transient binding of given key was bound.
-	 */
-	public boolean hasCachedBinding(Key<?> key) {
-		BindingInfo info = scopeDataTree.get().bindingInfo.get(key);
-		return info != null && info.getType() != TRANSIENT;
-	}
-
-	/**
-	 * @see #hasCachedBinding(Key)
-	 */
-	public boolean hasCachedBinding(Class<?> type) {
-		return hasCachedBinding(Key.of(type));
-	}
-
-	/**
 	 * Creates an injector that operates on a binding graph at a given prefix (scope) of the binding graph trie and this injector as its parent.
 	 */
 	public Injector enterScope(@NotNull Scope scope) {
@@ -542,6 +519,15 @@ public final class Injector {
 
 	public Scope[] getScope() {
 		return scopeDataTree.get().scope;
+	}
+
+	/**
+	 * This method returns bindings for current scope
+	 * <p>
+	 * Note that this method expensive to call repeatedly
+	 */
+	public Map<Key<?>, BindingInfo> getBindings() {
+		return scopeDataTree.get().bindingInfo;
 	}
 
 	/**

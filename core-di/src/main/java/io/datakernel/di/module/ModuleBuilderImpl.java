@@ -12,8 +12,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.BindingType.*;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
-import static io.datakernel.di.module.BindingType.*;
 import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;

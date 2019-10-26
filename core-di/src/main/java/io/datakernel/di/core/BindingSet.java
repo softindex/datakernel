@@ -1,9 +1,6 @@
-package io.datakernel.di.module;
+package io.datakernel.di.core;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.DIException;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Multibinder;
+import io.datakernel.di.module.ModuleBuilderBinder;
 
 import java.util.HashSet;
 import java.util.Set;

@@ -1,7 +1,6 @@
 package io.datakernel.di.util;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.module.BindingSet;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -12,9 +11,9 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
 
+import static io.datakernel.di.core.BindingType.EAGER;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static io.datakernel.di.module.BindingType.EAGER;
-import static io.datakernel.di.module.BindingType.TRANSIENT;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 

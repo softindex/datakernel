@@ -1,11 +1,12 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.Binding;
+import io.datakernel.di.core.BindingType;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 
+import static io.datakernel.di.core.BindingType.COMMON;
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static io.datakernel.di.module.BindingType.COMMON;
 
 public final class BindingDesc {
 	private Key<?> key;

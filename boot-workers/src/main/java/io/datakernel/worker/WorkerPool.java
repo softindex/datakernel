@@ -27,7 +27,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import static io.datakernel.di.module.BindingType.TRANSIENT;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 

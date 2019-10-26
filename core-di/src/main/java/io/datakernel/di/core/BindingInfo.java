@@ -1,15 +1,14 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.module.BindingType;
-import io.datakernel.di.module.MarkedBinding;
 import io.datakernel.di.util.LocationInfo;
+import io.datakernel.di.util.MarkedBinding;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
-import static io.datakernel.di.module.BindingType.EAGER;
-import static io.datakernel.di.module.BindingType.TRANSIENT;
+import static io.datakernel.di.core.BindingType.EAGER;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 
 public final class BindingInfo {
 	private final Set<Dependency> dependencies;

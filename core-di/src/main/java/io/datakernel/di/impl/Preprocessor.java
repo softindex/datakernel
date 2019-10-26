@@ -1,10 +1,8 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.module.BindingSet;
-import io.datakernel.di.module.BindingType;
-import io.datakernel.di.module.MarkedBinding;
 import io.datakernel.di.module.UniqueNameImpl;
+import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;

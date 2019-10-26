@@ -2,7 +2,6 @@ package io.datakernel.di.core;
 
 import io.datakernel.di.impl.AbstractCompiledBinding;
 import io.datakernel.di.impl.CompiledBinding;
-import io.datakernel.di.module.BindingSet;
 import io.datakernel.di.util.Utils;
 
 import java.util.*;
@@ -12,7 +11,7 @@ import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.module.BindingType.TRANSIENT;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static java.util.stream.Collectors.joining;
 
 /**

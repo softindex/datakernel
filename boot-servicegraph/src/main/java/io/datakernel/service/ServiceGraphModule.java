@@ -47,7 +47,7 @@ import java.util.function.Supplier;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.common.collection.CollectionUtils.intersection;
-import static io.datakernel.di.module.BindingType.TRANSIENT;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.service.util.Utils.combineAll;
 import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
@@ -312,7 +312,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 	private void doStart(ServiceGraph serviceGraph, Injector injector) {
 		logger.trace("Initializing ServiceGraph ...");
 
-		WorkerPools workerPools = injector.hasCachedBinding(WorkerPools.class) ? injector.peekInstance(WorkerPools.class) : null;
+		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
 		List<WorkerPool> pools = workerPools != null ? workerPools.getWorkerPools() : emptyList();
 		Map<ServiceKey, List<?>> instances = new HashMap<>();
 		Map<ServiceKey, Set<ServiceKey>> instanceDependencies = new HashMap<>();
@@ -339,7 +339,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 										}
 										Injector container = scopedDependency.isScoped() ? pool.getScopeInjectors()[0] : injector;
 										Key<?> k = scopedDependency.get().getKey();
-										return container.hasCachedBinding(k) && container.hasInstance(k);
+										return container.hasInstance(k);
 									})
 									.map(scopedDependency -> scopedDependency.isScoped() ?
 											new ServiceKey(scopedDependency.get().getKey(), pool) :
@@ -354,7 +354,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 			Object instance = entry.getValue();
 			if (instance == null) continue;
 
-			BindingInfo bindingInfo = injector.getBindingInfo(key);
+			BindingInfo bindingInfo = injector.getBinding(key);
 
 			if (bindingInfo == null || bindingInfo.getType() == TRANSIENT) continue;
 
@@ -364,8 +364,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 					bindingInfo.getDependencies().stream()
 							.filter(dependency -> {
 								Key<?> k = dependency.getKey();
-								return dependency.isRequired() ||
-										(injector.hasCachedBinding(k) && injector.hasInstance(k));
+								return dependency.isRequired() || injector.hasInstance(k);
 							})
 							.map(dependency -> {
 								Class<?> dependencyRawType = dependency.getKey().getRawType();
