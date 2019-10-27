@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -236,10 +239,10 @@ public final class BinaryInput {
 		return Double.longBitsToDouble(readLong());
 	}
 
+	@NotNull
 	public String readUTF8() {
 		int length = readVarInt();
-		if (length == 0)
-			return "";
+		if (length == 0) return "";
 		pos += length;
 		return new String(array, pos - length, length, UTF_8);
 	}
@@ -247,21 +250,18 @@ public final class BinaryInput {
 	@Nullable
 	public String readUTF8Nullable() {
 		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
+		if (length == 0) return null;
 		length--;
-		if (length == 0)
-			return "";
+		if (length == 0) return "";
 		pos += length;
 		return new String(array, pos - length, length, UTF_8);
 	}
 
+	@NotNull
 	public String readIso88591() {
 		int length = readVarInt();
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readIso88591buf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			int c = array[pos + i] & 0xff;
@@ -274,35 +274,29 @@ public final class BinaryInput {
 	@Nullable
 	public String readIso88591Nullable() {
 		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
+		if (length == 0) return null;
 		length--;
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readIso88591buf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
-			int c = array[pos + i] & 0xff;
-			chars[i] = (char) c;
+			chars[i] = (char) (array[pos + i] & 0xff);
 		}
 		pos += length;
 		return new String(chars, 0, length);
 	}
 
+	@NotNull
 	public String readUTF8mb3() {
 		int length = readVarInt();
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readUTF8mb3buf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			byte b = array[pos++];
-			if (b >= 0) {
-				chars[i] = (char) b;
-			} else {
-				readUTF8mb3Char(chars, i, b & 0xFF);
-			}
+			chars[i] = b >= 0 ?
+					(char) b :
+					readUTF8mb3Char(b);
 		}
 		return new String(chars, 0, length);
 	}
@@ -310,38 +304,34 @@ public final class BinaryInput {
 	@Nullable
 	public String readUTF8mb3Nullable() {
 		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
+		if (length == 0) return null;
 		length--;
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readUTF8mb3buf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			byte b = array[pos++];
-			if (b >= 0) {
-				chars[i] = (char) b;
-			} else {
-				readUTF8mb3Char(chars, i, b & 0xFF);
-			}
+			chars[i] = b >= 0 ?
+					(char) b :
+					readUTF8mb3Char(b);
 		}
 		return new String(chars, 0, length);
 	}
 
-	private void readUTF8mb3Char(char[] chars, int i, int c) {
+	private char readUTF8mb3Char(byte b) {
+		int c = b & 0xFF;
 		if (c < 0xE0) {
-			chars[i] = (char) ((c & 0x1F) << 6 | array[pos++] & 0x3F);
+			return (char) ((c & 0x1F) << 6 | array[pos++] & 0x3F);
 		} else {
-			chars[i] = (char) ((c & 0x0F) << 12 | (array[pos++] & 0x3F) << 6 | (array[pos++] & 0x3F));
+			return (char) ((c & 0x0F) << 12 | (array[pos++] & 0x3F) << 6 | (array[pos++] & 0x3F));
 		}
 	}
 
+	@NotNull
 	public String readUTF16() {
 		int length = readVarInt();
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readUTF16buf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			chars[i] = (char) ((array[pos + i * 2] & 0xFF) << 8 | array[pos + i * 2 + 1] & 0xFF);
@@ -350,11 +340,11 @@ public final class BinaryInput {
 		return new String(chars, 0, length);
 	}
 
+	@NotNull
 	public String readUTF16LE() {
 		int length = readVarInt();
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readUTF16LEbuf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			chars[i] = (char) (array[pos + i * 2] & 0xFF | (array[pos + i * 2 + 1] & 0xFF) << 8);
@@ -366,13 +356,10 @@ public final class BinaryInput {
 	@Nullable
 	public String readUTF16Nullable() {
 		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
+		if (length == 0) return null;
 		length--;
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readUTF16buf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			chars[i] = (char) ((array[pos + i * 2] & 0xFF) << 8 | array[pos + i * 2 + 1] & 0xFF);
@@ -384,19 +371,72 @@ public final class BinaryInput {
 	@Nullable
 	public String readUTF16NullableLE() {
 		int length = readVarInt();
-		if (length == 0) {
-			return null;
-		}
+		if (length == 0) return null;
 		length--;
-		if (length == 0) {
-			return "";
-		}
+		if (length == 0) return "";
+		if (length >= 40) return readUTF16LEbuf(length);
 		char[] chars = new char[length];
 		for (int i = 0; i < length; i++) {
 			chars[i] = (char) (array[pos + i * 2] & 0xFF | (array[pos + i * 2 + 1] & 0xFF) << 8);
 		}
 		pos += length * 2;
 		return new String(chars, 0, length);
+	}
+
+	private static final AtomicReference<char[]> BUF = new AtomicReference<>(new char[256]);
+
+	@NotNull
+	private String readIso88591buf(int length) {
+		char[] chars = BUF.getAndSet(null);
+		if (chars == null || chars.length < length) chars = new char[length + length / 4];
+		for (int i = 0; i < length; i++) {
+			chars[i] = (char) (array[pos + i] & 0xff);
+		}
+		pos += length;
+		String s = new String(chars, 0, length);
+		BUF.lazySet(chars);
+		return s;
+	}
+
+	@NotNull
+	private String readUTF8mb3buf(int length) {
+		char[] chars = BUF.getAndSet(null);
+		if (chars == null || chars.length < length) chars = new char[length + length / 4];
+		for (int i = 0; i < length; i++) {
+			byte b = array[pos++];
+			chars[i] = b >= 0 ?
+					(char) b :
+					readUTF8mb3Char(b);
+		}
+		String s = new String(chars, 0, length);
+		BUF.lazySet(chars);
+		return s;
+	}
+
+	@NotNull
+	private String readUTF16buf(int length) {
+		char[] chars = BUF.getAndSet(null);
+		if (chars == null || chars.length < length) chars = new char[length + length / 4];
+		for (int i = 0; i < length; i++) {
+			chars[i] = (char) ((array[pos + i * 2] & 0xFF) << 8 | array[pos + i * 2 + 1] & 0xFF);
+		}
+		pos += length * 2;
+		String s = new String(chars, 0, length);
+		BUF.lazySet(chars);
+		return s;
+	}
+
+	@NotNull
+	private String readUTF16LEbuf(int length) {
+		char[] chars = BUF.getAndSet(null);
+		if (chars == null || chars.length < length) chars = new char[length + length / 4];
+		for (int i = 0; i < length; i++) {
+			chars[i] = (char) (array[pos + i * 2] & 0xFF | (array[pos + i * 2 + 1] & 0xFF) << 8);
+		}
+		pos += length * 2;
+		String s = new String(chars, 0, length);
+		BUF.lazySet(chars);
+		return s;
 	}
 
 }
