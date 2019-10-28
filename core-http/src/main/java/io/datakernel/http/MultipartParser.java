@@ -136,6 +136,9 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 		ChannelSupplier<MultipartFrame> frames = BinaryChannelSupplier.of(source).parseStream(this);
 		return frames.get()
 				.then(frame -> {
+					if (frame == null) {
+						return Promise.of(null);
+					}
 					if (frame.isHeaders()) {
 						return doSplit(frame, frames, dataHandler);
 					}
