@@ -12,7 +12,7 @@ import io.global.appstore.HttpAppStore;
 import io.global.blog.container.BlogUserContainer;
 import io.global.blog.http.PublicServlet;
 import io.global.blog.http.view.PostView;
-import io.global.blog.preprocessor.Preprocessor;
+import io.global.blog.interceptors.Preprocessor;
 import io.global.comm.container.CommRepoNames;
 import io.global.comm.pojo.UserId;
 import io.global.common.PrivKey;
@@ -46,7 +46,7 @@ public final class GlobalBlogModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		install(new PreprocessorsModule());
+		install(new InterceptorsModule());
 	}
 
 	public GlobalBlogModule(String blogFsDir, CommRepoNames blogRepoNames) {
@@ -63,12 +63,11 @@ public final class GlobalBlogModule extends AbstractModule {
 	@Provides
 	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader, Executor executor,
 						 @Named("threadList") Preprocessor<PostView> threadListPostViewPreprocessor,
-						 @Named("postView") Preprocessor<PostView> postViewPreprocessor,
-						 @Named("comments") Preprocessor<PostView> commentsPreprocessor) {
+						 @Named("postView") Preprocessor<PostView> postViewPreprocessor) {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater, executor,
-						threadListPostViewPreprocessor, postViewPreprocessor, commentsPreprocessor))
+						threadListPostViewPreprocessor, postViewPreprocessor))
 				.map("/static/*", StaticServlet.create(staticLoader))
 				.then(renderErrors(templater));
 	}

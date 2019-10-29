@@ -132,21 +132,18 @@
                     <input type="file" accept="image/*" class="custom-file-input" id="image_attachment"
                            multiple
                            name="image_attachment">
-                    <label class="custom-file-label text-truncate text-left" for="image_attachment">Attach
-                        images</label>
+                    <label class="custom-file-label text-truncate text-left" for="image_attachment">Attach images</label>
                 </div>
                 <div class="custom-file col-3">
                     <input type="file" accept="video/mp4" class="custom-file-input" id="video_attachment"
                            multiple
                            name="video_attachment">
-                    <label class="custom-file-label text-truncate text-left" for="video_attachment">Attach
-                        videos</label>
+                    <label class="custom-file-label text-truncate text-left" for="video_attachment">Attach videos</label>
                 </div>
                 <div class="custom-file col-3">
                     <input type="file" class="custom-file-input" id="document_attachment" multiple
                            name="document_attachment">
-                    <label class="custom-file-label text-truncate text-left" for="document_attachment">Attach
-                        documents</label>
+                    <label class="custom-file-label text-truncate text-left" for="document_attachment">Attach documents</label>
                 </div>
             </div>
         </div>
@@ -160,12 +157,12 @@
 <div class="ml-3">
     {{^deletedBy}}
         {{#user}}
-            <div class="collapse" id="reply_{{postId}}">
+            <div class="collapse was-validated" id="reply_{{postId}}">
                 <form class="pt-3" action="/{{threadId}}/{{postId}}"
                       method="post">
                     <div class="mx-3">
                         <textarea maxlength="1024" class="form-control" placeholder="Post your reply" name="content"
-                                  data-post-button="#post_button_{{postId}}"></textarea>
+                                  data-post-button="#post_button_{{postId}}" required></textarea>
                     </div>
                     <div class="p-3">
                         <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{postId}}">post</button>

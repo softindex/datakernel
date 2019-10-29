@@ -1,4 +1,4 @@
-package io.global.blog.preprocessor;
+package io.global.blog.interceptors;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;

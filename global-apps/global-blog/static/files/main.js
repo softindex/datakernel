@@ -7,7 +7,7 @@ window.onload = () => {
     let element = $(e.target.dataset.edit);
     let save = $(`<button class="btn btn-sm btn-primary">save</button>`);
     let cancel = $(`<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>`);
-    let textarea = $(`<textarea maxlength="${e.target.dataset.maxlength ? e.target.dataset.maxlength : 120}" class="form-control" ></textarea>`);
+    let textarea = $(`<textarea maxlength="${e.target.dataset.maxlength ? e.target.dataset.maxlength : 120}" required class="form-control" ></textarea>`);
 
     textarea.keydown((e) => {
       if (e.keyCode === 13 && e.ctrlKey) {
@@ -61,7 +61,7 @@ window.onload = () => {
     let element = $(e.target.dataset.rootEdit);
     let save = $(`<button class="btn btn-sm btn-primary">save</button>`);
     let cancel = $(`<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>`);
-    let textarea = $(`<textarea maxlength="${e.target.dataset.maxlength ? e.target.dataset.maxlength : 120}" class="form-control" ></textarea>`);
+    let textarea = $(`<textarea maxlength="${e.target.dataset.maxlength ? e.target.dataset.maxlength : 120}" required class="form-control" ></textarea>`);
     let attachments = $(`#attachments`);
     let progressBar = $('#progress');
 
@@ -199,9 +199,109 @@ window.onload = () => {
 
   // handle textarea focus when reply button is pressed
   $('.collapse').on('show.bs.collapse', e => {
-    let textarea = $(e.target).find('textarea')
+    let textarea = $(e.target).find('textarea');
     if (textarea.length) {
       setTimeout(() => textarea.focus(), 0);
     }
   });
+
+  const posts = $("button[id^='post_']");
+  posts.each((index, elem) => {
+    elem.onclick = function (e) {
+      $("div[id='" + elem.id + "']").addClass("target-fade");
+      setTimeout(() => $("div[id='" + elem.id + "']").removeClass('target-fade'), 1500);
+    }
+  });
+
+  //  pagination handling
+  const params = location.search
+    .slice(1)
+    .split('&')
+    .filter(value => value)
+    .map(p => p.split('='))
+    .reduce((obj, [key, value]) => ({...obj, [key]: value}), {});
+  const pagination = $("#pagination");
+  const currentPage = Number(params.page);
+  if (pagination != null && !isNaN(currentPage) && currentPage > 0) {
+    const firstPage = $("#firstPage");
+    const prevPage = currentPage - 1;
+    let maxElements = Number(pagination[0].dataset.maxElements);
+    if (maxElements === 0) {
+      pagination.toggle("hide");
+      return;
+    }
+
+    const firstPageNumber = prevPage <= 0 ? currentPage : prevPage;
+    firstPage[0].href = window.location.pathname + "?page=" + firstPageNumber + "&size=" + params.size;
+    firstPage[0].text = firstPageNumber;
+    maxElements -= Math.min(maxElements, (prevPage <= 0 ? params.page : (params.page - 1)) * params.size);
+    if (prevPage <= 0) {
+      firstPage.parent().addClass("active")
+    }
+
+    const secondPageImages = Math.min(maxElements, params.size);
+    maxElements -= secondPageImages;
+    const secondPage = $("#secondPage");
+    const secondPageNumber = prevPage <= 0 ? currentPage + 1 : currentPage;
+    secondPage[0].href = window.location.pathname + "?page=" + secondPageNumber + "&size=" + params.size;
+    secondPage[0].text = secondPageNumber;
+    if (prevPage > 0) {
+      secondPage.parent().addClass("active");
+    } else {
+      if (secondPageImages <= 0) {
+        secondPage.parent().addClass("disabled");
+      }
+    }
+
+    const thirdPageImages = Math.min(maxElements, params.size);
+    const third = $("#thirdPage");
+    const thirdPageNumber = prevPage <= 0 ? currentPage + 2 : currentPage + 1;
+    third[0].href = window.location.pathname + "?page=" + thirdPageNumber + "&size=" + params.size;
+    third[0].text = thirdPageNumber;
+    if (thirdPageImages === 0) {
+      third.parent().addClass("disabled");
+    }
+  } else {
+    pagination.toggle("hide");
+  }
+
+
+  const pageSizeSelect = $("#pageSizeSelect");
+  let values = $.map($("#pageSizeSelect option"), function (option) {
+    if (Number(pagination[0].dataset.maxElements) < Number($(option).val())) {
+      $(option).prop('disabled', true);
+    }
+    return option.value;
+  });
+  if (values.includes(params.size)) {
+    pageSizeSelect.val(params.size);
+  }
+
+  pageSizeSelect.click((e) => {
+    const size = pageSizeSelect[0].selectedOptions[0].text;
+    window.location.href = window.location.pathname + "?page=" + params.page + "&size=" + size
+  });
+  // end pagination handling
+};
+
+function prevPage() {
+  const getParams = location.search
+    .slice(1)
+    .split('&')
+    .filter(value => value)
+    .map(p => p.split('='))
+    .reduce((obj, [key, value]) => ({...obj, [key]: value}), {});
+  window.location.href = window.location.origin + window.location.pathname + "?page=" + (getParams.page > 1 ? getParams.page - 1 : 1) + "&size=" + getParams.size;
+}
+
+function nextPage(maxElements) {
+  const getParams = location.search
+    .slice(1)
+    .split('&')
+    .filter(value => value)
+    .map(p => p.split('='))
+    .reduce((obj, [key, value]) => ({...obj, [key]: value}), {});
+  const nextPage = Number(getParams.page) + 1;
+  const currentSize = getParams.page * getParams.size;
+  window.location.href = window.location.origin + window.location.pathname + "?page=" + (currentSize >= maxElements ? getParams.page : nextPage) + "&size=" + getParams.size;
 };

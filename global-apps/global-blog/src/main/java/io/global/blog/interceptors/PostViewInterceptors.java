@@ -1,9 +1,9 @@
-package io.global.blog.preprocessor;
+package io.global.blog.interceptors;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
 
-public final class PostViewPreprocessors {
+public final class PostViewInterceptors {
 	public static FlexmarkMarkdownContentPostViewPreprocessor renderedContent(HtmlRenderer renderer, Parser parser) {
 		return new FlexmarkMarkdownContentPostViewPreprocessor(renderer, parser);
 	}
@@ -14,9 +14,5 @@ public final class PostViewPreprocessors {
 
 	public static LinkAttachmentPostViewPreprocessor replaceAttachmentLinks() {
 		return new LinkAttachmentPostViewPreprocessor();
-	}
-
-	public static CommentsPreprocessor commentsPreprocessor() {
-		return new CommentsPreprocessor();
 	}
 }

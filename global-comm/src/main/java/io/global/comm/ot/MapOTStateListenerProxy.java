@@ -6,11 +6,12 @@ import io.global.ot.map.MapOperation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 
 public final class MapOTStateListenerProxy<K, V> implements OTState<MapOperation<K, V>> {
-	private final MapOTState<K, V> state = new MapOTState<>(new HashMap<>());
+	private final MapOTState<K, V> state = new MapOTState<>(new LinkedHashMap<>());
 
 	@Nullable
 	private Consumer<MapOperation<K, V>> listener;

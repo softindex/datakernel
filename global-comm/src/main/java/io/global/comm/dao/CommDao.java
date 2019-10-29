@@ -42,4 +42,6 @@ public interface CommDao {
 	Promise<Map<String, ThreadMetadata>> getThreads();
 
 	Promise<Void> removeThread(String id);
+
+	Promise<Integer> getThreadsAmount();
 }

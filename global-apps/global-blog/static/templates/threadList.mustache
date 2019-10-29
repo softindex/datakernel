@@ -50,5 +50,22 @@
                 {{/user.role.privileged}}
             {{/threads}}
         </div>
+
+        <ul class="pagination justify-content-center mt-2" data-max-elements="{{amountItems}}" id="pagination"
+            data-amout-photos="{{amountItems}}">
+            <li class="page-item btn-link"><a class="page-link" onclick="prevPage()">Previous</a></li>
+            <li class="page-item"><a class="page-link" id="firstPage"></a></li>
+            <li class="page-item"><a class="page-link" id="secondPage"></a></li>
+            <li class="page-item"><a class="page-link" id="thirdPage"></a></li>
+            <li class="page-item btn-link"><a class="page-link" onclick="nextPage({{amountItems}})">Next</a></li>
+            <li class="page-item ml-2">
+                <select class="form-control" id="pageSizeSelect">
+                    <option>50</option>
+                    <option>100</option>
+                    <option>500</option>
+                    <option>1000</option>
+                </select>
+            </li>
+        </ul>
     {{/mainContent}}
 {{/infobase}}

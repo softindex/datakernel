@@ -126,6 +126,11 @@ public final class CommDaoImpl implements CommDao {
 		// ^ this will also remove the state manager because of the listener
 	}
 
+	@Override
+	public Promise<Integer> getThreadsAmount() {
+		return Promise.of(threadsView.size());
+	}
+
 	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {
 		stateManager.add(op);
 		return stateManager.sync();

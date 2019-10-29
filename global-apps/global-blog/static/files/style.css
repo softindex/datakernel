@@ -8,11 +8,15 @@ img, video {
 }
 
 
-:target * {
-  animation: highlight 1.5s ease;
-  background: lightgray
+@keyframes greyfade {
+  from {
+    background: lightgray;
+  }
+  to {
+    background: transparent;
+  }
 }
-@keyframes highlight {
-  0% { background: white;}
-  100% { background: lightgray; }
+
+.target-fade {
+  animation: greyfade 2s;
 }

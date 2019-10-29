@@ -12,11 +12,10 @@ import io.global.ot.value.ChangeValue;
 import io.global.ot.value.ChangeValueContainer;
 
 public final class BlogDaoImpl implements BlogDao {
+	private final CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
+	private final ChangeValueContainer<BlogMetadata> metadataView;
 	private final OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
 	private final BlogUserContainer container;
-	private final ChangeValueContainer<BlogMetadata> metadataView;
-
-	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	public BlogDaoImpl(BlogUserContainer container) {
 		this.metadataStateManager = container.getMetadataStateManager();
@@ -42,14 +41,15 @@ public final class BlogDaoImpl implements BlogDao {
 	@Override
 	public Promise<Void> setBlogName(String name) {
 		BlogMetadata prev = metadataView.getValue();
-		return applyAndSync(metadataStateManager, ChangeValue.of(prev, new BlogMetadata(name, prev == null ? null : prev.getDescription()), now.currentTimeMillis()));
+		return applyAndSync(metadataStateManager,
+				ChangeValue.of(prev, new BlogMetadata(name, prev == null ? null : prev.getDescription()), now.currentTimeMillis()));
 	}
 
 	@Override
 	public Promise<Void> setBlogDescription(String description) {
 		BlogMetadata prev = metadataView.getValue();
 		return applyAndSync(metadataStateManager,
-				ChangeValue.of(prev, new BlogMetadata(prev == null ? null : prev.getName(), description), now.currentTimeMillis()));
+				ChangeValue.of(prev, new BlogMetadata(prev == null ? null : prev.getTitle(), description), now.currentTimeMillis()));
 	}
 
 	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {

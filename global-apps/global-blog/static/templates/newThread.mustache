@@ -2,13 +2,13 @@
     {{$content}}
         <div class="container">
             <h3 class="mb-3 text-center">Create new thread:</h3>
-            <form action="/owner/new" method="post" enctype="multipart/form-data">
+            <form action="/owner/new" class="was-validated" method="post" enctype="multipart/form-data">
                 <div class="form-group">
-                    <input maxlength="120" class="form-control form-control-lg" name="title" type="text" placeholder="Title">
+                    <input maxlength="120" class="form-control form-control-lg" name="title" type="text" placeholder="Title" required>
                 </div>
                 <div class="form-group">
                     <textarea class="form-control" name="content" maxlength="65256" placeholder="Content" rows="20"
-                              data-post-button="#post_button"></textarea>
+                              data-post-button="#post_button" required></textarea>
                 </div>
 
                 <div class="col text-center">

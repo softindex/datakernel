@@ -29,25 +29,26 @@ import static io.global.blog.util.Utils.REGISTRY;
 
 public final class BlogUserContainer implements UserContainer {
 	private static final Logger logger = LoggerFactory.getLogger(BlogUserContainer.class);
-
 	private final Eventloop eventloop;
 	private final KeyPair keys;
 
 	private final OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
-
 	private final CommGlobalState comm;
 	private final BlogDao blogDao;
 
-	private BlogUserContainer(Eventloop eventloop, OTDriver otDriver, KvClient<String, UserId> kvClient, FsClient fsClient, KeyPair keys, CommRepoNames names) {
+	private BlogUserContainer(Eventloop eventloop, OTDriver otDriver, KvClient<String, UserId> kvClient,
+							  FsClient fsClient, KeyPair keys, CommRepoNames names) {
 		this.eventloop = eventloop;
 		this.keys = keys;
 
 		this.comm = CommGlobalState.create(eventloop, keys.getPrivKey(), otDriver, kvClient, fsClient, names);
-		this.metadataStateManager = comm.createStateManager(names.getMetadata(), REGISTRY.get(new TypeT<ChangeValue<BlogMetadata>>() {}), ChangeValueOTSystem.get(), ChangeValueContainer.of(BlogMetadata.EMPTY));
+		this.metadataStateManager = comm.createStateManager(names.getMetadata(), REGISTRY.get(new TypeT<ChangeValue<BlogMetadata>>() {}),
+				ChangeValueOTSystem.get(), ChangeValueContainer.of(BlogMetadata.EMPTY));
 		this.blogDao = new BlogDaoImpl(this);
 	}
 
-	public static BlogUserContainer create(Eventloop eventloop, PrivKey privKey, OTDriver otDriver, KvClient<String, UserId> kvClient, FsClient fsClient, CommRepoNames names) {
+	public static BlogUserContainer create(Eventloop eventloop, PrivKey privKey, OTDriver otDriver,
+										   KvClient<String, UserId> kvClient, FsClient fsClient, CommRepoNames names) {
 		return new BlogUserContainer(eventloop, otDriver, kvClient, fsClient, privKey.computeKeys(), names);
 	}
 

@@ -1,4 +1,4 @@
-package io.global.blog.preprocessor;
+package io.global.blog.interceptors;
 
 import io.global.blog.http.view.PostView;
 import org.slf4j.Logger;
@@ -32,7 +32,7 @@ public final class LinkAttachmentPostViewPreprocessor implements Preprocessor<Po
 			String restLink = matcher.group(2);
 			String newLink = "(" + threadId + "/" + postView.getPostId() + "/download/" + attachmentFileName + (restLink != null ? restLink : "") + ")";
 			contentBuilder.replace(matcher.start() + offset, matcher.end() + offset, newLink);
-			offset = newLink.length() - matcher.group().length();
+			offset += newLink.length() - matcher.group().length();
 		} while (matcher.find());
 		postView.withContent(contentBuilder.toString());
 		return postView;

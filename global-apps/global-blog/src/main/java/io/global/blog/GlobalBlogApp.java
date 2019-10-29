@@ -16,6 +16,7 @@ import io.global.LocalNodeCommonModule;
 import io.global.comm.container.CommRepoNames;
 import io.global.blog.container.BlogUserContainer;
 import io.global.launchers.GlobalNodesModule;
+import io.global.mustache.DebugMustacheModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
@@ -64,10 +65,12 @@ public final class GlobalBlogApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalBlogModule(DEFAULT_BLOG_FS_DIR, DEFAULT_BLOG_REPO_NAMES),
 				new ContainerModule<BlogUserContainer>() {}
-						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
+						.rebindImport(Path.class, Binding.to(config ->
+								config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
-						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID).rebindExport(CommitStorage.class, Key.of(CommitStorage.class, "stub"))),
-				new MustacheModule()
+						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)
+								.rebindExport(CommitStorage.class, Key.of(CommitStorage.class, "stub"))),
+				new DebugMustacheModule()
 		);
 	}
 

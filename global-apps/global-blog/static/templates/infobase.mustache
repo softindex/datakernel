@@ -1,8 +1,8 @@
 {{<base}}
     {{$content}}
         <div class="container">
-            <div class="row my-3">
-                <div class="col-sm-3 order-sm-1 mb-2">
+            <div class="row my-3 ">
+                <div class="col-sm-3 was-validated order-sm-1 mb-2">
                     <div class="card">
                         <div class="card-header">
                             <div class="row">
@@ -42,8 +42,8 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="card-text" id="blog_name" data-field="name" data-field="content" data-value="{{blog.name}}">
-                                {{blog.name}}
+                            <div class="card-text" id="blog_name" data-field="title" data-field="content" data-value="{{blog.title}}">
+                                {{blog.title}}
                             </div>
                         </div>
                     </div>

@@ -3,12 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta title="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
           integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
           integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
 
     <title>Global Blog</title>
     {{$head}}{{/head}}
@@ -16,7 +17,7 @@
 <body>
 <div class="container">
     <nav class="navbar navbar-expand-md navbar-light bg-light my-3">
-        <a class="navbar-brand" href="/">{{blog.name}}{{^blog.name}}Global Blog{{/blog.name}}</a>
+        <a class="navbar-brand" href="/">{{blog.title}}{{^blog.title}}Global Blog{{/blog.title}}</a>
 
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
