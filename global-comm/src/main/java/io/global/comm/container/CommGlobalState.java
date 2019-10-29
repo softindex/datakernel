@@ -16,7 +16,7 @@ import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.ThreadOTSystem;
 import io.global.comm.ot.post.operation.ThreadOperation;
-import io.global.comm.ot.session.KvSessionStore;
+import io.global.session.KvSessionStore;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
