@@ -67,7 +67,7 @@ public class GlobalPmNodeServlet {
 						PubKey space = PubKey.fromString(request.getPathParameter("space"));
 						return node.list(space)
 								.map(mailBoxes -> HttpResponse.ok200()
-										.withBody(BinaryUtils.encode(STRING_SET_CODEC.nullable(), mailBoxes)));
+										.withBody(BinaryUtils.encode(STRING_SET_CODEC, mailBoxes)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

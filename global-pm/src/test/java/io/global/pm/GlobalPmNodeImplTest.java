@@ -35,8 +35,9 @@ import static io.datakernel.util.CollectionUtils.set;
 import static io.global.pm.util.BinaryDataFormats.RAW_MESSAGE_CODEC;
 import static io.global.pm.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.hamcrest.Matchers.either;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.Assert.*;
 
 public final class GlobalPmNodeImplTest {
 
@@ -80,14 +81,15 @@ public final class GlobalPmNodeImplTest {
 	public void testSend() {
 		SignedData<RawMessage> message = createMessage(1, false);
 		await(intermediate.send(KEYS.getPubKey(), "test", message));
-		assertStorages(message, storage -> storage.poll(KEYS.getPubKey(), "test"));
+		assertEquals(message, await(intermediateStorage.poll(KEYS.getPubKey(), "test")));
+		assertEitherStorage(message, storage -> storage.poll(KEYS.getPubKey(), "test"));
 	}
 
 	@Test
 	public void testSendTombstone() {
 		SignedData<RawMessage> message = createMessage(1, false);
 		await(intermediate.send(KEYS.getPubKey(), "test", message));
-		assertStorages(message, node -> node.poll(KEYS.getPubKey(), "test"));
+		assertEitherStorage(message, storage -> storage.poll(KEYS.getPubKey(), "test"));
 		SignedData<RawMessage> tombstone = createMessage(1, true);
 		await(intermediate.send(KEYS.getPubKey(), "test", tombstone));
 		assertStorages(null, storage -> storage.poll(KEYS.getPubKey(), "test"));
@@ -169,6 +171,11 @@ public final class GlobalPmNodeImplTest {
 		await(ChannelSupplier.ofIterable(messages).streamTo(intermediate.upload(KEYS.getPubKey(), "test")));
 		List<SignedData<RawMessage>> received = await(ChannelSupplier.ofPromise(intermediate.download(KEYS.getPubKey(), "test")).toList());
 		assertEquals(concat(singletonList(message), messages), received);
+	}
+
+	private <T> void assertEitherStorage(@Nullable T expected, Function<MessageStorage, Promise<T>> action) {
+		assertEquals(expected, await(action.apply(intermediateStorage)));
+		assertThat(expected, either(equalTo(await(action.apply(master1Storage)))).or(equalTo(await(action.apply(master2Storage)))));
 	}
 
 	private <T> void assertStorages(@Nullable T expected, Function<MessageStorage, Promise<T>> action) {

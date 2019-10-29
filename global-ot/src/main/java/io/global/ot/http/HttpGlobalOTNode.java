@@ -18,7 +18,6 @@ package io.global.ot.http;
 
 import io.datakernel.async.AsyncSupplier;
 import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.ChannelConsumer;
@@ -129,9 +128,8 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 
 	@Override
 	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
-		SettablePromise<Void> done = new SettablePromise<>();
 		ChannelZeroBuffer<CommitEntry> queue = new ChannelZeroBuffer<>();
-		httpClient.request(
+		Promise<Void> request = httpClient.request(
 				request(POST, UPLOAD, apiQuery(repositoryId, map("heads", toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads))))
 						.withBodyStream(
 								queue.getSupplier()
@@ -141,9 +139,8 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid()
-				.whenResult($ -> queue.cancel())
-				.whenComplete(done);
-		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.then($ -> done)));
+				.whenResult($ -> queue.cancel());
+		return Promise.of(queue.getConsumer().withAcknowledgement(ack -> ack.then($ -> request)));
 	}
 
 	@Override

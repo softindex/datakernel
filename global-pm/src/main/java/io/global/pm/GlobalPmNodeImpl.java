@@ -154,6 +154,16 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	}
 
 	@Override
+	public Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
+		return simpleMethod(space,
+				master -> master.send(space, mailBox, message)
+						.then(ns -> doesUploadCaching ?
+								ensureNamespace(space).ensureMailBox(mailBox).send(message).toVoid() :
+								Promise.complete()),
+				ns -> ns.ensureMailBox(mailBox).send(message).toVoid());
+	}
+
+	@Override
 	public Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
 		GlobalPmNamespace ns = ensureNamespace(space);
 		MailBox box = ns.ensureMailBox(mailBox);

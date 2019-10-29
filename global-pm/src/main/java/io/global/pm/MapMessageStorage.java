@@ -12,11 +12,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.async.AsyncExecutors.ofMaxRecursiveCalls;
 import static java.util.Collections.emptyMap;
 import static java.util.Comparator.comparingLong;
 
 public final class MapMessageStorage implements MessageStorage {
-	private final Map<PubKey, Map<String, Map<Long, SignedData<RawMessage>>>> storage = new HashMap<>();
+	private static final int MAX_RECURSIVE_CALLS = 10;
+
+	final Map<PubKey, Map<String, Map<Long, SignedData<RawMessage>>>> storage = new HashMap<>();
 
 	@Override
 	public Promise<Boolean> put(PubKey space, String mailBox, SignedData<RawMessage> message) {
@@ -51,7 +54,8 @@ public final class MapMessageStorage implements MessageStorage {
 		return Promise.of(ChannelSupplier.ofStream(getMailBox(space, mailBox).values()
 				.stream()
 				.filter(signedData -> signedData.getValue().getTimestamp() > timestamp)
-				.sorted(comparingLong(signed -> signed.getValue().getTimestamp()))));
+				.sorted(comparingLong(signed -> signed.getValue().getTimestamp())))
+				.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
 	}
 
 	@Override

@@ -79,6 +79,10 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 			return node.getStorage().poll(space, mailBox);
 		}
 
+		Promise<Boolean> send(SignedData<RawMessage> message){
+			return node.getStorage().put(space, mailBox, message);
+		}
+
 		Promise<Void> fetch(GlobalPmNode from) {
 			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
 			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getSyncMargin().toMillis());
