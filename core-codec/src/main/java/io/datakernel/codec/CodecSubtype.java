@@ -18,6 +18,7 @@ package io.datakernel.codec;
 
 import io.datakernel.common.Initializable;
 import io.datakernel.common.parse.ParseException;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -33,11 +34,26 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 	private final Map<String, StructuredCodec<? extends T>> namesToAdapters = new HashMap<>();
 	private final Map<Type, String> subtypesToNames = new HashMap<>();
 
+	@Nullable
+	private String tagName = null;
+	private String dataName = "data";
+
 	private CodecSubtype() {
 	}
 
 	public static <T> CodecSubtype<T> create() {
 		return new CodecSubtype<>();
+	}
+
+	public CodecSubtype<T> withTagName(String tagName) {
+		this.tagName = tagName;
+		return this;
+	}
+
+	public CodecSubtype<T> withTagName(String tagName, String dataName) {
+		this.tagName = tagName;
+		this.dataName = dataName;
+		return this;
 	}
 
 	/**
@@ -62,12 +78,19 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 	@Override
 	public void encode(StructuredOutput out, T value) {
 		out.writeObject(() -> {
-			String field = subtypesToNames.get(value.getClass());
-			if (field == null) {
+			String tag = subtypesToNames.get(value.getClass());
+			if (tag == null) {
 				throw new IllegalArgumentException("Unregistered data type: " + value.getClass().getName());
 			}
-			StructuredCodec<T> codec = (StructuredCodec<T>) namesToAdapters.get(field);
-			out.writeKey(field);
+			StructuredCodec<T> codec = (StructuredCodec<T>) namesToAdapters.get(tag);
+
+			if (tagName != null) {
+				out.writeKey(tagName);
+				out.writeString(tag);
+				out.writeKey(dataName);
+			} else {
+				out.writeKey(tag);
+			}
 			codec.encode(out, value);
 		});
 	}
@@ -75,7 +98,15 @@ public final class CodecSubtype<T> implements Initializable<CodecSubtype<T>>, St
 	@Override
 	public T decode(StructuredInput in) throws ParseException {
 		return in.readObject($ -> {
-			String key = in.readKey();
+			String key;
+			if (tagName != null) {
+				in.readKey(tagName);
+				key = in.readString();
+				in.readKey(dataName);
+			} else {
+				key = in.readKey();
+			}
+
 			StructuredCodec<? extends T> codec = namesToAdapters.get(key);
 			if (codec == null) {
 				throw new ParseException("Could not find codec for: " + key);
