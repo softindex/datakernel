@@ -105,10 +105,6 @@ public final class MediaTypes {
 	public static final MediaType FLV = register("video/x-flv", "flv");
 	public static final MediaType AVI = register("video/avi", "avi");
 
-	private MediaTypes() {
-		throw new AssertionError();
-	}
-
 	static MediaType of(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		return mimes.getOrCreate(bytes, offset, length, lowerCaseHashCode);
 	}

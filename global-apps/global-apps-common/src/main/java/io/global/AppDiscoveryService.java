@@ -1,7 +1,7 @@
 package io.global;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
@@ -16,7 +16,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.common.collection.CollectionUtils.union;
 import static io.global.Utils.ANNOUNCE_DATA_CODEC;
 import static java.util.Collections.emptySet;
 

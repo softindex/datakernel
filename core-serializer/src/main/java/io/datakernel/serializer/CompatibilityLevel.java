@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+@SuppressWarnings("DeprecatedIsStillUsed")
 public enum CompatibilityLevel {
 	/**
 	 * Provides basic version of serializer
@@ -23,12 +24,17 @@ public enum CompatibilityLevel {
 	@Deprecated LEVEL_1,
 
 	/**
-	 * Provides string optimization for ISO8859-1 and UTF8
+	 * Provides string optimizations for ISO8859-1 and UTF8
 	 */
 	@Deprecated LEVEL_2,
 
 	/**
-	 * Includes previous optimization and provides nullable optimization for enum, subclass, array, map and list
+	 * Includes previous optimizations and provides nullable optimization for enum, subclass, array, map and list
 	 */
-	LEVEL_3
+	LEVEL_3,
+
+	/**
+	 * Includes previous optimizations and provides little endian format for JVM intrinsics
+	 */
+	LEVEL_3_LE
 }

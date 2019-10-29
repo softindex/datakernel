@@ -112,7 +112,7 @@ public class CubeClassLoaderCache implements CubeClassLoaderCacheMBean {
 	synchronized public int getDefinedClassesCount() {
 		int result = 0;
 		for (DefiningClassLoader classLoader : cache.values()) {
-			result += classLoader.getDefinedClassesCount();
+			result += classLoader.getCachedClassesCount();
 		}
 		return result;
 	}
@@ -121,7 +121,7 @@ public class CubeClassLoaderCache implements CubeClassLoaderCacheMBean {
 	synchronized public int getDefinedClassesCountMaxPerKey() {
 		int result = 0;
 		for (DefiningClassLoader classLoader : cache.values()) {
-			result = Math.max(result, classLoader.getDefinedClassesCount());
+			result = Math.max(result, classLoader.getCachedClassesCount());
 		}
 		return result;
 	}

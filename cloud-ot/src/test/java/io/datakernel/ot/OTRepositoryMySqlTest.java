@@ -18,9 +18,12 @@ package io.datakernel.ot;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.ot.utils.*;
+import io.datakernel.ot.utils.TestAdd;
+import io.datakernel.ot.utils.TestOp;
+import io.datakernel.ot.utils.TestOpState;
+import io.datakernel.ot.utils.TestSet;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -35,15 +38,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.ot.OTCommit.ofCommit;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
-import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toSet;
@@ -65,7 +68,8 @@ public class OTRepositoryMySqlTest {
 
 	@Before
 	public void before() throws IOException, SQLException {
-		repository = OTRepositoryMySql.create(Eventloop.getCurrentEventloop(), Executors.newFixedThreadPool(4), dataSource("test.properties"), Utils.createTestOp(), Utils.OP_CODEC);
+		repository = OTRepositoryMySql.create(Eventloop.getCurrentEventloop(), Executors.newFixedThreadPool(4), dataSource("test.properties"), new IdGeneratorStub(),
+				createTestOp(), OP_CODEC);
 		repository.initialize();
 		repository.truncateTables();
 	}
@@ -85,15 +89,15 @@ public class OTRepositoryMySqlTest {
 	public void testJson() throws ParseException {
 		{
 			TestAdd testAdd = new TestAdd(1);
-			String json = toJson(Utils.OP_CODEC, testAdd);
-			TestAdd testAdd2 = (TestAdd) fromJson(Utils.OP_CODEC, json);
+			String json = toJson(OP_CODEC, testAdd);
+			TestAdd testAdd2 = (TestAdd) fromJson(OP_CODEC, json);
 			assertEquals(testAdd.getDelta(), testAdd2.getDelta());
 		}
 
 		{
 			TestSet testSet = new TestSet(0, 4);
-			String json = toJson(Utils.OP_CODEC, testSet);
-			TestSet testSet2 = (TestSet) fromJson(Utils.OP_CODEC, json);
+			String json = toJson(OP_CODEC, testSet);
+			TestSet testSet2 = (TestSet) fromJson(OP_CODEC, json);
 			assertEquals(testSet.getPrev(), testSet2.getPrev());
 			assertEquals(testSet.getNext(), testSet2.getNext());
 		}

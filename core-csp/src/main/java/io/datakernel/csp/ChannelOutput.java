@@ -16,10 +16,10 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.promise.Promise;
 
 import java.util.function.Consumer;
 import java.util.function.Function;

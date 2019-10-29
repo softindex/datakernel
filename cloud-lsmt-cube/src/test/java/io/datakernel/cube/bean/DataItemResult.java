@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.util.CollectionUtils.keysToMap;
+import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 
 public class DataItemResult {
 	public int key1;

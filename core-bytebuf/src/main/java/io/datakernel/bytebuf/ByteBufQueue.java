@@ -16,9 +16,9 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.Recyclable;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.InvalidSizeException;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,13 +27,13 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 
-import static io.datakernel.util.CollectionUtils.emptyIterator;
+import static io.datakernel.common.collection.CollectionUtils.emptyIterator;
 import static java.lang.System.arraycopy;
 
 /**
  * Represents a circular FIFO queue of ByteBufs optimized
  * for efficient work with multiple ByteBufs.
- *
+ * <p>
  * There are <i>first</i> and <i>last</i> indexes which
  * represent which ByteBuf of the queue is currently
  * the first and the last to be taken.
@@ -62,7 +62,9 @@ public final class ByteBufQueue implements Recyclable {
 	private static Collector<ByteBuf, ByteBufQueue, ByteBuf> COLLECTOR = Collector.of(
 			ByteBufQueue::new,
 			ByteBufQueue::add,
-			(bufs1, bufs2) -> { throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");},
+			(bufs1, bufs2) -> {
+				throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");
+			},
 			ByteBufQueue::takeRemaining);
 
 	/**
@@ -88,7 +90,9 @@ public final class ByteBufQueue implements Recyclable {
 					}
 					queue.add(buf);
 				},
-				(bufs1, bufs2) -> { throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");},
+				(bufs1, bufs2) -> {
+					throw new UnsupportedOperationException("Parallel collection of byte bufs is not supported");
+				},
 				ByteBufQueue::takeRemaining);
 	}
 
@@ -163,10 +167,9 @@ public final class ByteBufQueue implements Recyclable {
 	 * Returns the first ByteBuf of the queue if the queue is not empty
 	 * otherwise returns {@code null}.
 	 *
-	 * @see #take()
-	 *
 	 * @return the first ByteBuf of this {@code ByteBufQueue}. If the queue is
 	 * empty, returns null
+	 * @see #take()
 	 */
 	@Nullable
 	public ByteBuf poll() {
@@ -306,7 +309,7 @@ public final class ByteBufQueue implements Recyclable {
 	 * all data from the queue's first ByteBuf. This new ByteBuf is consumed and
 	 * then recycled.
 	 *
-	 * @param size the size of the ByteBuf to be consumed
+	 * @param size     the size of the ByteBuf to be consumed
 	 * @param consumer a consumer for the ByteBuf
 	 */
 	public void consume(int size, @NotNull Consumer<ByteBuf> consumer) {

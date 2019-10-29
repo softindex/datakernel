@@ -16,95 +16,64 @@
 
 package io.datakernel.codegen;
 
-import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.List;
-import java.util.Objects;
 
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static org.objectweb.asm.Type.INT_TYPE;
+import static io.datakernel.codegen.Expressions.exception;
+import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionSwitch implements Expression {
-	private final Expression index;
-	private final List<Expression> list;
-	@Nullable
-	private final Expression defaultExp;
+	public static final Expression DEFAULT_EXPRESSION = exception(IllegalArgumentException.class);
 
-	ExpressionSwitch(Expression index, @Nullable Expression defaultExp, List<Expression> list) {
-		this.index = checkNotNull(index);
-		this.list = checkNotNull(list);
-		this.defaultExp = defaultExp;
-	}
+	private final Expression value;
+	private final List<Expression> matchCases;
+	private final List<Expression> matchExpressions;
+	private final Expression defaultExpression;
 
-	@Override
-	public Type type(Context ctx) {
-		if (list.size() != 0) {
-			return list.get(0).type(ctx);
-		} else {
-			return getType(Object.class);
-		}
+	ExpressionSwitch(Expression value, List<Expression> matchCases, List<Expression> matchExpressions, Expression defaultExpression) {
+		this.value = value;
+		this.matchCases = matchCases;
+		this.matchExpressions = matchExpressions;
+		this.defaultExpression = defaultExpression;
 	}
 
 	@Override
 	public Type load(Context ctx) {
-		VarLocal varReadedSubClass = newLocal(ctx, index.type(ctx));
-		index.load(ctx);
-		varReadedSubClass.store(ctx);
-
-		Label labelExit = new Label();
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		for (int i = 0; i < list.size(); i++) {
+		Type keyType = this.value.load(ctx);
+		VarLocal value = ctx.newLocal(keyType);
+		value.store(ctx);
+
+		Label labelExit = new Label();
+
+		Type resultType = getType(Object.class);
+		for (int i = 0; i < matchCases.size(); i++) {
 			Label labelNext = new Label();
+			if (isPrimitiveType(keyType) || keyType.equals(getType(Class.class))) {
+				matchCases.get(i).load(ctx);
+				value.load(ctx);
+				g.ifCmp(keyType, GeneratorAdapter.NE, labelNext);
+			} else {
+				ctx.invoke(matchCases.get(i), "equals", value);
+				g.push(true);
+				g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, labelNext);
+			}
 
-			g.push(i);
-			varReadedSubClass.load(ctx);
-			g.ifCmp(INT_TYPE, GeneratorAdapter.NE, labelNext);
-
-			list.get(i).load(ctx);
+			resultType = matchExpressions.get(i).load(ctx);
 			g.goTo(labelExit);
 
 			g.mark(labelNext);
 		}
 
-		if (defaultExp != null) {
-			defaultExp.load(ctx);
-		} else {
-			Variable sb = let(constructor(StringBuilder.class));
-			call(sb, "append", value("Key '")).load(ctx);
-			call(sb, "append", cast(varReadedSubClass, getType(int.class))).load(ctx);
-			call(sb, "append", value(String.format("' not in range [0-%d)", list.size()))).load(ctx);
-			constructor(IllegalArgumentException.class, call(sb, "toString")).load(ctx);
-			g.throwException();
-		}
+		defaultExpression.load(ctx);
+
 		g.mark(labelExit);
 
-		return type(ctx);
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionSwitch that = (ExpressionSwitch) o;
-
-		if (!index.equals(that.index)) return false;
-		if (!list.equals(that.list)) return false;
-		return Objects.equals(defaultExp, that.defaultExp);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = index.hashCode();
-		result = 31 * result + list.hashCode();
-		result = 31 * result + (defaultExp == null ? 0 : list.hashCode());
-		return result;
+		return resultType;
 	}
 }

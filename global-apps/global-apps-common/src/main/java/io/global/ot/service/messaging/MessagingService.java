@@ -1,14 +1,14 @@
 package io.global.ot.service.messaging;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.util.ApplicationSettings;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
@@ -25,8 +25,8 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Duration;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncSuppliers.retry;
-import static io.datakernel.async.Promises.repeat;
+import static io.datakernel.async.process.AsyncExecutors.retry;
+import static io.datakernel.promise.Promises.repeat;
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static io.global.util.Utils.eitherComplete;
 
@@ -85,8 +85,8 @@ public final class MessagingService implements EventloopService {
 		KeyPair keys = commonUserContainer.getMyRepositoryId().getPrivKey().computeKeys();
 		OTStateManager<CommitId, SharedReposOperation> stateManager = commonUserContainer.getStateManager();
 		SharedReposOTState state = (SharedReposOTState) stateManager.getState();
-		AsyncSupplier<@Nullable Message<Long, CreateSharedRepo>> messagesSupplier = retry(() -> messenger.poll(keys, mailBox),
-				POLL_RETRY_POLICY);
+		AsyncSupplier<@Nullable Message<Long, CreateSharedRepo>> messagesSupplier = AsyncSupplier.cast(() -> messenger.poll(keys, mailBox))
+				.withExecutor(retry(POLL_RETRY_POLICY));
 
 		repeat(() -> eitherComplete(messagesSupplier.get(), stopPromise)
 				.then(message -> {

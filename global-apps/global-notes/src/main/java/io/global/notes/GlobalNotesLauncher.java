@@ -19,7 +19,7 @@ import io.global.LocalNodeCommonModule;
 import io.global.common.BinaryDataFormats;
 import io.global.launchers.GlobalNodesModule;
 import io.global.ot.DynamicOTGraphServlet;
-import io.global.ot.DynamicOTNodeServlet;
+import io.global.ot.DynamicOTUplinkServlet;
 import io.global.ot.MapModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.client.OTDriver;
@@ -55,8 +55,8 @@ public final class GlobalNotesLauncher extends Launcher {
 
 	@Provides
 	AsyncServlet mainServlet(
-			DynamicOTNodeServlet<MapOperation<String, String>> notesServlet,
-			DynamicOTNodeServlet<EditOperation> noteServlet,
+			DynamicOTUplinkServlet<MapOperation<String, String>> notesServlet,
+			DynamicOTUplinkServlet<EditOperation> noteServlet,
 			DynamicOTGraphServlet<EditOperation> graphServlet,
 			StaticServlet staticServlet
 	) {
@@ -74,12 +74,12 @@ public final class GlobalNotesLauncher extends Launcher {
 	}
 
 	@Provides
-	DynamicOTNodeServlet<EditOperation> noteServlet(OTDriver driver) {
-		return DynamicOTNodeServlet.create(driver, createOTSystem(), EDIT_OPERATION_CODEC, NOTES_INDEX_REPO);
+	DynamicOTUplinkServlet<EditOperation> noteServlet(OTDriver driver) {
+		return DynamicOTUplinkServlet.create(driver, createOTSystem(), EDIT_OPERATION_CODEC, NOTES_INDEX_REPO);
 	}
 
 	@Provides
-	DynamicOTGraphServlet<EditOperation> noteGraphServlet(DynamicOTNodeServlet<EditOperation> noteServlet) {
+	DynamicOTGraphServlet<EditOperation> noteGraphServlet(DynamicOTUplinkServlet<EditOperation> noteServlet) {
 		return noteServlet.createGraphServlet(Objects::toString);
 	}
 

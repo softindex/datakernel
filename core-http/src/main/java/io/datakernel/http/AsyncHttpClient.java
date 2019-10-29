@@ -16,20 +16,28 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.DnsQueryException;
 import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
-import io.datakernel.eventloop.*;
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.*;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -45,11 +53,11 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -308,7 +316,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	}
 	// endregion
 
-	@SuppressWarnings("Duplicates")
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
 		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
@@ -338,7 +345,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert connection.pool == poolKeepAlive;
 		assert connection.remoteAddress.equals(address);
 		connection.pool.removeNode(connection); // moving from keep-alive state to taken(null) state
-		connection.pool = null;
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (connection.pool = null) == null;
 		if (addresses.isEmpty()) {
 			this.addresses.remove(address);
 		}
@@ -459,7 +467,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
-		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
+		SettablePromise<Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();

@@ -17,7 +17,7 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.DynamicOTNodeServlet;
+import io.global.ot.DynamicOTUplinkServlet;
 import io.global.ot.MapModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.map.MapOperation;
@@ -49,7 +49,7 @@ public final class GlobalTodoApp extends Launcher {
 
 	@Provides
 	AsyncServlet mainServlet(
-			DynamicOTNodeServlet<MapOperation<String, Boolean>> todoListServlet,
+			DynamicOTUplinkServlet<MapOperation<String, Boolean>> todoListServlet,
 			StaticServlet staticServlet
 	) {
 		return RoutingServlet.create()

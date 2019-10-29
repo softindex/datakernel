@@ -17,7 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
 
 public interface IAggregation {
 	<T> StreamSupplier<T> query(AggregationQuery query, Class<T> outputClass, DefiningClassLoader classLoader);

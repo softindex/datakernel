@@ -1,11 +1,11 @@
 package io.datakernel;
 
-import io.datakernel.async.Promise;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.OptionalGeneratorModule;
 import io.datakernel.http.di.PromiseGeneratorModule;
+import io.datakernel.promise.Promise;
 import org.junit.Test;
 
 import java.util.Optional;
@@ -29,7 +29,7 @@ public final class GeneratorsTest {
 		Injector injector = Injector.of(module1);
 		Promise<String> instance = injector.getInstance(new Key<Promise<String>>() {});
 		assertEquals("Hello, World", instance.getResult());
-		assertFalse(injector.hasInstance(new Key<Promise<Integer>>() {}));
+		assertFalse(injector.hasBinding(new Key<Promise<Integer>>() {}));
 	}
 
 	@Test

@@ -16,21 +16,25 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.AsyncTcpSocketImpl.JmxInspector;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.net.SocketSettings;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketImpl.JmxInspector;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
@@ -41,8 +45,6 @@ import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -53,8 +55,10 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.async.callback.Callback.toAnotherEventloop;
+import static io.datakernel.common.Preconditions.*;
+import static io.datakernel.common.Utils.nullToDefault;
+import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -80,6 +84,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
 	public static final MemSize DEFAULT_PACKET_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize MAX_PACKET_SIZE = ChannelSerializer.MAX_SIZE;
+	public static final StacklessException START_EXCEPTION = new StacklessException("Could not establish initial connection");
 
 	private Logger logger = getLogger(getClass());
 
@@ -92,7 +97,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	private RpcStrategy strategy = new NoServersStrategy();
 	private List<InetSocketAddress> addresses = new ArrayList<>();
-	private Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
+	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 
 	private MemSize defaultPacketSize = DEFAULT_PACKET_SIZE;
 	private MemSize maxPacketSize = MAX_PACKET_SIZE;
@@ -102,22 +107,19 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private List<Class<?>> messageTypes;
 	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT.toMillis();
 	private long reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL.toMillis();
-	private boolean forceStart;
+
+	private boolean forcedStart;
 
 	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private BinarySerializer<RpcMessage> serializer;
 
-	private RpcSender requestSender;
+	private RpcSender requestSender = new NoSenderAvailable();
 
 	@Nullable
-	private SettablePromise<Void> startCallback;
-	@Nullable
-	private SettablePromise<Void> stopCallback;
+	private SettablePromise<Void> stopPromise;
 
-	private boolean running;
-
-	private final RpcClientConnectionPool pool = address -> connections.get(address);
+	private final RpcClientConnectionPool pool = connections::get;
 
 	// jmx
 	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
@@ -166,8 +168,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	 * @param messageTypes classes of messages processed by a server
 	 * @return client instance capable for handling provided message types
 	 */
-	public RpcClient withMessageTypes(Class<?>... messageTypes) {
-		checkNotNull(messageTypes);
+	public RpcClient withMessageTypes(@NotNull Class<?>... messageTypes) {
 		return withMessageTypes(Arrays.asList(messageTypes));
 	}
 
@@ -256,14 +257,20 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return this;
 	}
 
+	@Deprecated
+	public RpcClient withImmediateStart() {
+		// do nothing
+		return this;
+	}
+
 	/**
 	 * Starts client in case of absence of connections
 	 *
 	 * @return the RPC client, which starts regardless of connection
 	 * availability
 	 */
-	public RpcClient withForceStart() {
-		this.forceStart = true;
+	public RpcClient withForcedStart() {
+		this.forcedStart = true;
 		return this;
 	}
 	// endregion
@@ -283,73 +290,47 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public Promise<Void> start() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkNotNull(messageTypes, "Message types must be specified");
-		checkState(!running, "Already running");
 
-		return Promise.ofCallback(cb -> {
-			running = true;
-			startCallback = cb;
+		checkState(stopPromise == null);
 
-			serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
+		serializer = serializerBuilder.withSubclasses(RpcMessage.MESSAGE_TYPES, messageTypes).build(RpcMessage.class);
 
-			if (forceStart) {
-				startCallback.set(null);
-				RpcSender sender = strategy.createSender(pool);
-				requestSender = sender != null ? sender : new NoSenderAvailable();
-				startCallback = null;
-			} else {
-				if (connectTimeoutMillis != 0) {
-					eventloop.delayBackground(connectTimeoutMillis, () -> {
-						if (running && startCallback != null) {
-							String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
-									connectTimeoutMillis / 1000.0);
-							startCallback.setException(new InterruptedException(errorMsg));
-							running = false;
-							startCallback = null;
-						}
-					});
-				}
-			}
-
-			for (InetSocketAddress address : addresses) {
-				connect(address);
-			}
-		});
+		return Promises.all(
+				addresses.stream()
+						.map(address -> {
+							logger.info("Connecting: {}", address);
+							return connect(address)
+									.thenEx(($, e) -> Promise.complete());
+						}))
+				.then($ -> !forcedStart && requestSender instanceof NoSenderAvailable ?
+						Promise.ofException(START_EXCEPTION) :
+						Promise.complete());
 	}
 
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		if (!running) return Promise.complete();
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		if (stopPromise != null) return stopPromise;
 
-		return Promise.ofCallback(cb -> {
-			running = false;
-
-			if (startCallback != null) {
-				startCallback.setException(new InterruptedException("Start aborted"));
-				startCallback = null;
-			}
-
-			if (connections.size() == 0) {
-				cb.set(null);
-			} else {
-				stopCallback = cb;
-				for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
-					connection.shutdown();
-				}
-			}
-		});
+		stopPromise = new SettablePromise<>();
+		if (connections.size() == 0) {
+			stopPromise.set(null);
+			return stopPromise;
+		}
+		for (RpcClientConnection connection : connections.values()) {
+			connection.shutdown();
+		}
+		return stopPromise;
 	}
 
-	private void connect(InetSocketAddress address) {
-		if (!running) {
-			return;
-		}
-
-		logger.info("Connecting {}", address);
-
-		AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+	private Promise<Void> connect(InetSocketAddress address) {
+		return AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
 				.whenResult(asyncTcpSocketImpl -> {
+					if (stopPromise != null) {
+						asyncTcpSocketImpl.close();
+						return;
+					}
 					asyncTcpSocketImpl
 							.withInspector(statsSocket);
 					AsyncTcpSocket socket = sslContext == null ?
@@ -360,76 +341,54 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					RpcClientConnection connection = new RpcClientConnection(eventloop, this, address, stream);
 					stream.setListener(connection);
 
-					addConnection(address, connection);
+					connections.put(address, connection);
+
+					// jmx
+					if (isMonitoring()) {
+						connection.startMonitoring();
+					}
+					requestSender = nullToDefault(strategy.createSender(pool), new NoSenderAvailable());
 
 					// jmx
 					generalConnectsStats.successfulConnects++;
 					connectsStatsPerAddress.get(address).successfulConnects++;
 
 					logger.info("Connection to {} established", address);
-					if (startCallback != null && !(requestSender instanceof NoSenderAvailable)) {
-						SettablePromise<Void> startPromise = this.startCallback;
-						this.startCallback = null;
-						eventloop.postLater(() -> startPromise.set(null));
-					}
 				})
 				.whenException(e -> {
-					//jmx
-					generalConnectsStats.failedConnects++;
-					connectsStatsPerAddress.get(address).failedConnects++;
-
-					if (running) {
-						if (logger.isWarnEnabled()) {
-							logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
-						}
-						eventloop.delayBackground(reconnectIntervalMillis, () -> {
-							if (running) {
-								connect(address);
-							}
-						});
+					logger.warn("Connection {} failed: {}", address, e);
+					if (stopPromise == null) {
+						processClosedConnection(address);
 					}
-				});
+				})
+				.toVoid();
 	}
 
-	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {
-		connections.put(address, connection);
-
-		// jmx
-		if (isMonitoring()) {
-			connection.startMonitoring();
-		}
-		RpcSender sender = strategy.createSender(pool);
-		requestSender = sender != null ? sender : new NoSenderAvailable();
-	}
-
-	boolean removeConnection(InetSocketAddress address) {
+	void removeConnection(InetSocketAddress address) {
 		if (connections.remove(address) == null) {
-			return false;
+			return;
 		}
+		logger.info("Connection closed: {}", address);
+		processClosedConnection(address);
+	}
 
-		logger.info("Connection to {} closed", address);
+	private void processClosedConnection(InetSocketAddress address) {
+		//jmx
+		generalConnectsStats.failedConnects++;
+		connectsStatsPerAddress.get(address).failedConnects++;
 
-		if (stopCallback != null && connections.size() == 0) {
-			eventloop.post(() -> {
-				stopCallback.set(null);
-				stopCallback = null;
+		if (stopPromise == null) {
+			eventloop.delayBackground(reconnectIntervalMillis, () -> {
+				if (stopPromise == null) {
+					logger.info("Reconnecting: {}", address);
+					connect(address);
+				}
 			});
-		}
-
-		RpcSender sender = strategy.createSender(pool);
-		requestSender = sender != null ? sender : new NoSenderAvailable();
-
-		// jmx
-		generalConnectsStats.closedConnects++;
-		connectsStatsPerAddress.get(address).closedConnects++;
-
-		eventloop.delayBackground(reconnectIntervalMillis, () -> {
-			if (running) {
-				connect(address);
+		} else {
+			if (connections.size() == 0) {
+				stopPromise.set(null);
 			}
-		});
-
-		return true;
+		}
 	}
 
 	/**
@@ -461,20 +420,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-				eventloop.execute(() -> {
-					if (timeout > 0) {
-						requestSender.sendRequest(request, timeout,
-								(Callback<O>) (result, e) -> {
-									if (e == null) {
-										anotherEventloop.execute(() -> cb.accept(result, null));
-									} else {
-										anotherEventloop.execute(() -> cb.accept(null, e));
-									}
-								});
-					} else {
-						anotherEventloop.execute(() -> cb.accept(null, RPC_TIMEOUT_EXCEPTION));
-					}
-				});
+				if (timeout > 0) {
+					eventloop.execute(() ->
+							requestSender.sendRequest(request, timeout, toAnotherEventloop(anotherEventloop, cb)));
+				} else {
+					cb.accept(null, RPC_TIMEOUT_EXCEPTION);
+				}
 			}
 
 		};
@@ -487,15 +438,13 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@Override
 	public String toString() {
-		return "RpcClient{" +
-				"connections=" + connections +
-				'}';
+		return "RpcClient{" + connections + '}';
 	}
 
 	private final class NoSenderAvailable implements RpcSender {
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-			eventloop.post(() -> cb.accept(null, NO_SENDER_AVAILABLE_EXCEPTION));
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
+			cb.accept(null, NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}
 

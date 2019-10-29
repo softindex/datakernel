@@ -1,7 +1,7 @@
 package io.datakernel.ot;
 
+import io.datakernel.common.tuple.*;
 import io.datakernel.ot.exceptions.OTTransformException;
-import io.datakernel.util.*;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;

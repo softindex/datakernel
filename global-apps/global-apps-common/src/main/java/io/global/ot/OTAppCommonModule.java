@@ -7,7 +7,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.http.loader.StaticLoader;
 import io.global.common.SimKey;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;

@@ -1,12 +1,12 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.async.function.AsyncPredicate;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +15,13 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Promises.toList;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.CollectorsEx.throwingMerger;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.GraphReducer.Result.*;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.CollectorsEx.throwingMerger;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.promise.Promises.toList;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toMap;
@@ -31,10 +31,6 @@ public final class OTAlgorithms {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
 
 	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
-
-	private OTAlgorithms() {
-		throw new AssertionError();
-	}
 
 	public static <K, D, R> Promise<R> reduce(OTRepository<K, D> repository, OTSystem<D> system,
 			Set<K> heads, GraphReducer<K, D, R> reducer) {
@@ -275,7 +271,7 @@ public final class OTAlgorithms {
 		return reduce(repository, system, startNodes,
 				new GraphReducer<K, D, Set<K>>() {
 					long minLevel;
-					Set<K> nodes = new HashSet<>(startNodes);
+					final Set<K> nodes = new HashSet<>(startNodes);
 
 					@Override
 					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
@@ -348,25 +344,25 @@ public final class OTAlgorithms {
 	}
 
 	public static <K, D> Promise<List<D>> checkout(OTRepository<K, D> repository, OTSystem<D> system) {
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(repository, system, heads, DiffsReducer.toVoid(),
 								commit -> repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
-								.then(findResult -> Promise.of(cachedSnapshot.value)))
+										.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null))
+								.then(findResult -> Promise.of(cachedSnapshotRef.value)))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public static <K, D> Promise<List<D>> checkout(OTRepository<K, D> repository, OTSystem<D> system, K commitId) {
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(repository, system, union(heads, singleton(commitId)), DiffsReducer.toVoid(),
 								commit -> repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
+										.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null))
 								.then(findResult -> diff(repository, system, findResult.commit, commitId)
-										.map(diff -> concat(cachedSnapshot.value, diff))))
+										.map(diff -> concat(cachedSnapshotRef.value, diff))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 

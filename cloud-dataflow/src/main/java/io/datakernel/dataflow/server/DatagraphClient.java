@@ -16,19 +16,19 @@
 
 package io.datakernel.dataflow.server;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.server.command.DatagraphCommand;
 import io.datakernel.dataflow.server.command.DatagraphCommandDownload;
 import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.promise.Promise;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ public final class DatagraphClient {
 							.map($ -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(serialization.getSerializer(type)))
 									.withEndOfStream(eos -> eos
-											.whenComplete(($1, e1) -> messaging.close()))
+											.whenComplete(messaging::close))
 									.withLateBinding());
 				});
 	}

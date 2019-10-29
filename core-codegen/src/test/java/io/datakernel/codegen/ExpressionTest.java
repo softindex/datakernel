@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.common.Initializer;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
@@ -176,33 +177,33 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void test() throws IllegalAccessException, InstantiationException {
-		Expression local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test.class)
 				.withField("x", int.class)
 				.withField("y", Long.class)
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
 						compare(TestPojo.class, "property1", "property2"))
 				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareTo("x"))
+						compareToImpl("x"))
 				.withMethod("equals",
-						asEquals("x"))
+						equalsImpl("x"))
 				.withMethod("setXY", sequence(
-						set(self(), "x", arg(0)),
-						set(self(), "y", arg(1))))
+						set(property(self(), "x"), arg(0)),
+						set(property(self(), "y"), arg(1))))
 				.withMethod("test",
 						add(arg(0), value(1L)))
 				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
+						hash(property(arg(0), "property1"), property(arg(0), "property2")))
 				.withMethod("property1",
 						property(arg(0), "property1"))
 				.withMethod("setter", sequence(
-						set(arg(0), "property1", value(10)),
-						set(arg(0), "property2", value(20)),
+						set(property(arg(0), "property1"), value(10)),
+						set(property(arg(0), "property2"), value(20)),
 						arg(0)))
-				.withMethod("ctor", sequence(
-						local,
-						set(local, "property2", value(2)),
-						local))
+				.withMethod("ctor", let(
+						constructor(TestPojo.class, value(1)),
+						instance -> sequence(
+								set(property(instance, "property2"), value(2)),
+								instance)))
 				.withMethod("getX",
 						property(self(), "x"))
 				.withMethod("getY",
@@ -218,8 +219,8 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(property(self(), "x"))
-								.withArgument("labelY: ", property(self(), "y")))
+								.with(property(self(), "x"))
+								.with("labelY: ", property(self(), "y")))
 				.build();
 		Test test = testClass.newInstance();
 
@@ -269,9 +270,15 @@ public class ExpressionTest {
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = ClassBuilder.create(DefiningClassLoader.create(), Test2.class)
 				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2"), property(arg(0), "property3"),
-								property(arg(0), "property4"), property(arg(0), "property5"), property(arg(0), "property6"),
-								property(arg(0), "property7"))).build();
+						hash(
+								property(arg(0), "property1"),
+								property(arg(0), "property2"),
+								property(arg(0), "property3"),
+								property(arg(0), "property4"),
+								property(arg(0), "property5"),
+								property(arg(0), "property6"),
+								property(arg(0), "property7")))
+				.build();
 
 		Test2 test = testClass.newInstance();
 		TestPojo2 testPojo2 = new TestPojo2("randomString", 42, 666666, 43258.42342f, 54359878, 43252353278423.423468, "fhsduighrwqruqsd");
@@ -402,11 +409,11 @@ public class ExpressionTest {
 		long l = 4;
 
 		TestSH testClass = ClassBuilder.create(DefiningClassLoader.create(), TestSH.class)
-				.withMethod("shlInt", bitOp(BitOperation.SHL, value(b), value(i)))
-				.withMethod("shlLong", bitOp(BitOperation.SHL, value(l), value(b)))
-				.withMethod("shrInt", bitOp(BitOperation.SHR, value(b), value(i)))
-				.withMethod("shrLong", bitOp(BitOperation.SHR, value(l), value(i)))
-				.withMethod("ushrInt", bitOp(BitOperation.USHR, value(b), value(i)))
+				.withMethod("shlInt", shl(value(b), value(i)))
+				.withMethod("shlLong", shl(value(l), value(b)))
+				.withMethod("shrInt", shr(value(b), value(i)))
+				.withMethod("shrLong", shr(value(l), value(i)))
+				.withMethod("ushrInt", ushr(value(b), value(i)))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(testClass.shlInt(), b << i);
@@ -433,12 +440,12 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBitMask() {
 		TestBitMask testClass = ClassBuilder.create(DefiningClassLoader.create(), TestBitMask.class)
-				.withMethod("andInt", bitOp(BitOperation.AND, value(2), value(4)))
-				.withMethod("orInt", bitOp(BitOperation.OR, value(2), value(4)))
-				.withMethod("xorInt", bitOp(BitOperation.XOR, value(2), value(4)))
-				.withMethod("andLong", bitOp(BitOperation.AND, value(2), value(4L)))
-				.withMethod("orLong", bitOp(BitOperation.OR, value((byte) 2), value(4L)))
-				.withMethod("xorLong", bitOp(BitOperation.XOR, value(2L), value(4L)))
+				.withMethod("andInt", bitAnd(value(2), value(4)))
+				.withMethod("orInt", bitOr(value(2), value(4)))
+				.withMethod("xorInt", bitXor(value(2), value(4)))
+				.withMethod("andLong", bitAnd(value(2), value(4L)))
+				.withMethod("orLong", bitOr(value((byte) 2), value(4L)))
+				.withMethod("xorLong", bitXor(value(2L), value(4L)))
 				.buildClassAndCreateNewInstance();
 
 		assertEquals(testClass.andInt(), 2 & 4);
@@ -519,10 +526,12 @@ public class ExpressionTest {
 		List<Integer> listTo2 = new ArrayList<>();
 
 		WriteAllListElement testClass = ClassBuilder.create(DefiningClassLoader.create(), WriteAllListElement.class)
-				.withMethod("write", forEach(arg(0),
-						it -> sequence(addListItem(arg(1), it), voidExp())))
-				.withMethod("writeIter", forEach(arg(0),
-						it -> sequence(addListItem(arg(1), it), voidExp())))
+				.withMethod("write",
+						forEach(arg(0),
+								it -> sequence(addListItem(arg(1), it), voidExp())))
+				.withMethod("writeIter",
+						forEach(arg(0),
+								it -> sequence(addListItem(arg(1), it), voidExp())))
 				.buildClassAndCreateNewInstance();
 
 		testClass.write(listFrom, listTo1);
@@ -600,95 +609,21 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void testBuildedInstance() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
-		Expression local = let(constructor(TestPojo.class, value(1)));
-		Class<Test> testClass1 = ClassBuilder.create(definingClassLoader, Test.class)
+
+		Initializer<ClassBuilder<Object>> initializer = builder -> builder
 				.withField("x", int.class)
 				.withField("y", Long.class)
 				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "property1", "property2"))
-				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareTo("x"))
-				.withMethod("equals",
-						asEquals("x"))
-				.withMethod("setXY", sequence(
-						set(property(self(), "x"), arg(0)),
-						set(property(self(), "y"), arg(1))))
-				.withMethod("test",
-						add(arg(0), value(1L)))
-				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
-				.withMethod("property1",
-						property(arg(0), "property1"))
-				.withMethod("setter", sequence(
-						set(property(arg(0), "property1"), value(10)),
-						set(property(arg(0), "property2"), value(20)),
-						arg(0)))
-				.withMethod("ctor", sequence(
-						local,
-						set(property(local, "property2"), value(2)),
-						local))
-				.withMethod("getX",
-						property(self(), "x"))
-				.withMethod("getY",
-						property(self(), "y"))
-				.withMethod("allEqual",
-						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("anyEqual",
-						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoproperty1",
-						call(arg(0), "setproperty1", arg(1)))
-				.withMethod("getPojoproperty1",
-						call(arg(0), "getproperty1"))
-				.withMethod("toString",
-						ExpressionToString.create()
-								.withQuotes("{", "}", ", ")
-								.withArgument(property(self(), "x"))
-								.withArgument("labelY: ", property(self(), "y")))
+						compare(TestPojo.class, "property1", "property2"));
+
+		Class<?> testClass1 = ClassBuilder.create(definingClassLoader, Object.class)
+				.withClassKey("TestKey")
+				.initialize(initializer)
 				.build();
 
-		Class<Test> testClass2 = ClassBuilder.create(definingClassLoader, Test.class)
-				.withField("x", int.class)
-				.withField("y", Long.class)
-				.withMethod("compare", int.class, asList(TestPojo.class, TestPojo.class),
-						compare(TestPojo.class, "property1", "property2"))
-				.withMethod("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
-						compareTo("x"))
-				.withMethod("equals",
-						asEquals("x"))
-				.withMethod("setXY", sequence(
-						set(property(self(), "x"), arg(0)),
-						set(property(self(), "y"), arg(1))))
-				.withMethod("test",
-						add(arg(0), value(1L)))
-				.withMethod("hash",
-						hashCodeOfArgs(property(arg(0), "property1"), property(arg(0), "property2")))
-				.withMethod("property1",
-						property(arg(0), "property1"))
-				.withMethod("setter", sequence(
-						set(property(arg(0), "property1"), value(10)),
-						set(property(arg(0), "property2"), value(20)),
-						arg(0)))
-				.withMethod("ctor", sequence(
-						local,
-						set(property(local, "property2"), value(2)),
-						local))
-				.withMethod("getX",
-						property(self(), "x"))
-				.withMethod("getY",
-						property(self(), "y"))
-				.withMethod("allEqual",
-						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("anyEqual",
-						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
-				.withMethod("setPojoproperty1",
-						call(arg(0), "setproperty1", arg(1)))
-				.withMethod("getPojoproperty1",
-						call(arg(0), "getproperty1"))
-				.withMethod("toString",
-						ExpressionToString.create()
-								.withQuotes("{", "}", ", ")
-								.withArgument(property(self(), "x"))
-								.withArgument("labelY: ", property(self(), "y")))
+		Class<?> testClass2 = ClassBuilder.create(definingClassLoader, Object.class)
+				.withClassKey("TestKey")
+				.initialize(initializer)
 				.build();
 
 		assertEquals(testClass1, testClass2);
@@ -888,7 +823,7 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(call(self(), "b")))
+								.with(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 
 		assertNull(instance.b());
@@ -906,7 +841,7 @@ public class ExpressionTest {
 				.withMethod("toString",
 						ExpressionToString.create()
 								.withQuotes("{", "}", ", ")
-								.withArgument(call(self(), "b")))
+								.with(call(self(), "b")))
 				.buildClassAndCreateNewInstance();
 		assertEquals(folder.list().length, 1);
 		assertNull(instance.b());

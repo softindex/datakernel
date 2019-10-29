@@ -12,7 +12,7 @@ public final class ChannelInfoCopyExample {
 		Random random = new Random(System.currentTimeMillis());
 
 		ChannelSupplier.of(Stream.generate(() -> random.nextInt(100)).limit(50).toArray())
-					   .streamTo(ChannelConsumer.ofConsumer(System.out::println));
+				.streamTo(ChannelConsumer.ofConsumer(System.out::println));
 
 		eventloop.run();
 	}

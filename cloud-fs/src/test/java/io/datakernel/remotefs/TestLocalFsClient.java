@@ -16,17 +16,17 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.MemSize;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -44,11 +44,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.FILE_EXISTS;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -324,5 +324,13 @@ public final class TestLocalFsClient {
 
 		assertFalse(Files.exists(storagePath.resolve("i_do_not_exist.txt")));
 		assertFalse(Files.exists(storagePath.resolve("neither_am_i.txt")));
+	}
+
+	@Test
+	public void testMoveDirAtomicSpecialization() {
+		await(client.moveDir("2", "3"));
+
+		assertTrue(Files.isDirectory(storagePath.resolve("3")));
+		assertFalse(Files.exists(storagePath.resolve("2")));
 	}
 }

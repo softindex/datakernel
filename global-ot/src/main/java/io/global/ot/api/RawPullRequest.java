@@ -16,7 +16,7 @@
 
 package io.global.ot.api;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 public final class RawPullRequest {
 	public final RepoID repository;

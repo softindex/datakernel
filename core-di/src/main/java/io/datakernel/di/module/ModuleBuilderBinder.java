@@ -1,8 +1,8 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.annotation.EagerSingleton;
-import io.datakernel.di.annotation.KeySetAnnotation;
-import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.Eager;
+import io.datakernel.di.annotation.Export;
+import io.datakernel.di.annotation.Transient;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Constructors.*;
 import org.jetbrains.annotations.NotNull;
@@ -222,42 +222,19 @@ public interface ModuleBuilderBinder<T> extends ModuleBuilder {
 	}
 
 	/**
-	 * Adds bound key to a key set named with given name.
-	 * <p>
-	 * A key set is a special key of type Set&lt;Key&lt;?&gt;&gt; and name with annotation that is
-	 * marked with {@link KeySetAnnotation} instead of {@link NameAnnotation}
-	 *
-	 * @see KeySetAnnotation
+	 * Marks this binding as {@link Export exported}.
 	 */
-	ModuleBuilderBinder<T> as(@NotNull Name name);
-
-	/**
-	 * @see #as(Name)
-	 */
-	default ModuleBuilderBinder<T> as(@NotNull Class<? extends Annotation> annotationType) {
-		return as(Name.of(annotationType));
-	}
-
-	/**
-	 * @see #as(Name)
-	 */
-	default ModuleBuilderBinder<T> as(@NotNull Annotation annotation) {
-		return as(Name.of(annotation));
-	}
-
-	/**
-	 * @see #as(Name)
-	 */
-	default ModuleBuilderBinder<T> as(@NotNull String name) {
-		return as(Name.of(name));
-	}
-
-	/**
-	 * A shortcut for <code>as({@link EagerSingleton}.class)</code>
-	 */
-	default ModuleBuilderBinder<T> asEagerSingleton() {
-		return as(EagerSingleton.class);
-	}
-
 	ModuleBuilderBinder<T> export();
+
+	/**
+	 * Marks this binding as {@link Eager eager}.
+	 * <p>
+	 * Note that bindings cannot be both {@link Eager eager} and {@link Transient transient}.
+	 */
+	ModuleBuilderBinder<T> asEager();
+
+	/**
+	 * Marks this binding as {@link Transient transient}.
+	 */
+	ModuleBuilderBinder<T> asTransient();
 }

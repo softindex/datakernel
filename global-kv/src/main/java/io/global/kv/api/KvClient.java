@@ -16,9 +16,9 @@
 
 package io.global.kv.api;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 
 import java.util.Set;
 

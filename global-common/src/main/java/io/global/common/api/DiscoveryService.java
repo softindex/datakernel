@@ -16,8 +16,8 @@
 
 package io.global.common.api;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import org.jetbrains.annotations.Nullable;

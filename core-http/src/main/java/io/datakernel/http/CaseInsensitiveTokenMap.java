@@ -100,7 +100,7 @@ public final class CaseInsensitiveTokenMap<T extends Token> {
 	 */
 	public final T getOrCreate(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		T t = get(bytes, offset, length, lowerCaseHashCode);
-		return (t != null) ? t : factory.create(bytes, offset, length, null, lowerCaseHashCode);
+		return t != null ? t : factory.create(bytes, offset, length, null, lowerCaseHashCode);
 	}
 
 	/**

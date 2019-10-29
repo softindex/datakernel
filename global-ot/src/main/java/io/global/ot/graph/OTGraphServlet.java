@@ -1,10 +1,10 @@
 package io.global.ot.graph;
 
-import io.datakernel.async.Promise;
 import io.datakernel.http.*;
 import io.datakernel.ot.OTLoadedGraph;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.promise.Promise;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,11 +13,11 @@ import org.slf4j.LoggerFactory;
 
 import java.util.function.Function;
 
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.StringFormatUtils.limit;
+import static io.global.util.Utils.limit;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class OTGraphServlet<K, D> implements AsyncServlet {

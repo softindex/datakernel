@@ -16,28 +16,22 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.dns.DnsProtocol.RecordType;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import static io.datakernel.dns.DnsProtocol.RecordType.A;
-import static io.datakernel.dns.DnsProtocol.RecordType.AAAA;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 /***
  * A simple DNS query, which specifies a domain name and record type (one of A or AAAA).
  */
 public final class DnsQuery {
 	private final String domainName;
-	private final RecordType recordType;
+	private final DnsProtocol.RecordType recordType;
 
-	private DnsQuery(String domainName, RecordType recordType) {
-		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
-		checkArgument(recordType != null, "Record type cannot be null");
+	private DnsQuery(@NotNull String domainName, @NotNull DnsProtocol.RecordType recordType) {
 		this.domainName = domainName;
 		this.recordType = recordType;
 	}
 
-	public static DnsQuery of(String domainName, RecordType recordType) {
+	public static DnsQuery of(String domainName, DnsProtocol.RecordType recordType) {
 		return new DnsQuery(domainName, recordType);
 	}
 
@@ -45,21 +39,21 @@ public final class DnsQuery {
 	 * Shortcut to create {@link DnsQuery} with A (IPv4) record type.
 	 */
 	public static DnsQuery ipv4(String domainName) {
-		return new DnsQuery(domainName, A);
+		return new DnsQuery(domainName, DnsProtocol.RecordType.A);
 	}
 
 	/**
 	 * Shortcut to create {@link DnsQuery} with AAAA (IPv6) record type.
 	 */
 	public static DnsQuery ipv6(String domainName) {
-		return new DnsQuery(domainName, AAAA);
+		return new DnsQuery(domainName, DnsProtocol.RecordType.AAAA);
 	}
 
 	public String getDomainName() {
 		return domainName;
 	}
 
-	public RecordType getRecordType() {
+	public DnsProtocol.RecordType getRecordType() {
 		return recordType;
 	}
 

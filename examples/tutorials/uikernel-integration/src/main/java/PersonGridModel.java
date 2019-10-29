@@ -1,11 +1,11 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.promise.Promise;
 import io.datakernel.uikernel.*;
 
 import java.util.*;
 import java.util.function.Predicate;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.stream.Collectors.toList;
 
 @Inject

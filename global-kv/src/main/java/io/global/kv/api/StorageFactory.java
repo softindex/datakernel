@@ -1,6 +1,6 @@
 package io.global.kv.api;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 
 @FunctionalInterface

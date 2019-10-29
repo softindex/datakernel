@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,8 +25,6 @@ import org.jetbrains.annotations.Nullable;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	@FunctionalInterface
@@ -85,13 +83,13 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 				@Nullable StacklessException noValidResultException) {
 			assert senders.size() > 0;
 			this.subSenders = senders.toArray(new RpcSender[0]);
-			this.resultValidator = checkNotNull(resultValidator);
+			this.resultValidator = resultValidator;
 			this.noValidResultException = noValidResultException;
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			FirstResultCallback<O> firstResultCallback = new FirstResultCallback<>(subSenders.length, (ResultValidator<O>) resultValidator, cb, noValidResultException);
 			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, firstResultCallback);

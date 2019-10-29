@@ -16,7 +16,7 @@
 
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import java.util.Arrays;
 import java.util.Base64;

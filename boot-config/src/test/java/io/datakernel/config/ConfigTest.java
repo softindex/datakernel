@@ -16,15 +16,15 @@
 
 package io.datakernel.config;
 
-import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.ServerSocketSettings;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.config.Config.THIS;
-import static io.datakernel.util.CollectionUtils.set;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 

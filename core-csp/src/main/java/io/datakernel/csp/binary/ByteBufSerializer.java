@@ -18,11 +18,11 @@ package io.datakernel.csp.binary;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.bytebuf.util.ByteBufWriter;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.codec.json.JsonUtils;
-import io.datakernel.exception.ParseException;
-import io.datakernel.writer.ByteBufWriter;
+import io.datakernel.common.parse.ParseException;
 import org.jetbrains.annotations.Nullable;
 
 import static java.nio.charset.StandardCharsets.UTF_8;

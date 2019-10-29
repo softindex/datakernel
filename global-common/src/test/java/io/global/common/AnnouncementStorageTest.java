@@ -28,9 +28,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
-import static io.datakernel.util.CollectionUtils.set;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;

@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.common.time.CurrentTimeProvider;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;

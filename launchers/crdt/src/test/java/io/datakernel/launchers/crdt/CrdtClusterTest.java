@@ -16,7 +16,6 @@
 
 package io.datakernel.launchers.crdt;
 
-import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.config.Config;
@@ -24,17 +23,18 @@ import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
 import io.datakernel.crdt.CrdtStorageClient;
 import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.jmx.PromiseStats;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -49,13 +49,13 @@ import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.http.HttpMethod.PUT;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.nio.charset.StandardCharsets.UTF_8;
 

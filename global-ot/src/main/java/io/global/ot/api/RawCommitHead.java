@@ -16,9 +16,9 @@
 
 package io.global.ot.api;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RawCommitHead {
 	private final RepoID repositoryId;

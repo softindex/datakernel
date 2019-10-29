@@ -16,7 +16,7 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.junit.Test;
 
 import java.util.Arrays;

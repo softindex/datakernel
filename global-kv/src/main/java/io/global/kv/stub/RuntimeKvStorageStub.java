@@ -16,12 +16,12 @@
 
 package io.global.kv.stub;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.global.common.SignedData;
-import io.global.kv.api.RawKvItem;
 import io.global.kv.api.KvStorage;
+import io.global.kv.api.RawKvItem;
 
 import java.util.Arrays;
 import java.util.HashMap;

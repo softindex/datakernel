@@ -5,13 +5,13 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>datakernel-http</artifactId>
 
-  <name>DataKernel: HTTP</name>
+  <name>DataKernel : HTTP</name>
   <description>
     High-performance asynchronous HTTP clients and servers collection.
     Package contains a bunch of different built-in servlets for request dispatching, loading of a static content, etc.
@@ -59,4 +59,21 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>io.datakernel.http</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+
 </project>

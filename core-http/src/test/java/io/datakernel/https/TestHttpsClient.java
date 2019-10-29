@@ -35,11 +35,11 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaderValue.ofAcceptMediaTypes;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
 import static io.datakernel.http.MediaTypes.*;
+import static io.datakernel.promise.TestUtils.await;
 import static org.junit.Assert.assertEquals;
 
 public final class TestHttpsClient {

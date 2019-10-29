@@ -11,6 +11,7 @@ import static io.datakernel.di.util.Utils.checkArgument;
 
 /**
  * Scopes work with annotations in just the same way {@link Name Names} work with them.
+ *
  * @see Name
  */
 public final class Scope extends AbstractAnnotation {

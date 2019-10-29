@@ -1,6 +1,6 @@
 package io.global.pm;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.global.common.PubKey;
 
 public final class Message<K, V> {

@@ -16,10 +16,11 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -35,77 +36,77 @@ public abstract class ForwardingFsClient implements FsClient {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset) {
 		return peer.upload(name, offset);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name) {
 		return peer.upload(name);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		return peer.upload(name, offset, revision);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		return peer.download(name, offset, length);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset) {
 		return peer.download(name, offset);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name) {
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name) {
 		return peer.download(name);
 	}
 
 	@Override
-	public Promise<Void> delete(String name) {
+	public Promise<Void> delete(@NotNull String name) {
 		return peer.delete(name);
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		return peer.delete(name, revision);
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target) {
 		return peer.copy(name, target);
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return peer.copy(name, target, targetRevision);
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target) {
 		return peer.move(name, target);
 	}
 
 	@Override
-	public Promise<Void> move(String filename, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String filename, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return peer.move(filename, target, targetRevision, tombstoneRevision);
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return peer.listEntities(glob);
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return peer.list(glob);
 	}
 
 	@Override
-	public Promise<@Nullable FileMetadata> getMetadata(String name) {
+	public Promise<@Nullable FileMetadata> getMetadata(@NotNull String name) {
 		return peer.getMetadata(name);
 	}
 
@@ -115,37 +116,37 @@ public abstract class ForwardingFsClient implements FsClient {
 	}
 
 	@Override
-	public FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from, Function<String, Optional<String>> globInto) {
+	public FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from, @NotNull Function<String, Optional<String>> globInto) {
 		return peer.transform(into, from, globInto);
 	}
 
 	@Override
-	public FsClient transform(Function<String, Optional<String>> into, Function<String, Optional<String>> from) {
+	public FsClient transform(@NotNull Function<String, Optional<String>> into, @NotNull Function<String, Optional<String>> from) {
 		return peer.transform(into, from);
 	}
 
 	@Override
-	public FsClient addingPrefix(String prefix) {
+	public FsClient addingPrefix(@NotNull String prefix) {
 		return peer.addingPrefix(prefix);
 	}
 
 	@Override
-	public FsClient subfolder(String folder) {
+	public FsClient subfolder(@NotNull String folder) {
 		return peer.subfolder(folder);
 	}
 
 	@Override
-	public FsClient strippingPrefix(String prefix) {
+	public FsClient strippingPrefix(@NotNull String prefix) {
 		return peer.strippingPrefix(prefix);
 	}
 
 	@Override
-	public FsClient filter(Predicate<String> predicate) {
+	public FsClient filter(@NotNull Predicate<String> predicate) {
 		return peer.filter(predicate);
 	}
 
 	@Override
-	public FsClient mount(String mountpoint, FsClient client) {
+	public FsClient mount(@NotNull String mountpoint, @NotNull FsClient client) {
 		return peer.mount(mountpoint, client);
 	}
 }

@@ -14,9 +14,6 @@ import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.dns.DnsCache.*;
 
 public final class ConfigConverters {
-	private ConfigConverters() {
-		throw new AssertionError();
-	}
 
 	public static ConfigConverter<DnsCache> ofDnsCache(Eventloop eventloop) {
 		return new ConfigConverter<DnsCache>() {
@@ -44,4 +41,5 @@ public final class ConfigConverters {
 			}
 		};
 	}
+
 }

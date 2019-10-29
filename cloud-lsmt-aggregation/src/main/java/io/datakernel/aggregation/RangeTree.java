@@ -57,13 +57,9 @@ public final class RangeTree<K, V> {
 		this.segments = segments;
 	}
 
-	private RangeTree() {
-		this(new TreeMap<>());
-	}
+	public static <K extends Comparable<K>, V> RangeTree<K, V> create() {return new RangeTree<>(new TreeMap<>());}
 
-	public static <K, V> RangeTree<K, V> create() {return new RangeTree<>();}
-
-	public static <K, V> RangeTree<K, V> cloneOf(RangeTree<K, V> source) {
+	public static <K extends Comparable<K>, V> RangeTree<K, V> cloneOf(RangeTree<K, V> source) {
 		RangeTree<K, V> result = create();
 		result.segments.putAll(source.segments);
 		for (Map.Entry<K, Segment<V>> entry : result.segments.entrySet()) {

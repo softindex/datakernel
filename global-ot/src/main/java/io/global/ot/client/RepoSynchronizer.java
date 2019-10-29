@@ -1,15 +1,15 @@
 package io.global.ot.client;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.RetryPolicy;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.RetryPolicy;
+import io.datakernel.promise.SettablePromise;
 import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
@@ -21,9 +21,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncExecutors.retry;
-import static io.datakernel.async.Promises.repeat;
-import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.async.process.AsyncExecutors.retry;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.promise.Promises.repeat;
 import static io.global.util.Utils.eitherComplete;
 import static java.util.Collections.singleton;
 

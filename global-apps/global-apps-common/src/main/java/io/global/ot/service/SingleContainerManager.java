@@ -1,7 +1,7 @@
 package io.global.ot.service;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

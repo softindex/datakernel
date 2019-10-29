@@ -1,8 +1,8 @@
 package io.global.documents.document;
 
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
@@ -23,7 +23,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.documents.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
 import static io.global.documents.Utils.createMergedOTSystem;
 import static io.global.ot.edit.InsertOperation.insert;
@@ -59,9 +59,9 @@ public class DocumentOTSystemTest {
 		await(repository.saveSnapshot(root.getId(), emptyList()));
 
 		OTSystem<DocumentMultiOperation> otSystem = createMergedOTSystem();
-		OTNode<CommitId, DocumentMultiOperation, OTCommit<CommitId, DocumentMultiOperation>> otNode = OTNodeImpl.create(repository, otSystem);
-		this.stateManager1 = OTStateManager.create(eventloop, otSystem, otNode, state1);
-		this.stateManager2 = OTStateManager.create(eventloop, otSystem, otNode, state2);
+		OTUplink<CommitId, DocumentMultiOperation, OTCommit<CommitId, DocumentMultiOperation>> uplink = OTUplinkImpl.create(repository, otSystem);
+		this.stateManager1 = OTStateManager.create(eventloop, otSystem, uplink, state1);
+		this.stateManager2 = OTStateManager.create(eventloop, otSystem, uplink, state2);
 	}
 
 	@Test

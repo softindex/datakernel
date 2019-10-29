@@ -16,7 +16,7 @@
 
 package io.global.launchers;
 
-import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;

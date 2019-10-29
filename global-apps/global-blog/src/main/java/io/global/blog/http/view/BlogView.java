@@ -1,7 +1,7 @@
 package io.global.blog.http.view;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.ThreadMetadata;

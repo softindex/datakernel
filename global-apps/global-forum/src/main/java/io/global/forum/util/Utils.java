@@ -1,9 +1,9 @@
 package io.global.forum.util;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpException;
+import io.datakernel.promise.Promise;
 import io.global.comm.pojo.IpRange;
 import io.global.forum.http.IpBanRequest;
 import io.global.forum.ot.ForumMetadata;
@@ -13,7 +13,7 @@ import java.time.Instant;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.global.comm.util.Utils.createCommRegistry;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -35,6 +35,7 @@ public final class Utils {
 		return servlet ->
 				request ->
 						servlet.serve(request)
+								.get()
 								.thenEx((response, e) -> {
 									if (e != null) {
 										int code = e instanceof HttpException ? ((HttpException) e).getCode() : 500;

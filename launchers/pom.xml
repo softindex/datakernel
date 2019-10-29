@@ -5,14 +5,14 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>datakernel-launchers</artifactId>
   <packaging>pom</packaging>
 
-  <name>DataKernel: Launchers</name>
+  <name>Launchers</name>
   <description>
     Package provides a set of predefined launchers for different services as HTTP servers, RPC endpoints, etc.
   </description>

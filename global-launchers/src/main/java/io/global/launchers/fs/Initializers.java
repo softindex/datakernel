@@ -16,8 +16,8 @@
 
 package io.global.launchers.fs;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
-import io.datakernel.util.Initializer;
 import io.global.fs.local.GlobalFsNodeImpl;
 
 import static io.datakernel.config.ConfigConverters.ofBoolean;

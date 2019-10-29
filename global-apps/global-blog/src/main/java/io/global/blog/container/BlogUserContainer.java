@@ -1,18 +1,18 @@
 package io.global.blog.container;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.TypeT;
+import io.global.blog.dao.BlogDao;
+import io.global.blog.dao.BlogDaoImpl;
+import io.global.blog.ot.BlogMetadata;
 import io.global.comm.container.CommGlobalState;
 import io.global.comm.container.CommRepoNames;
 import io.global.comm.pojo.UserId;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
-import io.global.blog.dao.BlogDao;
-import io.global.blog.dao.BlogDaoImpl;
-import io.global.blog.ot.BlogMetadata;
 import io.global.kv.api.KvClient;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.OTDriver;
@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.global.blog.util.Utils.REGISTRY;
 
 public final class BlogUserContainer implements UserContainer {

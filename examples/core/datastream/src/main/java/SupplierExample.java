@@ -1,6 +1,6 @@
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
 
 /**
  * Example of creating custom StreamSupplier.

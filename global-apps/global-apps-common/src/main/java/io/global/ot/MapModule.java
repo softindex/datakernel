@@ -20,9 +20,9 @@ public abstract class MapModule<K, V> extends AbstractModule {
 	}
 
 	@Provides
-	DynamicOTNodeServlet<MapOperation<K, V>> mapServlet(OTDriver driver, OTSystem<MapOperation<K, V>> otSystem,
+	DynamicOTUplinkServlet<MapOperation<K, V>> mapServlet(OTDriver driver, OTSystem<MapOperation<K, V>> otSystem,
 			StructuredCodec<MapOperation<K, V>> mapCodec) {
-		return DynamicOTNodeServlet.create(driver, otSystem, mapCodec, mapRepoPrefix);
+		return DynamicOTUplinkServlet.create(driver, otSystem, mapCodec, mapRepoPrefix);
 	}
 
 	@Provides

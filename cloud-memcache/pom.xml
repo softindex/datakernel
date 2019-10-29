@@ -5,13 +5,13 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>datakernel-memcache</artifactId>
 
-  <name>DataKernel: Memcache</name>
+  <name>DataKernel : Memcache</name>
   <description>
     Package provides client and server for creation of memcached RPC messaging.
   </description>
@@ -39,5 +39,21 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>io.datakernel.memcache</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

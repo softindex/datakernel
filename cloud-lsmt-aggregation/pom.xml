@@ -5,13 +5,13 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>datakernel-aggregation</artifactId>
 
-  <name>DataKernel: LSMT Aggregation</name>
+  <name>DataKernel : LSMT Aggregation</name>
   <description>
     Log-structured merge-tree table with fields representing aggregate functions, designed for OLAP workload.
   </description>
@@ -61,6 +61,22 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>io.datakernel.aggregation</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
   <profiles>
     <profile>

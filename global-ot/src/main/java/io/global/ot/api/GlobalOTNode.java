@@ -16,10 +16,10 @@
 
 package io.global.ot.api;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyManager;

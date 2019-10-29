@@ -1,8 +1,8 @@
 package io.global.comm.dao;
 
-import io.datakernel.async.Promise;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.promise.Promise;
 import io.global.comm.container.CommGlobalState;
 import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.pojo.*;

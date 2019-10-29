@@ -1,14 +1,14 @@
 package io.global.ot.server;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.ot.OTUplinkImpl;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.global.common.*;
@@ -30,13 +30,13 @@ import org.junit.Test;
 import java.time.Duration;
 import java.util.Set;
 
-import static io.datakernel.async.Promises.reduce;
-import static io.datakernel.async.Promises.repeat;
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.CollectorsEx.toAll;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.utils.Utils.*;
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.CollectorsEx.toAll;
+import static io.datakernel.promise.Promises.reduce;
+import static io.datakernel.promise.Promises.repeat;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.SignedData.sign;
 import static io.global.ot.client.OTDriver.sync;
@@ -123,8 +123,8 @@ public class GlobalOTNodeSynchronizationTest {
 				myRepositoryId2,
 				singleton(repoID1));
 
-		stateManager1 = OTStateManager.create(eventloop, otSystem, OTNodeImpl.create(repository1, otSystem), state1).withPoll();
-		stateManager2 = OTStateManager.create(eventloop, otSystem, OTNodeImpl.create(repository2, otSystem), state2).withPoll();
+		stateManager1 = OTStateManager.create(eventloop, otSystem, OTUplinkImpl.create(repository1, otSystem), state1).withPoll();
+		stateManager2 = OTStateManager.create(eventloop, otSystem, OTUplinkImpl.create(repository2, otSystem), state2).withPoll();
 
 		await(stateManager1.start());
 		await(stateManager2.start());
@@ -170,7 +170,7 @@ public class GlobalOTNodeSynchronizationTest {
 		syncAll();
 
 		startSyncing();
-
+		await();
 		assertSynced(30);
 
 		stateManager1.add(add(100));

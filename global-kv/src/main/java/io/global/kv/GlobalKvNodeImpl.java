@@ -16,17 +16,16 @@
 
 package io.global.kv;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.ref.RefBoolean;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.RefBoolean;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -40,8 +39,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.global.util.Utils.nSuccessesOrLess;
+import static io.global.util.Utils.untilTrue;
 
 public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl, GlobalKvNamespace, GlobalKvNode> implements GlobalKvNode, Initializable<GlobalKvNodeImpl> {
 	private int uploadCallNumber = 1;
@@ -97,7 +97,7 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 										if (doesUploadCaching || consumers.isEmpty()) {
 											splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
 													.withAcknowledgement(ack ->
-															ack.whenComplete((Callback<? super Void>) ($, e) -> {
+															ack.whenComplete(($, e) -> {
 																if (e == null) {
 																	localCompleted.set(true);
 																} else {
@@ -195,11 +195,10 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	}
 
 	private Promise<Void> doCatchUp() {
-		return Promises.until($ -> {
+		return untilTrue(() -> {
 			long timestampBegin = now.currentTimeMillis();
 			return fetch()
 					.map($2 -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
-
 		});
 	}
 

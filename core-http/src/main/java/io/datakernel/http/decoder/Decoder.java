@@ -1,8 +1,8 @@
 package io.datakernel.http.decoder;
 
-import io.datakernel.functional.Either;
+import io.datakernel.common.collection.Either;
+import io.datakernel.common.tuple.*;
 import io.datakernel.http.HttpRequest;
-import io.datakernel.util.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

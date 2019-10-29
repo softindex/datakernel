@@ -16,18 +16,18 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.ParserFunction;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.HttpHeaderValue.ParserIntoList;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ParserFunction;
-import io.datakernel.util.Recyclable;
+import io.datakernel.promise.Promise;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -66,8 +66,8 @@ public abstract class HttpMessage {
 	byte flags;
 
 	final HttpHeadersMultimap<HttpHeader, HttpHeaderValue> headers = new HttpHeadersMultimap<>();
-	ByteBuf body;
-	ChannelSupplier<ByteBuf> bodyStream;
+	@Nullable ByteBuf body;
+	@Nullable ChannelSupplier<ByteBuf> bodyStream;
 	Recyclable bufs;
 
 	protected int maxBodySize;
@@ -355,10 +355,7 @@ public abstract class HttpMessage {
 	 * Retrieves a set of all attachment keys for this HttpMessage
 	 */
 	public Set<Object> getAttachmentKeys() {
-		if (attachments == null) {
-			return emptySet();
-		}
-		return attachments.keySet();
+		return attachments != null ? attachments.keySet() : emptySet();
 	}
 
 	/**

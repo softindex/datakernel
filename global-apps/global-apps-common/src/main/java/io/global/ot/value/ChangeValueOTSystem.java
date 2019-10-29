@@ -1,8 +1,8 @@
 package io.global.ot.value;
 
+import io.datakernel.common.Preconditions;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
-import io.datakernel.util.Preconditions;
 
 import static io.datakernel.ot.TransformResult.*;
 import static java.util.Collections.singletonList;

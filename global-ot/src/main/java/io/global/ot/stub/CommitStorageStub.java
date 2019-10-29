@@ -16,7 +16,7 @@
 
 package io.global.ot.stub;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.server.CommitStorage;
@@ -47,7 +47,7 @@ public class CommitStorageStub implements CommitStorage {
 			map.put(head.getValue().getCommitId(), head);
 		}
 		excludedHeads.forEach(map::remove);
-		return Promise.complete();
+		return Promise.complete().async();
 	}
 
 	@Override

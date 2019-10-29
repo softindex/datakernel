@@ -16,15 +16,15 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.RefLong;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteRanger;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.util.ref.RefLong;
+import io.datakernel.promise.Promise;
 import io.global.common.*;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -39,10 +39,10 @@ import org.spongycastle.crypto.digests.SHA256Digest;
 import java.util.List;
 import java.util.Objects;
 
+import static io.datakernel.async.util.LogUtils.Level.INFO;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.remotefs.FsClient.*;
-import static io.datakernel.util.LogUtils.Level.INFO;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 

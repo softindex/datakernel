@@ -1,6 +1,5 @@
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 import java.util.Arrays;
 
@@ -24,10 +23,12 @@ public final class PromisesExample {
 	private static void loop() {
 		System.out.println("Looping with condition:");
 		//[START REGION_2]
-		Promises.loop(0, AsyncPredicate.of(i -> i < 5), i -> {
-			System.out.println("This is iteration #" + ++i);
-			return Promise.of(i);
-		});
+		Promises.loop(0,
+				i -> i < 5,
+				i -> {
+					System.out.println("This is iteration #" + i);
+					return Promise.of(i + 1);
+				});
 		//[END REGION_2]
 		System.out.println();
 	}

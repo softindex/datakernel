@@ -1,11 +1,11 @@
 package io.global;
 
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.promise.Promise;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
 import io.global.common.discovery.HttpDiscoveryService;

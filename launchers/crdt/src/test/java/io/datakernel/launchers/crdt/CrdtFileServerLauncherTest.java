@@ -6,8 +6,8 @@ import io.datakernel.di.annotation.Provides;
 import org.junit.Test;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 public class CrdtFileServerLauncherTest {
 	@Test

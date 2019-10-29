@@ -36,8 +36,8 @@ import java.nio.file.Path;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;

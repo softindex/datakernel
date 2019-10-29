@@ -96,8 +96,7 @@ public final class GenericsAndInterfacesExample {
 	}
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getContextClassLoader())
+		BinarySerializer<T> serializer = SerializerBuilder.create(getContextClassLoader())
 				.build(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}

@@ -4,12 +4,11 @@ FS Module is basis for building efficient, scalable remote file storage. support
 resharding. 
 
 You can add this module to your project by inserting the following dependency to **pom.xml**:
-
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel-fs</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
 </dependency>
 ```
 

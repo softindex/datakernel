@@ -26,7 +26,6 @@ import java.util.Map;
 
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
 
@@ -46,37 +45,32 @@ public final class ExpressionToString implements Expression {
 		return new ExpressionToString();
 	}
 
-	public ExpressionToString withArgument(String label, Expression expression) {
-		this.arguments.put(checkNotNull(label), checkNotNull(expression));
+	public ExpressionToString with(String label, Expression expression) {
+		this.arguments.put(label, expression);
 		return this;
 	}
 
-	public ExpressionToString withArgument(Expression expression) {
-		this.arguments.put(arguments.size() + 1, checkNotNull(expression));
+	public ExpressionToString with(Expression expression) {
+		this.arguments.put(arguments.size() + 1, expression);
 		return this;
 	}
 
 	public ExpressionToString withSeparator(String separator) {
-		this.separator = checkNotNull(separator);
+		this.separator = separator;
 		return this;
 	}
 
 	public ExpressionToString withQuotes(String begin, String end) {
-		this.begin = checkNotNull(begin);
-		this.end = checkNotNull(end);
+		this.begin = begin;
+		this.end = end;
 		return this;
 	}
 
 	public ExpressionToString withQuotes(String begin, String end, String separator) {
-		this.begin = checkNotNull(begin);
-		this.end = checkNotNull(end);
-		this.separator = checkNotNull(separator);
+		this.begin = begin;
+		this.end = end;
+		this.separator = separator;
 		return this;
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return getType(String.class);
 	}
 
 	@Override
@@ -131,31 +125,6 @@ public final class ExpressionToString implements Expression {
 		}
 
 		g.invokeVirtual(getType(StringBuilder.class), getMethod("String toString()"));
-		return type(ctx);
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionToString that = (ExpressionToString) o;
-
-		if (!begin.equals(that.begin)) return false;
-		if (!end.equals(that.end)) return false;
-		if (!separator.equals(that.separator)) return false;
-		if (!arguments.equals(that.arguments)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = begin.hashCode();
-		result = 31 * result + end.hashCode();
-		result = 31 * result + separator.hashCode();
-		result = 31 * result + arguments.hashCode();
-		return result;
+		return getType(String.class);
 	}
 }

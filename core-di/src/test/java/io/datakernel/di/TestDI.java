@@ -3,15 +3,13 @@ package io.datakernel.di;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.*;
-import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.module.InstanceConsumerModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
+import io.datakernel.di.util.Constructors.Constructor0;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.Nullable;
-import org.junit.Assert;
 import org.junit.Test;
 
 import java.lang.annotation.ElementType;
@@ -20,7 +18,6 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.module.Modules.combine;
@@ -61,25 +58,36 @@ public final class TestDI {
 		AtomicInteger ref = new AtomicInteger(41);
 		Injector injector = Injector.of(Module.create()
 				.bind(Integer.class).to(ref::incrementAndGet)
-				.bind(String.class).to(i -> "str: " + i.create(), new Key<InstanceFactory<Integer>>() {})
-				.bindInstanceFactory(String.class));
+				.bind(String.class).to(i -> "str: " + i.get(), new Key<InstanceProvider<Integer>>() {})
+				.bindInstanceProvider(String.class));
 
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 		assertEquals("str: 42", injector.getInstance(String.class));
 
-		InstanceFactory<String> provider = injector.getInstance(new Key<InstanceFactory<String>>() {});
-		assertEquals("str: 43", provider.create());
-		assertEquals("str: 44", provider.create());
-		assertEquals("str: 45", provider.create());
+		InstanceProvider<String> provider = injector.getInstance(new Key<InstanceProvider<String>>() {});
+		assertEquals("str: 42", provider.get());
+		assertEquals("str: 42", provider.get());
+		assertEquals("str: 42", provider.get());
 
-		// the first getInstance call was cached, non-pure mutability affects results only when using .create
 		assertEquals("str: 42", injector.getInstance(String.class));
+		assertEquals(42, injector.getInstance(Integer.class).intValue());
+	}
 
-		// but the integer getInstance or even provideSingleton were never called and so it was never cached
-		// mutable factory is only to indicate multiple factory calls in testing, in reality nobody
-		// should really do non-pure factories unless they know what hack they're trying to accomplish
-		assertEquals(46, injector.getInstance(Integer.class).intValue());
+	@Test
+	public void eagers() {
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+				.bind(String.class).to(() -> "str_" + mut.incrementAndGet()).asEager()
+				.bind(Object.class).to(() -> "whatever"));
+
+		injector.createEagerInstances();
+
+		assertEquals("str_1", injector.peekInstance(String.class));
+		assertNull(injector.peekInstance(Object.class));
+
+		injector.peekInstance(Float.class);
 	}
 
 	@Test
@@ -148,17 +156,11 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str: " + i, Float.class)
 				.bind(Float.class).to(i -> (float) i, Integer.class);
 
-		Set<Key<?>> expected1 = cyclic1.getReducedBindings().get().keySet();
-
 		try {
 			Injector.of(branch, cyclic1);
 			fail("should've failed here");
 		} catch (DIException e) {
 			e.printStackTrace();
-
-			Set<Key<?>[]> cycles = Preprocessor.collectCycles(combine(branch, cyclic1).getReducedBindings().get());
-			assertEquals(1, cycles.size());
-			assertEquals(expected1, Arrays.stream(cycles.iterator().next()).collect(toSet()));
 		}
 
 		Module cyclic2 = Module.create()
@@ -166,19 +168,11 @@ public final class TestDI {
 				.bind(Character.class).to($ -> 'k', Boolean.class)
 				.bind(Boolean.class).to($ -> Boolean.TRUE, Double.class);
 
-		Set<Key<?>> expected2 = cyclic2.getReducedBindings().get().keySet();
-
 		try {
 			Injector.of(branch, cyclic1, cyclic2);
 			fail("should've failed here");
 		} catch (DIException e) {
 			e.printStackTrace();
-
-			Set<Key<?>[]> cycles = Preprocessor.collectCycles(combine(branch, cyclic1, cyclic2).getReducedBindings().get());
-			assertEquals(2, cycles.size());
-
-			Set<Set<Key<?>>> unorderedCycles = cycles.stream().map(cycle -> Arrays.stream(cycle).collect(toSet())).collect(toSet());
-			assertEquals(Stream.of(expected1, expected2).collect(toSet()), unorderedCycles);
 		}
 	}
 
@@ -587,7 +581,6 @@ public final class TestDI {
 		abstract class Module2<C> extends Module1<C> {
 			@Override
 			protected void configure() {
-				super.configure();
 				bind(TestDI.class).toInstance(TestDI.this);
 				bind(new Key<AndAContainerToo<C>>() {});
 			}
@@ -720,57 +713,6 @@ public final class TestDI {
 		}
 	}
 
-	@Target(ElementType.METHOD)
-	@Retention(RetentionPolicy.RUNTIME)
-	@KeySetAnnotation
-	@interface MyKeySet {
-	}
-
-	@Target(ElementType.METHOD)
-	@Retention(RetentionPolicy.RUNTIME)
-	@KeySetAnnotation
-	@interface MyKeySet2 {
-	}
-
-	@Test
-	public void keySets() {
-		Injector injector = Injector.of(Module.create()
-				.bind(Integer.class).named("test").toInstance(123).as(MyKeySet2.class)
-				.bind(String.class).named("test").toInstance("123").as(MyKeySet2.class)
-				.scan(new Object() {
-
-					@Provides
-					@MyKeySet
-					Integer integer() {
-						return 42;
-					}
-
-					@Provides
-					@MyKeySet
-					Float f() {
-						return 42f;
-					}
-
-					@Provides
-					@MyKeySet
-					Double d() {
-						return 42d;
-					}
-
-					@Provides
-					String string(Integer integer) {
-						return "str: " + integer;
-					}
-				}));
-
-		Set<Key<?>> keys = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet.class)) {});
-		assertEquals(Stream.of(Float.class, Double.class, Integer.class).map(Key::of).collect(toSet()), keys);
-
-		Set<Key<?>> keys2 = injector.getInstance(new Key<Set<Key<?>>>(Name.of(MyKeySet2.class)) {});
-
-		assertEquals(Stream.of(String.class, Integer.class).map(cls -> Key.of(cls, "test")).collect(toSet()), keys2);
-	}
-
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
 	@ScopeAnnotation
@@ -812,9 +754,9 @@ public final class TestDI {
 			}
 		});
 
-		printGraphVizGraph(module.getReducedBindings());
+		printGraphVizGraph(module.getReducedBindingInfo());
 
-		Trie<Scope, Map<Key<?>, Binding<?>>> flattened = Modules.ignoreScopes(module).getReducedBindings();
+		Trie<Scope, Map<Key<?>, BindingInfo>> flattened = Modules.ignoreScopes(module).getReducedBindingInfo();
 
 		printGraphVizGraph(flattened);
 
@@ -1061,6 +1003,8 @@ public final class TestDI {
 		Module module4 = new GenericModule<String, Integer>() {};
 		Module module5 = new OtherModule();
 
+		System.out.println(module2.toString());
+
 		assertTrue(module.toString().startsWith("AbstractModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 		assertTrue(module2.toString().startsWith("MyModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
 		assertTrue(module3.toString().startsWith("InheritedModule(at io.datakernel.di.TestDI.abstractModuleToString(TestDI.java:"));
@@ -1122,7 +1066,6 @@ public final class TestDI {
 
 	@Test
 	public void recursiveRebindImport() {
-
 		Module importingModule = Module.create()
 				.bind(String.class).to(i -> "hello #" + i, Integer.class);
 
@@ -1130,7 +1073,7 @@ public final class TestDI {
 				Module.create().bind(Integer.class).toInstance(3000),
 				importingModule.rebindImport(Key.of(Integer.class), Binding.to(i -> i * 2, Integer.class)));
 
-		printGraphVizGraph(m.getReducedBindings());
+		printGraphVizGraph(m.getReducedBindingInfo());
 
 		Injector injector = Injector.of(m);
 
@@ -1152,72 +1095,6 @@ public final class TestDI {
 		Injector subinjector = injector.enterScope(Scope.of(Scope1.class));
 		assertEquals("hello #3000", subinjector.getInstance(String.class));
 	}
-
-	@Test
-	public void consumerTransformerHookupTest() {
-		AbstractModule module = new AbstractModule() {
-			@ProvidesIntoSet
-			Consumer<String> consumer() {
-				return System.out::println;
-			}
-
-			@ProvidesIntoSet
-			Consumer<String> consumer2() {
-				return System.err::println;
-			}
-
-			@Provides
-			String string() { return "Hello, World"; }
-		};
-
-		Module module1 = Module.create()
-				.install(module)
-				.combineWith(InstanceConsumerModule.create()
-						.withPriority(99));
-
-		Injector injector = Injector.of(module1);
-		String instance = injector.getInstance(String.class);
-		Assert.assertEquals("Hello, World", instance);
-	}
-
-	//[START REGION_1]
-	@Test
-	public void consumerTransformerHookupWithNameTest() {
-		int[] calls = {0};
-		AbstractModule module = new AbstractModule() {
-			@Named("consumer1")
-			@ProvidesIntoSet
-			Consumer<String> consumer() {
-				return str -> {
-					System.out.println(str);
-					System.out.println(++calls[0]);
-				};
-			}
-
-			@ProvidesIntoSet
-			Consumer<String> consumer2() {
-				return str -> {
-					System.err.println(str);
-					System.out.println(++calls[0]);
-				};
-			}
-
-			@Named("consumer1")
-			@Provides
-			String string() { return "Hello, World"; }
-		};
-
-		Module module1 = Module.create()
-				.install(module)
-				.install(InstanceConsumerModule.create()
-						.withPriority(99));
-
-		Injector injector = Injector.of(module1);
-		String instance = injector.getInstance(Key.of(String.class, "consumer1"));
-		assertEquals(instance, "Hello, World");
-		assertEquals(1, calls[0]);
-	}
-	//[END REGION_1]
 
 	@Test
 	public void exportMultibinders() {
@@ -1280,6 +1157,7 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str #" + i, Integer.class).export()
 				.bind(Integer.class).toInstance(123)
 				.transform(1, (bindings, scope, key, binding) -> {
+					//noinspection RedundantCast - does not compile without this
 					if (key.getRawType() != (Class) Integer.class) {
 						return binding;
 					}
@@ -1363,35 +1241,6 @@ public final class TestDI {
 	}
 
 	@Test
-	public void keySetExports() {
-		Injector injector = Injector.of(
-				Module.create()
-						.bind(Integer.class).toInstance(3000).export()
-						.bind(String.class).toInstance("hello").as(EagerSingleton.class));
-
-		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
-		assertEquals(1, keySet.size());
-		Name name = keySet.iterator().next().getName();
-		assertNotNull(name);
-		assertTrue(name.isUnique());
-	}
-
-	@Test
-	public void installedKeySetExport() {
-		Injector injector = Injector.of(
-				Module.create()
-						.bind(Integer.class).toInstance(3000).export()
-						.install(Module.create()
-								.bind(String.class).toInstance("hello").as(EagerSingleton.class)));
-
-		Set<Key<?>> keySet = injector.getInstance(new Key<Set<Key<?>>>(EagerSingleton.class) {});
-		assertEquals(1, keySet.size());
-		Name name = keySet.iterator().next().getName();
-		assertNotNull(name);
-		assertTrue(name.isUnique());
-	}
-
-	@Test
 	public void moduleInstallReexport() {
 		Injector injector = Injector.of(
 				Module.create()
@@ -1402,5 +1251,219 @@ public final class TestDI {
 
 		assertEquals("hello", injector.getInstance(String.class));
 		assertEquals(123, injector.getInstance(Integer.class).intValue());
+	}
+
+	public interface TestInterface<T> {
+		T getObj();
+	}
+
+	public static class StringInterface implements TestInterface<String> {
+		static int counter = 0;
+
+		private final String obj;
+
+		public StringInterface(String obj) {
+			this.obj = obj;
+			counter++;
+		}
+
+		@Override
+		public String getObj() {
+			return obj;
+		}
+	}
+
+	@Test
+	public void bindIntoSetBug() {
+		Injector injector = Injector.of(
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bindIntoSet(new Key<TestInterface<?>>() {}, Key.of(StringInterface.class));
+					}
+
+					@Provides
+					StringInterface testBindIntoSet() {
+						return new StringInterface("string");
+					}
+				});
+		Set<TestInterface<?>> interfaces = injector.getInstance(new Key<Set<TestInterface<?>>>() {});
+
+		injector.getInstance(StringInterface.class);
+
+		assertEquals(1, interfaces.size());
+		assertEquals(1, StringInterface.counter); // bug: 1 != 2
+	}
+
+	public interface PostConstruct {
+		void init();
+	}
+
+	public static class PostConstructModule extends AbstractModule {
+		@Override
+		protected void configure() {
+			transform(99, (bindings, scope, key, binding) -> {
+				if (PostConstruct.class.isAssignableFrom(key.getRawType())) {
+					return binding.mapInstance(obj -> {
+						((PostConstruct) obj).init();
+						return obj;
+					});
+				}
+				return binding;
+			});
+		}
+	}
+
+	public static class PostConstructed implements PostConstruct {
+		private final String s;
+		private boolean inited;
+
+		public PostConstructed(String s) {
+			this.s = s;
+		}
+
+		@Override
+		public void init() {
+			inited = true;
+		}
+
+		@Override
+		public String toString() {
+			return s;
+		}
+	}
+
+	@Test
+	public void transientMap() {
+		AtomicInteger mut = new AtomicInteger();
+		Injector injector = Injector.of(Module.create()
+						.bind(PostConstructed.class).to(() -> new PostConstructed("str_" + mut.incrementAndGet())).asTransient(),
+				new PostConstructModule());
+
+		PostConstructed instance1 = injector.getInstance(PostConstructed.class);
+		assertEquals("str_1", instance1.s);
+		assertTrue(instance1.inited);
+		PostConstructed instance2 = injector.getInstance(PostConstructed.class);
+		assertEquals("str_2", instance2.s);
+		assertTrue(instance2.inited);
+		PostConstructed instance3 = injector.getInstance(PostConstructed.class);
+		assertEquals("str_3", instance3.s);
+		assertTrue(instance3.inited);
+	}
+
+	@Test
+	public void transientBinding() {
+		AtomicInteger mut = new AtomicInteger();
+		Injector injector = Injector.of(Module.create()
+				.bind(Integer.class).to(mut::incrementAndGet).asTransient()
+				.bind(String.class, "fixed").to(i -> "str_" + i, Integer.class)
+				.bind(String.class).to(i -> "str_" + i, Integer.class).asTransient());
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(Integer.class)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "fixed"))).limit(5).collect(toSet()).size());
+		assertEquals(5, Stream.generate(() -> injector.getInstance(String.class)).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void transientDsl() {
+		AtomicInteger counter = new AtomicInteger();
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+				.bind(String.class).to(() -> {
+					counter.incrementAndGet();
+					return "str_";
+				})
+				.bind(Integer.class).to(mut::incrementAndGet).asTransient()
+				.scan(new Object() {
+
+					@Provides
+					@Named("t")
+					@Transient
+					String string(String s, Integer i) {
+						return s + i;
+					}
+
+					@Provides
+					@Named("nt")
+					String string2(String s, Integer i) {
+						return s + i;
+					}
+				}));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(Key.of(String.class, "t"))).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "nt"))).limit(5).collect(toSet()).size());
+		assertEquals(7, injector.getInstance(Integer.class).intValue());
+		assertEquals(1, counter.get());
+	}
+
+	@Test
+	public void transientGenerators() {
+		Key<List<String>> stringListKey = new Key<List<String>>() {};
+		Key<Set<String>> stringSetKey = new Key<Set<String>>() {};
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+
+				.bind(stringListKey).asTransient()
+				.bind(stringSetKey)
+
+				.bind(String.class).asTransient()
+
+				.generate(String.class, (bindings, scope, key) ->
+						Binding.to(() -> "str_" + mut.incrementAndGet()))
+
+				.scan(new Object() {
+					@Provides
+					<T> List<T> transientList(T t) {
+						return singletonList(t);
+					}
+
+					@Provides
+					<T> Set<T> notSoTransientSet(T t) {
+						return singleton(t);
+					}
+				}));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(stringListKey)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(stringSetKey)).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void transientPlainBind() {
+		AtomicInteger mut = new AtomicInteger();
+
+		Injector injector = Injector.of(Module.create()
+				.bind(String.class).asTransient()
+				.bind(String.class, "nt")
+				.generate(String.class, (bindings, scope, key) ->
+						Binding.to(() -> "str_" + mut.incrementAndGet())));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(String.class)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "nt"))).limit(5).collect(toSet()).size());
+	}
+
+	@Test
+	public void partiallyTransientMultibind() {
+		AtomicInteger mut = new AtomicInteger();
+		Constructor0<Set<String>> constructor = () -> singleton("str_" + mut.incrementAndGet());
+
+		Key<Set<String>> setKey = new Key<Set<String>>() {};
+		Key<Set<String>> setKeyNt = setKey.named("nt");
+
+		Injector injector = Injector.of(Module.create()
+				.bind(setKey).to(constructor).asTransient()
+				.bind(setKey).toInstance(singleton("other one"))
+
+				.bind(setKeyNt).to(constructor)
+				.bind(setKeyNt).toInstance(singleton("other one"))
+
+				.bind(new Key<Set<String>>() {}).asTransient()
+
+				.multibindToSet(String.class)
+				.multibindToSet(Key.of(String.class, "nt")));
+
+		assertEquals(5, Stream.generate(() -> injector.getInstance(setKey)).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(setKeyNt)).limit(5).collect(toSet()).size());
 	}
 }

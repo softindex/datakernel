@@ -24,21 +24,19 @@ import io.datakernel.dataflow.node.NodeDownload;
 import io.datakernel.dataflow.node.NodeReduce;
 import io.datakernel.dataflow.node.NodeShard;
 import io.datakernel.dataflow.node.NodeUpload;
-import io.datakernel.stream.processor.StreamReducers;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
 public class DatasetUtils {
-	private DatasetUtils() {
-	}
 
 	@SuppressWarnings("unchecked")
 	public static <K, I, O> List<StreamId> repartitionAndReduce(DataGraph graph, LocallySortedDataset<K, I> input,
-	                                                            Reducer<K, I, O, ?> reducer,
-	                                                            List<Partition> partitions) {
+			Reducer<K, I, O, ?> reducer,
+			List<Partition> partitions) {
 		Function<I, K> keyFunction = input.keyFunction();
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<NodeShard<K, I>> sharders = new ArrayList<>();
@@ -68,19 +66,19 @@ public class DatasetUtils {
 	}
 
 	public static <K, T> List<StreamId> repartitionAndSort(DataGraph graph, LocallySortedDataset<K, T> input,
-	                                                       List<Partition> partitions) {
+			List<Partition> partitions) {
 		return repartitionAndReduce(graph, input, StreamReducers.mergeSortReducer(), partitions);
 	}
 
 	public static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,
-	                                          StreamId sourceStreamId, Partition targetPartition) {
+			StreamId sourceStreamId, Partition targetPartition) {
 		Partition sourcePartition = graph.getPartition(sourceStreamId);
 		return forwardChannel(graph, type, sourcePartition, targetPartition, sourceStreamId);
 	}
 
 	private static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,
-	                                           Partition sourcePartition, Partition targetPartition,
-	                                           StreamId sourceStreamId) {
+			Partition sourcePartition, Partition targetPartition,
+			StreamId sourceStreamId) {
 		NodeUpload<T> nodeUpload = new NodeUpload<>(type, sourceStreamId);
 		NodeDownload<T> nodeDownload = new NodeDownload<>(type, sourcePartition.getAddress(), sourceStreamId);
 		graph.addNode(sourcePartition, nodeUpload);

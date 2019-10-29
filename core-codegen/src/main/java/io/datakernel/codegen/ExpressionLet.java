@@ -19,31 +19,21 @@ package io.datakernel.codegen;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 
-import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 final class ExpressionLet implements Variable {
 	private final Expression field;
 	private VarLocal var;
 
 	ExpressionLet(Expression field) {
-		this.field = checkNotNull(field);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return field.type(ctx);
+		this.field = field;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		if (var == null) {
-			var = newLocal(ctx, field.type(ctx));
-			field.load(ctx);
+			var = ctx.newLocal(field.load(ctx));
 			var.store(ctx);
 		}
-		var.load(ctx);
-		return field.type(ctx);
+		return var.load(ctx);
 	}
 
 	@Nullable
@@ -55,25 +45,11 @@ final class ExpressionLet implements Variable {
 	@Override
 	public void store(Context ctx, Object storeContext, Type type) {
 		if (var == null) {
-			var = newLocal(ctx, field.type(ctx));
-			field.load(ctx);
+			Type fieldType = field.load(ctx);
+			var = ctx.newLocal(fieldType);
 			var.store(ctx);
 		}
 
 		var.store(ctx, storeContext, type);
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionLet that = (ExpressionLet) o;
-		return field.equals(that.field);
-	}
-
-	@Override
-	public int hashCode() {
-		return field.hashCode();
 	}
 }

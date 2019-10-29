@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 
 public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 	protected final int scope;
+
 	protected final int index;
 
 	protected AbstractCompiledBinding(int scope, int index) {
@@ -32,16 +33,5 @@ public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 		}
 	}
 
-	@Override
-	public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-		if (synchronizedScope == scope) return doCreateInstance(scopedInstances, synchronizedScope);
-		AtomicReferenceArray array = scopedInstances[scope];
-		//noinspection SynchronizationOnLocalVariableOrMethodParameter
-		synchronized (array) {
-			return doCreateInstance(scopedInstances, scope);
-		}
-	}
-
 	protected abstract R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
-
 }

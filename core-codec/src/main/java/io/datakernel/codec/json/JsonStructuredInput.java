@@ -4,8 +4,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;

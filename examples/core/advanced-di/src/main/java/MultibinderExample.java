@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Injector;
@@ -25,13 +24,13 @@ public final class MultibinderExample {
 		@Provides
 		public Map<String, AsyncServlet> firstPage() {
 			return singletonMap("/first",
-					req -> Promise.of(HttpResponse.ok200().withPlainText("Hello from first page!")));
+					request -> HttpResponse.ok200().withPlainText("Hello from first page!"));
 		}
 
 		@Provides
 		public Map<String, AsyncServlet> lastPage() {
 			return singletonMap("/last",
-					req -> Promise.of(HttpResponse.ok200().withPlainText("Hello from last page!")));
+					request -> HttpResponse.ok200().withPlainText("Hello from last page!"));
 		}
 
 		@ProvidesIntoSet
@@ -49,14 +48,14 @@ public final class MultibinderExample {
 		public Consumer<RoutingServlet> firstPage() {
 			return routingServlet ->
 					routingServlet.map("/first",
-							req -> Promise.of(HttpResponse.ok200().withPlainText("Hello from first page!")));
+							request -> HttpResponse.ok200().withPlainText("Hello from first page!"));
 		}
 
 		@ProvidesIntoSet
 		public Consumer<RoutingServlet> lastPage() {
 			return routingServlet ->
 					routingServlet.map("/last",
-							req -> Promise.of(HttpResponse.ok200().withPlainText("Hello from last page!")));
+							request -> HttpResponse.ok200().withPlainText("Hello from last page!"));
 		}
 
 		@ProvidesIntoSet

@@ -16,7 +16,7 @@
 
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 import org.spongycastle.math.ec.ECPoint;
 

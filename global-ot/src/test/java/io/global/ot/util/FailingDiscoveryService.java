@@ -1,6 +1,6 @@
 package io.global.ot.util;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;

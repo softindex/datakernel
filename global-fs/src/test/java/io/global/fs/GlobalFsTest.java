@@ -51,12 +51,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.test.rules.ByteBufRule.IgnoreLeaks;
-import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;

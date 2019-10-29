@@ -1,10 +1,10 @@
 package io.global.forum.container;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.TypeT;
 import io.global.comm.container.CommGlobalState;
 import io.global.comm.container.CommRepoNames;
 import io.global.comm.pojo.UserId;
@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.global.forum.util.Utils.REGISTRY;
 
 public final class ForumUserContainer implements UserContainer {

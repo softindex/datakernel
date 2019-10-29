@@ -19,9 +19,9 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.codegen.ArithmeticOperation.*;
+import static io.datakernel.codegen.Utils.isWrapperType;
+import static io.datakernel.codegen.Utils.unwrap;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArithmeticOp implements Expression {
@@ -30,12 +30,12 @@ final class ExpressionArithmeticOp implements Expression {
 	private final Expression right;
 
 	ExpressionArithmeticOp(ArithmeticOperation op, Expression left, Expression right) {
-		this.op = checkNotNull(op);
-		this.left = checkNotNull(left);
-		this.right = checkNotNull(right);
+		this.op = op;
+		this.left = left;
+		this.right = right;
 	}
 
-	public static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {
+	static Class<?> unifyArithmeticTypes(Class<?>... dataTypes) {
 		Class<?> resultType = null;
 		int maxOrder = 0;
 
@@ -67,83 +67,37 @@ final class ExpressionArithmeticOp implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		Type leftType = left.type(ctx);
-		Type rightType = right.type(ctx);
-		if (isWrapperType(leftType)) {
-			leftType = unwrap(leftType);
-		}
-		if (isWrapperType(rightType)) {
-			rightType = unwrap(rightType);
-		}
-		return getType(unifyArithmeticTypes(getJavaType(leftType), getJavaType(rightType)));
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Expression leftVar = left;
-		Expression rightVar = right;
-		if (isWrapperType(leftVar.type(ctx))) {
-			leftVar.load(ctx);
-			g.unbox(unwrap(leftVar.type(ctx)));
-			VarLocal newLeftVar = newLocal(ctx, unwrap(leftVar.type(ctx)));
-			newLeftVar.storeLocal(g);
-			leftVar = newLeftVar;
+		Type leftType = left.load(ctx);
+		if (isWrapperType(leftType)) {
+			leftType = unwrap(leftType);
+			g.unbox(leftType);
 		}
-		if (isWrapperType(rightVar.type(ctx))) {
-			rightVar.load(ctx);
-			g.unbox(unwrap(rightVar.type(ctx)));
-			VarLocal newRightVar = newLocal(ctx, unwrap(rightVar.type(ctx)));
-			newRightVar.storeLocal(g);
-			rightVar = newRightVar;
+		Type rightType = right.load(ctx);
+		if (isWrapperType(rightType)) {
+			rightType = unwrap(rightType);
+			g.unbox(rightType);
 		}
-		Type resultType = getType(unifyArithmeticTypes(
-				getJavaType(leftVar.type(ctx)), getJavaType(rightVar.type(ctx))));
-		if (leftVar.type(ctx) != resultType) {
-			leftVar.load(ctx);
-			Type type = leftVar.type(ctx);
-			if (isValidCast(type, resultType)) {
-				g.cast(type, resultType);
+		if (op != SHL && op != SHR && op != USHR) {
+			Type resultType = getType(unifyArithmeticTypes(ctx.toJavaType(leftType), ctx.toJavaType(rightType)));
+			if (leftType != resultType) {
+				int rightLocal = g.newLocal(rightType);
+				g.storeLocal(rightLocal);
+				g.cast(leftType, resultType);
+				g.loadLocal(rightLocal);
 			}
-			VarLocal newLeftVar = newLocal(ctx, resultType);
-			newLeftVar.storeLocal(g);
-			leftVar = newLeftVar;
-		}
-		if (rightVar.type(ctx) != resultType) {
-			rightVar.load(ctx);
-			Type type = rightVar.type(ctx);
-			if (isValidCast(type, resultType)) {
-				g.cast(type, resultType);
+			if (rightType != resultType) {
+				g.cast(rightType, resultType);
 			}
-			VarLocal newRightVar = newLocal(ctx, resultType);
-			newRightVar.storeLocal(g);
-			rightVar = newRightVar;
+			g.visitInsn(resultType.getOpcode(op.opCode));
+			return resultType;
+		} else {
+			if (rightType != Type.getType(int.class)) {
+				g.cast(rightType, Type.getType(int.class));
+			}
+			g.visitInsn(leftType.getOpcode(op.opCode));
+			return leftType;
 		}
-		leftVar.load(ctx);
-		rightVar.load(ctx);
-		g.visitInsn(resultType.getOpcode(op.opCode));
-		return resultType;
 	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionArithmeticOp that = (ExpressionArithmeticOp) o;
-
-		if (op != that.op) return false;
-		if (!left.equals(that.left)) return false;
-		return right.equals(that.right);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = op.hashCode();
-		result = 31 * result + left.hashCode();
-		result = 31 * result + right.hashCode();
-		return result;
-	}
-
 }

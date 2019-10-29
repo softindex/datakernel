@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.keysToMap;
+import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 
 public final class SharedRepo {
 	@NotNull

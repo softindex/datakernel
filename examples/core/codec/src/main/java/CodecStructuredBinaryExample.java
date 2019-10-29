@@ -1,7 +1,7 @@
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.binary.BinaryUtils;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import util.Person;
 import util.Registry;
 

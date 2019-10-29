@@ -19,20 +19,19 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 public final class UpdateResponse<K, R extends AbstractRecord<K>> {
 	private final List<R> changes;
 	private final Map<K, Map<String, List<String>>> errors;
 
-	private UpdateResponse(List<R> changes, Map<K, Map<String, List<String>>> errors) {
-		this.changes = checkNotNull(changes, "Changes cannot be null in UpdateResponse");
-		this.errors = checkNotNull(errors, "Errors cannot be null in UpdateResponse");
+	private UpdateResponse(@NotNull List<R> changes, @NotNull Map<K, Map<String, List<String>>> errors) {
+		this.changes = changes;
+		this.errors = errors;
 	}
 
 	public static <K, R extends AbstractRecord<K>> UpdateResponse<K, R> of(List<R> changes) {

@@ -1,8 +1,8 @@
 package io.global.ot.service;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
+import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
@@ -98,8 +98,8 @@ public final class CommonUserContainer<D> implements UserContainer {
 		MyRepositoryId<SharedReposOperation> listRepositoryId = new MyRepositoryId<>(repoID, myRepositoryId.getPrivKey(), SHARED_REPOS_OPERATION_CODEC);
 		OTRepositoryAdapter<SharedReposOperation> repository = new OTRepositoryAdapter<>(driver, listRepositoryId, emptySet());
 		OTState<SharedReposOperation> state = new SharedReposOTState();
-		OTNodeImpl<CommitId, SharedReposOperation, OTCommit<CommitId, SharedReposOperation>> node = OTNodeImpl.create(repository, LIST_SYSTEM);
-		return OTStateManager.create(eventloop, LIST_SYSTEM, node, state)
+		OTUplink<CommitId, SharedReposOperation, OTCommit<CommitId, SharedReposOperation>> uplink = OTUplinkImpl.create(repository, LIST_SYSTEM);
+		return OTStateManager.create(eventloop, LIST_SYSTEM, uplink, state)
 				.withPoll(POLL_RETRY_POLICY);
 	}
 }

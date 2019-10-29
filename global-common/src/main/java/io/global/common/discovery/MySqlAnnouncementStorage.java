@@ -1,8 +1,8 @@
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.util.TypeT;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
@@ -15,12 +15,12 @@ import java.io.IOException;
 import java.sql.*;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.SqlUtils.execute;
-import static io.datakernel.util.Utils.loadResource;
+import static io.datakernel.common.Utils.loadResource;
+import static io.datakernel.common.sql.SqlUtils.execute;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 

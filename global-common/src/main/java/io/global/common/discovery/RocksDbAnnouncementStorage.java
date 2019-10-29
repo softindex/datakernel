@@ -1,9 +1,9 @@
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.TypeT;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
@@ -17,10 +17,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Executor;
 
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public class RocksDbAnnouncementStorage implements AnnouncementStorage {

@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.lang.Character.toUpperCase;
 import static java.util.Arrays.asList;
 
@@ -33,14 +33,14 @@ public class SerializerBuilderUtils {
 	public static final List<Class<?>> TYPES = asList(
 			byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
 	);
-	private static Map<Class<?>, SerializerGen> primitiveSerializers = new HashMap<Class<?>, SerializerGen>() {{
-		put(byte.class, new SerializerGenByte());
-		put(short.class, new SerializerGenShort());
-		put(int.class, new SerializerGenInt(true));
-		put(long.class, new SerializerGenLong(false));
-		put(float.class, new SerializerGenFloat());
-		put(double.class, new SerializerGenDouble());
-		put(char.class, new SerializerGenChar());
+	private static Map<Class<?>, SerializerDef> primitiveSerializers = new HashMap<Class<?>, SerializerDef>() {{
+		put(byte.class, new SerializerDefByte());
+		put(short.class, new SerializerDefShort());
+		put(int.class, new SerializerDefInt(true));
+		put(long.class, new SerializerDefLong(false));
+		put(float.class, new SerializerDefFloat());
+		put(double.class, new SerializerDefDouble());
+		put(char.class, new SerializerDefChar());
 	}};
 
 	private static Map<String, String> collectionImplSuffix = new HashMap<String, String>() {{
@@ -83,7 +83,7 @@ public class SerializerBuilderUtils {
 				} catch (ClassNotFoundException e) {
 					throw new IllegalStateException("There is no collection with given name" + e.getClass().getName(), e);
 				}
-				builder.withSerializer(hppcMapType, serializerGenMapBuilder(hppcMapType, hppcMapImplType, keyType, valueType));
+				builder.withSerializer(hppcMapType, serializerDefMapBuilder(hppcMapType, hppcMapImplType, keyType, valueType));
 			}
 		}
 	}
@@ -102,7 +102,7 @@ public class SerializerBuilderUtils {
 				} catch (ClassNotFoundException e) {
 					throw new IllegalStateException("There is no collection with given name", e);
 				}
-				builder.withSerializer(hppcCollectionType, serializerGenCollectionBuilder(hppcCollectionType, hppcCollectionTypeImpl, valueType));
+				builder.withSerializer(hppcCollectionType, serializerDefCollectionBuilder(hppcCollectionType, hppcCollectionTypeImpl, valueType));
 			}
 		}
 	}
@@ -111,18 +111,18 @@ public class SerializerBuilderUtils {
 		return toUpperCase(str.charAt(0)) + str.substring(1);
 	}
 
-	private static SerializerGenBuilder serializerGenMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
+	private static SerializerDefBuilder serializerDefMapBuilder(Class<?> mapType, Class<?> mapImplType, Class<?> keyType, Class<?> valueType) {
 		String prefix = capitalize(keyType.getSimpleName()) + capitalize(valueType.getSimpleName());
-		check(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
-		return (type, generics, fallback) -> {
-			SerializerGen keySerializer;
-			SerializerGen valueSerializer;
+		checkArgument(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
+		return (type, generics, target) -> {
+			SerializerDef keySerializer;
+			SerializerDef valueSerializer;
 			if (generics.length == 2) {
-				check((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
+				checkArgument((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
 				keySerializer = generics[0].serializer;
 				valueSerializer = generics[1].serializer;
 			} else if (generics.length == 1) {
-				check((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
+				checkArgument((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
 				if (keyType == Object.class) {
 					keySerializer = generics[0].serializer;
 					valueSerializer = primitiveSerializers.get(valueType);
@@ -134,22 +134,22 @@ public class SerializerBuilderUtils {
 				keySerializer = primitiveSerializers.get(keyType);
 				valueSerializer = primitiveSerializers.get(valueType);
 			}
-			return new SerializerGenHppc7Map(checkNotNull(keySerializer), checkNotNull(valueSerializer), mapType, mapImplType, keyType, valueType);
+			return new SerializerDefHppc7Map(checkNotNull(keySerializer), checkNotNull(valueSerializer), mapType, mapImplType, keyType, valueType);
 		};
 	}
 
-	private static SerializerGenBuilder serializerGenCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
+	private static SerializerDefBuilder serializerDefCollectionBuilder(Class<?> collectionType, Class<?> collectionImplType, Class<?> valueType) {
 		String prefix = capitalize(valueType.getSimpleName());
-		check(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
-		return (type, generics, fallback) -> {
-			SerializerGen valueSerializer;
+		checkArgument(collectionType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", collectionType.getSimpleName(), prefix);
+		return (type, generics, target) -> {
+			SerializerDef valueSerializer;
 			if (generics.length == 1) {
-				check(valueType == Object.class, "valueType must be Object.class");
+				checkArgument(valueType == Object.class, "valueType must be Object.class");
 				valueSerializer = generics[0].serializer;
 			} else {
 				valueSerializer = primitiveSerializers.get(valueType);
 			}
-			return new SerializerGenHppc7Collection(collectionType, collectionImplType, valueType, checkNotNull(valueSerializer));
+			return new SerializerDefHppc7Collection(collectionType, collectionImplType, valueType, checkNotNull(valueSerializer));
 		};
 	}
 }

@@ -1,9 +1,10 @@
 package io.global.ot.service;
 
-import io.datakernel.async.Promise;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.promise.Async;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,7 +32,7 @@ public final class ContainerServlet implements AsyncServlet {
 
 	@NotNull
 	@Override
-	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+	public Async<HttpResponse> serve(@NotNull HttpRequest request) {
 		if (singleContainer != null) {
 			request.attach(singleContainer);
 			return next.serve(request);

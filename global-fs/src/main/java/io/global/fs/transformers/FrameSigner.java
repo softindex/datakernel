@@ -16,9 +16,9 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PrivKey;
 import io.global.common.SignedData;

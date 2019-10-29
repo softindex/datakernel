@@ -16,9 +16,10 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
@@ -26,14 +27,13 @@ import io.datakernel.csp.binary.BinaryChannelInput;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
+import io.datakernel.promise.Promise;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.binary.ByteBufsParser.assertBytes;
 import static io.datakernel.csp.binary.ByteBufsParser.ofCrlfTerminatedBytes;
-import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Math.min;
 
 /**
@@ -98,9 +98,9 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	private void processLength() {
 		input.parse(
 				queue -> {
-					int remainingBytes = queue.remainingBytes();
 					int chunkLength = 0;
-					for (int i = 0; i < min(remainingBytes, MAX_CHUNK_LENGTH_DIGITS); i++) {
+					int i;
+					for (i = 0; i < min(queue.remainingBytes(), MAX_CHUNK_LENGTH_DIGITS + 1); i++) {
 						byte c = queue.peekByte(i);
 						if (c >= '0' && c <= '9') {
 							chunkLength = (chunkLength << 4) + (c - '0');
@@ -120,7 +120,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 						}
 					}
 
-					if (remainingBytes > MAX_CHUNK_LENGTH_DIGITS) {
+					if (i == MAX_CHUNK_LENGTH_DIGITS + 1) {
 						throw MALFORMED_CHUNK_LENGTH;
 					}
 

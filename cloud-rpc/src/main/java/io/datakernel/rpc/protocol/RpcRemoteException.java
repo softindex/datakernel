@@ -20,10 +20,13 @@ import io.datakernel.rpc.server.RpcServerConnection;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
+import org.jetbrains.annotations.Nullable;
 
 public class RpcRemoteException extends RpcException implements RpcMandatoryData {
 	private static final long serialVersionUID = 769022174067373741L;
+	@Nullable
 	private final String causeMessage;
+	@Nullable
 	private final String causeClassName;
 
 	public RpcRemoteException(String message, Throwable cause) {
@@ -44,19 +47,22 @@ public class RpcRemoteException extends RpcException implements RpcMandatoryData
 	}
 
 	@SuppressWarnings("unused")
-	public RpcRemoteException(@Deserialize("message") String message, @Deserialize("causeClassName") String causeClassName,
-			@Deserialize("causeMessage") String causeMessage) {
+	public RpcRemoteException(@Deserialize("message") String message,
+			@Nullable @Deserialize("causeClassName") String causeClassName,
+			@Nullable @Deserialize("causeMessage") String causeMessage) {
 		super(RpcServerConnection.class, message);
 		this.causeClassName = causeClassName;
 		this.causeMessage = causeMessage;
 	}
 
+	@Nullable
 	@Serialize(order = 1)
 	@SerializeNullable
 	public String getCauseMessage() {
 		return causeMessage;
 	}
 
+	@Nullable
 	@Serialize(order = 0)
 	@SerializeNullable
 	public String getCauseClassName() {

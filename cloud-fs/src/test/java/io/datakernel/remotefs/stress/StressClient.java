@@ -17,16 +17,16 @@
 package io.datakernel.remotefs.stress;
 
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
-import io.datakernel.csp.process.ChannelSerializer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.util.MemSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

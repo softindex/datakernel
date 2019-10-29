@@ -21,7 +21,7 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.codec.*;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -29,7 +29,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 public class JsonUtils {
-	private JsonUtils() {}
 
 	public static <T> T fromJson(StructuredDecoder<T> decoder, String string) throws ParseException {
 		JsonReader reader = new JsonReader(new StringReader(string));

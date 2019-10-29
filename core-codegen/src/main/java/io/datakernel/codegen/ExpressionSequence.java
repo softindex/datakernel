@@ -19,42 +19,18 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.VOID_TYPE;
 
 /**
  * Defines methods which allow to use several methods one after the other
  */
-public final class ExpressionSequence implements Expression {
-	private final List<Expression> expressions = new ArrayList<>();
-
-	private ExpressionSequence() {
-	}
+final class ExpressionSequence implements Expression {
+	final List<Expression> expressions;
 
 	ExpressionSequence(List<Expression> expressions) {
-		this.expressions.addAll(expressions);
-	}
-
-	public static ExpressionSequence create() {
-		return new ExpressionSequence();
-	}
-
-	public ExpressionSequence add(Expression expression) {
-		expressions.add(checkNotNull(expression));
-		return this;
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		Expression expression = getLast(expressions);
-		return expression.type(ctx);
-	}
-
-	private Expression getLast(List<Expression> list) {
-		return list.get(list.size() - 1);
+		this.expressions = expressions;
 	}
 
 	@Override
@@ -74,19 +50,5 @@ public final class ExpressionSequence implements Expression {
 		}
 
 		return type;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionSequence that = (ExpressionSequence) o;
-		return expressions.equals(that.expressions);
-	}
-
-	@Override
-	public int hashCode() {
-		return expressions.hashCode();
 	}
 }

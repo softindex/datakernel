@@ -17,7 +17,7 @@
 package io.datakernel.etl;
 
 import io.datakernel.codec.*;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.multilog.LogFile;
 import io.datakernel.multilog.LogPosition;
 

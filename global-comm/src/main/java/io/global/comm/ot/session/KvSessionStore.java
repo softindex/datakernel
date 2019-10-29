@@ -1,14 +1,14 @@
 package io.global.comm.ot.session;
 
-import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.async.EventloopTaskScheduler.Schedule;
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.async.service.EventloopTaskScheduler;
+import io.datakernel.async.service.EventloopTaskScheduler.Schedule;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.http.session.SessionStore;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
 import io.global.kv.api.KvClient;
 import io.global.kv.api.KvItem;
 import org.jetbrains.annotations.NotNull;

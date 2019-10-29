@@ -18,7 +18,7 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Property;
+import io.datakernel.codegen.Variable;
 
 @SuppressWarnings("rawtypes")
 public abstract class Measure {
@@ -34,13 +34,13 @@ public abstract class Measure {
 
 	public abstract Expression valueOfAccumulator(Expression accumulator);
 
-	public abstract Expression zeroAccumulator(Property accumulator);
+	public abstract Expression zeroAccumulator(Variable accumulator);
 
-	public abstract Expression initAccumulatorWithAccumulator(Property accumulator, Expression firstAccumulator);
+	public abstract Expression initAccumulatorWithAccumulator(Variable accumulator, Expression firstAccumulator);
 
-	public abstract Expression initAccumulatorWithValue(Property accumulator, Property firstValue);
+	public abstract Expression initAccumulatorWithValue(Variable accumulator, Variable firstValue);
 
-	public abstract Expression reduce(Property accumulator, Property nextAccumulator);
+	public abstract Expression reduce(Variable accumulator, Variable nextAccumulator);
 
-	public abstract Expression accumulate(Property accumulator, Property nextValue);
+	public abstract Expression accumulate(Variable accumulator, Variable nextValue);
 }

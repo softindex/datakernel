@@ -25,8 +25,8 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -48,7 +48,7 @@ public class AsyncServletTest {
 						ByteBuf.wrapForReading("Test2".getBytes(UTF_8)))
 				);
 
-		HttpResponse response = await(servlet.serve(testRequest));
+		HttpResponse response = await(servlet.serveAsync(testRequest));
 		testRequest.recycle();
 		ByteBuf body = await(response.loadBody(Integer.MAX_VALUE));
 
@@ -70,7 +70,7 @@ public class AsyncServletTest {
 						ChannelSupplier.ofException(exception)
 				));
 
-		Throwable e = awaitException(servlet.serve(testRequest));
+		Throwable e = awaitException(servlet.serveAsync(testRequest));
 
 		assertSame(exception, e);
 	}

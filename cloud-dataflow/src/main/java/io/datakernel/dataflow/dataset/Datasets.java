@@ -20,9 +20,9 @@ import io.datakernel.dataflow.dataset.impl.*;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
-import io.datakernel.stream.processor.StreamJoin.Joiner;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
-import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
+import io.datakernel.datastream.processor.StreamJoin.Joiner;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
 
 import java.util.Comparator;
 import java.util.List;
@@ -30,8 +30,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 public final class Datasets {
-	private Datasets() {
-	}
 
 	public static <K, T> SortedDataset<K, T> castToSorted(Dataset<T> dataset, Class<K> keyType,
 			Function<T, K> keyFunction, Comparator<K> keyComparator) {

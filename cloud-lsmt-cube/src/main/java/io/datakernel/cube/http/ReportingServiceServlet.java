@@ -18,17 +18,17 @@ package io.datakernel.cube.http;
 
 import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
 import io.datakernel.cube.ReportType;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,10 +130,10 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 		return response;
 	}
 
-	private static Pattern splitter = Pattern.compile(",");
+	private static final Pattern SPLITTER = Pattern.compile(",");
 
 	private static List<String> split(String input) {
-		return splitter.splitAsStream(input)
+		return SPLITTER.splitAsStream(input)
 				.map(String::trim)
 				.filter(s -> !s.isEmpty())
 				.collect(toList());

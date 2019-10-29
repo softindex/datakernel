@@ -17,6 +17,7 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -25,8 +26,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import static io.datakernel.codegen.Utils.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Utils.invokeVirtualOrInterface;
 import static java.lang.Character.toUpperCase;
 import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
@@ -37,18 +38,13 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods which allow to take property according to the name
  */
-public final class Property implements Variable {
+final class Property implements Variable {
 	private final Expression owner;
 	private final String property;
 
-	Property(Expression owner, String property) {
-		this.owner = checkNotNull(owner);
-		this.property = checkNotNull(property);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return typeOfPropertyOrGetter(ctx, owner.type(ctx), property);
+	Property(@NotNull Expression owner, @NotNull String property) {
+		this.owner = owner;
+		this.property = property;
 	}
 
 	@Override
@@ -70,29 +66,29 @@ public final class Property implements Variable {
 	public static void setProperty(Context ctx, Type ownerType, String property, Type valueType) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		Class<?> valueClass = getJavaType(ctx.getClassLoader(), valueType);
+		Class<?> valueClass = ctx.toJavaType(valueType);
 
-		if (ctx.getThisType().equals(ownerType)) {
+		if (ctx.getSelfType().equals(ownerType)) {
 			Class<?> propertyClass = ctx.getFields().get(property);
 			if (propertyClass == null) {
 				throw new RuntimeException(format("No property \"%s\" in generated class %s. %s",
 						property,
-						ctx.getThisType().getClassName(),
+						ctx.getSelfType().getClassName(),
 						exceptionInGeneratedClass(ctx)));
 			}
 			Type propertyType = getType(propertyClass);
-			cast(ctx, valueType, propertyType);
+			ctx.cast(valueType, propertyType);
 			g.putField(ownerType, property, propertyType);
 			return;
 		}
 
-		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
+		Class<?> argumentClass = ctx.toJavaType(ownerType);
 
 		try {
 			Field javaProperty = argumentClass.getField(property);
 			if (Modifier.isPublic(javaProperty.getModifiers())) {
 				Type propertyType = getType(javaProperty.getType());
-				cast(ctx, valueType, propertyType);
+				ctx.cast(valueType, propertyType);
 				g.putField(ownerType, property, propertyType);
 				return;
 			}
@@ -115,7 +111,7 @@ public final class Property implements Variable {
 
 		if (javaSetter != null) {
 			Type fieldType = getType(javaSetter.getParameterTypes()[0]);
-			cast(ctx, valueType, fieldType);
+			ctx.cast(valueType, fieldType);
 			invokeVirtualOrInterface(g, argumentClass, getMethod(javaSetter));
 			Type returnType = getType(javaSetter.getReturnType());
 			if (returnType.getSize() == 1) {
@@ -174,7 +170,7 @@ public final class Property implements Variable {
 	private static Type loadPropertyOrGetter(Context ctx, Type ownerType, String property, boolean load) {
 		GeneratorAdapter g = load ? ctx.getGeneratorAdapter() : null;
 
-		if (ownerType.equals(ctx.getThisType())) {
+		if (ownerType.equals(ctx.getSelfType())) {
 			Class<?> thisPropertyClass = ctx.getFields().get(property);
 			if (thisPropertyClass != null) {
 				Type resultType = Type.getType(thisPropertyClass);
@@ -190,7 +186,7 @@ public final class Property implements Variable {
 			}
 		}
 
-		Class<?> argumentClass = getJavaType(ctx.getClassLoader(), ownerType);
+		Class<?> argumentClass = ctx.toJavaType(ownerType);
 
 		try {
 			Field javaProperty = argumentClass.getField(property);
@@ -229,23 +225,5 @@ public final class Property implements Variable {
 				ownerType.getClassName(),
 				property,
 				exceptionInGeneratedClass(ctx)));
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		Property that = (Property) o;
-
-		if (!owner.equals(that.owner)) return false;
-		return property.equals(that.property);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = owner.hashCode();
-		result = 31 * result + property.hashCode();
-		return result;
 	}
 }

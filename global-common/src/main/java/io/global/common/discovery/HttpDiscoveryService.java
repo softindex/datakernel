@@ -16,11 +16,11 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.ParserFunction;
 import io.datakernel.http.*;
-import io.datakernel.util.ParserFunction;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -34,9 +34,9 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.api.DiscoveryCommand.*;
 import static io.global.common.discovery.DiscoveryServlet.*;
 import static java.nio.charset.StandardCharsets.UTF_8;

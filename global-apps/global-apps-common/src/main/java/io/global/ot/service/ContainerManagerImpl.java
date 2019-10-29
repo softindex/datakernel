@@ -1,11 +1,11 @@
 package io.global.ot.service;
 
-import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.async.EventloopTaskScheduler.Schedule;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.async.service.EventloopTaskScheduler;
+import io.datakernel.async.service.EventloopTaskScheduler.Schedule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.PrivKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -18,10 +18,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import static io.datakernel.util.CollectorsEx.toMap;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.CollectorsEx.toMap;
 import static java.util.stream.Collectors.toSet;
 
 public final class ContainerManagerImpl<C extends UserContainer> implements ContainerManager<C>, EventloopService {

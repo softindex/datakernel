@@ -16,10 +16,10 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.exception.AsyncTimeoutException;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.protocol.RpcOverloadException;
 
 public interface IRpcClient {

@@ -17,13 +17,14 @@
 package io.datakernel.codegen;
 
 import java.util.Map;
+import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.call;
 
 final class ExpressionMapForEach extends AbstractExpressionMapForEach {
 
-	ExpressionMapForEach(Expression collection, Expression forKey, Expression forValue) {
-		super(collection, forKey, forValue, Map.Entry.class);
+	ExpressionMapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue) {
+		super(collection, forEachKey, forEachValue, Map.Entry.class);
 	}
 
 	@Override

@@ -16,19 +16,19 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.Tuple2;
 import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -47,11 +47,11 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.BAD_PATH;
-import static io.datakernel.util.CollectionUtils.set;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -97,7 +97,7 @@ public final class FsIntegrationTest {
 		String resultFile = "file_uploaded.txt";
 
 		await(upload(resultFile, CONTENT)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
@@ -109,7 +109,7 @@ public final class FsIntegrationTest {
 		await(Promises.all(IntStream.range(0, 10)
 				.mapToObj(i -> ChannelSupplier.of(ByteBuf.wrapForReading(CONTENT))
 						.streamTo(ChannelConsumer.ofPromise(client.upload("file" + i)))))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		for (int i = 0; i < files; i++) {
 			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
@@ -121,7 +121,7 @@ public final class FsIntegrationTest {
 		String resultFile = "big file_uploaded.txt";
 
 		await(upload(resultFile, BIG_FILE)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals(BIG_FILE, Files.readAllBytes(storage.resolve(resultFile)));
 	}
@@ -131,7 +131,7 @@ public final class FsIntegrationTest {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
 		await(upload(resultFile, CONTENT)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve(resultFile)));
 	}
@@ -139,7 +139,7 @@ public final class FsIntegrationTest {
 	@Test
 	public void testUploadServerFail() {
 		Throwable exception = awaitException(upload("../../nonlocal/../file.txt", CONTENT)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertSame(BAD_PATH, exception);
 	}
@@ -155,7 +155,7 @@ public final class FsIntegrationTest {
 				ChannelSupplier.of(wrapUtf8("Test4")));
 
 		Throwable exception = awaitException(supplier.streamTo(ChannelConsumer.ofPromise(client.upload(resultFile)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("Test exception"));
@@ -168,7 +168,7 @@ public final class FsIntegrationTest {
 	private Promise<ByteBuf> download(String file) {
 		return client.download(file)
 				.then(supplier -> supplier.toCollector(ByteBufQueue.collector()))
-				.whenComplete(($, e) -> server.close());
+				.whenComplete(server::close);
 	}
 
 	@Test
@@ -197,7 +197,7 @@ public final class FsIntegrationTest {
 		String file = "file_not_exist_downloaded.txt";
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(file))
 				.streamTo(ChannelConsumer.of($ -> Promise.complete()))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertThat(exception, instanceOf(StacklessException.class));
 		assertThat(exception.getMessage(), containsString("File not found"));
@@ -217,7 +217,7 @@ public final class FsIntegrationTest {
 		}
 
 		await(Promises.all(tasks)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		for (int i = 0; i < tasks.size(); i++) {
 			assertArrayEquals(CONTENT, Files.readAllBytes(storage.resolve("file" + i)));
@@ -230,7 +230,7 @@ public final class FsIntegrationTest {
 		Files.write(storage.resolve(file), CONTENT);
 
 		await(client.delete(file)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertFalse(Files.exists(storage.resolve(file)));
 	}
@@ -240,7 +240,7 @@ public final class FsIntegrationTest {
 		String file = "no_file.txt";
 
 		await(client.delete(file)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 	}
 
 	@Test
@@ -257,7 +257,7 @@ public final class FsIntegrationTest {
 		}
 
 		List<FileMetadata> metadataList = await(client.list("**")
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertEquals(expected, metadataList.stream()
 				.map(FileMetadata::getName)
@@ -290,7 +290,7 @@ public final class FsIntegrationTest {
 
 		Tuple2<List<FileMetadata>, List<FileMetadata>> tuple = await(
 				Promises.toTuple(client.subfolder("subfolder1").listEntities("**"), client.subfolder("subfolder2").listEntities("**"))
-						.whenComplete(($, e) -> server.close())
+						.whenComplete(server::close)
 		);
 
 		assertEquals(expected1, tuple.getValue1().stream().map(FileMetadata::getName).collect(toSet()));

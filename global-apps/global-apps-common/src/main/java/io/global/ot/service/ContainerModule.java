@@ -1,10 +1,10 @@
 package io.global.ot.service;
 
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncServlet;
 import io.global.common.PrivKey;
 import org.slf4j.Logger;

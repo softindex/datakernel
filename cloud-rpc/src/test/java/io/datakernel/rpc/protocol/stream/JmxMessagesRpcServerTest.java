@@ -1,7 +1,7 @@
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.test.rules.EventloopRule;
@@ -12,7 +12,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
 import static io.datakernel.test.TestUtils.getFreePort;
@@ -47,7 +47,7 @@ public class JmxMessagesRpcServerTest {
 				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 		await(client.start().whenResult($ -> {
 			client.sendRequest("msg", 1000)
-					.whenComplete(($1, e) -> {
+					.whenComplete(() -> {
 						assertEquals(0, server.getFailedRequests().getTotalCount());
 						client.stop();
 					});
@@ -61,7 +61,7 @@ public class JmxMessagesRpcServerTest {
 				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 		await(client.start().whenResult($ -> {
 			client.sendRequest("msg", 10000)
-					.whenComplete(($1, e) -> {
+					.whenComplete(() -> {
 						assertTrue(server.getLastProtocolError().getTotal() > 0);
 						client.stop();
 					});
@@ -75,7 +75,7 @@ public class JmxMessagesRpcServerTest {
 				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
 		await(client.start().whenResult($ -> {
 			client.sendRequest("Message larger than LZ4 header", 1000)
-					.whenComplete(($1, e) -> {
+					.whenComplete(() -> {
 						assertTrue(server.getLastProtocolError().getTotal() > 0);
 						client.stop();
 					});

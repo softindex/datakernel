@@ -1,12 +1,12 @@
 package io.global.fs.local;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -25,9 +25,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.async.Promises.asPromises;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.promise.Promises.asPromises;
 import static io.global.util.Utils.tolerantCollectBoolean;
 import static java.util.stream.Collectors.toList;
 

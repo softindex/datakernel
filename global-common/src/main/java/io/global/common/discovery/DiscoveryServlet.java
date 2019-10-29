@@ -16,12 +16,12 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.http.*;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;

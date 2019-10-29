@@ -16,26 +16,25 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.ShardingFunction;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class RpcStrategySharding implements RpcStrategy {
 	private final RpcStrategyList list;
 	private final ShardingFunction<?> shardingFunction;
-	private int minActiveSubStrategies;
+	private final int minActiveSubStrategies;
 
-	private RpcStrategySharding(ShardingFunction<?> shardingFunction, RpcStrategyList list,
-	                            int minActiveSubStrategies) {
-		this.shardingFunction = checkNotNull(shardingFunction);
+	private RpcStrategySharding(@NotNull ShardingFunction<?> shardingFunction, @NotNull RpcStrategyList list, int minActiveSubStrategies) {
+		this.shardingFunction = shardingFunction;
 		this.list = list;
 		this.minActiveSubStrategies = minActiveSubStrategies;
 	}
@@ -76,17 +75,15 @@ public final class RpcStrategySharding implements RpcStrategy {
 		private final ShardingFunction<?> shardingFunction;
 		private final RpcSender[] subSenders;
 
-		Sender(ShardingFunction<?> shardingFunction, List<RpcSender> senders) {
-			// null values are allowed in senders list
-			checkArgument(senders != null && senders.size() > 0,
-					"List of senders should not be null and should contain at least one sender");
-			this.shardingFunction = checkNotNull(shardingFunction);
+		Sender(@NotNull ShardingFunction<?> shardingFunction, @NotNull List<RpcSender> senders) {
+			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");
+			this.shardingFunction = shardingFunction;
 			this.subSenders = senders.toArray(new RpcSender[0]);
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			int shardIndex = ((ShardingFunction<Object>) shardingFunction).getShard(request);
 			RpcSender sender = subSenders[shardIndex];
 			if (sender != null) {

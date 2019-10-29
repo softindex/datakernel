@@ -16,17 +16,16 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.ref.RefBoolean;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.RefBoolean;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -43,12 +42,11 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.global.util.Utils.nSuccessesOrLess;
-import static io.global.util.Utils.tolerantCollectBoolean;
+import static io.global.util.Utils.*;
 
 public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl, GlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<GlobalFsNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeImpl.class);
@@ -141,7 +139,7 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 									splitter.addOutput()
 											.set(ChannelConsumer.ofPromise(ns.upload(filename, offset, revision))
 													.withAcknowledgement(ack -> ack
-															.whenComplete((Callback<? super Void>) ($, e) -> {
+															.whenComplete(($, e) -> {
 																if (e == null) {
 																	localCompleted.set(true);
 																} else {
@@ -256,14 +254,12 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 	}
 
 	private Promise<Void> doCatchUp() {
-		return Promises.until(
-				$1 -> {
-					long timestampBegin = now.currentTimeMillis();
-					return fetch()
-							.map(didAnything ->
-									!didAnything || now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
-
-				});
+		return untilTrue(() -> {
+			long timestampBegin = now.currentTimeMillis();
+			return fetch()
+					.map(didAnything ->
+							!didAnything || now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
+		});
 	}
 
 	@Override

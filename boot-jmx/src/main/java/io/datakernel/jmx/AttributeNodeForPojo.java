@@ -16,13 +16,15 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.jmx.api.JmxReducer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Collections.singletonList;
 
 @SuppressWarnings("rawtypes")
@@ -127,9 +129,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources) {
-		checkNotNull(sources);
-		checkNotNull(attrNames);
+	public Map<String, Object> aggregateAttributes(@NotNull Set<String> attrNames, @NotNull List<?> sources) {
 		List<?> notNullSources = sources.stream().filter(Objects::nonNull).collect(Collectors.toList());
 		if (notNullSources.size() == 0 || attrNames.isEmpty()) {
 			Map<String, Object> nullMap = new HashMap<>();
@@ -221,7 +221,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public List<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(@NotNull Object source) {
 		Object pojo = fetcher.fetchFrom(source);
 
 		if (pojo == null) {
@@ -240,7 +240,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public final boolean isSettable(String attrName) {
+	public final boolean isSettable(@NotNull String attrName) {
 		if (!fullNameToNode.containsKey(attrName)) {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
 		}
@@ -250,8 +250,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public final void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
-		checkNotNull(targets);
+	public final void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) throws SetterException {
 		List<?> notNullTargets = targets.stream().filter(Objects::nonNull).collect(Collectors.toList());
 		if (notNullTargets.size() == 0) {
 			return;
@@ -271,7 +270,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public void setVisible(String attrName) {
+	public void setVisible(@NotNull String attrName) {
 		if (attrName.equals(name)) {
 			this.visible = true;
 			return;
@@ -286,7 +285,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public void hideNullPojos(List<?> sources) {
+	public void hideNullPojos(@NotNull List<?> sources) {
 		List<?> innerPojos = fetchInnerPojos(sources);
 		if (innerPojos.size() == 0) {
 			this.visible = false;
@@ -300,7 +299,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+	public void applyModifier(@NotNull String attrName, @NotNull AttributeModifier<?> modifier, @NotNull List<?> target) {
 		if (attrName.equals(name)) {
 			AttributeModifier<Object> attrModifierObject = (AttributeModifier<Object>) modifier;
 			List<Object> attributes = fetchInnerPojos(target);

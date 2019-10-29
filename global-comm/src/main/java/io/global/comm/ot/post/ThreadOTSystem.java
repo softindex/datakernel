@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.ot.TransformResult.empty;
-import static io.datakernel.util.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;

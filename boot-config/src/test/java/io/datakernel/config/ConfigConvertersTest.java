@@ -16,10 +16,10 @@
 
 package io.datakernel.config;
 
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.common.MemSize;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.SocketSettings;
 import org.junit.Assert;
 import org.junit.Test;
 

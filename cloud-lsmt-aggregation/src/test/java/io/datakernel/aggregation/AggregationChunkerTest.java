@@ -18,12 +18,12 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.Promise;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.exception.ExpectedException;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.common.exception.ExpectedException;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -36,11 +36,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static io.datakernel.aggregation.Utils.createRecordClass;
+import static io.datakernel.aggregation.Utils.singlePartition;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.stream.TestUtils.assertClosedWithError;
 import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -109,10 +111,10 @@ public final class AggregationChunkerTest {
 			}
 		}
 
-		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
+		Class<?> recordClass = createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
 		AggregationChunker<?, KeyValuePair> chunker = AggregationChunker.create(
-				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
+				structure, structure.getMeasures(), recordClass, (PartitionPredicate) singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
 		StreamSupplier<KeyValuePair> supplier = StreamSupplier.of(
@@ -171,7 +173,7 @@ public final class AggregationChunkerTest {
 			}
 		}
 
-		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
+		Class<?> recordClass = createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
 		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamSupplier<KeyValuePair> supplier = StreamSupplier.concat(
@@ -194,7 +196,7 @@ public final class AggregationChunkerTest {
 				StreamSupplier.closingWithError(exception)
 		);
 		AggregationChunker chunker = AggregationChunker.create(
-				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
+				structure, structure.getMeasures(), recordClass, (PartitionPredicate) singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
 		Throwable e = awaitException(supplier.streamTo(chunker));
@@ -254,7 +256,7 @@ public final class AggregationChunkerTest {
 			}
 		}
 
-		Class<?> recordClass = AggregationUtils.createRecordClass(structure, structure.getKeys(), fields, classLoader);
+		Class<?> recordClass = createRecordClass(structure, structure.getKeys(), fields, classLoader);
 
 		StreamSupplier<KeyValuePair> supplier = StreamSupplier.of(
 				new KeyValuePair(1, 1, 0),
@@ -263,7 +265,7 @@ public final class AggregationChunkerTest {
 				new KeyValuePair(1, 1, 2),
 				new KeyValuePair(1, 1, 2));
 		AggregationChunker chunker = AggregationChunker.create(
-				structure, structure.getMeasures(), recordClass, (PartitionPredicate) AggregationUtils.singlePartition(),
+				structure, structure.getMeasures(), recordClass, (PartitionPredicate) singlePartition(),
 				aggregationChunkStorage, classLoader, 1);
 
 		awaitException(supplier.streamTo(chunker));

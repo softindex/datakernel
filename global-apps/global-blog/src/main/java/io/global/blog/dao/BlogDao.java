@@ -1,9 +1,9 @@
 package io.global.blog.dao;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
+import io.global.blog.ot.BlogMetadata;
 import io.global.comm.dao.CommDao;
 import io.global.common.KeyPair;
-import io.global.blog.ot.BlogMetadata;
 
 public interface BlogDao {
 

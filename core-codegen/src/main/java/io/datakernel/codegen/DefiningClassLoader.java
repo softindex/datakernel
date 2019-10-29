@@ -16,19 +16,55 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.codegen.ClassBuilder.AsmClassKey;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.Arrays.asList;
+import static io.datakernel.common.collection.CollectionUtils.concat;
+import static java.util.Collections.singletonList;
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
 
 /**
  * Represents a loader for defining dynamically generated classes.
  * Also contains cache, that speeds up loading of classes, which have the same structure as the ones already loaded.
  */
+@SuppressWarnings("WeakerAccess")
 public final class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
-	private final Map<AsmClassKey<?>, Class<?>> definedClasses = new HashMap<>();
+
+	private final AtomicInteger definedClasses = new AtomicInteger();
+
+	private final Map<@NotNull ClassKey, Class<?>> cachedClasses = new HashMap<>();
+
+	public static final class ClassKey {
+		private final Class<?> superclass;
+		private final Set<Class<?>> interfaces;
+		private final List<Object> parameters;
+
+		public ClassKey(Class<?> superclass, Set<Class<?>> interfaces, List<Object> parameters) {
+			this.superclass = superclass;
+			this.interfaces = interfaces;
+			this.parameters = parameters;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			ClassKey key = (ClassKey) o;
+			return superclass.equals(key.superclass) &&
+					interfaces.equals(key.interfaces) &&
+					parameters.equals(key.parameters);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(superclass, interfaces, parameters);
+		}
+	}
 
 	// region builders
 	private DefiningClassLoader() {
@@ -43,37 +79,45 @@ public final class DefiningClassLoader extends ClassLoader implements DefiningCl
 	public static DefiningClassLoader create(ClassLoader parent) {return new DefiningClassLoader(parent);}
 	// endregion
 
-	Class<?> defineClass(String name, AsmClassKey<?> key, byte[] b) {
-		Class<?> definedClass = defineClass(name, b, 0, b.length);
-		definedClasses.put(key, definedClass);
+	public Class<?> defineClass(String className, byte[] bytecode) {
+		Class<?> definedClass = defineClass(className, bytecode, 0, bytecode.length);
+		definedClasses.incrementAndGet();
 		return definedClass;
 	}
 
-	Class<?> getClassByKey(AsmClassKey<?> key) {
-		return definedClasses.get(key);
+	synchronized public Class<?> defineAndCacheClass(@Nullable ClassKey key, String className, byte[] bytecode) {
+		Class<?> definedClass = defineClass(className, bytecode);
+		if (key != null) {
+			cachedClasses.put(key, definedClass);
+		}
+		return definedClass;
+	}
+
+	@Nullable
+	synchronized public Class<?> getCachedClass(@NotNull ClassKey key) {
+		return cachedClasses.get(key);
 	}
 
 	// jmx
 	@Override
-	public int getDefinedClassesCount() {
-		return definedClasses.size();
+	synchronized public int getDefinedClassesCount() {
+		return cachedClasses.size();
 	}
 
 	@Override
-	synchronized public Map<String, Integer> getDefinedClassesByType() {
-		Map<String, Integer> map = new HashMap<>();
+	synchronized public int getCachedClassesCount() {
+		return cachedClasses.size();
+	}
 
-		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
-			String type = asList(entry.getKey().getMainClass(), entry.getKey().getOtherClasses()).toString();
-			Integer count = map.get(type);
-			map.put(type, count == null ? 1 : count + 1);
-		}
-
-		return map;
+	@Override
+	synchronized public Map<String, Long> getCachedClassesCountByType() {
+		return cachedClasses.keySet().stream()
+				.map(key -> concat(singletonList(key.superclass), key.interfaces).toString())
+				.collect(groupingBy(identity(), counting()));
 	}
 
 	@Override
 	public String toString() {
-		return "{classes=" + definedClasses.size() + ", byType=" + getDefinedClassesByType() + '}';
+		return "{classes=" + cachedClasses.size() + ", byType=" + getCachedClassesCountByType() + '}';
 	}
 }

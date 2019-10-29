@@ -1,11 +1,11 @@
 package io.global.ot;
 
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.registry.CodecRegistry;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.promise.RetryPolicy;
 import io.global.ot.edit.DeleteOperation;
 import io.global.ot.edit.EditOperation;
 import io.global.ot.edit.InsertOperation;

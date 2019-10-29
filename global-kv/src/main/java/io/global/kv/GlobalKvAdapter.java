@@ -16,10 +16,10 @@
 
 package io.global.kv;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;

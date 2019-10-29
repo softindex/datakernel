@@ -16,9 +16,8 @@
 
 package io.global.fs;
 
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.http.HttpException;
 import io.datakernel.http.StubHttpClient;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
@@ -39,10 +38,10 @@ import org.spongycastle.crypto.CryptoException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
-import static io.datakernel.util.CollectionUtils.set;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryService.REJECTED_OUTDATED_ANNOUNCE_DATA;
 import static org.junit.Assert.*;

@@ -1,8 +1,8 @@
 package io.global.forum.dao;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
 import io.global.comm.dao.CommDao;
 import io.global.common.KeyPair;
 import io.global.forum.container.ForumUserContainer;

@@ -16,21 +16,21 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.AsyncSuppliers;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.function.AsyncSuppliers;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.RefLong;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ref.RefLong;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
@@ -38,12 +38,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * Represents a cached filesystem client which is an implementation of {@link FsClient}.
  * Cached filesystem client works on top of two {@link FsClient}s.
- * First is main client, which is potentially slow, but contains nessesary data. Typically it's a {@link RemoteFsClient}
+ * First is main client, which is potentially slow, but contains necessary data. Typically it's a {@link RemoteFsClient}
  * which connects to a remote server.
  * It is backed up by second one, which acts as a cache folder, typically it is a local filesystem client ({@link LocalFsClient})
  * Cache replacement policy is defined by supplying a {@link Comparator} of {@link FullCacheStat}.
@@ -73,19 +74,19 @@ public final class CachedFsClient implements FsClient, EventloopService {
 		return new CachedFsClient(Eventloop.getCurrentEventloop(), mainClient, cacheClient, comparator);
 	}
 
-	public CachedFsClient with(MemSize cacheSizeLimit) {
-		this.cacheSizeLimit = checkNotNull(cacheSizeLimit);
+	public CachedFsClient with(@NotNull MemSize cacheSizeLimit) {
+		this.cacheSizeLimit = cacheSizeLimit;
 		return this;
 	}
 
-	public CachedFsClient with(CurrentTimeProvider timeProvider) {
-		this.timeProvider = checkNotNull(timeProvider);
+	public CachedFsClient with(@NotNull CurrentTimeProvider timeProvider) {
+		this.timeProvider = timeProvider;
 		return this;
 	}
 	// endregion
 
-	public Promise<Void> setCacheSizeLimit(MemSize cacheSizeLimit) {
-		this.cacheSizeLimit = checkNotNull(cacheSizeLimit);
+	public Promise<Void> setCacheSizeLimit(@NotNull MemSize cacheSizeLimit) {
+		this.cacheSizeLimit = cacheSizeLimit;
 		return ensureSpace();
 	}
 
@@ -116,12 +117,12 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset) {
 		return mainClient.upload(name, offset);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		return mainClient.upload(name, offset, revision);
 	}
 
@@ -134,8 +135,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise for stream supplier of byte buffers
 	 */
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
-		checkNotNull(name, "fileName");
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		checkArgument(offset >= 0, "Data offset must be greater than or equal to zero");
 		checkArgument(length >= -1, "Data length must be either -1 or greater than or equal to zero");
 
@@ -168,14 +168,14 @@ public final class CachedFsClient implements FsClient, EventloopService {
 							.then(mainMetadata -> {
 								if (mainMetadata == null) {
 									return cacheClient.download(name, offset, length)
-											.whenComplete(($, e) -> updateCacheStats(name));
+											.whenComplete(() -> updateCacheStats(name));
 								}
 
 								long sizeInMain = mainMetadata.getSize();
 
 								if (sizeInCache >= sizeInMain) {
 									return cacheClient.download(name, offset, length)
-											.whenComplete((val, e) -> updateCacheStats(name));
+											.whenComplete(() -> updateCacheStats(name));
 								}
 
 								if ((length != -1) && (sizeInMain < (offset + length))) {
@@ -221,12 +221,12 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return mainClient.move(name, target, targetRevision, tombstoneRevision);
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return mainClient.copy(name, target, targetRevision);
 	}
 
@@ -237,13 +237,13 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * @return promise that is a union of the most actual files from cache folder and server
 	 */
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return Promises.toList(cacheClient.listEntities(glob), mainClient.listEntities(glob))
 				.map(lists -> FileMetadata.flatten(lists.stream()));
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return Promises.toList(cacheClient.list(glob), mainClient.list(glob))
 				.map(lists -> FileMetadata.flatten(lists.stream()));
 	}
@@ -251,10 +251,10 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	/**
 	 * Deletes file both on server and in cache folder
 	 *
-	 * @return promise of {@link Void} that represents succesfull deletion
+	 * @return promise of {@link Void} that represents successful deletion
 	 */
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		cacheStats.remove(name);
 		return Promises.all(cacheClient.delete(name, revision), mainClient.delete(name, revision));
 	}
@@ -306,7 +306,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 								}))));
 	}
 
-	private final class CacheStat {
+	private static final class CacheStat {
 		private long numberOfHits;
 		private long lastHitTimestamp;
 
@@ -328,7 +328,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 	 * POJO class that encapsulates stats about file in cache folder.
 	 * Consists of {@link FileMetadata}, number of successful cache hits and a time of the last cache hit occurrence.
 	 */
-	public final class FullCacheStat {
+	public static final class FullCacheStat {
 		private final FileMetadata fileMetadata;
 		private final long numberOfHits;
 		private final long lastHitTimestamp;

@@ -17,8 +17,8 @@
 package io.datakernel.crdt;
 
 import io.datakernel.crdt.local.CrdtStorageMap;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -28,11 +28,11 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static org.junit.Assert.assertEquals;
 
 public final class TestSimpleCrdt {
@@ -76,7 +76,7 @@ public final class TestSimpleCrdt {
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(client.upload()))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		System.out.println("Data at 'remote' storage:");
 		remoteStorage.iterator().forEachRemaining(System.out::println);
@@ -94,7 +94,7 @@ public final class TestSimpleCrdt {
 
 		await(client.download().then(supplierWithResult -> supplierWithResult
 				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(($, err) -> server.close())));
+				.whenComplete(server::close)));
 
 		System.out.println("Data fetched from 'remote' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);

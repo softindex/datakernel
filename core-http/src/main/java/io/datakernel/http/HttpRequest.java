@@ -16,13 +16,14 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
-import io.datakernel.util.Initializable;
+import io.datakernel.http.MultipartParser.MultipartDataHandler;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
 import static java.util.Collections.emptyMap;
@@ -384,7 +386,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String toString() {
 		if (url.isRelativePath()) {
 			String host = getHeader(HOST);
-			return (host != null ? host : "") + url.getPathAndQuery();
+			return nullToEmpty(host) + url.getPathAndQuery();
 		}
 		return url.toString();
 	}

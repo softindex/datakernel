@@ -18,16 +18,16 @@ package io.datakernel.csp.binary;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
 
 public final class ByteBufsParserTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 	public final ByteBufQueue queue = new ByteBufQueue();
 
 	@SuppressWarnings("ConstantConditions")

@@ -1,6 +1,6 @@
 package io.global.ot.api;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.junit.Test;
 
 import static io.global.ot.util.TestUtils.getCommitId;

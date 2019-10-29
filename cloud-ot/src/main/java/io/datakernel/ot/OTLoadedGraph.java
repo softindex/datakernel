@@ -23,9 +23,10 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Utils.coalesce;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.firstNonNull;
+import static io.datakernel.common.Utils.nullToEmpty;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
 import static java.util.Comparator.naturalOrder;
@@ -41,8 +42,8 @@ public class OTLoadedGraph<K, D> {
 
 	public OTLoadedGraph(OTSystem<D> otSystem, @Nullable Function<K, String> idToString, @Nullable Function<D, String> diffToString) {
 		this.otSystem = otSystem;
-		this.idToString = coalesce(idToString, this.idToString);
-		this.diffToString = coalesce(diffToString, this.diffToString);
+		this.idToString = firstNonNull(idToString, this.idToString);
+		this.diffToString = firstNonNull(diffToString, this.diffToString);
 	}
 
 	private static final class MergeNode {
@@ -106,7 +107,7 @@ public class OTLoadedGraph<K, D> {
 	}
 
 	public boolean hasVisited(K node) {
-		return levels.keySet().contains(node);
+		return levels.containsKey(node);
 	}
 
 	public Map<K, List<? extends D>> getParents(K child) {
@@ -225,7 +226,6 @@ public class OTLoadedGraph<K, D> {
 	private K doMerge(Set<K> nodes) throws OTException {
 		if (nodes.size() == 1) return first(nodes);
 
-
 		Optional<K> min = nodes.stream().min(comparingInt((K node) -> findRoots(node).size()));
 		assert min.isPresent();
 		K pivotNode = min.get();
@@ -303,7 +303,6 @@ public class OTLoadedGraph<K, D> {
 				(node.equals(revision) ? "green" : "white") +
 				"];\n");
 	}
-
 
 	private String nodeToGraphViz(K node) {
 		return "\"" + idToString.apply(node) + "\"";

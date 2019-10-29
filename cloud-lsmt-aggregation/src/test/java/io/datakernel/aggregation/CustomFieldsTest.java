@@ -23,9 +23,9 @@ import io.datakernel.aggregation.measure.HyperLogLog;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -43,8 +43,8 @@ import java.util.stream.Collectors;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.*;
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static junit.framework.TestCase.assertEquals;
 
 public class CustomFieldsTest {

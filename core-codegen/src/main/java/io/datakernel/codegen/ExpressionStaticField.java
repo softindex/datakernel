@@ -23,8 +23,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
-import static io.datakernel.codegen.Utils.getJavaType;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
@@ -33,25 +31,8 @@ final class ExpressionStaticField implements Variable {
 	private final String name;
 
 	ExpressionStaticField(Class<?> owner, String name) {
-		this.owner = checkNotNull(owner);
-		this.name = checkNotNull(name);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		Type fieldType;
-		try {
-			Field field = owner.getField(name);
-			Class<?> type = field.getType();
-			fieldType = getType(type);
-		} catch (NoSuchFieldException ignored) {
-			throw new RuntimeException(format("No static field %s.%s %s",
-					owner.getName(),
-					name,
-					exceptionInGeneratedClass(ctx)));
-		}
-
-		return fieldType;
+		this.owner = owner;
+		this.name = name;
 	}
 
 	@Override
@@ -59,7 +40,7 @@ final class ExpressionStaticField implements Variable {
 		Type fieldType;
 		Field field;
 		try {
-			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), Type.getType(owner));
+			Class<?> ownerJavaType = ctx.toJavaType(Type.getType(owner));
 			field = ownerJavaType.getField(name);
 			Class<?> type = field.getType();
 			fieldType = getType(type);
@@ -98,23 +79,5 @@ final class ExpressionStaticField implements Variable {
 				name,
 				exceptionInGeneratedClass(ctx))
 		);
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionStaticField that = (ExpressionStaticField) o;
-
-		if (!owner.equals(that.owner)) return false;
-		return name.equals(that.name);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = owner.hashCode();
-		result = 31 * result + name.hashCode();
-		return result;
 	}
 }

@@ -16,7 +16,7 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectorsEx.throwingMerger;
+import static io.datakernel.common.CollectorsEx.throwingMerger;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 

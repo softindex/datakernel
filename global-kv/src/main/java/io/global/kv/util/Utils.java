@@ -18,7 +18,7 @@ package io.global.kv.util;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.global.common.Hash;
 import io.global.common.Signature;
 import io.global.common.SignedData;

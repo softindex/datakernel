@@ -151,7 +151,6 @@ public class DiDependencyGraphExplore {
 		};
 		Injector injector = Injector.of(cookbook);
 
-
 		/// peekInstance, hasInstance and getInstance instance.
 		//[START REGION_1]
 		Cookie cookie1 = injector.peekInstance(Cookie.class);
@@ -163,13 +162,12 @@ public class DiDependencyGraphExplore {
 		Cookie cookie2 = injector.peekInstance(Cookie.class);
 		System.out.println("Instance is present in injector after 'get' : " + injector.hasInstance(Cookie.class));
 		System.out.println("Instance after get : " + cookie2);
-		System.out.println();	/// created instance check.
+		System.out.println();    /// created instance check.
 		System.out.println("Instances are same : " + cookie.equals(cookie2));
 		//[END REGION_1]
 		System.out.println();
 		System.out.println("============================ ");
 		System.out.println();
-
 
 		/// parent injectors
 		//[START REGION_2]
@@ -188,7 +186,7 @@ public class DiDependencyGraphExplore {
 		/// bindings check
 		// FYI: getBinding().toString() gives us a dependencies of current binding.
 		//[START REGION_3]
-		System.out.println("Butter binding check : " + subinjector.getBinding(Pastry.class));
+		System.out.println("Pastry binding check : " + subinjector.getBinding(Pastry.class));
 		//[END REGION_3]
 		System.out.println();
 		System.out.println("============================ ");

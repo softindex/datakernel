@@ -7,7 +7,7 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>3.0.0-SNAPSHOT</version>
+        <version>3.1-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -16,8 +16,8 @@
     <packaging>pom</packaging>
 
     <modules>
-        <module>http-archetype</module>
-        <module>rpc-archetype</module>
+        <module>http</module>
+        <module>rpc</module>
     </modules>
 
 </project>

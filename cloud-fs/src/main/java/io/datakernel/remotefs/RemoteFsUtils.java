@@ -1,6 +1,6 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
@@ -24,8 +24,6 @@ public final class RemoteFsUtils {
 			MOVING_DIRS,
 			UNSUPPORTED_REVISION
 	};
-
-	private RemoteFsUtils() {}
 
 	/**
 	 * Escapes any glob metacharacters so that given path string can ever only match one file.

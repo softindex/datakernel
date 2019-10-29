@@ -4,7 +4,7 @@ import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.registry.CodecRegistry;
-import io.datakernel.util.Tuple2;
+import io.datakernel.common.tuple.Tuple2;
 import io.global.comm.ot.post.operation.*;
 import io.global.comm.pojo.*;
 

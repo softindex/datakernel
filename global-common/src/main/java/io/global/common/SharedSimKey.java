@@ -16,7 +16,7 @@
 
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.spongycastle.crypto.CryptoException;
 
 import java.util.Arrays;

@@ -29,8 +29,8 @@ import io.datakernel.remotefs.LocalFsClient;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 public final class CrdtNodeExample extends CrdtNodeLauncher<String, TimestampContainer<Integer>> {
 	@Override

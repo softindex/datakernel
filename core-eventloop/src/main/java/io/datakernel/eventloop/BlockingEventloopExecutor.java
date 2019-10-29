@@ -16,8 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.Completable;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.async.callback.Completable;
+import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;

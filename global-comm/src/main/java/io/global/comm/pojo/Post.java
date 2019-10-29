@@ -5,8 +5,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.StringFormatUtils.limit;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.global.util.Utils.limit;
 
 public final class Post {
 	private final String postId;

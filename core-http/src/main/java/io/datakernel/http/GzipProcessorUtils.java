@@ -18,10 +18,10 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
-import io.datakernel.util.ConcurrentStack;
+import io.datakernel.common.collection.ConcurrentStack;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
@@ -58,8 +58,6 @@ public final class GzipProcessorUtils {
 
 	private static final ConcurrentStack<Inflater> decompressors = new ConcurrentStack<>();
 	private static final ConcurrentStack<Deflater> compressors = new ConcurrentStack<>();
-
-	private GzipProcessorUtils() {}
 
 	public static ByteBuf fromGzip(ByteBuf src, int maxMessageSize) throws ParseException {
 		assert src.readRemaining() > 0;

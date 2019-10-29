@@ -16,25 +16,25 @@
 
 package io.datakernel.etl;
 
-import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.process.AsyncCollector;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.datastream.StreamConsumerWithResult;
+import io.datakernel.datastream.StreamSupplierWithResult;
+import io.datakernel.datastream.processor.StreamUnion;
+import io.datakernel.datastream.stats.StreamStats;
+import io.datakernel.datastream.stats.StreamStatsBasic;
+import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.PromiseStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.multilog.LogFile;
 import io.datakernel.multilog.LogPosition;
 import io.datakernel.multilog.Multilog;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamSupplierWithResult;
-import io.datakernel.stream.processor.StreamUnion;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.stream.stats.StreamStatsBasic;
-import io.datakernel.stream.stats.StreamStatsDetailed;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +44,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
 /**
- * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
+ * Processes logs. Creates new aggregation logs and persists to {@link LogDataConsumer} .
  */
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {

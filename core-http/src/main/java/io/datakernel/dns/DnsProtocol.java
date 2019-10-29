@@ -18,9 +18,9 @@ package io.datakernel.dns;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
@@ -37,9 +37,6 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
  */
 public final class DnsProtocol {
 	public static final ParseException QUESTION_COUNT_NOT_ONE = new ParseException(DnsProtocol.class, "Received DNS response has question count not equal to one");
-
-	/** This class is static */
-	private DnsProtocol() {}
 
 	private static final int MAX_SIZE = 512;
 

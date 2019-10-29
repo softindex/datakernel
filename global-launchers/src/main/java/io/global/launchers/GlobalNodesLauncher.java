@@ -16,7 +16,7 @@
 
 package io.global.launchers;
 
-import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;

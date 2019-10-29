@@ -16,18 +16,18 @@
 
 package io.global.ot.client;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -41,9 +41,9 @@ import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.OTAlgorithms.excludeParents;
 import static io.datakernel.ot.OTAlgorithms.merge;
-import static io.datakernel.util.CollectionUtils.*;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.*;

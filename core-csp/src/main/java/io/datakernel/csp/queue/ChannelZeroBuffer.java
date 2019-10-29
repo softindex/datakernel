@@ -16,12 +16,12 @@
 
 package io.datakernel.csp.queue;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
 
 /**
  * Represents a buffer of zero capacity and stores only

@@ -1,7 +1,7 @@
 package io.global.comm.dao;
 
-import io.datakernel.async.Promise;
 import io.datakernel.http.session.SessionStore;
+import io.datakernel.promise.Promise;
 import io.global.comm.pojo.*;
 import io.global.common.KeyPair;
 import org.jetbrains.annotations.Nullable;

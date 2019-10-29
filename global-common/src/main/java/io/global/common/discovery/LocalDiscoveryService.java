@@ -16,9 +16,9 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.Hash;
 import io.global.common.PubKey;
@@ -35,8 +35,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
 
 public final class LocalDiscoveryService implements DiscoveryService, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalDiscoveryService.class);

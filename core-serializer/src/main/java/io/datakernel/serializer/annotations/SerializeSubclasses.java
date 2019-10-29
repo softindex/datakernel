@@ -16,16 +16,14 @@
 
 package io.datakernel.serializer.annotations;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({
 		ElementType.FIELD,
 		ElementType.METHOD,
 		ElementType.TYPE})
+@Repeatable(SerializeSubclassesEx.class)
 public @interface SerializeSubclasses {
 	int[] path() default {};
 

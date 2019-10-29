@@ -5,7 +5,7 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>core</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -27,39 +27,39 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>ComplexObjectSerializationExample</id>
+            <id>ComplexObjectExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>SerializerComplexObjectExample</mainClass>
+              <mainClass>ComplexObjectExample</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>FixedSizeFieldsSerializationExample</id>
+            <id>FixedSizeFieldsExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>SerializerFixedSizeFieldsExample</mainClass>
+              <mainClass>FixedSizeFieldsExample</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>GenericsAndInterfacesSerializationExample</id>
+            <id>GenericsAndInterfacesExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>SerializerGenericsAndInterfacesExample</mainClass>
+              <mainClass>GenericsAndInterfacesExample</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>SimpleObjectSerializationExample</id>
+            <id>SimpleObjectExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>SerializerSimpleObjectExample</mainClass>
+              <mainClass>SimpleObjectExample</mainClass>
             </configuration>
           </execution>
         </executions>

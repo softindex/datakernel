@@ -30,8 +30,6 @@ import static java.util.Collections.singletonList;
  * occurrences.
  */
 public final class FatalErrorHandlers {
-	private FatalErrorHandlers() {
-	}
 
 	public static FatalErrorHandler ignoreAllErrors() {
 		return (e, context) -> {};

@@ -16,11 +16,11 @@
 
 package io.datakernel.jmx;
 
-import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 import javax.management.DynamicMBean;
 import java.util.List;
 
 public interface DynamicMBeanFactory {
-	DynamicMBean createFor(List<?> monitorables, @Nullable MBeanSettings setting, boolean enableRefresh);
+	DynamicMBean createDynamicMBean(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh);
 }

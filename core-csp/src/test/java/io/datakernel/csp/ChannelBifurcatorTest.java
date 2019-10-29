@@ -1,9 +1,9 @@
 package io.datakernel.csp;
 
-import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.process.ChannelBifurcator;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -13,7 +13,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;

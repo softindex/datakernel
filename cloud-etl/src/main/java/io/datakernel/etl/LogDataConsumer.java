@@ -1,6 +1,6 @@
 package io.datakernel.etl;
 
-import io.datakernel.stream.StreamConsumerWithResult;
+import io.datakernel.datastream.StreamConsumerWithResult;
 
 import java.util.List;
 

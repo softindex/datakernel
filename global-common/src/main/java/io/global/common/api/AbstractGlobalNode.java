@@ -1,10 +1,10 @@
 package io.global.common.api;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.Initializable;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 

@@ -5,7 +5,7 @@ import io.global.ot.value.ChangeValue;
 
 import java.util.List;
 
-import static io.datakernel.util.CollectionUtils.getLast;
+import static io.datakernel.common.collection.CollectionUtils.getLast;
 
 public final class DocumentOTState implements OTState<DocumentMultiOperation> {
 	private String documentName;

@@ -17,6 +17,7 @@
 package io.datakernel.ot;
 
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;
@@ -26,8 +27,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.util.CollectorsEx.throwingMerger;
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.CollectorsEx.throwingMerger;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
@@ -54,19 +55,16 @@ public final class OTCommit<K, D> {
 		this.level = parents.values().stream().mapToLong(DiffsWithLevel::getLevel).max().orElse(0L) + 1L;
 	}
 
-	public static <K, D> OTCommit<K, D> ofRoot(K id) {
-		checkNotNull(id);
+	public static <K, D> OTCommit<K, D> ofRoot(@NotNull K id) {
 		return new OTCommit<>(INITIAL_EPOCH, id, emptyMap());
 	}
 
-	public static <K, D> OTCommit<K, D> of(int epoch, K id, Map<K, DiffsWithLevel<D>> parents) {
-		checkNotNull(id);
-		checkArgument(parents != null, "Cannot create OTCommit with parents that is null");
+	public static <K, D> OTCommit<K, D> of(int epoch, @NotNull K id, @NotNull Map<K, DiffsWithLevel<D>> parents) {
 		return new OTCommit<>(epoch, id, parents);
 	}
 
 	public static <K, D> OTCommit<K, D> of(int epoch, K id, Set<K> parents, Function<K, List<D>> diffs, Function<K, Long> levels) {
-		return of(epoch, id, (Map<K, DiffsWithLevel<D>>) parents.stream()
+		return of(epoch, id, parents.stream()
 				.collect(toMap(
 						parent -> parent,
 						parent -> new DiffsWithLevel<>(levels.apply(parent), diffs.apply(parent)),
@@ -74,9 +72,7 @@ public final class OTCommit<K, D> {
 						LinkedHashMap::new)));
 	}
 
-	public static <K, D> OTCommit<K, D> ofCommit(int epoch, K id, K parent, DiffsWithLevel<D> diffs) {
-		checkNotNull(id);
-		checkNotNull(parent);
+	public static <K, D> OTCommit<K, D> ofCommit(int epoch, @NotNull K id, @NotNull K parent, @NotNull DiffsWithLevel<D> diffs) {
 		return new OTCommit<>(epoch, id, singletonMap(parent, diffs));
 	}
 

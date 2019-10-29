@@ -11,8 +11,8 @@ import org.junit.Test;
 import java.nio.file.Paths;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 public class CrdtNodeLauncherTest {
 	@Test

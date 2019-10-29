@@ -1,19 +1,19 @@
 package io.datakernel.http.di;
 
-import io.datakernel.async.Promise;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.BindingGenerator;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.promise.Promise;
 
 /**
  * @since 3.0.0
  */
 public class PromiseGeneratorModule extends AbstractModule {
-	public static PromiseGeneratorModule create() {
-		return new PromiseGeneratorModule();
+	private PromiseGeneratorModule() {
 	}
 
-	private PromiseGeneratorModule() {
+	public static PromiseGeneratorModule create() {
+		return new PromiseGeneratorModule();
 	}
 
 	@Override

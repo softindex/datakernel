@@ -16,11 +16,11 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import io.datakernel.promise.Promise;
 
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
 
 public abstract class AbstractChannelTransformer<S extends AbstractChannelTransformer<S, I, O>, I, O>
 		extends AbstractCommunicatingProcess

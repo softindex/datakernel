@@ -1,8 +1,8 @@
 package io.global.common.api;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import org.slf4j.Logger;
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
 
 public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<S, L, N>, L extends AbstractGlobalNode<L, S, N>, N> {
 	private static final Logger logger = LoggerFactory.getLogger(AbstractGlobalNamespace.class);

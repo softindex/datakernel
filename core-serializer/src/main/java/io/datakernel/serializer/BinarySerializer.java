@@ -16,9 +16,6 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutput;
-
 /**
  * Represents a serializer which encodes and decodes &lt;T&gt; values to byte arrays
  */

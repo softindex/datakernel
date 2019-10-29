@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
@@ -7,6 +6,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.di.RequestScope;
 import io.datakernel.http.di.ScopeServlet;
 import io.datakernel.launchers.http.HttpServerLauncher;
+import io.datakernel.promise.Promise;
 
 import java.util.function.Function;
 

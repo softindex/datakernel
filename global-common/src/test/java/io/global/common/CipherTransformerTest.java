@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 

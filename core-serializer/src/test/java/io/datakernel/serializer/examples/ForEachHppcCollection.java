@@ -20,10 +20,12 @@ import io.datakernel.codegen.AbstractExpressionIteratorForEach;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarLocal;
 
+import java.util.function.Function;
+
 import static io.datakernel.codegen.Expressions.property;
 
 public final class ForEachHppcCollection extends AbstractExpressionIteratorForEach {
-	public ForEachHppcCollection(Expression collection, Class<?> type, Expression forEach) {
+	public ForEachHppcCollection(Expression collection, Class<?> type, Function<Expression, Expression> forEach) {
 		super(collection, type, forEach);
 	}
 

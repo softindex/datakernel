@@ -16,9 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static io.datakernel.http.ContentTypes.JSON_UTF_8;
@@ -31,8 +31,8 @@ import static org.junit.Assert.assertEquals;
 
 public final class HttpHeadersTest {
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testValuesToStrings() throws ParseException {

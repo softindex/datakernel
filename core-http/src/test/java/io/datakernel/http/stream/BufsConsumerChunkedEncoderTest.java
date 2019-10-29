@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 
 public final class BufsConsumerChunkedEncoderTest {
 

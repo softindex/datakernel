@@ -1,9 +1,9 @@
 package io.datakernel.crdt;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.serializer.BinaryInput;
+import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutput;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BinaryOperator;

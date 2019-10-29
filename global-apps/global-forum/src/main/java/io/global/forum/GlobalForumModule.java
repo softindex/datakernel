@@ -1,12 +1,12 @@
 package io.global.forum;
 
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.http.loader.StaticLoader;
+import io.datakernel.promise.Promise;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.comm.container.CommRepoNames;

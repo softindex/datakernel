@@ -16,11 +16,11 @@
 
 package io.global.kv;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
@@ -53,9 +53,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;

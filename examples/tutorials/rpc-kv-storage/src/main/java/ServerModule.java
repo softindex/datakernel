@@ -1,7 +1,7 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 

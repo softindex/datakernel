@@ -1,7 +1,7 @@
 package io.global.forum.http.view;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.*;
 import io.global.common.CryptoUtils;
@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.Map.Entry;
 
-import static io.datakernel.util.CollectorsEx.toMultimap;
+import static io.datakernel.common.CollectorsEx.toMultimap;
 
 public final class PostView {
 	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");

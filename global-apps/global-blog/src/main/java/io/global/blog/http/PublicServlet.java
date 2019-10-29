@@ -1,13 +1,13 @@
 package io.global.blog.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.json.JsonUtils;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.http.*;
 import io.datakernel.http.session.SessionStore;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
 import io.global.appstore.AppStore;
 import io.global.blog.container.BlogUserContainer;
 import io.global.blog.dao.BlogDao;
@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.common.MemSize.kilobytes;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
@@ -39,8 +41,6 @@ import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.MemSize.kilobytes;
 import static io.global.Utils.*;
 import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
 import static io.global.comm.pojo.AuthService.DK_APP_STORE;
@@ -430,12 +430,14 @@ public final class PublicServlet {
 									return sessionStore.getSessionLifetime();
 								}) :
 								Promise.of(Duration.ZERO);
-						return maxAge.then(m -> servlet.serve(request).map(response ->
-								response.getCookie(SESSION_ID) != null ? // servlet itself had set the session (logout request)
-										response :
-										response.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-												.withMaxAge(m)
-												.withPath("/"))));
+						return maxAge.then(m -> servlet.serve(request)
+								.get()
+								.map(response ->
+										response.getCookie(SESSION_ID) != null ? // servlet itself had set the session (logout request)
+												response :
+												response.withCookie(HttpCookie.of(SESSION_ID, sessionId)
+														.withMaxAge(m)
+														.withPath("/"))));
 					});
 				};
 	}

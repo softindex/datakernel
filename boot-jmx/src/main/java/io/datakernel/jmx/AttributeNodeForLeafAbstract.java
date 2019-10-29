@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
@@ -23,8 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.JmxUtils.createDescriptionMap;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonMap;
 
@@ -58,15 +59,18 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	@Override
 	public final Map<String, Map<String, String>> getDescriptions() {
-		return createDescriptionMap(name, description);
+		if (description != null) {
+			return singletonMap(name, singletonMap(name, description));
+		} else {
+			return singletonMap(name, Collections.emptyMap());
+		}
 	}
 
 	@Override
-	public final Map<String, Object> aggregateAttributes(Set<String> attrNames, List<?> sources) {
-		assert attrNames.size() == 1;
+	public final Map<String, Object> aggregateAttributes(@NotNull Set<String> attrNames, @NotNull List<?> sources) {
+		checkArgument(attrNames.size() == 1);
 		String attrName = first(attrNames);
-		assert name.equals(attrName);
-		assert sources != null;
+		checkArgument(name.equals(attrName));
 
 		if (sources.size() == 0) {
 			return singletonMap(attrName, null);
@@ -74,7 +78,6 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 		return Collections.singletonMap(name, aggregateAttribute(attrName, sources));
 	}
-
 
 	/**
 	 * It's guaranteed that list of sources is not empty and it doesn't contain null values
@@ -91,17 +94,17 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 	}
 
 	@Override
-	public final void setVisible(String attrName) {
+	public final void setVisible(@NotNull String attrName) {
 		assert name.equals(attrName);
 		this.visible = true;
 	}
 
 	@Override
-	public final void hideNullPojos(List<?> sources) {
+	public final void hideNullPojos(@NotNull List<?> sources) {
 	}
 
 	@Override
-	public final void applyModifier(String attrName, AttributeModifier<?> modifier, List<?> target) {
+	public final void applyModifier(@NotNull String attrName, @NotNull AttributeModifier<?> modifier, @NotNull List<?> target) {
 		assert name.equals(attrName);
 		throw new UnsupportedOperationException(String.format(
 				"AttributeModifier can be applied only to POJO. Attribute \"%s\" is not a POJO.", attrName

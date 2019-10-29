@@ -16,27 +16,33 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.SettablePromise;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.common.MemSize;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcStream;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.util.MemSize;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 /**
@@ -79,7 +85,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private boolean compression = false;
 	private Duration autoFlushInterval = Duration.ZERO;
 
-	private Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
+	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new LinkedHashMap<>();
 	private ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 	private SerializerBuilder serializerBuilder = SerializerBuilder.create(classLoader);
 	private List<Class<?>> messageTypes;
@@ -92,13 +98,13 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	// region JMX vars
 	static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
-	private EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
-	private Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
-	private EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);
-	private EventStats failedRequests = EventStats.create(SMOOTHING_WINDOW);
-	private ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW).withUnit("milliseconds");
-	private ExceptionStats lastRequestHandlingException = ExceptionStats.create();
-	private ExceptionStats lastProtocolError = ExceptionStats.create();
+	private final EventStats totalConnects = EventStats.create(SMOOTHING_WINDOW);
+	private final Map<InetAddress, EventStats> connectsPerAddress = new HashMap<>();
+	private final EventStats successfulRequests = EventStats.create(SMOOTHING_WINDOW);
+	private final EventStats failedRequests = EventStats.create(SMOOTHING_WINDOW);
+	private final ValueStats requestHandlingTime = ValueStats.create(SMOOTHING_WINDOW).withUnit("milliseconds");
+	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
+	private final ExceptionStats lastProtocolError = ExceptionStats.create();
 	private boolean monitoring;
 	// endregion
 
@@ -130,8 +136,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	 * @param messageTypes classes of messages processed by a server
 	 * @return server instance capable for handling provided message types
 	 */
-	public RpcServer withMessageTypes(Class<?>... messageTypes) {
-		checkNotNull(messageTypes);
+	public RpcServer withMessageTypes(@NotNull Class<?>... messageTypes) {
 		return withMessageTypes(asList(messageTypes));
 	}
 
@@ -141,8 +146,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	 * @param messageTypes a list of message types processed by a server
 	 * @return server instance capable for handling provided message types
 	 */
-	public RpcServer withMessageTypes(List<Class<?>> messageTypes) {
-		checkNotNull(messageTypes, "Message types should not be null");
+	public RpcServer withMessageTypes(@NotNull List<Class<?>> messageTypes) {
 		checkArgument(new HashSet<>(messageTypes).size() == messageTypes.size(), "Message types must be unique");
 		this.messageTypes = messageTypes;
 		return this;

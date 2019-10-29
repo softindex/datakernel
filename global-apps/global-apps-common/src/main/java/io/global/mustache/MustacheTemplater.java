@@ -1,10 +1,10 @@
 package io.global.mustache;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.bytebuf.util.ByteBufWriter;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.util.ref.Ref;
-import io.datakernel.writer.ByteBufWriter;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 import java.util.ArrayList;
 import java.util.HashMap;

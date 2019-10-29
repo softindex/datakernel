@@ -16,7 +16,7 @@
 
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.global.common.api.EncryptedData;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.asn1.x9.X9ECParameters;

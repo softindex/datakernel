@@ -1,6 +1,5 @@
 package io.global.chat;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -18,6 +17,7 @@ import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.operation.ChatRoomOperation;
@@ -25,7 +25,7 @@ import io.global.common.BinaryDataFormats;
 import io.global.common.PrivKey;
 import io.global.kv.api.GlobalKvNode;
 import io.global.launchers.GlobalNodesModule;
-import io.global.ot.DynamicOTNodeServlet;
+import io.global.ot.DynamicOTUplinkServlet;
 import io.global.ot.MapModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.SharedRepoModule;
@@ -57,11 +57,11 @@ import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
-import static io.datakernel.util.CollectionUtils.concat;
 import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
 import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
 import static io.global.common.CryptoUtils.randomBytes;
@@ -109,10 +109,10 @@ public final class GlobalChatApp extends Launcher {
 
 	@Provides
 	AsyncServlet provideMainServlet(
-			DynamicOTNodeServlet<ContactsOperation> contactsServlet,
-			DynamicOTNodeServlet<SharedReposOperation> roomListServlet,
-			DynamicOTNodeServlet<ChatRoomOperation> roomServlet,
-			DynamicOTNodeServlet<MapOperation<String, String>> profileServlet,
+			DynamicOTUplinkServlet<ContactsOperation> contactsServlet,
+			DynamicOTUplinkServlet<SharedReposOperation> roomListServlet,
+			DynamicOTUplinkServlet<ChatRoomOperation> roomServlet,
+			DynamicOTUplinkServlet<MapOperation<String, String>> profileServlet,
 			Messenger<String, String> messenger,
 			StaticServlet staticServlet,
 			Executor executor,
@@ -145,7 +145,7 @@ public final class GlobalChatApp extends Launcher {
 										Files.write(expectedKeys, concat(lines, singletonList(++lastKey + ":" + key)));
 									}
 								})
-								.then($ -> servlet.serve(request));
+								.then($ -> servlet.serve(request).get());
 					}
 				})
 				.then(loadBody());

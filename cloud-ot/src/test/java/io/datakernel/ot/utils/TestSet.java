@@ -1,6 +1,6 @@
 package io.datakernel.ot.utils;
 
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
 
 public class TestSet implements TestOp {
 	private final int prev;

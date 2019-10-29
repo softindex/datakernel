@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
@@ -23,9 +22,8 @@ public final class CustomHttpServerExample extends Launcher {
 
 	@Provides
 	AsyncServlet servlet() {
-		return request -> Promise.of(
-				HttpResponse.ok200()
-						.withPlainText("Hello from HTTP server"));
+		return request -> HttpResponse.ok200()
+				.withPlainText("Hello from HTTP server");
 	}
 
 	@Provides

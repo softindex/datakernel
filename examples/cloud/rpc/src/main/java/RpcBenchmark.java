@@ -1,27 +1,27 @@
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.common.Initializer;
+import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.csp.process.ChannelSerializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.MemSize;
+import io.datakernel.service.ServiceGraphModuleSettings;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.PrintWriter;
 import java.net.InetSocketAddress;
-import java.sql.Timestamp;
-import java.time.Instant;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -91,6 +91,12 @@ public class RpcBenchmark extends Launcher {
 
 	}
 
+	@ProvidesIntoSet
+	Initializer<ServiceGraphModuleSettings> configureServiceGraph() {
+		// add logical dependency so that service graph starts client only after it started the server
+		return settings -> settings.addDependency(Key.of(RpcClient.class), Key.of(RpcServer.class));
+	}
+
 	@Provides
 	Config config() {
 		return Config.create()
@@ -108,7 +114,6 @@ public class RpcBenchmark extends Launcher {
 		);
 	}
 
-	private boolean generateFile;
 	private int warmupRounds;
 	private int benchmarkRounds;
 	private int totalRequests;
@@ -117,7 +122,6 @@ public class RpcBenchmark extends Launcher {
 
 	@Override
 	protected void onStart() {
-		generateFile = config.get(ofBoolean(), "benchmark.generateFile", false);
 		warmupRounds = config.get(ofInteger(), "benchmark.warmupRounds", WARMUP_ROUNDS);
 		benchmarkRounds = config.get(ofInteger(), "benchmark.benchmarkRounds", BENCHMARK_ROUNDS);
 		totalRequests = config.get(ofInteger(), "benchmark.totalRequests", TOTAL_REQUESTS);
@@ -127,33 +131,32 @@ public class RpcBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		PrintWriter resultsFile = null;
+		benchmark("RPC");
+	}
+
+	/**
+	 * First counter represents amount of sent requests, so we know when to stop sending them
+	 * Second counter represents amount of completed requests(in another words completed will be incremented when
+	 * request fails or completes successfully) so we know when to stop round of benchmark
+	 */
+	int sent;
+	int completed;
+
+	private void benchmark(String nameBenchmark) throws Exception {
 		long time = 0;
 		long bestTime = -1;
 		long worstTime = -1;
 
-		if (generateFile) {
-			resultsFile = new PrintWriter("benchmarkResult" + Timestamp.from(Instant.now()), "UTF-8");
-			resultsFile.println("<table>");
-			resultsFile.println("  <tr>");
-			resultsFile.println("    <th>ApacheBench parameters</th>");
-			resultsFile.println("    <th>Time</th>");
-			resultsFile.println("    <th>Average time</th>");
-			resultsFile.println("    <th>Best time</th>");
-			resultsFile.println("    <th>Worst time</th>");
-			resultsFile.println("    <th>Requests per second</th>");
-			resultsFile.println("  </tr>");
-		}
-
+		System.out.println("Warming up ...");
 		for (int i = 0; i < warmupRounds; i++) {
 			long roundTime = round();
-			System.out.println("Warm-up round: " + (i + 1) + "; Round time: " + roundTime + "ms");
+			long rps = totalRequests * 1000L / roundTime;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
 		}
 
-		System.out.println("Benchmarking...");
+		System.out.println("Start benchmarking " + nameBenchmark);
 
 		for (int i = 0; i < benchmarkRounds; i++) {
-
 			long roundTime = round();
 
 			time += roundTime;
@@ -166,36 +169,20 @@ public class RpcBenchmark extends Launcher {
 				worstTime = roundTime;
 			}
 
-			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms");
+			long rps = totalRequests * 1000L / roundTime;
+			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
 		}
 		double avgTime = (double) time / benchmarkRounds;
 		long requestsPerSecond = (long) (totalRequests / avgTime * 1000);
 		System.out.println("Time: " + time + "ms; Average time: " + avgTime + "ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
-		if (generateFile) {
-			resultsFile.println("    <td>" + avgTime + "</td>");
-			resultsFile.println("    <td>" + bestTime + "</td>");
-			resultsFile.println("    <td>" + worstTime + "</td>");
-			resultsFile.println("    <td>" + requestsPerSecond + "</td>");
-			resultsFile.println("  </tr>");
-			resultsFile.close();
-			resultsFile.println("</table>");
-		}
 	}
 
 	private long round() throws Exception {
-		return eventloop.submit(this::benchmark).get();
+		return eventloop.submit(this::roundCall).get();
 	}
 
-	/**
-	 * First counter represents amount of sent requests, so we know when to stop sending them
-	 * Second counter represents amount of completed requests(in another words completed will be incremented when
-	 * request fails or completes successfully) so we know when to stop round of benchmark
-	 */
-	int sent;
-	int completed;
-
-	private Promise<Long> benchmark() {
+	private Promise<Long> roundCall() {
 		SettablePromise<Long> promise = new SettablePromise<>();
 
 		long start = System.currentTimeMillis();

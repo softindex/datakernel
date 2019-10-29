@@ -4,7 +4,7 @@ import io.datakernel.OrderScope;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
  * @since 3.0.0
  */
 @State(Scope.Benchmark)
+@SuppressWarnings("FieldCanBeLocal")
 public class DkDirectScopebindBenchmark {
 
 	static class Kitchen {
@@ -219,32 +220,27 @@ public class DkDirectScopebindBenchmark {
 		}
 	}
 
-	AbstractModule cookbook;
+	Module cookbook;
 	Injector injector;
 
 	public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
 
 	@Setup
 	public void setup() {
-		cookbook = new AbstractModule() {
-			@Override
-			protected void configure() {
-				bind(Kitchen.class).to(Kitchen::new);
-				bind(Sugar.class).to(() -> new Sugar("WhiteSugar", 10.f)).in(OrderScope.class);
-				bind(Butter.class).to(() -> new Butter("PerfectButter", 20.0f)).in(OrderScope.class);
-				bind(Flour.class).to(() -> new Flour("GoodFlour", 100.0f)).in(OrderScope.class);
-				bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class).in(OrderScope.class);
-				bind(Cookie1.class).to(Cookie1::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie2.class).to(Cookie2::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie3.class).to(Cookie3::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie4.class).to(Cookie4::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie5.class).to(Cookie5::new, Pastry.class).in(OrderScope.class);
-				bind(Cookie6.class).to(Cookie6::new, Pastry.class).in(OrderScope.class);
-				bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
+		cookbook = Module.create()
+				.bind(Kitchen.class).to(Kitchen::new)
+				.bind(Sugar.class).to(() -> new Sugar("WhiteSugar", 10.f)).in(OrderScope.class)
+				.bind(Butter.class).to(() -> new Butter("PerfectButter", 20.0f)).in(OrderScope.class)
+				.bind(Flour.class).to(() -> new Flour("GoodFlour", 100.0f)).in(OrderScope.class)
+				.bind(Pastry.class).to(Pastry::new, Sugar.class, Butter.class, Flour.class).in(OrderScope.class)
+				.bind(Cookie1.class).to(Cookie1::new, Pastry.class).in(OrderScope.class)
+				.bind(Cookie2.class).to(Cookie2::new, Pastry.class).in(OrderScope.class)
+				.bind(Cookie3.class).to(Cookie3::new, Pastry.class).in(OrderScope.class)
+				.bind(Cookie4.class).to(Cookie4::new, Pastry.class).in(OrderScope.class)
+				.bind(Cookie5.class).to(Cookie5::new, Pastry.class).in(OrderScope.class)
+				.bind(Cookie6.class).to(Cookie6::new, Pastry.class).in(OrderScope.class)
+				.bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
 						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
-			}
-
-		};
 
 		injector = Injector.of(cookbook);
 
@@ -253,7 +249,7 @@ public class DkDirectScopebindBenchmark {
 	CookieBucket cb;
 	Key<CookieBucket> key = Key.of(CookieBucket.class);
 
-	@Param({"0", "1", "10"})
+	@Param({"1", "10"})
 	int arg;
 
 	@Benchmark

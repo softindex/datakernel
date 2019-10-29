@@ -16,15 +16,13 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.cube.attributes.AttributeResolver;
 import io.datakernel.cube.attributes.AttributeResolver.AttributesFunction;
 import io.datakernel.cube.attributes.AttributeResolver.KeyFunction;
 import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.promise.Promise;
 
 import java.util.*;
 
@@ -32,8 +30,6 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class Utils {
-	private Utils() {
-	}
 
 	public static <R> Class<R> createResultClass(Collection<String> attributes, Collection<String> measures,
 			Cube cube, DefiningClassLoader classLoader) {
@@ -72,33 +68,35 @@ public final class Utils {
 			}
 		}
 		KeyFunction keyFunction = ClassBuilder.create(classLoader, KeyFunction.class)
-				.withMethod("extractKey", () -> {
-					ExpressionSequence extractKey = ExpressionSequence.create();
-					Expression key = let(newArray(Object.class, value(recordDimensions.size())));
-					for (int i = 0; i < recordDimensions.size(); i++) {
-						String dimension = recordDimensions.get(i);
-						extractKey.add(setArrayItem(key, value(i),
-								fullySpecifiedDimensions.containsKey(dimension) ?
-										getArrayItem(value(fullySpecifiedDimensionsArray), value(i)) :
-										cast(property(cast(arg(0), recordClass), dimension), Object.class)));
-					}
-					return extractKey.add(key);
-				})
+				.withClassKey(recordClass, recordDimensions)
+				.withMethod("extractKey",
+						let(
+								newArray(Object[].class, value(recordDimensions.size())),
+								key -> sequence(expressions -> {
+									for (int i = 0; i < recordDimensions.size(); i++) {
+										String dimension = recordDimensions.get(i);
+										expressions.add(setArrayItem(key, value(i),
+												fullySpecifiedDimensions.containsKey(dimension) ?
+														getArrayItem(value(fullySpecifiedDimensionsArray), value(i)) :
+														cast(property(cast(arg(0), recordClass), dimension), Object.class)));
+									}
+									expressions.add(key);
+								})))
 				.buildClassAndCreateNewInstance();
 
 		List<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributesFunction.class)
-				.withMethod("applyAttributes", () -> {
-					ExpressionSequence applyAttributes = ExpressionSequence.create();
-					for (String attribute : recordAttributes) {
-						String attributeName = attribute.substring(attribute.indexOf('.') + 1);
-						int resolverAttributeIndex = resolverAttributes.indexOf(attributeName);
-						applyAttributes.add(set(
-								property(cast(arg(0), recordClass), attribute.replace('.', '$')),
-								getArrayItem(arg(1), value(resolverAttributeIndex))));
-					}
-					return applyAttributes;
-				})
+				.withClassKey(recordClass, recordAttributes)
+				.withMethod("applyAttributes",
+						sequence(expressions -> {
+							for (String attribute : recordAttributes) {
+								String attributeName = attribute.substring(attribute.indexOf('.') + 1);
+								int resolverAttributeIndex = resolverAttributes.indexOf(attributeName);
+								expressions.add(set(
+										property(cast(arg(0), recordClass), attribute.replace('.', '$')),
+										getArrayItem(arg(1), value(resolverAttributeIndex))));
+							}
+						}))
 				.buildClassAndCreateNewInstance();
 
 		return attributeResolver.resolveAttributes((List<Object>) results, keyFunction, attributesFunction);

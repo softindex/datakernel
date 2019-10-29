@@ -18,11 +18,12 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.aggregation.util.PartitionPredicate;
-import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.process.AsyncCollector;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.stream.*;
+import io.datakernel.datastream.*;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -108,10 +109,10 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		}
 
 		@Override
-		public void setSupplier(StreamSupplier<T> supplier) {
+		public void setSupplier(@NotNull StreamSupplier<T> supplier) {
 			super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
 				@Override
-				public void resume(StreamDataAcceptor<T> dataAcceptor) {
+				public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 					ChunkWriter.this.dataAcceptor = dataAcceptor;
 					super.resume(ChunkWriter.this);
 				}

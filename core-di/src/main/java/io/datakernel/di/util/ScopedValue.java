@@ -4,10 +4,9 @@ import io.datakernel.di.core.Scope;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
-import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Scope.UNSCOPED;
-import static java.util.stream.Collectors.joining;
+import static io.datakernel.di.util.Utils.getScopeDisplayString;
 
 /**
  * This is a simple generic POJO (or POGJO) for some object with associated scope path.
@@ -75,8 +74,6 @@ public final class ScopedValue<T> {
 
 	@Override
 	public String toString() {
-		return Stream.of(scope)
-				.map(s -> "->" + s)
-				.collect(joining("", "()", " " + value.toString()));
+		return getScopeDisplayString(scope) + " " + value.toString();
 	}
 }

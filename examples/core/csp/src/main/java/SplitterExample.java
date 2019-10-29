@@ -1,4 +1,4 @@
-import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.function.AsyncConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
@@ -15,8 +15,8 @@ public class SplitterExample {
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		List<Integer> integers = Stream.iterate(1, (i) -> i + 1)
-											  .limit(5)
-											  .collect(Collectors.toList());
+				.limit(5)
+				.collect(Collectors.toList());
 
 		Queue<Integer> result = new ConcurrentLinkedQueue<>();
 		ChannelSplitter<Integer> splitter = ChannelSplitter.create(ChannelSupplier.ofIterable(integers));

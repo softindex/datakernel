@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.concurrent.ThreadLocalCharArray;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpServer.Inspector;
-import io.datakernel.util.ThreadLocalCharArray;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -65,6 +65,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private final InetAddress remoteAddress;
 
+	@Nullable
 	private HttpRequest request;
 	private final AsyncHttpServer server;
 	@Nullable
@@ -85,7 +86,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-						 AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
+			AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
 		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;
@@ -159,6 +160,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeaderBuf(ByteBuf buf) {
+		//noinspection ConstantConditions
 		request.addHeaderBuf(buf);
 	}
 
@@ -208,6 +210,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
+		//noinspection ConstantConditions
 		if (request.headers.size() >= MAX_HEADERS) {
 			throw TOO_MANY_HEADERS;
 		}
@@ -237,6 +240,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
+		//noinspection ConstantConditions
 		request.flags |= MUST_LOAD_BODY;
 		request.body = body;
 		request.bodyStream = bodySupplier;
@@ -251,11 +255,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		HttpRequest request = this.request;
 		Promise<HttpResponse> servletResult;
 		try {
-			servletResult = servlet.serve(request);
+			servletResult = servlet.serveAsync(request);
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
 		}
 		servletResult.whenComplete((response, e) -> {
+			assert eventloop.inEventloopThread();
 			if (isClosed()) {
 				request.recycle();
 				if (response != null) {
@@ -329,7 +334,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			request.recycle();
 			request = null;
 		}
+		//noinspection ConstantConditions
 		pool.removeNode(this);
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (pool = null) == null;
 		server.onConnectionClosed();
 	}
 

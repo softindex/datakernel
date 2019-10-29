@@ -37,8 +37,7 @@ public class AsmSerializerTest {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 
 	private static <T> T doTest(Class<T> type, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(definingClassLoader)
+		BinarySerializer<T> serializer = SerializerBuilder.create(definingClassLoader)
 				.build(type);
 		return doTest(testData1, serializer, serializer);
 	}
@@ -106,14 +105,16 @@ public class AsmSerializerTest {
 	public void testScalars() throws UnknownHostException {
 		TestDataScalars testData1 = new TestDataScalars();
 
-		testData1.z = true;
-		testData1.c = Character.MAX_VALUE;
-		testData1.b = Byte.MIN_VALUE;
-		testData1.s = Short.MIN_VALUE;
-		testData1.i = Integer.MIN_VALUE;
-		testData1.l = Long.MIN_VALUE;
-		testData1.f = Float.MIN_VALUE;
-		testData1.d = Double.MIN_VALUE;
+		Random rnd = new Random();
+
+		testData1.z = rnd.nextBoolean();
+		testData1.c = (char) rnd.nextInt(Character.MAX_VALUE);
+		testData1.b = (byte) rnd.nextInt(1 << 8);
+		testData1.s = (byte) rnd.nextInt(1 << 16);
+		testData1.i = rnd.nextInt();
+		testData1.l = rnd.nextLong();
+		testData1.f = rnd.nextFloat();
+		testData1.d = rnd.nextDouble();
 
 		testData1.zBoxed = true;
 		testData1.cBoxed = Character.MAX_VALUE;
@@ -346,11 +347,14 @@ public class AsmSerializerTest {
 		public List<String> listOfNullableStrings;
 
 		@Serialize(order = 3)
-		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = 0), @SerializeNullable(path = {0, 0})})
+		@SerializeNullable
+		@SerializeNullable(path = 0)
+		@SerializeNullable(path = {0, 0})
 		public String[][] nullableArrayOfNullableArrayOfNullableStrings;
 
 		@Serialize(order = 4)
-		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = 1)})
+		@SerializeNullable(path = 0)
+		@SerializeNullable(path = 1)
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
@@ -543,7 +547,9 @@ public class AsmSerializerTest {
 
 	public static class TestDataGenericParameters {
 		@Serialize(order = 0)
-		@SerializeNullableEx({@SerializeNullable(path = 0), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
+		@SerializeNullable(path = 0)
+		@SerializeNullable(path = {0, 0})
+		@SerializeNullable(path = {0, 1})
 		@SerializeVarLength(path = {0, 0})
 		@SerializeStringFormat(value = StringFormat.UTF16, path = {0, 1})
 		public List<TestDataGenericNested<Integer, String>> list;
@@ -736,10 +742,10 @@ public class AsmSerializerTest {
 	@Test
 	public void testSerializerStringFormat() {
 		TestDataSerializerFormat testData1 = new TestDataSerializerFormat();
-		testData1.stringsUtf16 = asList("abc", null, "123");
-		testData1.stringsUtf8 = asList("abc", null, "123");
-		testData1.stringsUtf8Custom = asList("abc", null, "123");
-		testData1.stringsIso88591 = asList("abc", null, "123");
+		testData1.stringsUtf16 = asList("Abc-äöß-Абв", null, "123");
+		testData1.stringsUtf8 = asList("Abc-äöß-Абв", null, "123");
+		testData1.stringsUtf8Custom = asList("Abc-äöß-Абв", null, "123");
+		testData1.stringsIso88591 = asList("Abc-äöß", null, "123");
 
 		TestDataSerializerFormat testData2 = doTest(TestDataSerializerFormat.class, testData1);
 
@@ -908,21 +914,17 @@ public class AsmSerializerTest {
 	@Test
 	public void testProfilesVersions() {
 		Class<TestDataProfiles2> type = TestDataProfiles2.class;
-		BinarySerializer<TestDataProfiles2> serializer1 = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer1 = SerializerBuilder.create(getSystemClassLoader())
 				.withVersion(1)
 				.build(type);
-		BinarySerializer<TestDataProfiles2> serializer2 = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer2 = SerializerBuilder.create(getSystemClassLoader())
 				.withVersion(2)
 				.build(type);
 
-		BinarySerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder
-				.create("profile", getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder.create("profile", getSystemClassLoader())
 				.withVersion(1)
 				.build(type);
-		BinarySerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder
-				.create("profile", getSystemClassLoader())
+		BinarySerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder.create("profile", getSystemClassLoader())
 				.withVersion(2)
 				.build(type);
 
@@ -999,6 +1001,7 @@ public class AsmSerializerTest {
 		assertEquals(0, testData2.f);
 	}
 
+/*
 	public static class TestDataRecursive {
 		@Serialize(order = 0)
 		public String s;
@@ -1027,6 +1030,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.next.next.s, testData2.next.next.s);
 		assertNull(testData2.next.next.next);
 	}
+*/
 
 	public static class TestDataExtraSubclasses {
 		@Serialize(order = 0)
@@ -1044,8 +1048,7 @@ public class AsmSerializerTest {
 		testData1.object1 = 10;
 		testData1.object2 = "object2";
 
-		BinarySerializer<TestDataExtraSubclasses> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataExtraSubclasses> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses("extraSubclasses1", Integer.class)
 				.build(TestDataExtraSubclasses.class);
 		TestDataExtraSubclasses testData2 = doTest(testData1, serializer, serializer);
@@ -1073,8 +1076,7 @@ public class AsmSerializerTest {
 		TestDataExtraSubclasses2 testData1 = new TestDataExtraSubclasses2();
 		testData1.i = 10;
 
-		BinarySerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.withSubclasses("extraSubclasses", TestDataExtraSubclasses2.class)
 				.build(TestDataExtraSubclassesInterface.class);
 		TestDataExtraSubclassesInterface testData2 = doTest(testData1, serializer, serializer);
@@ -1139,8 +1141,7 @@ public class AsmSerializerTest {
 		testData1.setDoubleValue(1.23);
 		testData1.setStringValue("test");
 
-		BinarySerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder.create(getSystemClassLoader())
 				.build(TestInheritAnnotationsInterface3.class);
 		TestInheritAnnotationsInterface3 testData2 = doTest(testData1, serializer, serializer);
 
@@ -1148,8 +1149,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.getDoubleValue(), testData2.getDoubleValue(), Double.MIN_VALUE);
 		assertEquals(testData1.getStringValue(), testData2.getStringValue());
 
-		BinarySerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder
-				.create(getSystemClassLoader())
+		BinarySerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder.create(getSystemClassLoader())
 				.build(TestInheritAnnotationsInterfacesImpl.class);
 		TestInheritAnnotationsInterfacesImpl testData3 = doTest(testData1, serializer2, serializer2);
 
@@ -1394,8 +1394,7 @@ public class AsmSerializerTest {
 		TestEnum2 testData2 = doTest(TestEnum2.class, testData1);
 		assertEquals(testData1, testData2);
 
-		BinarySerializer<EnumPojo> serializer = SerializerBuilder
-				.create(definingClassLoader)
+		BinarySerializer<EnumPojo> serializer = SerializerBuilder.create(definingClassLoader)
 				.build(EnumPojo.class);
 
 		byte[] array = new byte[2000];
@@ -1627,13 +1626,12 @@ public class AsmSerializerTest {
 		public Inet6Address inet6Address;
 
 		@Serialize(order = 3)
-		@SerializerClass(SerializerGenInet4Address.class)
+		@SerializerClass(SerializerDefInet4Address.class)
 		public InetAddress inetAddress2;
 	}
 
 	@Test
 	public void testInetAddress() throws UnknownHostException {
-
 		TestInetAddress testInetAddress = new TestInetAddress();
 		testInetAddress.inetAddress = Inet6Address.getByName("2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d");
 		testInetAddress.inet4Address = (Inet4Address) Inet4Address.getByName("127.0.0.1");
@@ -1655,7 +1653,6 @@ public class AsmSerializerTest {
 		assertEquals(testInetAddress.inet4Address, genTestInetAddress2.inet4Address);
 		assertEquals(testInetAddress.inet6Address, genTestInetAddress2.inet6Address);
 		assertEquals(testInetAddress.inetAddress2, genTestInetAddress.inetAddress2);
-
 	}
 
 	public static class TestObject {
@@ -1667,32 +1664,32 @@ public class AsmSerializerTest {
 		}
 
 		@Serialize(order = 1)
-		@SerializerClass(SerializerGenBoolean.class)
+		@SerializerClass(SerializerDefBoolean.class)
 		public Object zBoxed;
 		@Serialize(order = 2)
-		@SerializerClass(SerializerGenChar.class)
+		@SerializerClass(SerializerDefChar.class)
 		public Object cBoxed;
 		@Serialize(order = 3)
-		@SerializerClass(SerializerGenByte.class)
+		@SerializerClass(SerializerDefByte.class)
 		public Object bBoxed;
 		@Serialize(order = 4)
-		@SerializerClass(SerializerGenShort.class)
+		@SerializerClass(SerializerDefShort.class)
 		public Object sBoxed;
 		@Serialize(order = 5)
-		@SerializerClass(SerializerGenInt.class)
+		@SerializerClass(SerializerDefInt.class)
 		public Object iBoxed;
 		@Serialize(order = 6)
-		@SerializerClass(SerializerGenLong.class)
+		@SerializerClass(SerializerDefLong.class)
 		public Object lBoxed;
 		@Serialize(order = 7)
-		@SerializerClass(SerializerGenFloat.class)
+		@SerializerClass(SerializerDefFloat.class)
 		public Object fBoxed;
 		@Serialize(order = 8)
-		@SerializerClass(SerializerGenDouble.class)
+		@SerializerClass(SerializerDefDouble.class)
 		public Object dBoxed;
 
 		@Serialize(order = 9)
-		@SerializerClass(SerializerGenString.class)
+		@SerializerClass(SerializerDefString.class)
 		public Object string;
 		@Serialize(order = 10)
 		@SerializeSubclasses({Inet4Address.class, Inet6Address.class})
@@ -1703,7 +1700,7 @@ public class AsmSerializerTest {
 		public Object address2;
 
 		@Serialize(order = 12)
-		@SerializerClass(path = 0, value = SerializerGenInt.class)
+		@SerializerClass(path = 0, value = SerializerDefInt.class)
 		public List<Object> list;
 	}
 
@@ -1979,4 +1976,5 @@ public class AsmSerializerTest {
 		GenericImp deserialized = doTest(object, serializer, serializer);
 		assertEquals(100, deserialized.getValue().intValue());
 	}
+
 }

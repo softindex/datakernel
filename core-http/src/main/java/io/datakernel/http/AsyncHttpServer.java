@@ -16,20 +16,20 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -252,6 +252,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private final SettablePromise<@Nullable Void> closeNotification = new SettablePromise<>();
 
+	@Nullable
 	private SettablePromise<Void> closeCallback;
 
 	void onConnectionClosed() {

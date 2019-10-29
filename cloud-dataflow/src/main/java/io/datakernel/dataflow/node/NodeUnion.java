@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.processor.StreamUnion;
+import io.datakernel.datastream.processor.StreamUnion;
 
 import java.util.Collection;
 import java.util.List;
@@ -46,7 +46,7 @@ public final class NodeUnion<T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamUnion<T> streamUnion = StreamUnion.create();
-		for(StreamId input : inputs) {
+		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamUnion.newInput());
 		}
 		taskContext.export(output, streamUnion.getOutput());

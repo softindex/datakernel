@@ -24,8 +24,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.config.Config.concatPath;
-import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.*;

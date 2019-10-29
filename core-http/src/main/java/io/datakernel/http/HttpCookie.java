@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -107,8 +107,13 @@ public final class HttpCookie {
 		return this;
 	}
 
-	public HttpCookie withMaxAge(Duration maxAge) {
+	public HttpCookie withMaxAge(int maxAge) {
 		// %x31-39 ; digits 1 through 9
+		setMaxAge(maxAge);
+		return this;
+	}
+
+	public HttpCookie withMaxAge(Duration maxAge) {
 		setMaxAge(maxAge);
 		return this;
 	}
@@ -164,6 +169,10 @@ public final class HttpCookie {
 
 	public int getMaxAge() {
 		return maxAge;
+	}
+
+	public void setMaxAge(int maxAge) {
+		this.maxAge = maxAge;
 	}
 
 	public void setMaxAge(Duration maxAge) {

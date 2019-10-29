@@ -16,14 +16,14 @@
 
 package io.global.fs.cli;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.Tuple3;
 import io.global.fs.api.CheckpointPosStrategy;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -38,7 +38,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.global.fs.cli.GlobalFs.err;
 import static io.global.fs.cli.GlobalFs.info;
 import static java.nio.file.StandardOpenOption.*;

@@ -16,13 +16,14 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public class RpcStrategyRandomSampling implements RpcStrategy {
 	private final Random random = new Random();
@@ -98,7 +99,7 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			lastRandomLong ^= (lastRandomLong << 21);
 			lastRandomLong ^= (lastRandomLong >>> 35);
 			lastRandomLong ^= (lastRandomLong << 4);

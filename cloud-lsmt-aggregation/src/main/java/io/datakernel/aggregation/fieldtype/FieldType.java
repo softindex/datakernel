@@ -18,7 +18,7 @@ package io.datakernel.aggregation.fieldtype;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.Expression;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerDef;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
@@ -29,16 +29,16 @@ import java.lang.reflect.Type;
 public class FieldType<T> {
 	private final Class<?> internalDataType;
 	private final Type dataType;
-	private final SerializerGen serializer;
+	private final SerializerDef serializer;
 	@Nullable
 	private final StructuredCodec<?> internalCodec;
 	private final StructuredCodec<T> codec;
 
-	protected FieldType(Class<T> dataType, SerializerGen serializer, StructuredCodec<T> codec) {
+	protected FieldType(Class<T> dataType, SerializerDef serializer, StructuredCodec<T> codec) {
 		this(dataType, dataType, serializer, codec, codec);
 	}
 
-	protected FieldType(Class<?> internalDataType, Type dataType, SerializerGen serializer, StructuredCodec<T> codec, @Nullable StructuredCodec<?> internalCodec) {
+	protected FieldType(Class<?> internalDataType, Type dataType, SerializerDef serializer, StructuredCodec<T> codec, @Nullable StructuredCodec<?> internalCodec) {
 		this.internalDataType = internalDataType;
 		this.dataType = dataType;
 		this.serializer = serializer;
@@ -54,7 +54,7 @@ public class FieldType<T> {
 		return dataType;
 	}
 
-	public SerializerGen getSerializer() {
+	public SerializerDef getSerializer() {
 		return serializer;
 	}
 

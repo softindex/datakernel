@@ -1,7 +1,7 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.inspector.BaseInspector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

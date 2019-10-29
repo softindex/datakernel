@@ -21,7 +21,7 @@ import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeUpload;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
 
 import java.util.ArrayList;
 import java.util.List;

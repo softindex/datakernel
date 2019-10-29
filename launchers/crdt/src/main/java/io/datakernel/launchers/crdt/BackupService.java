@@ -16,12 +16,12 @@
 
 package io.datakernel.launchers.crdt;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -62,9 +62,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 		return backupPromise = inMemory.download(lastTimestamp)
 				.then(supplierWithResult -> supplierWithResult
 						.streamTo(StreamConsumer.ofPromise(localFiles.upload()))
-						.whenComplete(($, e) -> {
-							backupPromise = null;
-						}));
+						.whenComplete(() -> backupPromise = null));
 	}
 
 	public boolean backupInProgress() {

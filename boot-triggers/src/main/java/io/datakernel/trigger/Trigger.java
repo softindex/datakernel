@@ -8,16 +8,14 @@ public final class Trigger {
 	private final String name;
 	private final Supplier<TriggerResult> triggerFunction;
 
-	Trigger(Severity severity, String component, String name,
-	        Supplier<TriggerResult> triggerFunction) {
+	Trigger(Severity severity, String component, String name, Supplier<TriggerResult> triggerFunction) {
 		this.severity = severity;
 		this.component = component;
 		this.name = name;
 		this.triggerFunction = triggerFunction;
 	}
 
-	public static Trigger of(Severity severity, String component, String name,
-	                         Supplier<TriggerResult> triggerFunction) {
+	public static Trigger of(Severity severity, String component, String name, Supplier<TriggerResult> triggerFunction) {
 		return new Trigger(severity, component, name, triggerFunction);
 	}
 

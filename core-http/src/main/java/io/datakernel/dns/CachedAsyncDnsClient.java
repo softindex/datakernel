@@ -16,10 +16,10 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.Promise;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -31,8 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static io.datakernel.dns.DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL;
 
 /**
  * Implementation of {@link AsyncDnsClient} that asynchronously
@@ -68,7 +66,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	}
 
 	public CachedAsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta) {
-		return withExpiration(errorCacheExpiration, hardExpirationDelta, DEFAULT_TIMED_OUT_EXCEPTION_TTL);
+		return withExpiration(errorCacheExpiration, hardExpirationDelta, DnsCache.DEFAULT_TIMED_OUT_EXCEPTION_TTL);
 	}
 
 	public CachedAsyncDnsClient withExpiration(Duration errorCacheExpiration, Duration hardExpirationDelta, Duration timedOutExceptionTtl) {
@@ -83,8 +81,8 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		return cache;
 	}
 
-	public AsyncDnsClient adaptToOtherEventloop(Eventloop other) {
-		if (other == eventloop) {
+	public AsyncDnsClient adaptToAnotherEventloop(Eventloop anotherEventloop) {
+		if (anotherEventloop == eventloop) {
 			return this;
 		}
 		return new AsyncDnsClient() {
@@ -104,14 +102,14 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 					return cacheResult.getResponseAsPromise();
 				}
 
-				other.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
+				anotherEventloop.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
 				return Promise.ofCallback(cb ->
-								eventloop.execute(() ->
-										CachedAsyncDnsClient.this.resolve(query)
-												.whenComplete((result, e) -> {
-													other.execute(() -> cb.accept(result, e));
-													other.completeExternalTask();
-												})));
+						eventloop.execute(() ->
+								CachedAsyncDnsClient.this.resolve(query)
+										.whenComplete((result, e) -> {
+											anotherEventloop.execute(() -> cb.accept(result, e));
+											anotherEventloop.completeExternalTask();
+										})));
 			}
 
 			@Override

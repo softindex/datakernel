@@ -17,9 +17,9 @@
 package io.global.ot.util;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.http.HttpUtils;
-import io.datakernel.util.TypeT;
 import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;

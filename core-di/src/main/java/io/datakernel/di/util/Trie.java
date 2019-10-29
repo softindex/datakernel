@@ -158,6 +158,6 @@ public final class Trie<K, V> {
 
 	@Override
 	public String toString() {
-		return "Trie{payload=" + payload +", children=" + children + '}';
+		return "Trie{payload=" + payload + ", children=" + children + '}';
 	}
 }

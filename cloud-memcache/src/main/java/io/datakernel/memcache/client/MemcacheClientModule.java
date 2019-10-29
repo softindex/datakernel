@@ -6,18 +6,17 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
-import io.datakernel.memcache.protocol.SerializerGenSlice;
+import io.datakernel.memcache.protocol.SerializerDefSlice;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 import java.time.Duration;
 
+import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.HASH_FUNCTION;
 import static io.datakernel.rpc.client.RpcClient.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
-import static io.datakernel.util.MemSize.kilobytes;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public class MemcacheClientModule extends AbstractModule {
@@ -33,7 +32,7 @@ public class MemcacheClientModule extends AbstractModule {
 						.withShards(config.get(ofList(ofInetSocketAddress()), "client.addresses")))
 				.withMessageTypes(MemcacheRpcMessage.MESSAGE_TYPES)
 				.withSerializerBuilder(SerializerBuilder.create(ClassLoader.getSystemClassLoader())
-						.withSerializer(Slice.class, new SerializerGenBuilderConst(new SerializerGenSlice())))
+						.withSerializer(Slice.class, new SerializerDefSlice()))
 				.withStreamProtocol(
 						config.get(ofMemSize(), "protocol.packetSize", kilobytes(64)),
 						config.get(ofMemSize(), "protocol.packetSizeMax", kilobytes(64)),

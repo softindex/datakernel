@@ -3,6 +3,7 @@ package io.datakernel.di.module;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
 import io.datakernel.di.util.Types;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
@@ -37,7 +38,7 @@ public interface ModuleBuilder extends Module {
 	 * so that exports do not interfere between classes.
 	 * Class parameter is used to specify from which class in the hierarchy to start.
 	 */
-	ModuleBuilder scan(Class<?> containerClass, @Nullable Object container);
+	ModuleBuilder scan(@NotNull Class<?> containerClass, @Nullable Object container);
 
 	/**
 	 * Same as {@link #scan}, with staring class defaulting to the class of the object instance.
@@ -89,7 +90,7 @@ public interface ModuleBuilder extends Module {
 	 * And you need to subclass the module at the usage point to 'bake' those generics
 	 * into subclass bytecode so that they could be fetched by this bind call.
 	 */
-	<T> ModuleBuilderBinder<T> bind(Key<T> key);
+	<T> ModuleBuilderBinder<T> bind(@NotNull Key<T> key);
 
 	default <T> ModuleBuilder bindInstanceProvider(Class<T> type) {
 		return bindInstanceProvider(Key.of(type));
@@ -97,14 +98,6 @@ public interface ModuleBuilder extends Module {
 
 	default <T> ModuleBuilder bindInstanceProvider(Key<T> key) {
 		return bind(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getName()));
-	}
-
-	default <T> ModuleBuilder bindInstanceFactory(Class<T> type) {
-		return bindInstanceFactory(Key.of(type));
-	}
-
-	default <T> ModuleBuilder bindInstanceFactory(Key<T> key) {
-		return bind(Key.ofType(Types.parameterized(InstanceFactory.class, key.getType()), key.getName()));
 	}
 
 	default <T> ModuleBuilder bindInstanceInjector(Class<T> type) {
@@ -128,27 +121,6 @@ public interface ModuleBuilder extends Module {
 	 */
 	default <S, E extends S> ModuleBuilder bindIntoSet(Key<S> setOf, Key<E> item) {
 		return bindIntoSet(setOf, Binding.to(item));
-	}
-
-	/**
-	 * @see #postInjectInto(Key)
-	 */
-	default ModuleBuilder postInjectInto(Class<?> type) {
-		return postInjectInto(Key.of(type));
-	}
-
-	/**
-	 * {@link #bindIntoSet(Key, Key) Binds into set} a key of instance injector for given type at a {@link Injector#postInjectInstances special}
-	 * key Set&lt;InstanceInjector&lt;?&gt;&gt;.
-	 * <p>
-	 * Instance injector bindings are {@link DefaultModule generated automatically}.
-	 *
-	 * @see Injector#postInjectInstances
-	 */
-	default ModuleBuilder postInjectInto(Key<?> key) {
-		Key<InstanceInjector<?>> instanceInjectorKey = Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName());
-		bind(instanceInjectorKey); // so that its location is set to this module
-		return bindIntoSet(new Key<InstanceInjector<?>>() {}, instanceInjectorKey);
 	}
 
 	/**

@@ -19,36 +19,39 @@ package io.datakernel.aggregation.measure;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Property;
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenArray;
-import io.datakernel.serializer.asm.SerializerGenByte;
-import io.datakernel.serializer.asm.SerializerGenClass;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.asm.SerializerDefArray;
+import io.datakernel.serializer.asm.SerializerDefByte;
+import io.datakernel.serializer.asm.SerializerDefClass;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.Utils.isWrapperType;
 import static java.util.Collections.singletonList;
+import static org.objectweb.asm.Type.*;
 
 public final class MeasureHyperLogLog extends Measure {
 	private final int registers;
 
 	private static final class FieldTypeHyperLogLog extends FieldType<Integer> {
 		public FieldTypeHyperLogLog() {
-			super(HyperLogLog.class, int.class, serializerGen(), INT_CODEC, null);
+			super(HyperLogLog.class, int.class, serializerDef(), INT_CODEC, null);
 		}
 
-		private static SerializerGen serializerGen() {
-			SerializerGenClass serializerGenClass = new SerializerGenClass(HyperLogLog.class);
+		private static SerializerDef serializerDef() {
+			SerializerDefClass serializer = new SerializerDefClass(HyperLogLog.class);
 			try {
-				serializerGenClass.addGetter(HyperLogLog.class.getMethod("getRegisters"),
-						new SerializerGenArray(new SerializerGenByte(), byte[].class), -1, -1);
-				serializerGenClass.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
+				serializer.addGetter(HyperLogLog.class.getMethod("getRegisters"),
+						new SerializerDefArray(new SerializerDefByte(), byte[].class), -1, -1);
+				serializer.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
 						singletonList("registers"));
 			} catch (NoSuchMethodException ignored) {
-				throw new RuntimeException("Unable to construct SerializerGen for HyperLogLog");
+				throw new RuntimeException("Unable to construct SerializerDef for HyperLogLog");
 			}
-			return serializerGenClass;
+			return serializer;
 		}
 	}
 
@@ -67,33 +70,33 @@ public final class MeasureHyperLogLog extends Measure {
 	}
 
 	@Override
-	public Expression zeroAccumulator(Property accumulator) {
+	public Expression zeroAccumulator(Variable accumulator) {
 		return set(accumulator, constructor(HyperLogLog.class, value(registers)));
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Property accumulator, Expression firstAccumulator) {
+	public Expression initAccumulatorWithAccumulator(Variable accumulator, Expression firstAccumulator) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
 				call(accumulator, "union", firstAccumulator));
 	}
 
 	@Override
-	public Expression reduce(Property accumulator,
-			Property nextAccumulator) {
+	public Expression reduce(Variable accumulator,
+			Variable nextAccumulator) {
 		return call(accumulator, "union", nextAccumulator);
 	}
 
 	@Override
-	public Expression initAccumulatorWithValue(Property accumulator,
-			Property firstValue) {
+	public Expression initAccumulatorWithValue(Variable accumulator,
+			Variable firstValue) {
 		return sequence(
 				set(accumulator, constructor(HyperLogLog.class, value(registers))),
 				add(accumulator, firstValue));
 	}
 
 	@Override
-	public Expression accumulate(Property accumulator, Property nextValue) {
+	public Expression accumulate(Variable accumulator, Variable nextValue) {
 		return add(accumulator, nextValue);
 	}
 
@@ -111,37 +114,30 @@ public final class MeasureHyperLogLog extends Measure {
 		}
 
 		@Override
-		public Type type(Context ctx) {
-			return Type.VOID_TYPE;
-		}
-
-		@Override
 		public Type load(Context ctx) {
-			Type valueType = value.type(ctx);
-			if (valueType == Type.LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
-				call(accumulator, "addLong", value).load(ctx);
-			} else if (valueType == Type.INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
-				call(accumulator, "addInt", value).load(ctx);
+			GeneratorAdapter g = ctx.getGeneratorAdapter();
+			Type accumulatorType = accumulator.load(ctx);
+			Type valueType = value.load(ctx);
+			String methodName;
+			Type methodParameterType;
+			if (valueType == LONG_TYPE || valueType.getClassName().equals(Long.class.getName())) {
+				methodName = "addLong";
+				methodParameterType = LONG_TYPE;
+			} else if (valueType == INT_TYPE || valueType.getClassName().equals(Integer.class.getName())) {
+				methodName = "addInt";
+				methodParameterType = INT_TYPE;
 			} else {
-				call(accumulator, "addObject", value).load(ctx);
+				methodName = "addObject";
+				methodParameterType = getType(Object.class);
 			}
-			return Type.VOID_TYPE;
-		}
 
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			ExpressionHyperLogLog that = (ExpressionHyperLogLog) o;
-			return value.equals(that.value) &&
-					accumulator.equals(that.accumulator);
-		}
+			if (isWrapperType(valueType)) {
+				g.unbox(methodParameterType);
+			}
 
-		@Override
-		public int hashCode() {
-			int result = value.hashCode();
-			result = 31 * result + accumulator.hashCode();
-			return result;
+			ctx.invoke(accumulatorType, methodName, methodParameterType);
+
+			return VOID_TYPE;
 		}
 	}
 }

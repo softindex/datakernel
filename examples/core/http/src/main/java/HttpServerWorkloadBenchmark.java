@@ -1,6 +1,4 @@
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -9,9 +7,14 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
 
@@ -66,7 +69,8 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	@Provides
 	AsyncHttpServer server() {
 		return AsyncHttpServer.create(serverEventloop,
-				AsyncServlet.of(req -> HttpResponse.ok200().withPlainText("Response!!")))
+				request ->
+						HttpResponse.ok200().withPlainText("Response!!"))
 				.withListenAddresses(config.get(ofList(ofInetSocketAddress()), "address"));
 	}
 
@@ -103,7 +107,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 		this.measureRounds = config.get(ofInteger(), "benchmark.measureRounds", BENCHMARK_ROUNDS);
 		this.activeRequestsMax = config.get(ofInteger(), "benchmark.activeRequestsMax", ACTIVE_REQUESTS_MAX);
 		this.activeRequestsMin = config.get(ofInteger(), "benchmark.activeRequestsMin", ACTIVE_REQUESTS_MIN);
-		super.onStart();
 	}
 
 	@Override
@@ -144,7 +147,6 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 		long requestsPerSecond = (long) (totalRequests / avgTime * 1000);
 		System.out.println("Time: " + timeAllRounds + "ms; Average time: " + avgTime + " ms; Best time: " +
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
-
 	}
 
 	private long round(Supplier<Promise<Long>> function) throws Exception {

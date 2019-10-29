@@ -16,7 +16,7 @@
 
 package io.datakernel.launchers.remotefs;
 
-import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
@@ -95,7 +96,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 		Map<Object, FsClient> clients = new HashMap<>();
 		clients.put(config.get("remotefs.repartition.localPartitionId"), localServer.getClient());
 		return RemoteFsClusterClient.create(eventloop, clients)
-				.withServerSelector(serverSelector != null ? serverSelector : RENDEZVOUS_HASH_SHARDER)
+				.withServerSelector(nullToDefault(serverSelector, RENDEZVOUS_HASH_SHARDER))
 				.initialize(ofRemoteFsCluster(eventloop, config.getChild("remotefs.cluster")));
 	}
 

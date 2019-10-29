@@ -16,10 +16,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.http.loader.StaticLoader;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -46,7 +46,7 @@ public final class StaticServlet implements AsyncServlet {
 	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
 	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
 	private Supplier<HttpResponse> responseSupplier = HttpResponse::ok200;
-	private Set<String> indexResources = new LinkedHashSet<>();
+	private final Set<String> indexResources = new LinkedHashSet<>();
 
 	@Nullable
 	private String defaultResource;

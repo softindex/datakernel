@@ -28,4 +28,11 @@ public interface ComputedMeasure {
 	Expression getExpression(Expression record, Map<String, Measure> storedMeasures);
 
 	Set<String> getMeasureDependencies();
+
+	@Override
+	boolean equals(Object o);
+
+	@Override
+	int hashCode();
+
 }

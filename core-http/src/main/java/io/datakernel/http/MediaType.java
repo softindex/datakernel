@@ -23,7 +23,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.util.Utils.arraysEquals;
+import static io.datakernel.common.Utils.arraysEquals;
 
 /**
  * This is a specialized token to be used in {@link CaseInsensitiveTokenMap} for media type header values.

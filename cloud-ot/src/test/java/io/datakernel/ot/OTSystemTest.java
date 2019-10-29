@@ -26,11 +26,11 @@ import org.junit.Test;
 
 import java.util.List;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.ot.OTAlgorithms.merge;
 import static io.datakernel.ot.OTAlgorithms.mergeAndUpdateHeads;
 import static io.datakernel.ot.utils.Utils.*;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings({"ArraysAsListWithZeroOrOneArgument"})
@@ -77,7 +77,7 @@ public final class OTSystemTest {
 		});
 
 		TestOpState state = new TestOpState();
-		OTNodeImpl<String, TestOp, OTCommit<String, TestOp>> node = OTNodeImpl.create(repository, SYSTEM);
+		OTUplinkImpl<String, TestOp, OTCommit<String, TestOp>> node = OTUplinkImpl.create(repository, SYSTEM);
 		OTStateManager<String, TestOp> stateManager = OTStateManager.create(getCurrentEventloop(), SYSTEM, node, state);
 
 		await(stateManager.checkout());
@@ -132,7 +132,7 @@ public final class OTSystemTest {
 			g.add("a2", "b1", add(10));
 		});
 
-		OTNodeImpl<String, TestOp, OTCommit<String, TestOp>> node = OTNodeImpl.create(otSource, SYSTEM);
+		OTUplinkImpl<String, TestOp, OTCommit<String, TestOp>> node = OTUplinkImpl.create(otSource, SYSTEM);
 		pullAndThenMergeAndPush(otSource, OTStateManager.create(getCurrentEventloop(), SYSTEM, node, new TestOpState()));
 	}
 
@@ -148,7 +148,7 @@ public final class OTSystemTest {
 			g.add("b1", "b2", add(1));
 		});
 
-		OTNodeImpl<String, TestOp, OTCommit<String, TestOp>> node = OTNodeImpl.create(otSource, SYSTEM);
+		OTUplinkImpl<String, TestOp, OTCommit<String, TestOp>> node = OTUplinkImpl.create(otSource, SYSTEM);
 		pullAndThenMergeAndPush(otSource, OTStateManager.create(getCurrentEventloop(), SYSTEM, node, new TestOpState()));
 	}
 

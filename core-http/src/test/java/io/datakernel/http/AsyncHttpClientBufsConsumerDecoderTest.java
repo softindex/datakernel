@@ -1,9 +1,9 @@
 package io.datakernel.http;
 
+import io.datakernel.common.StringFormatUtils;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.StringFormatUtils;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -14,10 +14,11 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.security.NoSuchAlgorithmException;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static junit.framework.TestCase.*;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertNotNull;
 
 @Ignore
 public class AsyncHttpClientBufsConsumerDecoderTest {

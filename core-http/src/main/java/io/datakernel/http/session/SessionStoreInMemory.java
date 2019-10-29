@@ -1,7 +1,7 @@
 package io.datakernel.http.session;
 
-import io.datakernel.async.Promise;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;

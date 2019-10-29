@@ -14,7 +14,7 @@ public abstract class SharedRepoModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	DynamicOTNodeServlet<D> provideServlet(OTDriver driver, OTSystem<D> system, StructuredCodec<D> diffCodec) {
-		return DynamicOTNodeServlet.create(driver, system, diffCodec, repoNamePrefix);
+	DynamicOTUplinkServlet<D> provideServlet(OTDriver driver, OTSystem<D> system, StructuredCodec<D> diffCodec) {
+		return DynamicOTUplinkServlet.create(driver, system, diffCodec, repoNamePrefix);
 	}
 }

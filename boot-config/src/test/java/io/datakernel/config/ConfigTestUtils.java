@@ -18,8 +18,8 @@ package io.datakernel.config;
 
 import java.util.NoSuchElementException;
 
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.config.Config.EMPTY;
-import static io.datakernel.util.CollectionUtils.set;
 import static org.junit.Assert.*;
 
 @SuppressWarnings("WeakerAccess")

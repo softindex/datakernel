@@ -17,25 +17,35 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.csp.process.*;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.ref.RefInt;
+import io.datakernel.csp.process.ChannelByteChunker;
+import io.datakernel.csp.process.ChannelLZ4Compressor;
+import io.datakernel.csp.process.ChannelLZ4Decompressor;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.datastream.stats.StreamStats;
+import io.datakernel.datastream.stats.StreamStatsBasic;
+import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.*;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.eventloop.util.ReflectionUtils;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.ot.util.IdGenerator;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.stream.stats.StreamStatsBasic;
-import io.datakernel.stream.stats.StreamStatsDetailed;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ReflectionUtils;
-import io.datakernel.util.ref.RefInt;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -49,12 +59,12 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.datakernel.aggregation.AggregationUtils.createBinarySerializer;
-import static io.datakernel.stream.stats.StreamStatsSizeCounter.forByteBufs;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.toLimitedString;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.aggregation.Utils.createBinarySerializer;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.toLimitedString;
+import static io.datakernel.datastream.stats.StreamStatsSizeCounter.forByteBufs;
 import static org.slf4j.LoggerFactory.getLogger;
 
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
@@ -116,8 +126,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	}
 
 	public static <C> RemoteFsChunkStorage<C> create(Eventloop eventloop,
-													 ChunkIdCodec<C> chunkIdCodec,
-													 IdGenerator<C> idGenerator, FsClient client) {
+			ChunkIdCodec<C> chunkIdCodec,
+			IdGenerator<C> idGenerator, FsClient client) {
 		return new RemoteFsChunkStorage<>(eventloop, chunkIdCodec, idGenerator, client);
 	}
 
@@ -150,8 +160,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Promise<StreamSupplier<T>> read(AggregationStructure aggregation, List<String> fields,
-											   Class<T> recordClass, C chunkId,
-											   DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId,
+			DefiningClassLoader classLoader) {
 		return client.download(getPath(chunkId))
 				.whenComplete(promiseOpenR.recordStats())
 				.map(supplier -> supplier
@@ -167,8 +177,8 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> Promise<StreamConsumer<T>> write(AggregationStructure aggregation, List<String> fields,
-												Class<T> recordClass, C chunkId,
-												DefiningClassLoader classLoader) {
+			Class<T> recordClass, C chunkId,
+			DefiningClassLoader classLoader) {
 		return client.upload(getTempPath(chunkId))
 				.whenComplete(promiseOpenW.recordStats())
 				.map(consumer -> StreamConsumer.ofSupplier(

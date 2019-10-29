@@ -19,7 +19,10 @@ package io.datakernel.codegen;
 import java.util.Map;
 
 public interface DefiningClassLoaderMBean {
+	// jmx
 	int getDefinedClassesCount();
 
-	Map<String, Integer> getDefinedClassesByType();
+	int getCachedClassesCount();
+
+	Map<String, Long> getCachedClassesCountByType();
 }

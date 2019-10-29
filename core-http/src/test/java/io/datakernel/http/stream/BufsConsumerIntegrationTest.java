@@ -16,11 +16,11 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.Promises;
+import io.datakernel.async.process.AsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.http.TestUtils.AssertingConsumer;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -30,8 +30,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.csp.ChannelSupplier.ofIterable;
+import static io.datakernel.promise.TestUtils.await;
 import static org.junit.Assert.assertTrue;
 
 public final class BufsConsumerIntegrationTest {

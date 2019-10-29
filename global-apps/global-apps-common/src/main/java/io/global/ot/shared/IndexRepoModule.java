@@ -2,7 +2,7 @@ package io.global.ot.shared;
 
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.global.ot.DynamicOTNodeServlet;
+import io.global.ot.DynamicOTUplinkServlet;
 import io.global.ot.client.OTDriver;
 
 import static io.global.ot.OTUtils.SHARED_REPOS_OPERATION_CODEC;
@@ -16,7 +16,7 @@ public final class IndexRepoModule extends AbstractModule {
 	}
 
 	@Provides
-	DynamicOTNodeServlet<SharedReposOperation> provideServlet(OTDriver driver) {
-		return DynamicOTNodeServlet.create(driver, createOTSystem(), SHARED_REPOS_OPERATION_CODEC, indexRepo);
+	DynamicOTUplinkServlet<SharedReposOperation> provideServlet(OTDriver driver) {
+		return DynamicOTUplinkServlet.create(driver, createOTSystem(), SHARED_REPOS_OPERATION_CODEC, indexRepo);
 	}
 }

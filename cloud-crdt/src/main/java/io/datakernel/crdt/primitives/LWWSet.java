@@ -16,10 +16,10 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.serializer.BinaryInput;
+import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutput;
-import io.datakernel.time.CurrentTimeProvider;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -137,7 +137,6 @@ public final class LWWSet<E> implements Set<E>, CrdtType<LWWSet<E>> {
 		timestamps.removed = now.currentTimeMillis();
 		return existed;
 	}
-
 
 	@Override
 	public boolean containsAll(Collection<?> c) {

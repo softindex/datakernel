@@ -18,7 +18,7 @@ package io.global.fs.util;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.registry.CodecFactory;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.remotefs.FileMetadata;
 import io.global.common.Hash;
 import io.global.fs.api.GlobalFsCheckpoint;

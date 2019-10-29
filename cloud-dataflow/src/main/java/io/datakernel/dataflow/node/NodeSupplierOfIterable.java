@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
 
 import java.util.Collection;
 import java.util.Iterator;
@@ -53,9 +53,9 @@ public final class NodeSupplierOfIterable<T> implements Node {
 	public void createAndBind(TaskContext taskContext) {
 		StreamSupplier<T> supplier;
 		Object object = taskContext.environment().get(iterableId);
-		if(object instanceof Iterator) {
+		if (object instanceof Iterator) {
 			supplier = StreamSupplier.ofIterator((Iterator<T>) object);
-		} else if(object instanceof Iterable) {
+		} else if (object instanceof Iterable) {
 			supplier = StreamSupplier.ofIterable((Iterable<T>) object);
 		} else
 			throw new IllegalArgumentException("Object at id " + iterableId + " is not an iterator or iterable, it is " + object);

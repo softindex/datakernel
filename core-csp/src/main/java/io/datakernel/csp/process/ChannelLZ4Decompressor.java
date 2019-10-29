@@ -16,10 +16,12 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.inspector.BaseInspector;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.TruncatedDataException;
 import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
@@ -27,9 +29,7 @@ import io.datakernel.csp.binary.BinaryChannelInput;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.TruncatedDataException;
-import io.datakernel.inspector.BaseInspector;
+import io.datakernel.promise.Promise;
 import net.jpountz.lz4.LZ4Exception;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.lz4.LZ4FastDecompressor;
@@ -252,7 +252,5 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			}
 		}
 	}
-
-
 
 }

@@ -1,15 +1,17 @@
 package io.datakernel.di.module;
 
 import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.BindingGenerator;
 
 import java.util.Optional;
 
 /**
- * @since 3.0.0
+ * Extension module.
+ * <p>
+ * A binding of <code>Optional&lt;T&gt;</code> for any type <code>T</code> is generated,
+ * with the resulting optional being empty if no binding for <code>T</code> was bound
+ * or containing an instance of <code>T</code>
  */
-public class OptionalGeneratorModule extends AbstractModule {
-
+public final class OptionalGeneratorModule extends AbstractModule {
 	private OptionalGeneratorModule() {
 	}
 
@@ -19,13 +21,11 @@ public class OptionalGeneratorModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		BindingGenerator<?> optionalGenerator = (bindings, scope, key) -> {
-			Binding<Object> binding = bindings.get(key.getTypeParameter(0));
+		generate(Optional.class, (bindings, scope, key) -> {
+			Binding<?> binding = bindings.get(key.getTypeParameter(0));
 			return binding != null ?
 					binding.mapInstance(Optional::of) :
 					Binding.toInstance(Optional.empty());
-		};
-
-		generate(Optional.class, optionalGenerator);
+		});
 	}
 }

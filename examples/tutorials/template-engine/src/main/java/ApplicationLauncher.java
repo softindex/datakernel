@@ -1,23 +1,24 @@
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.util.ByteBufWriter;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.writer.ByteBufWriter;
+import io.datakernel.promise.Promise;
 
 import java.util.Map;
 
+import static io.datakernel.common.Utils.nullToDefault;
+import static io.datakernel.common.collection.CollectionUtils.list;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.util.CollectionUtils.list;
-import static io.datakernel.util.CollectionUtils.map;
 import static java.util.Collections.emptyMap;
 
 //[START REGION_1]
@@ -33,6 +34,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 	PollDao pollRepo() {
 		return new PollDaoImpl();
 	}
+
 	//[END REGION_1]
 	//[START REGION_2]
 	@Provides
@@ -42,22 +44,20 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 		Mustache listPolls = new DefaultMustacheFactory().compile("templates/listPolls.html");
 
 		return RoutingServlet.create()
-				.map(GET, "/", request -> Promise.of(
-						HttpResponse.ok200()
-								.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet())))))
+				.map(GET, "/", request -> HttpResponse.ok200()
+						.withBody(applyTemplate(listPolls, map("polls", pollDao.findAll().entrySet()))))
 				//[END REGION_2]
 				//[START REGION_3]
 				.map(GET, "/poll/:id", request -> {
 					int id = Integer.parseInt(request.getPathParameter("id"));
-					return Promise.of(
-							HttpResponse.ok200()
-									.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id)))));
+					return HttpResponse.ok200()
+							.withBody(applyTemplate(singlePollView, map("id", id, "poll", pollDao.find(id))));
 				})
 				//[END REGION_3]
 				//[START REGION_4]
-				.map(GET, "/create", request -> Promise.of(
+				.map(GET, "/create", request ->
 						HttpResponse.ok200()
-								.withBody(applyTemplate(singlePollCreate, emptyMap()))))
+								.withBody(applyTemplate(singlePollCreate, emptyMap())))
 				.map(POST, "/vote", loadBody()
 						.serve(request -> {
 							Map<String, String> params = request.getPostParameters();
@@ -72,8 +72,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 
 							question.vote(option);
 
-							String referer = request.getHeader(REFERER);
-							return Promise.of(HttpResponse.redirect302(referer != null ? referer : "/"));
+							return HttpResponse.redirect302(nullToDefault(request.getHeader(REFERER), "/"));
 						}))
 				.map(POST, "/add", loadBody()
 						.serve(request -> {
@@ -85,7 +84,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							String option2 = params.get("option2");
 
 							int id = pollDao.add(new PollDao.Poll(title, message, list(option1, option2)));
-							return Promise.of(HttpResponse.redirect302("poll/" + id));
+							return HttpResponse.redirect302("poll/" + id);
 						}))
 				.map(POST, "/delete", loadBody()
 						.serve(request -> {
@@ -96,7 +95,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 							}
 							pollDao.remove(Integer.parseInt(id));
 
-							return Promise.of(HttpResponse.redirect302("/"));
+							return HttpResponse.redirect302("/");
 						}));
 		//[END REGION_4]
 	}

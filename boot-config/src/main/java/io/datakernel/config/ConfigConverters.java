@@ -16,19 +16,19 @@
 
 package io.datakernel.config;
 
-import io.datakernel.async.EventloopTaskScheduler.Schedule;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.service.EventloopTaskScheduler.Schedule;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.StringFormatUtils;
+import io.datakernel.common.concurrent.SimpleThreadFactory;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.FatalErrorHandler;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.exception.ParseException;
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.SimpleThreadFactory;
-import io.datakernel.util.StringFormatUtils;
-import io.datakernel.util.Utils;
+import io.datakernel.eventloop.net.DatagramSocketSettings;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.promise.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -37,18 +37,22 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.*;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
+import static io.datakernel.common.Utils.parseInetSocketAddress;
 import static io.datakernel.eventloop.FatalErrorHandlers.*;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_KEYS_PER_SECOND;
 import static io.datakernel.eventloop.ThrottlingController.INITIAL_THROTTLING;
-import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
-import static io.datakernel.util.Utils.*;
+import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static java.util.Collections.emptyList;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.joining;
@@ -56,9 +60,6 @@ import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class ConfigConverters {
-
-	private ConfigConverters() {
-	}
 
 	public static ConfigConverter<LocalDate> ofLocalDate() {
 		return new SimpleConfigConverter<LocalDate>() {
@@ -648,7 +649,8 @@ public final class ConfigConverters {
 			@Override
 			protected SimpleThreadFactory provide(Config config, SimpleThreadFactory defaultValue) {
 				SimpleThreadFactory result = SimpleThreadFactory.create();
-				String threadGroupName = config.get(ofNullableString(), "threadGroup", Utils.transform(defaultValue.getThreadGroup(), ThreadGroup::getName));
+				@Nullable ThreadGroup threadGroup = defaultValue.getThreadGroup();
+				String threadGroupName = config.get(ofNullableString(), "threadGroup", threadGroup == null ? null : threadGroup.getName());
 				if (threadGroupName != null) {
 					result.withThreadGroup(new ThreadGroup(threadGroupName));
 				}
@@ -686,4 +688,20 @@ public final class ConfigConverters {
 			}
 		};
 	}
+
+	public static <T, V> UnaryOperator<T> apply(BiFunction<T, ? super V, T> modifier, V value) {
+		return instance -> modifier.apply(instance, value);
+	}
+
+	public static <T, V> UnaryOperator<T> applyIf(BiFunction<T, ? super V, T> modifier, V value, Predicate<? super V> predicate) {
+		return instance -> {
+			if (!predicate.test(value)) return instance;
+			return modifier.apply(instance, value);
+		};
+	}
+
+	public static <T, V> UnaryOperator<T> applyIfNotNull(BiFunction<T, ? super V, T> modifier, V value) {
+		return applyIf(modifier, value, Objects::nonNull);
+	}
+
 }

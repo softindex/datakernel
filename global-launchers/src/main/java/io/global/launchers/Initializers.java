@@ -16,8 +16,8 @@
 
 package io.global.launchers;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
-import io.datakernel.util.Initializer;
 import io.global.common.api.AbstractGlobalNamespace;
 import io.global.common.api.AbstractGlobalNode;
 

@@ -6,22 +6,15 @@ import io.datakernel.di.module.AbstractModule;
 
 //[START EXAMPLE]
 public class ModulesExportExample {
-	static AbstractModule module = new AbstractModule() {
-		@Override
-		protected void configure() {
-			super.configure();
-		}
-
-		@Provides
-		String secretValue() { return "420"; }
-
-		@Provides
-		@Export
-		Integer publicValue() { return 42; }
-	};
-
 	public static void main(String[] args) {
-		Injector injector = Injector.of(module);
+		Injector injector = Injector.of(new AbstractModule() {
+			@Provides
+			String secretValue() { return "42"; }
+
+			@Provides
+			@Export
+			Integer publicValue(String secretValue) { return Integer.parseInt(secretValue); }
+		});
 		Integer instance = injector.getInstance(Key.of(Integer.class));
 		System.out.println(instance);
 		String s = injector.getInstanceOrNull(Key.of(String.class));

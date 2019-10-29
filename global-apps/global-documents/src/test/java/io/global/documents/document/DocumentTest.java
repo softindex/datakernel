@@ -1,11 +1,11 @@
 package io.global.documents.document;
 
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.OTNodeImpl;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.ot.OTUplinkImpl;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
@@ -28,8 +28,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.common.collection.CollectionUtils.map;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.SignedData.sign;
 import static io.global.documents.Utils.DOCUMENT_MULTI_OPERATION_CODEC;
@@ -90,8 +90,8 @@ public class DocumentTest {
 				new MyRepositoryId<>(repoID2, keys2.getPrivKey(), DOCUMENT_MULTI_OPERATION_CODEC),
 				singleton(repoID1));
 
-		stateManager1 = OTStateManager.create(eventloop, otSystem, OTNodeImpl.create(repository1, otSystem), state1);
-		stateManager2 = OTStateManager.create(eventloop, otSystem, OTNodeImpl.create(repository2, otSystem), state2);
+		stateManager1 = OTStateManager.create(eventloop, otSystem, OTUplinkImpl.create(repository1, otSystem), state1);
+		stateManager2 = OTStateManager.create(eventloop, otSystem, OTUplinkImpl.create(repository2, otSystem), state2);
 
 		await(stateManager1.checkout());
 		await(stateManager2.checkout());

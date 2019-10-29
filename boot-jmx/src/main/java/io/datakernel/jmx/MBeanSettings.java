@@ -16,12 +16,12 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class MBeanSettings {
 	private final Set<String> includedOptionals = new HashSet<>();
@@ -35,13 +35,17 @@ public final class MBeanSettings {
 	}
 
 	public static MBeanSettings of(Set<String> includedOptionals,
-	                               Map<String, ? extends AttributeModifier<?>> modifiers,
-	                               Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			Map<String, ? extends AttributeModifier<?>> modifiers,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new MBeanSettings(includedOptionals, modifiers, customTypes);
 	}
 
+	public static MBeanSettings create() {
+		return new MBeanSettings(new HashSet<>(), new HashMap<>(), new HashMap<>());
+	}
+
 	public static MBeanSettings defaultSettings() {
-		return new MBeanSettings(new HashSet<>(), new HashMap<>(), Collections.emptyMap());
+		return new MBeanSettings(Collections.emptySet(), Collections.emptyMap(), Collections.emptyMap());
 	}
 
 	public void merge(MBeanSettings otherSettings) {

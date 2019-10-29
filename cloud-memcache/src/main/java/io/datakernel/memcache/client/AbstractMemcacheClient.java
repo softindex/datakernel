@@ -1,10 +1,10 @@
 package io.datakernel.memcache.client;
 
-import io.datakernel.async.Promise;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.GetRequest;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.GetResponse;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.PutRequest;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.IRpcClient;
 
 public abstract class AbstractMemcacheClient<K, V> implements MemcacheClient<K, V> {

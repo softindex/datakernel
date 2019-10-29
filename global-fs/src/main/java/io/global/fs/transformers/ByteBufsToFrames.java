@@ -16,9 +16,9 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.process.AbstractChannelTransformer;
+import io.datakernel.promise.Promise;
 import io.global.fs.api.DataFrame;
 
 /**

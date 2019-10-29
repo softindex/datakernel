@@ -3,12 +3,12 @@ package io.datakernel.remotefs;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.HashUtils.murmur3hash;
+import static io.datakernel.common.HashUtils.murmur3hash;
 import static java.util.Comparator.comparingInt;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Strategy interface, which desides what file goes on which server from given ones.
+ * Strategy interface, which decides what file goes on which server from given ones.
  */
 @FunctionalInterface
 public interface ServerSelector {
@@ -26,19 +26,19 @@ public interface ServerSelector {
 			}
 		}
 		return shards.stream()
-			.map(shard -> new ShardWithHash(shard, murmur3hash(fileName.hashCode(), shard.hashCode())))
-			.sorted(comparingInt(h -> h.hash))
-			.map(h -> h.shard)
-			.limit(topShards)
-			.collect(toList());
+				.map(shard -> new ShardWithHash(shard, murmur3hash(fileName.hashCode(), shard.hashCode())))
+				.sorted(comparingInt(h -> h.hash))
+				.map(h -> h.shard)
+				.limit(topShards)
+				.collect(toList());
 	};
 
 	/**
 	 * Selects partitions where given file should belong.
 	 *
-	 * @param fileName     name of the file
-	 * @param shards set of partition ids to choose from
-	 * @param topShards    number of ids to return
+	 * @param fileName  name of the file
+	 * @param shards    set of partition ids to choose from
+	 * @param topShards number of ids to return
 	 * @return list of keys of servers ordered by priority where file with given name should be
 	 */
 	List<Object> selectFrom(String fileName, Set<Object> shards, int topShards);

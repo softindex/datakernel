@@ -1,10 +1,10 @@
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.Tuple2;
-import io.datakernel.util.TypeT;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.common.tuple.Tuple2;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -22,12 +22,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Utils.arrayStartsWith;
 import static io.global.common.BinaryDataFormats.REGISTRY;
+import static io.global.util.Utils.arrayStartsWith;
 
 public class RocksDbSharedKeyStorage implements SharedKeyStorage {
 	private static final Logger logger = LoggerFactory.getLogger(RocksDbAnnouncementStorage.class);

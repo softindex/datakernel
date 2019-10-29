@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.util.Initializable;
+import io.datakernel.common.Initializable;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,8 +28,7 @@ import java.util.Map.Entry;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
  * This servlet allows to build complex servlet trees, routing requests between them by the HTTP paths.
@@ -66,14 +65,14 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 	/**
 	 * Maps given servlet on some path. Fails when such path already has a servlet mapped to it.
 	 */
-	public RoutingServlet map(String path, AsyncServlet servlet) {
+	public RoutingServlet map(@NotNull String path, @NotNull AsyncServlet servlet) {
 		return map(null, path, servlet, DEFAULT_MERGER);
 	}
 
 	/**
 	 * Maps given servlet on some path and calls the merger if there is already a servlet there.
 	 */
-	public RoutingServlet map(String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
+	public RoutingServlet map(@NotNull String path, @NotNull AsyncServlet servlet, @NotNull BinaryOperator<AsyncServlet> merger) {
 		return map(null, path, servlet, merger);
 	}
 
@@ -81,7 +80,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 	 * @see #map(HttpMethod, String, AsyncServlet)
 	 */
 	@Contract("_, _, _ -> this")
-	public RoutingServlet map(@Nullable HttpMethod method, String path, AsyncServlet servlet) {
+	public RoutingServlet map(@Nullable HttpMethod method, @NotNull String path, @NotNull AsyncServlet servlet) {
 		return map(method, path, servlet, DEFAULT_MERGER);
 	}
 
@@ -89,27 +88,26 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 	 * @see #map(HttpMethod, String, AsyncServlet, BinaryOperator)
 	 */
 	@Contract("_, _, _, _ -> this")
-	public RoutingServlet map(@Nullable HttpMethod method, String path, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
-		checkNotNull(servlet);
-		checkArgument(path.isEmpty() || path.startsWith(ROOT) || path.endsWith(WILDCARD) || !path.contains(STAR), "Invalid path " + path);
+	public RoutingServlet map(@Nullable HttpMethod method, @NotNull String path, @NotNull AsyncServlet servlet, @NotNull BinaryOperator<AsyncServlet> merger) {
+		checkArgument(path.isEmpty() || path.startsWith(ROOT) || path.endsWith(WILDCARD) || !path.contains(STAR), "Invalid path: " + path);
 
 		if (path.endsWith(WILDCARD)) {
-			makeSubtree(path.substring(0, path.length() - 2)).mapFallback(method, servlet, DEFAULT_MERGER);
+			makeSubtree(path.substring(0, path.length() - 2)).mapFallback(method, servlet, merger);
 		} else {
-			makeSubtree(path).map(method, servlet, DEFAULT_MERGER);
+			makeSubtree(path).map(method, servlet, merger);
 		}
 		return this;
 	}
 
-	public void walk(Walker walker) {
-		walk(ROOT, walker);
+	public void visit(Visitor visitor) {
+		visit(ROOT, visitor);
 	}
 
-	private void walk(String prefix, Walker walker) {
-		rootServlets.forEach((method, servlet) -> walker.walk(method, prefix, servlet));
-		fallbackServlets.forEach((method, servlet) -> walker.walk(method, prefix + STAR, servlet));
-		routes.forEach((route, subtree) -> subtree.walk(prefix + route + "/", walker));
-		parameters.forEach((route, subtree) -> subtree.walk(prefix + ":" + route + "/", walker));
+	private void visit(String prefix, Visitor visitor) {
+		rootServlets.forEach((method, servlet) -> visitor.accept(method, prefix, servlet));
+		fallbackServlets.forEach((method, servlet) -> visitor.accept(method, prefix + STAR, servlet));
+		routes.forEach((route, subtree) -> subtree.visit(prefix + route + "/", visitor));
+		parameters.forEach((route, subtree) -> subtree.visit(prefix + ":" + route + "/", visitor));
 	}
 
 	@Nullable
@@ -147,11 +145,11 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 				Promise.ofException(HttpException.notFound404());
 	}
 
-	private void map(@Nullable HttpMethod method, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
+	private void map(@Nullable HttpMethod method, @NotNull AsyncServlet servlet, @NotNull BinaryOperator<AsyncServlet> merger) {
 		rootServlets.merge(method, servlet, merger);
 	}
 
-	private void mapFallback(@Nullable HttpMethod method, AsyncServlet servlet, BinaryOperator<AsyncServlet> merger) {
+	private void mapFallback(@Nullable HttpMethod method, @NotNull AsyncServlet servlet, @NotNull BinaryOperator<AsyncServlet> merger) {
 		fallbackServlets.merge(method, servlet, merger);
 	}
 
@@ -164,7 +162,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		if (urlPart.isEmpty()) {
 			AsyncServlet servlet = rootServlets.getOrDefault(method, rootServlets.get(null));
 			if (servlet != null) {
-				return servlet.serve(request);
+				return servlet.serveAsync(request);
 			}
 		} else {
 			int position = request.getPos();
@@ -191,7 +189,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 		AsyncServlet servlet = fallbackServlets.getOrDefault(method, fallbackServlets.get(null));
 		if (servlet != null) {
 			request.setPos(introPosition);
-			return servlet.serve(request);
+			return servlet.serveAsync(request);
 		}
 		return null;
 	}
@@ -203,7 +201,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 						servlet.routes.computeIfAbsent(name, $ -> new RoutingServlet()));
 	}
 
-	private RoutingServlet getOrCreateSubtree(String path, BiFunction<RoutingServlet, String, @Nullable RoutingServlet> childGetter) {
+	private RoutingServlet getOrCreateSubtree(@NotNull String path, BiFunction<RoutingServlet, String, @Nullable RoutingServlet> childGetter) {
 		if (path.isEmpty() || path.equals(ROOT)) {
 			return this;
 		}
@@ -265,8 +263,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 	}
 
 	@FunctionalInterface
-	public interface Walker {
-
-		void walk(@Nullable HttpMethod method, String path, AsyncServlet servlet);
+	public interface Visitor {
+		void accept(@Nullable HttpMethod method, String path, AsyncServlet servlet);
 	}
 }

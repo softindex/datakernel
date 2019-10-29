@@ -16,9 +16,9 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.AsyncConsumer;
+import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.process.ChannelSplitter;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -27,8 +27,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;

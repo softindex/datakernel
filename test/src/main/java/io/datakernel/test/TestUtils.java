@@ -17,7 +17,7 @@
 package io.datakernel.test;
 
 import com.mysql.cj.jdbc.MysqlDataSource;
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import org.jetbrains.annotations.Nullable;
 
 import javax.sql.DataSource;
@@ -35,7 +35,7 @@ public final class TestUtils {
 	private static int activePromises = 0;
 
 	public static synchronized int getFreePort() {
-		try(ServerSocket s = new ServerSocket(0)) {
+		try (ServerSocket s = new ServerSocket(0)) {
 			return s.getLocalPort();
 		} catch (IOException e) {
 			throw new AssertionError(e);

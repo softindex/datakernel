@@ -18,7 +18,6 @@ package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.PredicateDef;
 
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +30,11 @@ public interface AggregationPredicate {
 
 	Map<String, Object> getFullySpecifiedDimensions();
 
-	@SuppressWarnings("rawtypes")
-	PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields);
+	Expression createPredicate(Expression record, Map<String, FieldType> fields);
+
+	@Override
+	boolean equals(Object o);
+
+	@Override
+	int hashCode();
 }

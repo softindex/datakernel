@@ -196,8 +196,4 @@ public class RpcStrategyRendezvousHashingTest {
 		assertNull(rendezvousHashing.createSender(pool));
 	}
 
-	@Test(expected = Exception.class)
-	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		rendezvousHashing(null);
-	}
 }

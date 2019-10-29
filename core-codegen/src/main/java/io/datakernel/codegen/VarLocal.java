@@ -31,14 +31,10 @@ public final class VarLocal implements Variable {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		return ctx.getGeneratorAdapter().getLocalType(local);
-	}
-
-	@Override
 	public Type load(Context ctx) {
-		ctx.getGeneratorAdapter().loadLocal(local);
-		return type(ctx);
+		GeneratorAdapter g = ctx.getGeneratorAdapter();
+		g.loadLocal(local);
+		return g.getLocalType(local);
 	}
 
 	@Nullable
@@ -58,25 +54,7 @@ public final class VarLocal implements Variable {
 		g.storeLocal(local);
 	}
 
-	public void storeLocal(GeneratorAdapter g) {
-		g.storeLocal(local);
-	}
-
 	public int getLocal() {
-		return local;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		VarLocal varLocal = (VarLocal) o;
-		return local == varLocal.local;
-	}
-
-	@Override
-	public int hashCode() {
 		return local;
 	}
 }

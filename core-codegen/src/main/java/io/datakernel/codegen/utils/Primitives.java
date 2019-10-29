@@ -16,18 +16,16 @@
 
 package io.datakernel.codegen.utils;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 public final class Primitives {
 	private static final Map<Class<?>, Class<?>> PRIMITIVE;
 	private static final Map<Class<?>, Class<?>> WRAPPER;
-
-	private Primitives() {}
 
 	static {
 		Map<Class<?>, Class<?>> primToWrap = new HashMap<>();
@@ -36,11 +34,11 @@ public final class Primitives {
 		add(primToWrap, wrapToPrim, Boolean.TYPE, Boolean.class);
 		add(primToWrap, wrapToPrim, Byte.TYPE, Byte.class);
 		add(primToWrap, wrapToPrim, Character.TYPE, Character.class);
-		add(primToWrap, wrapToPrim, Double.TYPE, Double.class);
-		add(primToWrap, wrapToPrim, Float.TYPE, Float.class);
+		add(primToWrap, wrapToPrim, Short.TYPE, Short.class);
 		add(primToWrap, wrapToPrim, Integer.TYPE, Integer.class);
 		add(primToWrap, wrapToPrim, Long.TYPE, Long.class);
-		add(primToWrap, wrapToPrim, Short.TYPE, Short.class);
+		add(primToWrap, wrapToPrim, Float.TYPE, Float.class);
+		add(primToWrap, wrapToPrim, Double.TYPE, Double.class);
 		add(primToWrap, wrapToPrim, Void.TYPE, Void.class);
 
 		PRIMITIVE = Collections.unmodifiableMap(primToWrap);
@@ -60,20 +58,18 @@ public final class Primitives {
 		return WRAPPER.keySet();
 	}
 
-	public static boolean isWrapperType(Class<?> type) {
-		return WRAPPER.containsKey(checkNotNull(type));
+	public static boolean isWrapperType(@NotNull Class<?> type) {
+		return WRAPPER.containsKey(type);
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Class<T> wrap(Class<T> type) {
-		checkNotNull(type);
+	public static <T> Class<T> wrap(@NotNull Class<T> type) {
 		Class<T> wrapped = (Class<T>) PRIMITIVE.get(type);
 		return wrapped == null ? type : wrapped;
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T> Class<T> unwrap(Class<T> type) {
-		checkNotNull(type);
+	public static <T> Class<T> unwrap(@NotNull Class<T> type) {
 		Class<T> unwrapped = (Class<T>) WRAPPER.get(type);
 		return unwrapped == null ? type : unwrapped;
 	}

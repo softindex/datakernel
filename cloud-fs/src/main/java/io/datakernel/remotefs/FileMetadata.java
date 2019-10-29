@@ -16,14 +16,14 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
  * This is a POJO for holding name, size, timestamp and revision of some file
@@ -47,8 +47,7 @@ public final class FileMetadata {
 		this.revision = revision;
 	}
 
-	public static FileMetadata of(String name, long size, long timestamp, long revision) {
-		checkNotNull(name, "name");
+	public static FileMetadata of(@NotNull String name, long size, long timestamp, long revision) {
 		checkArgument(size >= 0, "size >= 0");
 		return new FileMetadata(name, size, timestamp, revision);
 	}

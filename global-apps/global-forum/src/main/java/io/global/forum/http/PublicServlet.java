@@ -1,10 +1,10 @@
 package io.global.forum.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.http.*;
 import io.datakernel.http.session.SessionStore;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
 import io.global.appstore.AppStore;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
@@ -24,14 +24,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+import static io.datakernel.common.Utils.nullToEmpty;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
 import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.Utils.nullToEmpty;
 import static io.global.Utils.*;
 import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
 import static io.global.comm.pojo.AuthService.DK_APP_STORE;
@@ -392,6 +392,7 @@ public final class PublicServlet {
 								}
 								return maxAge.then(m ->
 										servlet.serve(request)
+												.get()
 												.map(response -> {
 													if (response.getCookie(SESSION_ID) != null) { // servlet itself had set the session (logout request)
 														return response;

@@ -1,9 +1,9 @@
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.util.ByteBufWriter;
+import io.datakernel.common.collection.Either;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.functional.Either;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpResponse;
@@ -12,13 +12,12 @@ import io.datakernel.http.decoder.DecodeErrors;
 import io.datakernel.http.decoder.Decoder;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
-import io.datakernel.writer.ByteBufWriter;
 
 import java.util.Map;
 
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.decoder.Decoders.ofPost;
-import static io.datakernel.util.CollectionUtils.map;
 
 //[START REGION_1]
 public final class HttpDecoderExample extends HttpServerLauncher {
@@ -59,9 +58,9 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 	AsyncServlet mainServlet(ContactDAO contactDAO) {
 		Mustache contactListView = new DefaultMustacheFactory().compile("static/contactList.html");
 		return RoutingServlet.create()
-				.map("/", request -> Promise.of(
+				.map("/", request ->
 						HttpResponse.ok200()
-								.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list())))))
+								.withBody(applyTemplate(contactListView, map("contacts", contactDAO.list()))))
 				.map(POST, "/add", AsyncServletDecorator.loadBody()
 						.serve(request -> {
 							//[START REGION_3]
@@ -74,8 +73,8 @@ public final class HttpDecoderExample extends HttpServerLauncher {
 							if (decodedUser.isRight()) {
 								scopes.put("errors", decodedUser.getRight().toMap(SEPARATOR));
 							}
-							return Promise.of(HttpResponse.ok200()
-									.withBody(applyTemplate(contactListView, scopes)));
+							return HttpResponse.ok200()
+									.withBody(applyTemplate(contactListView, scopes));
 						}));
 	}
 	//[END REGION_2]

@@ -1,7 +1,7 @@
 package io.datakernel.http;
 
-import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.TestUtils;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -13,7 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class AsyncHttpServerClientBreakConnectionTest {

@@ -19,7 +19,7 @@ package io.datakernel.ot.utils;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
@@ -28,10 +28,10 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.ot.TransformResult.*;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.Preconditions.check;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static java.util.stream.Collectors.toList;
@@ -40,10 +40,6 @@ import static java.util.stream.Collectors.toSet;
 public class Utils {
 
 	private static final Object INVALID_KEY = new Object();
-
-	private Utils() {
-
-	}
 
 	public static TestAdd add(int delta) {
 		return new TestAdd(delta);
@@ -59,7 +55,7 @@ public class Utils {
 				.withTransformFunction(TestAdd.class, TestAdd.class, (left, right) -> of(add(right.getDelta()), add(left.getDelta())))
 				.withTransformFunction(TestAdd.class, TestSet.class, (left, right) -> left(set(right.getPrev() + left.getDelta(), right.getNext())))
 				.withTransformFunction(TestSet.class, TestSet.class, (left, right) -> {
-					check(left.getPrev() == right.getPrev(), "Previous values of left and right set operation should be equal");
+					checkArgument(left.getPrev() == right.getPrev(), "Previous values of left and right set operation should be equal");
 					if (left.getNext() > right.getNext()) return left(set(left.getNext(), right.getNext()));
 					if (left.getNext() < right.getNext()) return right(set(right.getNext(), left.getNext()));
 					return empty();

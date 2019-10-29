@@ -18,7 +18,7 @@ package io.global.ot.util;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
-import io.datakernel.util.TypeT;
+import io.datakernel.common.reflection.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.api.EncryptedData;

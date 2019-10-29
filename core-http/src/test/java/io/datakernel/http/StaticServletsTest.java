@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.BeforeClass;
@@ -32,11 +32,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.loader.StaticLoader.ofClassPath;
-import static io.datakernel.loader.StaticLoader.ofPath;
+import static io.datakernel.http.loader.StaticLoader.ofClassPath;
+import static io.datakernel.http.loader.StaticLoader.ofPath;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.assertEquals;

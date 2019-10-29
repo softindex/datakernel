@@ -5,13 +5,13 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.1-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>datakernel-dataflow</artifactId>
 
-  <name>DataKernel: Dataflow</name>
+  <name>DataKernel : Dataflow</name>
   <description>
     Distributed stream-based batch processing engine for Big Data applications.
     Package contains tools to work with large datasets which could be spanned into multiple partitions.
@@ -36,5 +36,21 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>io.datakernel.dataflow</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
  */
 @State(org.openjdk.jmh.annotations.Scope.Benchmark)
 @Configuration
+@SuppressWarnings("FieldCanBeLocal")
 public class SpringDiBenchmark {
 	static class Kitchen {
 		private final int places;
@@ -79,7 +80,7 @@ public class SpringDiBenchmark {
 		@Autowired
 		public Flour() {
 			this.name = "GoodFlour";
-			this.weight =  100.0f;
+			this.weight = 100.0f;
 		}
 
 		public Flour(String name, float weight) {
@@ -284,7 +285,6 @@ public class SpringDiBenchmark {
 	CookieBucket tort(Cookie1 c1, Cookie2 c2, Cookie3 c3, Cookie4 c4, Cookie5 c5, Cookie6 c6) {
 		return new CookieBucket(c1, c2, c3, c4, c5, c6);
 	}
-
 
 	ConfigurableApplicationContext context;
 	CookieBucket cb;

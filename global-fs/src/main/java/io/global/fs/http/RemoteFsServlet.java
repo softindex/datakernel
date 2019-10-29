@@ -16,10 +16,10 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 import org.jetbrains.annotations.NotNull;

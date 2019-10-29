@@ -37,8 +37,8 @@ import java.util.concurrent.Executors;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
 import static java.util.Collections.emptyList;
 
@@ -76,8 +76,8 @@ public class CubeCleanerControllerTest {
 				.withAggregation(id("pub").withDimensions("pub").withMeasures("pubRequests"))
 				.withAggregation(id("adv").withDimensions("adv").withMeasures("advRequests"));
 
-		repository = OTRepositoryMySql.create(eventloop, executor, dataSource, OT_SYSTEM,
-				LogDiffCodec.create(CubeDiffCodec.create(cube)));
+		repository = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+				OT_SYSTEM, LogDiffCodec.create(CubeDiffCodec.create(cube)));
 		repository.initialize();
 		repository.truncateTables();
 	}

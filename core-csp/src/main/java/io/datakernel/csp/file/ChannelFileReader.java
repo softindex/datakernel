@@ -16,14 +16,14 @@
 
 package io.datakernel.csp.file;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.file.AsyncFileService;
+import io.datakernel.async.file.ExecutorAsyncFileService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.CloseException;
 import io.datakernel.csp.AbstractChannelSupplier;
-import io.datakernel.exception.CloseException;
-import io.datakernel.file.AsyncFileService;
-import io.datakernel.file.ExecutorAsyncFileService;
-import io.datakernel.util.MemSize;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +34,7 @@ import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.nio.file.StandardOpenOption.READ;
 
 /**

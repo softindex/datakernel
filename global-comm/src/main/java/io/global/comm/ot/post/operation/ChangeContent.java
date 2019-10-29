@@ -5,7 +5,7 @@ import io.global.ot.value.ChangeValue;
 
 import java.util.Map;
 
-import static io.datakernel.util.StringFormatUtils.limit;
+import static io.global.util.Utils.limit;
 
 public final class ChangeContent implements ThreadOperation {
 	private final String postId;

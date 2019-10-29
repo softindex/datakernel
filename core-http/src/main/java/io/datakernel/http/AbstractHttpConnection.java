@@ -16,32 +16,32 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.AsyncConsumer;
-import io.datakernel.async.AsyncProcess;
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.async.process.AsyncProcess;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.stream.*;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 
-import static io.datakernel.async.AsyncExecutors.ofMaxRecursiveCalls;
+import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaderValue.ofBytes;
 import static io.datakernel.http.HttpHeaderValue.ofDecimal;
@@ -65,6 +65,7 @@ public abstract class AbstractHttpConnection {
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = ApplicationSettings.getInt(HttpMessage.class, "maxHeaders", 100); // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 	public static final int MAX_RECURSIVE_CALLS = ApplicationSettings.getInt(AbstractHttpConnection.class, "maxRecursiveCalls", 64);
+	public static final boolean MULTILINE_HEADERS = ApplicationSettings.getBoolean(AbstractHttpConnection.class, "multilineHeaders", true);
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
@@ -89,7 +90,9 @@ public abstract class AbstractHttpConnection {
 
 	private final Consumer<ByteBuf> onHeaderBuf = this::onHeaderBuf;
 
+	@Nullable
 	protected ConnectionsLinkedList pool;
+	@Nullable
 	protected AbstractHttpConnection prev;
 	protected AbstractHttpConnection next;
 	protected long poolTimestamp;
@@ -209,7 +212,7 @@ public abstract class AbstractHttpConnection {
 					if (array[p] == LF) {
 
 						// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-						if (isMultilineHeader(array, head, tail, p)) {
+						if (MULTILINE_HEADERS && isMultilineHeader(array, head, tail, p)) {
 							preprocessMultiline(array, p);
 							continue;
 						}
@@ -364,6 +367,7 @@ public abstract class AbstractHttpConnection {
 
 		process.getProcessCompletion()
 				.whenComplete(($, e) -> {
+					if (isClosed()) return;
 					if (e == null) {
 						flags |= BODY_RECEIVED;
 						onBodyReceived();
@@ -373,8 +377,7 @@ public abstract class AbstractHttpConnection {
 				});
 	}
 
-	@Nullable
-	public static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
+	static ByteBuf renderHttpMessage(HttpMessage httpMessage) {
 		if (httpMessage.body != null) {
 			ByteBuf body = httpMessage.body;
 			httpMessage.body = null;
@@ -414,6 +417,7 @@ public abstract class AbstractHttpConnection {
 		if ((httpMessage.flags & HttpMessage.USE_GZIP) != 0) {
 			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
+			//noinspection ConstantConditions
 			bodyStream.bindTo(deflater.getInput());
 			bodyStream = deflater.getOutput().getSupplier();
 		}
@@ -421,6 +425,7 @@ public abstract class AbstractHttpConnection {
 		if (httpMessage.headers.get(CONTENT_LENGTH) == null) {
 			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
 			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
+			//noinspection ConstantConditions
 			bodyStream.bindTo(chunker.getInput());
 			bodyStream = chunker.getOutput().getSupplier();
 		}
@@ -433,13 +438,13 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeBuf(ByteBuf buf) {
 		socket.write(buf)
-				.whenComplete(($, e2) -> {
+				.whenComplete(($, e) -> {
 					if (isClosed()) return;
-					if (e2 == null) {
+					if (e == null) {
 						flags |= BODY_SENT;
 						onBodySent();
 					} else {
-						closeWithError(e2);
+						closeWithError(e);
 					}
 				});
 	}
@@ -470,6 +475,7 @@ public abstract class AbstractHttpConnection {
 	}
 
 	protected void switchPool(ConnectionsLinkedList newPool) {
+		//noinspection ConstantConditions
 		pool.removeNode(this);
 		(pool = newPool).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();

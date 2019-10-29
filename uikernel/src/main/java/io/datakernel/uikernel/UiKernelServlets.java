@@ -17,13 +17,12 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 
-import java.nio.charset.Charset;
 import java.util.List;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
@@ -38,7 +37,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Rest API for UiKernel Tables
  */
 public class UiKernelServlets {
-	private static final ContentType JSON_UTF8 = ContentType.of(MediaTypes.JSON, Charset.forName("UTF-8"));
+	private static final ContentType JSON_UTF8 = ContentType.of(MediaTypes.JSON, UTF_8);
 
 	private static final String ID_PARAMETER_NAME = "id";
 

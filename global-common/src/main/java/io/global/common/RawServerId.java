@@ -1,6 +1,6 @@
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 public final class RawServerId {
 	private final String serverIdString;

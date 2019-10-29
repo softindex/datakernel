@@ -1,11 +1,13 @@
 package io.global.ot.server;
 
-import io.datakernel.async.*;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.Ref;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Tuple2;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
@@ -20,12 +22,15 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.AsyncSuppliers.*;
-import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
-import static io.datakernel.async.Promises.firstSuccessful;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.union;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.function.AsyncSuppliers.coalesce;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.process.AsyncExecutors.retry;
+import static io.datakernel.async.process.Cancellable.CANCEL_EXCEPTION;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.union;
+import static io.datakernel.promise.Promises.firstSuccessful;
+import static io.datakernel.promise.Promises.retry;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -100,10 +105,10 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
 		private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
 		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = coalesce(retry(this::doPush, node.retryPolicy));
+		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
 		private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
 		private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
-		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(this::doSaveHeads, CollectionUtils::union);
+		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(HashSet::new, AbstractCollection::addAll, this::doSaveHeads);
 
 		private final Map<RawServerId, MasterRepository> masterRepositories = new HashMap<>();
 
@@ -118,7 +123,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		public void start() {
-			Promises.loop(AsyncPredicate.of($ -> node.pollMasterRepositories), retry(this::doPollMasterHeads, node.retryPolicy));
+			Promises.loop((Void) null, $ -> node.pollMasterRepositories, $ -> retry(this::doPollMasterHeads, node.retryPolicy));
 		}
 
 		// region API methods
@@ -207,32 +212,42 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		public AsyncSupplier<Set<SignedData<RawCommitHead>>> pollHeads() {
 			Ref<Set<SignedData<RawCommitHead>>> lastHeads = new Ref<>(emptySet());
-			return () -> Promises.<Set<SignedData<RawCommitHead>>>until(
-					() -> node.getCommitStorage().getHeads(repositoryId).map(Map::values).map(HashSet::new),
-					polledHeads -> !lastHeads.get().containsAll(polledHeads) ?
-							Promise.of(true) :
-							ensurePollNotifier().map($ -> false))
-					.whenResult(lastHeads::set);
+			return () -> Promises.until(
+					false,
+					$ -> node.getCommitStorage().getHeads(repositoryId)
+							.then(map -> {
+								Set<SignedData<RawCommitHead>> heads = new HashSet<>(map.values());
+								if (!lastHeads.get().containsAll(heads)) {
+									lastHeads.set(heads);
+									return Promise.of(true);
+								}
+								return ensurePollNotifier()
+										.map($2 -> false);
+							})
+					,
+					done -> done)
+					.map($ -> lastHeads.value);
 		}
 
 		@NotNull
 		private Promise<Void> doPollMasterHeads() {
 			return ensureMasterRepositories()
-					.then(masterRepositories -> Promises.until(
-							() -> Promises.any(masterRepositories.values().stream().map(masterRepo -> masterRepo.poll()
-									.map($ -> masterRepo)))
+					.then(masterRepositories -> Promises.<Tuple2<GlobalOTNode, Set<SignedData<RawCommitHead>>>>until(
+							null,
+							$ -> Promises.any(masterRepositories.values().stream().map(masterRepo -> masterRepo.poll()
+									.map($2 -> masterRepo)))
 									.map(masterRepo -> new Tuple2<>(masterRepo.getNode(), masterRepositories.values()
 											.stream()
 											.filter(masterRepository -> masterRepository.getHeads() != null)
 											.map(MasterRepository::getHeads)
 											.flatMap(Collection::stream)
 											.collect(toSet()))),
-							AsyncPredicate.of(nodeAndHeads -> {
+							nodeAndHeads -> {
 								Set<SignedData<RawCommitHead>> polledHeads = nodeAndHeads.getValue2();
 								boolean found = this.polledHeads == null || !this.polledHeads.containsAll(polledHeads);
 								this.polledHeads = polledHeads;
 								return found;
-							})))
+							}))
 					.then(nodeAndHeads -> node.isMasterFor(space) ?
 							doFetch(nodeAndHeads.getValue1()) :
 							saveHeads(nodeAndHeads.getValue2()))

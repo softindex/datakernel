@@ -1,10 +1,10 @@
 package io.global.ot.service.synchronization;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncSuppliers.retry;
-import static io.datakernel.util.CollectionUtils.first;
+import static io.datakernel.common.collection.CollectionUtils.first;
+import static io.datakernel.promise.Promises.retry;
 
 public final class SynchronizationService<D> implements EventloopService {
 	private final Eventloop eventloop;

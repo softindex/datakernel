@@ -1,13 +1,13 @@
 package io.global.comm.container;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.*;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.TypeT;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.CommDaoImpl;
 import io.global.comm.dao.ThreadDao;
@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.global.comm.util.Utils.REGISTRY;
 import static java.util.Collections.emptySet;
 
@@ -195,7 +195,7 @@ public final class CommGlobalState {
 
 	public <D> OTStateManager<CommitId, D> createStateManager(String repoName, StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state) {
 		OTRepositoryAdapter<D> repositoryAdapter = new OTRepositoryAdapter<>(otDriver, MyRepositoryId.of(keys.getPrivKey(), repoName, diffCodec), emptySet());
-		OTNodeImpl<CommitId, D, OTCommit<CommitId, D>> node = OTNodeImpl.create(repositoryAdapter, otSystem);
-		return OTStateManager.create(eventloop, otSystem, node, state);
+		OTUplink<CommitId, D, OTCommit<CommitId, D>> uplink = OTUplinkImpl.create(repositoryAdapter, otSystem);
+		return OTStateManager.create(eventloop, otSystem, uplink, state);
 	}
 }

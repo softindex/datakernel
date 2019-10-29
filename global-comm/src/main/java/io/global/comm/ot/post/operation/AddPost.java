@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.global.comm.pojo.AuthService.DK_APP_STORE;
 
 public final class AddPost implements ThreadOperation {

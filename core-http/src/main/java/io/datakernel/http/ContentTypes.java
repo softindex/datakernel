@@ -31,10 +31,6 @@ public final class ContentTypes {
 	public static final ContentType CSS_UTF_8 = register(CSS, UTF_8);
 	public static final ContentType PLAIN_TEXT_ASCII = register(PLAIN_TEXT, US_ASCII);
 
-	private ContentTypes() {
-		throw new AssertionError();
-	}
-
 	static ContentType lookup(MediaType mime, HttpCharset charset) {
 		if (mime == JSON && charset == UTF_8) {
 			return JSON_UTF_8;

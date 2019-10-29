@@ -16,15 +16,15 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpClient.Inspector;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -81,14 +81,18 @@ import static java.nio.charset.StandardCharsets.ISO_8859_1;
  */
 final class HttpClientConnection extends AbstractHttpConnection {
 	public static final ParseException INVALID_RESPONSE = new UnknownFormatException(HttpClientConnection.class, "Invalid response");
+	public static final ParseException CONNECTION_CLOSED = new ParseException(HttpClientConnection.class, "Connection closed");
+
+	@Nullable
 	private SettablePromise<HttpResponse> promise;
+	@Nullable
 	private HttpResponse response;
 	private final AsyncHttpClient client;
 	@Nullable
 	private final Inspector inspector;
 
 	final InetSocketAddress remoteAddress;
-	HttpClientConnection addressPrev;
+	@Nullable HttpClientConnection addressPrev;
 	HttpClientConnection addressNext;
 	final int maxBodySize;
 
@@ -157,6 +161,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeaderBuf(ByteBuf buf) {
+		//noinspection ConstantConditions
 		response.addHeaderBuf(buf);
 	}
 
@@ -172,6 +177,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert !isClosed();
 
 		HttpResponse response = this.response;
+		//noinspection ConstantConditions
 		response.flags |= MUST_LOAD_BODY;
 		response.body = body;
 		response.bodyStream = bodySupplier;
@@ -179,6 +185,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		SettablePromise<HttpResponse> promise = this.promise;
 		this.promise = null;
+		//noinspection ConstantConditions
 		promise.set(response);
 	}
 
@@ -262,7 +269,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onClosed() {
-		assert promise == null;
+		if (promise != null) {
+			if (inspector != null) inspector.onHttpError(this, (flags & KEEP_ALIVE) != 0, CONNECTION_CLOSED);
+			SettablePromise<HttpResponse> promise = this.promise;
+			this.promise = null;
+			promise.setException(CONNECTION_CLOSED);
+		}
 		if (pool == client.poolKeepAlive) {
 			AddressLinkedList addresses = client.addresses.get(remoteAddress);
 			addresses.removeNode(this);
@@ -273,8 +285,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		// pool will be null if socket was closed by the value just before connection.send() invocation
 		// (eg. if connection was in open(null) or taken(null) states)
+		//noinspection ConstantConditions
 		pool.removeNode(this);
-		pool = null;
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (pool = null) == null;
 
 		client.onConnectionClosed();
 		if (response != null) {

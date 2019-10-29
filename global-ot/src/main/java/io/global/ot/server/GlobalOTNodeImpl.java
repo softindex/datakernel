@@ -16,17 +16,17 @@
 
 package io.global.ot.server;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Initializable;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.Initializable;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.RetryPolicy;
 import io.global.common.*;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
@@ -41,14 +41,13 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.Promises.firstSuccessful;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.global.util.Utils.nSuccessesOrLess;
-import static io.global.util.Utils.tolerantCollectVoid;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.promise.Promises.firstSuccessful;
+import static io.global.util.Utils.*;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
@@ -361,12 +360,11 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	}
 
 	private Promise<Void> doCatchUp() {
-		return Promises.until(
-				$1 -> {
-					long timestampBegin = now.currentTimeMillis();
-					return tolerantCollectVoid(Stream.<AsyncSupplier>of(this::fetch, this::update), AsyncSupplier::get)
-							.map($2 -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
-				});
+		return untilTrue(() -> {
+			long timestampBegin = now.currentTimeMillis();
+			return tolerantCollectVoid(Stream.<AsyncSupplier>of(this::fetch, this::update), AsyncSupplier::get)
+					.map($ -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
+		});
 	}
 
 	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
