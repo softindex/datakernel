@@ -362,10 +362,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 			instances.put(serviceKey, singletonList(instance));
 			instanceDependencies.put(serviceKey,
 					bindingInfo.getDependencies().stream()
-							.filter(dependency -> {
-								Key<?> k = dependency.getKey();
-								return dependency.isRequired() || injector.hasInstance(k);
-							})
+							.filter(dependency -> dependency.isRequired() || injector.hasInstance(dependency.getKey()))
 							.map(dependency -> {
 								Class<?> dependencyRawType = dependency.getKey().getRawType();
 								boolean rawTypeMatches = dependencyRawType == WorkerPool.class || dependencyRawType == WorkerPools.class;

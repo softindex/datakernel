@@ -17,6 +17,10 @@ public final class PlainCompiler<T> implements BindingCompiler<T> {
 		this.key = key;
 	}
 
+	public Key<? extends T> getKey() {
+		return key;
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public CompiledBinding<T> compile(CompiledBindingLocator compiledBindings, boolean threadsafe, int scope, @Nullable Integer slot) {

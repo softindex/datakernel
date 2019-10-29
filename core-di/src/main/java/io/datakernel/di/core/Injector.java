@@ -192,6 +192,7 @@ public final class Injector {
 		return new Trie<>(scopeLocalData, children);
 	}
 
+	@SuppressWarnings("Convert2Lambda")
 	protected static ScopeLocalData compileBindings(int scope, Scope[] path,
 			Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent
@@ -279,8 +280,10 @@ public final class Injector {
 		Binding<?> binding = markedBinding.getBinding();
 		BindingCompiler<?> compiler = binding.getCompiler();
 
+		boolean plain = compiler instanceof PlainCompiler;
+
 		Integer index;
-		if (markedBinding.getType() != TRANSIENT && !(compiler instanceof PlainCompiler)) {
+		if (!plain && markedBinding.getType() != TRANSIENT) {
 			slotMapping.put(key, index = nextSlot[0]++);
 		} else {
 			index = null;
@@ -305,7 +308,17 @@ public final class Injector {
 					}
 				}, threadsafe, scope, index);
 
+		if (plain) {
+			Key<?> target = ((PlainCompiler<?>) compiler).getKey();
+			Integer targetIndex = slotMapping.get(target);
+			// should already be there, but may be null if a binding is transient
+			if (targetIndex != null) {
+				slotMapping.put(key, targetIndex);
+			}
+		}
+
 		compiledBindings.put(key, compiled);
+
 		return compiled;
 	}
 
@@ -321,14 +334,14 @@ public final class Injector {
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
 		CompiledBinding<?> binding = localCompiledBindings.get(key);
-		if (binding != null) {
-			Object instance = binding.getInstance(scopeCaches, -1);
-			if (instance != null) {
-				return (T) instance;
-			}
+		if (binding == null) {
+			throw DIException.cannotConstruct(key, null);
+		}
+		Object instance = binding.getInstance(scopeCaches, -1);
+		if (instance == null) {
 			throw DIException.cannotConstruct(key, scopeDataTree.get().bindingInfo.get(key));
 		}
-		throw DIException.cannotConstruct(key, null);
+		return (T) instance;
 	}
 
 	/**
@@ -448,12 +461,11 @@ public final class Injector {
 	 */
 	public Map<Key<?>, Object> peekInstances() {
 		Map<Key<?>, Object> result = new HashMap<>();
+		AtomicReferenceArray scopeCache = scopeCaches[scopeCaches.length - 1];
 		for (Entry<Key<?>, Integer> entry : localSlotMapping.entrySet()) {
-			Key<?> key = entry.getKey();
-			Integer index = entry.getValue();
-			Object value = scopeCaches[scopeCaches.length - 1].get(index);
+			Object value = scopeCache.get(entry.getValue());
 			if (value != null) {
-				result.put(key, value);
+				result.put(entry.getKey(), value);
 			}
 		}
 		return result;

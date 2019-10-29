@@ -1466,4 +1466,14 @@ public final class TestDI {
 		assertEquals(5, Stream.generate(() -> injector.getInstance(setKey)).limit(5).collect(toSet()).size());
 		assertEquals(1, Stream.generate(() -> injector.getInstance(setKeyNt)).limit(5).collect(toSet()).size());
 	}
+
+	@Test
+	public void plainBindPeekInstance() {
+		Injector injector = Injector.of(Module.create()
+				.bind(PostConstructed.class).to(() -> new PostConstructed("hello world"))
+				.bind(PostConstruct.class).to(PostConstructed.class));
+
+		PostConstruct instance = injector.getInstance(PostConstruct.class);
+		assertEquals(instance, injector.peekInstance(PostConstruct.class));
+	}
 }
