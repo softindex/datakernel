@@ -49,6 +49,7 @@ public class Utils {
 	public static <K extends Comparable> Class<K> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
 		List<String> keyList = new ArrayList<>(keys.keySet());
 		return ClassBuilder.<K>create(classLoader, Comparable.class)
+				.withClassKey(keys.keySet())
 				.initialize(cb ->
 						keys.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
@@ -61,7 +62,7 @@ public class Utils {
 
 	public static <R> Comparator<R> createKeyComparator(Class<R> recordClass, List<String> keys, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Comparator.class)
-				.withClassKey(recordClass, keys)
+				.withClassKey(recordClass, new HashSet<>(keys))
 				.withMethod("compare", compare(recordClass, keys))
 				.buildClassAndCreateNewInstance();
 	}
@@ -70,7 +71,7 @@ public class Utils {
 			List<String> keys, List<String> fields,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withClassKey(recordClass, keys, fields)
+				.withClassKey(recordClass, resultClass, new HashSet<>(keys), new HashSet<>(fields))
 				.withMethod("apply",
 						let(constructor(resultClass), result ->
 								sequence(expressions -> {
@@ -88,7 +89,7 @@ public class Utils {
 			List<String> keys,
 			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withClassKey(recordClass, keyClass, keys)
+				.withClassKey(recordClass, keyClass, new HashSet<>(keys))
 				.withMethod("apply",
 						let(constructor(keyClass), key ->
 								sequence(expressions -> {
@@ -114,7 +115,8 @@ public class Utils {
 
 	public static <T> Class<T> createRecordClass(Map<String, FieldType> keys, Map<String, FieldType> fields,
 			DefiningClassLoader classLoader) {
-		return ClassBuilder.create(classLoader, (Class<T>) Object.class)
+		return (Class<T>) ClassBuilder.create(classLoader, Object.class)
+				.withClassKey(keys.keySet(), fields.keySet())
 				.initialize(cb ->
 						keys.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
@@ -163,7 +165,7 @@ public class Utils {
 			DefiningClassLoader classLoader) {
 
 		return ClassBuilder.create(classLoader, Reducer.class)
-				.withClassKey(inputClass, outputClass, keys, fields)
+				.withClassKey(inputClass, outputClass, new HashSet<>(keys), new HashSet<>(fields))
 				.withMethod("onFirstItem",
 						let(constructor(outputClass), accumulator ->
 								sequence(expressions -> {

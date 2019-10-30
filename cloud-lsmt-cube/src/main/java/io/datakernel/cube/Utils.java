@@ -34,6 +34,7 @@ public final class Utils {
 	public static <R> Class<R> createResultClass(Collection<String> attributes, Collection<String> measures,
 			Cube cube, DefiningClassLoader classLoader) {
 		ClassBuilder<R> builder = ClassBuilder.create(classLoader, Object.class);
+		builder.withClassKey(new HashSet<>(attributes), new HashSet<>(measures));
 		for (String attribute : attributes) {
 			builder.withField(attribute.replace('.', '$'), cube.getAttributeInternalType(attribute));
 		}
@@ -68,7 +69,7 @@ public final class Utils {
 			}
 		}
 		KeyFunction keyFunction = ClassBuilder.create(classLoader, KeyFunction.class)
-				.withClassKey(recordClass, recordDimensions)
+				.withClassKey(recordClass, new HashSet<>(recordDimensions))
 				.withMethod("extractKey",
 						let(
 								newArray(Object[].class, value(recordDimensions.size())),
@@ -86,7 +87,7 @@ public final class Utils {
 
 		List<String> resolverAttributes = new ArrayList<>(attributeResolver.getAttributeTypes().keySet());
 		AttributesFunction attributesFunction = ClassBuilder.create(classLoader, AttributesFunction.class)
-				.withClassKey(recordClass, recordAttributes)
+				.withClassKey(recordClass, new HashSet<>(recordAttributes))
 				.withMethod("applyAttributes",
 						sequence(expressions -> {
 							for (String attribute : recordAttributes) {
