@@ -64,3 +64,37 @@ i.fa {
   text-decoration: underline;
   color: blue;
 }
+
+.unselectable {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.clickthrough {
+  pointer-events: none;
+}
+
+input[type="checkbox"].cross {
+  position: relative;
+  -webkit-appearance: initial;
+  appearance: initial;
+  min-width: 20px;
+  min-height: 20px;
+  border: 1px solid gray;
+  background: lightgray;
+  border-radius: 5px;
+}
+
+input[type="checkbox"].cross:checked:after {
+  content: "×";
+  font-weight: bold;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  -webkit-transform: translate(-50%, -50%);
+  -moz-transform: translate(-50%, -50%);
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}

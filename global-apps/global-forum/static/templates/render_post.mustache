@@ -22,13 +22,13 @@
         {{^deletedBy}}
             {{#user}}
                 <div class="collapse" id="reply_{{postId}}">
-                    <div class="pt-3 validate">
+                    <div class="pt-3">
                         <div class="mx-3">
-                            <textarea class="form-control" placeholder="Post your reply" name="content"
-                                      id="reply_content_{{postId}}"
-                                      data-post-button="#post_button_{{postId}}" required></textarea>
+                            <textarea id="reply_content_{{postId}}" class="form-control reply-content pr-5"
+                                      placeholder="Post your reply" name="content"
+                                      data-post-button="#post_button_{{postId}}"></textarea>
                         </div>
-                        <div class="collapse" id="attachments_{{postId}}">
+                        <div id="add_attachments_{{postId}}" class="collapse">
                             <div class="mx-3 mt-3">
                                 <div class="custom-file col-3">
                                     <input type="file" accept="image/*" class="custom-file-input"
@@ -47,8 +47,8 @@
                                     </label>
                                 </div>
                                 <div class="custom-file col-3">
-                                    <input type="file" class="custom-file-input" id="document_attachment_{{postId}}"
-                                           multiple
+                                    <input type="file" class="custom-file-input"
+                                           id="document_attachment_{{postId}}" multiple
                                            name="document_attachment">
                                     <label class="custom-file-label text-truncate" for="document_attachment_{{postId}}">
                                         Attach documents
@@ -65,7 +65,7 @@
                             </button>
                             <button class="btn btn-sm btn-outline-primary"
                                     data-toggle="collapse"
-                                    data-target="#attachments_{{postId}}">
+                                    data-target="#add_attachments_{{postId}}">
                                 attach
                             </button>
                         </div>

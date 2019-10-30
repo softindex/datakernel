@@ -82,46 +82,80 @@
             <summary class="my-1 px-2 text-secondary">attachments</summary>
         {{/deletedBy}}
 
-        {{#attachments}}
-            {{#image.size}}
-                <div class="row m-2">
-                    {{#image}}
-                        <a href="/{{thread.threadId}}/{{postId}}/download/{{.}}">
-                            <img src="/{{thread.threadId}}/{{postId}}/download/{{.}}"
-                                 alt="attachment"
-                                 class="m-2"
-                                 style="height:300px;max-width:100%;">
-                        </a>
-                    {{/image}}
-                </div>
-            {{/image.size}}
+        <div id="attachments_{{postId}}">
+            {{#attachments}}
+                {{#image.size}}
+                    <div class="row m-2">
+                        {{#image}}
+                            <a href="/{{thread.threadId}}/{{postId}}/download/{{.}}?inline">
+                                <img src="/{{thread.threadId}}/{{postId}}/download/{{.}}"
+                                     alt="attachment"
+                                     class="m-2"
+                                     style="height:300px;max-width:100%;">
+                            </a>
+                        {{/image}}
+                    </div>
+                {{/image.size}}
 
-            {{#video.size}}
-                <div class="row m-2">
-                    {{#video}}
-                        <div class="embed-responsive embed-responsive-16by9 m-2">
-                            <video controls>
-                                <source src="/{{thread.threadId}}/{{postId}}/download/{{.}}">
-                            </video>
-                        </div>
-                    {{/video}}
-                </div>
-            {{/video.size}}
+                {{#video.size}}
+                    <div class="row m-2">
+                        {{#video}}
+                            <div class="embed-responsive embed-responsive-16by9 m-2">
+                                <video controls>
+                                    <source src="/{{thread.threadId}}/{{postId}}/download/{{.}}">
+                                </video>
+                            </div>
+                        {{/video}}
+                    </div>
+                {{/video.size}}
 
-            {{#document.size}}
+                {{#document.size}}
+                    <div class="row m-2">
+                        <ul class="list-group col-auto">
+                            {{#document}}
+                                <li class="list-group-item list-group-item-action text-truncate">
+                                    <div class="row">
+                                        <span class="col">{{.}}</span>
+                                        <a href="/{{thread.threadId}}/{{postId}}/download/{{.}}"
+                                           class="stretched-link col-auto position-static">🠋</a>
+                                    </div>
+                                </li>
+                            {{/document}}
+                        </ul>
+                    </div>
+                {{/document.size}}
+            {{/attachments}}
+        </div>
+
+        <div id="edit_attachments_{{postId}}" class="d-none m-3">
+            <div class="row">
+                <h5>Attachments to delete:</h5>
+            </div>
+            {{#attachments}}
                 <div class="row m-2">
                     <ul class="list-group col-auto">
+                        {{#image}}
+                            <label class="list-group-item list-group-item-action d-flex unselectable">
+                                <span class="mr-1 text-truncate">{{.}}</span>
+                                <input type="checkbox" class="cross align-self-center ml-auto">
+                            </label>
+                        {{/image}}
+                        {{#video}}
+                            <label class="list-group-item list-group-item-action d-flex unselectable">
+                                <span class="mr-1 text-truncate">{{.}}</span>
+                                <input type="checkbox" class="cross align-self-center ml-auto">
+                            </label>
+                        {{/video}}
                         {{#document}}
-                            <li class="list-group-item text-truncate">
-                                <a href="/{{thread.threadId}}/{{postId}}/download/{{.}}"
-                                   class="stretched-link">🠋</a>
-                                {{.}}
-                            </li>
+                            <label class="list-group-item list-group-item-action d-flex unselectable">
+                                <span class="mr-3 text-truncate">{{.}}</span>
+                                <input type="checkbox" class="cross align-self-center ml-auto">
+                            </label>
                         {{/document}}
                     </ul>
                 </div>
-            {{/document.size}}
-        {{/attachments}}
+            {{/attachments}}
+        </div>
 
         {{#deletedBy}}
         </details>
@@ -164,10 +198,9 @@
                                         change
                                     </button>
                                     <div class="dropdown-menu" aria-labelledby="change_menu_{{postId}}">
-                                        <button class="dropdown-item"
-                                                data-edit="#content_{{postId}}"
-                                                data-post-id="#post_{{postId}}"
-                                                data-edit-action="/{{thread.threadId}}/{{postId}}/edit">
+                                        <button class="dropdown-item edit-button"
+                                                data-post-id="{{postId}}"
+                                                data-thread-id="{{thread.threadId}}">
                                             edit
                                         </button>
                                         <button class="dropdown-item"

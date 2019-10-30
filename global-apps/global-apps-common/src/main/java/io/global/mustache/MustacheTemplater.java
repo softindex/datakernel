@@ -15,6 +15,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.http.ContentTypes.HTML_UTF_8;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CACHE_CONTROL;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static java.util.Collections.emptyMap;
 
@@ -70,6 +71,7 @@ public final class MustacheTemplater {
 							mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
 							return HttpResponse.ofCode(code)
 									.withBody(writer.getBuf())
+									.withHeader(CACHE_CONTROL, "no-store")
 									.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
 						}));
 	}

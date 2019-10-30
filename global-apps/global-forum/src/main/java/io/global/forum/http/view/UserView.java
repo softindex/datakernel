@@ -11,7 +11,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static java.util.stream.Collectors.toList;
@@ -25,9 +27,10 @@ public final class UserView {
 	private final String email;
 	private final String firstName;
 	private final String lastName;
-	private final BanView ban;
 
-	public UserView(String id, String name, UserRole role, String avatarUrl, String email, String firstName, String lastName, BanView ban) {
+	private BanView ban;
+
+	public UserView(String id, String name, UserRole role, String avatarUrl, String email, String firstName, String lastName) {
 		this.id = id;
 		this.name = name;
 		this.role = role;
@@ -35,7 +38,6 @@ public final class UserView {
 		this.email = email;
 		this.firstName = firstName;
 		this.lastName = lastName;
-		this.ban = ban;
 	}
 
 	public String getUserId() {
@@ -70,25 +72,41 @@ public final class UserView {
 		return ban;
 	}
 
+	public void setBan(BanView ban) {
+		this.ban = ban;
+	}
+
 	@Override
 	public String toString() {
 		return name;
 	}
 
-	public static Promise<UserView> from(CommDao commDao, UserId userId, @Nullable UserData userData) {
-		if (userData == null) {
-			return Promise.of(new UserView(userId.getAuthId(), "ghost", UserRole.GUEST, "https://gravatar.com/avatar?d=mp", null, null, null, null));
+	static Promise<UserView> from(CommDao commDao, UserId userId, @Nullable UserData userData, Map<UserId, UserView> cache) {
+		UserView cached = cache.get(userId);
+		if (cached != null) {
+			return Promise.of(cached);
 		}
-		return BanView.from(commDao, userData.getBanState())
-				.map(ban -> new UserView(
-						userId.getAuthId(),
-						userData.getUsername(),
-						userData.getRole(),
-						avatarUrl(userData),
-						userData.getEmail(),
-						userData.getFirstName(),
-						userData.getLastName(),
-						ban));
+		if (userData == null) {
+			return Promise.of(new UserView(userId.getAuthId(), "ghost", UserRole.GUEST, "https://gravatar.com/avatar?d=mp", null, null, null));
+		}
+		UserView view = new UserView(
+				userId.getAuthId(),
+				userData.getUsername(),
+				userData.getRole(),
+				avatarUrl(userData),
+				userData.getEmail(),
+				userData.getFirstName(),
+				userData.getLastName());
+		cache.put(userId, view);
+		return BanView.from(commDao, userData.getBanState(), cache)
+				.map(ban -> {
+					view.setBan(ban);
+					return view;
+				});
+	}
+
+	public static Promise<UserView> from(CommDao commDao, UserId userId, @Nullable UserData userData) {
+		return from(commDao, userId, userData, new HashMap<>());
 	}
 
 	public static Promise<List<UserView>> from(CommDao commDao, int page, int limit) {
