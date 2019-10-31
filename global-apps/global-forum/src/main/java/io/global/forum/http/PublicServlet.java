@@ -487,7 +487,7 @@ public final class PublicServlet {
 				.map(POST, "/edit-forum", request -> {
 					try {
 						Map<String, String> params = request.getPostParameters();
-						String title = getPostParameter(params, "title", 60);
+						String title = getOptionalPostParameter(params, "title", 60);
 						String description = getPostParameter(params, "description", 1000);
 						return request.getAttachment(ForumDao.class)
 								.setForumMetadata(new ForumMetadata(title, description))
@@ -519,7 +519,7 @@ public final class PublicServlet {
 					if (ip != null) {
 						String trimmed = ip.trim();
 						if (!(trimmed + ".").matches("^(?:(\\d|[1-9]\\d|1\\d\\d|2[0-4]\\d|25[0-5])\\.){4}$")) {
-							return Promise.ofException(new ParseException(PublicServlet.class, "invalid IP: " + trimmed + ", only a valid IPv4's are allowed"));
+							return Promise.ofException(new ParseException(PublicServlet.class, "invalid IP: " + trimmed + ", only valid IPv4's are allowed"));
 						}
 						String[] parts = trimmed.split("\\.");
 						for (int i = 0; i < parts.length; i++) {

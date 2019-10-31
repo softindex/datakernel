@@ -34,9 +34,35 @@ window.onload = () => {
     $textarea.css('height', (2 + $textarea[0].scrollHeight) + 'px');
   }
 
+  let $imageModal = $('#image-modal');
+  let $imageModalImg = $imageModal.find('img');
+
+  let $videoModal = $('#video-modal');
+  let $videoModalVid = $videoModal.find('video');
+
+  $imageModal.click(() => {
+    $imageModal.addClass('d-none');
+    document.body.style.overflow = 'auto';
+  });
+
+  $videoModal.click(() => {
+    $videoModal.addClass('d-none');
+    document.body.style.overflow = 'auto';
+  });
+
+  function checkImageModalOverflow() {
+    if ($imageModalImg.height() > $(window).height()) {
+      $imageModal.addClass('overflow');
+    } else {
+      $imageModal.removeClass('overflow');
+    }
+  }
+
+  $(window).resize(() => checkImageModalOverflow());
+
   function addPostCallbacks($element) {
     // region * handle editing
-    $('.edit-button').click(e => {
+    $element.find('.edit-button').click(e => {
       let threadId = e.target.dataset.threadId;
       let postId = e.target.dataset.postId;
 
@@ -44,7 +70,7 @@ window.onload = () => {
 
       let $save = $('<button class="btn btn-sm btn-primary">save</button>');
       let $cancel = $('<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>');
-      let $textarea = $('<textarea class="form-control m-0 p-2 mb-3"></textarea>');
+      let $textarea = $('<textarea class="form-control m-0 p-2" style="resize: none"></textarea>');
       let doValidate = {it: false};
 
       setTimeout(() => autoresize($textarea), 0);
@@ -149,6 +175,7 @@ window.onload = () => {
         .then(text => {
           let $reply = $('#reply_' + postId);
           $textarea.val('');
+          autoresize($textarea);
           $reply.removeClass('show');
           $('#add_attachments_' + postId).removeClass('show');
           doValidate.it = false;
@@ -244,6 +271,38 @@ window.onload = () => {
       }
     });
     // endregion
+
+    // region * image modal
+    $element.find('[data-image-modal]').click(e => {
+      if (e.target.tagName !== 'A') {
+        $imageModalImg[0].src = e.target.dataset.imageModal;
+
+        function openModal() {
+          $imageModal.removeClass('d-none');
+          checkImageModalOverflow();
+          document.body.style.overflow = 'hidden';
+        }
+
+        setTimeout(() => {
+          if ($imageModalImg[0].loaded) {
+            openModal();
+          } else {
+            $imageModalImg[0].onload = openModal;
+          }
+        }, 0);
+      }
+    });
+    // endregion
+
+    // region * video modal
+    $element.find('[data-video-modal]').click(e => {
+      if (e.target.tagName !== 'A') {
+        $videoModalVid[0].src = e.target.dataset.videoModal;
+        $videoModal.removeClass('d-none');
+        document.body.style.overflow = 'hidden';
+      }
+    });
+    // endregion
   }
 
   addPostCallbacks($(document));
@@ -301,7 +360,7 @@ window.onload = () => {
   $save.click(() => {
     let threadId = $save.data('threadId');
 
-    let renamed = $input.val();
+    let renamed = $input.val().trim();
     if (renamed.length === 0 || renamed.length > 120) {
       inputForm.submit();
       return;

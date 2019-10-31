@@ -18,14 +18,16 @@
 {{/deletedBy}}
 
 {{^partialReply}}
-    <div class="ml-3 border-left border-dark">
+    <div class="ml-2 border-left border-dark">
         {{^deletedBy}}
             {{#user}}
                 <div class="collapse" id="reply_{{postId}}">
                     <div class="pt-3">
                         <div class="mx-3">
                             <textarea id="reply_content_{{postId}}" class="form-control reply-content pr-5"
-                                      placeholder="Post your reply" name="content"
+                                      placeholder="Post your reply"
+                                      name="content"
+                                      style="resize: none"
                                       data-post-button="#post_button_{{postId}}"></textarea>
                         </div>
                         <div id="add_attachments_{{postId}}" class="collapse">

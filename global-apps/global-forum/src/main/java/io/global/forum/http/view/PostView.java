@@ -106,6 +106,10 @@ public final class PostView implements Comparable<PostView> {
 		return attachments;
 	}
 
+	public boolean hasAttachments() {
+		return !attachments.isEmpty();
+	}
+
 	@Nullable
 	public UserView getDeletedBy() {
 		return deletedBy;
