@@ -130,7 +130,15 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	Promise<Void> cleanupFrozenCut(Set<K> frozenCut) {
 		return findAllCommonParents(repository, otSystem, frozenCut)
 				.then(parents -> findAnyCommonParent(repository, otSystem, parents))
-				.then(this::trySaveSnapshotAndCleanupChunks)
+				.then(checkpointNode -> repository.hasSnapshot(checkpointNode)
+						.then(snapshot -> {
+							if (snapshot) {
+								logger.info("Snapshot already exists, skip cleanup");
+								return Promise.complete();
+							} else {
+								return trySaveSnapshotAndCleanupChunks(checkpointNode);
+							}
+						}))
 				.whenComplete(toLogger(logger, thisMethod(), frozenCut));
 	}
 
