@@ -200,7 +200,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 	@Override
 	public Promise<Void> finish(Set<C> chunkIds) {
 		finishChunks = chunkIds.size();
-		return Promises.all(chunkIds.stream().map(id -> client.move(getTempPath(id), getPath(id)).toTry()))
+		return Promises.all(chunkIds.stream().map(id -> client.move(getTempPath(id), getPath(id))))
 				.whenComplete(promiseFinishChunks.recordStats());
 	}
 
