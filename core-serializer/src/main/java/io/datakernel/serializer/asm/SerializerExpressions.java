@@ -29,27 +29,34 @@ import static io.datakernel.codegen.Expressions.*;
  */
 @SuppressWarnings({"unchecked"})
 public final class SerializerExpressions {
-
-	private static Class jdkUnsafe;
-	private static int byteArrayBaseOffset;
+	private static final Class JDK_UNSAFE;
+	private static final int BYTE_ARRAY_BASE_OFFSET;
+	private static final boolean BIG_ENDIAN;
 
 	static {
 		ClassLoader classLoader = ClassLoader.getSystemClassLoader();
 
+		Class jdkUnsafe;
+		int byteArrayBaseOffset = 0;
+		boolean bigEndian = false;
 		try {
 			jdkUnsafe = classLoader.loadClass("jdk.internal.misc.Unsafe");
 			Object unsafe = jdkUnsafe.getMethod("getUnsafe").invoke(null);
 			byteArrayBaseOffset = (int) jdkUnsafe.getMethod("arrayBaseOffset", Class.class).invoke(unsafe, byte[].class);
 			int byteArrayIndexScale = (int) jdkUnsafe.getMethod("arrayIndexScale", Class.class).invoke(unsafe, byte[].class);
+			bigEndian = (boolean) jdkUnsafe.getMethod("isBigEndian").invoke(unsafe);
 			if (byteArrayIndexScale != 1) jdkUnsafe = null;
 		} catch (Exception e) {
 			jdkUnsafe = null;
 		}
+		JDK_UNSAFE = jdkUnsafe;
+		BYTE_ARRAY_BASE_OFFSET = byteArrayBaseOffset;
+		BIG_ENDIAN = bigEndian;
 	}
 
 	@NotNull
 	private static Expression getUnsafe() {
-		return callStatic(jdkUnsafe, "getUnsafe");
+		return callStatic(JDK_UNSAFE, "getUnsafe");
 	}
 
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes) {
@@ -73,43 +80,35 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression writeShort(Expression buf, Variable pos, Expression value, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				ensureRemaining(buf, pos, 2, sequence(
-						call(getUnsafe(), "putShortUnaligned",
-								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
-						set(pos, add(pos, value(2)))
-				)) :
+		return JDK_UNSAFE != null ?
+				putUnaligned(buf, pos, value, "putShortUnaligned", Short.class, 2, bigEndian) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeShort" + (bigEndian ? "" : "LE"), buf, pos, cast(value, short.class)));
 	}
 
 	public static Expression writeChar(Expression buf, Variable pos, Expression value, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				ensureRemaining(buf, pos, 2, sequence(
-						call(getUnsafe(), "putCharUnaligned",
-								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
-						set(pos, add(pos, value(2)))
-				)) :
+		return JDK_UNSAFE != null ?
+				putUnaligned(buf, pos, value, "putCharUnaligned", Character.class, 2, bigEndian) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeChar" + (bigEndian ? "" : "LE"), buf, pos, cast(value, char.class)));
 	}
 
 	public static Expression writeInt(Expression buf, Variable pos, Expression value, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				ensureRemaining(buf, pos, 4, sequence(
-						call(getUnsafe(), "putIntUnaligned",
-								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
-						set(pos, add(pos, value(4)))
-				)) :
+		return JDK_UNSAFE != null ?
+				putUnaligned(buf, pos, value, "putIntUnaligned", Integer.class, 4, bigEndian) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeInt" + (bigEndian ? "" : "LE"), buf, pos, cast(value, int.class)));
 	}
 
 	public static Expression writeLong(Expression buf, Variable pos, Expression value, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				ensureRemaining(buf, pos, 8, sequence(
-						call(getUnsafe(), "putLongUnaligned",
-								buf, cast(add(value(byteArrayBaseOffset), pos), long.class), value, value(bigEndian)),
-						set(pos, add(pos, value(8)))
-				)) :
+		return JDK_UNSAFE != null ?
+				putUnaligned(buf, pos, value, "putLongUnaligned", Long.class, 8, bigEndian) :
 				set(pos, callStatic(BinaryOutputUtils.class, "writeLong" + (bigEndian ? "" : "LE"), buf, pos, cast(value, long.class)));
+	}
+
+	private static Expression putUnaligned(Expression buf, Variable pos, Expression value, String name, Class<?> numericType, int size, boolean bigEndian) {
+		return ensureRemaining(buf, pos, size, sequence(
+				call(getUnsafe(), name,
+						buf, cast(add(value(BYTE_ARRAY_BASE_OFFSET), pos), long.class), convEndian(value, numericType, bigEndian)),
+				set(pos, add(pos, value(size)))
+		));
 	}
 
 	public static Expression writeVarInt(Expression buf, Variable pos, Expression value) {
@@ -177,47 +176,46 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression readShort(Expression in, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				let(call(getUnsafe(), "getShortUnaligned",
-						array(in), cast(add(value(byteArrayBaseOffset), pos(in)), long.class), value(bigEndian)),
-						result -> sequence(
-								move(in, 2),
-								result)
-				) :
+		return JDK_UNSAFE != null ?
+				getUnaligned(in, "getShortUnaligned", Short.class, 2, bigEndian) :
 				call(in, "readShort" + (bigEndian ? "" : "LE"));
 	}
 
 	public static Expression readChar(Expression in, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				let(call(getUnsafe(), "getCharUnaligned",
-						array(in), cast(add(value(byteArrayBaseOffset), pos(in)), long.class), value(bigEndian)),
-						result -> sequence(
-								move(in, 2),
-								result)
-				) :
+		return JDK_UNSAFE != null ?
+				getUnaligned(in, "getCharUnaligned", Character.class, 2, bigEndian) :
 				call(in, "readChar" + (bigEndian ? "" : "LE"));
 	}
 
 	public static Expression readInt(Expression in, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				let(call(getUnsafe(), "getIntUnaligned",
-						array(in), cast(add(value(byteArrayBaseOffset), pos(in)), long.class), value(bigEndian)),
-						result -> sequence(
-								move(in, 4),
-								result)
-				) :
+		return JDK_UNSAFE != null ?
+				getUnaligned(in, "getIntUnaligned", Integer.class, 4, bigEndian) :
 				call(in, "readInt" + (bigEndian ? "" : "LE"));
 	}
 
 	public static Expression readLong(Expression in, boolean bigEndian) {
-		return jdkUnsafe != null ?
-				let(call(getUnsafe(), "getLongUnaligned",
-						array(in), cast(add(value(byteArrayBaseOffset), pos(in)), long.class), value(bigEndian)),
-						result -> sequence(
-								move(in, 8),
-								result)
-				) :
+		return JDK_UNSAFE != null ?
+				getUnaligned(in, "getLongUnaligned", Long.class, 8, bigEndian) :
 				call(in, "readLong" + (bigEndian ? "" : "LE"));
+	}
+
+	private static Expression getUnaligned(Expression in, String name, Class<?> numericType, int size, boolean bigEndian) {
+		return let(
+				convEndian(
+						call(getUnsafe(), name,
+								array(in), cast(add(value(BYTE_ARRAY_BASE_OFFSET), pos(in)), long.class)),
+						numericType,
+						bigEndian),
+				result -> sequence(
+						move(in, size),
+						result)
+		);
+	}
+
+	private static Expression convEndian(Expression numericValue, Class<?> numericType, boolean bigEndian) {
+		return BIG_ENDIAN == bigEndian ?
+				numericValue :
+				callStatic(numericType, "reverseBytes", numericValue);
 	}
 
 	public static Expression readVarInt(Expression in) {

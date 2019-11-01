@@ -59,6 +59,12 @@ public final class BinaryOutputUtils {
 		return off + 2;
 	}
 
+	public static int writeCharLE(byte[] buf, int off, char v) {
+		buf[off] = (byte) v;
+		buf[off + 1] = (byte) (v >>> 8);
+		return off + 2;
+	}
+
 	public static int writeInt(byte[] buf, int off, int v) {
 		buf[off] = (byte) (v >>> 24);
 		buf[off + 1] = (byte) (v >>> 16);
@@ -190,9 +196,18 @@ public final class BinaryOutputUtils {
 			if (c <= '\u007F') {
 				buf[++pos] = (byte) c;
 			} else {
-				int charSize = writeUtf8char(buf, pos, c, s, i);
-				pos += charSize;
-				i += charSize >>> 2;
+				if (c <= '\u07FF') {
+					buf[pos + 1] = (byte) (0xC0 | c >>> 6);
+					buf[pos + 2] = (byte) (0x80 | c & 0x3F);
+					pos += 2;
+				} else if (c < '\uD800' || c > '\uDFFF') {
+					buf[pos + 1] = (byte) (0xE0 | c >>> 12);
+					buf[pos + 2] = (byte) (0x80 | c >> 6 & 0x3F);
+					buf[pos + 3] = (byte) (0x80 | c & 0x3F);
+					pos += 3;
+				} else {
+					pos += writeUtf8char4(buf, pos, c, s, i++);
+				}
 			}
 		}
 		int bytes = pos - off;
@@ -218,9 +233,18 @@ public final class BinaryOutputUtils {
 			if (c <= '\u007F') {
 				buf[++pos] = (byte) c;
 			} else {
-				int charSize = writeUtf8char(buf, pos, c, s, i);
-				pos += charSize;
-				i += charSize >>> 2;
+				if (c <= '\u07FF') {
+					buf[pos + 1] = (byte) (0xC0 | c >>> 6);
+					buf[pos + 2] = (byte) (0x80 | c & 0x3F);
+					pos += 2;
+				} else if (c < '\uD800' || c > '\uDFFF') {
+					buf[pos + 1] = (byte) (0xE0 | c >>> 12);
+					buf[pos + 2] = (byte) (0x80 | c >> 6 & 0x3F);
+					buf[pos + 3] = (byte) (0x80 | c & 0x3F);
+					pos += 3;
+				} else {
+					pos += writeUtf8char4(buf, pos, c, s, i++);
+				}
 			}
 		}
 		int bytesPlus1 = ++pos - off;
@@ -235,36 +259,19 @@ public final class BinaryOutputUtils {
 		return off + bytes;
 	}
 
-	private static int writeUtf8char(byte[] buf, int pos, char c, String s, int i) {
-		if (c <= '\u07FF') {
-			buf[pos + 1] = (byte) (0xC0 | c >>> 6);
-			buf[pos + 2] = (byte) (0x80 | c & 0x3F);
-			return 2;
-		} else if (c < '\uD800' || c > '\uDFFF') {
-			buf[pos + 1] = (byte) (0xE0 | c >>> 12);
-			buf[pos + 2] = (byte) (0x80 | c >> 6 & 0x3F);
-			buf[pos + 3] = (byte) (0x80 | c & 0x3F);
-			return 3;
-		} else {
-			return writeUtf8char4(buf, pos, c, s, i);
-		}
-	}
-
-	private static int writeUtf8char4(byte[] buf, int pos, char c, String s, int i) {
-		int cp = 0;
+	private static byte writeUtf8char4(byte[] buf, int pos, char c, String s, int i) {
 		if (i + 1 < s.length()) {
-			cp = Character.toCodePoint(c, s.charAt(i + 1));
+			int cp = Character.toCodePoint(c, s.charAt(i + 1));
+			if ((cp >= 1 << 16) && (cp < 1 << 21)) {
+				buf[pos + 1] = (byte) (240 | cp >>> 18);
+				buf[pos + 2] = (byte) (128 | cp >>> 12 & 63);
+				buf[pos + 3] = (byte) (128 | cp >>> 6 & 63);
+				buf[pos + 4] = (byte) (128 | cp & 63);
+				return 4;
+			}
 		}
-		if ((cp >= 1 << 16) && (cp < 1 << 21)) {
-			buf[pos + 1] = (byte) (240 | cp >>> 18);
-			buf[pos + 2] = (byte) (128 | cp >>> 12 & 63);
-			buf[pos + 3] = (byte) (128 | cp >>> 6 & 63);
-			buf[pos + 4] = (byte) (128 | cp & 63);
-			return 4;
-		} else {
-			buf[pos + 1] = (byte) '?';
-			return 1;
-		}
+		buf[pos + 1] = (byte) '?';
+		return 1;
 	}
 
 	@Deprecated

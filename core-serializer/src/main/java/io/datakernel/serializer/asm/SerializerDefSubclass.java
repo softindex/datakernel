@@ -94,7 +94,7 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 			SerializerDef subclassSerializer = subclassSerializers.get(subclass);
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
-					writeByte(buf, pos, value(subClassIndex)),
+					writeByte(buf, pos, value((byte) subClassIndex)),
 					subclassSerializer.encoder(classLoader, staticEncoders, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
 			));
 
@@ -120,7 +120,7 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 	}
 
 	private Expression deserializeImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
-		return let(startIndex != 0 ? sub(cast(readByte(in), int.class), value(startIndex)) : cast(readByte(in), int.class),
+		return let(startIndex != 0 ? sub(readByte(in), value(startIndex)) : cast(readByte(in), int.class),
 				idx -> cast(
 						switchByIndex(idx,
 								of(() -> {

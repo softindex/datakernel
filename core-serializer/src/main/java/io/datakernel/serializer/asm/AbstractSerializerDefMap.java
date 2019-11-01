@@ -55,7 +55,11 @@ public abstract class AbstractSerializerDefMap implements SerializerDef, HasNull
 	protected abstract Expression mapForEach(Expression collection, Function<Expression, Expression> forEachKey, Function<Expression, Expression> forEachValue);
 
 	protected Expression createConstructor(Expression length) {
-		return constructor(mapImplType, !nullable ? length : dec(length));
+		return constructor(mapImplType, initialSize(length));
+	}
+
+	protected Expression initialSize(Expression length) {
+		return div(mul(length, value(4)), value(3));
 	}
 
 	@Override
