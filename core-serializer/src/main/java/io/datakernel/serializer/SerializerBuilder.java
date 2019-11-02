@@ -794,63 +794,52 @@ public final class SerializerBuilder {
 				Integer.valueOf(serializeVersion) :
 				getLatestVersion(versions);
 
-		defineEncoder(classBuilder, serializer, currentVersion);
+		defineEncoders(classBuilder, serializer, currentVersion);
 
 		defineDecoders(classBuilder, serializer, allVersions);
-
-		classBuilder.withMethod("encode", void.class, asList(BinaryOutput.class, Object.class),
-				call(arg(0), "pos",
-						call(self(), "encode",
-								call(arg(0), "array"),
-								call(arg(0), "pos"),
-								arg(1))));
-
-		classBuilder.withMethod("decode", Object.class, asList(byte[].class, int.class),
-				call(self(), "decode", constructor(BinaryInput.class, arg(0), arg(1))));
 
 		return classBuilder.buildClassAndCreateNewInstance();
 	}
 
-	private void defineEncoder(ClassBuilder<?> classBuilder, SerializerDef serializer, @Nullable Integer currentVersion) {
+	private void defineEncoders(ClassBuilder<?> classBuilder, SerializerDef serializer, @Nullable Integer currentVersion) {
 		classBuilder.withMethod("encode", int.class, asList(byte[].class, int.class, Object.class),
-				let(arg(1),
-						pos -> sequence(
-								currentVersion != null ?
-										writeByte(arg(0), pos, value((byte) (int) currentVersion)) :
-										sequence(),
+				let(cast(arg(2), serializer.getEncodeType()), data ->
+						encoderImpl(classBuilder, serializer, currentVersion, arg(0), arg(1), data)));
 
-								serializer.defineEncoder(
-										staticEncoders(classBuilder),
-										arg(0),
-										pos,
-										cast(arg(2), serializer.getDecodeType()),
-										nullToDefault(currentVersion, 0),
-										compatibilityLevel),
+		classBuilder.withMethod("encode", void.class, asList(BinaryOutput.class, Object.class),
+				let(call(arg(0), "array"), buf ->
+						let(call(arg(0), "pos"), pos ->
+								let(cast(arg(1), serializer.getEncodeType()), data ->
+										sequence(
+												encoderImpl(classBuilder, serializer, currentVersion, buf, pos, data),
+												call(arg(0), "pos", pos))))));
+	}
 
-								pos))
-		);
+	private Expression encoderImpl(ClassBuilder<?> classBuilder, SerializerDef serializer, @Nullable Integer currentVersion, Expression buf, Variable pos, Expression data) {
+		return sequence(
+				currentVersion != null ?
+						writeByte(buf, pos, value((byte) (int) currentVersion)) :
+						sequence(),
+
+				serializer.encoder(
+						staticEncoders(classBuilder),
+						buf,
+						pos,
+						data,
+						nullToDefault(currentVersion, 0),
+						compatibilityLevel),
+
+				pos);
 	}
 
 	private void defineDecoders(ClassBuilder<?> classBuilder, SerializerDef serializer, List<Integer> allVersions) {
 		Integer latestVersion = getLatestVersion(allVersions);
-		if (latestVersion == null) {
-			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
-					serializer.defineDecoder(
-							staticDecoders(classBuilder, null),
-							arg(0),
-							0,
-							compatibilityLevel));
-		} else {
-			classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
-					let(readByte(arg(0)),
-							version -> ifThenElse(cmpEq(version, value((byte) (int) latestVersion)),
-									serializer.defineDecoder(
-											staticDecoders(classBuilder, null),
-											arg(0),
-											latestVersion,
-											compatibilityLevel),
-									call(self(), "decodeEarlierVersions", arg(0), version))));
-		}
+		classBuilder.withMethod("decode", Object.class, asList(BinaryInput.class),
+				decodeImpl(classBuilder, serializer, latestVersion, arg(0)));
+
+		classBuilder.withMethod("decode", Object.class, asList(byte[].class, int.class),
+				let(constructor(BinaryInput.class, arg(0), arg(1)), in ->
+						decodeImpl(classBuilder, serializer, latestVersion, in)));
 
 		classBuilder.withMethod("decodeEarlierVersions",
 				serializer.getDecodeType(),
@@ -872,6 +861,24 @@ public final class SerializerBuilder {
 					sequence(serializer.defineDecoder(staticDecoders(classBuilder, version),
 							arg(0), version, compatibilityLevel)));
 		}
+	}
+
+	private Expression decodeImpl(ClassBuilder<?> classBuilder, SerializerDef serializer, Integer latestVersion, Expression in) {
+		return latestVersion == null ?
+				serializer.decoder(
+						staticDecoders(classBuilder, null),
+						in,
+						0,
+						compatibilityLevel) :
+
+				let(readByte(in),
+						version -> ifThenElse(cmpEq(version, value((byte) (int) latestVersion)),
+								serializer.decoder(
+										staticDecoders(classBuilder, null),
+										in,
+										latestVersion,
+										compatibilityLevel),
+								call(self(), "decodeEarlierVersions", in, version)));
 	}
 
 	private static SerializerDef.StaticEncoders staticEncoders(ClassBuilder<?> classBuilder) {
