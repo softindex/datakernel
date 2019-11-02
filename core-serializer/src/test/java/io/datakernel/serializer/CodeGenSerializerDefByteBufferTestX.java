@@ -19,7 +19,7 @@ package io.datakernel.serializer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
-import io.datakernel.serializer.asm.SerializerDefByteBuffer;
+import io.datakernel.serializer.impl.SerializerDefByteBuffer;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;

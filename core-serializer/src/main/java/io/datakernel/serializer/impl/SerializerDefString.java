@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.BinaryOutputUtils;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.HasNullable;
 import io.datakernel.serializer.StringFormat;
 
 import java.util.Set;
@@ -32,7 +30,7 @@ import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.StringFormat.UTF8;
 import static java.util.Collections.emptySet;
 
-public class SerializerDefString implements SerializerDef, HasNullable {
+public final class SerializerDefString implements SerializerDefWithNullable {
 	private final StringFormat format;
 	private final boolean nullable;
 
@@ -50,7 +48,7 @@ public class SerializerDefString implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public SerializerDefString withNullable() {
+	public SerializerDefString ensureNullable() {
 		return new SerializerDefString(format, true);
 	}
 
@@ -68,12 +66,12 @@ public class SerializerDefString implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Class<?> getRawType() {
+	public Class<?> getEncodeType() {
 		return String.class;
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos, of(() -> {
 			Expression string = cast(value, String.class);
 			switch (format) {
@@ -101,7 +99,7 @@ public class SerializerDefString implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		switch (format) {
 			case ISO_8859_1:
 				return nullable ?

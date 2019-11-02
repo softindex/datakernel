@@ -14,19 +14,29 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 
 import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
-import static io.datakernel.serializer.asm.SerializerExpressions.readFloat;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeFloat;
+import static io.datakernel.serializer.impl.SerializerExpressions.readFloat;
+import static io.datakernel.serializer.impl.SerializerExpressions.writeFloat;
 
 public final class SerializerDefFloat extends SerializerDefPrimitive {
 	public SerializerDefFloat() {
-		super(float.class);
+		this(true);
+	}
+
+	public SerializerDefFloat(boolean wrapped) {
+		super(float.class, wrapped);
+	}
+
+	@Override
+	public SerializerDef ensureWrapped() {
+		return new SerializerDefFloat(true);
 	}
 
 	@Override

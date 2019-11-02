@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerDef;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ import static org.objectweb.asm.Type.getType;
 public final class SerializerDefMap extends AbstractSerializerDefMap {
 	private SerializerDefMap(SerializerDef keySerializer, SerializerDef valueSerializer, boolean nullable) {
 		super(keySerializer, valueSerializer, Map.class,
-				keySerializer.getRawType().isEnum() ?
+				keySerializer.getDecodeType().isEnum() ?
 						EnumMap.class :
 						HashMap.class,
 				Object.class, Object.class, nullable);
@@ -41,7 +42,7 @@ public final class SerializerDefMap extends AbstractSerializerDefMap {
 
 	@Override
 	protected Expression createConstructor(Expression length) {
-		Class<?> rawType = keySerializer.getRawType();
+		Class<?> rawType = keySerializer.getDecodeType();
 		if (rawType.isEnum()) {
 			return constructor(EnumMap.class, cast(value(getType(rawType)), Class.class));
 		}
@@ -54,7 +55,7 @@ public final class SerializerDefMap extends AbstractSerializerDefMap {
 	}
 
 	@Override
-	public SerializerDef withNullable() {
+	public SerializerDef ensureNullable() {
 		return new SerializerDefMap(keySerializer, valueSerializer, true);
 	}
 }

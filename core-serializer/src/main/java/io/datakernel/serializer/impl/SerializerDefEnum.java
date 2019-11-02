@@ -14,21 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.HasNullable;
+import io.datakernel.serializer.SerializerDef;
 
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.serializer.asm.SerializerExpressions.*;
+import static io.datakernel.serializer.impl.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public class SerializerDefEnum implements SerializerDef, HasNullable {
+public final class SerializerDefEnum implements SerializerDefWithNullable {
 	private final Class<?> enumType;
 	private final boolean nullable;
 
@@ -51,12 +50,12 @@ public class SerializerDefEnum implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Class<?> getRawType() {
+	public Class<?> getEncodeType() {
 		return enumType;
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = call(cast(value, Enum.class), "ordinal");
 		if (isSmallEnum()) {
 			return !nullable ?
@@ -74,7 +73,7 @@ public class SerializerDefEnum implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return isSmallEnum() ?
 				let(readByte(in), b ->
 						!nullable ?
@@ -97,7 +96,7 @@ public class SerializerDefEnum implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public SerializerDef withNullable() {
+	public SerializerDef ensureNullable() {
 		return new SerializerDefEnum(enumType, true);
 	}
 }

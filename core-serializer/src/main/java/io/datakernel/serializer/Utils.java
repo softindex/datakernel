@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,20 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.serializer.asm.SerializerDef;
+import org.jetbrains.annotations.Nullable;
 
-public interface HasFixedSize {
-	SerializerDef withFixedSize(int fixedSize);
+import java.lang.annotation.Annotation;
+
+@SuppressWarnings("unchecked")
+public final class Utils {
+
+	@Nullable
+	public static <A extends Annotation> A findAnnotation(Class<A> type, Annotation[] annotations) {
+		for (Annotation annotation : annotations) {
+			if (annotation.annotationType() == type)
+				return (A) annotation;
+		}
+		return null;
+	}
+
 }

@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
+import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.common.Preconditions.checkArgument;

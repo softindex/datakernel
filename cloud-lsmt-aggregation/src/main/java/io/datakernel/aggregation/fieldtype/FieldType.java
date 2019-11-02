@@ -18,7 +18,7 @@ package io.datakernel.aggregation.fieldtype;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codegen.Expression;
-import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;

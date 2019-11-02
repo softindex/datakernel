@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.common.Utils;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 
@@ -31,16 +32,15 @@ import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.*;
-import static io.datakernel.common.Utils.of;
-import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.*;
 
-public class SerializerDefClass implements SerializerDef {
+public final class SerializerDefClass implements SerializerDef {
 
-	private static final class FieldGen {
+	private static final class FieldDef {
 		private Field field;
 		private Method method;
 		private int versionAdded = -1;
@@ -79,11 +79,10 @@ public class SerializerDefClass implements SerializerDef {
 		}
 	}
 
-	private boolean implInterface;
-	private final Class<?> dataTypeIn;
-	private final Class<?> dataTypeOut;
+	private final Class<?> encodeType;
+	private final Class<?> decodeType;
 
-	private final LinkedHashMap<String, FieldGen> fields = new LinkedHashMap<>();
+	private final LinkedHashMap<String, FieldDef> fields = new LinkedHashMap<>();
 
 	private Constructor<?> constructor;
 	private List<String> constructorParams;
@@ -91,21 +90,22 @@ public class SerializerDefClass implements SerializerDef {
 	private List<String> factoryParams;
 	private final Map<Method, List<String>> setters = new LinkedHashMap<>();
 
-	public SerializerDefClass(@NotNull Class<?> type) {
-		this.dataTypeIn = type;
-		this.dataTypeOut = !dataTypeIn.isInterface() ? dataTypeIn : null;
+	private SerializerDefClass(Class<?> encodeType, Class<?> decodeType) {
+		this.encodeType = encodeType;
+		this.decodeType = decodeType;
 	}
 
-	public SerializerDefClass(@NotNull Class<?> type, @NotNull Class<?> typeImpl) {
-		checkArgument(type.isInterface(), "Class should be an interface");
-		checkArgument(type.isAssignableFrom(typeImpl), "Class should be assignable from %s", typeImpl);
-		this.dataTypeIn = type;
-		this.dataTypeOut = typeImpl;
-		this.implInterface = true;
+	public static SerializerDefClass of(@NotNull Class<?> type) {
+		return new SerializerDefClass(type, type);
+	}
+
+	public static SerializerDefClass of(@NotNull Class<?> encodeType, @NotNull Class<?> decodeType) {
+		checkArgument(encodeType.isAssignableFrom(decodeType), "Class should be assignable from %s", decodeType);
+		return new SerializerDefClass(encodeType, decodeType);
 	}
 
 	public void addSetter(@NotNull Method method, @NotNull List<String> fields) {
-		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
+		checkState(!decodeType.isInterface(), "Class should either implement an interface or be an interface");
 		checkArgument(!isPrivate(method.getModifiers()), "Setter cannot be private: %s", method);
 		checkArgument(method.getGenericParameterTypes().length == fields.size(), "Number of arguments of a method should match a size of list of fields");
 		checkArgument(!setters.containsKey(method), "Setter has already been added");
@@ -113,7 +113,7 @@ public class SerializerDefClass implements SerializerDef {
 	}
 
 	public void setFactory(@NotNull Method methodFactory, @NotNull List<String> fields) {
-		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
+		checkState(!decodeType.isInterface(), "Class should either implement an interface or be an interface");
 		checkArgument(this.factory == null, "Factory is already set: %s", this.factory);
 		checkArgument(!isPrivate(methodFactory.getModifiers()), "Factory cannot be private: %s", methodFactory);
 		checkArgument(isStatic(methodFactory.getModifiers()), "Factory must be static: %s", methodFactory);
@@ -123,7 +123,7 @@ public class SerializerDefClass implements SerializerDef {
 	}
 
 	public void setConstructor(@NotNull Constructor<?> constructor, @NotNull List<String> fields) {
-		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
+		checkState(!decodeType.isInterface(), "Class should either implement an interface or be an interface");
 		checkArgument(this.constructor == null, "Constructor is already set: %s", this.constructor);
 		checkArgument(!isPrivate(constructor.getModifiers()), "Constructor cannot be private: %s", constructor);
 		checkArgument(constructor.getGenericParameterTypes().length == fields.size(), "Number of arguments of a constructor should match a size of list of fields");
@@ -132,16 +132,16 @@ public class SerializerDefClass implements SerializerDef {
 	}
 
 	public void addField(Field field, SerializerDef serializer, int added, int removed) {
-		checkState(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
+		checkState(!decodeType.isInterface(), "Class should either implement an interface or be an interface");
 		checkArgument(isPublic(field.getModifiers()), "Method should be public");
 		String fieldName = field.getName();
 		checkArgument(!fields.containsKey(fieldName), "Duplicate field '%s'", field);
-		FieldGen fieldGen = new FieldGen();
-		fieldGen.field = field;
-		fieldGen.serializer = serializer;
-		fieldGen.versionAdded = added;
-		fieldGen.versionDeleted = removed;
-		fields.put(fieldName, fieldGen);
+		FieldDef fieldDef = new FieldDef();
+		fieldDef.field = field;
+		fieldDef.serializer = serializer;
+		fieldDef.versionAdded = added;
+		fieldDef.versionDeleted = removed;
+		fields.put(fieldName, fieldDef);
 	}
 
 	public void addGetter(Method method, SerializerDef serializer, int added, int removed) {
@@ -149,16 +149,16 @@ public class SerializerDefClass implements SerializerDef {
 		checkArgument(isPublic(method.getModifiers()), "Method should be public");
 		String fieldName = stripGet(method.getName(), method.getReturnType());
 		checkArgument(!fields.containsKey(fieldName), "Duplicate field '%s'", method);
-		FieldGen fieldGen = new FieldGen();
-		fieldGen.method = method;
-		fieldGen.serializer = serializer;
-		fieldGen.versionAdded = added;
-		fieldGen.versionDeleted = removed;
-		fields.put(fieldName, fieldGen);
+		FieldDef fieldDef = new FieldDef();
+		fieldDef.method = method;
+		fieldDef.serializer = serializer;
+		fieldDef.versionAdded = added;
+		fieldDef.versionDeleted = removed;
+		fields.put(fieldName, fieldDef);
 	}
 
 	public void addMatchingSetters() {
-		checkArgument(implInterface || !dataTypeIn.isInterface(), "Class should either implement an interface or be an interface");
+		checkArgument(!decodeType.isInterface(), "Class should either implement an interface or be an interface");
 		Set<String> usedFields = new HashSet<>();
 		if (constructorParams != null) {
 			usedFields.addAll(constructorParams);
@@ -170,19 +170,15 @@ public class SerializerDefClass implements SerializerDef {
 			usedFields.addAll(list);
 		}
 		for (String fieldName : fields.keySet()) {
-			FieldGen fieldGen = fields.get(fieldName);
-			Method getter = fieldGen.method;
+			FieldDef fieldDef = fields.get(fieldName);
+			Method getter = fieldDef.method;
 			if (getter == null)
 				continue;
 			if (usedFields.contains(fieldName))
 				continue;
 			String setterName = "set" + Character.toUpperCase(fieldName.charAt(0)) + fieldName.substring(1);
 			try {
-				Method setter;
-				if (implInterface)
-					setter = dataTypeOut.getMethod(setterName, getter.getReturnType());
-				else
-					setter = dataTypeIn.getMethod(setterName, getter.getReturnType());
+				Method setter = decodeType.getMethod(setterName, getter.getReturnType());
 				if (!isPrivate(setter.getModifiers())) {
 					addSetter(setter, asList(fieldName));
 				}
@@ -203,18 +199,23 @@ public class SerializerDefClass implements SerializerDef {
 	@Override
 	public Set<Integer> getVersions() {
 		Set<Integer> versions = new HashSet<>();
-		for (FieldGen fieldGen : fields.values()) {
-			if (fieldGen.versionAdded != -1)
-				versions.add(fieldGen.versionAdded);
-			if (fieldGen.versionDeleted != -1)
-				versions.add(fieldGen.versionDeleted);
+		for (FieldDef fieldDef : fields.values()) {
+			if (fieldDef.versionAdded != -1)
+				versions.add(fieldDef.versionAdded);
+			if (fieldDef.versionDeleted != -1)
+				versions.add(fieldDef.versionDeleted);
 		}
 		return versions;
 	}
 
 	@Override
-	public Class<?> getRawType() {
-		return dataTypeIn;
+	public Class<?> getEncodeType() {
+		return encodeType;
+	}
+
+	@Override
+	public Class<?> getDecodeType() {
+		return decodeType;
 	}
 
 	private static String stripGet(String getterName, Class<?> type) {
@@ -230,29 +231,29 @@ public class SerializerDefClass implements SerializerDef {
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression defineEncoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return fields.size() <= 1 ?
-				serializeImpl(classLoader, staticEncoders, buf, pos, value, version, compatibilityLevel) :
-				staticEncoders.define(dataTypeIn, buf, pos, value,
-						serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+				encoder(staticEncoders, buf, pos, value, version, compatibilityLevel) :
+				staticEncoders.define(encodeType, buf, pos, value,
+						encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
 	}
 
-	private Expression serializeImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	@Override
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
 
 		for (String fieldName : this.fields.keySet()) {
-			FieldGen fieldGen = this.fields.get(fieldName);
-			if (!fieldGen.hasVersion(version)) continue;
+			FieldDef fieldDef = this.fields.get(fieldName);
+			if (!fieldDef.hasVersion(version)) continue;
 
-			Class<?> fieldType = fieldGen.serializer.getRawType();
-			if (!fieldGen.getRawType().equals(Object.class)) fieldType = fieldGen.getRawType();
+			Class<?> fieldType = fieldDef.serializer.getEncodeType();
 
-			if (fieldGen.field != null) {
+			if (fieldDef.field != null) {
 				list.add(
-						fieldGen.serializer.encoder(classLoader, staticEncoders, buf, pos, cast(property(value, fieldName), fieldType), version, compatibilityLevel));
-			} else if (fieldGen.method != null) {
+						fieldDef.serializer.defineEncoder(staticEncoders, buf, pos, cast(property(value, fieldName), fieldType), version, compatibilityLevel));
+			} else if (fieldDef.method != null) {
 				list.add(
-						fieldGen.serializer.encoder(classLoader, staticEncoders, buf, pos, cast(call(value, fieldGen.method.getName()), fieldType), version, compatibilityLevel));
+						fieldDef.serializer.defineEncoder(staticEncoders, buf, pos, cast(call(value, fieldDef.method.getName()), fieldType), version, compatibilityLevel));
 			} else {
 				throw new AssertionError();
 			}
@@ -262,28 +263,29 @@ public class SerializerDefClass implements SerializerDef {
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression defineDecoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return fields.size() <= 1 ?
-				deserializeImpl(classLoader, staticDecoders, in, version, compatibilityLevel) :
-				staticDecoders.define(dataTypeOut != null ? dataTypeOut : dataTypeIn, in,
-						deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
+				decoder(staticDecoders, in, version, compatibilityLevel) :
+				staticDecoders.define(getDecodeType(), in,
+						decoder(staticDecoders, methodIn(), version, compatibilityLevel));
 	}
 
-	private Expression deserializeImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
-		if (!implInterface && dataTypeIn.isInterface()) {
-			return deserializeInterface(classLoader, staticDecoders, in, dataTypeIn, version, compatibilityLevel);
+	@Override
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		if (decodeType.isInterface()) {
+			return deserializeInterface(staticDecoders, in, version, compatibilityLevel);
 		}
-		if (!implInterface && constructor == null && factory == null && setters.isEmpty()) {
-			return deserializeClassSimple(classLoader, staticDecoders, in, version, compatibilityLevel);
+		if (constructor == null && factory == null && setters.isEmpty()) {
+			return deserializeClassSimple(staticDecoders, in, version, compatibilityLevel);
 		}
 
-		return let(of(() -> {
+		return let(Utils.of(() -> {
 					List<Expression> fieldDeserializers = new ArrayList<>();
 					for (String fieldName : fields.keySet()) {
-						FieldGen fieldGen = fields.get(fieldName);
-						if (!fieldGen.hasVersion(version)) continue;
+						FieldDef fieldDef = fields.get(fieldName);
+						if (!fieldDef.hasVersion(version)) continue;
 						fieldDeserializers.add(
-								fieldGen.serializer.decoder(classLoader, staticDecoders, in, fieldGen.getRawType(), version, compatibilityLevel));
+								fieldDef.serializer.defineDecoder(staticDecoders, in, version, compatibilityLevel));
 					}
 					return fieldDeserializers;
 				}),
@@ -291,21 +293,21 @@ public class SerializerDefClass implements SerializerDef {
 					Map<String, Expression> map = new HashMap<>();
 					int i = 0;
 					for (String fieldName : fields.keySet()) {
-						FieldGen fieldGen = fields.get(fieldName);
-						if (!fieldGen.hasVersion(version)) continue;
-						map.put(fieldName, cast(fieldValues.get(i++), fieldGen.getRawType()));
+						FieldDef fieldDef = fields.get(fieldName);
+						if (!fieldDef.hasVersion(version)) continue;
+						map.put(fieldName, cast(fieldValues.get(i++), fieldDef.getRawType()));
 					}
 
 					return let(factory == null ?
-									callConstructor(dataTypeIn, map, version) :
+									callConstructor(decodeType, map, version) :
 									callFactory(map, version),
 							instance -> sequence(list -> {
 								for (Method method : setters.keySet()) {
 									boolean found = false;
 									for (String fieldName : setters.get(method)) {
-										FieldGen fieldGen = fields.get(fieldName);
-										checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, method);
-										if (fieldGen.hasVersion(version)) {
+										FieldDef fieldDef = fields.get(fieldName);
+										checkNotNull(fieldDef, "Field '%s' is not found in '%s'", fieldName, method);
+										if (fieldDef.hasVersion(version)) {
 											found = true;
 											break;
 										}
@@ -314,12 +316,12 @@ public class SerializerDefClass implements SerializerDef {
 										Expression[] temp = new Expression[method.getParameterTypes().length];
 										int j = 0;
 										for (String fieldName : setters.get(method)) {
-											FieldGen fieldGen = fields.get(fieldName);
-											assert fieldGen != null;
-											if (fieldGen.hasVersion(version)) {
+											FieldDef fieldDef = fields.get(fieldName);
+											assert fieldDef != null;
+											if (fieldDef.hasVersion(version)) {
 												temp[j++] = map.get(fieldName);
 											} else {
-												temp[j++] = pushDefaultValue(fieldGen.getAsmType());
+												temp[j++] = pushDefaultValue(fieldDef.getAsmType());
 											}
 										}
 										list.add(call(instance, method.getName(), temp));
@@ -327,10 +329,10 @@ public class SerializerDefClass implements SerializerDef {
 								}
 
 								for (String fieldName : fields.keySet()) {
-									FieldGen fieldGen = fields.get(fieldName);
-									if (!fieldGen.hasVersion(version))
+									FieldDef fieldDef = fields.get(fieldName);
+									if (!fieldDef.hasVersion(version))
 										continue;
-									if (fieldGen.field == null || isFinal(fieldGen.field.getModifiers()))
+									if (fieldDef.field == null || isFinal(fieldDef.field.getModifiers()))
 										continue;
 									Variable property = property(instance, fieldName);
 									list.add(set(property, map.get(fieldName)));
@@ -346,12 +348,12 @@ public class SerializerDefClass implements SerializerDef {
 		Expression[] param = new Expression[factoryParams.size()];
 		int i = 0;
 		for (String fieldName : factoryParams) {
-			FieldGen fieldGen = fields.get(fieldName);
-			checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, factory);
-			if (fieldGen.hasVersion(version)) {
+			FieldDef fieldDef = fields.get(fieldName);
+			checkNotNull(fieldDef, "Field '%s' is not found in '%s'", fieldName, factory);
+			if (fieldDef.hasVersion(version)) {
 				param[i++] = map.get(fieldName);
 			} else {
-				param[i++] = pushDefaultValue(fieldGen.getAsmType());
+				param[i++] = pushDefaultValue(fieldDef.getAsmType());
 			}
 		}
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
@@ -367,26 +369,25 @@ public class SerializerDefClass implements SerializerDef {
 
 		int i = 0;
 		for (String fieldName : constructorParams) {
-			FieldGen fieldGen = fields.get(fieldName);
-			checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, constructor);
-			if (fieldGen.hasVersion(version)) {
+			FieldDef fieldDef = fields.get(fieldName);
+			checkNotNull(fieldDef, "Field '%s' is not found in '%s'", fieldName, constructor);
+			if (fieldDef.hasVersion(version)) {
 				param[i++] = map.get(fieldName);
 			} else {
-				param[i++] = pushDefaultValue(fieldGen.getAsmType());
+				param[i++] = pushDefaultValue(fieldDef.getAsmType());
 			}
 
 		}
 		return constructor(targetType, param);
 	}
 
-	@SuppressWarnings("unchecked")
-	private Expression deserializeInterface(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType,
+	private Expression deserializeInterface(StaticDecoders staticDecoders, Expression in,
 			int version, CompatibilityLevel compatibilityLevel) {
-		ClassBuilder<?> classBuilder = ClassBuilder.create(classLoader, (Class<Object>) targetType);
+		ClassBuilder<?> classBuilder = staticDecoders.buildClass(decodeType);
 		for (String fieldName : fields.keySet()) {
-			FieldGen fieldGen = fields.get(fieldName);
+			FieldDef fieldDef = fields.get(fieldName);
 
-			Method method = checkNotNull(fieldGen.method);
+			Method method = checkNotNull(fieldDef.method);
 
 			classBuilder
 					.withField(fieldName, method.getReturnType())
@@ -399,32 +400,32 @@ public class SerializerDefClass implements SerializerDef {
 				constructor(newClass),
 				instance -> sequence(expressions -> {
 					for (String fieldName : fields.keySet()) {
-						FieldGen fieldGen = fields.get(fieldName);
-						if (!fieldGen.hasVersion(version))
+						FieldDef fieldDef = fields.get(fieldName);
+						if (!fieldDef.hasVersion(version))
 							continue;
 						Variable property = property(instance, fieldName);
 
 						Expression expression =
-								fieldGen.serializer.decoder(classLoader, staticDecoders, in, fieldGen.getRawType(), version, compatibilityLevel);
+								fieldDef.serializer.defineDecoder(staticDecoders, in, version, compatibilityLevel);
 						expressions.add(set(property, expression));
 					}
 					expressions.add(instance);
 				}));
 	}
 
-	private Expression deserializeClassSimple(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in,
+	private Expression deserializeClassSimple(StaticDecoders staticDecoders, Expression in,
 			int version, CompatibilityLevel compatibilityLevel) {
 		return let(
-				constructor(dataTypeIn),
+				constructor(decodeType),
 				instance ->
 						sequence(expressions -> {
 							for (String fieldName : fields.keySet()) {
-								FieldGen fieldGen = fields.get(fieldName);
+								FieldDef fieldDef = fields.get(fieldName);
+								if (!fieldDef.hasVersion(version)) continue;
 
-								if (!fieldGen.hasVersion(version)) continue;
-
-								Variable property = property(instance, fieldName);
-								expressions.add(set(property, fieldGen.serializer.decoder(classLoader, staticDecoders, in, fieldGen.getRawType(), version, compatibilityLevel)));
+								expressions.add(
+										set(property(instance, fieldName),
+												fieldDef.serializer.defineDecoder(staticDecoders, in, version, compatibilityLevel)));
 							}
 							expressions.add(instance);
 						}));
@@ -454,5 +455,10 @@ public class SerializerDefClass implements SerializerDef {
 			default:
 				throw new IllegalArgumentException("Unsupported type " + type);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return "SerializerDefClass{" + encodeType.getSimpleName() + '}';
 	}
 }

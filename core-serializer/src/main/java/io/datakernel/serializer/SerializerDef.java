@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer;
 
-import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
 
 import java.util.Set;
 
@@ -47,7 +46,11 @@ public interface SerializerDef {
 	 *
 	 * @return type of object which will be serialized
 	 */
-	Class<?> getRawType();
+	Class<?> getEncodeType();
+
+	default Class<?> getDecodeType() {
+		return getEncodeType();
+	}
 
 	interface StaticEncoders {
 		static Expression methodBuf() { return arg(0);}
@@ -69,12 +72,18 @@ public interface SerializerDef {
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return serialized to byte array value
 	 */
-	Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
+	default Expression defineEncoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		return encoder(staticEncoders, buf, pos, value, version, compatibilityLevel);
+	}
+
+	Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
 
 	interface StaticDecoders {
 		static Expression methodIn() { return arg(0);}
 
 		Expression define(Class<?> valueClazz, Expression in, Expression method);
+
+		<T> ClassBuilder<T> buildClass(Class<T> type);
 	}
 
 	/**
@@ -83,9 +92,12 @@ public interface SerializerDef {
 	 *
 	 * @param staticDecoders
 	 * @param in                 BinaryInput
-	 * @param targetType         target type which is used to deserialize byte array
 	 * @param compatibilityLevel defines the {@link CompatibilityLevel compatibility level} of the serializer
 	 * @return deserialized {@code Expression} object of provided targetType
 	 */
-	Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel);
+	default Expression defineDecoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		return decoder(staticDecoders, in, version, compatibilityLevel);
+	}
+
+	Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel);
 }

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 
 import java.util.Set;
 
@@ -30,11 +30,15 @@ import static java.util.Collections.emptySet;
 
 public abstract class SerializerDefPrimitive implements SerializerDef {
 
-	private final Class<?> primitiveType;
+	protected final Class<?> primitiveType;
+	protected final Class<?> wrappedType;
+	protected final boolean wrapped;
 
-	protected SerializerDefPrimitive(Class<?> primitiveType) {
+	protected SerializerDefPrimitive(Class<?> primitiveType, boolean wrapped) {
 		checkArgument(primitiveType.isPrimitive(), "Not a primitive type");
 		this.primitiveType = primitiveType;
+		this.wrappedType = wrap(primitiveType);
+		this.wrapped = wrapped;
 	}
 
 	@Override
@@ -47,30 +51,28 @@ public abstract class SerializerDefPrimitive implements SerializerDef {
 	}
 
 	@Override
-	public Class<?> getRawType() {
-		return getBoxedType();
+	public Class<?> getEncodeType() {
+		return wrapped ? wrappedType : primitiveType;
 	}
 
-	public final Class<?> getPrimitiveType() {
-		return primitiveType;
+	public boolean isWrapped() {
+		return wrapped;
 	}
 
-	public final Class<?> getBoxedType() {
-		return wrap(primitiveType);
-	}
+	public abstract SerializerDef ensureWrapped();
 
 	protected abstract Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel);
 
 	protected abstract Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel);
 
 	@Override
-	public final Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return doSerialize(buf, pos, cast(value, primitiveType), compatibilityLevel);
 	}
 
 	@Override
-	public final Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public final Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		Expression expression = doDeserialize(in, compatibilityLevel);
-		return targetType.isPrimitive() ? expression : cast(expression, getBoxedType());
+		return wrapped ? cast(expression, wrappedType) : expression;
 	}
 }

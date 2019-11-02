@@ -17,8 +17,8 @@
 package io.datakernel.serializer.examples;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.serializer.asm.AbstractSerializerDefMap;
-import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.SerializerDef;
+import io.datakernel.serializer.impl.AbstractSerializerDefMap;
 
 import java.util.function.Function;
 
@@ -45,7 +45,7 @@ public final class SerializerDefHppc7Map extends AbstractSerializerDefMap {
 	}
 
 	@Override
-	public SerializerDef withNullable() {
-		return new SerializerDefHppc7Map(keySerializer, valueSerializer, mapType, mapImplType, keyType, valueType, true);
+	public SerializerDef ensureNullable() {
+		return new SerializerDefHppc7Map(keySerializer, valueSerializer, encodeType, decodeType, keyType, valueType, true);
 	}
 }

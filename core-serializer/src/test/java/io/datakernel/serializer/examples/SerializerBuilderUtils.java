@@ -18,7 +18,8 @@ package io.datakernel.serializer.examples;
 
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.*;
+import io.datakernel.serializer.SerializerDef;
+import io.datakernel.serializer.impl.*;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,13 +35,13 @@ public class SerializerBuilderUtils {
 			byte.class, short.class, int.class, long.class, float.class, double.class, char.class, Object.class
 	);
 	private static Map<Class<?>, SerializerDef> primitiveSerializers = new HashMap<Class<?>, SerializerDef>() {{
-		put(byte.class, new SerializerDefByte());
-		put(short.class, new SerializerDefShort());
-		put(int.class, new SerializerDefInt(true));
-		put(long.class, new SerializerDefLong(false));
-		put(float.class, new SerializerDefFloat());
-		put(double.class, new SerializerDefDouble());
-		put(char.class, new SerializerDefChar());
+		put(byte.class, new SerializerDefByte(false));
+		put(short.class, new SerializerDefShort(false));
+		put(int.class, new SerializerDefInt(false, true));
+		put(long.class, new SerializerDefLong(false, false));
+		put(float.class, new SerializerDefFloat(false));
+		put(double.class, new SerializerDefDouble(false));
+		put(char.class, new SerializerDefChar(false));
 	}};
 
 	private static Map<String, String> collectionImplSuffix = new HashMap<String, String>() {{

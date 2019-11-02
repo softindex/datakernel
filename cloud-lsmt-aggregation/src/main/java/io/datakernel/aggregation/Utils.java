@@ -28,7 +28,7 @@ import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerDefClass;
+import io.datakernel.serializer.impl.SerializerDefClass;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -139,7 +139,7 @@ public class Utils {
 	private static <T> BinarySerializer<T> createBinarySerializer(Class<T> recordClass,
 			Map<String, FieldType> keys, Map<String, FieldType> fields,
 			DefiningClassLoader classLoader) {
-		SerializerDefClass serializer = new SerializerDefClass(recordClass);
+		SerializerDefClass serializer = SerializerDefClass.of(recordClass);
 		for (String key : keys.keySet()) {
 			FieldType keyType = keys.get(key);
 			try {

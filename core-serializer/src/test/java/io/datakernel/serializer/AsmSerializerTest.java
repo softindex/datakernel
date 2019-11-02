@@ -18,7 +18,7 @@ package io.datakernel.serializer;
 
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
-import io.datakernel.serializer.asm.*;
+import io.datakernel.serializer.impl.*;
 import org.jetbrains.annotations.Nullable;
 import org.junit.Test;
 

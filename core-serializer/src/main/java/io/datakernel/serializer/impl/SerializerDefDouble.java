@@ -14,39 +14,39 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 
 import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
-import static io.datakernel.serializer.asm.SerializerExpressions.*;
+import static io.datakernel.serializer.impl.SerializerExpressions.readDouble;
+import static io.datakernel.serializer.impl.SerializerExpressions.writeDouble;
 
-public final class SerializerDefLong extends SerializerDefPrimitive {
-	private final boolean varLength;
-
-	public SerializerDefLong() {
-		super(long.class);
-		this.varLength = false;
+public final class SerializerDefDouble extends SerializerDefPrimitive {
+	public SerializerDefDouble() {
+		this(true);
 	}
 
-	public SerializerDefLong(boolean varLength) {
-		super(long.class);
-		this.varLength = varLength;
+	public SerializerDefDouble(boolean wrapped) {
+		super(double.class, wrapped);
+	}
+
+	@Override
+	public SerializerDef ensureWrapped() {
+		return new SerializerDefDouble(true);
 	}
 
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
-		return varLength ?
-				writeVarLong(byteArray, off, value) :
-				writeLong(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+		return writeDouble(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
 	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
-		return varLength ?
-				readVarLong(in) :
-				readLong(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
+		return readDouble(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 }
+

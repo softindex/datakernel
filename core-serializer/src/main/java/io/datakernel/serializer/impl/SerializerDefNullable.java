@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
+import static io.datakernel.serializer.impl.SerializerExpressions.readByte;
+import static io.datakernel.serializer.impl.SerializerExpressions.writeByte;
 import static java.util.Collections.emptySet;
 
-public class SerializerDefNullable implements SerializerDef {
+public final class SerializerDefNullable implements SerializerDef {
 	private final SerializerDef serializer;
 
 	public SerializerDefNullable(@NotNull SerializerDef serializer) {
@@ -47,25 +47,25 @@ public class SerializerDefNullable implements SerializerDef {
 	}
 
 	@Override
-	public Class<?> getRawType() {
-		return serializer.getRawType();
+	public Class<?> getEncodeType() {
+		return serializer.getEncodeType();
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return ifThenElse(isNotNull(value),
 				sequence(
 						writeByte(buf, pos, value((byte) 1)),
-						serializer.encoder(classLoader, staticEncoders, buf, pos, value, version, compatibilityLevel)),
+						serializer.defineEncoder(staticEncoders, buf, pos, value, version, compatibilityLevel)),
 				writeByte(buf, pos, value((byte) 0))
 		);
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return let(readByte(in),
 				isNotNull -> ifThenElse(cmpNe(isNotNull, value((byte) 0)),
-						serializer.decoder(classLoader, staticDecoders, in, serializer.getRawType(), version, compatibilityLevel),
-						nullRef(targetType)));
+						serializer.defineDecoder(staticDecoders, in, version, compatibilityLevel),
+						nullRef(serializer.getDecodeType())));
 	}
 }

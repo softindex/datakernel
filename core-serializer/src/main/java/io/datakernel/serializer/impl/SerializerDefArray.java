@@ -14,25 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.HasFixedSize;
-import io.datakernel.serializer.HasNullable;
+import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
-import static io.datakernel.serializer.asm.SerializerExpressions.*;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
+import static io.datakernel.serializer.impl.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
 
-public final class SerializerDefArray implements SerializerDef, HasNullable, HasFixedSize {
+public final class SerializerDefArray implements SerializerDefWithNullable, SerializerDefWithFixedSize {
 	private final SerializerDef valueSerializer;
 	private final int fixedSize;
 	private final Class<?> type;
@@ -53,12 +51,12 @@ public final class SerializerDefArray implements SerializerDef, HasNullable, Has
 	}
 
 	@Override
-	public SerializerDefArray withFixedSize(int fixedSize) {
+	public SerializerDefArray ensureFixedSize(int fixedSize) {
 		return new SerializerDefArray(valueSerializer, fixedSize, type, nullable);
 	}
 
 	@Override
-	public SerializerDef withNullable() {
+	public SerializerDef ensureNullable() {
 		return new SerializerDefArray(valueSerializer, fixedSize, type, true);
 	}
 
@@ -73,12 +71,22 @@ public final class SerializerDefArray implements SerializerDef, HasNullable, Has
 	}
 
 	@Override
-	public Class<?> getRawType() {
+	public Class<?> getEncodeType() {
 		return Object.class;
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression defineEncoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+		if (type.getComponentType() == Byte.TYPE) {
+			return encoder(staticEncoders, buf, pos, value, version, compatibilityLevel);
+		} else {
+			return staticEncoders.define(type, buf, pos, value,
+					encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+		}
+	}
+
+	@Override
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		if (type.getComponentType() == Byte.TYPE) {
 			Expression castedValue = cast(value, type);
 			Expression length = fixedSize != -1 ? value(fixedSize) : length(castedValue);
@@ -96,32 +104,37 @@ public final class SerializerDefArray implements SerializerDef, HasNullable, Has
 				);
 			}
 		} else {
-			return staticEncoders.define(type, buf, pos, value,
-					serializeArrayImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
-		}
-	}
+			Expression methodLength = fixedSize != -1 ? value(fixedSize) : length(cast(value, type));
 
-	private Expression serializeArrayImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
-		Expression methodLength = fixedSize != -1 ? value(fixedSize) : length(cast(value, type));
+			Expression writeCollection = loop(value(0), methodLength,
+					it -> valueSerializer.defineEncoder(staticEncoders, buf, pos, getArrayItem(cast(value, type), it), version, compatibilityLevel));
 
-		Expression writeCollection = loop(value(0), methodLength,
-				it -> valueSerializer.encoder(classLoader, staticEncoders, buf, pos, getArrayItem(cast(value, type), it), version, compatibilityLevel));
-
-		if (!nullable) {
-			return sequence(
-					writeVarInt(buf, pos, methodLength),
-					writeCollection);
-		} else {
-			return ifThenElse(isNull(value),
-					writeByte(buf, pos, value((byte) 0)),
-					sequence(
-							writeVarInt(buf, pos, inc(methodLength)),
-							writeCollection));
+			if (!nullable) {
+				return sequence(
+						writeVarInt(buf, pos, methodLength),
+						writeCollection);
+			} else {
+				return ifThenElse(isNull(value),
+						writeByte(buf, pos, value((byte) 0)),
+						sequence(
+								writeVarInt(buf, pos, inc(methodLength)),
+								writeCollection));
+			}
 		}
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression defineDecoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		if (type.getComponentType() == Byte.TYPE) {
+			return decoder(staticDecoders, in, version, compatibilityLevel);
+		} else {
+			return staticDecoders.define(getDecodeType(), in,
+					decoder(staticDecoders, methodIn(), version, compatibilityLevel));
+		}
+	}
+
+	@Override
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		if (type.getComponentType() == Byte.TYPE) {
 			return !nullable ?
 					let(readVarInt(in), len ->
@@ -137,20 +150,15 @@ public final class SerializerDefArray implements SerializerDef, HasNullable, Has
 													readBytes(in, array),
 													array)
 									)));
-		} else {
-			return staticDecoders.define(type, in,
-					deserializeArrayImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
 		}
-	}
 
-	private Expression deserializeArrayImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return !nullable ?
 				let(readVarInt(in), len ->
 						let(newArray(type, len), array ->
 								sequence(
 										loop(value(0), len,
 												i -> setArrayItem(array, i,
-														cast(valueSerializer.decoder(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+														cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
 										array))) :
 				let(readVarInt(in), len ->
 						ifThenElse(cmpEq(len, value(0)),
@@ -159,7 +167,7 @@ public final class SerializerDefArray implements SerializerDef, HasNullable, Has
 										sequence(
 												loop(value(0), dec(len),
 														i -> setArrayItem(array, i,
-																cast(valueSerializer.decoder(classLoader, staticDecoders, in, type.getComponentType(), version, compatibilityLevel), type.getComponentType()))),
+																cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));
 	}

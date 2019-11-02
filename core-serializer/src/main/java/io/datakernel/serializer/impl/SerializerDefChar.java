@@ -14,27 +14,38 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 
-import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
+import static io.datakernel.serializer.impl.SerializerExpressions.readChar;
+import static io.datakernel.serializer.impl.SerializerExpressions.writeChar;
 
-public final class SerializerDefByte extends SerializerDefPrimitive {
-	public SerializerDefByte() {
-		super(byte.class);
+public final class SerializerDefChar extends SerializerDefPrimitive {
+	public SerializerDefChar() {
+		this(true);
+	}
+
+	public SerializerDefChar(boolean wrapped) {
+		super(char.class, wrapped);
+	}
+
+	@Override
+	public SerializerDef ensureWrapped() {
+		return new SerializerDefChar(true);
 	}
 
 	@Override
 	protected Expression doSerialize(Expression byteArray, Variable off, Expression value, CompatibilityLevel compatibilityLevel) {
-		return writeByte(byteArray, off, value);
+		return writeChar(byteArray, off, value, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 
 	@Override
 	protected Expression doDeserialize(Expression in, CompatibilityLevel compatibilityLevel) {
-		return readByte(in);
+		return readChar(in, compatibilityLevel.compareTo(LEVEL_3_LE) < 0);
 	}
 }

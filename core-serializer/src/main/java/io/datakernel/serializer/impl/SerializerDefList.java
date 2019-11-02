@@ -14,10 +14,25 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.SerializerDef;
 
-public interface HasNullable {
-	SerializerDef withNullable();
+import java.util.ArrayList;
+import java.util.List;
+
+public final class SerializerDefList extends AbstractSerializerDefCollection {
+
+	public SerializerDefList(SerializerDef valueSerializer) {
+		this(valueSerializer, false);
+	}
+
+	private SerializerDefList(SerializerDef valueSerializer, boolean nullable) {
+		super(valueSerializer, List.class, ArrayList.class, Object.class, nullable);
+	}
+
+	@Override
+	public SerializerDef ensureNullable() {
+		return new SerializerDefList(valueSerializer, true);
+	}
 }

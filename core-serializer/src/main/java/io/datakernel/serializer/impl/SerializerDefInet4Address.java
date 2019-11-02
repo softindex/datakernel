@@ -14,22 +14,22 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializerDef;
 
-import java.net.Inet6Address;
+import java.net.Inet4Address;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.serializer.asm.SerializerExpressions.readBytes;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeBytes;
+import static io.datakernel.serializer.impl.SerializerExpressions.readBytes;
+import static io.datakernel.serializer.impl.SerializerExpressions.writeBytes;
 import static java.util.Collections.emptySet;
 
-public class SerializerDefInet6Address implements SerializerDef {
+public final class SerializerDefInet4Address implements SerializerDef {
 	@Override
 	public void accept(Visitor visitor) {
 	}
@@ -40,20 +40,20 @@ public class SerializerDefInet6Address implements SerializerDef {
 	}
 
 	@Override
-	public Class<?> getRawType() {
-		return Inet6Address.class;
+	public Class<?> getEncodeType() {
+		return Inet4Address.class;
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return writeBytes(buf, pos, call(value, "getAddress"));
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return let(newArray(byte[].class, value(16)), array ->
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		return let(newArray(byte[].class, value(4)), array ->
 				sequence(
 						readBytes(in, array),
-						callStatic(getRawType(), "getByAddress", array)));
+						callStatic(getDecodeType(), "getByAddress", array)));
 	}
 }

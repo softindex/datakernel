@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.annotations;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.serializer.SerializerDef;
 
-import java.lang.annotation.*;
-
-@Retention(RetentionPolicy.RUNTIME)
-@Target({
-		ElementType.FIELD,
-		ElementType.METHOD})
-@Repeatable(SerializerClassEx.class)
-public @interface SerializerClass {
-	int[] path() default {};
-
-	Class<? extends SerializerDef> value();
+public interface SerializerDefWithVarLength extends SerializerDef {
+	SerializerDef ensureVarLength();
 }

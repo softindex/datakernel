@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerDef;
 
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
@@ -25,14 +26,14 @@ import java.util.Set;
 import static io.datakernel.codegen.Expressions.callStatic;
 import static io.datakernel.codegen.Expressions.value;
 
-public class SerializerDefSet extends AbstractSerializerDefCollection {
+public final class SerializerDefSet extends AbstractSerializerDefCollection {
 	public SerializerDefSet(SerializerDef valueSerializer) {
 		this(valueSerializer, false);
 	}
 
 	private SerializerDefSet(SerializerDef valueSerializer, boolean nullable) {
 		super(valueSerializer, Set.class,
-				valueSerializer.getRawType().isEnum() ?
+				valueSerializer.getDecodeType().isEnum() ?
 						EnumSet.class :
 						LinkedHashSet.class,
 				Object.class, nullable);
@@ -40,14 +41,14 @@ public class SerializerDefSet extends AbstractSerializerDefCollection {
 
 	@Override
 	protected Expression createConstructor(Expression length) {
-		if (valueSerializer.getRawType().isEnum()) {
-			return callStatic(EnumSet.class, "noneOf", value(valueSerializer.getRawType()));
+		if (valueSerializer.getDecodeType().isEnum()) {
+			return callStatic(EnumSet.class, "noneOf", value(valueSerializer.getEncodeType()));
 		}
 		return super.createConstructor(length);
 	}
 
 	@Override
-	public SerializerDef withNullable() {
+	public SerializerDef ensureNullable() {
 		return new SerializerDefSet(valueSerializer, true);
 	}
 }

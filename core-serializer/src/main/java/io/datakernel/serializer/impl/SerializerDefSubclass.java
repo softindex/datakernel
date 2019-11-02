@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.asm;
+package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.HasNullable;
+import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -30,14 +29,14 @@ import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Utils.of;
-import static io.datakernel.serializer.asm.SerializerDef.StaticDecoders.methodIn;
-import static io.datakernel.serializer.asm.SerializerDef.StaticEncoders.*;
-import static io.datakernel.serializer.asm.SerializerExpressions.readByte;
-import static io.datakernel.serializer.asm.SerializerExpressions.writeByte;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
+import static io.datakernel.serializer.impl.SerializerExpressions.readByte;
+import static io.datakernel.serializer.impl.SerializerExpressions.writeByte;
 import static java.util.Collections.emptySet;
 import static org.objectweb.asm.Type.getType;
 
-public class SerializerDefSubclass implements SerializerDef, HasNullable {
+public final class SerializerDefSubclass implements SerializerDefWithNullable {
 	private final Class<?> dataType;
 	private final LinkedHashMap<Class<?>, SerializerDef> subclassSerializers;
 	private final boolean nullable;
@@ -58,7 +57,7 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public SerializerDef withNullable() {
+	public SerializerDef ensureNullable() {
 		return new SerializerDefSubclass(dataType, subclassSerializers, true, startIndex);
 	}
 
@@ -75,17 +74,18 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Class<?> getRawType() {
+	public Class<?> getEncodeType() {
 		return dataType;
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression defineEncoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return staticEncoders.define(dataType, buf, pos, value,
-				serializeImpl(classLoader, staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+				encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
 	}
 
-	private Expression serializeImpl(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	@Override
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		int subClassIndex = (nullable && startIndex == 0 ? 1 : startIndex);
 
 		List<Expression> listKey = new ArrayList<>();
@@ -95,7 +95,7 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
 					writeByte(buf, pos, value((byte) subClassIndex)),
-					subclassSerializer.encoder(classLoader, staticEncoders, buf, pos, cast(value, subclassSerializer.getRawType()), version, compatibilityLevel)
+					subclassSerializer.defineEncoder(staticEncoders, buf, pos, cast(value, subclassSerializer.getEncodeType()), version, compatibilityLevel)
 			));
 
 			subClassIndex++;
@@ -113,22 +113,23 @@ public class SerializerDefSubclass implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return staticDecoders.define(dataType, in,
-				deserializeImpl(classLoader, staticDecoders, methodIn(), version, compatibilityLevel));
+	public Expression defineDecoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		return staticDecoders.define(getDecodeType(), in,
+				decoder(staticDecoders, methodIn(), version, compatibilityLevel));
 
 	}
 
-	private Expression deserializeImpl(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+	@Override
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return let(startIndex != 0 ? sub(readByte(in), value(startIndex)) : cast(readByte(in), int.class),
 				idx -> cast(
 						switchByIndex(idx,
 								of(() -> {
 									List<Expression> versions = new ArrayList<>();
 									for (SerializerDef subclassSerializer : subclassSerializers.values()) {
-										versions.add(cast(subclassSerializer.decoder(classLoader, staticDecoders, in, subclassSerializer.getRawType(), version, compatibilityLevel), dataType));
+										versions.add(cast(subclassSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), dataType));
 									}
-									if (nullable) versions.add(-startIndex, nullRef(getRawType()));
+									if (nullable) versions.add(-startIndex, nullRef(getDecodeType()));
 									return versions;
 								})),
 						dataType));

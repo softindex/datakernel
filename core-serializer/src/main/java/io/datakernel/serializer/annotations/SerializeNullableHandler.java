@@ -17,11 +17,11 @@
 package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.HasNullable;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerDefBuilder;
-import io.datakernel.serializer.asm.SerializerDefNullable;
-import io.datakernel.serializer.asm.SerializerDefString;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefNullable;
+import io.datakernel.serializer.impl.SerializerDefString;
+import io.datakernel.serializer.impl.SerializerDefWithNullable;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3;
@@ -32,9 +32,9 @@ public final class SerializeNullableHandler implements AnnotationHandler<Seriali
 		return (type, generics, target) -> {
 			checkArgument(!type.isPrimitive(), "Type must not represent a primitive type");
 			if (target instanceof SerializerDefString)
-				return ((SerializerDefString) target).withNullable();
-			if (compatibilityLevel.compareTo(LEVEL_3) >= 0 && target instanceof HasNullable) {
-				return ((HasNullable) target).withNullable();
+				return ((SerializerDefString) target).ensureNullable();
+			if (compatibilityLevel.compareTo(LEVEL_3) >= 0 && target instanceof SerializerDefWithNullable) {
+				return ((SerializerDefWithNullable) target).ensureNullable();
 			}
 			return new SerializerDefNullable(target);
 		};
