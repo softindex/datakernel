@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.IN;
 import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.impl.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
@@ -84,7 +84,7 @@ public abstract class AbstractSerializerDefMap implements SerializerDefWithNulla
 	@Override
 	public final Expression defineEncoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return staticEncoders.define(encodeType, buf, pos, value,
-				encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+				encoder(staticEncoders, BUF, POS, VALUE, version, compatibilityLevel));
 	}
 
 	@Override
@@ -105,7 +105,7 @@ public abstract class AbstractSerializerDefMap implements SerializerDefWithNulla
 	@Override
 	public final Expression defineDecoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return staticDecoders.define(getDecodeType(), in,
-				decoder(staticDecoders, methodIn(), version, compatibilityLevel));
+				decoder(staticDecoders, IN, version, compatibilityLevel));
 	}
 
 	@Override

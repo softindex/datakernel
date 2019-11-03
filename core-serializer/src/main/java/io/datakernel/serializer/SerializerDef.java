@@ -53,11 +53,9 @@ public interface SerializerDef {
 	}
 
 	interface StaticEncoders {
-		static Expression methodBuf() { return arg(0);}
-
-		static Variable methodPos() { return arg(1);}
-
-		static Expression methodValue() { return arg(2);}
+		Expression BUF = arg(0);
+		Variable POS = arg(1);
+		Variable VALUE = arg(2);
 
 		Expression define(Class<?> valueClazz, Expression buf, Variable pos, Expression value, Expression method);
 	}
@@ -79,7 +77,7 @@ public interface SerializerDef {
 	Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel);
 
 	interface StaticDecoders {
-		static Expression methodIn() { return arg(0);}
+		Variable IN = arg(0);
 
 		Expression define(Class<?> valueClazz, Expression in, Expression method);
 
@@ -87,8 +85,7 @@ public interface SerializerDef {
 	}
 
 	/**
-	 * Deserializes object of {@code targetType} from byte array
-	 *
+	 * Deserializes object from byte array
 	 *
 	 * @param staticDecoders
 	 * @param in                 BinaryInput

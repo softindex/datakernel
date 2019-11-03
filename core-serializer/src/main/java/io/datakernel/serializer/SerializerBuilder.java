@@ -42,7 +42,6 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.Utils.of;
-import static io.datakernel.serializer.SerializerDef.StaticEncoders.methodPos;
 import static io.datakernel.serializer.Utils.findAnnotation;
 import static io.datakernel.serializer.impl.SerializerExpressions.readByte;
 import static io.datakernel.serializer.impl.SerializerExpressions.writeByte;
@@ -895,7 +894,7 @@ public final class SerializerBuilder {
 						break;
 				}
 				classBuilder.withStaticMethod(methodName, int.class, asList(byte[].class, int.class, valueClazz),
-						sequence(method, methodPos()));
+						sequence(method, POS));
 				return set(pos, callStaticSelf(methodName, buf, pos, cast(value, valueClazz)));
 			}
 		};

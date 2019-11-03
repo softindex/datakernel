@@ -25,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.IN;
 import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.impl.SerializerExpressions.*;
 import static java.util.Collections.emptySet;
@@ -81,7 +81,7 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 			return encoder(staticEncoders, buf, pos, value, version, compatibilityLevel);
 		} else {
 			return staticEncoders.define(type, buf, pos, value,
-					encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+					encoder(staticEncoders, BUF, POS, VALUE, version, compatibilityLevel));
 		}
 	}
 
@@ -129,7 +129,7 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 			return decoder(staticDecoders, in, version, compatibilityLevel);
 		} else {
 			return staticDecoders.define(getDecodeType(), in,
-					decoder(staticDecoders, methodIn(), version, compatibilityLevel));
+					decoder(staticDecoders, IN, version, compatibilityLevel));
 		}
 	}
 

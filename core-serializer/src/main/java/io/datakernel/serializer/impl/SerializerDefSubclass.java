@@ -29,7 +29,7 @@ import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Utils.of;
-import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.IN;
 import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
 import static io.datakernel.serializer.impl.SerializerExpressions.readByte;
 import static io.datakernel.serializer.impl.SerializerExpressions.writeByte;
@@ -81,7 +81,7 @@ public final class SerializerDefSubclass implements SerializerDefWithNullable {
 	@Override
 	public Expression defineEncoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return staticEncoders.define(dataType, buf, pos, value,
-				encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+				encoder(staticEncoders, BUF, POS, VALUE, version, compatibilityLevel));
 	}
 
 	@Override
@@ -115,7 +115,7 @@ public final class SerializerDefSubclass implements SerializerDefWithNullable {
 	@Override
 	public Expression defineDecoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return staticDecoders.define(getDecodeType(), in,
-				decoder(staticDecoders, methodIn(), version, compatibilityLevel));
+				decoder(staticDecoders, IN, version, compatibilityLevel));
 
 	}
 

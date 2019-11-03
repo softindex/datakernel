@@ -32,7 +32,7 @@ import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.*;
-import static io.datakernel.serializer.SerializerDef.StaticDecoders.methodIn;
+import static io.datakernel.serializer.SerializerDef.StaticDecoders.IN;
 import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
@@ -235,7 +235,7 @@ public final class SerializerDefClass implements SerializerDef {
 		return fields.size() <= 1 ?
 				encoder(staticEncoders, buf, pos, value, version, compatibilityLevel) :
 				staticEncoders.define(encodeType, buf, pos, value,
-						encoder(staticEncoders, methodBuf(), methodPos(), methodValue(), version, compatibilityLevel));
+						encoder(staticEncoders, BUF, POS, VALUE, version, compatibilityLevel));
 	}
 
 	@Override
@@ -267,7 +267,7 @@ public final class SerializerDefClass implements SerializerDef {
 		return fields.size() <= 1 ?
 				decoder(staticDecoders, in, version, compatibilityLevel) :
 				staticDecoders.define(getDecodeType(), in,
-						decoder(staticDecoders, methodIn(), version, compatibilityLevel));
+						decoder(staticDecoders, IN, version, compatibilityLevel));
 	}
 
 	@Override
