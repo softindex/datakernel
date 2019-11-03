@@ -23,12 +23,12 @@ import java.util.List;
 
 import static org.objectweb.asm.Type.getType;
 
-final class ExpressionCallStatic implements Expression {
+final class ExpressionStaticCall implements Expression {
 	private final Class<?> owner;
 	private final String name;
 	private final List<Expression> arguments;
 
-	ExpressionCallStatic(@NotNull Class<?> owner, @NotNull String name, @NotNull List<Expression> arguments) {
+	ExpressionStaticCall(@NotNull Class<?> owner, @NotNull String name, @NotNull List<Expression> arguments) {
 		this.owner = owner;
 		this.name = name;
 		this.arguments = arguments;

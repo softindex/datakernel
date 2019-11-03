@@ -56,7 +56,7 @@ public final class SerializerExpressions {
 
 	@NotNull
 	private static Expression getUnsafe() {
-		return callStatic(JDK_UNSAFE, "getUnsafe");
+		return staticCall(JDK_UNSAFE, "getUnsafe");
 	}
 
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes) {
@@ -65,13 +65,13 @@ public final class SerializerExpressions {
 
 	public static Expression writeBytes(Expression buf, Variable pos, Expression bytes, Expression bytesOff, Expression bytesLen) {
 		return sequence(
-				callStatic(System.class, "arraycopy", bytes, bytesOff, buf, pos, bytesLen),
+				staticCall(System.class, "arraycopy", bytes, bytesOff, buf, pos, bytesLen),
 				set(pos, add(pos, bytesLen)));
 	}
 
 	public static Expression writeByte(Expression buf, Variable pos, Expression value) {
 		return sequence(
-				setArrayItem(buf, pos, value),
+				arraySet(buf, pos, value),
 				set(pos, add(pos, value(1))));
 	}
 
@@ -82,25 +82,25 @@ public final class SerializerExpressions {
 	public static Expression writeShort(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return JDK_UNSAFE != null ?
 				putUnaligned(buf, pos, value, "putShortUnaligned", Short.class, 2, bigEndian) :
-				set(pos, callStatic(BinaryOutputUtils.class, "writeShort" + (bigEndian ? "" : "LE"), buf, pos, cast(value, short.class)));
+				set(pos, staticCall(BinaryOutputUtils.class, "writeShort" + (bigEndian ? "" : "LE"), buf, pos, cast(value, short.class)));
 	}
 
 	public static Expression writeChar(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return JDK_UNSAFE != null ?
 				putUnaligned(buf, pos, value, "putCharUnaligned", Character.class, 2, bigEndian) :
-				set(pos, callStatic(BinaryOutputUtils.class, "writeChar" + (bigEndian ? "" : "LE"), buf, pos, cast(value, char.class)));
+				set(pos, staticCall(BinaryOutputUtils.class, "writeChar" + (bigEndian ? "" : "LE"), buf, pos, cast(value, char.class)));
 	}
 
 	public static Expression writeInt(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return JDK_UNSAFE != null ?
 				putUnaligned(buf, pos, value, "putIntUnaligned", Integer.class, 4, bigEndian) :
-				set(pos, callStatic(BinaryOutputUtils.class, "writeInt" + (bigEndian ? "" : "LE"), buf, pos, cast(value, int.class)));
+				set(pos, staticCall(BinaryOutputUtils.class, "writeInt" + (bigEndian ? "" : "LE"), buf, pos, cast(value, int.class)));
 	}
 
 	public static Expression writeLong(Expression buf, Variable pos, Expression value, boolean bigEndian) {
 		return JDK_UNSAFE != null ?
 				putUnaligned(buf, pos, value, "putLongUnaligned", Long.class, 8, bigEndian) :
-				set(pos, callStatic(BinaryOutputUtils.class, "writeLong" + (bigEndian ? "" : "LE"), buf, pos, cast(value, long.class)));
+				set(pos, staticCall(BinaryOutputUtils.class, "writeLong" + (bigEndian ? "" : "LE"), buf, pos, cast(value, long.class)));
 	}
 
 	private static Expression putUnaligned(Expression buf, Variable pos, Expression value, String name, Class<?> numericType, int size, boolean bigEndian) {
@@ -113,20 +113,20 @@ public final class SerializerExpressions {
 
 	public static Expression writeVarInt(Expression buf, Variable pos, Expression value) {
 		return set(pos,
-				callStatic(BinaryOutputUtils.class, "writeVarInt", buf, pos, cast(value, int.class)));
+				staticCall(BinaryOutputUtils.class, "writeVarInt", buf, pos, cast(value, int.class)));
 	}
 
 	public static Expression writeVarLong(Expression buf, Variable pos, Expression value) {
 		return set(pos,
-				callStatic(BinaryOutputUtils.class, "writeVarLong", buf, pos, cast(value, long.class)));
+				staticCall(BinaryOutputUtils.class, "writeVarLong", buf, pos, cast(value, long.class)));
 	}
 
 	public static Expression writeFloat(Expression buf, Variable pos, Expression value, boolean bigEndian) {
-		return writeInt(buf, pos, callStatic(Float.class, "floatToIntBits", cast(value, float.class)), bigEndian);
+		return writeInt(buf, pos, staticCall(Float.class, "floatToIntBits", cast(value, float.class)), bigEndian);
 	}
 
 	public static Expression writeDouble(Expression buf, Variable pos, Expression value, boolean bigEndian) {
-		return writeLong(buf, pos, callStatic(Double.class, "doubleToLongBits", cast(value, double.class)), bigEndian);
+		return writeLong(buf, pos, staticCall(Double.class, "doubleToLongBits", cast(value, double.class)), bigEndian);
 	}
 
 	public static Expression ensureRemaining(Expression buf, Variable pos, int size, Expression next) {
@@ -215,7 +215,7 @@ public final class SerializerExpressions {
 	private static Expression convEndian(Expression numericValue, Class<?> numericType, boolean bigEndian) {
 		return BIG_ENDIAN == bigEndian ?
 				numericValue :
-				callStatic(numericType, "reverseBytes", numericValue);
+				staticCall(numericType, "reverseBytes", numericValue);
 	}
 
 	public static Expression readVarInt(Expression in) {
@@ -227,11 +227,11 @@ public final class SerializerExpressions {
 	}
 
 	public static Expression readFloat(Expression in, boolean bigEndian) {
-		return callStatic(Float.class, "intBitsToFloat", readInt(in, bigEndian));
+		return staticCall(Float.class, "intBitsToFloat", readInt(in, bigEndian));
 	}
 
 	public static Expression readDouble(Expression in, boolean bigEndian) {
-		return callStatic(Double.class, "longBitsToDouble", readLong(in, bigEndian));
+		return staticCall(Double.class, "longBitsToDouble", readLong(in, bigEndian));
 	}
 
 }

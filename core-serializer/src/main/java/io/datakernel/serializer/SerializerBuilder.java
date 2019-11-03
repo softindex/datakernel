@@ -895,7 +895,7 @@ public final class SerializerBuilder {
 				}
 				classBuilder.withStaticMethod(methodName, int.class, asList(byte[].class, int.class, valueClazz),
 						sequence(method, POS));
-				return set(pos, callStaticSelf(methodName, buf, pos, cast(value, valueClazz)));
+				return set(pos, staticCallSelf(methodName, buf, pos, cast(value, valueClazz)));
 			}
 		};
 	}
@@ -916,7 +916,7 @@ public final class SerializerBuilder {
 				}
 
 				classBuilder.withStaticMethod(methodName, valueClazz, asList(BinaryInput.class), method);
-				return callStaticSelf(methodName, in);
+				return staticCallSelf(methodName, in);
 			}
 
 			@Override

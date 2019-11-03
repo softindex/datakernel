@@ -53,14 +53,14 @@ public class SerializerDefByteBuf implements SerializerDefWithNullable {
 	@Override
 	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos,
-				callStatic(SerializerDefByteBuf.class,
+				staticCall(SerializerDefByteBuf.class,
 						"write" + (writeWithRecycle ? "Recycle" : "") + (nullable ? "Nullable" : ""),
 						buf, pos, cast(value, ByteBuf.class)));
 	}
 
 	@Override
 	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerDefByteBuf.class,
+		return staticCall(SerializerDefByteBuf.class,
 				"read" + (wrap ? "Slice" : "") + (nullable ? "Nullable" : ""),
 				in);
 	}

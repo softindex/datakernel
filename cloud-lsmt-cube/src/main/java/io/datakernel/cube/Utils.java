@@ -72,13 +72,13 @@ public final class Utils {
 				.withClassKey(recordClass, new HashSet<>(recordDimensions))
 				.withMethod("extractKey",
 						let(
-								newArray(Object[].class, value(recordDimensions.size())),
+								arrayNew(Object[].class, value(recordDimensions.size())),
 								key -> sequence(expressions -> {
 									for (int i = 0; i < recordDimensions.size(); i++) {
 										String dimension = recordDimensions.get(i);
-										expressions.add(setArrayItem(key, value(i),
+										expressions.add(arraySet(key, value(i),
 												fullySpecifiedDimensions.containsKey(dimension) ?
-														getArrayItem(value(fullySpecifiedDimensionsArray), value(i)) :
+														arrayGet(value(fullySpecifiedDimensionsArray), value(i)) :
 														cast(property(cast(arg(0), recordClass), dimension), Object.class)));
 									}
 									expressions.add(key);
@@ -95,7 +95,7 @@ public final class Utils {
 								int resolverAttributeIndex = resolverAttributes.indexOf(attributeName);
 								expressions.add(set(
 										property(cast(arg(0), recordClass), attribute.replace('.', '$')),
-										getArrayItem(arg(1), value(resolverAttributeIndex))));
+										arrayGet(arg(1), value(resolverAttributeIndex))));
 							}
 						}))
 				.buildClassAndCreateNewInstance();

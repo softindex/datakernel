@@ -77,21 +77,21 @@ public final class SerializerDefString implements SerializerDefWithNullable {
 			switch (format) {
 				case ISO_8859_1:
 					return nullable ?
-							callStatic(BinaryOutputUtils.class, "writeIso88591Nullable", buf, pos, string) :
-							callStatic(BinaryOutputUtils.class, "writeIso88591", buf, pos, string);
+							staticCall(BinaryOutputUtils.class, "writeIso88591Nullable", buf, pos, string) :
+							staticCall(BinaryOutputUtils.class, "writeIso88591", buf, pos, string);
 				case UTF8:
 					return nullable ?
-							callStatic(BinaryOutputUtils.class, "writeUTF8Nullable", buf, pos, string) :
-							callStatic(BinaryOutputUtils.class, "writeUTF8", buf, pos, string);
+							staticCall(BinaryOutputUtils.class, "writeUTF8Nullable", buf, pos, string) :
+							staticCall(BinaryOutputUtils.class, "writeUTF8", buf, pos, string);
 				case UTF16:
 					String LE = compatibilityLevel.compareTo(LEVEL_3_LE) < 0 ? "" : "LE";
 					return nullable ?
-							callStatic(BinaryOutputUtils.class, "writeUTF16Nullable" + LE, buf, pos, string) :
-							callStatic(BinaryOutputUtils.class, "writeUTF16" + LE, buf, pos, string);
+							staticCall(BinaryOutputUtils.class, "writeUTF16Nullable" + LE, buf, pos, string) :
+							staticCall(BinaryOutputUtils.class, "writeUTF16" + LE, buf, pos, string);
 				case UTF8_MB3:
 					return nullable ?
-							callStatic(BinaryOutputUtils.class, "writeUTF8mb3Nullable", buf, pos, string) :
-							callStatic(BinaryOutputUtils.class, "writeUTF8mb3", buf, pos, string);
+							staticCall(BinaryOutputUtils.class, "writeUTF8mb3Nullable", buf, pos, string) :
+							staticCall(BinaryOutputUtils.class, "writeUTF8mb3", buf, pos, string);
 				default:
 					throw new AssertionError();
 			}

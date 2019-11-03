@@ -1060,7 +1060,7 @@ public class AggregationPredicates {
 			return E.cmpNe(
 					E.value(false),
 					E.call(E.call(E.value(Pattern.compile(regexp)), "matcher",
-							E.callStatic(String.class, "valueOf",
+							E.staticCall(String.class, "valueOf",
 									E.property(record, key.replace('.', '$')))), "matches"));
 		}
 

@@ -47,7 +47,7 @@ public final class MeasureMin extends Measure {
 	@Override
 	public Expression reduce(Variable accumulator,
 			Variable nextAccumulator) {
-		return set(accumulator, callStatic(Math.class, "min", accumulator, nextAccumulator));
+		return set(accumulator, staticCall(Math.class, "min", accumulator, nextAccumulator));
 	}
 
 	@Override
@@ -59,6 +59,6 @@ public final class MeasureMin extends Measure {
 	@Override
 	public Expression accumulate(Variable accumulator,
 			Variable nextValue) {
-		return set(accumulator, callStatic(Math.class, "min", accumulator, nextValue));
+		return set(accumulator, staticCall(Math.class, "min", accumulator, nextValue));
 	}
 }

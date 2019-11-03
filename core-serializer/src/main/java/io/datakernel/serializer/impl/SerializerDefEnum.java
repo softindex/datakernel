@@ -77,16 +77,16 @@ public final class SerializerDefEnum implements SerializerDefWithNullable {
 		return isSmallEnum() ?
 				let(readByte(in), b ->
 						!nullable ?
-								getArrayItem(callStatic(enumType, "values"), b) :
+								arrayGet(staticCall(enumType, "values"), b) :
 								ifThenElse(cmpEq(b, value((byte) 0)),
 										nullRef(enumType),
-										getArrayItem(callStatic(enumType, "values"), dec(b)))) :
+										arrayGet(staticCall(enumType, "values"), dec(b)))) :
 				let(readVarInt(in), value ->
 						!nullable ?
-								getArrayItem(callStatic(enumType, "values"), value) :
+								arrayGet(staticCall(enumType, "values"), value) :
 								ifThenElse(cmpEq(value, value(0)),
 										nullRef(enumType),
-										getArrayItem(callStatic(enumType, "values"), dec(value))));
+										arrayGet(staticCall(enumType, "values"), dec(value))));
 	}
 
 	private boolean isSmallEnum() {

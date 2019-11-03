@@ -23,7 +23,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.callStatic;
+import static io.datakernel.codegen.Expressions.staticCall;
 import static io.datakernel.codegen.Expressions.value;
 
 public final class SerializerDefSet extends AbstractSerializerDefCollection {
@@ -42,7 +42,7 @@ public final class SerializerDefSet extends AbstractSerializerDefCollection {
 	@Override
 	protected Expression createConstructor(Expression length) {
 		if (valueSerializer.getDecodeType().isEnum()) {
-			return callStatic(EnumSet.class, "noneOf", value(valueSerializer.getEncodeType()));
+			return staticCall(EnumSet.class, "noneOf", value(valueSerializer.getEncodeType()));
 		}
 		return super.createConstructor(length);
 	}

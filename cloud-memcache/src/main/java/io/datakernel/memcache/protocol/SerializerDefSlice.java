@@ -43,14 +43,14 @@ public class SerializerDefSlice implements SerializerDefWithNullable {
 	@Override
 	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos,
-				callStatic(SerializerDefSlice.class,
+				staticCall(SerializerDefSlice.class,
 						"write" + (nullable ? "Nullable" : ""),
 						buf, pos, cast(value, Slice.class)));
 	}
 
 	@Override
 	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerDefSlice.class,
+		return staticCall(SerializerDefSlice.class,
 				"read" + (nullable ? "Nullable" : ""),
 				in);
 	}

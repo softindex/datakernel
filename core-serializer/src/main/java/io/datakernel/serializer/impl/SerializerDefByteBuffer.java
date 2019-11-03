@@ -88,33 +88,33 @@ public final class SerializerDefByteBuffer implements SerializerDefWithNullable 
 						length -> {
 							if (!nullable) {
 								return let(
-										newArray(byte[].class, length),
+										arrayNew(byte[].class, length),
 										array ->
 												sequence(length,
 														readBytes(in, array),
-														callStatic(ByteBuffer.class, "wrap", array)));
+														staticCall(ByteBuffer.class, "wrap", array)));
 							} else {
 								return let(
-										newArray(byte[].class, dec(length)),
+										arrayNew(byte[].class, dec(length)),
 										array ->
 												ifThenElse(cmpEq(length, value(0)),
 														nullRef(ByteBuffer.class),
 														sequence(length,
 																readBytes(in, array),
-																callStatic(ByteBuffer.class, "wrap", array))));
+																staticCall(ByteBuffer.class, "wrap", array))));
 							}
 						}) :
 				let(readVarInt(in),
 						length -> {
 							if (!nullable) {
-								return let(callStatic(ByteBuffer.class, "wrap", array(in), pos(in), length),
+								return let(staticCall(ByteBuffer.class, "wrap", array(in), pos(in), length),
 										buf -> sequence(
 												move(in, length),
 												buf));
 							} else {
 								return ifThenElse(cmpEq(length, value(0)),
 										nullRef(ByteBuffer.class),
-										let(callStatic(ByteBuffer.class, "wrap", array(in), pos(in), dec(length)),
+										let(staticCall(ByteBuffer.class, "wrap", array(in), pos(in), dec(length)),
 												result -> sequence(
 														move(in, length),
 														result)));

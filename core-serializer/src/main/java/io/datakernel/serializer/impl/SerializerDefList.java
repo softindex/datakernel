@@ -17,7 +17,6 @@
 package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerDef;
@@ -126,11 +125,11 @@ public final class SerializerDefList implements SerializerDefWithNullable {
 	}
 
 	private Expression doDecode(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel, Expression size) {
-		return let(Expressions.newArray(Object[].class, size),
+		return let(arrayNew(Object[].class, size),
 				array -> sequence(
 						loop(value(0), size,
-								i -> setArrayItem(array, i,
+								i -> arraySet(array, i,
 										cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), elementType))),
-						callStatic(Arrays.class, "asList", array)));
+						staticCall(Arrays.class, "asList", array)));
 	}
 }

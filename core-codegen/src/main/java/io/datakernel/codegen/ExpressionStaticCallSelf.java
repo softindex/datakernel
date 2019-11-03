@@ -16,27 +16,22 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.common.Preconditions.checkArgument;
-import static org.objectweb.asm.Type.getType;
+import java.util.List;
 
-final class ExpressionNewArray implements Expression {
-	private final Class<?> type;
-	private final Expression length;
+final class ExpressionStaticCallSelf implements Expression {
+	private final String methodName;
+	private final List<Expression> arguments;
 
-	ExpressionNewArray(Class<?> type, Expression length) {
-		this.type = checkArgument(type, Class::isArray);
-		this.length = length;
+	public ExpressionStaticCallSelf(@NotNull String methodName, @NotNull List<Expression> expressions) {
+		this.methodName = methodName;
+		this.arguments = expressions;
 	}
 
 	@Override
 	public Type load(Context ctx) {
-		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		length.load(ctx);
-		assert getType(type).getSort() == Type.ARRAY;
-		g.newArray(getType(getType(type).getDescriptor().substring(1)));
-		return getType(type);
+		return ctx.invokeStatic(ctx.getSelfType(), methodName, arguments);
 	}
 }

@@ -51,9 +51,9 @@ public final class SerializerDefInet6Address implements SerializerDef {
 
 	@Override
 	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
-		return let(newArray(byte[].class, value(16)), array ->
+		return let(arrayNew(byte[].class, value(16)), array ->
 				sequence(
 						readBytes(in, array),
-						callStatic(getDecodeType(), "getByAddress", array)));
+						staticCall(getDecodeType(), "getByAddress", array)));
 	}
 }

@@ -356,7 +356,7 @@ public final class SerializerDefClass implements SerializerDef {
 				param[i++] = pushDefaultValue(fieldDef.getAsmType());
 			}
 		}
-		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
+		return staticCall(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
 	private Expression callConstructor(Class<?> targetType, Map<String, Expression> map, int version) {

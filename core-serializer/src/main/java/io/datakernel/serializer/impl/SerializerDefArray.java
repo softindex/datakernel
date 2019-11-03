@@ -107,7 +107,7 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 			Expression methodLength = fixedSize != -1 ? value(fixedSize) : length(cast(value, type));
 
 			Expression writeCollection = loop(value(0), methodLength,
-					it -> valueSerializer.defineEncoder(staticEncoders, buf, pos, getArrayItem(cast(value, type), it), version, compatibilityLevel));
+					it -> valueSerializer.defineEncoder(staticEncoders, buf, pos, arrayGet(cast(value, type), it), version, compatibilityLevel));
 
 			if (!nullable) {
 				return sequence(
@@ -138,14 +138,14 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 		if (type.getComponentType() == Byte.TYPE) {
 			return !nullable ?
 					let(readVarInt(in), len ->
-							let(newArray(type, len), array ->
+							let(arrayNew(type, len), array ->
 									sequence(
 											readBytes(in, array),
 											array))) :
 					let(readVarInt(in), len ->
 							ifThenElse(cmpEq(len, value(0)),
 									nullRef(type),
-									let(newArray(type, dec(len)), array ->
+									let(arrayNew(type, dec(len)), array ->
 											sequence(
 													readBytes(in, array),
 													array)
@@ -154,19 +154,19 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 
 		return !nullable ?
 				let(readVarInt(in), len ->
-						let(newArray(type, len), array ->
+						let(arrayNew(type, len), array ->
 								sequence(
 										loop(value(0), len,
-												i -> setArrayItem(array, i,
+												i -> arraySet(array, i,
 														cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
 										array))) :
 				let(readVarInt(in), len ->
 						ifThenElse(cmpEq(len, value(0)),
 								nullRef(type),
-								let(newArray(type, dec(len)), array ->
+								let(arrayNew(type, dec(len)), array ->
 										sequence(
 												loop(value(0), dec(len),
-														i -> setArrayItem(array, i,
+														i -> arraySet(array, i,
 																cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
 												array)
 								)));

@@ -147,7 +147,7 @@ public class ComputedMeasures {
 						value ->
 								E.ifThenElse(E.cmpLe(value, E.value(0.0d)),
 										E.value(0.0d),
-										E.callStatic(Math.class, "sqrt", value)));
+										E.staticCall(Math.class, "sqrt", value)));
 			}
 		};
 	}
