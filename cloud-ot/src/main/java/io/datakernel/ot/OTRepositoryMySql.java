@@ -81,6 +81,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseIsSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseUpdateHeads = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseHasSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseLoadSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseSaveSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 
@@ -265,31 +266,6 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 
 	@NotNull
 	@Override
-	public Promise<Optional<List<D>>> loadSnapshot(@NotNull Long revisionId) {
-		return Promise.ofBlockingCallable(executor,
-				() -> {
-					try (Connection connection = dataSource.getConnection()) {
-						try (PreparedStatement ps = connection.prepareStatement(sql(
-								"SELECT `snapshot` FROM {revisions} WHERE `id`=?"
-						))) {
-							ps.setLong(1, revisionId);
-							ResultSet resultSet = ps.executeQuery();
-
-							if (!resultSet.next()) return Optional.<List<D>>empty();
-
-							String str = resultSet.getString(1);
-							if (str == null) return Optional.<List<D>>empty();
-							List<? extends D> snapshot = fromJson(str);
-							return Optional.of(otSystem.squash(snapshot));
-						}
-					}
-				})
-				.whenComplete(promiseLoadSnapshot.recordStats())
-				.whenComplete(toLogger(logger, thisMethod(), revisionId));
-	}
-
-	@NotNull
-	@Override
 	public Promise<OTCommit<Long, D>> loadCommit(@NotNull Long revisionId) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
@@ -336,6 +312,51 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 					}
 				})
 				.whenComplete(promiseLoadCommit.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
+	}
+
+	@NotNull
+	@Override
+	public Promise<Boolean> hasSnapshot(@NotNull Long revisionId) {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement ps = connection.prepareStatement(sql(
+								"SELECT `snapshot` IS NOT NULL FROM {revisions} WHERE `id`=?"
+						))) {
+							ps.setLong(1, revisionId);
+							ResultSet resultSet = ps.executeQuery();
+							if (!resultSet.next()) return false;
+							return resultSet.getBoolean(1);
+						}
+					}
+				})
+				.whenComplete(promiseHasSnapshot.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
+	}
+
+	@NotNull
+	@Override
+	public Promise<Optional<List<D>>> loadSnapshot(@NotNull Long revisionId) {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement ps = connection.prepareStatement(sql(
+								"SELECT `snapshot` FROM {revisions} WHERE `id`=?"
+						))) {
+							ps.setLong(1, revisionId);
+							ResultSet resultSet = ps.executeQuery();
+
+							if (!resultSet.next()) return Optional.<List<D>>empty();
+
+							String str = resultSet.getString(1);
+							if (str == null) return Optional.<List<D>>empty();
+							List<? extends D> snapshot = fromJson(str);
+							return Optional.of(otSystem.squash(snapshot));
+						}
+					}
+				})
+				.whenComplete(promiseLoadSnapshot.recordStats())
 				.whenComplete(toLogger(logger, thisMethod(), revisionId));
 	}
 
@@ -465,6 +486,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@JmxAttribute
 	public PromiseStats getPromiseIsSnapshot() {
 		return promiseIsSnapshot;
+	}
+
+	@JmxAttribute
+	public PromiseStats getPromiseHasSnapshot() {
+		return promiseHasSnapshot;
 	}
 
 	@JmxAttribute
