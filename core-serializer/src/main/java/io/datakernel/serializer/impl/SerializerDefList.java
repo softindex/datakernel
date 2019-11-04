@@ -87,24 +87,24 @@ public final class SerializerDefList implements SerializerDefWithNullable {
 	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression list, int version, CompatibilityLevel compatibilityLevel) {
 		if (!nullable) {
 			return let(call(list, "size"),
-					size -> sequence(
-							writeVarInt(buf, pos, size),
-							doEncode(staticEncoders, buf, pos, list, version, compatibilityLevel, size)));
+					len -> sequence(
+							writeVarInt(buf, pos, len),
+							doEncode(staticEncoders, buf, pos, list, version, compatibilityLevel, len)));
 		} else {
 			return ifThenElse(isNull(list),
 					writeByte(buf, pos, value((byte) 0)),
 					let(call(list, "size"),
-							size -> sequence(
-									writeVarInt(buf, pos, inc(size)),
-									doEncode(staticEncoders, buf, pos, list, version, compatibilityLevel, size))));
+							len -> sequence(
+									writeVarInt(buf, pos, inc(len)),
+									doEncode(staticEncoders, buf, pos, list, version, compatibilityLevel, len))));
 		}
 	}
 
 	@NotNull
-	private Expression doEncode(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel, Expression size) {
-		return loop(value(0), size,
-				i -> let(call(value, "get", i), item ->
-						valueSerializer.defineEncoder(staticEncoders, buf, pos, cast(item, valueSerializer.getEncodeType()), version, compatibilityLevel)));
+	private Expression doEncode(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel, Expression len) {
+		return loop(value(0), len,
+				i -> let(call(value, "get", i),
+						item -> valueSerializer.defineEncoder(staticEncoders, buf, pos, cast(item, valueSerializer.getEncodeType()), version, compatibilityLevel)));
 	}
 
 	@Override
@@ -116,18 +116,18 @@ public final class SerializerDefList implements SerializerDefWithNullable {
 	@Override
 	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		return let(readVarInt(in),
-				size -> !nullable ?
-						doDecode(staticDecoders, in, version, compatibilityLevel, size) :
-						ifThenElse(cmpEq(size, value(0)),
+				len -> !nullable ?
+						doDecode(staticDecoders, in, version, compatibilityLevel, len) :
+						ifThenElse(cmpEq(len, value(0)),
 								nullRef(decodeType),
-								let(dec(size),
-										size0 -> doDecode(staticDecoders, in, version, compatibilityLevel, size0))));
+								let(dec(len),
+										len0 -> doDecode(staticDecoders, in, version, compatibilityLevel, len0))));
 	}
 
-	private Expression doDecode(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel, Expression size) {
-		return let(arrayNew(Object[].class, size),
+	private Expression doDecode(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel, Expression len) {
+		return let(arrayNew(Object[].class, len),
 				array -> sequence(
-						loop(value(0), size,
+						loop(value(0), len,
 								i -> arraySet(array, i,
 										cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), elementType))),
 						staticCall(Arrays.class, "asList", array)));

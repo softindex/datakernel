@@ -107,7 +107,7 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 			Expression methodLength = fixedSize != -1 ? value(fixedSize) : length(cast(value, type));
 
 			Expression writeCollection = loop(value(0), methodLength,
-					it -> valueSerializer.defineEncoder(staticEncoders, buf, pos, arrayGet(cast(value, type), it), version, compatibilityLevel));
+					i -> valueSerializer.defineEncoder(staticEncoders, buf, pos, arrayGet(cast(value, type), i), version, compatibilityLevel));
 
 			if (!nullable) {
 				return sequence(
@@ -136,39 +136,36 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 	@Override
 	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
 		if (type.getComponentType() == Byte.TYPE) {
-			return !nullable ?
-					let(readVarInt(in), len ->
-							let(arrayNew(type, len), array ->
-									sequence(
+			return let(readVarInt(in),
+					len -> !nullable ?
+							let(arrayNew(type, len),
+									array -> sequence(
 											readBytes(in, array),
-											array))) :
-					let(readVarInt(in), len ->
+											array)) :
 							ifThenElse(cmpEq(len, value(0)),
 									nullRef(type),
-									let(arrayNew(type, dec(len)), array ->
-											sequence(
-													readBytes(in, array),
-													array)
-									)));
+									let(arrayNew(type, dec(len)),
+											array -> sequence(
+													readBytes(in, array, value(0), dec(len)),
+													array))));
 		}
 
-		return !nullable ?
-				let(readVarInt(in), len ->
-						let(arrayNew(type, len), array ->
-								sequence(
-										loop(value(0), len,
-												i -> arraySet(array, i,
-														cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
-										array))) :
-				let(readVarInt(in), len ->
+		return let(readVarInt(in),
+				len -> !nullable ?
+						doDecode(staticDecoders, in, version, compatibilityLevel, len) :
 						ifThenElse(cmpEq(len, value(0)),
 								nullRef(type),
-								let(arrayNew(type, dec(len)), array ->
-										sequence(
-												loop(value(0), dec(len),
-														i -> arraySet(array, i,
-																cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
-												array)
-								)));
+								let(dec(len),
+										len0 -> doDecode(staticDecoders, in, version, compatibilityLevel, len0))));
 	}
+
+	private Expression doDecode(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel, Expression size) {
+		return let(arrayNew(type, size),
+				array -> sequence(
+						loop(value(0), size,
+								i -> arraySet(array, i,
+										cast(valueSerializer.defineDecoder(staticDecoders, in, version, compatibilityLevel), type.getComponentType()))),
+						array));
+	}
+
 }

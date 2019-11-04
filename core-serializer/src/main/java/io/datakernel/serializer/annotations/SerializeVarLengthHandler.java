@@ -22,14 +22,13 @@ import io.datakernel.serializer.impl.SerializerDefBuilder;
 import io.datakernel.serializer.impl.SerializerDefWithVarLength;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3;
 
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
 	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, target) -> {
 			checkArgument(generics.length == 0, "Type should have no generics");
-			if (compatibilityLevel.compareTo(LEVEL_3) >= 0 && target instanceof SerializerDefWithVarLength) {
+			if (target instanceof SerializerDefWithVarLength) {
 				return ((SerializerDefWithVarLength) target).ensureVarLength();
 			}
 			throw new IllegalArgumentException("Unsupported type " + type);
