@@ -7,7 +7,7 @@ You can add this module to your project by inserting the following dependency to
 <dependency>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel-boot</artifactId>
-    <version>3.0-SNAPSHOT</version>
+    <version>3.0.1</version>
 </dependency>
 ```
 

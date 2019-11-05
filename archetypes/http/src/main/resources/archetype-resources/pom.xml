@@ -27,7 +27,7 @@
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>datakernel-launchers-http</artifactId>
-            <version>3.0-SNAPSHOT</version>
+            <version>3.0.1</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
