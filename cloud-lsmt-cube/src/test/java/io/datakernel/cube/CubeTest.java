@@ -20,7 +20,6 @@ import io.datakernel.aggregation.*;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
-import io.datakernel.datastream.StreamConsumerWithResult;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
@@ -110,10 +109,8 @@ public final class CubeTest {
 
 	@SuppressWarnings("unchecked")
 	private static <T> Promise<Void> consume(Cube cube, AggregationChunkStorage<Long> chunkStorage, T item, T... items) {
-		StreamConsumerWithResult<T, CubeDiff> consumer = (StreamConsumerWithResult<T, CubeDiff>) cube.consume(item.getClass());
 		return StreamSupplier.concat(StreamSupplier.of(item), StreamSupplier.of(items))
-				.streamTo(consumer.getConsumer())
-				.then($ -> consumer.getResult())
+				.streamTo(cube.consume(((Class<T>) item.getClass())))
 				.then(cubeDiff -> chunkStorage.finish(cubeDiff.<Long>addedChunks().collect(toSet()))
 						.whenResult($ -> cube.apply(cubeDiff)));
 	}

@@ -33,7 +33,6 @@ import io.datakernel.multilog.LogFile;
 import io.datakernel.multilog.LogPosition;
 import io.datakernel.multilog.Multilog;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.Promises;
 import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -70,8 +69,6 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	private final StreamStatsBasic<T> streamStatsBasic = StreamStats.basic();
 	private final StreamStatsDetailed<T> streamStatsDetailed = StreamStats.detailed();
 	private final PromiseStats promiseProcessLog = PromiseStats.create(Duration.ofMinutes(5));
-	private final PromiseStats promiseSupplier = PromiseStats.create(Duration.ofMinutes(5));
-	private final PromiseStats promiseConsumer = PromiseStats.create(Duration.ofMinutes(5));
 
 	private LogOTProcessor(Eventloop eventloop, Multilog<T> multilog, LogDataConsumer<T, D> logStreamConsumer,
 			String log, List<String> partitions, LogOTState<D> state) {
@@ -120,10 +117,7 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 
 		StreamSupplierWithResult<T, Map<String, LogPositionDiff>> supplier = getSupplier();
 		StreamConsumerWithResult<T, List<D>> consumer = logStreamConsumer.consume();
-		return supplier.getSupplier().streamTo(consumer.getConsumer())
-				.then($ -> Promises.toTuple(
-						supplier.getResult().whenComplete(promiseSupplier.recordStats()),
-						consumer.getResult().whenComplete(promiseConsumer.recordStats())))
+		return supplier.streamTo(consumer)
 				.whenComplete(promiseProcessLog.recordStats())
 				.map(result -> LogDiff.of(result.getValue1(), result.getValue2()))
 				.whenResult(logDiff ->
@@ -142,14 +136,15 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 			logger.info("Starting reading '{}' from position {}", logName, logPosition);
 
 			LogPosition logPositionFrom = logPosition;
-			StreamSupplierWithResult<T, LogPosition> supplier = StreamSupplierWithResult.ofPromise(
-					multilog.read(partition, logPosition.getLogFile(), logPosition.getPosition(), null));
-			supplier.getSupplier().streamTo(streamUnion.newInput());
-			logPositionsCollector.addPromise(supplier.getResult(), (accumulator, logPositionTo) -> {
-				if (!logPositionTo.equals(logPositionFrom)) {
-					accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
-				}
-			});
+			logPositionsCollector.addPromise(
+					StreamSupplierWithResult.ofPromise(
+							multilog.read(partition, logPosition.getLogFile(), logPosition.getPosition(), null))
+							.streamTo(streamUnion.newInput()),
+					(accumulator, logPositionTo) -> {
+						if (!logPositionTo.equals(logPositionFrom)) {
+							accumulator.put(logName, new LogPositionDiff(logPositionFrom, logPositionTo));
+						}
+					});
 		}
 		return StreamSupplierWithResult.of(
 				streamUnion.getOutput()
@@ -174,16 +169,6 @@ public final class LogOTProcessor<T, D> implements EventloopService, EventloopJm
 	@JmxAttribute
 	public PromiseStats getPromiseProcessLog() {
 		return promiseProcessLog;
-	}
-
-	@JmxAttribute
-	public PromiseStats getPromiseSupplier() {
-		return promiseSupplier;
-	}
-
-	@JmxAttribute
-	public PromiseStats getPromiseConsumer() {
-		return promiseConsumer;
 	}
 
 	@JmxAttribute

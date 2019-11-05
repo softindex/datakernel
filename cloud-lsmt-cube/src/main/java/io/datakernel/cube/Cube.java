@@ -519,7 +519,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				output = output
 						.transformWith(StreamFilter.create(filterPredicate));
 			}
-			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
+			Promise<AggregationDiff> consume = output.streamTo(aggregation.consume(inputClass, aggregationKeyFields, aggregationMeasureFields));
 			diffsCollector.addPromise(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
 		return StreamConsumerWithResult.of(streamSplitter.getInput(), diffsCollector.run().get().map(CubeDiff::of));

@@ -25,7 +25,6 @@ import io.datakernel.cube.bean.DataItemString1;
 import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.datastream.StreamConsumerToList;
-import io.datakernel.datastream.StreamConsumerWithResult;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.LocalFsClient;
@@ -78,21 +77,15 @@ public class StringDimensionTest {
 				.withMeasure("metric3", sum(ofLong()))
 				.withAggregation(id("detailedAggregation").withDimensions("key1", "key2").withMeasures("metric1", "metric2", "metric3"));
 
-		StreamConsumerWithResult<DataItemString1, CubeDiff> consumer1 = cube.consume(DataItemString1.class);
-		await(StreamSupplier.of(
+		CubeDiff consumer1Result = await(StreamSupplier.of(
 				new DataItemString1("str1", 2, 10, 20),
 				new DataItemString1("str2", 3, 10, 20))
-				.streamTo(consumer1.getConsumer()));
+				.streamTo(cube.consume(DataItemString1.class)));
 
-		CubeDiff consumer1Result = await(consumer1.getResult());
-
-		StreamConsumerWithResult<DataItemString2, CubeDiff> consumer2 = cube.consume(DataItemString2.class);
-		await(StreamSupplier.of(
+		CubeDiff consumer2Result = await(StreamSupplier.of(
 				new DataItemString2("str2", 3, 10, 20),
 				new DataItemString2("str1", 4, 10, 20))
-				.streamTo(consumer2.getConsumer()));
-
-		CubeDiff consumer2Result = await(consumer2.getResult());
+				.streamTo(cube.consume(DataItemString2.class)));
 
 		await(aggregationChunkStorage.finish(consumer1Result.addedChunks().map(id -> (long) id).collect(toSet())));
 		await(aggregationChunkStorage.finish(consumer2Result.addedChunks().map(id -> (long) id).collect(toSet())));
