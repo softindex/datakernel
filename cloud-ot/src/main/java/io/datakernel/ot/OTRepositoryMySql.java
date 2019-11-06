@@ -78,6 +78,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	private final PromiseStats promiseCreateCommitId = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promisePush = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseGetHeads = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
+	private final PromiseStats promiseHasCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseLoadCommit = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseIsSnapshot = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
 	private final PromiseStats promiseUpdateHeads = PromiseStats.create(DEFAULT_SMOOTHING_WINDOW);
@@ -264,6 +265,27 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
+	@Override
+	public @NotNull Promise<Boolean> hasCommit(@NotNull Long revisionId) {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement ps = connection.prepareStatement(sql("" +
+								"SELECT 1 " +
+								"FROM {revisions} " +
+								"WHERE {revisions}.`id`=? AND {revisions}.`type` IN ('HEAD', 'INNER')"
+						))) {
+							ps.setLong(1, revisionId);
+							ResultSet resultSet = ps.executeQuery();
+
+							return resultSet.next();
+						}
+					}
+				})
+				.whenComplete(promiseHasCommit.recordStats())
+				.whenComplete(toLogger(logger, thisMethod(), revisionId));
+	}
+
 	@NotNull
 	@Override
 	public Promise<OTCommit<Long, D>> loadCommit(@NotNull Long revisionId) {
@@ -285,7 +307,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 								" {diffs}.`diff` " +
 								"FROM {revisions} " +
 								"LEFT JOIN {diffs} ON {diffs}.`revision_id`={revisions}.`id` " +
-								"WHERE {revisions}.`id`=? AND `type` IN ('HEAD', 'INNER')"
+								"WHERE {revisions}.`id`=? AND {revisions}.`type` IN ('HEAD', 'INNER')"
 						))) {
 							ps.setLong(1, revisionId);
 							ResultSet resultSet = ps.executeQuery();
@@ -476,6 +498,11 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 	@JmxAttribute
 	public PromiseStats getPromiseGetHeads() {
 		return promiseGetHeads;
+	}
+
+	@JmxAttribute
+	public PromiseStats getPromiseHasCommit() {
+		return promiseHasCommit;
 	}
 
 	@JmxAttribute

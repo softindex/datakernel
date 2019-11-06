@@ -6,6 +6,7 @@ import io.datakernel.common.ref.Ref;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -447,6 +448,32 @@ public final class OTAlgorithms {
 
 	public static <K, D> Promise<OTLoadedGraph<K, D>> loadGraph(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads, Function<K, String> idToString, Function<D, String> diffToString) {
 		return loadGraph(repository, system, heads, new OTLoadedGraph<>(system, idToString, diffToString));
+	}
+
+	public static <K, D> Promise<Void> copy(OTRepository<K, D> from, OTRepository<K, D> to) {
+		return from.getHeads()
+				.then(heads -> toList(heads.stream().map(from::loadCommit))
+						.then(commits -> {
+							PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(comparingLong(OTCommit::getLevel)));
+							queue.addAll(commits);
+							return Promises.loop(queue.poll(), Objects::nonNull,
+									commit -> to.hasCommit(commit.getId())
+											.then(b -> {
+												if (b) return Promise.of(queue.poll());
+												return Promises.all(
+														commit.getParents().keySet().stream()
+																.map(parentId -> from.loadCommit(parentId)
+																		.whenResult(parent -> {
+																			if (!queue.contains(parent)) {
+																				queue.add(parent);
+																			}
+																		})))
+														.then($ -> to.push(commit))
+														.map($ -> queue.poll());
+											}));
+
+						})
+						.then($ -> to.updateHeads(heads, emptySet())));
 	}
 
 }

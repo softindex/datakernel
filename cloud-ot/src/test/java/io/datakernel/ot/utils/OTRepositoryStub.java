@@ -103,6 +103,11 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 		return revisionIdSupplier.get();
 	}
 
+	@Override
+	public @NotNull Promise<Boolean> hasCommit(@NotNull K revisionId) {
+		return Promise.of(commits.containsKey(revisionId));
+	}
+
 	@NotNull
 	@Override
 	public Promise<OTCommit<K, D>> loadCommit(@NotNull K revisionId) {
