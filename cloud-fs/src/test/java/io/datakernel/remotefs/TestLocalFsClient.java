@@ -68,7 +68,6 @@ public final class TestLocalFsClient {
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	private Executor executor = Executors.newSingleThreadExecutor();
 	private Path storagePath;
 	private Path clientPath;
 
