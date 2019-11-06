@@ -1,9 +1,3 @@
-<p align="center">
-  <a href="https://datakernel.io" target="_blank">
-    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="350">
-  </a>
-</p>
-
 [![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
 [![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
