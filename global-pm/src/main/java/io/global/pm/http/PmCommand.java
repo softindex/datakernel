@@ -11,7 +11,8 @@ public enum PmCommand implements HttpPathPart {
 	DROP,
 	MULTISEND,
 	MULTIPOLL,
-	MULTIDROP;
+	MULTIDROP,
+	BATCHPOLL;
 
 	@Override
 	public String toString() {

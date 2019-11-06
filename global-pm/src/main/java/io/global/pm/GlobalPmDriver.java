@@ -31,14 +31,15 @@ public final class GlobalPmDriver<T> {
 	private static final Supplier<Long> DEFAULT_ID_GENERATOR = ThreadLocalRandom.current()::nextLong;
 
 	private final GlobalPmNode node;
-	private final StructuredCodec<Tuple2<PubKey, T>> codec;
+	private final StructuredCodec<T> payloadCodec;
+	private final StructuredCodec<Tuple2<PubKey, T>> tupleCodec;
 
 	private Supplier<Long> idGenerator = DEFAULT_ID_GENERATOR;
 
 	private GlobalPmDriver(GlobalPmNode node, StructuredCodec<T> payloadCodec) {
 		this.node = node;
-
-		codec = tuple(Tuple2::new, Tuple2::getValue1, BinaryDataFormats.PUB_KEY_CODEC, Tuple2::getValue2, payloadCodec);
+		this.payloadCodec = payloadCodec;
+		tupleCodec = tuple(Tuple2::new, Tuple2::getValue1, BinaryDataFormats.PUB_KEY_CODEC, Tuple2::getValue2, payloadCodec);
 	}
 
 	public static <T> GlobalPmDriver<T> create(GlobalPmNode node, StructuredCodec<T> payloadCodec) {
@@ -50,9 +51,13 @@ public final class GlobalPmDriver<T> {
 		return this;
 	}
 
+	public StructuredCodec<T> getPayloadCodec() {
+		return payloadCodec;
+	}
+
 	private SignedData<RawMessage> encrypt(PrivKey sender, PubKey receiver, Long id, Long timestamp, @Nullable T payload) {
 		byte[] encrypted = payload != null ?
-				receiver.encrypt(BinaryUtils.encodeAsArray(codec, new Tuple2<>(sender.computePubKey(), payload))) :
+				receiver.encrypt(BinaryUtils.encodeAsArray(tupleCodec, new Tuple2<>(sender.computePubKey(), payload))) :
 				null;
 		RawMessage msg = RawMessage.of(id, timestamp, encrypted);
 		return SignedData.sign(RAW_MESSAGE_CODEC, msg, sender);
@@ -61,7 +66,7 @@ public final class GlobalPmDriver<T> {
 	private Promise<Message<T>> decrypt(PrivKey receiver, SignedData<RawMessage> signedRawMessage) {
 		RawMessage raw = signedRawMessage.getValue();
 		try {
-			Tuple2<PubKey, T> data = BinaryUtils.decode(codec, receiver.decrypt(raw.getEncrypted()));
+			Tuple2<PubKey, T> data = BinaryUtils.decode(tupleCodec, receiver.decrypt(raw.getEncrypted()));
 			PubKey sender = data.getValue1();
 			return signedRawMessage.verify(sender) ?
 					Promise.of(Message.parse(raw.getId(), raw.getTimestamp(), sender, data.getValue2())) :
