@@ -1,31 +1,38 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect} from 'react';
 import qs from 'query-string';
 import connectService from '../../common/connectService';
 import AuthContext from '../../modules/auth/AuthContext';
-import {Redirect, withRouter} from 'react-router-dom';
+import {withRouter} from 'react-router-dom';
+import AfterAuthRedirect from "../../../../../global-apps-common/front/src/auth/OAuthCallback";
 
-function AuthCallback({location, authWithToken}) {
+function AuthCallback({location, authByToken, authorized}) {
   const params = qs.parse(location.search);
 
   useEffect(() => {
     if (params.token) {
-      authWithToken(params.token);
-    } else {
-      console.error('No token received');
+      authByToken(params.token);
     }
-  });
+  }, []);
 
-  return <Redirect to='/'/>;
+  if (authorized) {
+    return <AfterAuthRedirect/>;
+  }
+
+  if (!params.token) {
+    return 'No token received';
+  }
+
+  return null;
 }
 
 export default connectService(
-  AuthContext, ({}, accountService) => ({
-    authWithToken(token) {
-      accountService.authWithToken(token);
-    }
+  AuthContext, ({authorized}, accountService) => ({
+    authByToken(token) {
+      accountService.authByToken(token);
+    },
+    authorized
   })
-)
-(
+)(
   withRouter(AuthCallback)
 );
 

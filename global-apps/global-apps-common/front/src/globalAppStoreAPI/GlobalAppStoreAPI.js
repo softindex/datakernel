@@ -135,4 +135,3 @@ export class GlobalAppStoreAPI {
       .then(response => response.json());
   }
 }
-

@@ -1,7 +1,17 @@
 import {Service} from '../service/Service';
+import {ValueStorage} from './ValueStorage';
 
 export class AuthService extends Service {
-  constructor(appStoreUrl, cookies, sessionId) {
+  constructor(
+    appStoreURL,
+    oAuthURL,
+    authByKeyURL,
+    sessionValueStorage,
+    publicKeyValueStorage,
+    goToURL,
+    createFileReader,
+    fetch
+  ) {
     super({
       error: null,
       authorized: false,
@@ -9,39 +19,63 @@ export class AuthService extends Service {
       loading: false,
       wasAuthorized: false
     });
-    this._appStoreUrl = appStoreUrl;
-    this._cookies = cookies;
-    this._sessionId = sessionId;
+    this._appStoreURL = appStoreURL;
+    this._oAuthURL = oAuthURL;
+    this._authByKeyURL = authByKeyURL;
+    this._sessionValueStorage = sessionValueStorage;
+    this._publicKeyValueStorage = publicKeyValueStorage;
+    this._goToURL = goToURL;
+    this._createFileReader = createFileReader;
+    this._fetch = fetch;
+  }
+
+  static create({appStoreURL, sessionIdField = 'sid', publicKeyField = 'publicKey'}) {
+    return new AuthService(
+      appStoreURL,
+      '/auth',
+      '/authByKey',
+      ValueStorage.createCookie(sessionIdField),
+      ValueStorage.createLocalStorage(publicKeyField),
+      localStorage,
+      url =>  location.href = url,
+      () => new FileReader(),
+      fetch
+    );
   }
 
   init() {
-    const sessionString = this._cookies.get(this._sessionId);
-    if (sessionString) {
-      const publicKey = localStorage.getItem('publicKey');
-      if (publicKey) {
-        this.setState({authorized: true, publicKey});
-      } else {
-        this._cookies.remove(this._sessionId);
-      }
+    const sessionString = this.this._sessionValueStorage.get();
+    if (!sessionString) {
+      this._publicKeyValueStorage.remove();
+      return
+    }
+
+    const publicKey = this._publicKeyValueStorage.get();
+    if (publicKey) {
+      this.setState({
+        authorized: true,
+        publicKey
+      });
     } else {
-      localStorage.removeItem('publicKey');
+      this._sessionValueStorage.remove();
     }
   }
 
-  authWithAppStore() {
-    window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.href + '/auth';
+  authByAppStore() {
+    this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(this._oAuthURL));
   }
 
   authByFile(file) {
     return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
+      const fileReader = this._createFileReader();
       fileReader.readAsText(file);
       fileReader.onload = () => {
-        const privateKey = fileReader.result.replace(/\r?\n|\r/, "");
-        this._doAuth(fetch('/authByKey', {method: 'post', body: privateKey}))
+        this._doAuth(fetch(this._authByKeyURL, {
+          method: 'POST',
+          body: fileReader.result.trim()
+        }))
           .then(resolve)
           .catch(reject);
-        resolve();
       };
       fileReader.onerror = error => {
         this.setState({error});
@@ -50,37 +84,19 @@ export class AuthService extends Service {
     });
   };
 
-  authWithToken(token) {
+  authByToken(token) {
     return this._doAuth(fetch(`/auth?token=${token}`));
-  }
-
-  _doAuth(fetchPromise) {
-    this.setState({loading: true});
-    return fetchPromise
-      .then(response => {
-        this.setState({loading: false});
-        if (response.status !== 200) {
-          this.setState({error: new Error("Authorization failed: " + response.statusText)});
-        } else {
-          response.text()
-            .then(text => {
-              localStorage.setItem('publicKey', text);
-              this.setState({authorized: true, publicKey: text, error: null});
-            })
-            .catch(error => this.setState({error}));
-        }
-      });
   }
 
   async logout() {
     try {
-      await fetch('/logout', {method: 'POST'});
-    } catch (e) {
-      console.warn('Log out call to server failed', e);
+      await this._fetch('/logout', {method: 'POST'});
+    } catch (error) {
+      console.warn('Log out call to server failed', error);
     }
 
-    this._cookies.remove(this._sessionId);
-    localStorage.removeItem('publicKey');
+    this._sessionValueStorage.remove();
+    this._publicKeyValueStorage.remove();
 
     this.setState({
       authorized: false,
@@ -89,6 +105,28 @@ export class AuthService extends Service {
       publicKey: null,
       wasAuthorized: true
     });
+  }
+
+  _doAuth(fetchPromise) {
+    this.setState({loading: true});
+    return fetchPromise
+      .then(response => {
+        if (response.status !== 200) {
+          throw new Error("Authorization failed: " + response.statusText);
+        }
+
+        return response.text();
+      })
+      .then(publicKey => {
+        this._publicKeyValueStorage.set(publicKey);
+        this.setState({
+          authorized: true,
+          publicKey,
+          error: null
+        });
+      })
+      .catch(error => this.setState({error}))
+      .finally(() => this.setState({loading: false}));
   }
 }
 

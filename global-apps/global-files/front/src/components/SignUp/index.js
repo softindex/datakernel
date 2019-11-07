@@ -10,8 +10,6 @@ import SignUpAbstractionImage from './SignUpAbstractionImage';
 import Button from '../theme/Button';
 import Snackbar from '../theme/Snackbar';
 import signUpStyles from './signUpStyles';
-import {Redirect} from "react-router-dom";
-import CircularProgress from "../theme/CircularProgress";
 
 class SignUp extends React.Component {
   constructor(props) {
@@ -22,7 +20,7 @@ class SignUp extends React.Component {
   }
 
   onAuthByAppStore = () => {
-    this.props.authService.authWithAppStore();
+    this.props.authService.authByAppStore();
   };
 
   componentDidMount() {
@@ -35,16 +33,12 @@ class SignUp extends React.Component {
     window.removeEventListener('offline', this._wentOffline);
   }
 
-  onUploadFile = () => this.props.authService.authByFile(this.input.files[0])
-    .then(() => this.props.history.push('/'));
+  onUploadFile() {
+    return this.props.authService.authByFile(this.input.files[0])
+      .then(() => this.props.history.push('/'));
+  }
 
   render() {
-    if (this.props.authService.authorized) {
-      return <Redirect to={"/"}/>
-    }
-    if (this.props.auth.loading) {
-      return <CircularProgress/>
-    }
     return (
       <div className={this.props.classes.root}>
         <Grid className={this.props.classes.container} container>

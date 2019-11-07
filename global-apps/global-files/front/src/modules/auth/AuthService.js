@@ -28,7 +28,7 @@ class AuthService extends Store {
     }
   }
 
-  authWithAppStore() {
+  authByAppStore() {
     window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.href + '/auth';
   }
 
@@ -50,7 +50,7 @@ class AuthService extends Store {
     });
   };
 
-  authWithToken(token) {
+  authByToken(token) {
     return this._doAuth(fetch(`/auth?token=${token}`));
   }
 
