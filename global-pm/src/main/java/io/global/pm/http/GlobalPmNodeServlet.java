@@ -7,7 +7,6 @@ import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.binary.BinaryUtils;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
@@ -20,16 +19,15 @@ import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
-import static io.datakernel.csp.binary.ByteBufsParser.ofDecoder;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.pm.http.PmCommand.*;
 import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
+import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_PARSER;
 
 public class GlobalPmNodeServlet {
 	public static final StructuredCodec<Set<String>> STRING_SET_CODEC = StructuredCodecs.ofSet(STRING_CODEC);
-	public static final ByteBufsParser<SignedData<RawMessage>> SIGNED_MESSAGE_PARSER = ofDecoder(SIGNED_RAW_MSG_CODEC);
 
 	public static RoutingServlet create(GlobalPmNode node) {
 		return RoutingServlet.create()
@@ -96,7 +94,7 @@ public class GlobalPmNodeServlet {
 						String mailBox = request.getPathParameter("mailbox");
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
 						return node.upload(space, mailBox)
-								.then(consumer -> BinaryChannelSupplier.of(bodyStream).parseStream(SIGNED_MESSAGE_PARSER)
+								.then(consumer -> BinaryChannelSupplier.of(bodyStream).parseStream(SIGNED_RAW_MSG_PARSER)
 										.streamTo(consumer))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {

@@ -19,6 +19,7 @@ public final class HttpDataFormats {
 	}
 
 	public static final StructuredCodec<PubKey> PUB_KEY_HEX_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
+	public static final ByteBufsParser<Long> ND_JSON_ID_PARSER = ndJsonParser(LONG_CODEC);
 
 	public static <T> StructuredCodec<Message<T>> getMessageCodec(StructuredCodec<T> payloadCodec) {
 		return object(Message::parse,

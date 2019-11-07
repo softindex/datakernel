@@ -12,7 +12,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
@@ -44,8 +43,7 @@ import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.GlobalPmDriver;
 import io.global.pm.api.GlobalPmNode;
-import io.global.pm.api.PmClient;
-import io.global.pm.http.PmClientServlet;
+import io.global.pm.http.GlobalPmDriverServlet;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -138,7 +136,7 @@ public final class GlobalChatApp extends Launcher {
 									Map<String, String> collected = lines.stream()
 											.map(s -> s.split(":"))
 											.collect(toMap(parts -> parts[0], parts -> parts[1]));
-									if (!collected.values().contains(key)) {
+									if (!collected.containsValue(key)) {
 										int lastKey = collected.keySet().stream().mapToInt(Integer::valueOf).max().orElse(0);
 										Files.write(expectedKeys, concat(lines, singletonList(++lastKey + ":" + key)));
 									}
@@ -162,20 +160,7 @@ public final class GlobalChatApp extends Launcher {
 	@Provides
 	@Named("Calls")
 	AsyncServlet callsPMServlet(GlobalPmDriver<String> driver) {
-		return request -> {
-			try {
-				String key = request.getCookie("Key");
-				if (key == null) {
-					return Promise.ofException(new ParseException(GlobalChatApp.class, "Cookie `Key` is required"));
-				}
-				PrivKey privKey = PrivKey.fromString(key);
-				PmClient<String> client = driver.adapt(privKey.computeKeys());
-				return PmClientServlet.create(client, STRING_CODEC)
-						.serve(request);
-			} catch (ParseException e) {
-				return Promise.ofException(e);
-			}
-		};
+		return GlobalPmDriverServlet.create(driver);
 	}
 
 	@Provides

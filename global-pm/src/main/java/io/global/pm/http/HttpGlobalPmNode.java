@@ -20,10 +20,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Set;
 
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
-import static io.global.pm.http.GlobalPmNodeServlet.SIGNED_MESSAGE_PARSER;
 import static io.global.pm.http.GlobalPmNodeServlet.STRING_SET_CODEC;
 import static io.global.pm.http.PmCommand.*;
 import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
+import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_PARSER;
 
 public class HttpGlobalPmNode implements GlobalPmNode {
 	private static final String PM_NODE_SUFFIX = "/pm/";
@@ -70,7 +70,7 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 								.build()))
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
-				.map(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(SIGNED_MESSAGE_PARSER));
+				.map(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(SIGNED_RAW_MSG_PARSER));
 	}
 
 	@NotNull

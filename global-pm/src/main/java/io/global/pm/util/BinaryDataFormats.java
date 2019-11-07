@@ -48,5 +48,4 @@ public final class BinaryDataFormats {
 	public static final StructuredCodec<PubKey> PUB_KEY_CODEC = REGISTRY.get(PubKey.class);
 
 	public static final ByteBufsParser<SignedData<RawMessage>> SIGNED_RAW_MSG_PARSER = ByteBufsParser.ofDecoder(SIGNED_RAW_MSG_CODEC);
-	public static final ByteBufsParser<SignedData<Long>> SIGNED_LONG_PARSER = ByteBufsParser.ofDecoder(SIGNED_LONG_CODEC);
 }

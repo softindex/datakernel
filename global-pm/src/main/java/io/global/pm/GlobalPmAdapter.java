@@ -1,6 +1,8 @@
 package io.global.pm;
 
 import io.datakernel.async.Promise;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
@@ -10,18 +12,21 @@ import org.jetbrains.annotations.Nullable;
 
 public final class GlobalPmAdapter<T> implements PmClient<T> {
 	private final GlobalPmDriver<T> driver;
-	private final PrivKey privKey;
 	private final KeyPair keys;
 
 	public GlobalPmAdapter(GlobalPmDriver<T> driver, PrivKey privKey) {
 		this.driver = driver;
-		this.privKey = privKey;
 		this.keys = privKey.computeKeys();
 	}
 
 	@Override
 	public Promise<Void> send(PubKey receiver, String mailBox, T payload) {
-		return driver.send(privKey, receiver, mailBox, payload);
+		return driver.send(keys.getPrivKey(), receiver, mailBox, payload);
+	}
+
+	@Override
+	public Promise<ChannelConsumer<T>> multisend(PubKey receiver, String mailBox) {
+		return driver.multisend(keys.getPrivKey(), receiver, mailBox);
 	}
 
 	@Override
@@ -30,7 +35,17 @@ public final class GlobalPmAdapter<T> implements PmClient<T> {
 	}
 
 	@Override
+	public Promise<ChannelSupplier<Message<T>>> multipoll(String mailBox, long timestamp) {
+		return driver.multipoll(keys, mailBox, timestamp);
+	}
+
+	@Override
 	public Promise<Void> drop(String mailBox, long id) {
 		return driver.drop(keys, mailBox, id);
+	}
+
+	@Override
+	public Promise<ChannelConsumer<Long>> multidrop(String mailBox) {
+		return driver.multidrop(keys, mailBox);
 	}
 }

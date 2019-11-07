@@ -20,6 +20,7 @@ import io.global.pm.util.BinaryDataFormats;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.CryptoException;
 
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
@@ -106,6 +107,14 @@ public final class GlobalPmDriver<T> {
 
 	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys, String mailBox) {
 		return multipoll(keys, mailBox, 0);
+	}
+
+	public Promise<List<Message<T>>> batchpoll(KeyPair keys, String mailBox, long timestamp){
+		return multipoll(keys, mailBox, timestamp).then(ChannelSupplier::toList);
+	}
+
+	public Promise<List<Message<T>>> batchpoll(KeyPair keys, String mailBox){
+		return batchpoll(keys, mailBox, 0);
 	}
 
 	public Promise<Void> drop(KeyPair keys, String mailBox, long id) {
