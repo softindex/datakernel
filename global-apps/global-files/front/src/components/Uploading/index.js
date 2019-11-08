@@ -10,9 +10,6 @@ import FileTypeIcon from '../FileTypeIcon';
 import UploadingAlert from "../UploadingAlert";
 import FSService from "../../modules/fs/FSService";
 
-/**
- * @return {null}
- */
 function UploadingView({files, uploads, classes, onClose}) {
   const items = uploads.map(item => {
     const fileIsFinallyAdd = Boolean(files.find(({name}) => name === item.name));

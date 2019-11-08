@@ -9,6 +9,7 @@ function CircularProgress(props) {
     size = 24,
   } = props;
 
+  // TODO Brovdii (Упрощение) Лучше вынести условия верхнего уровня в отдельные if () return
   return (
     <>
       {props.isError && (

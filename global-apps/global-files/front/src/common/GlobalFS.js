@@ -59,6 +59,8 @@ class GlobalFS extends EventEmitter {
   }
 
   async removeDir(fileName) {
+    // TODO Brovdii 12.2. Удалять закомментированный код, который не является пояснением.
+    // TODO               В данном случае нужно реализовать метод, потому что он используется
     //await fetch(path.join(this._url, 'delete/' + fileName), {method: 'POST'});
   }
 

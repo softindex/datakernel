@@ -8,7 +8,7 @@ import {withStyles} from "@material-ui/core";
 import uploadingAlertStyles from "./uploadingAlertStyles";
 
 function UploadingAlert({classes, items, uploads, onClose}) {
-  setTimeout(() => {
+  setTimeout(() => { // TODO Brovdii (Упрощение) Пусть закрывает тот, кто открыл это окно
     onClose();
   }, 4000);
   return (

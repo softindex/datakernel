@@ -39,14 +39,14 @@ export class AuthService extends Service {
   };
 
   authByFile = file => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const fileReader = new FileReader();
-      fileReader.readAsText(file);
       fileReader.onload = () => {
-        const privateKey = fileReader.result;
-        this.authByPrivateKey(privateKey);
+        this.authByPrivateKey(fileReader.result);
         resolve();
       };
+      fileReader.onerror = reject;
+      fileReader.readAsText(file);
     });
   };
 
@@ -66,16 +66,10 @@ export class AuthService extends Service {
     });
   }
 
-  getPublicKey = privateKey => {
+  getPublicKey(privateKey) {
     const curve = new EC('secp256k1');
-    let keys = curve.keyFromPrivate(privateKey, 'hex');
+    const keys = curve.keyFromPrivate(privateKey, 'hex');
     return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
-  };
-
-  createKeysFile() {
-    return new File([this.state.privateKey], 'key.dat', {
-      type: 'text/plain;charset=utf-8'
-    });
   }
 }
 
