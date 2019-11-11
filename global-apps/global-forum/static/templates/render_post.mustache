@@ -30,33 +30,8 @@
                                       style="resize: none"
                                       data-post-button="#post_button_{{postId}}"></textarea>
                         </div>
-                        <div id="add_attachments_{{postId}}" class="collapse">
-                            <div class="mx-3 mt-3">
-                                <div class="custom-file col-3">
-                                    <input type="file" accept="image/*" class="custom-file-input"
-                                           id="image_attachment_{{postId}}" multiple
-                                           name="image_attachment">
-                                    <label class="custom-file-label text-truncate" for="image_attachment_{{postId}}">
-                                        Attach images
-                                    </label>
-                                </div>
-                                <div class="custom-file col-3">
-                                    <input type="file" accept="video/mp4" class="custom-file-input"
-                                           id="video_attachment_{{postId}}" multiple
-                                           name="video_attachment">
-                                    <label class="custom-file-label text-truncate" for="video_attachment_{{postId}}">
-                                        Attach videos
-                                    </label>
-                                </div>
-                                <div class="custom-file col-3">
-                                    <input type="file" class="custom-file-input"
-                                           id="document_attachment_{{postId}}" multiple
-                                           name="document_attachment">
-                                    <label class="custom-file-label text-truncate" for="document_attachment_{{postId}}">
-                                        Attach documents
-                                    </label>
-                                </div>
-                            </div>
+                        <div class="mx-3 mt-3">
+                            {{>attachment_panel}}
                         </div>
                         <div class="p-3">
                             <button class="btn btn-sm btn-primary post-button"

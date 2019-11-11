@@ -69,7 +69,8 @@ window.onload = () => {
       let $content = $('#content_' + postId);
 
       let $save = $('<button class="btn btn-sm btn-primary">save</button>');
-      let $cancel = $('<button class="btn btn-sm btn-outline-primary mx-1">cancel</button>');
+      let $attach = $('<button class="btn btn-sm btn-outline-primary mr-1">attach</button>');
+      let $cancel = $('<button class="btn btn-sm btn-outline-primary mr-1">cancel</button>');
       let $textarea = $('<textarea class="form-control m-0 p-2" style="resize: none"></textarea>');
       let doValidate = {it: false};
 
@@ -93,11 +94,15 @@ window.onload = () => {
       let dropdown = $(e.target.parentElement).removeClass('show');
       let row = dropdown.parent().parent();
       row.children().addClass('d-none');
+      row.append($attach);
       row.append($cancel);
       row.append($save);
 
-      let $shownAttachments = $('#attachments_' + postId);
-      let $editAttachments = $('#edit_attachments_' + postId);
+      let $shownAttachments = $element.find('#attachments_' + postId);
+      let $editAttachments = $element.find('#edit_attachments_' + postId);
+      let $addAttachments = $element.find('#add_attachments_' + postId);
+
+      $attach.click(() => $addAttachments.collapse('toggle'));
 
       $shownAttachments.addClass('d-none');
       $editAttachments.removeClass('d-none');
@@ -109,6 +114,24 @@ window.onload = () => {
         let formData = new FormData();
         let content = $textarea.val().trim();
         formData.append('content', content);
+
+        let $imageAttachment = $addAttachments.find('#image_attachment_' + postId);
+        let $videoAttachment = $addAttachments.find('#video_attachment_' + postId);
+        let $documentAttachment = $addAttachments.find('#document_attachment_' + postId);
+
+        addAll(formData, 'image_attachment', $imageAttachment);
+        addAll(formData, 'video_attachment', $videoAttachment);
+        addAll(formData, 'document_attachment', $documentAttachment);
+
+        let removedAttachments = [];
+        $element.find('#edit_attachments_' + postId + ' .cross')
+          .each((_, e) => {
+            if (e.checked) {
+              removedAttachments.push($(e).prev().text());
+            }
+          });
+        formData.append('removeAttachments', removedAttachments.join(','));
+
         fetch('/' + threadId + '/' + postId + '/edit', {method: 'POST', body: formData})
           .then(r => {
             if (r.ok) {
@@ -120,6 +143,8 @@ window.onload = () => {
             doValidate.it = false;
             $shownAttachments.removeClass('d-none');
             $editAttachments.addClass('d-none');
+            $addAttachments.removeClass('show');
+            [$imageAttachment, $videoAttachment, $documentAttachment].forEach(it => it.val(''));
 
             let rerendered = $(text);
             $('#post_' + postId).replaceWith(rerendered);
@@ -136,6 +161,7 @@ window.onload = () => {
       $cancel.click(() => {
         $(document).focus();
         $textarea.remove();
+        $attach.remove();
         $cancel.remove();
         $save.remove();
         $content.removeClass('d-none');
@@ -161,6 +187,12 @@ window.onload = () => {
       let formData = new FormData();
       formData.append('content', $textarea.val().trim());
 
+      let $addAttachments = $('#add_attachments_' + postId);
+
+      let $imageAttachment = $addAttachments.find('#image_attachment_' + postId);
+      let $videoAttachment = $addAttachments.find('#video_attachment_' + postId);
+      let $documentAttachment = $addAttachments.find('#document_attachment_' + postId);
+
       addAll(formData, 'image_attachment', $('#image_attachment_' + postId));
       addAll(formData, 'video_attachment', $('#video_attachment_' + postId));
       addAll(formData, 'document_attachment', $('#document_attachment_' + postId));
@@ -177,7 +209,9 @@ window.onload = () => {
           $textarea.val('');
           autoresize($textarea);
           $reply.removeClass('show');
-          $('#add_attachments_' + postId).removeClass('show');
+          $addAttachments.removeClass('show');
+          [$imageAttachment, $videoAttachment, $documentAttachment].forEach(it => it.val(''));
+
           doValidate.it = false;
 
           let $rerendered = $(text);
@@ -190,7 +224,7 @@ window.onload = () => {
           addPostCallbacks($rerendered);
         }, console.error);
     });
-    // textarea focus when reply button is pressed
+    // textarea focus when you press the reply button
     $element.find('.collapse').on('show.bs.collapse', e => {
       let textarea = $(e.target).find('textarea');
       setTimeout(() => textarea.focus(), 0);
