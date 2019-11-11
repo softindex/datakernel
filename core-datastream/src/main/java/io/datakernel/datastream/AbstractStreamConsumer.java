@@ -64,7 +64,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		supplier.getEndOfStream()
 				.whenComplete(endOfStream)
 				.whenException(this::close)
-				.post()
 				.whenResult($1 -> onEndOfStream()
 						.whenException(this::close)
 						.post()
