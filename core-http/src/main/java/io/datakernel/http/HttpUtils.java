@@ -112,7 +112,7 @@ public final class HttpUtils {
 	 *
 	 *   IPV6 addresses are represented as 8, 4 hex digit groups of numbers
 	 *   2001:0db8:11a3:09d7:1f34:8a2e:07a0:765d
-	 *r
+	 *
 	 *   leading zeros are not necessary, however at least one digit should be present
 	 *
 	 *   the null group ':0000:0000:0000'(one or more) could be substituted with '::' once per address

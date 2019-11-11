@@ -1,5 +1,4 @@
 import io.datakernel.async.callback.Callback;
-import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -7,7 +6,6 @@ import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -16,9 +14,7 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.service.ServiceGraphModuleSettings;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
@@ -31,7 +27,7 @@ import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.lang.Math.min;
 
 @SuppressWarnings("WeakerAccess")
-public class RpcBenchmark extends Launcher {
+public class RpcBenchmarkClient extends Launcher {
 	private final static int TOTAL_REQUESTS = 10000000;
 	private final static int WARMUP_ROUNDS = 3;
 	private final static int BENCHMARK_ROUNDS = 10;
@@ -41,9 +37,6 @@ public class RpcBenchmark extends Launcher {
 
 	@Inject
 	RpcClient rpcClient;
-
-	@Inject
-	RpcServer rpcServer;
 
 	@Inject
 	@Named("client")
@@ -60,15 +53,6 @@ public class RpcBenchmark extends Launcher {
 	}
 
 	@Provides
-	@Named("server")
-	Eventloop eventloopServer(@Named("client") Eventloop clientEventloop, Config config) {
-		return config.get(ofBoolean(), "multithreaded", true) ?
-				Eventloop.create()
-						.withFatalErrorHandler(rethrowOnAnyError()) :
-				clientEventloop;
-	}
-
-	@Provides
 	public RpcClient rpcClient(@Named("client") Eventloop eventloop, Config config) {
 		return RpcClient.create(eventloop)
 				.withStreamProtocol(
@@ -77,25 +61,6 @@ public class RpcBenchmark extends Launcher {
 						config.get(ofBoolean(), "rpc.compression", false))
 				.withMessageTypes(Integer.class)
 				.withStrategy(server(new InetSocketAddress(config.get(ofInteger(), "rpc.server.port"))));
-	}
-
-	@Provides
-	public RpcServer rpcServer(@Named("server") Eventloop eventloop, Config config) {
-		return RpcServer.create(eventloop)
-				.withStreamProtocol(
-						config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),
-						ChannelSerializer.MAX_SIZE_1,
-						config.get(ofBoolean(), "rpc.compression", false))
-				.withListenPort(config.get(ofInteger(), "rpc.server.port"))
-				.withMessageTypes(Integer.class)
-				.withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
-
-	}
-
-	@ProvidesIntoSet
-	Initializer<ServiceGraphModuleSettings> configureServiceGraph() {
-		// add logical dependency so that service graph starts client only after it started the server
-		return settings -> settings.addDependency(Key.of(RpcClient.class), Key.of(RpcServer.class));
 	}
 
 	@Provides
@@ -194,7 +159,6 @@ public class RpcBenchmark extends Launcher {
 		Callback<Integer> callback = new Callback<Integer>() {
 			@Override
 			public void accept(Integer result, @Nullable Throwable e) {
-				if (e != null) return;
 				completed++;
 
 				int active = sent - completed;
@@ -223,7 +187,7 @@ public class RpcBenchmark extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		RpcBenchmark benchmark = new RpcBenchmark();
+		RpcBenchmarkClient benchmark = new RpcBenchmarkClient();
 		benchmark.launch(args);
 	}
 }
