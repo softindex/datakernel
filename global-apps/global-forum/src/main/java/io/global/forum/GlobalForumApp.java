@@ -48,7 +48,7 @@ public final class GlobalForumApp extends Launcher {
 	public static final String DEFAULT_FORUM_FS_DIR = "global-forum";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
-	public static final TypedRepoNames DEFAULT_FORUM_REPO_NAMES2 = TypedRepoNames.create("global-forum")
+	public static final TypedRepoNames DEFAULT_FORUM_REPO_NAMES = TypedRepoNames.create("global-forum")
 			.withRepoName(new Key<ChangeValue<ForumMetadata>>() {}, "metadata")
 			.withRepoName(new Key<MapOperation<UserId, UserData>>() {}, "users")
 			.withRepoName(new Key<MapOperation<UserId, InetAddress>>() {}, "userIps")
@@ -85,7 +85,7 @@ public final class GlobalForumApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new ContainerModule<ForumUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
-				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES2),
+				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID).rebindExport(CommitStorage.class, Key.of(CommitStorage.class, "stub"))),
 				new DebugMustacheModule()

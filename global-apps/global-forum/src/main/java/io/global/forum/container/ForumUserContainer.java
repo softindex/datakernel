@@ -26,7 +26,7 @@ public final class ForumUserContainer implements UserContainer {
 	private Eventloop eventloop;
 
 	@Inject
-	private InstanceProvider<ForumDao> forumDao;
+	private ForumDao forumDao;
 	@Inject
 	private OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
 	@Inject
@@ -69,11 +69,7 @@ public final class ForumUserContainer implements UserContainer {
 	}
 
 	public ForumDao getForumDao() {
-		return forumDao.get();
-	}
-
-	public CommState getComm() {
-		return comm;
+		return forumDao;
 	}
 
 	@Override

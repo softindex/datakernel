@@ -34,8 +34,6 @@ public final class CommState implements EventloopService {
 	private Eventloop eventloop;
 
 	@Inject
-	private FsClient fsClient;
-	@Inject
 	private KvSessionStore<UserId> sessionStore;
 
 	@Inject
@@ -47,13 +45,6 @@ public final class CommState implements EventloopService {
 
 	@Inject
 	private CategoryState root;
-
-	@Inject
-	private InstanceProvider<CommDao> commDao;
-
-	public CommDao getCommDao() {
-		return commDao.get();
-	}
 
 	@NotNull
 	public Promise<?> start() {
@@ -73,16 +64,8 @@ public final class CommState implements EventloopService {
 		return eventloop;
 	}
 
-	public FsClient getFsClient() {
-		return fsClient;
-	}
-
 	public Promise<@Nullable ThreadDao> getThreadDao(String threadId) {
 		Promise<ThreadDao> promise = root.getThreadDaos().get(threadId);
 		return promise != null ? promise : Promise.of(null);
-	}
-
-	public SessionStore<UserId> getSessionStore() {
-		return sessionStore;
 	}
 }

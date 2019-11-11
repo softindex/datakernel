@@ -1,34 +1,41 @@
 package io.global.blog;
 
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
+import io.datakernel.remotefs.FsClient;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
-import io.global.comm.container.CommRepoNames;
-import io.global.comm.pojo.UserId;
-import io.global.common.PrivKey;
-import io.global.common.SimKey;
 import io.global.blog.container.BlogUserContainer;
+import io.global.blog.dao.BlogDao;
+import io.global.blog.dao.BlogDaoImpl;
 import io.global.blog.http.PublicServlet;
 import io.global.blog.http.view.PostView;
-import io.global.mustache.MustacheTemplater;
 import io.global.blog.preprocessor.Preprocessor;
+import io.global.comm.container.CommModule;
+import io.global.comm.container.TypedRepoNames;
+import io.global.comm.pojo.UserId;
+import io.global.common.KeyPair;
+import io.global.common.SimKey;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvClient;
+import io.global.mustache.MustacheTemplater;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
+import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
@@ -42,16 +49,35 @@ public final class GlobalBlogModule extends AbstractModule {
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
 	private final String blogFsDir;
-	private final CommRepoNames blogRepoNames;
+	private final TypedRepoNames blogRepoNames;
 
 	@Override
 	protected void configure() {
 		install(new PreprocessorsModule());
+		install(CommModule.create());
+
+		bind(CodecFactory.class).toInstance(REGISTRY);
+		bind(TypedRepoNames.class).toInstance(blogRepoNames);
+
+		bind(BlogUserContainer.class).in(ContainerScope.class);
+		bind(BlogDao.class).to(BlogDaoImpl.class).in(ContainerScope.class);
 	}
 
-	public GlobalBlogModule(String blogFsDir, CommRepoNames blogRepoNames) {
+	public GlobalBlogModule(String blogFsDir, TypedRepoNames blogRepoNames) {
 		this.blogFsDir = blogFsDir;
 		this.blogRepoNames = blogRepoNames;
+	}
+
+	@Provides
+	@ContainerScope
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
+		return fsDriver.adapt(keyPair).subfolder(blogFsDir);
+	}
+
+	@Provides
+	@ContainerScope
+	KvClient<String, UserId> kvClient(KeyPair keyPair, GlobalKvDriver<String, UserId> kvDriver) {
+		return kvDriver.adapt(keyPair);
 	}
 
 	@Provides
@@ -85,17 +111,12 @@ public final class GlobalBlogModule extends AbstractModule {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, BlogUserContainer> containerFactory(OTDriver otDriver, GlobalFsDriver fsDriver, GlobalKvDriver<String, UserId> kvDriver) {
-		return (eventloop, privKey) ->
-				BlogUserContainer.create(eventloop, privKey, otDriver, kvDriver.adapt(privKey), fsDriver.adapt(privKey).subfolder(blogFsDir), blogRepoNames);
-	}
-
-	@Provides
 	GlobalKvDriver<String, UserId> kvDriver(GlobalKvNode node) {
 		return GlobalKvDriver.create(node, REGISTRY.get(String.class), REGISTRY.get(UserId.class));
 	}
 
 	@Provides
+	@EagerSingleton
 	OTDriver otDriver(GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
 		return new OTDriver(node, simKey);

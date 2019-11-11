@@ -2,6 +2,7 @@ package io.global.comm.container;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.InstanceFactory;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -77,10 +78,10 @@ public final class CommModule extends AbstractModule {
 	@Provides
 	@ContainerScope
 	<D> Function<String, OTStateManager<CommitId, D>> createFactory(Eventloop eventloop, OTDriver driver, KeyPair keys,
-			StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state, Key<D> key,
+			StructuredCodec<D> diffCodec, OTSystem<D> otSystem, InstanceFactory<OTState<D>> states, Key<D> key,
 			TypedRepoNames names
 	) {
-		return name -> createStateManager(names.getRepoPrefix(key) + name, eventloop, driver, keys, diffCodec, otSystem, state);
+		return name -> createStateManager(names.getRepoPrefix(key) + name, eventloop, driver, keys, diffCodec, otSystem, states.create());
 	}
 
 	@Provides

@@ -38,6 +38,7 @@ import io.global.ot.map.MapOperation;
 import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.ContainerManager;
 import io.global.ot.service.ContainerModule;
+import io.global.ot.service.ContainerScope;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
@@ -163,13 +164,11 @@ public final class GlobalChatApp extends Launcher {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, CommonUserContainer<ChatRoomOperation>> factory(OTDriver driver,
-			Messenger<Long, CreateSharedRepo> messenger) {
-		return (eventloop, privKey) -> {
-			RepoID repoID = RepoID.of(privKey, CHAT_REPO_PREFIX);
-			MyRepositoryId<ChatRoomOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, CHAT_ROOM_OPERATION_CODEC);
-			return CommonUserContainer.create(eventloop, driver, CHAT_ROOM_OT_SYSTEM, myRepositoryId, messenger, CHAT_INDEX_REPO);
-		};
+	@ContainerScope
+	CommonUserContainer<ChatRoomOperation> userContainer(Eventloop eventloop, PrivKey privKey, OTDriver driver, Messenger<Long, CreateSharedRepo> messenger) {
+		RepoID repoID = RepoID.of(privKey, CHAT_REPO_PREFIX);
+		MyRepositoryId<ChatRoomOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, CHAT_ROOM_OPERATION_CODEC);
+		return CommonUserContainer.create(eventloop, driver, CHAT_ROOM_OT_SYSTEM, myRepositoryId, messenger, CHAT_INDEX_REPO);
 	}
 
 	@Override

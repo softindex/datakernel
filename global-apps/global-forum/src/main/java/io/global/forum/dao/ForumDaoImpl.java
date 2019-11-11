@@ -13,29 +13,30 @@ import io.global.ot.value.ChangeValue;
 import io.global.ot.value.ChangeValueContainer;
 
 public final class ForumDaoImpl implements ForumDao {
-	private final ForumUserContainer container;
-
 	private final OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
 	private final ChangeValueContainer<ForumMetadata> metadataView;
+
+	@Inject
+	private KeyPair keys;
+	@Inject
+	private CommDao commDao;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
 	@Inject
-	public ForumDaoImpl(ForumUserContainer container) {
-		this.container = container;
-		this.metadataStateManager = container.getMetadataStateManager();
-
+	public ForumDaoImpl(OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager) {
+		this.metadataStateManager = metadataStateManager;
 		metadataView = (ChangeValueContainer<ForumMetadata>) metadataStateManager.getState();
 	}
 
 	@Override
 	public KeyPair getKeys() {
-		return container.getKeys();
+		return keys;
 	}
 
 	@Override
 	public CommDao getCommDao() {
-		return container.getComm().getCommDao();
+		return commDao;
 	}
 
 	@Override

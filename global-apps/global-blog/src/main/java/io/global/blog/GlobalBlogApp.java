@@ -13,14 +13,24 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.comm.container.CommRepoNames;
 import io.global.blog.container.BlogUserContainer;
+import io.global.blog.ot.BlogMetadata;
+import io.global.comm.container.TypedRepoNames;
+import io.global.comm.ot.post.operation.ThreadOperation;
+import io.global.comm.ot.session.KvSessionStore;
+import io.global.comm.pojo.IpBanState;
+import io.global.comm.pojo.ThreadMetadata;
+import io.global.comm.pojo.UserData;
+import io.global.comm.pojo.UserId;
 import io.global.launchers.GlobalNodesModule;
 import io.global.mustache.MustacheModule;
+import io.global.ot.map.MapOperation;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
+import io.global.ot.value.ChangeValue;
 
 import java.io.File;
+import java.net.InetAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CompletionStage;
@@ -37,7 +47,18 @@ public final class GlobalBlogApp extends Launcher {
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 	public static final String DEFAULT_BLOG_FS_DIR = "global-blog";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
-	public static final CommRepoNames DEFAULT_BLOG_REPO_NAMES = CommRepoNames.ofDefault("global-blog");
+
+	public static final TypedRepoNames DEFAULT_BLOG_REPO_NAMES = TypedRepoNames.create("global-blog")
+			.withRepoName(new Key<ChangeValue<BlogMetadata>>() {}, "metadata")
+			.withRepoName(new Key<MapOperation<UserId, UserData>>() {}, "users")
+			.withRepoName(new Key<MapOperation<UserId, InetAddress>>() {}, "userIps")
+			.withRepoName(new Key<MapOperation<String, IpBanState>>() {}, "bans")
+
+			.withRepoName(new Key<MapOperation<String, ThreadMetadata>>() {}, "threads")
+
+			.withRepoPrefix(Key.of(ThreadOperation.class), "threads")
+
+			.withRepoName(new Key<KvSessionStore<UserId>>() {}, "session");
 
 	@Inject
 	AsyncHttpServer server;

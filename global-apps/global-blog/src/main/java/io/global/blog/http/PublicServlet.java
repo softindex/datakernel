@@ -141,7 +141,6 @@ public final class PublicServlet {
 				.then(setup(appStoreUrl, templater));
 	}
 
-
 	private static AsyncServlet ownerServlet(MustacheTemplater templater) {
 		return RoutingServlet.create()
 				.map(GET, "/new", request -> templater.render("newThread", map("creatingNewThread", true)))
@@ -151,23 +150,20 @@ public final class PublicServlet {
 					return commDao.generateThreadId()
 							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0))
 									.map($ -> id))
-							.then(tid -> {
-								ThreadDao threadDao = commDao.getThreadDao(tid);
-								assert threadDao != null : "No thread dao just after creating the thread";
-								Map<String, AttachmentType> attachmentMap = new HashMap<>();
-								Map<String, String> paramsMap = new HashMap<>();
-								return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", emptySet(), paramsMap, attachmentMap, true))
-										.then($ -> validate(paramsMap.get("title"), 120, "Title", true))
-										.then($ -> validate(paramsMap.get("content"), 65256, "Content"))
-										.then($ -> {
-											String pk = commDao.getKeys().getPubKey().asString();
-											return commDao.getThreads("root").put(tid, ThreadMetadata.of(paramsMap.get("title"), 0))
-													.then($2 -> threadDao.addRootPost(userId, paramsMap.get("content"), attachmentMap))
-													.map($2 -> redirect302("/" + tid));
-										})
-										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
-										.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
-							});
+							.then(tid -> commDao.getThreadDao(tid)
+									.then(threadDao -> {
+										assert threadDao != null : "No thread dao just after creating the thread";
+										Map<String, AttachmentType> attachmentMap = new HashMap<>();
+										Map<String, String> paramsMap = new HashMap<>();
+										return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", emptySet(), paramsMap, attachmentMap, true))
+												.then($ -> validate(paramsMap.get("title"), 120, "Title", true))
+												.then($ -> validate(paramsMap.get("content"), 65256, "Content"))
+												.then($ -> commDao.getThreads("root").put(tid, ThreadMetadata.of(paramsMap.get("title"), 0))
+														.then($2 -> threadDao.addRootPost(userId, paramsMap.get("content"), attachmentMap))
+														.map($2 -> redirect302("/" + tid)))
+												.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
+												.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
+									}));
 				})
 				.map(POST, "/blog", loadBody(kilobytes(256))
 						.serve(request -> {
@@ -201,7 +197,6 @@ public final class PublicServlet {
 								}))
 						.map(POST, "/root/edit/", request -> {
 							String threadID = request.getPathParameter("threadID");
-							CommDao commDao = request.getAttachment(CommDao.class);
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 
 							Map<String, AttachmentType> attachmentMap = new HashMap<>();
@@ -457,12 +452,14 @@ public final class PublicServlet {
 		return servlet ->
 				request -> {
 					String id = request.getPathParameter("threadID");
-					ThreadDao dao = request.getAttachment(CommDao.class).getThreadDao(id);
-					if (dao == null) {
-						return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
-					}
-					request.attach(ThreadDao.class, dao);
-					return servlet.serve(request);
+					return request.getAttachment(CommDao.class).getThreadDao(id)
+							.then(dao -> {
+								if (dao == null) {
+									return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
+								}
+								request.attach(ThreadDao.class, dao);
+								return servlet.serve(request);
+							});
 				};
 	}
 }

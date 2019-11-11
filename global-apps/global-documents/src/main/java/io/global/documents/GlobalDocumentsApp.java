@@ -38,6 +38,7 @@ import io.global.ot.map.MapOperation;
 import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.ContainerManager;
 import io.global.ot.service.ContainerModule;
+import io.global.ot.service.ContainerScope;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
@@ -52,7 +53,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 
 import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.config.Config.ofProperties;
@@ -130,7 +130,7 @@ public final class GlobalDocumentsApp extends Launcher {
 									Map<String, String> collected = lines.stream()
 											.map(s -> s.split(":"))
 											.collect(toMap(parts -> parts[0], parts -> parts[1]));
-									if (!collected.values().contains(key)) {
+									if (!collected.containsValue(key)) {
 										int lastKey = collected.keySet().stream().mapToInt(Integer::valueOf).max().orElse(0);
 										Files.write(expectedKeys, concat(lines, singletonList(++lastKey + ":" + key)));
 									}
@@ -142,13 +142,11 @@ public final class GlobalDocumentsApp extends Launcher {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, CommonUserContainer<EditOperation>> factory(OTDriver driver,
-			Messenger<Long, CreateSharedRepo> messenger) {
-		return (eventloop, privKey) -> {
-			RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
-			MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
-			return CommonUserContainer.create(eventloop, driver, EDIT_OT_SYSTEM, myRepositoryId, messenger, DOCUMENTS_INDEX_REPO);
-		};
+	@ContainerScope
+	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, Messenger<Long, CreateSharedRepo> messenger) {
+		RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
+		MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
+		return CommonUserContainer.create(eventloop, driver, EDIT_OT_SYSTEM, myRepositoryId, messenger, DOCUMENTS_INDEX_REPO);
 	}
 
 	@Override

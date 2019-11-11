@@ -1,6 +1,7 @@
 package io.global.blog.dao;
 
 import io.datakernel.async.Promise;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.comm.dao.CommDao;
@@ -13,25 +14,29 @@ import io.global.ot.value.ChangeValueContainer;
 
 public final class BlogDaoImpl implements BlogDao {
 	private final OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
-	private final BlogUserContainer container;
 	private final ChangeValueContainer<BlogMetadata> metadataView;
+
+	@Inject
+	private KeyPair keys;
+	@Inject
+	private CommDao commDao;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public BlogDaoImpl(BlogUserContainer container) {
-		this.metadataStateManager = container.getMetadataStateManager();
-		this.container = container;
+	@Inject
+	public BlogDaoImpl(OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager) {
+		this.metadataStateManager = metadataStateManager;
 		metadataView = (ChangeValueContainer<BlogMetadata>) metadataStateManager.getState();
 	}
 
 	@Override
 	public KeyPair getKeys() {
-		return container.getKeys();
+		return keys;
 	}
 
 	@Override
 	public CommDao getCommDao() {
-		return container.getComm().getCommDao();
+		return commDao;
 	}
 
 	@Override

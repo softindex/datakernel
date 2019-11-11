@@ -1,6 +1,7 @@
 package io.global.ot;
 
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -39,6 +40,7 @@ public class OTAppCommonModule extends AbstractModule {
 	}
 
 	@Provides
+	@EagerSingleton
 	OTDriver driver(Eventloop eventloop, GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEMO_SIM_KEY);
 		return new OTDriver(node, simKey);

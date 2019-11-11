@@ -115,7 +115,8 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 
 	@Nullable
 	public C getUserContainer(String id) {
-		return containers.get(idMapping.get(id)).getResult();
+		Promise<C> promise = containers.get(idMapping.get(id));
+		return promise != null ? promise.getResult() : null;
 	}
 
 	@Override
