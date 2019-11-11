@@ -1,6 +1,7 @@
 package io.datakernel.di.core;
 
 import io.datakernel.di.annotation.EagerSingleton;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.impl.CompiledBindingLocator;
 import io.datakernel.di.impl.PlainCompiler;
@@ -428,8 +429,8 @@ public final class Injector {
 
 	/**
 	 * The key of type Set&lt;InstanceInjector&lt;?&gt;&gt; (note the wildcard type) is treated specially by this method,
-	 * it calls all of the instance injectors the set contains on instances of their respective keys, if such instances
-	 * were already made by this injector.
+	 * it calls all the instance injectors the set contains on instances of their respective keys, if this injector
+	 * already made such instances.
 	 *
 	 * @see AbstractModule#postInjectInto(Key)
 	 */
@@ -443,6 +444,14 @@ public final class Injector {
 			}
 		}
 		return postInjectors.stream().map(InstanceInjector::key).collect(toSet());
+	}
+
+	public void postInjectInto(Key<?> key, Object instance) {
+		Key<InstanceInjector<Object>> instanceInjectorKey = Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()));
+		InstanceInjector<Object> instanceInjector = getInstanceOrNull(instanceInjectorKey);
+		if (instanceInjector != null) {
+			instanceInjector.injectInto(instance);
+		}
 	}
 
 	@Nullable

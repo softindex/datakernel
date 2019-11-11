@@ -1,6 +1,7 @@
 package io.global.forum.dao;
 
 import io.datakernel.async.Promise;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.time.CurrentTimeProvider;
 import io.global.comm.dao.CommDao;
@@ -12,17 +13,17 @@ import io.global.ot.value.ChangeValue;
 import io.global.ot.value.ChangeValueContainer;
 
 public final class ForumDaoImpl implements ForumDao {
-	private final OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
-
 	private final ForumUserContainer container;
 
+	private final OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
 	private final ChangeValueContainer<ForumMetadata> metadataView;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
+	@Inject
 	public ForumDaoImpl(ForumUserContainer container) {
-		this.metadataStateManager = container.getMetadataStateManager();
 		this.container = container;
+		this.metadataStateManager = container.getMetadataStateManager();
 
 		metadataView = (ChangeValueContainer<ForumMetadata>) metadataStateManager.getState();
 	}

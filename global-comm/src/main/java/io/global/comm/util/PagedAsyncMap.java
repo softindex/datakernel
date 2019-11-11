@@ -4,6 +4,7 @@ import io.datakernel.async.Promise;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public interface PagedAsyncMap<K, V> {
 	Promise<Map<K, V>> get();
@@ -16,5 +17,5 @@ public interface PagedAsyncMap<K, V> {
 
 	Promise<Integer> size();
 
-	Promise<List<Map.Entry<K, V>>> slice(int offset, int size);
+	Promise<List<Entry<K, V>>> slice(int offset, int size);
 }

@@ -59,12 +59,12 @@ public class ThreadView {
 	}
 
 	public static Promise<@Nullable ThreadView> from(CommDao commDao, String threadId, @Nullable UserId currentUser, UserRole currentRole, int depth) {
-		return commDao.getThreads().get(threadId)
+		return commDao.getThreads("root").get(threadId)
 				.then(threadMeta -> from(commDao, threadId, threadMeta, currentUser, currentRole, depth));
 	}
 
 	public static Promise<List<ThreadView>> from(CommDao commDao, int page, int limit, @Nullable UserId currentUser, UserRole currentRole, int depth) {
-		return commDao.getThreads().slice(page * limit, limit)
+		return commDao.getThreads("root").slice(page * limit, limit)
 				.then(threads -> Promises.toList(threads.stream()
 						.map(e -> from(commDao, e.getKey(), e.getValue(), currentUser, currentRole, depth))
 						.filter(Objects::nonNull)));

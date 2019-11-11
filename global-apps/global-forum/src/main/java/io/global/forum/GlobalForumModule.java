@@ -1,31 +1,48 @@
 package io.global.forum;
 
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.loader.StaticLoader;
+import io.datakernel.ot.OTSystem;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.util.Initializer;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
-import io.global.comm.container.CommRepoNames;
+import io.global.comm.container.CommModule;
+import io.global.comm.container.TypedRepoNames;
 import io.global.comm.pojo.UserId;
-import io.global.common.PrivKey;
+import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.forum.container.ForumUserContainer;
+import io.global.forum.dao.ForumDao;
+import io.global.forum.dao.ForumDaoImpl;
 import io.global.forum.http.PublicServlet;
+import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvClient;
 import io.global.mustache.MustacheTemplater;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
+import io.global.ot.service.ContainerManager;
+import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
+import io.global.ot.value.ChangeValue;
+import io.global.ot.value.ChangeValueOTSystem;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
@@ -39,11 +56,34 @@ public final class GlobalForumModule extends AbstractModule {
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
 	private final String forumFsDir;
-	private final CommRepoNames forumRepoNames;
+	private final TypedRepoNames forumRepoNames;
 
-	public GlobalForumModule(String forumFsDir, CommRepoNames forumRepoNames) {
+	public GlobalForumModule(String forumFsDir, TypedRepoNames forumRepoNames) {
 		this.forumFsDir = forumFsDir;
 		this.forumRepoNames = forumRepoNames;
+	}
+
+	@Override
+	protected void configure() {
+		install(CommModule.create());
+
+		bind(CodecFactory.class).toInstance(REGISTRY);
+		bind(TypedRepoNames.class).toInstance(forumRepoNames);
+
+		bind(ForumUserContainer.class).in(ContainerScope.class);
+		bind(ForumDao.class).to(ForumDaoImpl.class).in(ContainerScope.class);
+	}
+
+	@Provides
+	@ContainerScope
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
+		return fsDriver.adapt(keyPair).subfolder(forumFsDir);
+	}
+
+	@Provides
+	@ContainerScope
+	KvClient<String, UserId> kvClient(KeyPair keyPair, GlobalKvDriver<String, UserId> kvDriver) {
+		return kvDriver.adapt(keyPair);
 	}
 
 	@Provides
@@ -73,16 +113,9 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory(OTDriver otDriver, GlobalKvDriver<String, UserId> kvDriver,
-			GlobalFsDriver fsDriver) {
-		return (eventloop, privKey) ->
-				ForumUserContainer.create(eventloop, privKey, otDriver, kvDriver.adapt(privKey), fsDriver.adapt(privKey).subfolder(forumFsDir), forumRepoNames);
-	}
-
-	@Provides
+	@EagerSingleton
 	OTDriver otDriver(GlobalOTNode node, Config config) {
-		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
-		return new OTDriver(node, simKey);
+		return new OTDriver(node, config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY));
 	}
 
 	@Provides

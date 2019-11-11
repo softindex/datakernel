@@ -65,7 +65,7 @@ public final class PublicServlet {
 				.map(GET, "/", request -> {
 					CommDao commDao = request.getAttachment(CommDao.class);
 					UserId userId = request.getAttachment(UserId.class);
-					return commDao.getThreads().get()
+					return commDao.getThreads("root").get()
 							.then(threads -> BlogView.from(commDao, threads, userId))
 							.map(threadViews -> threadViews.stream()
 									.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
@@ -149,7 +149,7 @@ public final class PublicServlet {
 					UserId userId = request.getAttachment(UserId.class);
 					CommDao commDao = request.getAttachment(CommDao.class);
 					return commDao.generateThreadId()
-							.then(id -> commDao.getThreads().put(id, ThreadMetadata.of("<unnamed>", 0))
+							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0))
 									.map($ -> id))
 							.then(tid -> {
 								ThreadDao threadDao = commDao.getThreadDao(tid);
@@ -161,12 +161,12 @@ public final class PublicServlet {
 										.then($ -> validate(paramsMap.get("content"), 65256, "Content"))
 										.then($ -> {
 											String pk = commDao.getKeys().getPubKey().asString();
-											return commDao.getThreads().put(tid, ThreadMetadata.of(paramsMap.get("title"), 0))
+											return commDao.getThreads("root").put(tid, ThreadMetadata.of(paramsMap.get("title"), 0))
 													.then($2 -> threadDao.addRootPost(userId, paramsMap.get("content"), attachmentMap))
 													.map($2 -> redirect302("/" + tid));
 										})
 										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
-										.thenEx(revertIfException(() -> commDao.getThreads().remove(tid)));
+										.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
 							});
 				})
 				.map(POST, "/blog", loadBody(kilobytes(256))
@@ -193,7 +193,7 @@ public final class PublicServlet {
 										String title = params.get("title");
 										return validate(title, 120, "Title", true)
 												.then($ -> request.getAttachment(CommDao.class)
-														.getThreads().put(request.getPathParameter("threadID"), ThreadMetadata.of(title, 0))
+														.getThreads("root").put(request.getPathParameter("threadID"), ThreadMetadata.of(title, 0))
 														.map($1 -> HttpResponse.ok200()));
 									} catch (ParseException e) {
 										return Promise.ofException(new ParseException("Illegal arguments", e));

@@ -76,7 +76,7 @@ public final class PublicServlet {
 
 			int page = getUnsignedInt(request, "p", 0);
 
-			return commDao.getThreads().size()
+			return commDao.getThreads("root").size()
 					.then(all -> {
 						int lastPage = (all + THREADS_PAGE_LIMIT - 1) / THREADS_PAGE_LIMIT;
 						if (page > lastPage) {
@@ -181,7 +181,7 @@ public final class PublicServlet {
 					CommDao commDao = request.getAttachment(CommDao.class);
 
 					return commDao.generateThreadId()
-							.then(id -> commDao.getThreads().put(id, ThreadMetadata.of("<unnamed>", 0))
+							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0))
 									.map($ -> id))
 							.then(tid -> {
 								ThreadDao threadDao = commDao.getThreadDao(tid);
@@ -196,7 +196,7 @@ public final class PublicServlet {
 												String title = getPostParameter(paramsMap, "title", 120);
 												String content = getPostParameter(paramsMap, "content", 4000);
 
-												return commDao.getThreads().put(tid, ThreadMetadata.of(title, Instant.now().toEpochMilli()))
+												return commDao.getThreads("root").put(tid, ThreadMetadata.of(title, Instant.now().toEpochMilli()))
 														.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
 														.then($2 -> threadDao.updateRating(userId, "root", Rating.LIKE))
 														.map($2 -> redirect302("/" + tid));
@@ -205,7 +205,7 @@ public final class PublicServlet {
 											}
 										})
 										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
-										.thenEx(revertIfException(() -> commDao.getThreads().remove(tid)));
+										.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
 							});
 				});
 	}
@@ -301,7 +301,7 @@ public final class PublicServlet {
 								try {
 									String title = getPostParameter(request.getPostParameters(), "title", 120);
 									return threadDao.getThreadMetadata()
-											.then(threadMeta -> commDao.getThreads().put(tid, ThreadMetadata.of(title, threadMeta.getLastUpdate())));
+											.then(threadMeta -> commDao.getThreads("root").put(tid, ThreadMetadata.of(title, threadMeta.getLastUpdate())));
 								} catch (ParseException e) {
 									return Promise.ofException(e);
 								}
@@ -320,7 +320,7 @@ public final class PublicServlet {
 								if (!userRole.isPrivileged() && !post.getAuthor().equals(userId)) {
 									return Promise.ofException(HttpException.ofCode(403, "Not privileged"));
 								}
-								return commDao.getThreads().remove(tid);
+								return commDao.getThreads("root").remove(tid);
 							})
 							.map($2 -> redirect302("/" + tid));
 				});
@@ -367,12 +367,12 @@ public final class PublicServlet {
 										}
 									})
 									.thenEx(revertIfException(() -> threadDao.deleteAttachments(parentId, attachmentMap.keySet())))
-									.then($ -> commDao.getThreads().get(threadId))
+									.then($ -> commDao.getThreads("root").get(threadId))
 									.then(thread -> {
 										if (thread == null) {
 											return Promise.of(POST_NOT_FOUND);
 										}
-										return commDao.getThreads().put(threadId, thread.updated(Instant.now().toEpochMilli()));
+										return commDao.getThreads("root").put(threadId, thread.updated(Instant.now().toEpochMilli()));
 									})
 									.then($ -> postOpPartialReply(request, threadDao, postId, templater, false)));
 				})

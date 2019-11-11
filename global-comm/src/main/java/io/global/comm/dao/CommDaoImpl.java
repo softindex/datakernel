@@ -1,9 +1,12 @@
 package io.global.comm.dao;
 
 import io.datakernel.async.Promise;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.http.session.SessionStore;
-import io.global.comm.container.CommGlobalState;
+import io.datakernel.ot.OTStateManager;
+import io.global.comm.container.CommState;
 import io.global.comm.ot.MapOTStateListenerProxy;
+import io.global.comm.ot.session.KvSessionStore;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
@@ -12,6 +15,8 @@ import io.global.comm.util.OTPagedAsyncMap;
 import io.global.comm.util.PagedAsyncMap;
 import io.global.comm.util.Utils;
 import io.global.common.KeyPair;
+import io.global.ot.api.CommitId;
+import io.global.ot.map.MapOperation;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
@@ -21,34 +26,30 @@ import static java.util.Comparator.comparingLong;
 import static java.util.Map.Entry.comparingByValue;
 
 public final class CommDaoImpl implements CommDao {
-	private final CommGlobalState container;
+	private final CommState container;
 
+	private final PagedAsyncMap<String, ThreadMetadata> threads;
 	private final Map<String, ThreadMetadata> threadsView;
 
-	private final PagedAsyncMap<UserId, UserData> users;
-	private final PagedAsyncMap<UserId, InetAddress> lastIps;
-	private final PagedAsyncMap<String, IpBanState> ipBans;
-	private final PagedAsyncMap<String, ThreadMetadata> threads;
+	@Inject
+	private KeyPair keys;
 
-	public CommDaoImpl(CommGlobalState container) {
+	@Inject
+	private PagedAsyncMap<UserId, UserData> users;
+	@Inject
+	private PagedAsyncMap<UserId, InetAddress> lastIps;
+	@Inject
+	private PagedAsyncMap<String, IpBanState> ipBans;
+
+	@Inject
+	private KvSessionStore<UserId> sessionStore;
+
+	@Inject
+	public CommDaoImpl(CommState container, OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadStateManager) {
 		this.container = container;
 
-		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) container.getThreadsStateManager().getState()).getMap();
-
-		users = new OTPagedAsyncMap<>(container.getUsersStateManager());
-		lastIps = new OTPagedAsyncMap<>(container.getLastIpsStateManager());
-		ipBans = new OTPagedAsyncMap<>(container.getBansStateManager());
-
-		threads = new OTPagedAsyncMap<>(
-				container.getThreadsStateManager(),
-				((MapOTStateListenerProxy<String, ThreadMetadata>) container.getThreadsStateManager().getState()).getMap(),
-				comparingByValue(comparingLong(ThreadMetadata::getLastUpdate).reversed())
-		);
-	}
-
-	@Override
-	public KeyPair getKeys() {
-		return container.getKeys();
+		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) threadStateManager.getState()).getMap();
+		threads = new OTPagedAsyncMap<>(threadStateManager, comparingByValue(comparingLong(ThreadMetadata::getLastUpdate).reversed()));
 	}
 
 	@Override
@@ -59,7 +60,7 @@ public final class CommDaoImpl implements CommDao {
 
 	@Override
 	public SessionStore<UserId> getSessionStore() {
-		return container.getSessionStore();
+		return sessionStore;
 	}
 
 	@Override
@@ -78,8 +79,13 @@ public final class CommDaoImpl implements CommDao {
 	}
 
 	@Override
-	public PagedAsyncMap<String, ThreadMetadata> getThreads() {
+	public PagedAsyncMap<String, ThreadMetadata> getThreads(String category) {
 		return threads;
+	}
+
+	@Override
+	public KeyPair getKeys() {
+		return keys;
 	}
 
 	@Override

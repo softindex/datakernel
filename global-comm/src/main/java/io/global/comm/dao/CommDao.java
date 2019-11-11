@@ -26,7 +26,7 @@ public interface CommDao {
 
 	PagedAsyncMap<String, IpBanState> getIpBans();
 
-	PagedAsyncMap<String, ThreadMetadata> getThreads();
+	PagedAsyncMap<String, ThreadMetadata> getThreads(String category);
 
 	Promise<String> generateThreadId();
 }

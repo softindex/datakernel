@@ -20,6 +20,7 @@ import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.EagerSingleton;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;

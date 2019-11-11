@@ -56,7 +56,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 
 	@Override
 	public Promise<ThreadMetadata> getThreadMetadata() {
-		return parent.getThreads().get(threadId);
+		return parent.getThreads("root").get(threadId);
 	}
 
 	@Override

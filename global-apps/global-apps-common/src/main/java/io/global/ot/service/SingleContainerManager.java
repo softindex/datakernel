@@ -1,19 +1,31 @@
 package io.global.ot.service;
 
 import io.datakernel.async.Promise;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Scope;
 import io.datakernel.eventloop.Eventloop;
+import io.global.common.PrivKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class SingleContainerManager<C extends UserContainer> implements ContainerManager<C> {
+	private final Eventloop eventloop;
 	private final C container;
 
-	private SingleContainerManager(C container) {
+	private SingleContainerManager(Eventloop eventloop, C container) {
+		this.eventloop = eventloop;
 		this.container = container;
 	}
 
-	public static <C extends UserContainer> SingleContainerManager<C> of(C container) {
-		return new SingleContainerManager<>(container);
+	public static <C extends UserContainer> SingleContainerManager<C> create(Injector injector, Key<C> containerKey, Eventloop eventloop, PrivKey privKey) {
+		Injector subinjector = injector.enterScope(Scope.of(ContainerScope.class));
+		subinjector.putInstance(PrivKey.class, privKey);
+
+		C instance = subinjector.getInstance(containerKey);
+		subinjector.postInjectInto(containerKey, instance);
+
+		return new SingleContainerManager<>(eventloop, instance);
 	}
 
 	@Nullable
@@ -29,7 +41,7 @@ public final class SingleContainerManager<C extends UserContainer> implements Co
 
 	@Override
 	public @NotNull Eventloop getEventloop() {
-		return container.getEventloop();
+		return eventloop;
 	}
 
 	@Override

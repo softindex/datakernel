@@ -4,6 +4,9 @@ import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.async.EventloopTaskScheduler.Schedule;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Scope;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.global.common.PrivKey;
@@ -16,7 +19,6 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BiFunction;
 
 import static io.datakernel.util.CollectorsEx.toMap;
 import static io.datakernel.util.LogUtils.Level.TRACE;
@@ -27,28 +29,31 @@ import static java.util.stream.Collectors.toSet;
 public final class ContainerManagerImpl<C extends UserContainer> implements ContainerManager<C>, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(ContainerManagerImpl.class);
 
+	private static final Scope CONTAINER_SCOPE = Scope.of(ContainerScope.class);
+
 	private static final Schedule DEFAULT_SYNC_SCHEDULE = Schedule.ofInterval(Duration.ofSeconds(5));
 
+	private final Injector injector;
+	private final Key<C> containerKey;
 	private final Eventloop eventloop;
-	private final BiFunction<Eventloop, PrivKey, C> containerFactory;
 
-	private final Map<PrivKey, Promise<C>> pendingContainers = new HashMap<>();
-	private final Map<PrivKey, C> containers = new HashMap<>();
+	private final Map<PrivKey, Promise<C>> containers = new HashMap<>();
 	private final Map<String, PrivKey> idMapping = new HashMap<>();
 
 	private final EventloopTaskScheduler synchronizer;
 	private final KeyExchanger keyExchanger;
 
-	private ContainerManagerImpl(Eventloop eventloop, KeyExchanger keyExchanger, BiFunction<Eventloop, PrivKey, C> containerFactory) {
+	private ContainerManagerImpl(Injector injector, Key<C> containerKey, Eventloop eventloop, KeyExchanger keyExchanger) {
+		this.injector = injector;
+		this.containerKey = containerKey;
 		this.eventloop = eventloop;
-		this.containerFactory = containerFactory;
 		this.keyExchanger = keyExchanger;
 		this.synchronizer = EventloopTaskScheduler.create(eventloop, this::sync)
 				.withSchedule(DEFAULT_SYNC_SCHEDULE);
 	}
 
-	public static <C extends UserContainer> ContainerManagerImpl<C> create(Eventloop eventloop, KeyExchanger keyExchanger, BiFunction<Eventloop, PrivKey, C> containerFactory) {
-		return new ContainerManagerImpl<>(eventloop, keyExchanger, containerFactory);
+	public static <C extends UserContainer> ContainerManagerImpl<C> create(Injector injector, Key<C> containerKey, Eventloop eventloop, KeyExchanger keyExchanger) {
+		return new ContainerManagerImpl<>(injector, containerKey, eventloop, keyExchanger);
 	}
 
 	public ContainerManagerImpl<C> withSyncSchedule(Schedule schedule) {
@@ -72,30 +77,30 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	@Override
 	public Promise<Void> stop() {
 		return synchronizer.stop()
-				.then($ -> Promises.all(containers.values().stream()
-						.map(EventloopService::stop))
-						.whenResult($2 -> containers.clear())
-				);
+				.then($ -> Promises.all(containers.values().stream().map(p -> p.then(UserContainer::stop))))
+				.whenResult($2 -> containers.clear());
 	}
 
 	private Promise<C> ensureUserContainer(String id, PrivKey privKey) {
-		C existing = containers.get(privKey);
+		Promise<C> existing = containers.get(privKey);
 		if (existing != null) {
 			idMapping.put(id, privKey);
-			return Promise.of(existing);
+			return existing;
 		}
-		return pendingContainers.computeIfAbsent(privKey,
-				$ -> {
-					C container = containerFactory.apply(eventloop, privKey);
-					return container.start()
-							.whenComplete(() -> pendingContainers.remove(privKey))
-							.whenResult($2 -> {
-								containers.put(privKey, container);
-								idMapping.put(id, privKey);
-							})
-							.map($2 -> container);
-				})
-				.whenComplete(toLogger(logger, thisMethod(), id));
+
+		Injector subinjector = injector.enterScope(CONTAINER_SCOPE);
+		subinjector.putInstance(PrivKey.class, privKey);
+
+		C container = subinjector.getInstance(containerKey);
+		subinjector.postInjectInto(containerKey, container);
+
+		Promise<C> promise = container.start()
+				.whenResult($2 -> idMapping.put(id, privKey))
+				.map($2 -> container);
+
+		containers.put(privKey, promise);
+
+		return promise.whenComplete(toLogger(logger, thisMethod(), id));
 	}
 
 	private Promise<?> removeUserContainer(String id) {
@@ -103,13 +108,14 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 		if (privKey == null || idMapping.containsValue(privKey)) {
 			return Promise.complete();
 		}
-		return Promise.of(containers.remove(privKey).stop())
+		return containers.remove(privKey)
+				.then(UserContainer::stop)
 				.whenComplete(toLogger(logger, thisMethod(), id));
 	}
 
 	@Nullable
 	public C getUserContainer(String id) {
-		return containers.get(idMapping.get(id));
+		return containers.get(idMapping.get(id)).getResult();
 	}
 
 	@Override

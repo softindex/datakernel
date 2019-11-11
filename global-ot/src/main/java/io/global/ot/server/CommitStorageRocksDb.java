@@ -403,7 +403,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 		return result;
 	}
 
-	private class Column<K, V> {
+	private static class Column<K, V> {
 		private final ColumnFamilyHandle handle;
 		private final StructuredCodec<K> keyCodec;
 		private final StructuredCodec<V> valueCodec;

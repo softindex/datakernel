@@ -6,18 +6,6 @@
                 <a href="/{{thread.threadId}}/{{postId}}{{^postId}}root{{/postId}}"
                    class="badge badge-secondary">#</a>
 
-                <span class="badge badge-primary badge-light text-wrap text-break ml-1">
-                    {{#user.role.privileged}}
-                        {{#author}}
-                            <a href="/profile/{{userId}}" class="text-dark">{{.}}</a>
-                        {{/author}}
-                    {{/user.role.privileged}}
-                    {{^user.role.privileged}}
-                        {{author}}
-                    {{/user.role.privileged}}
-                    {{^author}}<i>ghost</i>{{/author}}
-                </span>
-
                 <span class="badge badge-primary badge-light">
                     {{initialTimestamp}}
                 </span>
@@ -37,33 +25,48 @@
             {{/deletedBy}}
         </div>
         <div class="row">
-            <!--            <div class="col-auto mx-3">-->
-            <!--                {{#author}}{{<avatar}}{{$classes}}row{{/classes}}{{$size}}64{{/size}}{{/avatar}}{{/author}}-->
-            <!--                <div class="row justify-content-center">-->
-            <!--                    <span class="badge badge-primary badge-light text-wrap text-break mt-1">-->
-                <!--                        {{#user.role.privileged}}-->
-                <!--                            {{#author}}-->
-                <!--                                <a href="/profile/{{userId}}" class="text-dark stretched-link">{{.}}</a>-->
-                    <!--                            {{/author}}-->
-                <!--                        {{/user.role.privileged}}-->
-                <!--                        {{^user.role.privileged}}-->
-            <!--                            {{author}}-->
-                <!--                        {{/user.role.privileged}}-->
-            <!--                        {{^author}}<i>ghost</i>{{/author}}-->
-            <!--                    </span>-->
-            <!--                </div>-->
-                <!--                {{#author.ban}}-->
-            <!--                    <div class="row justify-content-center mt-2">-->
-                <!--                        {{#user.role.privileged}}-->
-                <!--                            <a href="/admin/user-ban/{{author.userId}}"-->
-                <!--                               class="badge badge-warning align-self-center">banned</a>-->
-                    <!--                        {{/user.role.privileged}}-->
-                <!--                        {{^user.role.privileged}}-->
-                <!--                            <span class="badge badge-warning align-self-center">banned</span>-->
-                    <!--                        {{/user.role.privileged}}-->
-            <!--                    </div>-->
-                <!--                {{/author.ban}}-->
-            <!--            </div>-->
+            <div class="col-auto mx-3">
+                {{#author}}{{<avatar}}{{$classes}}row{{/classes}}{{$size}}64{{/size}}{{/avatar}}{{/author}}
+                <div class="row justify-content-center">
+                    <span class="badge badge-primary badge-light text-wrap text-break mt-1">
+                            {{#user.role.privileged}}
+                                {{#author}}
+                                    <a href="/profile/{{userId}}" class="text-dark stretched-link">{{.}}</a>
+                                {{/author}}
+                            {{/user.role.privileged}}
+                        {{^user.role.privileged}}
+                            {{author}}
+                        {{/user.role.privileged}}
+                        {{^author}}<i>ghost</i>{{/author}}
+                    </span>
+                </div>
+                {{#author.ban}}
+                    <div class="row justify-content-center mt-2">
+                        {{#user.role.privileged}}
+                            <a href="/admin/user-ban/{{author.userId}}"
+                               class="badge badge-warning align-self-center">banned</a>
+                        {{/user.role.privileged}}
+                        {{^user.role.privileged}}
+                            <span class="badge badge-warning align-self-center">banned</span>
+                        {{/user.role.privileged}}
+                    </div>
+                {{/author.ban}}
+
+                {{#user}}
+                    <div class="row mt-2 justify-content-center {{#liked}} liked{{/liked}}{{#disliked}} disliked{{/disliked}}"
+                         data-prefix="/{{thread.threadId}}/{{postId}}"
+                         style="width: 64px">
+                        <div class="like">
+                            <i class="fa fa-angle-up"></i>
+                        </div>
+                        <div class="rating">{{likes}}</div>
+                        <div class="dislike">
+                            <i class="fa fa-angle-down"></i>
+                        </div>
+                    </div>
+                {{/user}}
+
+            </div>
             <div class="col">
                 {{#inlineParent}}
                     <div class="row">
@@ -170,21 +173,6 @@
         </div>
         {{/deletedBy}}
         <div class="row">
-            {{#user}}
-                <div class="col-auto align-self-center">
-                    <div class="row justify-content-center {{#liked}} liked{{/liked}}{{#disliked}} disliked{{/disliked}}"
-                         data-prefix="/{{thread.threadId}}/{{postId}}"
-                         style="width: 64px">
-                        <div class="like">
-                            <i class="fa fa-angle-up"></i>
-                        </div>
-                        <div class="rating">{{likes}}</div>
-                        <div class="dislike">
-                            <i class="fa fa-angle-down"></i>
-                        </div>
-                    </div>
-                </div>
-            {{/user}}
             <div class="col"></div>
             <div class="col-auto mx-2 mb-2">
                 <div class="row">
