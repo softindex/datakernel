@@ -49,6 +49,7 @@ public final class KvSessionStore<V> implements SessionStore<V>, EventloopServic
 		return this;
 	}
 
+	@NotNull
 	@Override
 	public Eventloop getEventloop() {
 		return cleanUpScheduler.getEventloop();

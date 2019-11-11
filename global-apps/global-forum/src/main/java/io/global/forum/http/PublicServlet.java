@@ -181,32 +181,31 @@ public final class PublicServlet {
 					CommDao commDao = request.getAttachment(CommDao.class);
 
 					return commDao.generateThreadId()
-							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0))
-									.map($ -> id))
-							.then(tid -> {
-								ThreadDao threadDao = commDao.getThreadDao(tid);
-								assert threadDao != null : "No thread dao just after creating the thread";
+							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0)).map($ -> id))
+							.then(tid -> commDao.getThreadDao(tid)
+									.then(threadDao -> {
+										assert threadDao != null : "No thread dao just after creating the thread";
 
-								Map<String, AttachmentType> attachmentMap = new HashMap<>();
-								Map<String, String> paramsMap = new HashMap<>();
+										Map<String, AttachmentType> attachmentMap = new HashMap<>();
+										Map<String, String> paramsMap = new HashMap<>();
 
-								return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", paramsMap, attachmentMap, true))
-										.then($ -> {
-											try {
-												String title = getPostParameter(paramsMap, "title", 120);
-												String content = getPostParameter(paramsMap, "content", 4000);
+										return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", paramsMap, attachmentMap, true))
+												.then($ -> {
+													try {
+														String title = getPostParameter(paramsMap, "title", 120);
+														String content = getPostParameter(paramsMap, "content", 4000);
 
-												return commDao.getThreads("root").put(tid, ThreadMetadata.of(title, Instant.now().toEpochMilli()))
-														.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
-														.then($2 -> threadDao.updateRating(userId, "root", Rating.LIKE))
-														.map($2 -> redirect302("/" + tid));
-											} catch (ParseException e) {
-												return Promise.ofException(e);
-											}
-										})
-										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
-										.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
-							});
+														return commDao.getThreads("root").put(tid, ThreadMetadata.of(title, Instant.now().toEpochMilli()))
+																.then($2 -> threadDao.addRootPost(userId, content, attachmentMap))
+																.then($2 -> threadDao.updateRating(userId, "root", Rating.LIKE))
+																.map($2 -> redirect302("/" + tid));
+													} catch (ParseException e) {
+														return Promise.ofException(e);
+													}
+												})
+												.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
+												.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
+									}));
 				});
 	}
 
@@ -763,12 +762,14 @@ public final class PublicServlet {
 		return servlet ->
 				request -> {
 					String id = request.getPathParameter("threadID");
-					ThreadDao dao = request.getAttachment(CommDao.class).getThreadDao(id);
-					if (dao == null) {
-						return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
-					}
-					request.attach(ThreadDao.class, dao);
-					return servlet.serve(request);
+					return request.getAttachment(CommDao.class).getThreadDao(id)
+							.then(dao -> {
+								if (dao == null) {
+									return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
+								}
+								request.attach(ThreadDao.class, dao);
+								return servlet.serve(request);
+							});
 				};
 	}
 }

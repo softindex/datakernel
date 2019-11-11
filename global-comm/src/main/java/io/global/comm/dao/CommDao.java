@@ -17,8 +17,7 @@ public interface CommDao {
 
 	SessionStore<UserId> getSessionStore();
 
-	@Nullable
-	ThreadDao getThreadDao(String id);
+	Promise<@Nullable ThreadDao> getThreadDao(String id);
 
 	PagedAsyncMap<UserId, UserData> getUsers();
 

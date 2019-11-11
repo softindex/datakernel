@@ -3,7 +3,6 @@ package io.global.forum.http.view;
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
 import io.global.comm.dao.CommDao;
-import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
 import io.global.comm.pojo.UserRole;
@@ -13,6 +12,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.global.forum.util.Utils.formatInstant;
+import static java.util.stream.Collectors.toList;
 
 public class ThreadView {
 	private final String id;
@@ -44,11 +44,13 @@ public class ThreadView {
 	}
 
 	private static Promise<@Nullable ThreadView> from(CommDao commDao, String threadId, ThreadMetadata threadMeta, @Nullable UserId currentUser, UserRole currentRole, int depth) {
-		ThreadDao dao = commDao.getThreadDao(threadId);
-		if (dao == null) {
-			return null;
-		}
-		return dao.getPost("root")
+		return commDao.getThreadDao(threadId)
+				.then(dao -> {
+					if (dao == null) {
+						return Promise.of(null);
+					}
+					return dao.getPost("root");
+				})
 				.then(rootPost -> {
 					if (rootPost == null) {
 						return Promise.of(null);
@@ -65,9 +67,8 @@ public class ThreadView {
 
 	public static Promise<List<ThreadView>> from(CommDao commDao, int page, int limit, @Nullable UserId currentUser, UserRole currentRole, int depth) {
 		return commDao.getThreads("root").slice(page * limit, limit)
-				.then(threads -> Promises.toList(threads.stream()
-						.map(e -> from(commDao, e.getKey(), e.getValue(), currentUser, currentRole, depth))
-						.filter(Objects::nonNull)));
+				.then(threads -> Promises.toList(threads.stream().map(e -> from(commDao, e.getKey(), e.getValue(), currentUser, currentRole, depth))))
+				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()));
 	}
 
 	public static Promise<@Nullable ThreadView> root(CommDao commDao, String threadId, @Nullable UserId currentUser, UserRole currentRole) {

@@ -55,11 +55,13 @@ public final class CommState implements EventloopService {
 		return commDao.get();
 	}
 
+	@NotNull
 	public Promise<?> start() {
 		return Promises.all(usersStateManager.start(), bansStateManager.start(), userLastIpManager.start(), sessionStore.start(), root.start())
 				.whenComplete(toLogger(logger, "start"));
 	}
 
+	@NotNull
 	public Promise<?> stop() {
 		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), userLastIpManager.stop(), sessionStore.stop(), root.stop())
 				.whenComplete(toLogger(logger, "stop"));
@@ -75,9 +77,9 @@ public final class CommState implements EventloopService {
 		return fsClient;
 	}
 
-	@Nullable
-	public ThreadDao getThreadDao(String threadId) {
-		return root.getThreadDaos().get(threadId);
+	public Promise<@Nullable ThreadDao> getThreadDao(String threadId) {
+		Promise<ThreadDao> promise = root.getThreadDaos().get(threadId);
+		return promise != null ? promise : Promise.of(null);
 	}
 
 	public SessionStore<UserId> getSessionStore() {

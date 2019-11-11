@@ -53,8 +53,7 @@ public final class CommDaoImpl implements CommDao {
 	}
 
 	@Override
-	@Nullable
-	public ThreadDao getThreadDao(String id) {
+	public Promise<@Nullable ThreadDao> getThreadDao(String id) {
 		return container.getThreadDao(id);
 	}
 

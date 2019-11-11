@@ -2,6 +2,7 @@ package io.global.comm.container;
 
 import io.datakernel.async.Promise;
 import io.datakernel.async.Promises;
+import io.datakernel.async.SettablePromise;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.InstanceProvider;
 import io.datakernel.ot.OTStateManager;
@@ -38,7 +39,7 @@ public final class CategoryState {
 	private final MapOTStateListenerProxy<String, ThreadMetadata> threadsState;
 
 	private final Map<String, Promise<OTStateManager<CommitId, ThreadOperation>>> postStateManagers = new HashMap<>();
-	private final Map<String, ThreadDao> threadDaos = new HashMap<>();
+	private final Map<String, Promise<ThreadDao>> threadDaos = new HashMap<>();
 
 	@Inject
 	public CategoryState(OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager) {
@@ -79,8 +80,10 @@ public final class CategoryState {
 		return postStateManagers.computeIfAbsent(threadId,
 				tid -> {
 					OTStateManager<CommitId, ThreadOperation> stateManager = threadStateManagerFactory.apply(tid);
+					SettablePromise<ThreadDao> daoPromise = new SettablePromise<>();
+					threadDaos.put(tid, daoPromise);
 					return stateManager.start()
-							.whenResult($ -> threadDaos.put(tid, new ThreadDaoImpl(commDao.get(), tid, stateManager, fsClient.subfolder(tid))))
+							.whenResult($ -> daoPromise.set(new ThreadDaoImpl(commDao.get(), tid, stateManager, fsClient.subfolder(tid))))
 							.map($2 -> stateManager);
 				})
 				.whenComplete(toLogger(logger, "ensureThread", threadId));
@@ -113,7 +116,7 @@ public final class CategoryState {
 		return postStateManagers;
 	}
 
-	public Map<String, ThreadDao> getThreadDaos() {
+	public Map<String, Promise<ThreadDao>> getThreadDaos() {
 		return threadDaos;
 	}
 }
