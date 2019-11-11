@@ -21,9 +21,11 @@ WORKDIR /build
 # tool layer
 RUN apk --update add --no-cache git
 
+ARG BRANCH=global-cloud
+
 # datakernel layer
-ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/global-cloud last-commit.json
-RUN git clone --depth 1 -b global-cloud https://github.com/softindex/datakernel \
+ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/${BRANCH} last-commit.json
+RUN git clone --depth 1 -b ${BRANCH} https://github.com/softindex/datakernel \
  && cd datakernel \
  && mvn install -P global -DskipTests \
  && cd ..
