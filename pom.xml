@@ -35,6 +35,7 @@
     <module>core-datastream</module>
     <module>core-http</module>
     <module>core-di</module>
+    <module>core-kotlin-async-await</module>
     <module>cloud-rpc</module>
     <module>cloud-memcache</module>
     <module>cloud-fs</module>
