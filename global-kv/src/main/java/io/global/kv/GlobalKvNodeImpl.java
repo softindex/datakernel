@@ -160,9 +160,10 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 									.map(node -> AsyncSupplier.cast(
 											doesDownloadCaching ?
 													() -> node.get(space, table, key)
-															.then(item ->
+															.then(item -> item != null ?
 																	repo.storage.put(item)
-																			.map($ -> item)) :
+																			.map($ -> item) :
+																	Promise.of(null)) :
 													() -> node.get(space, table, key))));
 						}));
 	}

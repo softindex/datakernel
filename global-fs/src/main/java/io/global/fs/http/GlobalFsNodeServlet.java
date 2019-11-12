@@ -48,7 +48,7 @@ public final class GlobalFsNodeServlet {
 
 	public static RoutingServlet create(GlobalFsNode node) {
 		return RoutingServlet.create()
-				.map(POST, "/" + UPLOAD + "/:space/*", request -> {
+				.map("/" + UPLOAD + "/:space/*", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
@@ -66,7 +66,7 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
-				.map(GET, "/" + DOWNLOAD + "/:space/*", request -> {
+				.map("/" + DOWNLOAD + "/:space/*", request -> {
 					String spaceParam = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(spaceParam);
@@ -97,7 +97,7 @@ public final class GlobalFsNodeServlet {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
-				.map(GET, "/" + GET_METADATA + "/:space/*", request -> {
+				.map("/" + GET_METADATA + "/:space/*", request -> {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);

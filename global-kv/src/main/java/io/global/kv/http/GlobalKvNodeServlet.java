@@ -95,7 +95,7 @@ public final class GlobalKvNodeServlet {
 								PubKey space = PubKey.fromString(parameterSpace);
 								return node.get(space, table, body.asArray())
 										.map(item ->
-												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC, item)));
+												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC.nullable(), item)));
 							} catch (ParseException e) {
 								return Promise.ofException(HttpException.ofCode(400, e));
 							}

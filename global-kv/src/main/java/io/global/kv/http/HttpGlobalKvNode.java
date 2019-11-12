@@ -96,7 +96,7 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 				.then(response -> response.loadBody()
 						.map(body -> {
 							try {
-								return decode(KV_ITEM_CODEC, body.slice());
+								return decode(KV_ITEM_CODEC.nullable(), body.slice());
 							} catch (ParseException e) {
 								throw new UncheckedException(e);
 							}
