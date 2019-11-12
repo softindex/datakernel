@@ -26,6 +26,11 @@ public abstract class MapModule<K, V> extends AbstractModule {
 	}
 
 	@Provides
+	<T extends Comparable<? super T>> Comparator<T> comparator() {
+		return Comparator.naturalOrder();
+	}
+
+	@Provides
 	OTSystem<MapOperation<K, V>> otSystem(Comparator<V> valueComparator) {
 		return MapOTSystem.create(valueComparator);
 	}

@@ -3,16 +3,17 @@ package io.global.comm.container;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.ThreadDao;
-import io.global.comm.ot.session.KvSessionStore;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.UserData;
-import io.global.comm.pojo.UserId;
 import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOperation;
+import io.global.ot.session.KvSessionStore;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -63,5 +64,9 @@ public final class CommState implements EventloopService {
 	public Promise<@Nullable ThreadDao> getThreadDao(String threadId) {
 		Promise<ThreadDao> promise = root.getThreadDaos().get(threadId);
 		return promise != null ? promise : Promise.of(null);
+	}
+
+	public SessionStore<UserId> getSessionStore() {
+		return sessionStore;
 	}
 }

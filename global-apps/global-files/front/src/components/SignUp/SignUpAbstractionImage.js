@@ -48,7 +48,6 @@ class SignUpAbstractionImage extends Component {
       drawingCanvas.width = viewWidth;
       drawingCanvas.height = viewHeight;
       ctx = drawingCanvas.getContext('2d');
-      console.log(drawingCanvas, drawingCanvas.width, viewWidth)
     }
 
     function createNodes() {

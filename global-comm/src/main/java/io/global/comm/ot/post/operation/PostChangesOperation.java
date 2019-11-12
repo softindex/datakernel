@@ -3,7 +3,7 @@ package io.global.comm.ot.post.operation;
 import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.Rating;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

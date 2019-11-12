@@ -10,8 +10,12 @@ import io.datakernel.remotefs.FsClient;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.operation.*;
 import io.global.comm.pojo.*;
+import io.global.comm.pojo.AttachmentType;
+import io.global.comm.pojo.Post;
+import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.util.Utils;
 import io.global.ot.api.CommitId;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;

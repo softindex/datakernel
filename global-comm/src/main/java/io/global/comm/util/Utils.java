@@ -3,12 +3,14 @@ package io.global.comm.util;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.TypeT;
 import io.datakernel.common.tuple.Tuple2;
 import io.global.comm.ot.post.operation.*;
 import io.global.comm.pojo.*;
+import io.global.ot.session.UserId;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -42,9 +44,6 @@ public final class Utils {
 				.with(ThreadMetadata.class, tuple(ThreadMetadata::parse,
 						ThreadMetadata::getTitle, STRING_CODEC,
 						ThreadMetadata::getLastUpdate, LONG_CODEC))
-				.with(UserId.class, registry -> tuple(UserId::new,
-						UserId::getAuthService, ofEnum(AuthService.class),
-						UserId::getAuthId, STRING_CODEC))
 				.with(UserData.class, registry -> tuple(UserData::new,
 						UserData::getRole, ofEnum(UserRole.class),
 						UserData::getEmail, STRING_CODEC.nullable(),
@@ -101,7 +100,7 @@ public final class Utils {
 						.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)));
 	}
 
-	public static final CodecRegistry REGISTRY = createCommRegistry();
+	public static final CodecFactory REGISTRY = createCommRegistry();
 
 	private static final char[] CHAR_POOL = {
 			'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',

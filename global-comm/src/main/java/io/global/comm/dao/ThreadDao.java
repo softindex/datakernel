@@ -9,7 +9,7 @@ import io.datakernel.promise.Promises;
 import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 import io.global.comm.pojo.*;
 import org.jetbrains.annotations.Nullable;
 

@@ -20,7 +20,6 @@ import io.global.blog.http.view.PostView;
 import io.global.blog.preprocessor.Preprocessor;
 import io.global.comm.container.CommModule;
 import io.global.comm.container.TypedRepoNames;
-import io.global.comm.pojo.UserId;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.fs.local.GlobalFsDriver;
@@ -31,6 +30,7 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
+import io.global.ot.session.UserId;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

@@ -3,7 +3,7 @@ package io.global.forum.http.view;
 import io.datakernel.promise.Promise;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.BanState;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;

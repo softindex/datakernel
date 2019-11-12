@@ -15,11 +15,9 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.comm.container.TypedRepoNames;
 import io.global.comm.ot.post.operation.ThreadOperation;
-import io.global.comm.ot.session.KvSessionStore;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
-import io.global.comm.pojo.UserId;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsDriver;
@@ -29,6 +27,8 @@ import io.global.mustache.DebugMustacheModule;
 import io.global.ot.map.MapOperation;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
+import io.global.ot.session.KvSessionStore;
+import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
 
 import java.io.File;
@@ -78,7 +78,7 @@ public final class GlobalForumApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("ot.storage", DEFAULT_OT_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
-				.with("appStoreUrl", "http://127.0.0.1:8088")
+				// .with("appStoreUrl", "http://127.0.0.1:8088")
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}

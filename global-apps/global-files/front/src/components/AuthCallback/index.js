@@ -1,28 +1,38 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import qs from 'query-string';
 import connectService from '../../common/connectService';
 import AuthContext from '../../modules/auth/AuthContext';
-import EC from 'elliptic';
-import {Redirect} from 'react-router-dom';
+import {withRouter} from 'react-router-dom';
+import AfterAuthRedirect from "../AfterAuthRedirect";
 
-const curve = new EC.ec('secp256k1');
+function AuthCallback({location, authByToken, authorized}) {
+  const params = qs.parse(location.search);
 
-class AuthCallback extends React.Component {
-  render() {
-    let params = qs.parse(this.props.location.search);
-    let privateKey = params.privateKey;
-
-    if (privateKey) {
-      let keys = curve.keyFromPrivate(privateKey, 'hex');
-      const publicKey = `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
-
-      this.props.authService.authByKeys(publicKey, privateKey);
+  useEffect(() => {
+    if (params.token) {
+      authByToken(params.token);
     }
+  }, []);
 
-    return <Redirect to='/'/>;
+  if (authorized) {
+    return <AfterAuthRedirect/>;
   }
 
+  if (!params.token) {
+    return 'No token received';
+  }
+
+  return null;
 }
 
-export default connectService(AuthContext, (state, authService) => ({authService}))(AuthCallback);
+export default connectService(
+  AuthContext, ({authorized}, accountService) => ({
+    authByToken(token) {
+      accountService.authByToken(token);
+    },
+    authorized
+  })
+)(
+  withRouter(AuthCallback)
+);
 

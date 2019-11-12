@@ -11,7 +11,6 @@ import io.datakernel.ot.OTUplinkImpl;
 import io.datakernel.promise.Async;
 import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
-import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
@@ -137,14 +136,13 @@ public final class DynamicOTUplinkServlet<D> implements AsyncServlet {
 	}
 
 	private OTUplinkImpl<CommitId, D, OTCommit<CommitId, D>> getUplink(HttpRequest request, boolean read) throws ParseException {
-		String pubKeyParameter = request.getPathParameters().get("pubKey");
+		String pubKeyParameter = request.getPathParameters().get("key");
 		String suffix = request.getPathParameters().get("suffix");
 		String repositoryName = prefix + (suffix == null ? "" : ('/' + suffix));
 		KeyPair keys;
 		if (pubKeyParameter == null) {
-			String key = request.getCookie("Key");
-			if (key == null) throw KEYS_REQUIRED;
-			keys = PrivKey.fromString(key).computeKeys();
+			keys = request.getAttachment(KeyPair.class);
+			assert keys != null : "Key pair should be attached to request";
 		} else {
 			if (!read) throw READ_ONLY;
 			//noinspection ConstantConditions - will be used for read operations

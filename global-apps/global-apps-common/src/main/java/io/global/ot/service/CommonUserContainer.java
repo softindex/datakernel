@@ -1,6 +1,7 @@
 package io.global.ot.service;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.*;
 import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
@@ -12,6 +13,8 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.service.synchronization.SynchronizationService;
+import io.global.ot.session.KvSessionStore;
+import io.global.ot.session.UserId;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.Messenger;
@@ -28,23 +31,25 @@ public final class CommonUserContainer<D> implements UserContainer {
 	private final MyRepositoryId<D> myRepositoryId;
 	private final OTStateManager<CommitId, SharedReposOperation> stateManager;
 
+	private final KvSessionStore<UserId> sessionStore;
 	private final SynchronizationService<D> synchronizationService;
 	private final MessagingService messagingService;
 
 	private CommonUserContainer(Eventloop eventloop, MyRepositoryId<D> myRepositoryId, OTDriver driver, OTSystem<D> otSystem,
 			OTStateManager<CommitId, SharedReposOperation> stateManager, Messenger<Long, CreateSharedRepo> messenger,
-			String indexRepoName) {
+			KvSessionStore<UserId> sessionStore, String indexRepoName) {
 		this.eventloop = eventloop;
 		this.myRepositoryId = myRepositoryId;
 		this.stateManager = stateManager;
+		this.sessionStore = sessionStore;
 		this.synchronizationService = SynchronizationService.create(eventloop, driver, this, otSystem);
 		this.messagingService = MessagingService.create(eventloop, messenger, this, indexRepoName);
 	}
 
 	public static <D> CommonUserContainer<D> create(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem, MyRepositoryId<D> myRepositoryId,
-			Messenger<Long, CreateSharedRepo> messenger, String indexRepoName) {
+			Messenger<Long, CreateSharedRepo> messenger, KvSessionStore<UserId> sessionStore, String indexRepoName) {
 		OTStateManager<CommitId, SharedReposOperation> stateManager = createStateManager(eventloop, driver, myRepositoryId, indexRepoName);
-		return new CommonUserContainer<>(eventloop, myRepositoryId, driver, otSystem, stateManager, messenger, indexRepoName);
+		return new CommonUserContainer<>(eventloop, myRepositoryId, driver, otSystem, stateManager, messenger, sessionStore, indexRepoName);
 	}
 
 	@NotNull
@@ -74,6 +79,11 @@ public final class CommonUserContainer<D> implements UserContainer {
 	@Override
 	public KeyPair getKeys() {
 		return myRepositoryId.getPrivKey().computeKeys();
+	}
+
+	@Override
+	public SessionStore<UserId> getSessionStore() {
+		return sessionStore;
 	}
 
 	public MyRepositoryId<D> getMyRepositoryId() {

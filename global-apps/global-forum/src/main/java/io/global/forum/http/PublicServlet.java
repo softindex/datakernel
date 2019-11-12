@@ -18,6 +18,7 @@ import io.global.forum.http.view.*;
 import io.global.forum.ot.ForumMetadata;
 import io.global.forum.util.Utils;
 import io.global.mustache.MustacheTemplater;
+import io.global.ot.session.UserId;
 
 import java.net.InetAddress;
 import java.time.Duration;
@@ -42,9 +43,9 @@ import static io.datakernel.http.HttpResponse.redirect302;
 import static io.global.Utils.*;
 import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
 import static io.global.comm.dao.ThreadDao.POST_NOT_FOUND;
-import static io.global.comm.pojo.AuthService.DK_APP_STORE;
 import static io.global.comm.util.Utils.generateId;
 import static io.global.forum.util.Utils.*;
+import static io.global.ot.session.AuthService.DK_APP_STORE;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toSet;
 

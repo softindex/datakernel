@@ -11,7 +11,11 @@ import {MuiThemeProvider} from '@material-ui/core/styles';
 import theme from '../components/theme/themeConfig';
 import AuthCallback from '../components/AuthCallback';
 
-const authService = new AuthService(process.env.REACT_APP_AUTH_LINK, cookies, window.localStorage);
+const authService = new AuthService(
+  process.env.REACT_APP_GLOBAL_OAUTH_LINK,
+  cookies,
+  process.env.REACT_APP_SESSION_ID_FIELD
+);
 authService.init();
 
 class App extends Component {

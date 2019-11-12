@@ -4,7 +4,7 @@ import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 import io.global.comm.pojo.UserRole;
 import org.jetbrains.annotations.Nullable;
 

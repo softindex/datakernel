@@ -20,7 +20,7 @@ class SignUp extends React.Component {
   }
 
   onAuthByAppStore = () => {
-    this.props.authService.authWithAppStore();
+    this.props.authService.authByAppStore();
   };
 
   componentDidMount() {
@@ -34,9 +34,10 @@ class SignUp extends React.Component {
   }
 
   onUploadFile = () => {
-    this.props.authService.authByFile(this.input.files[0]).then(() => {
-      this.props.history.push('/');
-    });
+    return this.props.authService.authByFile(this.input.files[0])
+      .then(() => {
+        this.props.history.push('/');
+      });
   };
 
   render() {

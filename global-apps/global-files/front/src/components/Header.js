@@ -6,7 +6,6 @@ import Typography from '@material-ui/core/Typography';
 import IconButton from '@material-ui/core/IconButton';
 import AccountCircleIcon from '@material-ui/icons/AccountCircleOutlined';
 import MenuIcon from '@material-ui/icons/MenuOutlined';
-import DownloadIcon from '@material-ui/icons/CloudDownloadOutlined';
 import ExitIcon from '@material-ui/icons/ExitToAppOutlined';
 import {withStyles} from "@material-ui/core";
 import Menu from '@material-ui/core/Menu';
@@ -14,7 +13,6 @@ import MenuList from '@material-ui/core/MenuList';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
 import MenuItem from '@material-ui/core/MenuItem';
-import FileSaver from 'file-saver';
 import AuthContext from '../modules/auth/AuthContext';
 import connectService from '../common/connectService';
 
@@ -51,11 +49,6 @@ class Header extends React.Component {
     this.setState({
       menuAnchor: event.currentTarget
     })
-  };
-
-  downloadKey = () => {
-    FileSaver.saveAs(this.props.authService.createKeysFile());
-    this.closeMenu();
   };
 
   logout = () => {
@@ -98,12 +91,6 @@ class Header extends React.Component {
           onClose={this.closeMenu}
         >
           <MenuList>
-            <MenuItem onClick={this.downloadKey}>
-              <ListItemIcon>
-                <DownloadIcon/>
-              </ListItemIcon>
-              <ListItemText inset primary="Download key"/>
-            </MenuItem>
             <MenuItem onClick={this.logout}>
               <ListItemIcon>
                 <ExitIcon/>

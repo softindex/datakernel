@@ -4,4 +4,5 @@ node_modules
 build
 npm-debug.log
 target
-globalfs-app.properties
+global-notes.properties
+containers

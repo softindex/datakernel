@@ -5,9 +5,9 @@ import io.datakernel.promise.Promise;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
-import io.global.comm.pojo.UserId;
 import io.global.comm.util.PagedAsyncMap;
 import io.global.common.KeyPair;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;

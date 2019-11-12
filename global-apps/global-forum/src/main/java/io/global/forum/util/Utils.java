@@ -1,6 +1,6 @@
 package io.global.forum.util;
 
-import io.datakernel.codec.registry.CodecRegistry;
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpException;
@@ -29,7 +29,7 @@ public final class Utils {
 		throw new AssertionError();
 	}
 
-	public static final CodecRegistry REGISTRY = createCommRegistry()
+	public static final CodecFactory REGISTRY = createCommRegistry()
 			.with(ForumMetadata.class, registry -> tuple(ForumMetadata::new,
 					ForumMetadata::getTitle, STRING_CODEC,
 					ForumMetadata::getDescription, STRING_CODEC))

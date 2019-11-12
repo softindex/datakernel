@@ -3,6 +3,7 @@ package io.global.ot;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.promise.RetryPolicy;
@@ -12,6 +13,8 @@ import io.global.ot.edit.InsertOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
 import io.global.ot.service.messaging.CreateSharedRepo;
+import io.global.ot.session.AuthService;
+import io.global.ot.session.UserId;
 import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.RenameRepo;
 import io.global.ot.shared.SharedRepo;
@@ -51,6 +54,7 @@ public final class OTUtils {
 				"prev", SetValue::getPrev, valueCodec.nullable(),
 				"next", SetValue::getNext, valueCodec.nullable());
 	}
+
 	public static final StructuredCodec<SharedReposOperation> SHARED_REPOS_OPERATION_CODEC = CodecSubtype.<SharedReposOperation>create()
 			.with(CreateOrDropRepo.class, "CreateOrDropRepo", CREATE_OR_DROP_REPO_CODEC)
 			.with(RenameRepo.class, "RenameRepo", RENAME_REPO_CODEC)
@@ -87,6 +91,7 @@ public final class OTUtils {
 				}
 			}
 	);
+
 	public static <T> StructuredCodec<ChangeValue<T>> ofChangeValue(StructuredCodec<T> underlying) {
 		return object(ChangeValue::of,
 				"prev", ChangeValue::getPrev, underlying.nullable(),
@@ -94,10 +99,15 @@ public final class OTUtils {
 				"timestamp", ChangeValue::getTimestamp, LONG_CODEC);
 	}
 
+	public static final CodecFactory REGISTRY = createOTRegistry();
+
 	public static CodecRegistry createOTRegistry() {
 		return CodecRegistry.createDefault()
 				.withGeneric(MapOperation.class, (registry, subCodecs) -> getMapOperationCodec(subCodecs[0], subCodecs[1]))
 				.withGeneric(SetValue.class, (registry, subCodecs) -> getSetValueCodec(subCodecs[0]))
-				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeValue(subCodecs[0]));
+				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeValue(subCodecs[0]))
+				.with(UserId.class, registry -> tuple(UserId::new,
+						UserId::getAuthService, ofEnum(AuthService.class),
+						UserId::getAuthId, STRING_CODEC));
 	}
 }

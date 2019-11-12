@@ -13,9 +13,7 @@ import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.ThreadOTSystem;
 import io.global.comm.ot.post.operation.ThreadOperation;
-import io.global.comm.ot.session.KvSessionStore;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
 import io.global.comm.util.OTPagedAsyncMap;
 import io.global.comm.util.PagedAsyncMap;
 import io.global.common.KeyPair;
@@ -27,6 +25,8 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerScope;
+import io.global.ot.session.KvSessionStore;
+import io.global.ot.session.UserId;
 
 import java.util.TreeMap;
 import java.util.function.Function;

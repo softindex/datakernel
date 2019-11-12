@@ -4,9 +4,9 @@ import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.UserData;
-import io.global.comm.pojo.UserId;
 import io.global.comm.pojo.UserRole;
 import io.global.common.CryptoUtils;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.security.MessageDigest;

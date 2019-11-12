@@ -2,6 +2,7 @@ package io.global.forum.container;
 
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
 import io.global.comm.container.CommState;
@@ -10,6 +11,7 @@ import io.global.forum.dao.ForumDao;
 import io.global.forum.ot.ForumMetadata;
 import io.global.ot.api.CommitId;
 import io.global.ot.service.UserContainer;
+import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -73,5 +75,10 @@ public final class ForumUserContainer implements UserContainer {
 	@Override
 	public KeyPair getKeys() {
 		return keys;
+	}
+
+	@Override
+	public SessionStore<UserId> getSessionStore() {
+		return comm.getSessionStore();
 	}
 }

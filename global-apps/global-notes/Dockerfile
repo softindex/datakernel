@@ -4,10 +4,11 @@ WORKDIR /build
 # tool layer
 RUN apk --update add --no-cache git
 
+ARG BRANCH=global-cloud
+
 # datakernel layer
-# TODO eduard: change branch name when in master
-ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/global-notes last-commit.json
-RUN git clone --depth 1 -b global-notes https://github.com/softindex/datakernel \
+ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/${BRANCH} last-commit.json
+RUN git clone --depth 1 -b ${BRANCH} https://github.com/softindex/datakernel \
  && cd datakernel \
  && mvn install -P global -DskipTests \
  && cd ..
@@ -41,7 +42,7 @@ FROM openjdk:8-jre-alpine
 WORKDIR /app
 
 # properties layer
-COPY notes.properties* ./
+COPY global-notes.properties* ./
 
 COPY --from=build-java /build/target/notes.jar ./
 COPY --from=build-js /build/build ./front/build

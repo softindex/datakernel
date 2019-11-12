@@ -5,8 +5,8 @@ import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.Rating;
-import io.global.comm.pojo.UserId;
 import io.global.comm.pojo.UserRole;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

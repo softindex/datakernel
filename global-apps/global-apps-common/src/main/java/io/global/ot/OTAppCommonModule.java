@@ -6,12 +6,12 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.http.loader.StaticLoader;
 import io.global.common.SimKey;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
+import io.global.ot.service.ContainerServlet;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,7 +26,7 @@ public class OTAppCommonModule extends AbstractModule {
 	private static final String RESOURCES_PATH = "front/build";
 
 	@Provides
-	AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet, Config config) {
+	AsyncHttpServer server(Eventloop eventloop, ContainerServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}

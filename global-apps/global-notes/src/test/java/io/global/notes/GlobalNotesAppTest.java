@@ -2,9 +2,9 @@ package io.global.notes;
 
 import org.junit.Test;
 
-public class NotesLauncherTest {
+public class GlobalNotesAppTest {
 	@Test
 	public void testInjector() {
-		new GlobalNotesLauncher().testInjector();
+		new GlobalNotesApp().testInjector();
 	}
 }

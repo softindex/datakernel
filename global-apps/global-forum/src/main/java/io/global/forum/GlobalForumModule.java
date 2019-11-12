@@ -13,7 +13,6 @@ import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.comm.container.CommModule;
 import io.global.comm.container.TypedRepoNames;
-import io.global.comm.pojo.UserId;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.forum.container.ForumUserContainer;
@@ -28,6 +27,7 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
+import io.global.ot.session.UserId;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
