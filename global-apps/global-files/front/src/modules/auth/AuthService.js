@@ -37,15 +37,14 @@ class AuthService extends Store {
       const fileReader = new FileReader();
       fileReader.readAsText(file);
       fileReader.onload = () => {
-        const privateKey = fileReader.result.replace(/\r?\n|\r/, "");
+        const privateKey = fileReader.result.trim();
         this._doAuth(fetch('/authByKey', {method: 'post', body: privateKey}))
           .then(resolve)
           .catch(reject);
-        resolve();
       };
-      fileReader.onerror = error => {
-        this.setStore({error});
-        reject(error);
+      fileReader.onerror = () => {
+        this.setStore({error: fileReader.error});
+        reject(fileReader.error);
       };
     });
   };
@@ -58,18 +57,17 @@ class AuthService extends Store {
     this.setStore({loading: true});
     return fetchPromise
       .then(response => {
-        this.setStore({loading: false});
         if (response.status !== 200) {
-          this.setStore({error: new Error("Authorization failed: " + response.statusText)});
-        } else {
-          response.text()
-            .then(text => {
-              localStorage.setItem('publicKey', text);
-              this.setStore({authorized: true, publicKey: text, error: null});
-            })
-            .catch(error => this.setStore({error}));
+          throw new Error("Authorization failed: " + response.statusText);
         }
-      });
+        return response.text();
+      })
+      .then(text => {
+        localStorage.setItem('publicKey', text);
+        this.setStore({authorized: true, publicKey: text, error: null});
+      })
+      .catch(error => this.setStore({error}))
+      .finally(() => this.setStore({loading: false}));
   }
 
   async logout() {

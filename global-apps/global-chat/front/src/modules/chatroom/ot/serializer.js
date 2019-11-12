@@ -10,8 +10,9 @@ const serializer = {
       // TODO: case 'Call', case 'Drop', case 'Handle'
       case 'Message':
         return ChatRoomOTOperation.createFromJson(value);
+      default:
+        throw new Error('Unknown type');
     }
-    throw new Error('Unknown type');
   }
 };
 

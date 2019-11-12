@@ -3,7 +3,7 @@ import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import {withRouter} from "react-router-dom";
 import {getInstance, useService} from "global-apps-common";
 import ContactsService from "../../modules/contacts/ContactsService";
-import Redirect from "react-router-dom/es/Redirect";
+import {Redirect} from "react-router-dom";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import withStyles from "@material-ui/core/styles/withStyles";
 import inviteDialogStyles from "./inviteDialogStyles";

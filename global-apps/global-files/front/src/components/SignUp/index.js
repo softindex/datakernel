@@ -33,10 +33,12 @@ class SignUp extends React.Component {
     window.removeEventListener('offline', this._wentOffline);
   }
 
-  onUploadFile() {
+  onUploadFile = () => {
     return this.props.authService.authByFile(this.input.files[0])
-      .then(() => this.props.history.push('/'));
-  }
+      .then(() => {
+        this.props.history.push('/');
+      });
+  };
 
   render() {
     return (

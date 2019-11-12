@@ -36,7 +36,6 @@ export class AuthService extends Service {
       '/authByKey',
       ValueStorage.createCookie(sessionIdField),
       ValueStorage.createLocalStorage(publicKeyField),
-      localStorage,
       url =>  location.href = url,
       () => new FileReader(),
       fetch
@@ -44,7 +43,7 @@ export class AuthService extends Service {
   }
 
   init() {
-    const sessionString = this.this._sessionValueStorage.get();
+    const sessionString = this._sessionValueStorage.get();
     if (!sessionString) {
       this._publicKeyValueStorage.remove();
       return
@@ -62,7 +61,7 @@ export class AuthService extends Service {
   }
 
   authByAppStore() {
-    this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(this._oAuthURL));
+    this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(window.location.href + this._oAuthURL));
   }
 
   authByFile(file) {
@@ -77,9 +76,11 @@ export class AuthService extends Service {
           .then(resolve)
           .catch(reject);
       };
-      fileReader.onerror = error => {
-        this.setState({error});
-        reject(error);
+      fileReader.onerror = () => {
+        this.setState({
+          error: fileReader.error
+        });
+        reject(fileReader.error);
       };
     });
   };

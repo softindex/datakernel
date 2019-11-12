@@ -49,7 +49,7 @@ function SideBar({classes, publicKey, enqueueSnackbar}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
-    [contactsOTStateManager]
+    [contactsOTStateManager, publicKey]
   );
   initService(searchContactsService, err => enqueueSnackbar(err.message, {
     variant: 'error'

@@ -3,7 +3,7 @@ import qs from 'query-string';
 import connectService from '../../common/connectService';
 import AuthContext from '../../modules/auth/AuthContext';
 import {withRouter} from 'react-router-dom';
-import AfterAuthRedirect from "../../../../../global-apps-common/front/src/auth/OAuthCallback";
+import AfterAuthRedirect from "../AfterAuthRedirect";
 
 function AuthCallback({location, authByToken, authorized}) {
   const params = qs.parse(location.search);

@@ -7,7 +7,7 @@ import {RegisterDependency, initService} from "global-apps-common";
 function Document({documentId, isNew, enqueueSnackbar}) {
   const documentService = useMemo(() => (
     DocumentService.createFrom(documentId, isNew)
-  ), [documentId]);
+  ), [documentId, isNew]);
 
   initService(documentService, err => enqueueSnackbar(err.message, {
     variant: 'error'
@@ -23,10 +23,6 @@ function Document({documentId, isNew, enqueueSnackbar}) {
 
   const onReplace = (position, oldContent, newContent) => {
     documentService.replace(position, oldContent, newContent);
-  };
-
-  const onRename = newName => {
-    documentService.rename(newName);
   };
 
     return (

@@ -3,3 +3,4 @@ app.http.listenAddresses=
 discovery.address=
 fs.storage=
 appStoreUrl=
+privateKey=
