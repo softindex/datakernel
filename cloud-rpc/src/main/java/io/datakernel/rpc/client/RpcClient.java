@@ -57,7 +57,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.async.callback.Callback.toAnotherEventloop;
 import static io.datakernel.common.Preconditions.*;
-import static io.datakernel.common.Utils.nullToDefault;
+import static io.datakernel.common.Utils.nullToSupplier;
 import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -341,13 +341,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 					RpcClientConnection connection = new RpcClientConnection(eventloop, this, address, stream);
 					stream.setListener(connection);
 
-					connections.put(address, connection);
-
 					// jmx
 					if (isMonitoring()) {
 						connection.startMonitoring();
 					}
-					requestSender = nullToDefault(strategy.createSender(pool), new NoSenderAvailable());
+					connections.put(address, connection);
+					requestSender = nullToSupplier(strategy.createSender(pool), NoSenderAvailable::new);
 
 					// jmx
 					generalConnectsStats.successfulConnects++;
@@ -365,9 +364,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	}
 
 	void removeConnection(InetSocketAddress address) {
-		if (connections.remove(address) == null) {
-			return;
-		}
+		if (connections.remove(address) == null) return;
+		requestSender = nullToSupplier(strategy.createSender(pool), NoSenderAvailable::new);
 		logger.info("Connection closed: {}", address);
 		processClosedConnection(address);
 	}

@@ -277,6 +277,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		}
 
 		private void flush() {
+			if (buf == null) return;
 			if (buf.canRead()) {
 				if (!bufs.isEmpty()) {
 					getSupplier().suspend();

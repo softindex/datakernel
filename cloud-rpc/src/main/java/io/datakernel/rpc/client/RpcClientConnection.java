@@ -279,7 +279,9 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		while (!activeRequests.isEmpty()) {
 			for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
 				Callback<?> cb = activeRequests.remove(cookie);
-				cb.accept(null, CONNECTION_CLOSED);
+				if (cb != null) {
+					cb.accept(null, CONNECTION_CLOSED);
+				}
 			}
 		}
 	}

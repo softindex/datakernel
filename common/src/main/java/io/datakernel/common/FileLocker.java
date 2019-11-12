@@ -66,7 +66,8 @@ public final class FileLocker {
 		try {
 			File parentDir = lockFile.getCanonicalFile().getParentFile();
 			if (parentDir != null) {
-				checkState(parentDir.mkdirs(), "Cannot create directory %s", parentDir);
+				parentDir.mkdirs();
+				checkState(parentDir.isDirectory(), "Cannot create directory %s", parentDir);
 			}
 			lockStream = new FileOutputStream(lockFile);
 			lockStream.write(0);

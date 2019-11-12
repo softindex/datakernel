@@ -154,7 +154,9 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	public void shutdown() {
-		downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.CLOSE));
+		if (downstreamDataAcceptor != null) {
+			downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.CLOSE));
+		}
 	}
 
 	// jmx
