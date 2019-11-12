@@ -3,55 +3,75 @@ package io.global.forum.http.view;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
-import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
+import io.global.comm.pojo.UserRole;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
+import static io.global.forum.util.Utils.formatInstant;
 import static java.util.stream.Collectors.toList;
 
 public class ThreadView {
 	private final String id;
-	private final ThreadMetadata meta;
+	private final String title;
+	private final String lastUpdate;
 	private final PostView root;
 
-	public ThreadView(String id, ThreadMetadata meta, PostView root) {
+	public ThreadView(String id, String title, String lastUpdate, PostView root) {
 		this.id = id;
-		this.meta = meta;
+		this.title = title;
+		this.lastUpdate = lastUpdate;
 		this.root = root;
 	}
 
-	public String getId() {
+	public String getThreadId() {
 		return id;
 	}
 
-	public ThreadMetadata getMeta() {
-		return meta;
+	public String getTitle() {
+		return title;
+	}
+
+	public String getLastUpdate() {
+		return lastUpdate;
 	}
 
 	public PostView getRoot() {
 		return root;
 	}
 
-	public static Promise<List<ThreadView>> from(CommDao commDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
-		return Promises.toList(threads.entrySet().stream()
-				.map(e -> {
-					ThreadDao dao = commDao.getThreadDao(e.getKey());
-					return dao != null ?
-							dao.getPost("root")
-									.then(rootPost ->
-											PostView.from(commDao, rootPost, currentUser, false)
-													.map(post -> new ThreadView(e.getKey(), e.getValue(), post))) :
-							null;
+	private static Promise<@Nullable ThreadView> from(CommDao commDao, String threadId, ThreadMetadata threadMeta, @Nullable UserId currentUser, UserRole currentRole, int depth) {
+		return commDao.getThreadDao(threadId)
+				.then(dao -> {
+					if (dao == null) {
+						return Promise.of(null);
+					}
+					return dao.getPost("root");
 				})
-				.filter(Objects::nonNull))
-				.map(ts -> ts.stream()
-						.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
-						.collect(toList()));
+				.then(rootPost -> {
+					if (rootPost == null) {
+						return Promise.of(null);
+					}
+					return PostView.from(commDao, rootPost, currentUser, currentRole, depth)
+							.map(post -> new ThreadView(threadId, threadMeta.getTitle(), formatInstant(threadMeta.getLastUpdate()), post));
+				});
+	}
+
+	public static Promise<@Nullable ThreadView> from(CommDao commDao, String threadId, @Nullable UserId currentUser, UserRole currentRole, int depth) {
+		return commDao.getThreads("root").get(threadId)
+				.then(threadMeta -> from(commDao, threadId, threadMeta, currentUser, currentRole, depth));
+	}
+
+	public static Promise<List<ThreadView>> from(CommDao commDao, int page, int limit, @Nullable UserId currentUser, UserRole currentRole, int depth) {
+		return commDao.getThreads("root").slice(page * limit, limit)
+				.then(threads -> Promises.toList(threads.stream().map(e -> from(commDao, e.getKey(), e.getValue(), currentUser, currentRole, depth))))
+				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()));
+	}
+
+	public static Promise<@Nullable ThreadView> root(CommDao commDao, String threadId, @Nullable UserId currentUser, UserRole currentRole) {
+		return from(commDao, threadId, currentUser, currentRole, -1);
 	}
 }

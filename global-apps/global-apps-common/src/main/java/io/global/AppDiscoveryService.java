@@ -38,7 +38,6 @@ public final class AppDiscoveryService implements DiscoveryService {
 	public static AppDiscoveryService createStub() {
 		AnnouncementStorage announcementStorage = new InMemoryAnnouncementStorage();
 		SharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
-		//noinspection ConstantConditions
 		return new AppDiscoveryService(LocalDiscoveryService.create(null, announcementStorage, sharedKeyStorage));
 	}
 

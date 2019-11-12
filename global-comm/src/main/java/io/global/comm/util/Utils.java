@@ -4,10 +4,14 @@ import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.codec.registry.CodecRegistry;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.common.tuple.Tuple2;
 import io.global.comm.ot.post.operation.*;
 import io.global.comm.pojo.*;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +32,16 @@ public final class Utils {
 	public static CodecRegistry createCommRegistry() {
 		return createOTRegistry()
 				.with(Instant.class, LONG_CODEC.transform(Instant::ofEpochMilli, Instant::toEpochMilli))
-				.with(ThreadMetadata.class, tuple(ThreadMetadata::new,
-						ThreadMetadata::getTitle, STRING_CODEC))
+				.with(InetAddress.class, BYTES_CODEC.transform(addr -> {
+					try {
+						return InetAddress.getByAddress(addr);
+					} catch (UnknownHostException e) {
+						throw new ParseException(e);
+					}
+				}, InetAddress::getAddress))
+				.with(ThreadMetadata.class, tuple(ThreadMetadata::parse,
+						ThreadMetadata::getTitle, STRING_CODEC,
+						ThreadMetadata::getLastUpdate, LONG_CODEC))
 				.with(UserId.class, registry -> tuple(UserId::new,
 						UserId::getAuthService, ofEnum(AuthService.class),
 						UserId::getAuthId, STRING_CODEC))
@@ -41,8 +53,8 @@ public final class Utils {
 						UserData::getLastName, STRING_CODEC.nullable(),
 						UserData::getBanState, registry.get(BanState.class).nullable()))
 				.with(IpRange.class, registry -> tuple(IpRange::new,
-						IpRange::getLowerBound, LONG_CODEC,
-						IpRange::getUpperBound, LONG_CODEC))
+						IpRange::getIp, BYTES_CODEC,
+						IpRange::getMask, BYTES_CODEC))
 				.with(BanState.class, registry -> tuple(BanState::new,
 						BanState::getBanner, registry.get(UserId.class),
 						BanState::getUntil, registry.get(Instant.class),
@@ -72,7 +84,7 @@ public final class Utils {
 				.with(ChangeRating.class, registry -> tuple(ChangeRating::new,
 						ChangeRating::getPostId, STRING_CODEC,
 						ChangeRating::getUserId, registry.get(UserId.class),
-						ChangeRating::getSetRating, getSetValueCodec(BOOLEAN_CODEC)))
+						ChangeRating::getSetRating, getSetValueCodec(registry.get(Rating.class))))
 				.with(DeletePost.class, registry -> tuple(DeletePost::new,
 						DeletePost::getPostId, STRING_CODEC,
 						DeletePost::getDeletedBy, registry.get(UserId.class),
@@ -101,15 +113,13 @@ public final class Utils {
 
 	private static final StructuredEncoder<Post> POST_SIMPLE_ENCODER = (out, post) -> {
 		StructuredCodec<UserId> userIdCodec = REGISTRY.get(UserId.class);
-		StructuredCodec<Set<UserId>> userIdCodecSet = ofSet(userIdCodec);
 		out.writeKey("author", userIdCodec, post.getAuthor());
 		out.writeKey("created", LONG_CODEC, post.getInitialTimestamp());
 		out.writeKey("content", STRING_CODEC, post.getContent());
 		out.writeKey("attachments", ofMap(STRING_CODEC, REGISTRY.get(AttachmentType.class)), post.getAttachments());
 		out.writeKey("deletedBy", userIdCodec.nullable(), post.getDeletedBy());
 		out.writeKey("edited", LONG_CODEC, post.getLastEditTimestamp());
-		out.writeKey("likes", userIdCodecSet, post.getLikes());
-		out.writeKey("dislikes", userIdCodecSet, post.getDislikes());
+		out.writeKey("ratings", REGISTRY.get(new TypeT<Map<Rating, Set<UserId>>>() {}), post.getRatings());
 	};
 
 	private static final StructuredEncoder<Tuple2<Map<String, Post>, String>> RECURSIVE_POST_ENCODER;

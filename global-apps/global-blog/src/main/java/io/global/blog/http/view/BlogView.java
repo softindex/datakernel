@@ -3,7 +3,6 @@ package io.global.blog.http.view;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
-import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserId;
 import org.jetbrains.annotations.Nullable;
@@ -11,6 +10,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static java.util.stream.Collectors.toList;
 
 public class BlogView {
 	private final String id;
@@ -27,15 +28,17 @@ public class BlogView {
 
 	public static Promise<List<BlogView>> from(CommDao commDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
 		return Promises.toList(threads.entrySet().stream()
-				.map(e -> {
-					ThreadDao dao = commDao.getThreadDao(e.getKey());
-					return dao == null ? null : dao.getPost("root").then(rootPost -> {
+				.map(e -> commDao.getThreadDao(e.getKey()).then(dao -> {
+					if (dao == null) {
+						return null;
+					}
+					return dao.getPost("root").then(rootPost -> {
 						int commentsCount = rootPost.getChildren().size();
 						return PostView.from(commDao, rootPost, currentUser, 0, null)
 								.map(post -> new BlogView(e.getKey(), e.getValue(), post, commentsCount));
 					});
-				})
-				.filter(Objects::nonNull));
+				})))
+				.map(list -> list.stream().filter(Objects::nonNull).collect(toList()));
 	}
 
 	public String getId() {

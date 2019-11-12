@@ -65,7 +65,7 @@ public final class PublicServlet {
 				.map(GET, "/", request -> {
 					CommDao commDao = request.getAttachment(CommDao.class);
 					UserId userId = request.getAttachment(UserId.class);
-					return commDao.getThreads()
+					return commDao.getThreads("root").get()
 							.then(threads -> BlogView.from(commDao, threads, userId))
 							.map(threadViews -> threadViews.stream()
 									.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
@@ -96,7 +96,7 @@ public final class PublicServlet {
 					}
 					UserId shownUserId = new UserId(DK_APP_STORE, request.getPathParameter("userId"));
 					return commDao
-							.getUser(shownUserId)
+							.getUsers().get(shownUserId)
 							.then(shownUser -> {
 								if (shownUser == null) {
 									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
@@ -126,9 +126,9 @@ public final class PublicServlet {
 							.then($ -> validate(lastName, 64, "LastName"))
 							.then($ -> {
 								CommDao commDao = request.getAttachment(CommDao.class);
-								return commDao.getUser(updatingUserId).then(oldData -> oldData == null ?
+								return commDao.getUsers().get(updatingUserId).then(oldData -> oldData == null ?
 										Promise.ofException(HttpException.ofCode(400, "No such user")) :
-										commDao.updateUser(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
+										commDao.getUsers().put(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
 												.map($1 -> redirectToReferer(request, "/")));
 							});
 				})
@@ -141,7 +141,6 @@ public final class PublicServlet {
 				.then(setup(appStoreUrl, templater));
 	}
 
-
 	private static AsyncServlet ownerServlet(MustacheTemplater templater) {
 		return RoutingServlet.create()
 				.map(GET, "/new", request -> templater.render("newThread", map("creatingNewThread", true)))
@@ -149,25 +148,22 @@ public final class PublicServlet {
 					UserId userId = request.getAttachment(UserId.class);
 					CommDao commDao = request.getAttachment(CommDao.class);
 					return commDao.generateThreadId()
-							.then(id -> commDao.updateThread(id, new ThreadMetadata("<unnamed>"))
+							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0))
 									.map($ -> id))
-							.then(tid -> {
-								ThreadDao threadDao = commDao.getThreadDao(tid);
-								assert threadDao != null : "No thread dao just after creating the thread";
-								Map<String, AttachmentType> attachmentMap = new HashMap<>();
-								Map<String, String> paramsMap = new HashMap<>();
-								return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", emptySet(), paramsMap, attachmentMap, true))
-										.then($ -> validate(paramsMap.get("title"), 120, "Title", true))
-										.then($ -> validate(paramsMap.get("content"), 65256, "Content"))
-										.then($ -> {
-											String pk = commDao.getKeys().getPubKey().asString();
-											return commDao.updateThread(tid, new ThreadMetadata(paramsMap.get("title")))
-													.then($2 -> threadDao.addRootPost(userId, paramsMap.get("content"), attachmentMap))
-													.map($2 -> redirect302("/" + tid));
-										})
-										.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
-										.thenEx(revertIfException(() -> commDao.removeThread(tid)));
-							});
+							.then(tid -> commDao.getThreadDao(tid)
+									.then(threadDao -> {
+										assert threadDao != null : "No thread dao just after creating the thread";
+										Map<String, AttachmentType> attachmentMap = new HashMap<>();
+										Map<String, String> paramsMap = new HashMap<>();
+										return request.handleMultipart(AttachmentDataHandler.create(threadDao, "root", emptySet(), paramsMap, attachmentMap, true))
+												.then($ -> validate(paramsMap.get("title"), 120, "Title", true))
+												.then($ -> validate(paramsMap.get("content"), 65256, "Content"))
+												.then($ -> commDao.getThreads("root").put(tid, ThreadMetadata.of(paramsMap.get("title"), 0))
+														.then($2 -> threadDao.addRootPost(userId, paramsMap.get("content"), attachmentMap))
+														.map($2 -> redirect302("/" + tid)))
+												.thenEx(revertIfException(() -> threadDao.deleteAttachments("root", attachmentMap.keySet())))
+												.thenEx(revertIfException(() -> commDao.getThreads("root").remove(tid)));
+									}));
 				})
 				.map(POST, "/blog", loadBody(kilobytes(256))
 						.serve(request -> {
@@ -193,7 +189,7 @@ public final class PublicServlet {
 										String title = params.get("title");
 										return validate(title, 120, "Title", true)
 												.then($ -> request.getAttachment(CommDao.class)
-														.updateThreadTitle(request.getPathParameter("threadID"), title)
+														.getThreads("root").put(request.getPathParameter("threadID"), ThreadMetadata.of(title, 0))
 														.map($1 -> HttpResponse.ok200()));
 									} catch (ParseException e) {
 										return Promise.ofException(new ParseException("Illegal arguments", e));
@@ -201,7 +197,6 @@ public final class PublicServlet {
 								}))
 						.map(POST, "/root/edit/", request -> {
 							String threadID = request.getPathParameter("threadID");
-							CommDao commDao = request.getAttachment(CommDao.class);
 							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 
 							Map<String, AttachmentType> attachmentMap = new HashMap<>();
@@ -269,12 +264,12 @@ public final class PublicServlet {
 						PubKey pubKey = profile.getPubKey();
 						UserId userId = new UserId(DK_APP_STORE, pubKey.asString());
 						String sessionId = generateString(32);
-						return commDao.getUser(userId)
+						return commDao.getUsers().get(userId)
 								.then(existing -> {
 									if (existing != null) {
 										return Promise.complete();
 									}
-									return commDao.updateUser(userId,
+									return commDao.getUsers().put(userId,
 											new UserData(
 													containerPubKey.equals(pubKey) ? OWNER : COMMON,
 													profile.getEmail(), profile.getUsername(),
@@ -423,7 +418,7 @@ public final class PublicServlet {
 					SessionStore<UserId> sessionStore = commDao.getSessionStore();
 					return sessionStore.get(sessionId).then(userId -> {
 						Promise<Duration> maxAge = userId != null ?
-								commDao.getUser(userId).map(user -> {
+								commDao.getUsers().get(userId).map(user -> {
 									templater.put("user", user);
 									request.attach(userId);
 									request.attach(user);
@@ -459,12 +454,14 @@ public final class PublicServlet {
 		return servlet ->
 				request -> {
 					String id = request.getPathParameter("threadID");
-					ThreadDao dao = request.getAttachment(CommDao.class).getThreadDao(id);
-					if (dao == null) {
-						return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
-					}
-					request.attach(ThreadDao.class, dao);
-					return servlet.serve(request);
+					return request.getAttachment(CommDao.class).getThreadDao(id)
+							.then(dao -> {
+								if (dao == null) {
+									return Promise.ofException(HttpException.ofCode(404, "No thread with id " + id));
+								}
+								request.attach(ThreadDao.class, dao);
+								return servlet.serve(request).get();
+							});
 				};
 	}
 }

@@ -6,6 +6,7 @@ import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.exceptions.OTTransformException;
 import io.global.comm.ot.post.operation.*;
+import io.global.comm.pojo.Rating;
 import io.global.ot.map.SetValue;
 import io.global.ot.map.SetValueOTSystem;
 import io.global.ot.value.ChangeValue;
@@ -139,7 +140,7 @@ public final class ThreadOTSystem {
 	}
 
 	private static OTSystem<ChangeRating> ratingOTSystem() {
-		OTSystem<SetValue<Boolean>> subSystem = SetValueOTSystem.create(Boolean::compareTo);
+		OTSystem<SetValue<Rating>> subSystem = SetValueOTSystem.create(Rating::compareTo);
 		return OTSystemImpl.<ChangeRating>create()
 				.withEmptyPredicate(ChangeRating.class, op -> op.getSetRating().isEmpty())
 				.withInvertFunction(ChangeRating.class, op ->
@@ -148,16 +149,16 @@ public final class ThreadOTSystem {
 					if (!first.getPostId().equals(second.getPostId()) || first.getUserId() != second.getUserId()) {
 						return null;
 					}
-					SetValue<Boolean> firstSetRating = first.getSetRating();
-					SetValue<Boolean> secondSetRating = second.getSetRating();
-					SetValue<Boolean> squashed = SetValue.set(firstSetRating.getPrev(), secondSetRating.getNext());
+					SetValue<Rating> firstSetRating = first.getSetRating();
+					SetValue<Rating> secondSetRating = second.getSetRating();
+					SetValue<Rating> squashed = SetValue.set(firstSetRating.getPrev(), secondSetRating.getNext());
 					return new ChangeRating(first.getPostId(), first.getUserId(), squashed);
 				})
 				.withTransformFunction(ChangeRating.class, ChangeRating.class, (left, right) -> {
 					if (!left.getPostId().equals(right.getPostId()) || left.getUserId() != right.getUserId()) {
 						return TransformResult.of(right, left);
 					}
-					TransformResult<SetValue<Boolean>> subResult = subSystem.transform(left.getSetRating(), right.getSetRating());
+					TransformResult<SetValue<Rating>> subResult = subSystem.transform(left.getSetRating(), right.getSetRating());
 					return collect(subResult, setValue -> new ChangeRating(left.getPostId(), left.getUserId(), setValue));
 				});
 	}

@@ -43,8 +43,7 @@ public final class LocalNodeCommonModule extends AbstractModule {
 		if (discoveryAddress != null) {
 			logger.info("Using remote discovery service at " + discoveryAddress);
 			HttpDiscoveryService discoveryService = HttpDiscoveryService.create(discoveryAddress, client);
-			return AppDiscoveryService.create(discoveryService)
-					.withCustomMasterServers(customMasters);
+			return AppDiscoveryService.create(discoveryService);
 		} else {
 			logger.warn("No discovery.address config found, using discovery stub");
 			return AppDiscoveryService.createStub()

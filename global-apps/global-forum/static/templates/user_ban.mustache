@@ -1,0 +1,57 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-sm-5">
+                    <div class="card">
+                        <div class="card-header text-center font-weight-bold">Ban for {{bannedUser.name}}</div>
+                        <div class="card-body">
+                            <form class="validate" action="/admin/user-ban/{{bannedUser.userId}}"
+                                  method="post"
+                                  novalidate>
+                                <div class="form-row mb-2">
+                                    <div class="col-sm-2 col-form-label">Until:</div>
+                                    <div class="col-sm-10">
+                                        <div class="form-group">
+                                            <div class="input-group date" id="datetimepicker"
+                                                 data-target-input="nearest">
+                                                <input type="text"
+                                                       class="form-control text-center datetimepicker-input"
+                                                       data-target="#datetimepicker" name="until"
+                                                       data-post-button="#save"
+                                                       value="{{bannedUser.ban.until}}"
+                                                       required/>
+                                                <div class="input-group-append" data-target="#datetimepicker"
+                                                     data-toggle="datetimepicker">
+                                                    <div class="input-group-text"><i class="fa fa-calendar"></i>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-row mb-2">
+                                    <textarea class="form-control" name="reason"
+                                              placeholder="Reason"
+                                              data-post-button="#save"
+                                              required>{{bannedUser.ban.reason}}</textarea>
+                                </div>
+                                <input type="hidden" name="redirect" value="{{url.referer}}">
+                                <div class="row justify-content-center">
+                                    <button class="btn btn-primary mx-2" type="submit" name="action" value="save"
+                                            id="save">
+                                        save
+                                    </button>
+                                    <button class="btn btn-outline-primary mx-2" type="submit" name="action"
+                                            value="unban">
+                                        unban
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

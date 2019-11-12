@@ -1,37 +1,40 @@
 package io.global.forum;
 
+import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
-import io.datakernel.promise.Promise;
+import io.datakernel.remotefs.FsClient;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
-import io.global.comm.container.CommRepoNames;
+import io.global.comm.container.CommModule;
+import io.global.comm.container.TypedRepoNames;
 import io.global.comm.pojo.UserId;
-import io.global.common.PrivKey;
+import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.forum.container.ForumUserContainer;
+import io.global.forum.dao.ForumDao;
+import io.global.forum.dao.ForumDaoImpl;
 import io.global.forum.http.PublicServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
-import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvClient;
 import io.global.mustache.MustacheTemplater;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
+import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.Executor;
-import java.util.function.BiFunction;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpResponse.redirect302;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.forum.util.Utils.REGISTRY;
 import static io.global.forum.util.Utils.renderErrors;
@@ -42,20 +45,39 @@ public final class GlobalForumModule extends AbstractModule {
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
 	private final String forumFsDir;
-	private final CommRepoNames forumRepoNames;
+	private final TypedRepoNames forumRepoNames;
 
-	public GlobalForumModule(String forumFsDir, CommRepoNames forumRepoNames) {
+	public GlobalForumModule(String forumFsDir, TypedRepoNames forumRepoNames) {
 		this.forumFsDir = forumFsDir;
 		this.forumRepoNames = forumRepoNames;
 	}
 
+	@Override
+	protected void configure() {
+		install(CommModule.create());
+
+		bind(CodecFactory.class).toInstance(REGISTRY);
+		bind(TypedRepoNames.class).toInstance(forumRepoNames);
+
+		bind(ForumUserContainer.class).in(ContainerScope.class);
+		bind(ForumDao.class).to(ForumDaoImpl.class).in(ContainerScope.class);
+	}
+
+	@Provides
+	@ContainerScope
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
+		return fsDriver.adapt(keyPair).subfolder(forumFsDir);
+	}
+
+	@Provides
+	@ContainerScope
+	KvClient<String, UserId> kvClient(KeyPair keyPair, GlobalKvDriver<String, UserId> kvDriver) {
+		return kvDriver.adapt(keyPair);
+	}
+
 	@Provides
 	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, ContainerServlet servlet) {
-		AsyncServlet debug = RoutingServlet.create() // TODO anton: this is debug-only
-				.map("/*", servlet)
-				.map(GET, "/", request ->
-						Promise.of(redirect302("/79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798:483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8")));
-		return AsyncHttpServer.create(eventloop, debug)
+		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(ofHttpServer(config.getChild("http")));
 	}
 
@@ -64,7 +86,7 @@ public final class GlobalForumModule extends AbstractModule {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
-				.map("/static/*", StaticServlet.create(staticLoader))
+				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
 				.then(renderErrors(templater));
 	}
 
@@ -80,21 +102,9 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	BiFunction<Eventloop, PrivKey, ForumUserContainer> containerFactory(OTDriver otDriver, GlobalKvDriver<String, UserId> kvDriver,
-			GlobalFsDriver fsDriver) {
-		return (eventloop, privKey) ->
-				ForumUserContainer.create(eventloop, privKey, otDriver, kvDriver.adapt(privKey), fsDriver.adapt(privKey).subfolder(forumFsDir), forumRepoNames);
-	}
-
-	@Provides
+	@Eager
 	OTDriver otDriver(GlobalOTNode node, Config config) {
-		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
-		return new OTDriver(node, simKey);
-	}
-
-	@Provides
-	GlobalKvDriver<String, UserId> kvDriver(GlobalKvNode node) {
-		return GlobalKvDriver.create(node, REGISTRY.get(String.class), REGISTRY.get(UserId.class));
+		return new OTDriver(node, config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY));
 	}
 
 	@Provides

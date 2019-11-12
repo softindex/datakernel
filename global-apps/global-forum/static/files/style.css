@@ -1,4 +1,152 @@
-.img-thumbnail {
-    height:300px;
-    max-width:100%;
+/* make display width unaffected by scrollbar presence */
+body {
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+.like, .dislike, .rating {
+  padding: 0 5px;
+  color: #fff;
+  background: #6c757d;
+  font-size: 0.8em;
+  height: fit-content;
+  cursor: default;
+
+  transition: color .15s ease-in-out, background-color .15s ease-in-out;
+
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.like, .dislike {
+  cursor: pointer;
+}
+
+.like {
+  border-radius: .2rem 0 0 .2rem;
+}
+
+.dislike {
+  border-radius: 0 .2rem .2rem 0;
+}
+
+.like:hover, .liked > .like, .dislike:hover, .disliked > .dislike {
+  background: #5a6268;
+}
+
+.like:hover, .liked > .like {
+  color: red;
+}
+
+.dislike:hover, .disliked > .dislike {
+  color: blue;
+}
+
+i.fa {
+  pointer-events: none;
+}
+
+.multiline {
+  white-space: pre-line;
+}
+
+@keyframes yellowfade {
+  from {
+    background: rgb(255, 255, 200);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.target-fade {
+  animation: yellowfade 0.5s;
+}
+
+.link-like:hover {
+  text-decoration: underline;
+  color: blue;
+}
+
+.unselectable {
+  -moz-user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.clickthrough {
+  pointer-events: none;
+}
+
+input[type="checkbox"].cross {
+  position: relative;
+  -webkit-appearance: initial;
+  appearance: initial;
+  min-width: 20px;
+  min-height: 20px;
+  border: 1px solid gray;
+  background: lightgray;
+  border-radius: 5px;
+}
+
+input[type="checkbox"].cross:checked:after {
+  content: "×";
+  font-weight: bold;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  -webkit-transform: translate(-50%, -50%);
+  -moz-transform: translate(-50%, -50%);
+  -ms-transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%);
+}
+
+.attachment-modal {
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.attachment-modal .attachment-modal-content {
+  max-width: 100%;
+  position: absolute;
+
+  margin: auto;
+
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  display: block;
+  animation-name: zoom;
+  animation-duration: 0.1s;
+}
+
+.attachment-modal.overflow .attachment-modal-content {
+  margin-top: 0;
+  padding-top: 50px;
+  padding-bottom: 50px;
+}
+
+@keyframes zoom {
+  from {
+    transform: scale(0)
+  }
+  to {
+    transform: scale(1)
+  }
 }

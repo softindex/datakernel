@@ -9,10 +9,7 @@ import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.operation.*;
-import io.global.comm.pojo.AttachmentType;
-import io.global.comm.pojo.Post;
-import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
+import io.global.comm.pojo.*;
 import io.global.comm.util.Utils;
 import io.global.ot.api.CommitId;
 import org.jetbrains.annotations.Nullable;
@@ -59,7 +56,7 @@ public final class ThreadDaoImpl implements ThreadDao {
 
 	@Override
 	public Promise<ThreadMetadata> getThreadMetadata() {
-		return parent.getThreads().map(threads -> threads.get(threadId));
+		return parent.getThreads("root").get(threadId);
 	}
 
 	@Override
@@ -139,44 +136,14 @@ public final class ThreadDaoImpl implements ThreadDao {
 	}
 
 	@Override
-	public Promise<Void> like(UserId user, String postId) {
+	public Promise<Void> updateRating(UserId userId, String postId, Rating rating) {
 		return getPost(postId)
 				.then(post -> {
-					if (post.getLikes().contains(user)) {
+					Rating current = post.getRating(userId);
+					if (rating == current) {
 						return Promise.complete();
 					}
-					Boolean previousValue = post.getDislikes().contains(user) ? Boolean.FALSE : null;
-					stateManager.add(rating(postId, user, previousValue, Boolean.TRUE));
-					return stateManager.sync();
-				});
-	}
-
-	@Override
-	public Promise<Void> dislike(UserId user, String postId) {
-		return getPost(postId)
-				.then(post -> {
-					if (post.getDislikes().contains(user)) {
-						return Promise.complete();
-					}
-					Boolean previousValue = post.getLikes().contains(user) ? Boolean.TRUE : null;
-					stateManager.add(rating(postId, user, previousValue, Boolean.FALSE));
-					return stateManager.sync();
-				});
-	}
-
-	@Override
-	public Promise<Void> removeLikeOrDislike(UserId user, String postId) {
-		return getPost(postId)
-				.then(post -> {
-					Boolean previousValue;
-					if (post.getDislikes().contains(user)) {
-						previousValue = Boolean.FALSE;
-					} else if (post.getLikes().contains(user)) {
-						previousValue = Boolean.TRUE;
-					} else {
-						return Promise.complete();
-					}
-					stateManager.add(rating(postId, user, previousValue, null));
+					stateManager.add(rating(postId, userId, current, rating));
 					return stateManager.sync();
 				});
 	}
