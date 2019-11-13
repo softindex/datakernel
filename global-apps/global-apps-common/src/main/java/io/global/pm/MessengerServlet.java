@@ -11,6 +11,7 @@ import io.global.common.PubKey;
 
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpMethod.*;
 import static io.global.pm.PmUtils.getMessageCodec;
@@ -35,7 +36,6 @@ public final class MessengerServlet {
 				})
 				.map(GET, "/poll/:mailbox", request -> {
 					String mailbox = request.getPathParameter("mailbox");
-					//noinspection ConstantConditions - codec is nullable()
 					KeyPair keys = request.getAttachment(KeyPair.class);
 					return messenger.poll(keys, mailbox)
 							.map(message -> HttpResponse.ok200()
@@ -52,6 +52,7 @@ public final class MessengerServlet {
 						return Promise.ofException(e);
 					}
 				})
-				.then(onRequest(request -> checkState(request.getAttachmentKeys().contains(KeyPair.class), "Key pair should be attached to a request")));
+				.then(onRequest(request -> checkState(request.getAttachmentKeys().contains(KeyPair.class), "Key pair should be attached to a request")))
+				.then(loadBody());
 	}
 }
