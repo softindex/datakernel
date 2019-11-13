@@ -1,6 +1,6 @@
 {
   "name": "global-apps-common",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "Common JS modules for global apps",
   "main": "lib",
   "engines": {
@@ -22,15 +22,15 @@
     "notistack": "^0.8.9"
   },
   "devDependencies": {
-    "@babel/cli": "^7.5.5",
-    "@babel/core": "^7.5.5",
-    "@babel/plugin-proposal-class-properties": "^7.5.5",
-    "@babel/preset-env": "^7.5.5",
-    "@babel/preset-react": "^7.0.0"
+    "@babel/cli": "^7.7.0",
+    "@babel/core": "^7.7.2",
+    "@babel/plugin-proposal-class-properties": "^7.7.0",
+    "@babel/preset-env": "^7.7.1",
+    "@babel/preset-react": "^7.7.0"
   },
   "dependencies": {
     "elliptic": "latest",
-    "query-string": "^6.8.2",
-    "marked": "^0.7.0"
+    "marked": "^0.7.0",
+    "query-string": "^6.9.0"
   }
 }

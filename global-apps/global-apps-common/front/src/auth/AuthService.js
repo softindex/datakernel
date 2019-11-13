@@ -32,7 +32,7 @@ export class AuthService extends Service {
   static create({appStoreURL, sessionIdField = 'sid', publicKeyField = 'publicKey'}) {
     return new AuthService(
       appStoreURL,
-      '/auth',
+      window.location.href + '/auth',
       '/authByKey',
       ValueStorage.createCookie(sessionIdField),
       ValueStorage.createLocalStorage(publicKeyField),
@@ -61,7 +61,7 @@ export class AuthService extends Service {
   }
 
   authByAppStore() {
-    this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(window.location.href + this._oAuthURL));
+    this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(this._oAuthURL));
   }
 
   authByFile(file) {
