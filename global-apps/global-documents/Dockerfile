@@ -1,3 +1,5 @@
+ARG APP_STORE_URL=http://127.0.0.1:8088
+
 FROM maven:3.6.0-jdk-8-alpine as build-java
 WORKDIR /build
 
@@ -34,6 +36,9 @@ RUN npm i
 COPY front/*.* ./
 COPY front/public ./public
 COPY front/src ./src
+
+ARG APP_STORE_URL
+ENV REACT_APP_GLOBAL_OAUTH_LINK=$APP_STORE_URL
 RUN npm run build
 
 
@@ -49,4 +54,6 @@ COPY --from=build-js /build/build ./front/build
 
 EXPOSE 8080
 
-ENTRYPOINT java $SYS_PROPS -jar documents.jar
+ARG APP_STORE_URL
+ENV APP_STORE_URL=$APP_STORE_URL
+ENTRYPOINT java $SYS_PROPS -Dconfig.appStoreUrl=$APP_STORE_URL -jar documents.jar

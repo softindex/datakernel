@@ -1,3 +1,5 @@
+ARG APP_STORE_URL=http://127.0.0.1:8088
+
 FROM node:11-alpine as build-js
 WORKDIR /build
 
@@ -12,6 +14,9 @@ RUN npm i
 COPY front/*.* global-files*.properties ./
 COPY front/public ./public
 COPY front/src ./src
+
+ARG APP_STORE_URL
+ENV REACT_APP_GLOBAL_OAUTH_LINK=$APP_STORE_URL
 RUN npm run build
 
 
@@ -43,4 +48,6 @@ COPY --from=build-java /build/target/app.jar ./
 
 EXPOSE 8080
 
-ENTRYPOINT java $SYS_PROPS -jar app.jar
+ARG APP_STORE_URL
+ENV APP_STORE_URL=$APP_STORE_URL
+ENTRYPOINT java $SYS_PROPS -Dconfig.appStoreUrl=$APP_STORE_URL -jar app.jar
