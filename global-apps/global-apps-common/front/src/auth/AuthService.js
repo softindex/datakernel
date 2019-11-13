@@ -32,13 +32,13 @@ export class AuthService extends Service {
   static create({appStoreURL, sessionIdField = 'sid', publicKeyField = 'publicKey'}) {
     return new AuthService(
       appStoreURL,
-      window.location.href + '/auth',
+      window.location.origin + '/sign-up/auth',
       '/authByKey',
       ValueStorage.createCookie(sessionIdField),
       ValueStorage.createLocalStorage(publicKeyField),
       url =>  location.href = url,
       () => new FileReader(),
-      fetch
+      fetch.bind(window)
     );
   }
 

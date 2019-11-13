@@ -8,7 +8,7 @@
     "@material-ui/styles": "^4.0.2",
     "classnames": "2.2.6",
     "elliptic": "latest",
-    "global-apps-common": "^2.0.0",
+    "global-apps-common": "^2.0.1",
     "js-cookie": "^2.2.0",
     "lodash": "^4.17.15",
     "material-design-icons": "^3.0.1",
