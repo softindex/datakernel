@@ -68,7 +68,8 @@ import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
 import static io.datakernel.launchers.initializers.Initializers.*;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static io.global.launchers.Initializers.ofAbstractGlobalNode;
-import static io.global.launchers.fs.Initializers.ofLocalGlobalFsNode;
+import static io.global.launchers.fs.Initializers.ofGlobalFsNodeImpl;
+import static io.global.launchers.kv.Initializers.ofGlobalKvNodeImpl;
 import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 
 public class GlobalNodesModule extends AbstractModule {
@@ -97,14 +98,15 @@ public class GlobalNodesModule extends AbstractModule {
 			@Named("FS") FsClient fsClient) {
 		return GlobalFsNodeImpl.create(serverId, discoveryService, factory, fsClient)
 				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
-				.initialize(ofLocalGlobalFsNode(config.getChild("fs")));
+				.initialize(ofGlobalFsNodeImpl(config.getChild("fs")));
 	}
 
 	@Provides
 	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory,
 			StorageFactory storageFactory) {
 		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, storageFactory)
-				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
+				.initialize(ofAbstractGlobalNode(config.getChild("kv")))
+				.initialize(ofGlobalKvNodeImpl(config.getChild("kv")));
 	}
 
 	@Provides

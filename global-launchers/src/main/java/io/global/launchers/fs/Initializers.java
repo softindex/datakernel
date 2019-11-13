@@ -21,15 +21,18 @@ import io.datakernel.config.Config;
 import io.global.fs.local.GlobalFsNodeImpl;
 
 import static io.datakernel.config.ConfigConverters.ofBoolean;
+import static io.datakernel.config.ConfigConverters.ofInteger;
 
 public class Initializers {
 	private Initializers() {
 		throw new AssertionError();
 	}
 
-	public static Initializer<GlobalFsNodeImpl> ofLocalGlobalFsNode(Config config) {
+	public static Initializer<GlobalFsNodeImpl> ofGlobalFsNodeImpl(Config config) {
 		return node -> node
 				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))
-				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false));
+				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false))
+				.withUploadRedundancy(config.get(ofInteger(), "uploadSuccessNumber", 0),
+						config.get(ofInteger(), "uploadCallNumber", 1));
 	}
 }

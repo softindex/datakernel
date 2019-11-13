@@ -65,6 +65,22 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 			StorageFactory storageFactory) {
 		return new GlobalKvNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
+
+	public GlobalKvNodeImpl withDownloadCaching(boolean caching){
+		this.doesDownloadCaching = caching;
+		return this;
+	}
+
+	public GlobalKvNodeImpl withUploadCaching(boolean caching){
+		this.doesUploadCaching = caching;
+		return this;
+	}
+
+	public GlobalKvNodeImpl withUploadRedundancy(int minUploads, int maxUploads) {
+		uploadSuccessNumber = minUploads;
+		uploadCallNumber = maxUploads;
+		return this;
+	}
 	// endregion
 
 	@Override
