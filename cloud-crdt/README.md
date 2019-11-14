@@ -7,7 +7,7 @@ You can add this module to your project by inserting the following dependency to
 <dependency>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel-crdt</artifactId>
-    <version>3.1-SNAPSHOT</version>
+    <version>3.1.0</version>
 </dependency>
 ```
 ### To find out more visit [our site](https://datakernel.io/docs/cloud/crdt.html).

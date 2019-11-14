@@ -7,7 +7,7 @@ You can add this module to your project by inserting the following dependency to
 <dependency>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel-http</artifactId>
-    <version>3.1-SNAPSHOT</version>
+    <version>3.1.0</version>
 </dependency>
 ```
 
