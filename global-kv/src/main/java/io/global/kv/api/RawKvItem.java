@@ -47,7 +47,7 @@ public final class RawKvItem {
 		return new RawKvItem(key, null, timestamp, null);
 	}
 
-	public static RawKvItem parse(byte[] key, byte[] value, long timestamp, @Nullable Hash simKeyHash) {
+	public static RawKvItem parse(byte[] key, @Nullable byte[] value, long timestamp, @Nullable Hash simKeyHash) {
 		return new RawKvItem(key, value, timestamp, simKeyHash);
 	}
 

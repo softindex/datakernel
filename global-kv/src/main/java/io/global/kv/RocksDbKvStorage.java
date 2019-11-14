@@ -102,7 +102,10 @@ public class RocksDbKvStorage implements KvStorage {
 
 	@Override
 	public Promise<SignedData<RawKvItem>> get(byte[] key) {
-		return Promise.ofBlockingCallable(executor, () -> unpackValue(key, db.get(handle, key)));
+		return Promise.ofBlockingCallable(executor, () -> {
+			byte[] value = db.get(handle, key);
+			return value == null ? null : unpackValue(key, value);
+		});
 	}
 
 	@Override
