@@ -31,6 +31,7 @@ import io.global.ot.session.UserId;
 import java.util.TreeMap;
 import java.util.function.Function;
 
+import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static java.util.Collections.emptySet;
 
 public final class CommModule extends AbstractModule {
@@ -92,6 +93,7 @@ public final class CommModule extends AbstractModule {
 	private static <D> OTStateManager<CommitId, D> createStateManager(String name, Eventloop eventloop, OTDriver driver, KeyPair keys, StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state) {
 		OTRepositoryAdapter<D> repositoryAdapter = new OTRepositoryAdapter<>(driver, MyRepositoryId.of(keys.getPrivKey(), name, diffCodec), emptySet());
 		OTUplink<CommitId, D, OTCommit<CommitId, D>> node = OTUplinkImpl.create(repositoryAdapter, otSystem);
-		return OTStateManager.create(eventloop, otSystem, node, state);
+		return OTStateManager.create(eventloop, otSystem, node, state)
+				.withPoll(POLL_RETRY_POLICY);
 	}
 }
