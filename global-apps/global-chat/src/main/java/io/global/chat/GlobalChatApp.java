@@ -34,12 +34,12 @@ import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.session.AuthModule;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.Messenger;
 import io.global.pm.MessengerServlet;
+import io.global.session.KvSessionStore;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

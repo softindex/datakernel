@@ -1,6 +1,5 @@
 package io.global.ot.service;
 
-import io.datakernel.common.parse.ParseException;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;

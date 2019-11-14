@@ -27,9 +27,9 @@ import io.global.mustache.DebugMustacheModule;
 import io.global.ot.map.MapOperation;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
+import io.global.session.KvSessionStore;
 
 import java.io.File;
 import java.net.InetAddress;

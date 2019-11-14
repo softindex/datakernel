@@ -15,8 +15,8 @@ import io.global.comm.util.Utils;
 import io.global.common.KeyPair;
 import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOperation;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
+import io.global.session.KvSessionStore;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;

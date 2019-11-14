@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
+          integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ"
+          crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon"/>
+
+    <title>Global Photos</title>
+    {{$head}}{{/head}}
+</head>
+<body class="container" style="position: relative;">
+<div class="mt-3">
+    <div class="row mb-1">
+        <div class="col-sm-3 col-8">
+            <h3><a href="/" style="text-decoration: none;">Global Photos</a></h3>
+            <div>
+                <form action="/auth/logout" method="post">
+                    <button class="btn btn-sm btn-outline-success" type="submit">Log Out</button>
+                </form>
+            </div>
+        </div>
+        <div class="col-sm-9 col-12" style="margin: auto">
+            <div class="row justify-content-md-center">
+                <a href="/" class="border m-1">
+                    <div style="width:160px; height: 50px; position: relative;">
+                        <i class="fas fa-align-justify"
+                           style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                        <p class="text-center"
+                           style="position: absolute; width:100%; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                            All photos</p>
+                    </div>
+                </a>
+                <a href="/albums" class="border m-1">
+                    <div style="width:160px; height: 50px; position: relative">
+                        <i class="fas fa-book-open"
+                           style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                        <p class="text-center"
+                           style="position: absolute; width:100%; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                            Albums</p>
+                    </div>
+                </a>
+
+                {{^albums}}{{^photos}}
+                    <a href="/#" class="border m-1">
+                        <div style="width:160px; height: 50px; position: relative">
+                                <i class="fas fa-book-open"
+                                   style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                                <p class="text-center"
+                                   style="position: absolute; width:100%; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                                    {{album.title}}</p>
+                        </div>
+                    </a>
+                {{/photos}}{{/albums}}
+
+
+                {{^albums}}
+                    <div class="tools m-1 border">
+                        <div style="width:160px; height: 50px; position: relative"
+                             data-toggle="dropdown"
+                             data-target="#tools">
+                            <a href="/new/{{album.id}}" class="btn btn-link">
+                                    <i class="fas fa-tools"
+                                       style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                                    <p class="text-center"
+                                       style="position: absolute; width:100%; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                                        Tools</p>
+                            </a>
+
+                            <div class="dropdown-menu">
+                                <button id="delete_photos_tool" type="button"
+                                        class="btn btn-outline-light text-dark" style="width: 100%">
+                                    Delete Photos
+                                </button>
+                                {{#rootAlbum}}
+                                    <button id="move_photos_tool" type="button"
+                                            class="btn btn-outline-light text-dark" style="width: 100%">
+                                        Move Photos
+                                    </button>
+                                {{/rootAlbum}}
+                                {{^rootAlbum}}
+                                    <button id="delete_album_tool" type="button"
+                                            class="btn btn-outline-light text-dark"
+                                            style="width: 100%" data-url="/delete/{{album.id}}">
+                                        Delete Album
+                                    </button>
+                                    <button id="update_album_tool" type="button"
+                                            class="btn btn-outline-light text-dark"
+                                            style="width: 100%" data-url="/update/{{album.id}}">
+                                        Update metadata
+                                    </button>
+                                {{/rootAlbum}}
+                            </div>
+                        </div>
+                    </div>
+                {{/albums}}
+
+                {{#rootAlbum}}
+                    <a href="/new/{{album.id}}" class="border m-1" id="uploadImageButton">
+                        <div style="width:160px; height: 50px; position: relative">
+                                <i class="fas fa-plus"
+                                   style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                                <p class="text-center"
+                                   style="position: absolute; width:100%; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                                    Upload</p>
+                        </div>
+                    </a>
+                    <div class="border m-1" style="width:160px; height: 55px; position: relative">
+                        <button type="button" class="btn btn-link" id="create-album">
+                            <i class="fas fa-images"
+                               style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -100%);"></i>
+                            <p class="text-center"
+                               style="position: absolute; width:100%; left: 50%; top: 50%; transform: translate(-50%, 0%);">
+                                Create album</p>
+                        </button>
+                    </div>
+                {{/rootAlbum}}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <nav class="col-sm-12 col-12 mt-2">
+        <ul class="nav nav-pills flex-column">
+            <li class="nav-item">
+                <div id="new_album_form" style="display: none"
+                     data-url="/new/album">
+                    <div class="was-validated">
+                        <input maxlength="120" class="form-control" id="title_album" name="title"
+                               type="text"
+                               placeholder="New album title" required max="120">
+                        <textarea class="form-control mt-1 mb-1" name="content" id="description_album"
+                                  maxlength="1024"
+                                  placeholder="Description" rows="4"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <div class="row justify-content-end">
+                            <button class="btn btn btn-success col-sm-1" type="submit" id="create_album">
+                                Create
+                            </button>
+                            <button class="btn btn btn-danger col-sm-1" type="submit"
+                                    id="cancel_creation_album">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </li>
+
+            {{^albums}}{{^photos}}
+                <textarea class="form-control mt-2" name="content" id="current_description_album"
+                          maxlength="1024" disabled
+                          placeholder="Description" rows="3">{{album.description}}</textarea>
+            {{/photos}}{{/albums}}
+
+            <li class="nav-item">
+                <div class="mb-3" id="update_album_form"
+                     data-url="/update/{{album.id}}" style="display: none">
+                    <div class="was-validated">
+                        <input maxlength="120" class="form-control mt-3" id="update_title_album" name="title"
+                               type="text" value="{{album.title}}"
+                               placeholder="New album title" required>
+                        <textarea class="form-control mt-2" name="content" id="update_description_album"
+                                  maxlength="1024"
+                                  placeholder="Description" rows="3">{{album.description}}</textarea>
+                    </div>
+                    <div class="input-group input-group-append nav-item row mt-2">
+                        <button class="btn btn btn-success col-sm-2" type="submit" id="update_album">
+                            Update
+                        </button>
+                        <button class="btn btn btn-danger col-sm-2" type="submit"
+                                id="cancel_updating_album">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </li>
+
+            <li class="nav-item" id="delete_photos_form"
+                data-url="/delete/photo/{{album.id}}" style="display: none">
+                <h4 class="text-center ">Select photos to delete</h4>
+                <div class="input-group input-group-append nav-item row justify-content-end">
+                    <button class="btn btn btn-danger col-sm-1" type="submit" id="deletePhotos">Delete
+                    </button>
+                    <button class="btn btn btn-primary col-sm-1" type="submit"
+                            id="cancelDeletionPhotos">Cancel
+                    </button>
+                </div>
+            </li>
+
+            <li class="nav-item was-validated" id="move_photos_form" style="display: none"
+                data-url="/move/photo">
+                <h4 class="text-center ">Select photos to move</h4>
+                <div class="row mb-1">
+                    <p class="col-sm-3 col-12">To: </p>
+                    <select required class="custom-select form-control col-sm-8 col-12" id="albumSelect">
+                        <option value="" >Select album</option>
+                        {{#allAlbums}}
+                            <option value="{{value1}}">{{value2}}</option>
+                        {{/allAlbums}}
+                    </select>
+                </div>
+
+                <div class="input-group input-group-append nav-item justify-content-end row">
+                    <button class="btn btn btn-success col-sm-1" type="submit" id="movePhotos">Move
+                    </button>
+                    <button class="btn btn btn-primary col-sm-1" type="submit"
+                            id="cancelMovingPhotos">Cancel
+                    </button>
+                </div>
+            </li>
+        </ul>
+    </nav>
+
+    <div class="col-sm-12 col-12">
+        <h4 class="text-center" style="width: 100%; margin: 0; padding: auto">{{#photos}}
+            Photos{{/photos}}{{#albums}}Albums{{/albums}}</h4>
+        {{$content}}{{/content}}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-sm-3 col-12"></div>
+    <div class="col-sm-9 col-12">
+        <ul class="pagination justify-content-center mt-2" data-max-elements="{{amountItems}}" id="pagination"
+            data-amout-photos="{{amountItems}}">
+            <li class="page-item btn-link"><a class="page-link" onclick="prevPage()">Previous</a></li>
+            <li class="page-item"><a class="page-link" id="firstPage"></a></li>
+            <li class="page-item"><a class="page-link" id="secondPage"></a></li>
+            <li class="page-item"><a class="page-link" id="thirdPage"></a></li>
+            <li class="page-item btn-link"><a class="page-link" onclick="nextPage({{amountItems}})">Next</a></li>
+            <li class="page-item ml-2">
+                <select class="form-control" id="pageSizeSelect">
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="500">500</option>
+                    <option value="1000">1000</option>
+                </select>
+            </li>
+        </ul>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+<script src="/static/main.js"></script>
+</body>
+</html>

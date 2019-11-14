@@ -38,7 +38,7 @@ public final class MustacheTemplater {
 	}
 
 	@SuppressWarnings("SuspiciousMethodCalls")
-	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
+	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope, boolean compress) {
 		Map<String, Object> map = new HashMap<>(scope);
 		map.putAll(staticContext);
 		List<Promise<?>> promisesToWait = new ArrayList<>();
@@ -69,18 +69,32 @@ public final class MustacheTemplater {
 							context.add(map);
 							ByteBufWriter writer = new ByteBufWriter();
 							mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
-							return HttpResponse.ofCode(code)
+							HttpResponse httpResponse = HttpResponse.ofCode(code);
+			if (compress){
+				httpResponse.withBodyGzipCompression();
+			}
+			return httpResponse
 									.withBody(writer.getBuf())
 									.withHeader(CACHE_CONTROL, "no-store")
 									.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
 						}));
 	}
+	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
+		return render(code, templateName, scope, false);
+	}
 
 	public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {
-		return render(200, templateName, scope);
+		return render(200, templateName, scope, false);
+	}
+	public Promise<HttpResponse> render(String templateName, Map<String, Object> scope, boolean compress) {
+		return render(200, templateName, scope, compress);
 	}
 
 	public Promise<HttpResponse> render(String templateName) {
-		return render(200, templateName, emptyMap());
+		return render(200, templateName, emptyMap(), false);
+	}
+
+	public Promise<HttpResponse> render(String templateName, boolean compress) {
+		return render(200, templateName, emptyMap(), compress);
 	}
 }

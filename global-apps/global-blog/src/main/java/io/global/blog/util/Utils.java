@@ -20,8 +20,8 @@ public final class Utils {
 
 	public static final CodecRegistry REGISTRY = createCommRegistry()
 			.with(BlogMetadata.class, registry -> tuple(BlogMetadata::new,
-					BlogMetadata::getName, STRING_CODEC,
-					BlogMetadata::getDescription, STRING_CODEC));
+					BlogMetadata::getName, STRING_CODEC.nullable(),
+					BlogMetadata::getDescription, STRING_CODEC.nullable()));
 
 	public static AsyncServletDecorator renderErrors(MustacheTemplater templater) {
 		return servlet ->

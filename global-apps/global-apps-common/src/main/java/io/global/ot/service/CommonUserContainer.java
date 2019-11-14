@@ -13,11 +13,11 @@ import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.service.synchronization.SynchronizationService;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.Messenger;
+import io.global.session.KvSessionStore;
 import org.jetbrains.annotations.NotNull;
 
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
