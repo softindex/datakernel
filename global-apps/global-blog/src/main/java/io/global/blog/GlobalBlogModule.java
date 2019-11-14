@@ -18,6 +18,7 @@ import io.global.blog.dao.BlogDaoImpl;
 import io.global.blog.http.PublicServlet;
 import io.global.blog.http.view.PostView;
 import io.global.blog.preprocessor.Preprocessor;
+import io.global.blog.util.Utils;
 import io.global.comm.container.CommModule;
 import io.global.comm.container.TypedRepoNames;
 import io.global.common.KeyPair;
@@ -39,7 +40,6 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
-import static io.global.blog.util.Utils.REGISTRY;
 import static io.global.blog.util.Utils.renderErrors;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 
@@ -55,7 +55,7 @@ public final class GlobalBlogModule extends AbstractModule {
 		install(new PreprocessorsModule());
 		install(CommModule.create());
 
-		bind(CodecFactory.class).toInstance(REGISTRY);
+		bind(CodecFactory.class).toInstance(Utils.REGISTRY);
 		bind(TypedRepoNames.class).toInstance(blogRepoNames);
 
 		bind(BlogUserContainer.class).in(ContainerScope.class);

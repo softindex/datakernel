@@ -35,11 +35,11 @@ import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.session.AuthModule;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
 import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.Messenger;
+import io.global.session.KvSessionStore;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -116,7 +116,8 @@ public final class GlobalDocumentsApp extends Launcher {
 	@ContainerScope
 	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver,Messenger<Long, CreateSharedRepo> messenger) {
 		RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
-		MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), DOCUMENTS_SESSION_TABLE);
+		MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
+		KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), DOCUMENTS_SESSION_TABLE);
 		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore,DOCUMENTS_INDEX_REPO);
 	}
 

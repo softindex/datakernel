@@ -25,11 +25,10 @@ import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.map.MapOperation;
-import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
+import io.global.session.KvSessionStore;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -95,7 +94,7 @@ public final class GlobalBlogApp extends Launcher {
 				new ContainerModule<BlogUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
-						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID).rebindExport(CommitStorage.class, Key.of(CommitStorage.class, "stub"))),
+						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new MustacheModule()
 		);
 	}

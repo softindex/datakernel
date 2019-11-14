@@ -25,8 +25,8 @@ import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerScope;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
+import io.global.session.KvSessionStore;
 
 import java.util.TreeMap;
 import java.util.function.Function;

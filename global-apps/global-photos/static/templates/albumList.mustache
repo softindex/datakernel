@@ -1,0 +1,23 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row">
+                {{#albumList}}
+                    <a href="/{{key}}">
+                        <div class="card m-1" style="position: relative">
+                            {{#value.anyPhoto.key}}
+                                <img class="img-fluid card-body img-thumbnail" style="width:250px; height: 250px"
+                                     src="/download/base/{{key}}/{{.}}">
+                            {{/value.anyPhoto.key}}
+                            {{^value.anyPhoto.key}}
+                                <i style="width:250px; height: 250px;"
+                                   class="fa fa-folder fa-5x card-body text-center"></i>
+                            {{/value.anyPhoto.key}}
+                            <h4 class="card-title ml-3">{{value.title}}</h4>
+                        </div>
+                    </a>
+                {{/albumList}}
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

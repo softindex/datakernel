@@ -89,7 +89,7 @@ public final class RoutingServlet implements AsyncServlet, Initializable<Routing
 	 */
 	@Contract("_, _, _, _ -> this")
 	public RoutingServlet map(@Nullable HttpMethod method, @NotNull String path, @NotNull AsyncServlet servlet, @NotNull BinaryOperator<AsyncServlet> merger) {
-		checkArgument(path.isEmpty() || path.startsWith(ROOT) || path.endsWith(WILDCARD) || !path.contains(STAR), "Invalid path: " + path);
+		checkArgument(path.startsWith(ROOT) && (path.endsWith(WILDCARD) || !path.contains(STAR)), "Invalid path: " + path);
 
 		if (path.endsWith(WILDCARD)) {
 			makeSubtree(path.substring(0, path.length() - 2)).mapFallback(method, servlet, merger);

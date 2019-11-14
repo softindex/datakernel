@@ -789,30 +789,6 @@ public final class LocalFsClient implements FsClient, EventloopService {
 				walker.accept(file);
 				return CONTINUE;
 			}
-
-			@Override
-			public FileVisitResult preVisitDirectory(Path subdir, BasicFileAttributes attrs) {
-				if (subdir.equals(dir)) {
-					return CONTINUE;
-				}
-				Path relative = dir.relativize(subdir);
-				for (int i = 0; i < relative.getNameCount(); i++) {
-					PathMatcher matcher = matchers[i];
-					if (matcher == null) {
-						return CONTINUE;
-					}
-					if (!matcher.matches(relative.getName(i))) {
-						return SKIP_SUBTREE;
-					}
-				}
-				return CONTINUE;
-			}
-
-			@Override
-			public FileVisitResult visitFileFailed(Path file, IOException exc) {
-				logger.warn("Failed to visit file {}", storage.relativize(file), exc);
-				return CONTINUE;
-			}
 		});
 	}
 

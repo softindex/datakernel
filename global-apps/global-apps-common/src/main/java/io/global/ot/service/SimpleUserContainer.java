@@ -4,8 +4,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
+import io.global.session.KvSessionStore;
 import org.jetbrains.annotations.NotNull;
 
 public final class SimpleUserContainer implements UserContainer {

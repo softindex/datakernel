@@ -27,8 +27,8 @@ import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.SimpleUserContainer;
 import io.global.ot.session.AuthModule;
-import io.global.ot.session.KvSessionStore;
 import io.global.ot.session.UserId;
+import io.global.session.KvSessionStore;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
