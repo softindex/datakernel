@@ -51,8 +51,8 @@ public final class Utils {
 			"terms", HostingInfo::getTerms, STRING_CODEC.nullable());
 	public static final StructuredCodec<User> USER_CODEC = object(User::new,
 			"username", User::getUsername, STRING_CODEC,
-			"firstName", User::getFirstName, STRING_CODEC,
-			"lastName", User::getLastName, STRING_CODEC);
+			"firstName", User::getFirstName, STRING_CODEC.nullable(),
+			"lastName", User::getLastName, STRING_CODEC.nullable());
 	public static final StructuredCodec<Profile> PROFILE_CODEC = object(Profile::new,
 			"pubKey", Profile::getPubKey, PUB_KEY_HEX_CODEC,
 			"user", Profile::getUser, USER_CODEC,
