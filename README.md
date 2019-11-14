@@ -13,7 +13,7 @@ No overhead of intermediate abstractions, legacy standards and third-party libra
 Just insert this snippet to your terminal...
 
 ```
-mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=archetype-http -DarchetypeVersion=3.0.1
+mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=archetype-http -DarchetypeVersion=3.1.0
 ```
 
 ... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 
