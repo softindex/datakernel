@@ -4,11 +4,13 @@ public final class AppInfo {
 	private final int id;
 	private final String name;
 	private final String description;
+	private final String logoUrl;
 
-	public AppInfo(int id, String name, String description) {
+	public AppInfo(int id, String name, String description, String logoUrl) {
 		this.id = id;
 		this.name = name;
 		this.description = description;
+		this.logoUrl = logoUrl;
 	}
 
 	public int getId() {
@@ -21,6 +23,10 @@ public final class AppInfo {
 
 	public String getDescription() {
 		return description;
+	}
+
+	public String getLogoUrl() {
+		return logoUrl;
 	}
 
 	@Override

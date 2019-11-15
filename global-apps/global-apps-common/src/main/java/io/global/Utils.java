@@ -53,7 +53,8 @@ public final class Utils {
 	public static final StructuredCodec<AppInfo> APP_INFO_CODEC = object(AppInfo::new,
 			"id", AppInfo::getId, INT_CODEC,
 			"name", AppInfo::getName, STRING_CODEC,
-			"description", AppInfo::getDescription, STRING_CODEC);
+			"description", AppInfo::getDescription, STRING_CODEC,
+			"logoUrl", AppInfo::getLogoUrl, STRING_CODEC);
 	public static final StructuredCodec<HostingInfo> HOSTING_INFO_CODEC = object(HostingInfo::new,
 			"id", HostingInfo::getId, INT_CODEC,
 			"name", HostingInfo::getName, STRING_CODEC,
