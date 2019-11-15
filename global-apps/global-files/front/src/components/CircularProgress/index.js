@@ -9,21 +9,20 @@ function CircularProgress(props) {
     size = 24,
   } = props;
 
-  // TODO Brovdii (Упрощение) Лучше вынести условия верхнего уровня в отдельные if () return
+  if (props.isError) {
+    return <ErrorIcon color="error"/>;
+  }
+
+  if (props.success) {
+    return <CompleteIcon/>;
+  }
+
   return (
-    <>
-      {props.isError && (
-        <ErrorIcon color="error"/>
-      )}
-      {props.success && <CompleteIcon/>}
-      {!props.isError && !props.success && (
-        <CircularProgressMaterial
-          {...props}
-          variant={variant}
-          size={size}
-        />
-      )}
-    </>
+    <CircularProgressMaterial
+      {...props}
+      variant={variant}
+      size={size}
+    />
   )
 }
 
