@@ -1,6 +1,5 @@
 package io.global.ot.session;
 
-import io.datakernel.common.parse.ParseException;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
@@ -11,19 +10,16 @@ import io.datakernel.promise.Promise;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.common.KeyPair;
-import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.ot.service.UserContainer;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 
-import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.global.Utils.generateString;
 import static io.global.ot.session.AuthService.DK_APP_STORE;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class AuthModule extends AbstractModule {
 	private final String sessionId;
@@ -47,19 +43,6 @@ public final class AuthModule extends AbstractModule {
 								return authByPubKey(request, pubKey);
 							});
 				})
-				.map(POST, "/authByKey", loadBody()
-						.serve(request -> {
-							String keyString = request.getBody().getString(UTF_8);
-							if (keyString.isEmpty()) {
-								return Promise.ofException(HttpException.ofCode(400));
-							}
-							try {
-								PubKey pubKey = PrivKey.fromString(keyString).computePubKey();
-								return authByPubKey(request, pubKey);
-							} catch (ParseException e) {
-								return Promise.ofException(e);
-							}
-						}))
 				.map(POST, "/logout", request -> {
 					String sessionString = request.getCookie(sessionId);
 					if (sessionString == null) {

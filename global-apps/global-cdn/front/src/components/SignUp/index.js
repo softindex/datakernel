@@ -3,7 +3,6 @@ import AuthContext from '../../modules/auth/AuthContext';
 import connectService from '../../common/connectService';
 import Typography from '@material-ui/core/Typography';
 import {withStyles} from '@material-ui/core/styles';
-import AttachFileIcon from '@material-ui/icons/AttachFile';
 import StoreIcon from '@material-ui/icons/Store';
 import Grid from '@material-ui/core/Grid';
 import SignUpAbstractionImage from './SignUpAbstractionImage';
@@ -32,13 +31,6 @@ class SignUp extends React.Component {
     window.removeEventListener('online', this._wentOnline);
     window.removeEventListener('offline', this._wentOffline);
   }
-
-  onUploadFile = () => {
-    return this.props.authService.authByFile(this.input.files[0])
-      .then(() => {
-        this.props.history.push('/');
-      });
-  };
 
   render() {
     return (
@@ -73,7 +65,7 @@ class SignUp extends React.Component {
                   onClick={this.onAuthByAppStore}
                 >
                   <StoreIcon className={this.props.classes.storeIcon}/>
-                  Auth by App Store
+                  Log In
                 </Button>
               </Grid>
             </Grid>
@@ -95,13 +87,6 @@ class SignUp extends React.Component {
               RETRY
             </Button>,
           ]}
-        />
-        <input
-          accept=".dat"
-          ref={ref => this.input = ref}
-          type="file"
-          className={this.props.classes.input}
-          onChange={this.onUploadFile}
         />
       </div>
     );

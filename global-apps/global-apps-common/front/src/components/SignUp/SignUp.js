@@ -4,7 +4,6 @@ import {withRouter} from "react-router-dom";
 import {connectService} from "../../service/connectService";
 import {AuthContext} from "../../auth/AuthContext";
 import StoreIcon from '@material-ui/icons/Store';
-import AttachFileIcon from '@material-ui/icons/AttachFile';
 import Typography from "@material-ui/core/Typography";
 import Grid from "@material-ui/core/Grid";
 import Button from "@material-ui/core/Button";
@@ -23,18 +22,6 @@ class SignUp extends React.Component {
 
   onAuthByAppStore = async () => {
     this.props.accountService.authByAppStore();
-  };
-
-  onUploadFile = () => {
-    this.props.accountService.authByFile(this.input.files[0])
-      .then(() => {
-        this.setState({redirect: true});
-      })
-      .catch(error => {
-        this.props.enqueueSnackbar(error.message, {
-          variant: 'error'
-        });
-      });
   };
 
   componentDidMount() {
@@ -80,20 +67,7 @@ class SignUp extends React.Component {
                     onClick={this.onAuthByAppStore}
                   >
                     <StoreIcon className={this.props.classes.storeIcon}/>
-                    Auth by App Store
-                  </Button>
-                </Grid>
-                <Grid className={this.props.classes.gridItem} item xs={12} lg={6} md={6}>
-                  <Button
-                    variant="outlined"
-                    color="inherit"
-                    className={this.props.classes.button}
-                    shape="round"
-                    fullWidth
-                    onClick={() => this.input.click()}
-                  >
-                    <AttachFileIcon className={this.props.classes.attachIcon}/>
-                    Auth by key
+                    Log In
                   </Button>
                 </Grid>
               </Grid>
@@ -108,13 +82,6 @@ class SignUp extends React.Component {
               />
             </Grid>
           </Grid>
-          <input
-            accept=".dat"
-            ref={ref => this.input = ref}
-            type="file"
-            className={this.props.classes.input}
-            onChange={this.onUploadFile}
-          />
         </div>
         {this.state.redirect && <AfterAuthRedirect/>}
       </>

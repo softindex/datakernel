@@ -5,7 +5,6 @@ export class AuthService extends Service {
   constructor(
     appStoreURL,
     oAuthURL,
-    authByKeyURL,
     sessionValueStorage,
     publicKeyValueStorage,
     goToURL,
@@ -21,7 +20,6 @@ export class AuthService extends Service {
     });
     this._appStoreURL = appStoreURL;
     this._oAuthURL = oAuthURL;
-    this._authByKeyURL = authByKeyURL;
     this._sessionValueStorage = sessionValueStorage;
     this._publicKeyValueStorage = publicKeyValueStorage;
     this._goToURL = goToURL;
@@ -33,10 +31,9 @@ export class AuthService extends Service {
     return new AuthService(
       appStoreURL,
       window.location.origin + '/sign-up/auth',
-      '/authByKey',
       ValueStorage.createCookie(sessionIdField),
       ValueStorage.createLocalStorage(publicKeyField),
-      url =>  location.href = url,
+      url => location.href = url,
       () => new FileReader(),
       fetch.bind(window)
     );
@@ -64,29 +61,26 @@ export class AuthService extends Service {
     this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(this._oAuthURL));
   }
 
-  authByFile(file) {
-    return new Promise((resolve, reject) => {
-      const fileReader = this._createFileReader();
-      fileReader.readAsText(file);
-      fileReader.onload = () => {
-        this._doAuth(fetch(this._authByKeyURL, {
-          method: 'POST',
-          body: fileReader.result.trim()
-        }))
-          .then(resolve)
-          .catch(reject);
-      };
-      fileReader.onerror = () => {
-        this.setState({
-          error: fileReader.error
-        });
-        reject(fileReader.error);
-      };
-    });
-  };
-
   authByToken(token) {
-    return this._doAuth(fetch(`/auth?token=${token}`));
+    this.setState({loading: true});
+    return fetch(`/auth?token=${token}`)
+      .then(response => {
+        if (response.status !== 200) {
+          throw new Error("Authorization failed: " + response.statusText);
+        }
+
+        return response.text();
+      })
+      .then(publicKey => {
+        this._publicKeyValueStorage.set(publicKey);
+        this.setState({
+          authorized: true,
+          publicKey,
+          error: null
+        });
+      })
+      .catch(error => this.setState({error}))
+      .finally(() => this.setState({loading: false}));
   }
 
   async logout() {
@@ -106,28 +100,6 @@ export class AuthService extends Service {
       publicKey: null,
       wasAuthorized: true
     });
-  }
-
-  _doAuth(fetchPromise) {
-    this.setState({loading: true});
-    return fetchPromise
-      .then(response => {
-        if (response.status !== 200) {
-          throw new Error("Authorization failed: " + response.statusText);
-        }
-
-        return response.text();
-      })
-      .then(publicKey => {
-        this._publicKeyValueStorage.set(publicKey);
-        this.setState({
-          authorized: true,
-          publicKey,
-          error: null
-        });
-      })
-      .catch(error => this.setState({error}))
-      .finally(() => this.setState({loading: false}));
   }
 }
 

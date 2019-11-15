@@ -32,30 +32,9 @@ class AuthService extends Store {
     window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.href + '/auth';
   }
 
-  authByFile(file) {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.readAsText(file);
-      fileReader.onload = () => {
-        const privateKey = fileReader.result.trim();
-        this._doAuth(fetch('/authByKey', {method: 'post', body: privateKey}))
-          .then(resolve)
-          .catch(reject);
-      };
-      fileReader.onerror = () => {
-        this.setStore({error: fileReader.error});
-        reject(fileReader.error);
-      };
-    });
-  };
-
   authByToken(token) {
-    return this._doAuth(fetch(`/auth?token=${token}`));
-  }
-
-  _doAuth(fetchPromise) {
     this.setStore({loading: true});
-    return fetchPromise
+    return fetch(`/auth?token=${token}`)
       .then(response => {
         if (response.status !== 200) {
           throw new Error("Authorization failed: " + response.statusText);
