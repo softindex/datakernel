@@ -1,6 +1,5 @@
 package io.global.ot.service;
 
-import io.datakernel.common.parse.ParseException;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
@@ -17,7 +16,9 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.config.ConfigConverters.ofEventloopTaskSchedule;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
+import static io.global.ot.service.ContainerManagerImpl.DEFAULT_SYNC_SCHEDULE;
 
 public abstract class ContainerModule<C extends UserContainer> extends AbstractModule {
 	private static final Logger logger = LoggerFactory.getLogger(ContainerModule.class);
@@ -42,7 +43,8 @@ public abstract class ContainerModule<C extends UserContainer> extends AbstractM
 		PrivKey privKey = config.get(ofPrivKey(), "privateKey", null);
 		if (privKey == null) {
 			logger.info("No private key specified, running in multi container mode");
-			return ContainerManagerImpl.create(injector, containerKey, eventloop, keyExchanger);
+			return ContainerManagerImpl.create(injector, containerKey, eventloop, keyExchanger)
+					.withSyncSchedule(config.get(ofEventloopTaskSchedule(), "container.sync", DEFAULT_SYNC_SCHEDULE));
 		} else {
 			logger.info("Private key specified, running in single container mode");
 			return SingleContainerManager.create(injector, containerKey, eventloop, privKey);

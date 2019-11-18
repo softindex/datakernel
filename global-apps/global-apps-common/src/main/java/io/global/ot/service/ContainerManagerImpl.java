@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.async.service.EventloopTaskScheduler.*;
+import static io.datakernel.async.service.EventloopTaskScheduler.Schedule;
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.CollectorsEx.toMap;
@@ -30,7 +30,7 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 
 	private static final Scope CONTAINER_SCOPE = Scope.of(ContainerScope.class);
 
-	private static final Schedule DEFAULT_SYNC_SCHEDULE = Schedule.ofInterval(Duration.ofSeconds(5));
+	public static final Schedule DEFAULT_SYNC_SCHEDULE = Schedule.ofInterval(Duration.ofSeconds(5));
 
 	private final Injector injector;
 	private final Key<C> containerKey;
