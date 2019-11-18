@@ -10,8 +10,8 @@ const roomsSerializer = {
       // TODO case 'RenameRepo':
       case 'CreateOrDropRepo':
         return RoomsOTOperation.createFromJson(value);
-     default:
-       throw new Error('Unknown type');
+      default:
+        throw new Error('Unknown type');
     }
   }
 };

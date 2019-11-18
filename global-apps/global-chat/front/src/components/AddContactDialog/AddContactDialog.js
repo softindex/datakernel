@@ -50,7 +50,6 @@ function AddContactDialogView({classes, onClose, name, loading, onSubmit, onName
           </Button>
           <Button
             className={classes.actionButton}
-            loading={loading}
             type="submit"
             disabled={loading}
             color="primary"

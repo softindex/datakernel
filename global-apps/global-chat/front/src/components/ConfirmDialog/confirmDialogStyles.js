@@ -1,6 +1,6 @@
 const confirmDialogStyles = theme => ({
   actionButton: {
-    margin: theme.spacing,
+    margin: theme.spacing(),
     position: 'relative',
     right: theme.spacing(2)
   },

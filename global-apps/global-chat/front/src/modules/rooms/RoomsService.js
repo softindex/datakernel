@@ -28,7 +28,7 @@ class RoomsService extends Service {
 
       this._reconnectDelay = delay(RETRY_TIMEOUT);
       try {
-        await this._reconnectDelay.promise;
+        await this._reconnectDelay;
       } catch (err) {
         return;
       }
@@ -120,7 +120,7 @@ class RoomsService extends Service {
       console.log(err);
       this._resyncDelay = delay(RETRY_TIMEOUT);
       try {
-        await this._resyncDelay.promise;
+        await this._resyncDelay;
       } catch (err) {
         return;
       }

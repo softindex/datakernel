@@ -34,7 +34,7 @@ class SearchContactsService extends Service {
 
       this._reconnectDelay = delay(RETRY_TIMEOUT);
       try {
-        await this._reconnectDelay.promise;
+        await this._reconnectDelay;
       } catch (err) {
         return;
       }
@@ -56,7 +56,7 @@ class SearchContactsService extends Service {
     if (this._resyncDelay) {
       this._resyncDelay.cancel();
     }
-    this._contactsCheckoutPromise.stop();
+    this._contactsCheckoutPromise.cancel();
     this._contactsOTStateManager.removeChangeListener(() => this.search(this.state.search));
   }
 

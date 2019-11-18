@@ -1,21 +1,17 @@
+import {CancelablePromise} from './CancelablePromise';
+
 export const ROOT_COMMIT_ID = 'AQAAAAAAAAA=';
 
 const randomStringChars = '0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM';
 
 export function delay(timeout) {
   let timeoutId;
-  let rejectPromise;
-  const promise = new Promise((resolve, reject) => {
-    rejectPromise = reject;
+
+  return new CancelablePromise(resolve => {
     timeoutId = setTimeout(resolve, timeout);
+  }, () => {
+    clearTimeout(timeoutId);
   });
-  return {
-    cancel() {
-      clearTimeout(timeoutId);
-      rejectPromise(new Error('Delay has been closed'));
-    },
-    promise
-  };
 }
 
 export function randomString(length) {
@@ -60,30 +56,28 @@ export function toEmoji(str, length) {
   return emoji;
 }
 
-export function retry(fn, delay) {
-  let timeoutId;
+export class RejectionError extends Error {
+  constructor(message = 'Promise has been cancelled') {
+    super(message);
 
-  const promise = (async function () {
-    do {
-      try {
-        return await fn();
-      } catch (err) {
-        console.error(err);
-        await new Promise(resolve => {
-          timeoutId = setTimeout(resolve, delay);
-        });
-      }
-    } while (timeoutId);
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, RejectionError);
+    }
 
-    throw new Error('Promise has been cancelled');
-  })();
+    this.name = 'RejectionError';
+  }
+}
 
-  promise.stop = function () {
-    clearTimeout(timeoutId);
-    timeoutId = null;
-  };
-
-  return promise;
+export function retry(fn, timeout) {
+  return new CancelablePromise((resolve, reject) => {
+    fn().then(resolve, reject);
+  }).catch(error => {
+    if (!(error instanceof RejectionError)) {
+      console.error(error);
+      return delay(timeout).then(() => retry(fn, timeout));
+    }
+  });
 }
 
 export function getAppStoreContactName(contact) {
@@ -97,7 +91,7 @@ export function getAppStoreContactName(contact) {
 
 export function getAvatarLetters(name) {
   if (!name) {
-    return ''
+    return '';
   }
   const nameString = [...name];
   if (name.includes(" ")) {
