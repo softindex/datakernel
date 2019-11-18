@@ -46,6 +46,7 @@ function CreateChatDialogView({
           <div className={`${classes.chipsContainer} scroller`}>
             {[...participants].map(([publicKey, name]) => (
               <ContactChip
+                key={publicKey}
                 color="primary"
                 label={name}
                 onDelete={onContactToggle.bind(this, publicKey)}

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "babel src -d lib",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "test": "jest --verbose /src"
   },
   "peerDependencies": {
     "prop-types": "^15.5.4",
@@ -25,10 +26,13 @@
     "@babel/cli": "^7.7.0",
     "@babel/core": "^7.7.2",
     "@babel/plugin-proposal-class-properties": "^7.7.0",
+    "@babel/plugin-transform-runtime": "^7.6.2",
     "@babel/preset-env": "^7.7.1",
-    "@babel/preset-react": "^7.7.0"
+    "@babel/preset-react": "^7.7.0",
+    "@babel/runtime": "^7.7.2"
   },
   "dependencies": {
+    "@types/jest": "^24.0.23",
     "elliptic": "latest",
     "marked": "^0.7.0",
     "query-string": "^6.9.0"

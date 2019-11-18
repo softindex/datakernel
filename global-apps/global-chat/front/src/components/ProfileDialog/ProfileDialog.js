@@ -19,7 +19,6 @@ function ProfileDialogView({
                              onClose,
                              loading,
                              profileReady,
-                             profile,
                              name,
                              onSubmit,
                              onChangeName,
@@ -44,7 +43,7 @@ function ProfileDialogView({
         <form onSubmit={onSubmit}>
           <DialogContent classes={{root: classes.dialogContent}}>
             <TextField
-              value={name === null ? profile.name : name}
+              value={name}
               disabled={loading}
               margin="normal"
               label="Name"
@@ -66,7 +65,7 @@ function ProfileDialogView({
               InputProps={{
                 readOnly: true,
                 classes: {input: classes.input},
-                endAdornment: (
+                endAdornment: navigator.clipboard && (
                   <IconButton
                     className={classes.iconButton}
                     onClick={copyToClipboard}
@@ -102,10 +101,10 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
   const profileService = getInstance(MyProfileService);
   const {profile, profileReady} = useService(profileService);
   const [loading, setLoading] = useState(false);
-  const [name, setName] = useState(null);
+  const [name, setName] = useState(profile.name || '');
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(document.getElementById('inputId').value);
+    navigator.clipboard && navigator.clipboard.writeText(document.getElementById('inputId').value);
   };
 
   const onDoubleClick = event => {
@@ -120,7 +119,6 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
 
   const props = {
     classes,
-    profile,
     publicKey,
     profileReady,
     name,

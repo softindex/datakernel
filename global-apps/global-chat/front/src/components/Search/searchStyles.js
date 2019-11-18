@@ -1,4 +1,5 @@
 const searchStyles = theme => ({
+  root: {},
   inputDiv: {
     marginLeft: theme.spacing(1),
     marginRight: theme.spacing(3),

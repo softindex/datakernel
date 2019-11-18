@@ -1,12 +1,17 @@
-import React from 'react';
+import React, {useState} from 'react';
+import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
 import messagesStyles from './messagesStyles';
 import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
+import Paper from '@material-ui/core/Paper';
+import Typography from '@material-ui/core/Typography';
 import {getInstance, useService} from "global-apps-common";
 import NamesService from "../../modules/names/NamesService";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import ScrollArea from 'react-scrollbar';
+import CallsService from '../../modules/calls/CallsService';
+import CallButtons from '../CallButtons/CallButtons';
 
 class MessagesView extends React.Component {
   scrollArea = React.createRef();
@@ -19,7 +24,23 @@ class MessagesView extends React.Component {
   }
 
   render() {
-    const {classes, chatReady, namesReady, messages, publicKey} = this.props;
+    const {
+      classes,
+      chatReady,
+      namesReady,
+      messages,
+      publicKey,
+      isHostValid,
+      peerId,
+      callerPeerId,
+      calling,
+      beingCalled,
+      btnPressed,
+      onAccept,
+      onDecline,
+      onFinish
+    } = this.props;
+
     return (
       <div className={classes.root}>
         {(!chatReady || !namesReady) && (
@@ -42,7 +63,7 @@ class MessagesView extends React.Component {
                 if (previousMessageAuthor === message.authorPublicKey) {
                   shape = 'medium';
                 }
-                return (
+                return !(message.authorPeerId && message.authorPeerId === callerPeerId && !isHostValid) && (
                   <MessageItem
                     key={index}
                     text={message.content}
@@ -52,6 +73,7 @@ class MessagesView extends React.Component {
                     }
                     time={new Date(message.timestamp).toLocaleString()}
                     loaded={message.loaded}
+                    type={message.type}
                     drawSide={(message.authorPublicKey !== publicKey) ? 'left' : 'right'}
                     shape={shape}
                   />
@@ -60,16 +82,53 @@ class MessagesView extends React.Component {
             </div>
           </ScrollArea>
         )}
+        {beingCalled && (
+          <div className={classes.fabWrapper}>
+            <Paper elevation={0} className={classes.message}>
+              <Typography
+                className={classes.lightColor}
+                variant="h6"
+                gutterBottom
+              >
+                Accept or decline the call
+              </Typography>
+              <CallButtons
+                showAccept={true}
+                showClose={true}
+                onAccept={onAccept}
+                onClose={onDecline}
+                btnPressed={btnPressed}
+              />
+            </Paper>
+          </div>
+        )}
+        {calling && (
+          <Paper elevation={0} className={classes.callingMessage}>
+            <CallButtons
+              showAccept={!peerId}
+              showClose={peerId}
+              onAccept={onAccept}
+              onClose={onFinish}
+              btnPressed={btnPressed}
+            />
+          </Paper>
+        )}
       </div>
     )
   }
 }
 
-function Messages({classes, publicKey}) {
+function Messages({classes, publicKey, enqueueSnackbar}) {
   const namesService = getInstance(NamesService);
   const {names, namesReady} = useService(namesService);
   const chatRoomService = getInstance(ChatRoomService);
-  const {messages, chatReady} = useService(chatRoomService);
+  const {messages, chatReady, call, isHostValid} = useService(chatRoomService);
+  const callsService = getInstance(CallsService);
+  const {peerId} = useService(callsService);
+  const calling = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
+  const beingCalled = isHostValid && ![null, publicKey].includes(call.callerInfo.publicKey) &&
+    !call.handled.has(publicKey);
+  const [btnPressed, setPressed] = useState(false);
 
   const props = {
     classes,
@@ -77,10 +136,59 @@ function Messages({classes, publicKey}) {
     names,
     namesReady,
     messages,
-    chatReady
+    chatReady,
+    isHostValid,
+    peerId,
+    callerPeerId: call.callerInfo.peerId,
+    calling,
+    beingCalled,
+    btnPressed,
+    onAccept(event) {
+      event.preventDefault();
+      setPressed(true);
+
+      chatRoomService.acceptCall()
+        .catch(err => {
+          chatRoomService.finishCall();
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        })
+        .finally(() => {
+          setPressed(false);
+        });
+    },
+    onDecline(event) {
+      event.preventDefault();
+      setPressed(true);
+
+      chatRoomService.declineCall()
+        .catch(err => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        })
+        .finally(() => {
+          setPressed(false);
+        });
+    },
+    onFinish(event) {
+      event.preventDefault();
+      setPressed(true);
+
+      try {
+        chatRoomService.finishCall();
+      } catch (err) {
+        enqueueSnackbar(err.message, {
+          variant: 'error'
+        });
+      } finally {
+        setPressed(false);
+      }
+    }
   };
 
   return <MessagesView {...props} />
 }
 
-export default withStyles(messagesStyles)(Messages);
+export default withSnackbar(withStyles(messagesStyles)(Messages));

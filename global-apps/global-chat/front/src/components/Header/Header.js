@@ -38,17 +38,19 @@ function Header({classes, title}) {
             Global Chat
           </Typography>
           <div className={classes.chatTitleContainer}>
-            <Typography
-              className={classes.chatTitle}
-              color="inherit"
-            >
-              {title !== '' && (
+            {title !== '' && (
+              <>
                 <ListItemIcon className={classes.listItemIcon}>
                   <ArrowIcon className={classes.arrowIcon}/>
                 </ListItemIcon>
-              )}
-              {title}
-            </Typography>
+                <Typography
+                  className={classes.chatTitle}
+                  color="inherit"
+                >
+                  {title}
+                </Typography>
+              </>
+            )}
           </div>
         </Toolbar>
       </AppBar>

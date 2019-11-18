@@ -1,4 +1,8 @@
-import ChatRoomOTOperation from './ChatRoomOTOperation';
+import * as types from '../types';
+import MessageOperation from './MessageOperation';
+import CallOperation from './CallOperation';
+import DropCallOperation from './DropCallOperation';
+import HandleCallOperation from './HandleCallOperation';
 
 const serializer = {
   serialize(value) {
@@ -7,11 +11,16 @@ const serializer = {
 
   deserialize(value) {
     switch (value.type) {
-      // TODO: case 'Call', case 'Drop', case 'Handle'
-      case 'Message':
-        return ChatRoomOTOperation.createFromJson(value);
+      case types.MESSAGE:
+        return MessageOperation.createFromJson(value.value);
+      case types.CALL:
+        return CallOperation.createFromJson(value.value);
+      case types.DROP:
+        return DropCallOperation.createFromJson(value.value);
+      case types.HANDLE:
+        return HandleCallOperation.createFromJson(value.value);
       default:
-        throw new Error('Unknown type');
+        throw new Error('Unprocessable type of value');
     }
   }
 };

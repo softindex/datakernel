@@ -1,8 +1,7 @@
-import {Service, delay} from 'global-apps-common';
+import {Service, delay, RejectionError} from 'global-apps-common';
 import ContactsOTOperation from "./ot/ContactsOTOperation";
 import {retry} from 'global-apps-common';
 import {createDialogRoomId, RETRY_TIMEOUT} from '../../common/utils';
-
 class ContactsService extends Service {
   constructor(contactsOTStateManager, roomsService, publicKey) {
     super({
@@ -27,20 +26,15 @@ class ContactsService extends Service {
   }
 
   async init() {
-    this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
+    this._contactsCheckoutPromise = retry(async () => await this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
+
     try {
       await this._contactsCheckoutPromise;
     } catch (err) {
-      console.log(err);
-
-      this._reconnectDelay = delay(RETRY_TIMEOUT);
-      try {
-        await this._reconnectDelay.promise;
-      } catch (err) {
-        return;
+      if(!(err instanceof RejectionError)) {
+        console.error(err);
       }
 
-      await this.init();
       return;
     }
 
@@ -55,7 +49,7 @@ class ContactsService extends Service {
     if (this._resyncDelay) {
       this._resyncDelay.cancel();
     }
-    this._contactsCheckoutPromise.stop();
+    this._contactsCheckoutPromise.cancel();
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -106,7 +100,7 @@ class ContactsService extends Service {
       console.log(err);
       this._resyncDelay = delay(RETRY_TIMEOUT);
       try {
-        await this._resyncDelay.promise;
+        await this._resyncDelay;
       } catch (err) {
         return;
       }

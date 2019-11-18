@@ -8,7 +8,7 @@
     "@material-ui/styles": "^4.3.0",
     "classnames": "2.2.6",
     "elliptic": "^6.5.1",
-    "global-apps-common": "^2.0.1",
+    "global-apps-common": "file:../../global-apps-common/front",
     "js-cookie": "^2.2.1",
     "lodash": "^4.17.15",
     "material-design-icons": "^3.0.1",
@@ -22,7 +22,8 @@
     "react-dom": "^16.8.6",
     "react-router-dom": "^5.0.1",
     "react-scripts": "^3.0.1",
-    "react-scrollbar": "^0.5.6"
+    "react-scrollbar": "^0.5.6",
+    "webrtc-adapter": "^7.3.0"
   },
   "scripts": {
     "start": "react-app-rewired start",
