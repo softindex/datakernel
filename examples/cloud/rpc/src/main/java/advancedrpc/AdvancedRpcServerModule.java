@@ -1,6 +1,7 @@
 package advancedrpc;
 
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
@@ -8,8 +9,14 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.WorkerPool;
 
 public class AdvancedRpcServerModule extends AbstractModule {
+	@Override
+	protected void configure() {
+		bind(new Key<WorkerPool.Instances<RpcServer>>() {}).asEager();
+	}
+
 	private AdvancedRpcServerModule() {
 	}
 
