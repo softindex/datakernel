@@ -135,7 +135,7 @@ class NamesService extends Service {
         } else {
           names.set(publicKey, toEmoji(publicKey, 3));
         }
-      } catch (err) {
+      } catch (err) { // TODO Anton (Упрощение) Будет очевиднее, если предусмотреть поведение по отображению emoji в коде без необходимости отлавливать случайные ошибки
         names.set(publicKey, toEmoji(publicKey, 3));
       }
     }

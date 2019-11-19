@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 
-function AudioItem({src}) {
+function AudioItem({src}) { // TODO Anton (Упрощение) Предлагаю переименовать на Audio
   const ref = useRef(null);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 const searchStyles = theme => ({
-  root: {},
+  root: {}, // TODO Anton (Упрощение) Если стиль не нужен, то можно его не прописывать и не передавать
   inputDiv: {
     marginLeft: theme.spacing(1),
     marginRight: theme.spacing(3),

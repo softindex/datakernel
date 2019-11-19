@@ -128,7 +128,7 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
   const calling = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
   const beingCalled = isHostValid && ![null, publicKey].includes(call.callerInfo.publicKey) &&
     !call.handled.has(publicKey);
-  const [btnPressed, setPressed] = useState(false);
+  const [btnPressed, setPressed] = useState(false); // TODO Anton (Упрощение) Может быть много разных кнопок, название не информативное. Можно назвать callLoading
 
   const props = {
     classes,

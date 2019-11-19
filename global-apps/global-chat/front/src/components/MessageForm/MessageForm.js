@@ -64,7 +64,7 @@ function MessageForm({classes, publicKey, enqueueSnackbar}) {
         });
     },
     onCall(event) {
-      event.preventDefault();
+      event.preventDefault(); // TODO Anton (Упрощение) Тут не нужен preventDefault, потому что кнопка не submit
 
       chatRoomService.startCall()
         .catch(err => {

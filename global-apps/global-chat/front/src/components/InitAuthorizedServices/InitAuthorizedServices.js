@@ -40,7 +40,7 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
     const profileService = MyProfileService.create();
     const notificationsService = NotificationsService.createFrom();
     const callsService = CallsService.createFrom(publicKey, notificationsService);
-    const callsValidationService = new CallsValidationService(callsService);
+    const callsValidationService = new CallsValidationService(callsService); // TODO Anton (Ошибка) callsValidationService нужно создавать для каждого ChatRoomService отдельно, можно в static create
     const roomsService = RoomsService.createFrom(roomsOTStateManager, publicKey);
     const contactsService = ContactsService.createFrom(
       contactsOTStateManager,
