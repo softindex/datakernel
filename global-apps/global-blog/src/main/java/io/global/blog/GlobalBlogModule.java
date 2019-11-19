@@ -94,7 +94,7 @@ public final class GlobalBlogModule extends AbstractModule {
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater, executor,
 						threadListPostViewPreprocessor, postViewPreprocessor, commentsPreprocessor))
-				.map("/static/*", StaticServlet.create(staticLoader))
+				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
 				.then(renderErrors(templater));
 	}
 

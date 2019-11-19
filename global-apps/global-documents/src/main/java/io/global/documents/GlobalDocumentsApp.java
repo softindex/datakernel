@@ -50,6 +50,7 @@ import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.global.Utils.cachedContent;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
 import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
@@ -108,17 +109,18 @@ public final class GlobalDocumentsApp extends Launcher {
 						.map("/document/:suffix/*", documentServlet)
 						.map("/profile/:pubKey/*", profileServlet)
 						.map("/myProfile/*", profileServlet)))
+				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
 	}
 
 	@Provides
 	@ContainerScope
-	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver,Messenger<Long, CreateSharedRepo> messenger) {
+	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver, Messenger<Long, CreateSharedRepo> messenger) {
 		RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
 		MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
 		KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), DOCUMENTS_SESSION_TABLE);
-		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore,DOCUMENTS_INDEX_REPO);
+		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore, DOCUMENTS_INDEX_REPO);
 	}
 
 	@Override

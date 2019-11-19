@@ -37,6 +37,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.global.Utils.cachedContent;
 import static io.global.ot.OTUtils.REGISTRY;
 
 public final class GlobalTodoApp extends Launcher {
@@ -72,6 +73,7 @@ public final class GlobalTodoApp extends Launcher {
 	) {
 		return RoutingServlet.create()
 				.map("/ot/list/*", sessionDecorator.serve(todoListServlet))
+				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
 	}

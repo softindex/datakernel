@@ -51,6 +51,7 @@ import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.global.Utils.cachedContent;
 import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
 import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
 import static io.global.common.CryptoUtils.randomBytes;
@@ -110,6 +111,7 @@ public final class GlobalChatApp extends Launcher {
 						.map("/profile/:key/*", profileServlet)
 						.map("/myProfile/*", profileServlet)))
 				.map("/notifications/*", sessionDecorator.serve(MessengerServlet.create(notificationsMessenger)))
+				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
 	}

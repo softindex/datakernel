@@ -86,7 +86,7 @@ public class GlobalPhotosModule extends AbstractModule {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
-				.map("/static/*", StaticServlet.create(staticLoader))
+				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
 				.then(renderErrors(templater));
 	}
 

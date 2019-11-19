@@ -5,6 +5,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.tuple.Tuple2;
+import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.ot.TransformResult;
@@ -27,6 +28,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.http.AsyncServletDecorator.mapResponse;
+import static io.datakernel.http.HttpHeaders.CACHE_CONTROL;
 import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.global.common.CryptoUtils.randomBytes;
 import static io.global.common.CryptoUtils.toHexString;
@@ -141,5 +144,16 @@ public final class Utils {
 		return ops.stream()
 				.map(constructor)
 				.collect(toList());
+	}
+
+	public static AsyncServletDecorator cachedContent(int maxAgeSeconds) {
+		return mapResponse((r, response) -> response.getCode() == 200 ?
+				response.withHeader(CACHE_CONTROL, "public, immutable, max-age=" + maxAgeSeconds) :
+				response);
+	}
+
+	// 1 year
+	public static AsyncServletDecorator cachedContent() {
+		return cachedContent(31536000);
 	}
 }

@@ -36,6 +36,7 @@ public class OTAppCommonModule extends AbstractModule {
 		Path staticDir = Paths.get(RESOURCES_PATH);
 		StaticLoader resourceLoader = StaticLoader.ofPath(executor, staticDir);
 		return StaticServlet.create(resourceLoader)
+				.withMapping(request -> request.getPath().substring(1))
 				.withMappingNotFoundTo("index.html");
 	}
 

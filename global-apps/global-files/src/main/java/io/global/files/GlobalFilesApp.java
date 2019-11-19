@@ -42,6 +42,7 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.Utils.cachedContent;
 import static io.global.ot.OTUtils.REGISTRY;
 
 public final class GlobalFilesApp extends Launcher {
@@ -66,12 +67,13 @@ public final class GlobalFilesApp extends Launcher {
 	}
 
 	@Provides
-	AsyncServlet servlet(StaticLoader resourceLoader, GlobalFsDriver fsDriver,
+	AsyncServlet servlet(StaticServlet staticServlet, GlobalFsDriver fsDriver,
 			@Named("authorization") RoutingServlet authorizationServlet,
 			@Named("session") AsyncServletDecorator sessionDecorator) {
 		return RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(GlobalFsDriverServlet.create(fsDriver)))
-				.map("/*", StaticServlet.create(resourceLoader).withMappingNotFoundTo("index.html"))
+				.map("/static/*", cachedContent().serve(staticServlet))
+				.map("/*", staticServlet)
 				.merge(authorizationServlet);
 	}
 
@@ -83,6 +85,13 @@ public final class GlobalFilesApp extends Launcher {
 	@Provides
 	StaticLoader staticLoader(Executor executor, Config config) {
 		return StaticLoader.ofClassPath(executor, config.get("app.http.staticPath"));
+	}
+
+	@Provides
+	StaticServlet staticServlet(StaticLoader resourceLoader) {
+		return StaticServlet.create(resourceLoader)
+				.withMapping(request -> request.getPath().substring(1))
+				.withMappingNotFoundTo("index.html");
 	}
 
 	@Provides

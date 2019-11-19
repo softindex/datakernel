@@ -38,6 +38,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.global.Utils.cachedContent;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
 import static io.global.ot.edit.EditOTSystem.createOTSystem;
 
@@ -79,6 +80,7 @@ public final class GlobalNotesApp extends Launcher {
 						.map("/notes/*", notesServlet)
 						.map("/note/:suffix/*", noteServlet)
 						.map("/graph/:suffix", graphServlet)))
+				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
 	}
