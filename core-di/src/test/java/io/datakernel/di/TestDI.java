@@ -197,18 +197,18 @@ public final class TestDI {
 	public void namedDsl() {
 		Injector injector = Injector.of(Module.create().scan(new Object() {
 			@Provides
-			String string(@Named("test") Integer integer) {
+			String string(@Qualifier("test") Integer integer) {
 				return "str: " + integer;
 			}
 
 			@Provides
-			@Named("test")
+			@Qualifier("test")
 			Integer integer1() {
 				return 42;
 			}
 
 			@Provides
-			@Named("test2")
+			@Qualifier("test2")
 			Integer integer2() {
 				return 43;
 			}
@@ -226,7 +226,7 @@ public final class TestDI {
 	public void injectDsl() {
 		class ClassWithCustomDeps {
 			@Inject
-			@Named("test")
+			@Qualifier("test")
 			String string;
 
 			@Inject
@@ -243,7 +243,7 @@ public final class TestDI {
 					}
 
 					@Provides
-					@Named("test")
+					@Qualifier("test")
 					String testString(Integer integer) {
 						return "str: " + integer;
 					}
@@ -568,7 +568,7 @@ public final class TestDI {
 		class AndAContainerToo<T> {
 
 			@Inject
-			@Named("namedGeneric")
+			@Qualifier("namedGeneric")
 			T object;
 		}
 
@@ -586,7 +586,7 @@ public final class TestDI {
 			}
 
 			@Provides
-			@Named("second")
+			@Qualifier("second")
 			String string(List<C> object) {
 				return "str: " + object.toString();
 			}
@@ -822,7 +822,7 @@ public final class TestDI {
 				.scan(new Object() {
 
 					@Provides
-					@Named("hello")
+					@Qualifier("hello")
 					<T> Container<T> provide(T number) {
 						return new Container<>(number);
 					}
@@ -1378,14 +1378,14 @@ public final class TestDI {
 				.scan(new Object() {
 
 					@Provides
-					@Named("t")
+					@Qualifier("t")
 					@Transient
 					String string(String s, Integer i) {
 						return s + i;
 					}
 
 					@Provides
-					@Named("nt")
+					@Qualifier("nt")
 					String string2(String s, Integer i) {
 						return s + i;
 					}

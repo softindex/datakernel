@@ -5,9 +5,9 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -46,22 +46,22 @@ public class RpcBenchmark extends Launcher {
 	RpcServer rpcServer;
 
 	@Inject
-	@Named("client")
+	@Qualifier("client")
 	Eventloop eventloop;
 
 	@Inject
 	Config config;
 
 	@Provides
-	@Named("client")
+	@Qualifier("client")
 	Eventloop eventloopClient() {
 		return Eventloop.create()
 				.withFatalErrorHandler(rethrowOnAnyError());
 	}
 
 	@Provides
-	@Named("server")
-	Eventloop eventloopServer(@Named("client") Eventloop clientEventloop, Config config) {
+	@Qualifier("server")
+	Eventloop eventloopServer(@Qualifier("client") Eventloop clientEventloop, Config config) {
 		return config.get(ofBoolean(), "multithreaded", true) ?
 				Eventloop.create()
 						.withFatalErrorHandler(rethrowOnAnyError()) :
@@ -69,7 +69,7 @@ public class RpcBenchmark extends Launcher {
 	}
 
 	@Provides
-	public RpcClient rpcClient(@Named("client") Eventloop eventloop, Config config) {
+	public RpcClient rpcClient(@Qualifier("client") Eventloop eventloop, Config config) {
 		return RpcClient.create(eventloop)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),
@@ -80,7 +80,7 @@ public class RpcBenchmark extends Launcher {
 	}
 
 	@Provides
-	public RpcServer rpcServer(@Named("server") Eventloop eventloop, Config config) {
+	public RpcServer rpcServer(@Qualifier("server") Eventloop eventloop, Config config) {
 		return RpcServer.create(eventloop)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),

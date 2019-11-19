@@ -1,6 +1,6 @@
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.NameAnnotation;
-import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Qualifier;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 
@@ -31,7 +31,7 @@ public final class ReflectionExample {
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.FIELD)
-	@NameAnnotation
+	@QualifierAnnotation
 	@interface SecondKey {
 	}
 
@@ -61,7 +61,7 @@ public final class ReflectionExample {
 	static class Application {
 
 		@Inject
-		@Named("first")
+		@Qualifier("first")
 		private MessageSender sender;
 
 		@Inject

@@ -6,15 +6,15 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.annotation.Annotation;
 
 @SuppressWarnings("ClassExplicitlyAnnotation")
-public final class UniqueNameImpl implements UniqueName {
+public final class UniqueQualifierImpl implements UniqueQualifier {
 	@Nullable
 	private final Name originalName;
 
-	public UniqueNameImpl() {
+	public UniqueQualifierImpl() {
 		this.originalName = null;
 	}
 
-	public UniqueNameImpl(@Nullable Name originalName) {
+	public UniqueQualifierImpl(@Nullable Name originalName) {
 		this.originalName = originalName;
 	}
 
@@ -25,7 +25,7 @@ public final class UniqueNameImpl implements UniqueName {
 
 	@Override
 	public Class<? extends Annotation> annotationType() {
-		return UniqueName.class;
+		return UniqueQualifier.class;
 	}
 
 	@Override

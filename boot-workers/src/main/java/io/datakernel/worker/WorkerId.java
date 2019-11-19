@@ -16,7 +16,7 @@
 
 package io.datakernel.worker;
 
-import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.QualifierAnnotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -25,7 +25,7 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-@NameAnnotation
+@QualifierAnnotation
 @Target({PARAMETER, METHOD})
 @Retention(RUNTIME)
 public @interface WorkerId {

@@ -3,8 +3,8 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -27,14 +27,14 @@ public class RpcBenchmarkServer extends Launcher {
 	RpcServer rpcServer;
 
 	@Provides
-	@Named("server")
+	@Qualifier("server")
 	Eventloop eventloopServer() {
 		return Eventloop.create()
 				.withFatalErrorHandler(rethrowOnAnyError());
 	}
 
 	@Provides
-	public RpcServer rpcServer(@Named("server") Eventloop eventloop, Config config) {
+	public RpcServer rpcServer(@Qualifier("server") Eventloop eventloop, Config config) {
 		return RpcServer.create(eventloop)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),

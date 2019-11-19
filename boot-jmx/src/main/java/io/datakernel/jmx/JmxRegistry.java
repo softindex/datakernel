@@ -19,7 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.core.Scope;
-import io.datakernel.di.module.UniqueNameImpl;
+import io.datakernel.di.module.UniqueQualifierImpl;
 import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.NotNull;
@@ -318,8 +318,8 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 		Class<?> rawType = key.getRawType();
 		Name keyName = key.getName();
-		if (keyName != null && keyName.getAnnotation() instanceof UniqueNameImpl) {
-			keyName = ((UniqueNameImpl) keyName.getAnnotation()).getOriginalName();
+		if (keyName != null && keyName.getAnnotation() instanceof UniqueQualifierImpl) {
+			keyName = ((UniqueQualifierImpl) keyName.getAnnotation()).getOriginalName();
 		}
 		Package domainPackage = rawType.getPackage();
 		String domain = domainPackage == null ? ROOT_PACKAGE_NAME : domainPackage.getName();

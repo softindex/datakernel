@@ -64,7 +64,7 @@ public final class ReflectionUtils {
 	@Nullable
 	public static Name nameOf(AnnotatedElement annotatedElement) {
 		Set<Annotation> names = Arrays.stream(annotatedElement.getDeclaredAnnotations())
-				.filter(annotation -> annotation.annotationType().isAnnotationPresent(NameAnnotation.class))
+				.filter(annotation -> annotation.annotationType().isAnnotationPresent(QualifierAnnotation.class))
 				.collect(toSet());
 		switch (names.size()) {
 			case 0:

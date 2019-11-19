@@ -1,7 +1,7 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.module.UniqueNameImpl;
+import io.datakernel.di.module.UniqueQualifierImpl;
 import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
@@ -337,9 +337,9 @@ public final class Preprocessor {
 				Type missingType = missing.getType();
 
 				Key<?> priv = Stream.concat(bindings.get().keySet().stream(), upperKnown.stream())
-						.filter(k -> k.getAnnotation() instanceof UniqueNameImpl
+						.filter(k -> k.getAnnotation() instanceof UniqueQualifierImpl
 								&& k.getType().equals(missingType)
-								&& Objects.equals(missingName, ((UniqueNameImpl) k.getAnnotation()).getOriginalName()))
+								&& Objects.equals(missingName, ((UniqueQualifierImpl) k.getAnnotation()).getOriginalName()))
 						.findAny()
 						.orElse(null);
 				if (priv == null) {

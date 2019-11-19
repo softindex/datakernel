@@ -1,8 +1,8 @@
 package io.datakernel.launchers.http;
 
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.annotation.ScopeAnnotation;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
@@ -34,15 +34,15 @@ public final class ComplexHttpLauncher extends Launcher {
 	public static final int SERVER_THREE_PORT = 8083;
 
 	@Inject
-	@Named("First")
+	@Qualifier("First")
 	PrimaryServer primaryServer1;
 
 	@Inject
-	@Named("Second")
+	@Qualifier("Second")
 	PrimaryServer primaryServer2;
 
 	@Inject
-	@Named("Third")
+	@Qualifier("Third")
 	PrimaryServer primaryServer3;
 
 	@ScopeAnnotation
@@ -58,13 +58,13 @@ public final class ComplexHttpLauncher extends Launcher {
 	}
 
 	@Provides
-	@Named("Second")
+	@Qualifier("Second")
 	Eventloop eventloop2() {
 		return Eventloop.create();
 	}
 
 	@Provides
-	@Named("Third")
+	@Qualifier("Third")
 	Eventloop eventloop3() {
 		return Eventloop.create();
 	}
@@ -72,19 +72,19 @@ public final class ComplexHttpLauncher extends Launcher {
 
 	// region worker pools
 	@Provides
-	@Named("First")
+	@Qualifier("First")
 	WorkerPool workerPool1(WorkerPools workerPools) {
 		return workerPools.createPool(4);
 	}
 
 	@Provides
-	@Named("Second")
+	@Qualifier("Second")
 	WorkerPool workerPool2(WorkerPools workerPools) {
 		return workerPools.createPool(10);
 	}
 
 	@Provides
-	@Named("Third")
+	@Qualifier("Third")
 	WorkerPool workerPool3(WorkerPools workerPools) {
 		return workerPools.createPool(Scope.of(MyWorker.class), 4);
 	}
@@ -92,22 +92,22 @@ public final class ComplexHttpLauncher extends Launcher {
 
 	// region primary servers
 	@Provides
-	@Named("First")
-	PrimaryServer server1(Eventloop eventloop, @Named("First") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
+	@Qualifier("First")
+	PrimaryServer server1(Eventloop eventloop, @Qualifier("First") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
 		return PrimaryServer.create(eventloop, serverInstances)
 				.withListenAddress(new InetSocketAddress(SERVER_ONE_PORT));
 	}
 
 	@Provides
-	@Named("Second")
-	PrimaryServer server2(@Named("Second") Eventloop eventloop, @Named("Second") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
+	@Qualifier("Second")
+	PrimaryServer server2(@Qualifier("Second") Eventloop eventloop, @Qualifier("Second") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
 		return PrimaryServer.create(eventloop, serverInstances)
 				.withListenAddress(new InetSocketAddress(SERVER_TWO_PORT));
 	}
 
 	@Provides
-	@Named("Third")
-	PrimaryServer server3(@Named("Third") Eventloop eventloop, @Named("Third") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
+	@Qualifier("Third")
+	PrimaryServer server3(@Qualifier("Third") Eventloop eventloop, @Qualifier("Third") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
 		return PrimaryServer.create(eventloop, serverInstances)
 				.withListenAddress(new InetSocketAddress(SERVER_THREE_PORT));
 	}

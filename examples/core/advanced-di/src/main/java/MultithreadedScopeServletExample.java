@@ -1,5 +1,5 @@
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
@@ -23,7 +23,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 
 	@Provides
 	@Worker
-	AsyncServlet servlet(@Named("1") AsyncServlet servlet1, @Named("2") AsyncServlet servlet2) {
+	AsyncServlet servlet(@Qualifier("1") AsyncServlet servlet1, @Qualifier("2") AsyncServlet servlet2) {
 		return RoutingServlet.create()
 				.map("/", request -> HttpResponse.ok200().withHtml("<a href=\"/first\">first</a><br><a href=\"/second\">second</a>"))
 				.map("/first", servlet1)
@@ -32,7 +32,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 
 	@Provides
 	@Worker
-	@Named("1")
+	@Qualifier("1")
 	AsyncServlet servlet1(Injector injector) {
 		return new ScopeServlet(injector) {
 			@Provides
@@ -58,7 +58,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 
 	@Provides
 	@Worker
-	@Named("2")
+	@Qualifier("2")
 	AsyncServlet servlet2(Injector injector) {
 		return new ScopeServlet(injector) {
 			@Provides

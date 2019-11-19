@@ -1,8 +1,8 @@
 package io.datakernel.test;
 
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
@@ -50,7 +50,7 @@ public class DatakernelRunnerTest {
 	List<Integer> numbers;
 
 	@Provides
-	@Named(PROVIDES_STRING)
+	@Qualifier(PROVIDES_STRING)
 	String string() {
 		return PROVIDES_STRING;
 	}
@@ -67,7 +67,7 @@ public class DatakernelRunnerTest {
 	}
 
 	@Test
-	public void testProvides(@Named(PROVIDES_STRING) String s) {
+	public void testProvides(@Qualifier(PROVIDES_STRING) String s) {
 		assertEquals(PROVIDES_STRING, s);
 
 		assertEquals(asList(HELLO, HELLO, HELLO), hellos);
@@ -75,7 +75,7 @@ public class DatakernelRunnerTest {
 
 	static class TestModule extends AbstractModule {
 		@Provides
-		@Named(CUSTOM)
+		@Qualifier(CUSTOM)
 		String string() {
 			return CUSTOM;
 		}
@@ -83,7 +83,7 @@ public class DatakernelRunnerTest {
 
 	@Test
 	@UseModules({TestModule.class})
-	public void testCustom(@Named(CUSTOM) String s2) {
+	public void testCustom(@Qualifier(CUSTOM) String s2) {
 		assertEquals(CUSTOM, s2);
 
 		assertEquals(asList(HELLO, HELLO, HELLO), hellos);

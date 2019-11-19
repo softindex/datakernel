@@ -16,8 +16,8 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -57,13 +57,13 @@ public final class WorkerNameTest {
 		}
 
 		@Provides
-		@Named("Primary")
+		@Qualifier("Primary")
 		Element1 primaryEventloop() {
 			return new Element1();
 		}
 
 		@Provides
-		Element2 primaryServer(@Named("Primary") Element1 primaryEventloop, WorkerPool workerPool) {
+		Element2 primaryServer(@Qualifier("Primary") Element1 primaryEventloop, WorkerPool workerPool) {
 			WorkerPool.Instances<Element4> unusedList = workerPool.getInstances(Key.of(Element4.class, "First"));
 			return new Element2();
 		}
@@ -75,14 +75,14 @@ public final class WorkerNameTest {
 
 		@Provides
 		@Worker
-		@Named("First")
+		@Qualifier("First")
 		Element4 ffWorker() {
 			return new Element4();
 		}
 
 		@Provides
 		@Worker
-		@Named("Second")
+		@Qualifier("Second")
 		Element4 fSWorker() {
 			return new Element4();
 		}
@@ -95,7 +95,7 @@ public final class WorkerNameTest {
 
 		@Provides
 		@Worker
-		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId, @Named("Second") Element4 unusedString) {
+		Element3 workerHttpServer(Element1 eventloop, @WorkerId int workerId, @Qualifier("Second") Element4 unusedString) {
 			return new Element3();
 		}
 	}

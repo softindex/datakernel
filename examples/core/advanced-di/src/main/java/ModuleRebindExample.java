@@ -1,8 +1,8 @@
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
@@ -19,11 +19,11 @@ import static io.datakernel.di.core.Binding.to;
 //[START EXAMPLE]
 public class ModuleRebindExample extends Launcher {
 	@Inject
-	@Named("server1")
+	@Qualifier("server1")
 	AsyncHttpServer server1;
 
 	@Inject
-	@Named("server2")
+	@Qualifier("server2")
 	AsyncHttpServer server2;
 
 	static class ServerModule extends AbstractModule {

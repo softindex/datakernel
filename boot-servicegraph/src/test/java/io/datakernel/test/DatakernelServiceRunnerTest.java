@@ -1,7 +1,7 @@
 package io.datakernel.test;
 
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraphModule;
@@ -43,7 +43,7 @@ public class DatakernelServiceRunnerTest {
 		}
 
 		@Provides
-		@Named("SecondInstance")
+		@Qualifier("SecondInstance")
 		Service service() {
 			return new TestService();
 		}
@@ -60,7 +60,7 @@ public class DatakernelServiceRunnerTest {
 	}
 
 	@Test
-	public void test(Service service, @Named("SecondInstance") Service second) {
+	public void test(Service service, @Qualifier("SecondInstance") Service second) {
 		Assert.assertSame(service, serviceCopy);
 		Assert.assertNotSame(service, second);
 

@@ -1,5 +1,5 @@
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.http.session.SessionServlet;
@@ -44,14 +44,14 @@ public final class AuthLauncher extends HttpServerLauncher {
 
 	@Provides
 	AsyncServlet servlet(SessionStore<String> sessionStore,
-			@Named("public") AsyncServlet publicServlet, @Named("private") AsyncServlet privateServlet) {
+			@Qualifier("public") AsyncServlet publicServlet, @Qualifier("private") AsyncServlet privateServlet) {
 		return SessionServlet.create(sessionStore, SESSION_ID, publicServlet, privateServlet);
 	}
 	//[END REGION_1]
 
 	//[START REGION_2]
 	@Provides
-	@Named("public")
+	@Qualifier("public")
 	AsyncServlet publicServlet(AuthService authService, SessionStore<String> store, StaticLoader staticLoader) {
 		return RoutingServlet.create()
 				//[START REGION_3]
@@ -93,7 +93,7 @@ public final class AuthLauncher extends HttpServerLauncher {
 
 	//[START REGION_5]
 	@Provides
-	@Named("private")
+	@Qualifier("private")
 	AsyncServlet privateServlet(StaticLoader staticLoader) {
 		return RoutingServlet.create()
 				//[START REGION_6]

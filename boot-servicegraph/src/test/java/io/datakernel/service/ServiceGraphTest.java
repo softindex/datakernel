@@ -17,8 +17,8 @@
 package io.datakernel.service;
 
 import io.datakernel.async.service.EventloopService;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -68,7 +68,7 @@ public class ServiceGraphTest {
 		}
 
 		@Provides
-		@Named("FailService")
+		@Qualifier("FailService")
 		EventloopService failService(Eventloop eventloop) {
 			return new EventloopServiceEmpty(eventloop) {
 				@NotNull
@@ -80,14 +80,14 @@ public class ServiceGraphTest {
 		}
 
 		@Provides
-		@Named("TopService1")
-		EventloopService service1(Eventloop eventloop, @Named("FailService") EventloopService failService) {
+		@Qualifier("TopService1")
+		EventloopService service1(Eventloop eventloop, @Qualifier("FailService") EventloopService failService) {
 			return new EventloopServiceEmpty(eventloop);
 		}
 
 		@Provides
-		@Named("TopService2")
-		EventloopService service2(Eventloop eventloop, @Named("FailService") EventloopService failService) {
+		@Qualifier("TopService2")
+		EventloopService service2(Eventloop eventloop, @Qualifier("FailService") EventloopService failService) {
 			return new EventloopServiceEmpty(eventloop);
 		}
 	}

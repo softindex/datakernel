@@ -1,8 +1,8 @@
 package io.datakernel.di;
 
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
@@ -292,11 +292,11 @@ public class DIFollowUpTest {
 	public void namedAnnotationSnippet() {
 		Module cookbook = new AbstractModule() {
 			@Provides
-			@Named("zerosugar")
+			@Qualifier("zerosugar")
 			Sugar sugar1() { return new Sugar("SugarFree", 0.f); }
 
 			@Provides
-			@Named("normal")
+			@Qualifier("normal")
 			Sugar sugar2() { return new Sugar("WhiteSugar", 10.f); }
 
 			@Provides
@@ -306,26 +306,26 @@ public class DIFollowUpTest {
 			Flour flour() { return new Flour("GoodFlour", 100.f); }
 
 			@Provides
-			@Named("normal")
-			Pastry pastry1(@Named("normal") Sugar sugar, Butter butter, Flour flour) {
+			@Qualifier("normal")
+			Pastry pastry1(@Qualifier("normal") Sugar sugar, Butter butter, Flour flour) {
 				return new Pastry(sugar, butter, flour);
 			}
 
 			@Provides
-			@Named("zerosugar")
-			Pastry pastry2(@Named("zerosugar") Sugar sugar, Butter butter, Flour flour) {
+			@Qualifier("zerosugar")
+			Pastry pastry2(@Qualifier("zerosugar") Sugar sugar, Butter butter, Flour flour) {
 				return new Pastry(sugar, butter, flour);
 			}
 
 			@Provides
-			@Named("normal")
-			Cookie cookie1(@Named("normal") Pastry pastry) {
+			@Qualifier("normal")
+			Cookie cookie1(@Qualifier("normal") Pastry pastry) {
 				return new Cookie(pastry);
 			}
 
 			@Provides
-			@Named("zerosugar")
-			Cookie cookie2(@Named("zerosugar") Pastry pastry) { return new Cookie(pastry); }
+			@Qualifier("zerosugar")
+			Cookie cookie2(@Qualifier("zerosugar") Pastry pastry) { return new Cookie(pastry); }
 		};
 
 		Injector injector = Injector.of(cookbook);

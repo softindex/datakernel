@@ -17,8 +17,8 @@
 package io.datakernel.trigger;
 
 import io.datakernel.common.ref.RefBoolean;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -62,13 +62,13 @@ public class TriggersModuleTest {
 					int counter = 0;
 
 					@Provides
-					@Named("first")
+					@Qualifier("first")
 					WorkerPool firstPool(WorkerPools workerPools) {
 						return workerPools.createPool(firstPoolSize);
 					}
 
 					@Provides
-					@Named("second")
+					@Qualifier("second")
 					WorkerPool secondPool(WorkerPools workerPools) {
 						return workerPools.createPool(secondPoolSize);
 					}
@@ -80,7 +80,7 @@ public class TriggersModuleTest {
 					}
 
 					@Provides
-					Integer provide(@Named("first") WorkerPool workerPool1, @Named("second") WorkerPool workerPool2) {
+					Integer provide(@Qualifier("first") WorkerPool workerPool1, @Qualifier("second") WorkerPool workerPool2) {
 						workerPool1.getInstances(String.class);
 						workerPool2.getInstances(String.class);
 						return 0;

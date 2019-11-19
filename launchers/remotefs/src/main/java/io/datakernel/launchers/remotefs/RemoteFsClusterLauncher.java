@@ -20,9 +20,9 @@ import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -54,11 +54,11 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	RemoteFsRepartitionController controller;
 
 	@Inject
-	@Named("repartition")
+	@Qualifier("repartition")
 	EventloopTaskScheduler repartitionScheduler;
 
 	@Inject
-	@Named("clusterDeadCheck")
+	@Qualifier("clusterDeadCheck")
 	EventloopTaskScheduler clusterDeadCheckScheduler;
 
 	@Provides
@@ -69,14 +69,14 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	}
 
 	@Provides
-	@Named("repartition")
+	@Qualifier("repartition")
 	EventloopTaskScheduler eventloopTaskScheduler(Config config, Eventloop eventloop, RemoteFsRepartitionController controller1) {
 		return EventloopTaskScheduler.create(eventloop, controller1::repartition)
 				.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.repartition")));
 	}
 
 	@Provides
-	@Named("clusterDeadCheck")
+	@Qualifier("clusterDeadCheck")
 	EventloopTaskScheduler deadCheckScheduler(Config config, Eventloop eventloop, RemoteFsClusterClient cluster) {
 		return EventloopTaskScheduler.create(eventloop, cluster::checkDeadPartitions)
 				.initialize(ofEventloopTaskScheduler(config.getChild("scheduler.cluster.deadCheck")));

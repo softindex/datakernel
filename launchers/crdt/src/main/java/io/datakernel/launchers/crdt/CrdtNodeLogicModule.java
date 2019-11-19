@@ -24,8 +24,8 @@ import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.local.CrdtStorageMap;
-import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -114,16 +114,16 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface InMemory {}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface Persistent {}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface Cluster {}
 }

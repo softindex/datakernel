@@ -1,8 +1,8 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import org.junit.Assert;
@@ -45,7 +45,7 @@ public class InstanceConsumerModuleTest {
 	public void consumerTransformerHookupWithNameTest() {
 		int[] calls = {0};
 		AbstractModule module = new AbstractModule() {
-			@Named("consumer1")
+			@Qualifier("consumer1")
 			@ProvidesIntoSet
 			Consumer<String> consumer() {
 				return str -> {
@@ -62,7 +62,7 @@ public class InstanceConsumerModuleTest {
 				};
 			}
 
-			@Named("consumer1")
+			@Qualifier("consumer1")
 			@Provides
 			String string() { return "Hello, World"; }
 		};

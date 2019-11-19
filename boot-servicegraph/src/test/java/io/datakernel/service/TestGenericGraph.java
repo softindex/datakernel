@@ -16,8 +16,8 @@
 
 package io.datakernel.service;
 
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -72,15 +72,15 @@ public class TestGenericGraph {
 
 		@Provides
 		@Worker
-		@Named("worker")
+		@Qualifier("worker")
 		Pojo stringPojoOther() {
 			return new Pojo("worker");
 		}
 
 		@Provides
 		@Worker
-		@Named("anotherWorker")
-		Pojo stringPojo(@Named("worker") Pojo worker) {
+		@Qualifier("anotherWorker")
+		Pojo stringPojo(@Qualifier("worker") Pojo worker) {
 			return new Pojo("anotherWorker");
 		}
 	}

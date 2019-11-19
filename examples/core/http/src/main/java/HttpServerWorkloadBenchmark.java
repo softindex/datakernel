@@ -2,8 +2,8 @@ import io.datakernel.async.callback.Callback;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.Qualifier;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -42,19 +42,19 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	private int activeRequestsMin;
 
 	@Provides
-	@Named("server")
+	@Qualifier("server")
 	Eventloop serverEventloop() { return Eventloop.create(); }
 
 	@Provides
-	@Named("client")
+	@Qualifier("client")
 	Eventloop clientEventloop() { return Eventloop.create(); }
 
 	@Inject
-	@Named("server")
+	@Qualifier("server")
 	Eventloop serverEventloop;
 
 	@Inject
-	@Named("client")
+	@Qualifier("client")
 	Eventloop clientEventloop;
 
 	@Inject
