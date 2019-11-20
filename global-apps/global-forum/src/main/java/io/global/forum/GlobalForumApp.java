@@ -23,7 +23,10 @@ import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
-import io.global.mustache.DebugMustacheModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
+import io.global.mustache.MustacheModule;
 import io.global.ot.map.MapOperation;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
@@ -40,6 +43,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
+import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 
 public final class GlobalForumApp extends Launcher {
 	public static final String PROPERTIES_FILE = "forum.properties";
@@ -78,6 +82,11 @@ public final class GlobalForumApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("ot.storage", DEFAULT_OT_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
+				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				// .with("appStoreUrl", "http://127.0.0.1:8088")
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
@@ -96,7 +105,10 @@ public final class GlobalForumApp extends Launcher {
 				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID).rebindExport(CommitStorage.class, Key.of(CommitStorage.class, "stub"))),
-				new DebugMustacheModule()
+				new MustacheModule(),
+				new KvSyncModule(),
+				new OTSyncModule(),
+				new FsSyncModule()
 		);
 	}
 

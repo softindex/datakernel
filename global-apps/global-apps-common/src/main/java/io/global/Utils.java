@@ -5,6 +5,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.tuple.Tuple2;
+import io.datakernel.config.Config;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -21,6 +22,7 @@ import io.global.common.api.AnnounceData;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +30,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.http.AsyncServletDecorator.mapResponse;
 import static io.datakernel.http.HttpHeaders.CACHE_CONTROL;
 import static io.datakernel.http.HttpHeaders.REFERER;
@@ -42,6 +45,9 @@ public final class Utils {
 		throw new AssertionError();
 	}
 
+	public static final Config DEFAULT_SYNC_SCHEDULE_CONFIG = Config.create()
+			.with("type", "interval")
+			.with("value", Config.ofValue(ofDuration(), Duration.ofSeconds(30)));
 	public static final StructuredCodec<PubKey> PUB_KEY_HEX_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
 	public static final StructuredCodec<PrivKey> PRIV_KEY_HEX_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
 	public static final StructuredCodec<AnnounceData> ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class);

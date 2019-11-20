@@ -16,7 +16,6 @@
 
 package io.global.launchers;
 
-import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -29,6 +28,9 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
 
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
@@ -44,22 +46,6 @@ public class GlobalNodesLauncher extends Launcher {
 	@Inject
 	@Named("Nodes")
 	AsyncHttpServer server;
-
-	@Inject
-	@Named("FS push")
-	EventloopTaskScheduler fsPushScheduler;
-
-	@Inject
-	@Named("FS catch up")
-	EventloopTaskScheduler fsCatchUpScheduler;
-
-	@Inject
-	@Named("KV push")
-	EventloopTaskScheduler kvPushScheduler;
-
-	@Inject
-	@Named("KV catch up")
-	EventloopTaskScheduler kvCatchUpScheduler;
 
 	@Provides
 	Config config() {
@@ -80,7 +66,10 @@ public class GlobalNodesLauncher extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new GlobalNodesModule());
+				new GlobalNodesModule(),
+				new KvSyncModule(),
+				new FsSyncModule(),
+				new OTSyncModule());
 	}
 
 	@Override

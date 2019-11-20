@@ -353,7 +353,8 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	public Promise<Void> update() {
 		return tolerantCollectVoid(namespaces.values(), GlobalOTNamespace::updateRepositories)
-				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update));
+				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update))
+				.whenComplete(toLogger(logger, TRACE, "update", this));
 	}
 
 	public Promise<Void> fetch() {
