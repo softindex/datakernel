@@ -341,6 +341,11 @@ window.onload = () => {
 
   addPostCallbacks($(document));
 
+  // region * handle login button
+  let $loginButton = $('#login_button');
+  $loginButton.attr('href', $loginButton.attr('href') + '?redirectURI=' + encodeURIComponent(location.origin) + '/authorize%3Forigin=' + encodeURIComponent(location.href));
+  // endregion
+
   //region * handle thread editing and deleting
   let $title = $('#thread-title');
   let $input = $('#thread-title-input');

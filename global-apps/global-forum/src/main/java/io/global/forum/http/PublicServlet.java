@@ -709,9 +709,6 @@ public final class PublicServlet {
 			}
 			assert host != null : "host should not be null here";
 
-			templater.put("url", host + request.getPathAndQuery());
-			templater.put("url.host", host);
-			templater.put("url.path", request.getPath());
 			templater.put("url.referer", request.getHeader(REFERER));
 			templater.put("forum", forumDao.getForumMetadata());
 		});
