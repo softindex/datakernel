@@ -176,13 +176,8 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots) {
-		return httpClient.request(request(GET, LIST_SNAPSHOTS,
-				apiQuery(repositoryId, map(
-						"snapshots", remoteSnapshots.stream()
-								.map(HttpDataFormats::urlEncodeCommitId)
-								.collect(joining(",")))
-				)))
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId) {
+		return httpClient.request(request(GET, LIST_SNAPSHOTS, apiQuery(repositoryId)))
 				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, ofSet(COMMIT_ID_JSON))));
 	}

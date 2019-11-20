@@ -93,8 +93,8 @@ public final class ValidatingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots) {
-		return node.listSnapshots(repositoryId, remoteSnapshots);
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId) {
+		return node.listSnapshots(repositoryId);
 	}
 
 	@Override

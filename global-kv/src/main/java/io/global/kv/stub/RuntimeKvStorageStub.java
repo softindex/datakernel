@@ -42,6 +42,9 @@ public final class RuntimeKvStorageStub implements KvStorage {
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(long timestamp) {
+		if (storage.values().isEmpty()){
+			return Promise.of(null);
+		}
 		return Promise.of(ChannelSupplier.ofStream(storage.values()
 				.stream()
 				.filter(item -> item.getValue().getTimestamp() >= timestamp)));

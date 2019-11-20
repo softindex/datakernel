@@ -7,6 +7,7 @@ import io.datakernel.promise.Promise;
 import io.global.common.SignedData;
 import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
+import org.jetbrains.annotations.Nullable;
 import org.rocksdb.*;
 
 import java.util.concurrent.Executor;
@@ -56,10 +57,14 @@ public class RocksDbKvStorage implements KvStorage {
 				.withAcknowledgement(ack -> ack.then($ -> flush())));
 	}
 
-	private Promise<RocksIterator> iterator() {
+	private Promise<@Nullable RocksIterator> iterator() {
 		return Promise.ofBlockingCallable(executor, () -> {
 			RocksIterator iterator = db.newIterator(handle);
 			iterator.seekToFirst();
+			if (!iterator.isValid()) {
+				iterator.close();
+				return null;
+			}
 			return iterator;
 		});
 	}
@@ -67,31 +72,35 @@ public class RocksDbKvStorage implements KvStorage {
 	@Override
 	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(long timestamp) {
 		return iterator().map(iterator ->
-				ChannelSupplier.of(() ->
-						Promise.ofBlockingCallable(executor, () -> {
-							while (iterator.isValid()) {
-								SignedData<RawKvItem> signedDbItem = unpackValue(iterator.key(), iterator.value());
-								iterator.next();
-								if (signedDbItem.getValue().getTimestamp() > timestamp) {
-									return signedDbItem;
-								}
-							}
-							return null;
-						})));
+				iterator == null ?
+						null :
+						ChannelSupplier.of(() ->
+								Promise.ofBlockingCallable(executor, () -> {
+									while (iterator.isValid()) {
+										SignedData<RawKvItem> signedDbItem = unpackValue(iterator.key(), iterator.value());
+										iterator.next();
+										if (signedDbItem.getValue().getTimestamp() > timestamp) {
+											return signedDbItem;
+										}
+									}
+									return null;
+								})));
 	}
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download() {
 		return iterator().map(iterator ->
-				ChannelSupplier.of(() ->
-						Promise.ofBlockingCallable(executor, () -> {
-							if (!iterator.isValid()) {
-								return null;
-							}
-							SignedData<RawKvItem> signedDbItem = unpackValue(iterator.key(), iterator.value());
-							iterator.next();
-							return signedDbItem;
-						})));
+				iterator == null ?
+						null :
+						ChannelSupplier.of(() ->
+								Promise.ofBlockingCallable(executor, () -> {
+									if (!iterator.isValid()) {
+										return null;
+									}
+									SignedData<RawKvItem> signedDbItem = unpackValue(iterator.key(), iterator.value());
+									iterator.next();
+									return signedDbItem;
+								})));
 	}
 
 	@Override

@@ -25,9 +25,9 @@ import org.jetbrains.annotations.Nullable;
 public interface KvStorage {
 	Promise<ChannelConsumer<SignedData<RawKvItem>>> upload();
 
-	Promise<ChannelSupplier<SignedData<RawKvItem>>> download(long timestamp);
+	Promise<@Nullable ChannelSupplier<SignedData<RawKvItem>>> download(long timestamp);
 
-	default Promise<ChannelSupplier<SignedData<RawKvItem>>> download() {
+	default Promise<@Nullable ChannelSupplier<SignedData<RawKvItem>>> download() {
 		return download(0);
 	}
 

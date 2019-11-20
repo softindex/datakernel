@@ -173,15 +173,11 @@ public final class RawServerServlet implements AsyncServlet {
 					}
 				})
 				.map(GET, "/" + LIST_SNAPSHOTS + "/:pubKey/:name", req -> {
-					String snapshotsQuery = req.getQueryParameter("snapshots");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (snapshotsQuery == null) {
-						return Promise.ofException(HttpException.ofCode(400, "No 'snapshots' query parameter"));
-					}
 
 					try {
-						return node.listSnapshots(urlDecodeRepositoryId(pubKey, name), COMMIT_IDS_PARSER.parse(snapshotsQuery))
+						return node.listSnapshots(urlDecodeRepositoryId(pubKey, name))
 								.map(snapshots -> HttpResponse.ok200()
 										.withBody(toJson(ofSet(COMMIT_ID_JSON), snapshots).getBytes(UTF_8)));
 					} catch (ParseException e) {

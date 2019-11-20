@@ -199,6 +199,10 @@ public class GlobalOTNodeImplTest {
 		assertEquals("Test repository", first(listMaster));
 
 		Set<String> intermediateList = await(intermediateNode.list(PUB_KEY));
+		assertTrue(intermediateList.isEmpty());
+
+		await(((GlobalOTNodeImpl) intermediateNode).update());
+		intermediateList = await(intermediateNode.list(PUB_KEY));
 		assertEquals(1, intermediateList.size());
 		assertEquals("Test repository", first(intermediateList));
 	}
@@ -264,7 +268,7 @@ public class GlobalOTNodeImplTest {
 	@Test
 	public void testSaveSnapshotOnIntermediate() {
 		saveSnapshotsOn(intermediateNode, 5);
-
+		await(((GlobalOTNodeImpl) intermediateNode).pushSnapshots());
 		assertSnapshots(1, 2, 3, 4, 5);
 	}
 
@@ -297,8 +301,11 @@ public class GlobalOTNodeImplTest {
 		GlobalOTNode masterNode = getMasterNode(1);
 		addCommits(3, masterNode); // Single Head - 3
 		addCommits(2, masterNode); // Heads - 3, 5
-
+		await(((GlobalOTNodeImpl) intermediateNode).fetch());
 		Set<SignedData<RawCommitHead>> heads = await(intermediateNode.getHeads(REPO_ID));
+		assertTrue(heads.isEmpty());
+		await(((GlobalOTNodeImpl) intermediateNode).fetch());
+		heads = await(intermediateNode.getHeads(REPO_ID));
 		Set<CommitId> headsCommitIds = heads.stream().map(head -> head.getValue().getCommitId()).collect(toSet());
 		CommitId commitId = getCommitId(2, 5);
 		assertEquals(set(getCommitId(3, 3), commitId), headsCommitIds);
@@ -390,6 +397,9 @@ public class GlobalOTNodeImplTest {
 
 		await(getMasterStorage(1).savePullRequest(signedData));
 		Set<SignedData<RawPullRequest>> requests = await(intermediateNode.getPullRequests(REPO_ID));
+		assertTrue(requests.isEmpty());
+		await(((GlobalOTNodeImpl) intermediateNode).update());
+		requests = await(intermediateNode.getPullRequests(REPO_ID));
 		assertEquals(set(signedData), requests);
 		assertPullRequests(signedData);
 	}
