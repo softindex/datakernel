@@ -347,8 +347,6 @@ public final class PublicServlet {
 
 			templater.clear();
 			templater.put("appStoreUrl", appStoreUrl);
-			templater.put("url", host + request.getPathAndQuery());
-			templater.put("url.host", host);
 		});
 	}
 

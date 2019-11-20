@@ -204,4 +204,9 @@ window.onload = () => {
       setTimeout(() => textarea.focus(), 0);
     }
   });
+
+  // region * handle login button
+  let $loginButton = $('#login_button');
+  $loginButton.attr('href', $loginButton.attr('href') + '?redirectURI=' + encodeURIComponent(location.origin) + '/auth/authorize%3Forigin=' + encodeURIComponent(location.href));
+  // endregion
 };

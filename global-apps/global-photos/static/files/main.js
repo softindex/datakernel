@@ -438,6 +438,12 @@ window.onload = () => {
     xhr.open("POST", $(uploadImages)[0].dataset.url, true);
     xhr.send(formData);
   });
+
+
+  // region * handle login button
+  let $loginButton = $('#login_button');
+  $loginButton.attr('href', $loginButton.attr('href') + '?redirectURI=' + encodeURIComponent(location.origin) + '/auth/authorize%3Forigin=' + encodeURIComponent(location.href));
+  // endregion
 };
 
 function prevPage() {

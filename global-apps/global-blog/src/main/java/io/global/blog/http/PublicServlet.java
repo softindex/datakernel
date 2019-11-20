@@ -401,8 +401,6 @@ public final class PublicServlet {
 			request.attach(PubKey.class, pubKey);
 			templater.clear();
 			templater.put("appStoreUrl", appStoreUrl);
-			templater.put("url", request.toString());
-			templater.put("url.host", request.getHeader(HOST));
 			templater.put("blog", blogDao.getBlogMetadata());
 		});
 	}

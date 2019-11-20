@@ -6,8 +6,10 @@
                     <a href="/{{key}}">
                         <div class="card m-1" style="position: relative">
                             {{#value.anyPhoto.key}}
-                                <img class="img-fluid card-body img-thumbnail" style="width:250px; height: 250px"
-                                     src="/download/base/{{key}}/{{.}}">
+                                <div style="min-height: 250px; max-height: 250px; overflow: hidden">
+                                    <img class="img-fluid card-body img-thumbnail" style="width:250px;"
+                                         src="/download/base/{{key}}/{{.}}">
+                                </div>
                             {{/value.anyPhoto.key}}
                             {{^value.anyPhoto.key}}
                                 <i style="width:250px; height: 250px;"
