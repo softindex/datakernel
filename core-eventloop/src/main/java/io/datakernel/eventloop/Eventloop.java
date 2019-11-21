@@ -812,6 +812,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			serverSocketChannel.configureBlocking(false);
 			serverSocketChannel.bind(address, serverSocketSettings.getBacklog());
 			serverSocketChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
+			if (selector != null) {
+				selector.wakeup();
+			}
 			return serverSocketChannel;
 		} catch (IOException e) {
 			if (serverSocketChannel != null) {
@@ -912,6 +915,10 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 							cb.onException(e);
 						}
 					});
+
+			if (selector != null) {
+				selector.wakeup();
+			}
 		} catch (IOException e) {
 			closeChannel(channel, null);
 			try {
