@@ -2,7 +2,7 @@ import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.datastream.csp.ChannelSerializer;
-import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
@@ -23,9 +23,6 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 public class RpcBenchmarkServer extends Launcher {
 	private final static int SERVICE_PORT = 25565;
 
-	@Inject
-	RpcServer rpcServer;
-
 	@Provides
 	@Named("server")
 	Eventloop eventloopServer() {
@@ -34,6 +31,7 @@ public class RpcBenchmarkServer extends Launcher {
 	}
 
 	@Provides
+	@Eager
 	public RpcServer rpcServer(@Named("server") Eventloop eventloop, Config config) {
 		return RpcServer.create(eventloop)
 				.withStreamProtocol(

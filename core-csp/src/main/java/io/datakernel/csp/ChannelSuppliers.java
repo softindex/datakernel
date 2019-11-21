@@ -46,6 +46,7 @@ import java.util.function.ToIntFunction;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
+import static java.lang.Math.min;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -367,7 +368,7 @@ public final class ChannelSuppliers {
 
 			@Override
 			public int read(@NotNull byte[] b, int off, int len) throws IOException {
-				return doRead(buf -> buf.read(b, off, len));
+				return doRead(buf -> buf.read(b, off, min(buf.readRemaining(), len)));
 			}
 
 			private int doRead(ToIntFunction<ByteBuf> reader) throws IOException {

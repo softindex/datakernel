@@ -21,6 +21,7 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
  * This example demonstrates uploading file to server using RemoteFS
  * To run this example you should first launch ServerSetupExample
  */
+@SuppressWarnings("unused")
 public final class FileUploadExample extends Launcher {
 	private static final int SERVER_PORT = 6732;
 	private static final String FILE_NAME = "example.txt";
