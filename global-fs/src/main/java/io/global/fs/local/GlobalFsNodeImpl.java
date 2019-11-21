@@ -169,19 +169,19 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	public Promise<Boolean> push() {
 		return tolerantCollectBoolean(namespaces.values(), GlobalFsNamespace::push)
-				.whenComplete(toLogger(logger, "push", this));
+				.whenComplete(toLogger(logger, TRACE, "push", this));
 	}
 
 	public Promise<Boolean> fetch() {
 		return tolerantCollectBoolean(namespaces.values(), GlobalFsNamespace::fetch)
-				.whenComplete(toLogger(logger, "fetch", this));
+				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
 	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 
 	public Promise<Void> catchUp() {
 		return catchUp.get()
-				.whenComplete(toLogger(logger, "catchUp", this));
+				.whenComplete(toLogger(logger, TRACE, "catchUp", this));
 	}
 
 	private Promise<Void> doCatchUp() {

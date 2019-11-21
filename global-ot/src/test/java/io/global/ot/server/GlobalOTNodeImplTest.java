@@ -42,10 +42,7 @@ import io.global.ot.util.FailingDiscoveryService;
 import io.global.ot.util.FailingGlobalOTNode;
 import io.global.ot.util.TestUtils;
 import org.jetbrains.annotations.Nullable;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -282,6 +279,7 @@ public class GlobalOTNodeImplTest {
 	}
 
 	@Test
+	@Ignore
 	public void testLoadSnapshotPresentOnMaster() {
 		saveSnapshotsOn(getMasterNode(1), 1);
 

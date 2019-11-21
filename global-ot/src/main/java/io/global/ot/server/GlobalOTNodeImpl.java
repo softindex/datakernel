@@ -263,14 +263,14 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
 		ensureRepository(repositoryId);
 		return commitStorage.loadSnapshot(repositoryId, commitId)
-				.then(maybeSnapshot -> maybeSnapshot.isPresent() ?
-						Promise.of(maybeSnapshot) :
-						fromMaster(repositoryId,
-								node -> node.loadSnapshot(repositoryId, commitId)
-										.then(Promise::ofOptional),
-								Promise.ofOptional(maybeSnapshot))
-								.whenResult(commitStorage::saveSnapshot)
-								.mapEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.<SignedData<RawSnapshot>>empty()))
+				// .then(maybeSnapshot -> maybeSnapshot.isPresent() ?
+				// 		Promise.of(maybeSnapshot) :
+				// 		fromMaster(repositoryId,
+				// 				node -> node.loadSnapshot(repositoryId, commitId)
+				// 						.then(Promise::ofOptional),
+				// 				Promise.ofOptional(maybeSnapshot))
+				// 				.whenResult(commitStorage::saveSnapshot)
+				// 				.mapEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.<SignedData<RawSnapshot>>empty()))
 				.whenComplete(toLogger(logger, "loadSnapshot", repositoryId, commitId));
 	}
 
