@@ -29,6 +29,21 @@
       <artifactId>datakernel-datastream</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-launcher</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-servicegraph</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-boot</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

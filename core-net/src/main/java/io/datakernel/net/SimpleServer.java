@@ -33,6 +33,10 @@ public final class SimpleServer extends AbstractServer<SimpleServer> {
 		this.socketConsumer = socketConsumer;
 	}
 
+	public static SimpleServer create(Eventloop eventloop, Consumer<AsyncTcpSocket> socketConsumer) {
+		return new SimpleServer(eventloop, socketConsumer);
+	}
+
 	public static SimpleServer create(Consumer<AsyncTcpSocket> socketConsumer) {
 		return new SimpleServer(Eventloop.getCurrentEventloop(), socketConsumer);
 	}
