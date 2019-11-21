@@ -1,5 +1,5 @@
 import {isEqual} from 'lodash';
-import * as types from '../types';
+import * as types from '../MESSAGE_TYPES';
 
 class DropCallOperation {
   constructor(pubKey, peerId, timestamp, handled, dropTime, invert) {

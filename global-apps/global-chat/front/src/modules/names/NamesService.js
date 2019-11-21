@@ -126,16 +126,12 @@ class NamesService extends Service {
         continue;
       }
 
-      try {
-        const user = await this._getUserByPublicKey(publicKey);
-        if (user !== null) {
-          const appStoreName = user.firstName !== '' && user.lastName !== '' ?
-            user.firstName + ' ' + user.lastName : user.username;
-          names.set(publicKey, appStoreName);
-        } else {
-          names.set(publicKey, toEmoji(publicKey, 3));
-        }
-      } catch (err) { // TODO Anton (Упрощение) Будет очевиднее, если предусмотреть поведение по отображению emoji в коде без необходимости отлавливать случайные ошибки
+      const user = await this._getUserByPublicKey(publicKey);
+      if (user !== null) {
+        const appStoreName = user.firstName !== '' && user.lastName !== '' ?
+          user.firstName + ' ' + user.lastName : user.username;
+        names.set(publicKey, appStoreName);
+      } else {
         names.set(publicKey, toEmoji(publicKey, 3));
       }
     }

@@ -2,7 +2,6 @@ import EventEmitter from 'events';
 import {Service, randomString, delay, RejectionError, CancelablePromise} from 'global-apps-common';
 import WebRTCPeer from '../../common/WebRTCPeer';
 import {timeout} from '../../common/utils';
-import * as messageTypes from '../notifications/types';
 import {TimeoutError} from '../../common/utils';
 
 function getDefaultState() {
@@ -31,13 +30,16 @@ class CallsService extends Service {
   }
 
   static createFrom(publicKey, notificationsService) {
-    const createWebRTCPeer = () => {
-      return new WebRTCPeer({
-        iceServers: [{
-          urls: 'stun:stun.l.google.com:19302'
-        }]
-      });
-    };
+    const createWebRTCPeer = () => new WebRTCPeer({
+      iceServers: [
+        ...(process.env.REACT_APP_STUN_SERVER_URL ? [{urls: process.env.REACT_APP_STUN_SERVER_URL}] : []),
+        ...(process.env.REACT_APP_TURN_SERVER_URL ? [{
+          urls: process.env.REACT_APP_TURN_SERVER_URL,
+          username: process.env.REACT_APP_TURN_SERVER_USERNAME,
+          credential: process.env.REACT_APP_TURN_SERVER_CREDENTIAL
+        }] : [])
+      ]
+    });
 
     return new CallsService(publicKey, notificationsService, createWebRTCPeer, 60000, 10000);
   }
@@ -88,7 +90,7 @@ class CallsService extends Service {
       this._sendData(callerInfo, {
         candidate,
         peerId,
-        type: messageTypes.VALIDATION_ICE_CANDIDATE
+        type: 'VALIDATION_ICE_CANDIDATE'
       });
     };
 
@@ -98,11 +100,11 @@ class CallsService extends Service {
           this._sendData(callerInfo, {
             localDescription,
             peerId,
-            type: messageTypes.VALIDATION_OFFER
+            type: 'VALIDATION_OFFER'
           });
 
           return this._notificationsService.waitNotification(validationMailbox, ({type, peerId}) => {
-            return type === messageTypes.VALIDATION_ANSWER && peerId === callerInfo.peerId;
+            return type === 'VALIDATION_ANSWER' && peerId === callerInfo.peerId;
           });
         })
         .then(message => {
@@ -150,13 +152,13 @@ class CallsService extends Service {
 
     this._sendData(callerInfo, {
       peerId: this.state.peerId,
-      type: messageTypes.GET_OFFER
+      type: 'GET_OFFER'
     });
 
     return CancelablePromise.all([
       timeout(
         this._notificationsService.waitNotification(mailbox, ({type, peerId}) => {
-          return type === messageTypes.OFFER && peerId === callerInfo.peerId
+          return type === 'OFFER' && peerId === callerInfo.peerId
         }),
         this._connectionTimeout
       ),
@@ -173,7 +175,7 @@ class CallsService extends Service {
           this._sendData(callerInfo, {
             candidate,
             peerId: this.state.peerId,
-            type: messageTypes.ICE_CANDIDATE
+            type: 'ICE_CANDIDATE'
           });
         };
 
@@ -213,7 +215,7 @@ class CallsService extends Service {
         this._sendData(callerInfo, {
           localDescription,
           peerId: this.state.peerId,
-          type: messageTypes.ANSWER
+          type: 'ANSWER'
         });
 
         if (!this._peers[callerInfo.peerId].isSignallingStateStable()) {
@@ -255,15 +257,15 @@ class CallsService extends Service {
   _onNotification = message => {
     (async () => {
       switch (message.type) {
-        case messageTypes.VALIDATION_ICE_CANDIDATE:
-        case messageTypes.VALIDATION_OFFER:
+        case 'VALIDATION_ICE_CANDIDATE':
+        case 'VALIDATION_OFFER':
           if (!this._validationPeers[message.peerId]) {
             this._validationPeers[message.peerId] = this._createWebRTCPeer();
             this._validationPeers[message.peerId].onIceCandidate = candidate => {
               this._sendData(message, {
                 candidate,
                 peerId: this.state.peerId,
-                type: messageTypes.VALIDATION_ICE_CANDIDATE
+                type: 'VALIDATION_ICE_CANDIDATE'
               });
             };
 
@@ -275,7 +277,7 @@ class CallsService extends Service {
               });
           }
 
-          if (message.type === messageTypes.VALIDATION_ICE_CANDIDATE) {
+          if (message.type === 'VALIDATION_ICE_CANDIDATE') {
             await this._validationPeers[message.peerId].addIceCandidate(message.candidate);
             return;
           }
@@ -283,33 +285,33 @@ class CallsService extends Service {
           this._sendData(message, {
             localDescription: await this._validationPeers[message.peerId].createAnswer(message.localDescription),
             peerId: this.state.peerId,
-            type: messageTypes.VALIDATION_ANSWER
+            type: 'VALIDATION_ANSWER'
           });
           break;
-        case messageTypes.ICE_CANDIDATE:
+        case 'ICE_CANDIDATE':
           if (!this._peers[message.peerId]) {
             this._peers[message.peerId] = this._createWebRTCPeer();
           }
 
           await this._peers[message.peerId].addIceCandidate(message.candidate);
           break;
-        case messageTypes.GET_OFFER:
+        case 'GET_OFFER':
           this._peers[message.peerId] = this._createWebRTCPeer();
           this._sendData(message, {
             localDescription: await this._createOfferWithAudio(message),
             peerId: this.state.peerId,
-            type: messageTypes.OFFER
+            type: 'OFFER'
           });
           break;
-        case messageTypes.TRACK_OFFER:
+        case 'TRACK_OFFER':
           await this._peers[message.peerId].setRemoteDescription(message.localDescription);
           this._sendData(message, {
             localDescription: await this._peers[message.peerId].createAndSetAnswer(),
             peerId: this.state.peerId,
-            type: messageTypes.ANSWER
+            type: 'ANSWER'
           });
           break;
-        case messageTypes.ANSWER:
+        case 'ANSWER':
           await this._peers[message.peerId].setRemoteDescription(message.localDescription);
           this._clearWaitAnswerPromise();
           break;
@@ -326,7 +328,7 @@ class CallsService extends Service {
       this._sendData(callerInfo, {
         candidate,
         peerId: this.state.peerId,
-        type: messageTypes.ICE_CANDIDATE
+        type: 'ICE_CANDIDATE'
       });
     };
 
@@ -370,7 +372,7 @@ class CallsService extends Service {
       this._sendData(callerInfo, {
         localDescription,
         peerId: this.state.peerId,
-        type: messageTypes.TRACK_OFFER
+        type: 'TRACK_OFFER'
       });
     };
 

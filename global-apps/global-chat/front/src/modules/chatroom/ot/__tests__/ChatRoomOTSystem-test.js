@@ -3,7 +3,7 @@ import CallOperation from '../CallOperation';
 import DropCallOperation from '../DropCallOperation';
 import HandleCallOperation from '../HandleCallOperation';
 import initOTState from '../initOTState';
-import * as types from '../../types';
+import * as types from '../../MESSAGE_TYPES';
 
 const PUB_KEY_1 = 'pubkey1';
 const PUB_KEY_2 = 'pubkey2';

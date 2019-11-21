@@ -1,6 +1,6 @@
 import React, {useEffect, useRef} from 'react';
 
-function AudioItem({src}) { // TODO Anton (Упрощение) Предлагаю переименовать на Audio
+function Audio({src}) {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -12,4 +12,4 @@ function AudioItem({src}) { // TODO Anton (Упрощение) Предлага�
   );
 }
 
-export default AudioItem;
+export default Audio;

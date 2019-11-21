@@ -5,7 +5,7 @@ import callButtonsStyles from './callButtonsStyles';
 import Fab from '@material-ui/core/Fab';
 import PhoneIcon from '@material-ui/icons/Phone';
 
-function CallButtons({classes, showAccept, showClose, onAccept, onClose, btnPressed}) {
+function CallButtons({classes, showAccept, showClose, onAccept, onClose, callLoading}) {
   return (
     <>
       {showAccept && (
@@ -14,7 +14,7 @@ function CallButtons({classes, showAccept, showClose, onAccept, onClose, btnPres
           aria-label="accept"
           className={classNames(classes.fab, classes.fabAnimation)}
           onClick={onAccept}
-          disabled={btnPressed}
+          disabled={callLoading}
         >
           <PhoneIcon/>
         </Fab>
@@ -25,7 +25,7 @@ function CallButtons({classes, showAccept, showClose, onAccept, onClose, btnPres
           aria-label="decline"
           className={classes.fab}
           onClick={onClose}
-          disabled={btnPressed}
+          disabled={callLoading}
         >
           <PhoneIcon/>
         </Fab>

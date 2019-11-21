@@ -1,4 +1,4 @@
-import * as types from '../types';
+import * as types from '../MESSAGE_TYPES';
 import MessageOperation from './MessageOperation';
 import CallOperation from './CallOperation';
 import DropCallOperation from './DropCallOperation';

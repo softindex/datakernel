@@ -128,6 +128,7 @@ export class GlobalAppStoreAPI {
   getUserByPublicKey(publicKey) {
     return this._request(url.resolve(this._url, `/api/users/${publicKey}`))
       .then(response => response.json())
+      .catch(() => null);
   }
 
   getProfile() {

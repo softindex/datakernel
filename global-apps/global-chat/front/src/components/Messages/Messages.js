@@ -35,7 +35,7 @@ class MessagesView extends React.Component {
       callerPeerId,
       calling,
       beingCalled,
-      btnPressed,
+      callLoading,
       onAccept,
       onDecline,
       onFinish
@@ -97,7 +97,7 @@ class MessagesView extends React.Component {
                 showClose={true}
                 onAccept={onAccept}
                 onClose={onDecline}
-                btnPressed={btnPressed}
+                callLoading={callLoading}
               />
             </Paper>
           </div>
@@ -109,7 +109,7 @@ class MessagesView extends React.Component {
               showClose={peerId}
               onAccept={onAccept}
               onClose={onFinish}
-              btnPressed={btnPressed}
+              callLoading={callLoading}
             />
           </Paper>
         )}
@@ -128,7 +128,7 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
   const calling = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
   const beingCalled = isHostValid && ![null, publicKey].includes(call.callerInfo.publicKey) &&
     !call.handled.has(publicKey);
-  const [btnPressed, setPressed] = useState(false); // TODO Anton (Упрощение) Может быть много разных кнопок, название не информативное. Можно назвать callLoading
+  const [callLoading, setCallLoading] = useState(false);
 
   const props = {
     classes,
@@ -142,10 +142,10 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
     callerPeerId: call.callerInfo.peerId,
     calling,
     beingCalled,
-    btnPressed,
+    callLoading,
     onAccept(event) {
       event.preventDefault();
-      setPressed(true);
+      setCallLoading(true);
 
       chatRoomService.acceptCall()
         .catch(err => {
@@ -155,12 +155,12 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
           });
         })
         .finally(() => {
-          setPressed(false);
+          setCallLoading(false);
         });
     },
     onDecline(event) {
       event.preventDefault();
-      setPressed(true);
+      setCallLoading(true);
 
       chatRoomService.declineCall()
         .catch(err => {
@@ -169,12 +169,12 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
           });
         })
         .finally(() => {
-          setPressed(false);
+          setCallLoading(false);
         });
     },
     onFinish(event) {
       event.preventDefault();
-      setPressed(true);
+      setCallLoading(true);
 
       try {
         chatRoomService.finishCall();
@@ -183,7 +183,7 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
           variant: 'error'
         });
       } finally {
-        setPressed(false);
+        setCallLoading(false);
       }
     }
   };

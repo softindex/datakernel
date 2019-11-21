@@ -7,14 +7,12 @@ import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import {withSnackbar} from "notistack";
 import {RegisterDependency, initService, getInstance} from "global-apps-common";
 import CallsService from '../../modules/calls/CallsService';
-import CallsValidationService from '../../modules/calls/CallsValidationService';
 
 function ChatRoom({roomId, publicKey, enqueueSnackbar, classes}) {
   const callsService = getInstance(CallsService);
-  const callsValidationService = getInstance(CallsValidationService);
   const chatRoomService = useMemo(() => (
-    ChatRoomService.createFrom(roomId, publicKey, callsService, callsValidationService)
-  ), [roomId, publicKey, callsService, callsValidationService]);
+    ChatRoomService.createFrom(roomId, publicKey, callsService)
+  ), [roomId, publicKey, callsService]);
 
   initService(chatRoomService, err => enqueueSnackbar(err.message, {
     variant: 'error'

@@ -1,4 +1,4 @@
-export const MESSAGE = 'Message'; // TODO Anton (Упрощение) Лучше назвать этот файл MESSAGE_TYPES.js и вынести из каталога types
+export const MESSAGE = 'Message';
 export const CALL = 'Call';
 export const DROP = 'Drop';
 export const HANDLE = 'Handle';

@@ -1,4 +1,4 @@
-import * as types from '../types';
+import * as types from '../MESSAGE_TYPES';
 
 class MessageOperation {
   constructor(timestamp, authorPublicKey, content, invert) {

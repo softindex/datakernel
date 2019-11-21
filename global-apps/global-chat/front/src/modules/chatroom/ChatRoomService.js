@@ -8,6 +8,7 @@ import CallOperation from './ot/CallOperation';
 import HandleCallOperation from './ot/HandleCallOperation';
 import DropCallOperation from './ot/DropCallOperation';
 import initOTState from './ot/initOTState';
+import CallsValidationService from '../calls/CallsValidationService';
 
 class ChatRoomService extends Service {
   constructor(chatOTStateManager, publicKey, callsService, callsValidationService) {
@@ -33,12 +34,13 @@ class ChatRoomService extends Service {
     this._joinPromise = null;
   }
 
-  static createFrom(roomId, publicKey, callsService, callsValidationService) {
+  static createFrom(roomId, publicKey, callsService) {
     const chatRoomOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/room/' + roomId,
       serializer: chatRoomSerializer
     });
     const chatRoomStateManager = new OTStateManager(initOTState, chatRoomOTNode, chatRoomOTSystem);
+    const callsValidationService = new CallsValidationService(callsService);
 
     return new ChatRoomService(chatRoomStateManager, publicKey, callsService, callsValidationService);
   }

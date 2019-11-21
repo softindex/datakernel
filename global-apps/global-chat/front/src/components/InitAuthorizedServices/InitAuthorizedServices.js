@@ -12,16 +12,14 @@ import contactsSerializer from "../../modules/contacts/ot/serializer";
 import contactsOTSystem from "../../modules/contacts/ot/ContactsOTSystem";
 import {withRouter} from "react-router-dom";
 import CallsService from '../../modules/calls/CallsService';
-import CallsValidationService from '../../modules/calls/CallsValidationService';
 import NotificationsService from '../../modules/notifications/NotificationsService';
-import AudioItem from '../AudioItem/AudioItem';
+import Audio from '../Audio/Audio';
 
 function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
   const {
     contactsOTStateManager,
     profileService,
     callsService,
-    callsValidationService,
     roomsService,
     contactsService,
     namesService
@@ -40,7 +38,6 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
     const profileService = MyProfileService.create();
     const notificationsService = NotificationsService.createFrom();
     const callsService = CallsService.createFrom(publicKey, notificationsService);
-    const callsValidationService = new CallsValidationService(callsService); // TODO Anton (Ошибка) callsValidationService нужно создавать для каждого ChatRoomService отдельно, можно в static create
     const roomsService = RoomsService.createFrom(roomsOTStateManager, publicKey);
     const contactsService = ContactsService.createFrom(
       contactsOTStateManager,
@@ -57,7 +54,6 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
       contactsOTStateManager,
       profileService,
       callsService,
-      callsValidationService,
       roomsService,
       contactsService,
       namesService
@@ -82,17 +78,15 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
     <RegisterDependency name="contactsOTStateManager" value={contactsOTStateManager}>
       <RegisterDependency name={ContactsService} value={contactsService}>
         <RegisterDependency name={CallsService} value={callsService}>
-          <RegisterDependency name={CallsValidationService} value={callsValidationService}>
-            <RegisterDependency name={RoomsService} value={roomsService}>
-              <RegisterDependency name={NamesService} value={namesService}>
-                <RegisterDependency name={MyProfileService} value={profileService}>
-                  {children}
-                  {streams.size > 0 && [...streams.entries()].map(([peerId, streamsByPeerId]) => {
-                    return peerId !== ownPeerId && streamsByPeerId.map(stream => (
-                      <AudioItem key={stream.id} src={stream}/>
-                    ));
-                  })}
-                </RegisterDependency>
+          <RegisterDependency name={RoomsService} value={roomsService}>
+            <RegisterDependency name={NamesService} value={namesService}>
+              <RegisterDependency name={MyProfileService} value={profileService}>
+                {children}
+                {streams.size > 0 && [...streams.entries()].map(([peerId, streamsByPeerId]) => {
+                  return peerId !== ownPeerId && streamsByPeerId.map(stream => (
+                    <Audio key={stream.id} src={stream}/>
+                  ));
+                })}
               </RegisterDependency>
             </RegisterDependency>
           </RegisterDependency>
