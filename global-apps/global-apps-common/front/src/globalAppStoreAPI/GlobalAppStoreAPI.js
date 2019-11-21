@@ -128,7 +128,7 @@ export class GlobalAppStoreAPI {
   getUserByPublicKey(publicKey) {
     return this._request(url.resolve(this._url, `/api/users/${publicKey}`))
       .then(response => response.json())
-      .catch(() => null);
+      .catch(() => null); // TODO Anton (Ошибка) Правильно ли, что все ошибки будут игнорироваться?
   }
 
   getProfile() {

@@ -32,7 +32,7 @@ class CallsService extends Service {
   static createFrom(publicKey, notificationsService) {
     const createWebRTCPeer = () => new WebRTCPeer({
       iceServers: [
-        ...(process.env.REACT_APP_STUN_SERVER_URL ? [{urls: process.env.REACT_APP_STUN_SERVER_URL}] : []),
+        ...(process.env.REACT_APP_STUN_SERVER_URL ? [{urls: process.env.REACT_APP_STUN_SERVER_URL}] : []), // TODO Anton (Упрощение) Может понадобиться использовать несколько TURN серверов. Лучше хранить в .env JSON массив iceServers
         ...(process.env.REACT_APP_TURN_SERVER_URL ? [{
           urls: process.env.REACT_APP_TURN_SERVER_URL,
           username: process.env.REACT_APP_TURN_SERVER_USERNAME,
