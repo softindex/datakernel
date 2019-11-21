@@ -1,5 +1,4 @@
-import {CancelablePromise} from '../CancelablePromise';
-import {RejectionError} from '../utils';
+import {CancelablePromise, RejectionError} from '../CancelablePromise';
 
 const PresenceError = new Error('Should not be here');
 

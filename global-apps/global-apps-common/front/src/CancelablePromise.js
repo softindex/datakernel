@@ -1,5 +1,3 @@
-import {RejectionError} from './utils';
-
 export class CancelablePromise {
   constructor(executor, cancel) {
     this._cancel = cancel;
@@ -212,5 +210,18 @@ export class CancelablePromise {
     });
     promise._onResult(resolve, reject);
     return promise;
+  }
+}
+
+export class RejectionError extends Error {
+  constructor(message = 'Promise has been cancelled') {
+    super(message);
+
+    // Maintains proper stack trace for where our error was thrown (only available on V8)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, RejectionError);
+    }
+
+    this.name = 'RejectionError';
   }
 }

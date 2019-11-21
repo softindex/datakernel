@@ -1,4 +1,4 @@
-import {CancelablePromise} from './CancelablePromise';
+import {CancelablePromise, RejectionError} from './CancelablePromise';
 
 export const ROOT_COMMIT_ID = 'AQAAAAAAAAA=';
 
@@ -56,23 +56,8 @@ export function toEmoji(str, length) {
   return emoji;
 }
 
-export class RejectionError extends Error {
-  constructor(message = 'Promise has been cancelled') {
-    super(message);
-
-    // Maintains proper stack trace for where our error was thrown (only available on V8)
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, RejectionError);
-    }
-
-    this.name = 'RejectionError';
-  }
-}
-
 export function retry(fn, timeout) {
-  return new CancelablePromise((resolve, reject) => {
-    fn().then(resolve, reject);
-  }).catch(error => {
+  return CancelablePromise.fromPromise(fn()).catch(error => {
     if (!(error instanceof RejectionError)) {
       console.error(error);
       return delay(timeout).then(() => retry(fn, timeout));
