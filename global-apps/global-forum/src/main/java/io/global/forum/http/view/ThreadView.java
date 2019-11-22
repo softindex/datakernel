@@ -4,13 +4,14 @@ import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.ot.session.UserId;
 import io.global.comm.pojo.UserRole;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
 
+import static io.global.comm.dao.ThreadDao.POST_NOT_FOUND;
 import static io.global.forum.util.Utils.formatInstant;
 import static java.util.stream.Collectors.toList;
 
@@ -49,7 +50,18 @@ public class ThreadView {
 					if (dao == null) {
 						return Promise.of(null);
 					}
-					return dao.getPost("root");
+					return dao.getPost("root")
+							.thenEx((post, e) -> {
+								if (e == null) {
+									return Promise.of(post);
+								}
+								// there might be a time when the thread exists but has no root post yet,
+								// e.g. when creating a thread with big attachment(s)
+								if (e == POST_NOT_FOUND) {
+									return Promise.of(null);
+								}
+								return Promise.ofException(e);
+							});
 				})
 				.then(rootPost -> {
 					if (rootPost == null) {

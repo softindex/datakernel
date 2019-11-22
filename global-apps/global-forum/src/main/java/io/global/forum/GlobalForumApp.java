@@ -66,9 +66,11 @@ public final class GlobalForumApp extends Launcher {
 	AsyncHttpServer server;
 
 	@Inject
+	@SuppressWarnings("unused")
 	GlobalFsDriver fsDriver;
 
 	@Inject
+	@SuppressWarnings("unused")
 	GlobalKvDriver<String, UserId> kvDriver;
 
 	@Provides
