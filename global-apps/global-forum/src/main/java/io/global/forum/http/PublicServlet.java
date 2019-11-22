@@ -89,7 +89,8 @@ public final class PublicServlet {
 												"threads", threads,
 												"pages", all > THREADS_PAGE_LIMIT ? new PageView(page, THREADS_PAGE_LIMIT, all) : null,
 												"threads.any", threads.isEmpty() ? null : threads.get(0)
-										)));
+												),
+												isGzipAccepted(request)));
 					});
 
 		};
@@ -109,7 +110,7 @@ public final class PublicServlet {
 					if (request.getAttachment(UserId.class) != null) {
 						return Promise.of(redirect302(origin));
 					}
-					return templater.render("login", map("loginScreen", true, "origin", origin));
+					return templater.render("login", map("loginScreen", true, "origin", origin), isGzipAccepted(request));
 				})
 				.map(GET, "/authorize", request -> {
 					String token = request.getQueryParameter("token");
@@ -172,7 +173,7 @@ public final class PublicServlet {
 					if (request.getAttachment(UserId.class) == null) {
 						return Promise.of(redirectToLogin(request));
 					}
-					return templater.render("new_thread", emptyMap());
+					return templater.render("new_thread", emptyMap(), isGzipAccepted(request));
 				})
 				.map(POST, "/new", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -219,7 +220,8 @@ public final class PublicServlet {
 					}
 					return templater.render("profile", map(
 							"shownUser", new Ref<>("user"),
-							"shownUser.ip", request.getAttachment(CommDao.class).getUserLastIps().get(userId).map(InetAddress::getHostAddress)));
+							"shownUser.ip", request.getAttachment(CommDao.class).getUserLastIps().get(userId).map(InetAddress::getHostAddress)),
+							isGzipAccepted(request));
 				})
 				.map(GET, "/:userId", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -236,7 +238,8 @@ public final class PublicServlet {
 							.then(shownUser -> shownUser != null ?
 									templater.render("profile", map(
 											"shownUser", UserView.from(commDao, shownUserId, shownUser),
-											"shownUser.ip", commDao.getUserLastIps().get(shownUserId).map(InetAddress::getHostAddress))) :
+											"shownUser.ip", commDao.getUserLastIps().get(shownUserId).map(InetAddress::getHostAddress)),
+											isGzipAccepted(request)) :
 									Promise.ofException(HttpException.ofCode(400, "No such user")));
 				})
 				.map(POST, "/:userId", request -> {
@@ -339,7 +342,8 @@ public final class PublicServlet {
 				".", threadDao.getPost(pid).then(post -> PostView.single(commDao, post, userId, userRole, MAX_DEPTH)),
 				"thread", ThreadView.root(commDao, tid, userId, userRole),
 				"partialReply", partial
-		));
+				),
+				isGzipAccepted(request));
 	}
 
 	private static AsyncServlet postOperations(MustacheTemplater templater) {
@@ -480,9 +484,9 @@ public final class PublicServlet {
 
 	private static AsyncServlet adminServlet(MustacheTemplater templater) {
 		return RoutingServlet.create()
-				.map(GET, "/", request -> templater.render("admin_panel"))
+				.map(GET, "/", request -> templater.render("admin_panel", isGzipAccepted(request)))
 
-				.map(GET, "/edit-forum", request -> templater.render("edit_forum", emptyMap()))
+				.map(GET, "/edit-forum", request -> templater.render("edit_forum", emptyMap(), isGzipAccepted(request)))
 
 				.map(POST, "/edit-forum", request -> {
 					try {
@@ -507,8 +511,8 @@ public final class PublicServlet {
 													templater.render("ip_bans", map(
 															"bans", bans,
 															"pages", all > IP_BANS_PAGE_LIMIT ? new PageView(page, IP_BANS_PAGE_LIMIT, all) : null,
-															"bans.any", bans.isEmpty() ? null : bans.get(0)
-													))));
+															"bans.any", bans.isEmpty() ? null : bans.get(0)),
+															isGzipAccepted(request))));
 				})
 
 				.map(GET, "/ip-bans/new", request -> {
@@ -527,13 +531,13 @@ public final class PublicServlet {
 						}
 					}
 					context.put("ban.ban.until", Utils.formatInstant(Instant.now().plus(1, ChronoUnit.DAYS)));
-					return templater.render("ip_ban", context);
+					return templater.render("ip_ban", context, isGzipAccepted(request));
 				})
 
 				.map(GET, "/ip-bans/:id", request ->
 						IpBanView.from(request.getAttachment(CommDao.class), request.getPathParameter("id"))
 								.then(view -> view != null ?
-										templater.render("ip_ban", map("ban", view)) :
+										templater.render("ip_ban", map("ban", view), isGzipAccepted(request)) :
 										Promise.of(redirect302("."))))
 
 				.map(POST, "/ip-bans/:id", request -> {
@@ -593,7 +597,8 @@ public final class PublicServlet {
 													templater.render("user_list", map(
 															"users", users,
 															"pages", all > USERS_PAGE_LIMIT ? new PageView(page, USERS_PAGE_LIMIT, all) : null,
-															"users.any", users.isEmpty() ? null : users.get(0)))));
+															"users.any", users.isEmpty() ? null : users.get(0)),
+															isGzipAccepted(request))));
 				})
 
 				.map(GET, "/user-ban/:userId", request -> {
@@ -610,7 +615,7 @@ public final class PublicServlet {
 								if (userData.getBanState() == null || userData.getBanState().getUntil().compareTo(Instant.now()) < 0) {
 									context.put("bannedUser.ban.until", formatInstant(Instant.now().plus(1, ChronoUnit.DAYS)));
 								}
-								return templater.render("user_ban", context);
+								return templater.render("user_ban", context, isGzipAccepted(request));
 							});
 				})
 
@@ -685,12 +690,13 @@ public final class PublicServlet {
 			ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 
 			if (pid == null) {
-				return templater.render("thread", map("thread", ThreadView.from(commDao, tid, userId, role, MAX_DEPTH)));
+				return templater.render("thread", map("thread", ThreadView.from(commDao, tid, userId, role, MAX_DEPTH)), isGzipAccepted(request));
 			}
 			return templater.render("subthread", map(
 					"thread", ThreadView.root(commDao, tid, userId, role),
 					"post", threadDao.getPost(pid).then(post -> PostView.from(commDao, post, userId, role, MAX_DEPTH))
-			));
+					),
+					isGzipAccepted(request));
 		};
 	}
 

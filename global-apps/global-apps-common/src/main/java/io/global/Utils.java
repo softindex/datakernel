@@ -32,8 +32,7 @@ import java.util.function.Function;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.http.AsyncServletDecorator.mapResponse;
-import static io.datakernel.http.HttpHeaders.CACHE_CONTROL;
-import static io.datakernel.http.HttpHeaders.REFERER;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.global.common.CryptoUtils.randomBytes;
 import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
@@ -161,5 +160,19 @@ public final class Utils {
 	// 1 year
 	public static AsyncServletDecorator cachedContent() {
 		return cachedContent(31536000);
+	}
+
+	public static boolean isGzipAccepted(HttpRequest request) {
+		String header = request.getHeader(ACCEPT_ENCODING);
+		if (header == null) {
+			return false;
+		}
+		for (String part : header.split(",")) {
+			String encoding = part.split(";")[0].trim();
+			if (encoding.equals("gzip") || encoding.equals("*")) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

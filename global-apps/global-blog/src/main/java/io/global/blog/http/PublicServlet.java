@@ -36,7 +36,6 @@ import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
-import static io.datakernel.http.HttpHeaders.HOST;
 import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
@@ -75,14 +74,15 @@ public final class PublicServlet {
 										threadListPostViewPreprocessor.process(threadView.getRoot(), threadView.getId()));
 								return threadViews;
 							}))
-							.then(threads -> templater.render("threadList", map("threads", threads)));
+							.then(threads -> templater.render("threadList", map("threads", threads), isGzipAccepted(request)));
 				})
 				.map(GET, "/profile", request -> {
 					UserId userId = request.getAttachment(UserId.class);
 					return userId == null ?
 							Promise.of(redirectToLogin(request)) :
 							templater.render("profile",
-									map("shownUser", new Ref<>("user"), "userId", userId.getAuthId()));
+									map("shownUser", new Ref<>("user"), "userId", userId.getAuthId()),
+									isGzipAccepted(request));
 				})
 				.map(GET, "/profile/:userId", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -101,7 +101,9 @@ public final class PublicServlet {
 								if (shownUser == null) {
 									return Promise.<HttpResponse>ofException(HttpException.ofCode(400, "No such user"));
 								}
-								return templater.render("profile", map("shownUser", shownUser, "userId", shownUserId.getAuthId()));
+								return templater.render("profile",
+										map("shownUser", shownUser, "userId", shownUserId.getAuthId()),
+										isGzipAccepted(request));
 							});
 				})
 				.map(POST, "/profile/:userId", request -> {
@@ -143,7 +145,7 @@ public final class PublicServlet {
 
 	private static AsyncServlet ownerServlet(MustacheTemplater templater) {
 		return RoutingServlet.create()
-				.map(GET, "/new", request -> templater.render("newThread", map("creatingNewThread", true)))
+				.map(GET, "/new", request -> templater.render("newThread", map("creatingNewThread", true), isGzipAccepted(request)))
 				.map(POST, "/new", request -> {
 					UserId userId = request.getAttachment(UserId.class);
 					CommDao commDao = request.getAttachment(CommDao.class);
@@ -239,7 +241,7 @@ public final class PublicServlet {
 					origin = origin != null ? origin : "/";
 					return request.getAttachment(UserId.class) != null ?
 							Promise.of(redirect302(origin)) :
-							templater.render("login", map("loginScreen", true, "origin", origin));
+							templater.render("login", map("loginScreen", true, "origin", origin), isGzipAccepted(request));
 				})
 				.map(POST, "/logout", request -> {
 					String sessionId = request.getCookie(SESSION_ID);
@@ -388,7 +390,8 @@ public final class PublicServlet {
 							templater.render(pid != null ? "subthread" : "thread", map(
 									"threadId", tid,
 									"thread", threadDao.getThreadMetadata(),
-									"post", postView)));
+									"post", postView),
+									isGzipAccepted(request)));
 		};
 	}
 
