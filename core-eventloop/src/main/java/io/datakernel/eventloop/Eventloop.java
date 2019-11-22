@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
@@ -705,7 +706,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return;
 		}
 
-		AcceptCallback acceptCallback = (AcceptCallback) key.attachment();
+		//noinspection unchecked
+		Consumer<SocketChannel> acceptCallback = (Consumer<SocketChannel>) key.attachment();
 		for (; ; ) {
 			SocketChannel channel;
 			try {
@@ -721,7 +723,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			try {
-				acceptCallback.onAccept(channel);
+				acceptCallback.accept(channel);
 			} catch (Throwable e) {
 				recordFatalError(e, acceptCallback);
 				closeChannel(channel, null);
@@ -804,7 +806,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException If some I/O error occurs
 	 */
 	@NotNull
-	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @NotNull AcceptCallback acceptCallback) throws IOException {
+	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @NotNull Consumer<SocketChannel> acceptCallback) throws IOException {
 		assert inEventloopThread();
 		ServerSocketChannel serverSocketChannel = null;
 		try {
