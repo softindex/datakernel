@@ -6,11 +6,9 @@ body {
 
 .like, .dislike, .rating {
   padding: 0 5px;
-  color: #fff;
-  background: #6c757d;
+  color: black;
   font-size: 0.8em;
-  height: fit-content;
-  cursor: default;
+  font-family: monospace;
 
   transition: color .15s ease-in-out, background-color .15s ease-in-out;
 
@@ -22,18 +20,6 @@ body {
 
 .like, .dislike {
   cursor: pointer;
-}
-
-.like {
-  border-radius: .2rem 0 0 .2rem;
-}
-
-.dislike {
-  border-radius: 0 .2rem .2rem 0;
-}
-
-.like:hover, .liked > .like, .dislike:hover, .disliked > .dislike {
-  background: #5a6268;
 }
 
 .like:hover, .liked > .like {
@@ -62,12 +48,13 @@ i.fa {
 }
 
 .target-fade {
-  animation: yellowfade 0.5s;
+  animation: yellowfade 0.7s;
 }
 
 .link-like:hover {
   text-decoration: underline;
   color: blue;
+  cursor: pointer;
 }
 
 .unselectable {
@@ -83,6 +70,10 @@ i.fa {
 
 .clickthrough {
   pointer-events: none;
+}
+
+.monospace {
+  font-family: monospace;
 }
 
 input[type="checkbox"].cross {
@@ -132,8 +123,7 @@ input[type="checkbox"].cross:checked:after {
   right: 0;
 
   display: block;
-  animation-name: zoom;
-  animation-duration: 0.1s;
+  animation: zoom 0.1s;
 }
 
 .attachment-modal.overflow .attachment-modal-content {
@@ -149,4 +139,37 @@ input[type="checkbox"].cross:checked:after {
   to {
     transform: scale(1)
   }
+}
+
+.btn-sm {
+  line-height: 1;
+}
+
+.deleted, .deleted * {
+  color: #89939b;
+  transition: color .3s ease-in-out;
+}
+
+.deleted:hover {
+  color: black;
+}
+
+.threadline {
+  width: 0.9em;
+}
+
+.threadline:hover .threadline-line, .threadline-line:hover {
+  background: black;
+}
+
+.threadline-line {
+  width: 2px;
+  height: 100%;
+  background: #89939b;
+  transition: background .15s ease-in-out;
+}
+
+.custom-file, .custom-file-input, .custom-file-label, .custom-file-label::after {
+  line-height: 1;
+  height: initial;
 }

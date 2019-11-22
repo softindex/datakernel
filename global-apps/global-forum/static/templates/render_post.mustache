@@ -1,15 +1,22 @@
+{{^partialReply}}
+    <div class="row">
+        <div class="col-auto pl-2 pr-0 threadline">
+            <div class="threadline-line"></div>
+        </div>
+    <div class="col pl-0">
+{{/partialReply}}
 {{#deletedBy}}
     {{#deletedVisible}}
         {{>render_post_body}}
     {{/deletedVisible}}
     {{^deletedVisible}}
         {{^children.isEmpty}}
-            <div class="card no-gutters" id="post_{{postId}}"{{#inlineParent}}
-                 data-inline-parent="#post_{{postId}}"{{/inlineParent}}>
-                <div class="card-body py-1 text-secondary">
-                    &lt;deleted post&gt;
+                <div class="card no-gutters" id="post_{{postId}}"{{#inlineParent}}
+                     data-inline-parent="#post_{{postId}}"{{/inlineParent}}>
+                    <div class="card-body py-1 text-secondary">
+                        &lt;deleted post&gt;
+                    </div>
                 </div>
-            </div>
         {{/children.isEmpty}}
     {{/deletedVisible}}
 {{/deletedBy}}
@@ -18,41 +25,14 @@
 {{/deletedBy}}
 
 {{^partialReply}}
-    <div class="ml-2 border-left border-dark">
-        {{^deletedBy}}
-            {{#user}}
-                <div class="collapse" id="reply_{{postId}}">
-                    <div class="pt-3">
-                        <div class="mx-3">
-                            <textarea id="reply_content_{{postId}}" class="form-control reply-content pr-5"
-                                      placeholder="Post your reply"
-                                      name="content"
-                                      style="resize: none"
-                                      data-post-button="#post_button_{{postId}}"></textarea>
-                        </div>
-                        <div class="mx-3 mt-3">
-                            {{>attachment_panel}}
-                        </div>
-                        <div class="p-3">
-                            <button class="btn btn-sm btn-primary post-button"
-                                    id="post_button_{{postId}}"
-                                    data-thread-id="{{thread.threadId}}"
-                                    data-post-id="{{postId}}">
-                                post
-                            </button>
-                            <button class="btn btn-sm btn-outline-primary"
-                                    data-toggle="collapse"
-                                    data-target="#add_attachments_{{postId}}">
-                                attach
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            {{/user}}
-        {{/deletedBy}}
-
+    <div class="ml-2">
         {{#children}}
             {{>render_post}}
         {{/children}}
+    </div>
+{{/partialReply}}
+
+{{^partialReply}}
+    </div>
     </div>
 {{/partialReply}}

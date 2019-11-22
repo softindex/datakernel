@@ -1,15 +1,34 @@
 window.onload = () => {
-
-  function addAll(formData, fieldName, $input) {
-    let files = $input[0].files;
-    for (let i = 0; i < files.length; i++) {
-      let f = files[i];
-      formData.append(fieldName, f, f.name);
+  // region * attachment utils
+  function addAttachments(formData, $addAttachments, postId) {
+    function addAll(formData, fieldName, $input) {
+      let files = $input[0].files;
+      for (let i = 0; i < files.length; i++) {
+        let f = files[i];
+        formData.append(fieldName, f, f.name);
+      }
+      $input.val('');
+      $input.trigger('change');
     }
-    $input.val('');
-    $input.trigger('change');
+
+    let $imageAttachment = $addAttachments.find('#image_attachment_' + postId);
+    let $videoAttachment = $addAttachments.find('#video_attachment_' + postId);
+    let $documentAttachment = $addAttachments.find('#document_attachment_' + postId);
+
+    addAll(formData, 'image_attachment', $imageAttachment);
+    addAll(formData, 'video_attachment', $videoAttachment);
+    addAll(formData, 'document_attachment', $documentAttachment);
+
+    return () => {
+      $imageAttachment.val('');
+      $videoAttachment.val('');
+      $documentAttachment.val('');
+    };
   }
 
+  // endregion
+
+  // region * textarea utils
   function validate($textarea, doValidate, set) {
     if (set) {
       doValidate.it = true;
@@ -30,10 +49,15 @@ window.onload = () => {
   }
 
   function autoresize($textarea) {
+    let $stub = $('<div style="height: ' + $textarea.height() + 'px"></div>');
+    $textarea.after($stub);
     $textarea.css('height', '1px');
     $textarea.css('height', (2 + $textarea[0].scrollHeight) + 'px');
+    $stub.remove();
   }
+  // endregion
 
+  // region * modals setup
   let $imageModal = $('#image-modal');
   let $imageModalImg = $imageModal.find('img');
 
@@ -59,6 +83,10 @@ window.onload = () => {
   }
 
   $(window).resize(() => checkImageModalOverflow());
+
+  // endregion
+
+  let shownReply = null;
 
   function addPostCallbacks($element) {
     // region * handle editing
@@ -100,7 +128,7 @@ window.onload = () => {
 
       let $shownAttachments = $element.find('#attachments_' + postId);
       let $editAttachments = $element.find('#edit_attachments_' + postId);
-      let $addAttachments = $element.find('#add_attachments_' + postId);
+      let $addAttachments = $element.find('#edit_add_attachments_' + postId);
 
       $attach.click(() => $addAttachments.collapse('toggle'));
 
@@ -115,13 +143,7 @@ window.onload = () => {
         let content = $textarea.val().trim();
         formData.append('content', content);
 
-        let $imageAttachment = $addAttachments.find('#image_attachment_' + postId);
-        let $videoAttachment = $addAttachments.find('#video_attachment_' + postId);
-        let $documentAttachment = $addAttachments.find('#document_attachment_' + postId);
-
-        addAll(formData, 'image_attachment', $imageAttachment);
-        addAll(formData, 'video_attachment', $videoAttachment);
-        addAll(formData, 'document_attachment', $documentAttachment);
+        let clearAttachments = addAttachments(formData, $addAttachments, postId);
 
         let removedAttachments = [];
         $element.find('#edit_attachments_' + postId + ' .cross')
@@ -144,7 +166,8 @@ window.onload = () => {
             $shownAttachments.removeClass('d-none');
             $editAttachments.addClass('d-none');
             $addAttachments.removeClass('show');
-            [$imageAttachment, $videoAttachment, $documentAttachment].forEach(it => it.val(''));
+
+            clearAttachments();
 
             let rerendered = $(text);
             $('#post_' + postId).replaceWith(rerendered);
@@ -174,85 +197,145 @@ window.onload = () => {
     // endregion
 
     // region * handle replies
-    $element.find('.post-button').click(e => {
-      let threadId = e.target.dataset.threadId;
-      let postId = e.target.dataset.postId;
+    $element.find('.reply-button').click(e => {
+      let postId = $(e.target).data('postId');
+      let threadId = $(e.target).data('threadId');
 
-      let $textarea = $('#reply_content_' + postId);
-      let doValidate = $textarea.data('doValidate');
-      if (!validate($textarea, doValidate, true)) {
-        return;
+      // closing the opened reply
+      if (shownReply !== null) {
+        let captured = shownReply;
+        shownReply.on('hidden.bs.collapse', () => captured.remove());
+        shownReply.collapse('hide');
+
+        // if it's the same reply then we do nothing
+        if (shownReply.data('postId') === postId) {
+          shownReply = null;
+          return;
+        }
       }
 
-      let formData = new FormData();
-      formData.append('content', $textarea.val().trim());
+      let $reply =
+        // region reply html
+        $('<div class="collapse" data-post-id="' + postId + '">' +
+            '<div class="pt-2">' +
+              '<textarea class="form-control form-control-sm reply-content pr-5"' +
+              ' placeholder="Post your reply"' +
+              ' name="content"' +
+              ' style="resize: none; height: 31px"></textarea>' +
+              '<div id="add_attachments_' + postId + '" class="collapse">' +
+                '<div class="mt-2">' +
+                  '<div class="custom-file col-3 mr-1">' +
+                    '<input type="file" accept="image/*" class="custom-file-input"' +
+                    ' id="image_attachment_' + postId + '" multiple' +
+                    ' name="image_attachment">' +
+                    '<label class="custom-file-label text-truncate" for="image_attachment_' + postId + '">' +
+                    ' Attach images' +
+                    '</label>' +
+                  '</div>' +
+                  '<div class="custom-file col-3 mr-1">' +
+                    '<input type="file" accept="video/mp4" class="custom-file-input"' +
+                    ' id="video_attachment_' + postId + '" multiple' +
+                    ' name="video_attachment">' +
+                    '<label class="custom-file-label text-truncate" for="video_attachment_' + postId + '">' +
+                    'Attach videos' +
+                    '</label>' +
+                  '</div>' +
+                  '<div class="custom-file col-3">' +
+                    '<input type="file" class="custom-file-input"' +
+                    ' id="document_attachment_' + postId + '" multiple' +
+                    ' name="document_attachment">' +
+                    '<label class="custom-file-label text-truncate" for="document_attachment_' + postId + '">' +
+                    'Attach documents' +
+                    '</label>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div class="my-2">' +
+                '<button class="btn btn-sm btn-secondary post-button">post</button>' +
+                '<button class="ml-1 btn btn-sm btn-outline-secondary"' +
+                ' data-toggle="collapse"' +
+                ' data-target="#add_attachments_' + postId + '">attach</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>');
+      // endregion
 
-      let $addAttachments = $('#add_attachments_' + postId);
+      handleAttachments($reply);
 
-      let $imageAttachment = $addAttachments.find('#image_attachment_' + postId);
-      let $videoAttachment = $addAttachments.find('#video_attachment_' + postId);
-      let $documentAttachment = $addAttachments.find('#document_attachment_' + postId);
+      let $textarea = $reply.find('textarea');
+      let $post = $reply.find('.post-button');
 
-      addAll(formData, 'image_attachment', $('#image_attachment_' + postId));
-      addAll(formData, 'video_attachment', $('#video_attachment_' + postId));
-      addAll(formData, 'document_attachment', $('#document_attachment_' + postId));
+      // region * auto-post when pressing ctrl+enter
+      $textarea.keydown(e => {
+        if (e.keyCode === 13 && e.ctrlKey) {
+          $reply.find('.post-button').click();
+        }
+      });
+      // endregion
 
-      fetch('/' + threadId + '/' + postId, {method: 'POST', body: formData})
-        .then(r => {
-          if (r.ok) {
-            return r.text();
-          }
-          throw new Error('failed posting reply');
-        })
-        .then(text => {
-          let $reply = $('#reply_' + postId);
-          $textarea.val('');
-          autoresize($textarea);
-          $reply.removeClass('show');
-          $addAttachments.removeClass('show');
-          [$imageAttachment, $videoAttachment, $documentAttachment].forEach(it => it.val(''));
-
-          doValidate.it = false;
-
-          let $rerendered = $(text);
-          if ($rerendered.data('inlineParent')) {
-            $reply.parent().parent().append($rerendered);
-          } else {
-            $reply.parent().append($rerendered);
-          }
-          handleReferences($rerendered);
-          addPostCallbacks($rerendered);
-        }, console.error);
-    });
-    // textarea focus when you press the reply button
-    $element.find('.collapse').on('show.bs.collapse', e => {
-      let textarea = $(e.target).find('textarea');
-      setTimeout(() => textarea.focus(), 0);
-    });
-    // textarea validation and resizing, just like when editing
-    $element.find('.reply-content').each((_, elem) => {
-      let $textarea = $(elem);
       let doValidate = {it: false};
-      $textarea.data('doValidate', doValidate);
-      $textarea.css('height', 'calc(1.5em + .75rem + 2px)');
       $textarea.on('input', () => {
         autoresize($textarea);
         validate($textarea, doValidate);
       });
-    });
 
+      $post.click(() => {
+        if (!validate($textarea, doValidate, true)) {
+          return;
+        }
+
+        let formData = new FormData();
+        formData.append('content', $textarea.val().trim());
+
+        let $addAttachments = $reply.find('#add_attachments_' + postId);
+
+        let clearAttachments = addAttachments(formData, $addAttachments, postId);
+
+        fetch('/' + threadId + '/' + postId, {method: 'POST', body: formData})
+          .then(r => {
+            if (r.ok) {
+              return r.text();
+            }
+            throw new Error('failed posting reply');
+          })
+          .then(text => {
+            $textarea.val('');
+            autoresize($textarea);
+            $reply.removeClass('show');
+            $addAttachments.removeClass('show');
+            clearAttachments();
+
+            doValidate.it = false;
+
+            let $rerendered = $(text);
+            if ($rerendered.children().first().next().children().first().data('inlineParent')) {
+              $reply.parent().parent().parent().parent().append($rerendered);
+            } else {
+              $reply.parent().append($rerendered);
+            }
+            handleReferences($rerendered);
+            addPostCallbacks($rerendered);
+          }, console.error);
+      });
+      // textarea focus when you press the reply button
+      $reply.on('show.bs.collapse', () => setTimeout(() => $textarea.focus(), 0));
+
+      shownReply = $reply;
+      $('#post_' + postId).next().prepend($reply);
+      $reply.collapse('show');
+    });
     // endregion
 
     // region * handle deleting and restoring
-    $element.find('[data-post]').click(e => {
-      let element = $(e.target.dataset.post);
+    $element.find('[data-post-call]').click(e => {
+      let element = $('#post_' + e.target.dataset.postId);
 
-      fetch(e.target.dataset.postReply, {method: 'POST'})
+      fetch(e.target.dataset.postCall, {method: 'POST'})
         .then(r => r.text())
         .then(text => {
           let $rerendered = $(text);
-          element.replaceWith($rerendered);
           addPostCallbacks($rerendered);
+          element.replaceWith($rerendered);
         }, console.error);
     });
     // endregion
@@ -306,7 +389,7 @@ window.onload = () => {
     });
     // endregion
 
-    // region * image modal
+    // region * opening image modal
     $element.find('[data-image-modal]').click(e => {
       if (e.target.tagName !== 'A') {
         $imageModalImg[0].src = e.target.dataset.imageModal;
@@ -328,7 +411,7 @@ window.onload = () => {
     });
     // endregion
 
-    // region * video modal
+    // region * opening video modal
     $element.find('[data-video-modal]').click(e => {
       if (e.target.tagName !== 'A') {
         $videoModalVid[0].src = e.target.dataset.videoModal;
@@ -444,44 +527,52 @@ window.onload = () => {
   // endregion
 
   // region * imitating anchor-links without mandatory scroll-jumps and with yellow-fade
+  const scrollAnimationTime = 400;
+
   function handleReferences($element) {
     $element.find('[data-post-reference]').on('click', e => {
       let post = $(e.target.dataset.postReference);
-      scrollTo(post);
-      post.removeClass('target-fade').addClass('target-fade');
-      setTimeout(() => post.removeClass('target-fade'), 500);
+      let animated = scrollTo(post);
+      setTimeout(() => {
+        post.removeClass('target-fade').addClass('target-fade');
+        setTimeout(() => post.removeClass('target-fade'), 700);
+      }, animated ? scrollAnimationTime : 0);
     });
 
     function scrollTo($target) {
       let windowHeight = window.innerHeight || document.documentElement.clientHeight;
-      let top = $target.position().top;
-      if (top < jQuery(window).scrollTop()) {
-        $('html,body').scrollTop(top);
+      let top = $target.offset().top;
+      if (top < $(window).scrollTop()) {
+        $('html, body').animate({scrollTop: top - 10}, scrollAnimationTime);
+        return true;
       } else if (top + $target.height() > $(window).scrollTop() + windowHeight) {
-        $('html,body').scrollTop(top - windowHeight + $target.height());
+        $('html, body').animate({scrollTop: top - windowHeight + $target.height() + 10}, scrollAnimationTime);
+        return true;
       }
     }
   }
-
   handleReferences($(document));
   // endregion
 
   // region * handle filenames in attachments
-  $('.custom-file-input').change(e => {
-    const input = e.target;
-    const files = input.files;
-    const type = input.name.split('_')[0];
-    const numberOfFiles = files.length;
-    const label = $(input).next('.custom-file-label');
+  function handleAttachments($element) {
+    $element.find('input[type=file]').change(e => {
+      const input = e.target;
+      const files = input.files;
+      const type = input.name.split('_')[0];
+      const numberOfFiles = files.length;
+      const label = $(input).next('label');
 
-    if (numberOfFiles > 1) {
-      label.html('[' + numberOfFiles + ' ' + type + 's]')
-    } else if (numberOfFiles === 1) {
-      label.html(files[0].name.split('\\').pop());
-    } else if (numberOfFiles === 0) {
-      label.html('Attach ' + type + 's');
-    }
-  });
+      if (numberOfFiles > 1) {
+        label.html('[' + numberOfFiles + ' ' + type + 's]')
+      } else if (numberOfFiles === 1) {
+        label.html(files[0].name.split('\\').pop());
+      } else if (numberOfFiles === 0) {
+        label.html('Attach ' + type + 's');
+      }
+    });
+  }
+  handleAttachments($(document));
   // endregion
 
   // region * handle copy-on-click functionality
