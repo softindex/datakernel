@@ -5,13 +5,10 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AsyncTcpSocket;
-import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.Scanner;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
@@ -44,9 +41,8 @@ public final class TcpClientExample {
 	//[START REGION_1]
 	private void run() {
 		System.out.println("Connecting to server at localhost (port 9922)...");
-		eventloop.connect(new InetSocketAddress("localhost", 9922), new ConnectCallback() {
-			@Override
-			public void onConnect(@NotNull SocketChannel socketChannel) {
+		eventloop.connect(new InetSocketAddress("localhost", 9922), (socketChannel, e) -> {
+			if (e != null) {
 				System.out.println("Connected to server, enter some text and send it by pressing 'Enter'.");
 				socket = AsyncTcpSocket.ofSocketChannel(socketChannel);
 
@@ -55,14 +51,10 @@ public final class TcpClientExample {
 						.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
 
 				getScannerThread().start();
-			}
-
-			@Override
-			public void onException(@NotNull Throwable e) {
+			} else {
 				System.out.printf("Could not connect to server, make sure it is started: %s\n", e);
 			}
 		});
-
 		eventloop.run();
 	}
 

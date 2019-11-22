@@ -13,14 +13,11 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import io.datakernel.service.ServiceGraphModule;
-import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
@@ -130,30 +127,20 @@ public class TpcDataBenchmarkClient extends Launcher {
 		InetSocketAddress address = config.get(ofInetSocketAddress(), "echo.address", new InetSocketAddress(9001));
 		int limit = config.get(ofInteger(), "benchmark.totalElements", TOTAL_ELEMENTS);
 
-		SettablePromise<Long> result = new SettablePromise<>();
-		clientEventloop.connect(address, new ConnectCallback() {
-			@Override
-			public void onConnect(@NotNull SocketChannel socketChannel) {
-				AsyncTcpSocket socket = AsyncTcpSocket.ofSocketChannel(socketChannel);
+		return Promise.<SocketChannel>ofCallback(cb -> clientEventloop.connect(address, cb))
+				.then(channel ->  {
+					AsyncTcpSocket socket = AsyncTcpSocket.ofSocketChannel(channel);
 
-				StreamSupplierOfSequence.create(limit)
-						.transformWith(ChannelSerializer.create(INT_SERIALIZER))
-						.streamTo(ChannelConsumer.ofSocket(socket));
+					StreamSupplierOfSequence.create(limit)
+							.transformWith(ChannelSerializer.create(INT_SERIALIZER))
+							.streamTo(ChannelConsumer.ofSocket(socket));
 
-				ChannelSupplier.ofSocket(socket)
-						.transformWith(ChannelDeserializer.create(INT_SERIALIZER))
-						.streamTo(StreamConsumer.skip())
-						.whenComplete(socket::close)
-						.whenResult($ -> result.set(System.currentTimeMillis() - start))
-						.whenException(result::setException);
-			}
-
-			@Override
-			public void onException(@NotNull Throwable e) {
-				result.setException(e);
-			}
-		});
-		return result;
+					return ChannelSupplier.ofSocket(socket)
+							.transformWith(ChannelDeserializer.create(INT_SERIALIZER))
+							.streamTo(StreamConsumer.skip())
+							.whenComplete(socket::close)
+							.map($ -> System.currentTimeMillis() - start);
+				});
 	}
 
 	static final class StreamSupplierOfSequence extends AbstractStreamSupplier<Integer> {

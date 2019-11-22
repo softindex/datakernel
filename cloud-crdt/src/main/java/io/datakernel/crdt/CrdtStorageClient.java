@@ -28,7 +28,6 @@ import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
@@ -195,19 +194,11 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	private Promise<MessagingWithBinaryStreaming<CrdtResponse, CrdtMessage>> connect() {
-		return Promise.ofCallback(cb ->
-				eventloop.connect(address, new ConnectCallback() {
-					@Override
-					public void onConnect(@NotNull SocketChannel channel) {
-						AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, socketSettings);
-						cb.set(MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
-					}
-
-					@Override
-					public void onException(@NotNull Throwable e) {
-						cb.setException(e);
-					}
-				}));
+		return Promise.<SocketChannel>ofCallback(cb -> eventloop.connect(address, cb))
+				.map(channel ->
+						MessagingWithBinaryStreaming.create(
+								AsyncTcpSocketImpl.wrapChannel(eventloop, channel, socketSettings),
+								ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
 	}
 
 	// region JMX

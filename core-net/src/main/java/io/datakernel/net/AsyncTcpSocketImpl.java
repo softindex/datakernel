@@ -22,7 +22,6 @@ import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioChannelEventHandler;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -222,20 +221,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address, long timeout, @Nullable SocketSettings socketSettings) {
-		SettablePromise<AsyncTcpSocketImpl> result = new SettablePromise<>();
 		Eventloop eventloop = getCurrentEventloop();
-		eventloop.connect(address, timeout, new ConnectCallback() {
-			@Override
-			public void onConnect(@NotNull SocketChannel socketChannel) {
-				result.set(wrapChannel(eventloop, socketChannel, socketSettings));
-			}
-
-			@Override
-			public void onException(@NotNull Throwable e) {
-				result.setException(e);
-			}
-		});
-		return result;
+		return Promise.<SocketChannel>ofCallback(cb -> eventloop.connect(address, timeout, cb))
+				.map(channel -> wrapChannel(eventloop, channel, socketSettings));
 	}
 
 	public AsyncTcpSocketImpl withInspector(Inspector inspector) {
