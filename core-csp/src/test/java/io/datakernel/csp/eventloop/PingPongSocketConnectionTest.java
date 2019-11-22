@@ -19,7 +19,7 @@ package io.datakernel.csp.eventloop;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.net.SimpleServer;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
@@ -76,7 +76,7 @@ public final class PingPongSocketConnectionTest {
 				.withAcceptOnce()
 				.listen();
 
-		await(AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketNio.connect(ADDRESS)
 				.then(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					return loop(ITERATIONS,

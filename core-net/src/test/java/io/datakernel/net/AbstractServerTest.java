@@ -65,7 +65,7 @@ public final class AbstractServerTest {
 				.withAcceptOnce()
 				.listen();
 
-		ByteBuf response = await(AsyncTcpSocketImpl.connect(address)
+		ByteBuf response = await(AsyncTcpSocketNio.connect(address)
 				.then(socket ->
 						socket.write(ByteBufStrings.wrapAscii(message))
 								.then($ -> socket.read())

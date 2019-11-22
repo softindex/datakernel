@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ActivePromisesRule;
@@ -162,7 +162,7 @@ public final class HttpStreamTest {
 						"Connection: keep-alive" + crlf + crlf +
 						"Test";
 
-		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
 						.whenComplete(socket::close)));
@@ -184,7 +184,7 @@ public final class HttpStreamTest {
 						"Transfer-Encoding: chunked" + crlf + crlf +
 						"ffffffffff";
 
-		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
 						.whenComplete(socket::close)));
@@ -212,7 +212,7 @@ public final class HttpStreamTest {
 						"Transfer-Encoding: chunked" + crlf + crlf +
 						"3";
 
-		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.write(null))
 						.then($ -> socket.read())

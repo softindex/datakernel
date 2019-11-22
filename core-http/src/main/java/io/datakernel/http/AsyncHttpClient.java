@@ -35,7 +35,7 @@ import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
 import io.datakernel.net.AsyncTcpSocket;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -57,7 +57,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.net.AsyncTcpSocketSsl.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -108,9 +108,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private Executor sslExecutor;
 
 	@Nullable
-	private AsyncTcpSocketImpl.Inspector socketInspector;
+	private AsyncTcpSocketNio.Inspector socketInspector;
 	@Nullable
-	private AsyncTcpSocketImpl.Inspector socketSslInspector;
+	private AsyncTcpSocketNio.Inspector socketSslInspector;
 	@Nullable
 	Inspector inspector;
 
@@ -305,12 +305,12 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withSocketInspector(AsyncTcpSocketImpl.Inspector socketInspector) {
+	public AsyncHttpClient withSocketInspector(AsyncTcpSocketNio.Inspector socketInspector) {
 		this.socketInspector = socketInspector;
 		return this;
 	}
 
-	public AsyncHttpClient withSocketSslInspector(AsyncTcpSocketImpl.Inspector socketSslInspector) {
+	public AsyncHttpClient withSocketSslInspector(AsyncTcpSocketNio.Inspector socketSslInspector) {
 		this.socketSslInspector = socketSslInspector;
 		return this;
 	}
@@ -403,7 +403,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return keepAliveConnection.send(request);
 		}
 
-		return AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
+		return AsyncTcpSocketNio.connect(address, connectTimeoutMillis, socketSettings)
 				.thenEx((asyncTcpSocketImpl, e) -> {
 					if (e == null) {
 						boolean https = request.isHttps();
@@ -524,14 +524,14 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
-		return BaseInspector.lookup(socketInspector, AsyncTcpSocketImpl.JmxInspector.class);
+	public AsyncTcpSocketNio.JmxInspector getSocketStats() {
+		return BaseInspector.lookup(socketInspector, AsyncTcpSocketNio.JmxInspector.class);
 	}
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
-		return BaseInspector.lookup(socketSslInspector, AsyncTcpSocketImpl.JmxInspector.class);
+	public AsyncTcpSocketNio.JmxInspector getSocketStatsSsl() {
+		return BaseInspector.lookup(socketSslInspector, AsyncTcpSocketNio.JmxInspector.class);
 	}
 
 	@JmxAttribute(name = "")

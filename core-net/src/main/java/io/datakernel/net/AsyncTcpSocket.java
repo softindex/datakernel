@@ -18,14 +18,9 @@ package io.datakernel.net;
 
 import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.nio.channels.SocketChannel;
-
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 /**
  * Common interface for connection-oriented transport protocols.
@@ -62,14 +57,5 @@ public interface AsyncTcpSocket extends Cancellable {
 	 */
 	@NotNull
 	Promise<Void> write(@Nullable ByteBuf buf);
-
-	static AsyncTcpSocket ofSocketChannel(SocketChannel socketChannel) {
-		return AsyncTcpSocketImpl.wrapChannel(getCurrentEventloop(), socketChannel, null);
-	}
-
-	// region builders
-	static AsyncTcpSocket ofSocketChannel(SocketChannel socketChannel, SocketSettings socketSettings) {
-		return AsyncTcpSocketImpl.wrapChannel(getCurrentEventloop(), socketChannel, socketSettings);
-	}
 
 }

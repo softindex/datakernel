@@ -15,12 +15,11 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -127,10 +126,8 @@ public class TpcDataBenchmarkClient extends Launcher {
 		InetSocketAddress address = config.get(ofInetSocketAddress(), "echo.address", new InetSocketAddress(9001));
 		int limit = config.get(ofInteger(), "benchmark.totalElements", TOTAL_ELEMENTS);
 
-		return Promise.<SocketChannel>ofCallback(cb -> clientEventloop.connect(address, cb))
-				.then(channel ->  {
-					AsyncTcpSocket socket = AsyncTcpSocket.ofSocketChannel(channel);
-
+		return AsyncTcpSocketNio.connect(address)
+				.then(socket ->  {
 					StreamSupplierOfSequence.create(limit)
 							.transformWith(ChannelSerializer.create(INT_SERIALIZER))
 							.streamTo(ChannelConsumer.ofSocket(socket));

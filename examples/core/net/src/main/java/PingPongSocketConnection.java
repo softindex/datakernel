@@ -18,7 +18,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.net.SimpleServer;
 
 import java.io.IOException;
@@ -56,7 +56,7 @@ public final class PingPongSocketConnection {
 
 		server.listen();
 
-		AsyncTcpSocketImpl.connect(ADDRESS)
+		AsyncTcpSocketNio.connect(ADDRESS)
 				.whenResult(socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					loop(0,

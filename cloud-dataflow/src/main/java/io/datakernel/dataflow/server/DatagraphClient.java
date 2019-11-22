@@ -27,7 +27,7 @@ import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.eventloop.net.SocketSettings;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 
 import java.net.InetSocketAddress;
@@ -56,7 +56,7 @@ public final class DatagraphClient {
 	}
 
 	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
-		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.then(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 					DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
@@ -71,7 +71,7 @@ public final class DatagraphClient {
 	}
 
 	public Promise<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
-		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.then(socket -> {
 					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
 

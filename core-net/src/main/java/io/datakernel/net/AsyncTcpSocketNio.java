@@ -49,10 +49,10 @@ import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 @SuppressWarnings("WeakerAccess")
-public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEventHandler {
-	public static final int DEFAULT_READ_BUFFER_SIZE = ApplicationSettings.getMemSize(AsyncTcpSocketImpl.class, "readBufferSize", kilobytes(16)).toInt();
+public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventHandler {
+	public static final int DEFAULT_READ_BUFFER_SIZE = ApplicationSettings.getMemSize(AsyncTcpSocketNio.class, "readBufferSize", kilobytes(16)).toInt();
 
-	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketImpl.class, "timed out");
+	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketNio.class, "timed out");
 	public static final int NO_TIMEOUT = 0;
 
 	private static final AtomicInteger CONNECTION_COUNT = new AtomicInteger(0);
@@ -193,8 +193,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		}
 	}
 
-	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel, @Nullable SocketSettings socketSettings) {
-		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+	public static AsyncTcpSocketNio wrapChannel(Eventloop eventloop, SocketChannel socketChannel, @Nullable SocketSettings socketSettings) {
+		AsyncTcpSocketNio asyncTcpSocket = new AsyncTcpSocketNio(eventloop, socketChannel);
 		if (socketSettings == null) return asyncTcpSocket;
 		try {
 			socketSettings.applySettings(socketChannel);
@@ -212,26 +212,26 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		return asyncTcpSocket;
 	}
 
-	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address) {
+	public static Promise<AsyncTcpSocketNio> connect(InetSocketAddress address) {
 		return connect(address, null, null);
 	}
 
-	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address, @Nullable Duration duration, @Nullable SocketSettings socketSettings) {
+	public static Promise<AsyncTcpSocketNio> connect(InetSocketAddress address, @Nullable Duration duration, @Nullable SocketSettings socketSettings) {
 		return connect(address, duration == null ? 0 : duration.toMillis(), socketSettings);
 	}
 
-	public static Promise<AsyncTcpSocketImpl> connect(InetSocketAddress address, long timeout, @Nullable SocketSettings socketSettings) {
+	public static Promise<AsyncTcpSocketNio> connect(InetSocketAddress address, long timeout, @Nullable SocketSettings socketSettings) {
 		Eventloop eventloop = getCurrentEventloop();
 		return Promise.<SocketChannel>ofCallback(cb -> eventloop.connect(address, timeout, cb))
 				.map(channel -> wrapChannel(eventloop, channel, socketSettings));
 	}
 
-	public AsyncTcpSocketImpl withInspector(Inspector inspector) {
+	public AsyncTcpSocketNio withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}
 
-	public AsyncTcpSocketImpl(Eventloop eventloop, @NotNull SocketChannel socketChannel) {
+	private AsyncTcpSocketNio(Eventloop eventloop, @NotNull SocketChannel socketChannel) {
 		this.eventloop = eventloop;
 		this.channel = socketChannel;
 	}

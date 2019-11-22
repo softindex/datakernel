@@ -44,7 +44,7 @@ import java.util.ArrayDeque;
 import static io.datakernel.async.process.Cancellable.CLOSE_EXCEPTION;
 import static io.datakernel.common.Recyclable.deepRecycle;
 
-public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEventHandler {
+public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventHandler {
 	private static final MemSize DEFAULT_UDP_BUFFER_SIZE = MemSize.kilobytes(16);
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 
@@ -133,21 +133,21 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 	}
 	// endregion
 
-	private AsyncUdpSocketImpl(@NotNull Eventloop eventloop, @NotNull DatagramChannel channel) throws IOException {
+	private AsyncUdpSocketNio(@NotNull Eventloop eventloop, @NotNull DatagramChannel channel) throws IOException {
 		this.eventloop = eventloop;
 		this.channel = channel;
 		this.key = channel.register(eventloop.ensureSelector(), 0, this);
 	}
 
-	public static Promise<AsyncUdpSocketImpl> connect(Eventloop eventloop, DatagramChannel channel) {
+	public static Promise<AsyncUdpSocketNio> connect(Eventloop eventloop, DatagramChannel channel) {
 		try {
-			return Promise.of(new AsyncUdpSocketImpl(eventloop, channel));
+			return Promise.of(new AsyncUdpSocketNio(eventloop, channel));
 		} catch (IOException e) {
 			return Promise.ofException(e);
 		}
 	}
 
-	public AsyncUdpSocketImpl withInspector(Inspector inspector) {
+	public AsyncUdpSocketNio withInspector(Inspector inspector) {
 		this.inspector = inspector;
 		return this;
 	}

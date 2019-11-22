@@ -28,7 +28,7 @@ import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
@@ -212,7 +212,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
-		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.map(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
 				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
 				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))

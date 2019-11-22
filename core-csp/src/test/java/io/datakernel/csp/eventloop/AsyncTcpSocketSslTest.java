@@ -21,9 +21,9 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.net.AsyncSslSocket;
 import io.datakernel.net.AsyncTcpSocket;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.AsyncTcpSocketSsl;
 import io.datakernel.net.SimpleServer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
@@ -60,7 +60,7 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
-public final class AsyncSslSocketTest {
+public final class AsyncTcpSocketSslTest {
 	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";
 	private static final String KEYSTORE_PASS = "testtest";
 	private static final String KEY_PASS = "testtest";
@@ -109,8 +109,8 @@ public final class AsyncSslSocketTest {
 				.whenComplete(sslSocket::close)
 				.whenComplete(assertComplete(result -> assertEquals(TEST_STRING, result))));
 
-		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+		await(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
 				.then(sslSocket ->
 						sslSocket.write(wrapAscii(TEST_STRING))
 								.whenComplete(sslSocket::close)));
@@ -122,8 +122,8 @@ public final class AsyncSslSocketTest {
 				sslSocket.write(wrapAscii(TEST_STRING))
 						.whenComplete(assertComplete()));
 
-		String result = await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+		String result = await(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
 				.then(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
 						.parse(PARSER)
 						.whenComplete(sslSocket::close)));
@@ -139,8 +139,8 @@ public final class AsyncSslSocketTest {
 				.whenComplete(serverSsl::close)
 				.whenComplete(assertComplete()));
 
-		String result = await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+		String result = await(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
 				.then(sslSocket ->
 						sslSocket.write(wrapAscii(TEST_STRING))
 								.then($ -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
@@ -157,8 +157,8 @@ public final class AsyncSslSocketTest {
 				.whenComplete(serverSsl::close)
 				.whenComplete(assertComplete(result -> assertEquals(result, sentData.toString()))));
 
-		await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+		await(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
 				.whenResult(sslSocket ->
 						sendData(sslSocket)
 								.whenComplete(sslSocket::close)));
@@ -171,8 +171,8 @@ public final class AsyncSslSocketTest {
 						.whenComplete(serverSsl::close)
 						.whenComplete(assertComplete()));
 
-		String result = await(AsyncTcpSocketImpl.connect(ADDRESS)
-				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+		String result = await(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
 				.then(sslSocket -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
 						.parse(PARSER_LARGE)
 						.whenComplete(sslSocket::close)));
@@ -188,8 +188,8 @@ public final class AsyncSslSocketTest {
 						.then($ -> socket.write(wrapAscii("ello")))
 						.whenComplete(($, e) -> assertSame(CLOSE_EXCEPTION, e)));
 
-		Throwable e = awaitException(AsyncTcpSocketImpl.connect(ADDRESS)
-				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+		Throwable e = awaitException(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
 				.then(sslSocket -> {
 					BinaryChannelSupplier supplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket));
 					return supplier.parse(PARSER)

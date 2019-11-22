@@ -42,7 +42,7 @@ import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
  * <p>
  * It allows SSL connections using Java {@link SSLEngine}.
  */
-public final class AsyncSslSocket implements AsyncTcpSocket {
+public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	private final SSLEngine engine;
 	private final Executor executor;
 	private final AsyncTcpSocket upstream;
@@ -56,7 +56,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	@Nullable
 	private SettablePromise<Void> write;
 
-	public static AsyncSslSocket wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
+	public static AsyncTcpSocketSsl wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
 			String host, int port,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine(host, port);
@@ -64,30 +64,30 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		return create(asyncTcpSocket, sslEngine, executor);
 	}
 
-	public static AsyncSslSocket wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
+	public static AsyncTcpSocketSsl wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(true);
 		return create(asyncTcpSocket, sslEngine, executor);
 	}
 
-	public static AsyncSslSocket wrapServerSocket(AsyncTcpSocket asyncTcpSocket,
+	public static AsyncTcpSocketSsl wrapServerSocket(AsyncTcpSocket asyncTcpSocket,
 			SSLContext sslContext, Executor executor) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
 		sslEngine.setUseClientMode(false);
 		return create(asyncTcpSocket, sslEngine, executor);
 	}
 
-	private AsyncSslSocket(AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
+	private AsyncTcpSocketSsl(AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
 		this.engine = engine;
 		this.executor = executor;
 		this.upstream = asyncTcpSocket;
 		startHandShake();
 	}
 
-	public static AsyncSslSocket create(AsyncTcpSocket asyncTcpSocket,
+	public static AsyncTcpSocketSsl create(AsyncTcpSocket asyncTcpSocket,
 			SSLEngine engine, Executor executor) {
-		return new AsyncSslSocket(asyncTcpSocket, engine, executor);
+		return new AsyncTcpSocketSsl(asyncTcpSocket, engine, executor);
 	}
 
 	@NotNull
@@ -149,7 +149,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						try {
 							engine.closeInbound();
 						} catch (SSLException e) {
-							close(new CloseWithoutNotifyException(AsyncSslSocket.class, "Peer closed without sending close_notify", e));
+							close(new CloseWithoutNotifyException(AsyncTcpSocketSsl.class, "Peer closed without sending close_notify", e));
 						}
 					}
 				});
