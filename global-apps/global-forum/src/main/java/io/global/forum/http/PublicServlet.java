@@ -450,7 +450,7 @@ public final class PublicServlet {
 							})
 							.then($ -> postOpPartialReply(request, threadDao, pid, templater, true));
 				})
-				.map(GET, "/download/:filename", request -> {
+				.map(GET, "/download/:filename", cachedContent().serve(request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 					String postId = request.getPathParameter("postID");
 					String filename = request.getPathParameter("filename");
@@ -471,7 +471,7 @@ public final class PublicServlet {
 									return Promise.<HttpResponse>ofException(e);
 								}
 							});
-				})
+				}))
 				.then(servlet -> request -> {
 					if (request.getMethod() == POST) {
 						if (request.getAttachment(UserId.class) == null) {

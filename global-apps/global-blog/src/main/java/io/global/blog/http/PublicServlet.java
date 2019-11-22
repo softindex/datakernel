@@ -338,7 +338,7 @@ public final class PublicServlet {
 								return Promise.ofException(new ParseException("Illegal arguments", e));
 							}
 						}))
-				.map(GET, "/download/:filename", request -> {
+				.map(GET, "/download/:filename", cachedContent().serve(request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 					String postId = request.getPathParameter("postID");
 					String filename = request.getPathParameter("filename");
@@ -358,7 +358,7 @@ public final class PublicServlet {
 									return Promise.<HttpResponse>ofException(e);
 								}
 							});
-				})
+				}))
 				.then(servlet ->
 						request -> request.getMethod() == POST && request.getAttachment(UserId.class) == null ?
 								Promise.ofException(HttpException.ofCode(401, "Not authorized")) :

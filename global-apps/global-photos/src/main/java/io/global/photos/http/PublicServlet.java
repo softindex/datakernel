@@ -33,8 +33,7 @@ import static io.datakernel.http.HttpHeaders.HOST;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
-import static io.global.Utils.generateString;
-import static io.global.Utils.isGzipAccepted;
+import static io.global.Utils.*;
 import static io.global.ot.session.AuthService.DK_APP_STORE;
 import static io.global.photos.dao.AlbumDao.ALBUM_NOT_FOUND_EXCEPTION;
 import static io.global.photos.dao.AlbumDao.ROOT_ALBUM;
@@ -285,7 +284,7 @@ public final class PublicServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.map(GET, "/download/:thumbnail/:albumId/:photoId", request -> {
+				.map(GET, "/download/:thumbnail/:albumId/:photoId", cachedContent().serve(request -> {
 					MainDao mainDao = request.getAttachment(MainDao.class);
 					String albumId = request.getPathParameter("albumId");
 					String photoID = request.getPathParameter("photoId");
@@ -313,7 +312,7 @@ public final class PublicServlet {
 											return Promise.of(HttpResponse.notFound404());
 										}
 									}));
-				})
+				}))
 				.then(servlet ->
 						request -> {
 							UserId userId = request.getAttachment(UserId.class);

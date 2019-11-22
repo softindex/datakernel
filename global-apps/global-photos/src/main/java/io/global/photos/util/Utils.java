@@ -17,8 +17,6 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpException;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.http.decoder.Decoder;
 import io.datakernel.promise.Promise;
 import io.global.common.CryptoUtils;
@@ -35,7 +33,6 @@ import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.common.collection.CollectionUtils.map;
-import static io.datakernel.http.HttpHeaders.REFERER;
 import static io.datakernel.http.decoder.Decoders.ofGet;
 import static io.global.Utils.isGzipAccepted;
 import static io.global.ot.OTUtils.createOTRegistry;
@@ -97,11 +94,6 @@ public final class Utils {
 	public static final StructuredCodec<Tuple2<String, Set<String>>> MOVE_PHOTOS_CODEC = REGISTRY.get(new TypeT<Tuple2<String, Set<String>>>() {});
 	public static final StructuredCodec<Tuple2<String, String>> UPDATE_ALBUM_METADATA = REGISTRY.get(new TypeT<Tuple2<String, String>>() {});
 	public static final StructuredCodec<Tuple1<String>> PHOTO_DESCRIPTION_CODEC = REGISTRY.get(new TypeT<Tuple1<String>>() {});
-
-	public static HttpResponse redirectToReferer(HttpRequest request, String defaultPath) {
-		String referer = request.getHeader(REFERER);
-		return HttpResponse.redirect302(referer != null ? referer : defaultPath);
-	}
 
 	public static AsyncServletDecorator renderErrors(MustacheTemplater templater) {
 		return servlet ->
