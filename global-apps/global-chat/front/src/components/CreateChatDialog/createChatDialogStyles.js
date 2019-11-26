@@ -19,15 +19,9 @@ const createChatDialogStyles = theme => ({
     flexFlow: 'row wrap',
     maxHeight: theme.spacing(12),
     overflow: 'hidden',
-    '&:hover': {
-      overflow: 'auto'
-    }
-  },
-  scroller: {
-    scrollbarColor: 'transparent transparent',
     scrollbarWidth: 'thin',
     '&:hover': {
-      scrollbarColor: `${theme.palette.secondary.grey} transparent`,
+      overflow: 'auto'
     }
   },
   search: {

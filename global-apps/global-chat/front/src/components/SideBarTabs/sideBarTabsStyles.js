@@ -8,19 +8,13 @@ const sideBarTabsStyles = theme => {
     chatsList: {
       flexGrow: 1,
       overflow: 'hidden',
+      scrollbarWidth: 'thin',
       '&:hover': {
         overflow: 'auto'
       },
       background: theme.palette.primary.contrastText,
       marginTop: theme.spacing(1),
       marginBottom: theme.spacing(1)
-    },
-    scroller: {
-      scrollbarColor: 'transparent transparent',
-      scrollbarWidth: 'thin',
-      '&:hover': {
-        scrollbarColor: `${theme.palette.secondary.grey} transparent`,
-      }
     },
     paperDivider: {
       background: theme.palette.primary.background,

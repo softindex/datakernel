@@ -5,16 +5,10 @@ const selectContactsListStyles = theme => {
       height: theme.spacing(37),
       marginTop: theme.spacing(1),
       overflow: 'hidden',
+      scrollbarWidth: 'thin',
       '&:hover': {
         overflow: 'auto'
       },
-    },
-    scroller: {
-      scrollbarColor: 'transparent transparent',
-      scrollbarWidth: 'thin',
-      '&:hover': {
-        scrollbarColor: `${theme.palette.secondary.grey} transparent`,
-      }
     },
     secondaryDividerText: {
       textAlign: 'center',

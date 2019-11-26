@@ -43,7 +43,7 @@ function CreateChatDialogView({
           Add Members
         </DialogTitle>
         <DialogContent className={classes.dialogContent}>
-          <div className={`${classes.chipsContainer} ${classes.scroller}`}>
+          <div className={classes.chipsContainer}>
             {[...participants].map(([publicKey, name]) => (
               <ContactChip
                 color="primary"

@@ -11,16 +11,10 @@ const messageFormStyles = theme => {
     },
     wrapper: {
       width: '100%',
+      scrollbarWidth: 'thin',
       overflow: 'hidden',
       '&:hover': {
         overflow: 'overlay'
-      }
-    },
-    scroller: {
-      scrollbarColor: 'transparent transparent',
-      scrollbarWidth: 'thin',
-      '&:hover': {
-        scrollbarColor: `${theme.palette.secondary.grey} transparent`,
       }
     },
     '@supports ( -moz-appearance:none )': {

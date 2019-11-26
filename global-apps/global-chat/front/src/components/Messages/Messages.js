@@ -25,7 +25,7 @@ function MessagesView({classes, chatReady, messages, publicKey, names, namesRead
         </div>
       )}
       {chatReady && namesReady && (
-        <div ref={wrapper} className={`${classes.wrapper} ${classes.scroller}`}>
+        <div ref={wrapper} className={classes.wrapper}>
           {messages.map((message, index) => {
             const previousMessageAuthor = messages[index - 1] && messages[index - 1].authorPublicKey;
             let shape = 'start';
