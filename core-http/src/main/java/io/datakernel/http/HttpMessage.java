@@ -132,8 +132,8 @@ public abstract class HttpMessage {
 	}
 
 	@Nullable
-	public <T> T getHeader(HttpHeader contentType, ParserFunction<ByteBuf, T> parser) {
-		return parser.parseOrDefault(getHeaderBuf(contentType), null);
+	public <T> T getHeader(HttpHeader header, ParserFunction<ByteBuf, T> parser) {
+		return parser.parseOrDefault(getHeaderBuf(header), null);
 	}
 
 	@Nullable
