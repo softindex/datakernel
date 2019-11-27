@@ -1,6 +1,6 @@
 window.onload = () => {
   // region * attachment utils
-  function addAttachments(formData, $addAttachments, postId) {
+  function addAttachments(formData, $addAttachments) {
     function addAll(formData, fieldName, $input) {
       let files = $input[0].files;
       for (let i = 0; i < files.length; i++) {
@@ -11,19 +11,13 @@ window.onload = () => {
       $input.trigger('change');
     }
 
-    let $imageAttachment = $addAttachments.find('#image_attachment_' + postId);
-    let $videoAttachment = $addAttachments.find('#video_attachment_' + postId);
-    let $documentAttachment = $addAttachments.find('#document_attachment_' + postId);
+    let $imageAttachment = $addAttachments.find('.image-attachment');
+    let $videoAttachment = $addAttachments.find('.video-attachment');
+    let $documentAttachment = $addAttachments.find('.document-attachment');
 
     addAll(formData, 'image_attachment', $imageAttachment);
     addAll(formData, 'video_attachment', $videoAttachment);
     addAll(formData, 'document_attachment', $documentAttachment);
-
-    return () => {
-      $imageAttachment.val('');
-      $videoAttachment.val('');
-      $documentAttachment.val('');
-    };
   }
 
   // endregion
@@ -55,6 +49,7 @@ window.onload = () => {
     $textarea.css('height', (2 + $textarea[0].scrollHeight) + 'px');
     $stub.remove();
   }
+
   // endregion
 
   // region * modals setup
@@ -88,18 +83,53 @@ window.onload = () => {
 
   let shownReply = null;
 
-  function addPostCallbacks($element) {
+  function addPostCallbacks($fullPost) {
+    let $post = $fullPost.find('.post:first');
+    let threadId = $post.data('threadId');
+    let postId = $post.data('postId');
+
     // region * handle editing
-    $element.find('.edit-button').click(e => {
-      let threadId = e.target.dataset.threadId;
-      let postId = e.target.dataset.postId;
+    let $editButton = $post.find('.edit-button');
+    $editButton.click(() => {
+      let $content = $post.find('.content');
 
-      let $content = $('#content_' + postId);
+      let $addAttachments =
+        // region additional attachments panel
+        $('<div class="row">' +
+          '<div class="collapse">' +
+          '<div class="my-1">' +
+          '<div class="custom-file col-3">' +
+          '<input type="file" accept="image/*" class="custom-file-input image-attachment" multiple' +
+          ' name="image_attachment">' +
+          '<label class="custom-file-label text-truncate">Attach images</label>' +
+          '</div>' +
+          '<div class="custom-file col-3">' +
+          '<input type="file" accept="video/mp4" class="custom-file-input video-attachment" multiple' +
+          ' name="video_attachment">' +
+          '<label class="custom-file-label text-truncate">Attach videos</label>' +
+          '</div>' +
+          '<div class="custom-file col-3">' +
+          '<input type="file" class="custom-file-input document-attachment"  multiple' +
+          ' name="document_attachment">' +
+          '<label class="custom-file-label text-truncate">Attach documents</label>' +
+          '</div>' +
+          '</div>' +
+          '</div>' +
+          '</div>');
+      // endregion
 
-      let $save = $('<button class="btn btn-sm btn-primary">save</button>');
-      let $attach = $('<button class="btn btn-sm btn-outline-primary mr-1">attach</button>');
-      let $cancel = $('<button class="btn btn-sm btn-outline-primary mr-1">cancel</button>');
-      let $textarea = $('<textarea class="form-control m-0 p-2" style="resize: none"></textarea>');
+      handleAttachments($addAttachments);
+
+      let $save = $('<button class="btn btn-sm btn-secondary">save</button>');
+
+      let $attach = $('<button class="btn btn-sm btn-outline-secondary ml-1">attach</button>');
+
+      $attach.click(() => $addAttachments.children(':first').collapse('toggle'));
+
+      let $cancel = $('<button class="btn btn-sm btn-outline-secondary ml-1">cancel</button>');
+
+      let $textarea = $('<textarea class="form-control m-0 p-0 pl-1" style="resize: none; height: 26px"></textarea>');
+
       let doValidate = {it: false};
 
       setTimeout(() => autoresize($textarea), 0);
@@ -119,21 +149,26 @@ window.onload = () => {
         }
       });
 
-      let dropdown = $(e.target.parentElement).removeClass('show');
-      let row = dropdown.parent().parent();
-      row.children().addClass('d-none');
-      row.append($attach);
-      row.append($cancel);
-      row.append($save);
+      $editButton.parent().removeClass('show'); // hide the dropdown
 
-      let $shownAttachments = $element.find('#attachments_' + postId);
-      let $editAttachments = $element.find('#edit_attachments_' + postId);
-      let $addAttachments = $element.find('#edit_add_attachments_' + postId);
+      let $postControls = $post.find('.post-controls');
 
-      $attach.click(() => $addAttachments.collapse('toggle'));
+      $postControls.children().addClass('d-none');
 
-      $shownAttachments.addClass('d-none');
-      $editAttachments.removeClass('d-none');
+      $postControls.before($addAttachments);
+
+      $postControls.append($save);
+      $postControls.append($attach);
+      $postControls.append($cancel);
+
+      let $shownAttachments = $post.find('.attachments');
+      let $downloadButtons = $shownAttachments.find('.attachment-action.download');
+      let $deleteButtons = $shownAttachments.find('.attachment-action.trash');
+
+      $downloadButtons.addClass('d-none');
+      $deleteButtons.removeClass('d-none');
+
+      $deleteButtons.click(e => $(e.target).toggleClass('active'));
 
       $save.click(() => {
         if (!validate($textarea, doValidate, true)) {
@@ -143,13 +178,14 @@ window.onload = () => {
         let content = $textarea.val().trim();
         formData.append('content', content);
 
-        let clearAttachments = addAttachments(formData, $addAttachments, postId);
+        addAttachments(formData, $addAttachments);
 
         let removedAttachments = [];
-        $element.find('#edit_attachments_' + postId + ' .cross')
+        $post.find('.attachment-action.trash')
           .each((_, e) => {
-            if (e.checked) {
-              removedAttachments.push($(e).prev().text());
+            let $e = $(e);
+            if ($e.hasClass('active')) {
+              removedAttachments.push($e.prev().prev().text());
             }
           });
         formData.append('removeAttachments', removedAttachments.join(','));
@@ -163,15 +199,13 @@ window.onload = () => {
           })
           .then(text => {
             doValidate.it = false;
-            $shownAttachments.removeClass('d-none');
-            $editAttachments.addClass('d-none');
-            $addAttachments.removeClass('show');
+            $downloadButtons.removeClass('d-none');
+            $deleteButtons.addClass('d-none');
+            $addAttachments.remove();
 
-            clearAttachments();
-
-            let rerendered = $(text);
-            $('#post_' + postId).replaceWith(rerendered);
-            addPostCallbacks(rerendered);
+            let $rerendered = $(text);
+            $post.replaceWith($rerendered);
+            addPostCallbacks($rerendered.parents('.full-post:first'));
           }, e => {
             console.error(e);
             $cancel.click();
@@ -183,23 +217,22 @@ window.onload = () => {
 
       $cancel.click(() => {
         $(document).focus();
+        $addAttachments.remove();
         $textarea.remove();
         $attach.remove();
         $cancel.remove();
         $save.remove();
         $content.removeClass('d-none');
-        row.children().removeClass('d-none');
-        $shownAttachments.removeClass('d-none');
-        $editAttachments.addClass('d-none');
+        $postControls.children().removeClass('d-none');
+        $downloadButtons.removeClass('d-none');
+        $deleteButtons.addClass('d-none');
       });
     });
 
     // endregion
 
     // region * handle replies
-    $element.find('.reply-button').click(e => {
-      let postId = $(e.target).data('postId');
-      let threadId = $(e.target).data('threadId');
+    $post.find('.reply-button').click(() => {
 
       // closing the opened reply
       if (shownReply !== null) {
@@ -216,59 +249,50 @@ window.onload = () => {
 
       let $reply =
         // region reply html
-        $('<div class="collapse" data-post-id="' + postId + '">' +
-            '<div class="pt-2">' +
-              '<textarea class="form-control form-control-sm reply-content pr-5"' +
-              ' placeholder="Post your reply"' +
-              ' name="content"' +
-              ' style="resize: none; height: 31px"></textarea>' +
-              '<div id="add_attachments_' + postId + '" class="collapse">' +
-                '<div class="mt-2">' +
-                  '<div class="custom-file col-3 mr-1">' +
-                    '<input type="file" accept="image/*" class="custom-file-input"' +
-                    ' id="image_attachment_' + postId + '" multiple' +
-                    ' name="image_attachment">' +
-                    '<label class="custom-file-label text-truncate" for="image_attachment_' + postId + '">' +
-                    ' Attach images' +
-                    '</label>' +
-                  '</div>' +
-                  '<div class="custom-file col-3 mr-1">' +
-                    '<input type="file" accept="video/mp4" class="custom-file-input"' +
-                    ' id="video_attachment_' + postId + '" multiple' +
-                    ' name="video_attachment">' +
-                    '<label class="custom-file-label text-truncate" for="video_attachment_' + postId + '">' +
-                    'Attach videos' +
-                    '</label>' +
-                  '</div>' +
-                  '<div class="custom-file col-3">' +
-                    '<input type="file" class="custom-file-input"' +
-                    ' id="document_attachment_' + postId + '" multiple' +
-                    ' name="document_attachment">' +
-                    '<label class="custom-file-label text-truncate" for="document_attachment_' + postId + '">' +
-                    'Attach documents' +
-                    '</label>' +
-                  '</div>' +
-                '</div>' +
-              '</div>' +
-              '<div class="my-2">' +
-                '<button class="btn btn-sm btn-secondary post-button">post</button>' +
-                '<button class="ml-1 btn btn-sm btn-outline-secondary"' +
-                ' data-toggle="collapse"' +
-                ' data-target="#add_attachments_' + postId + '">attach</button>' +
-              '</div>' +
-            '</div>' +
+        $('<div class="collapse" data-post-id="' + postId + '">' + // store the postId here to compare later
+          '<div class="pt-2">' +
+          '<textarea class="form-control form-control-sm reply-content pr-5"' +
+          ' placeholder="Post your reply"' +
+          ' name="content"' +
+          ' style="resize: none; height: 31px"></textarea>' +
+          '<div class="collapse add-attachments">' +
+          '<div class="mt-2">' +
+          '<div class="custom-file col-3 mr-1">' +
+          '<input type="file" accept="image/*" class="custom-file-input image-attachment" multiple' +
+          ' name="image_attachment">' +
+          '<label class="custom-file-label text-truncate">Attach images</label>' +
+          '</div>' +
+          '<div class="custom-file col-3 mr-1">' +
+          '<input type="file" accept="video/mp4" class="custom-file-input video-attachment" multiple' +
+          ' name="video_attachment">' +
+          '<label class="custom-file-label text-truncate">Attach videos</label>' +
+          '</div>' +
+          '<div class="custom-file col-3">' +
+          '<input type="file" class="custom-file-input document-attachment" multiple' +
+          ' name="document_attachment">' +
+          '<label class="custom-file-label text-truncate">Attach documents</label>' +
+          '</div>' +
+          '</div>' +
+          '</div>' +
+          '<div class="my-2">' +
+          '<button class="btn btn-sm btn-secondary post-button">post</button>' +
+          '<button class="ml-1 btn btn-sm btn-outline-secondary attach-button">attach</button>' +
+          '</div>' +
+          '</div>' +
           '</div>');
       // endregion
 
-      handleAttachments($reply);
+      let $addAttachments = $reply.find('.add-attachments');
+      handleAttachments($addAttachments);
+      $reply.find('.attach-button').click(() => $addAttachments.collapse('toggle'));
 
       let $textarea = $reply.find('textarea');
-      let $post = $reply.find('.post-button');
+      let $postButton = $reply.find('.post-button');
 
       // region * auto-post when pressing ctrl+enter
       $textarea.keydown(e => {
         if (e.keyCode === 13 && e.ctrlKey) {
-          $reply.find('.post-button').click();
+          $postButton.click();
         }
       });
       // endregion
@@ -279,7 +303,7 @@ window.onload = () => {
         validate($textarea, doValidate);
       });
 
-      $post.click(() => {
+      $postButton.click(() => {
         if (!validate($textarea, doValidate, true)) {
           return;
         }
@@ -287,9 +311,7 @@ window.onload = () => {
         let formData = new FormData();
         formData.append('content', $textarea.val().trim());
 
-        let $addAttachments = $reply.find('#add_attachments_' + postId);
-
-        let clearAttachments = addAttachments(formData, $addAttachments, postId);
+        addAttachments(formData, $addAttachments);
 
         fetch('/' + threadId + '/' + postId, {method: 'POST', body: formData})
           .then(r => {
@@ -299,49 +321,39 @@ window.onload = () => {
             throw new Error('failed posting reply');
           })
           .then(text => {
-            $textarea.val('');
-            autoresize($textarea);
-            $reply.removeClass('show');
-            $addAttachments.removeClass('show');
-            clearAttachments();
-
-            doValidate.it = false;
-
+            $reply.remove();
             let $rerendered = $(text);
-            if ($rerendered.children().first().next().children().first().data('inlineParent')) {
-              $reply.parent().parent().parent().parent().append($rerendered);
+            if ($rerendered.find('.post').data('inlineParent')) {
+              $fullPost.parent().append($rerendered);
             } else {
-              $reply.parent().append($rerendered);
+              $fullPost.find('.post-children:first').append($rerendered);
             }
-            handleReferences($rerendered);
-            addPostCallbacks($rerendered);
+            addPostCallbacks($rerendered); // this one is a full post already
           }, console.error);
       });
       // textarea focus when you press the reply button
       $reply.on('show.bs.collapse', () => setTimeout(() => $textarea.focus(), 0));
 
       shownReply = $reply;
-      $('#post_' + postId).next().prepend($reply);
+      $post.next().prepend($reply);
       $reply.collapse('show');
     });
     // endregion
 
     // region * handle deleting and restoring
-    $element.find('[data-post-call]').click(e => {
-      let element = $('#post_' + e.target.dataset.postId);
-
+    $post.find('[data-post-call]').click(e => {
       fetch(e.target.dataset.postCall, {method: 'POST'})
         .then(r => r.text())
         .then(text => {
           let $rerendered = $(text);
-          addPostCallbacks($rerendered);
-          element.replaceWith($rerendered);
+          $post.replaceWith($rerendered);
+          addPostCallbacks($rerendered.parents('.full-post:first'));
         }, console.error);
     });
     // endregion
 
     // region * handle likes and dislikes
-    $element.find('.like').click(e => {
+    $post.find('.like').click(e => {
       let parent = $(e.target).parent();
       let prefix = parent.data('prefix');
       let child = parent.find('.rating');
@@ -364,7 +376,7 @@ window.onload = () => {
           }, console.error)
       }
     });
-    $element.find('.dislike').click(e => {
+    $post.find('.dislike').click(e => {
       let parent = $(e.target).parent();
       let prefix = parent.data('prefix');
       let child = parent.find('.rating');
@@ -390,7 +402,7 @@ window.onload = () => {
     // endregion
 
     // region * opening image modal
-    $element.find('[data-image-modal]').click(e => {
+    $post.find('[data-image-modal]').click(e => {
       if (e.target.tagName !== 'A') {
         $imageModalImg[0].src = e.target.dataset.imageModal;
 
@@ -412,7 +424,7 @@ window.onload = () => {
     // endregion
 
     // region * opening video modal
-    $element.find('[data-video-modal]').click(e => {
+    $post.find('[data-video-modal]').click(e => {
       if (e.target.tagName !== 'A') {
         $videoModalVid[0].src = e.target.dataset.videoModal;
         $videoModal.removeClass('d-none');
@@ -420,9 +432,58 @@ window.onload = () => {
       }
     });
     // endregion
+
+    // region * handle references
+    const scrollAnimationTime = 400;
+    $post.find('[data-post-reference]').click(e => {
+      let $reference = $(e.target.dataset.postReference);
+      let animated = false;
+
+      let windowHeight = window.innerHeight || document.documentElement.clientHeight;
+      let top = $reference.offset().top;
+      if (top < $(window).scrollTop()) {
+        $('html, body').animate({scrollTop: top - 10}, scrollAnimationTime);
+        animated = true;
+      } else if (top + $reference.height() > $(window).scrollTop() + windowHeight) {
+        $('html, body').animate({scrollTop: top - windowHeight + $reference.height() + 10}, scrollAnimationTime);
+        animated = true;
+      }
+
+      setTimeout(() => {
+        $reference.removeClass('target-fade').addClass('target-fade');
+        setTimeout(() => $reference.removeClass('target-fade'), 700);
+      }, animated ? scrollAnimationTime : 0);
+    });
+    // endregion
+
+    if ($fullPost.data('tree-events-handled')) {
+      return;
+    }
+    $fullPost.data('tree-events-handled', true);
+
+    // region * handle collapsing tree
+    $fullPost.find('.posts-hidden').click(e => {
+      let $msg = $(e.target);
+      let $post = $msg.next();
+      let $threadline = $msg.parent().prev();
+
+      $post.collapse('show');
+      $msg.collapse('hide');
+      $threadline.removeClass('collapsed');
+    });
+    $fullPost.find('.threadline').click(e => {
+      let $threadline = $(e.target);
+      let $msg = $threadline.next().children(':first');
+      let $post = $msg.next();
+
+      $post.collapse('hide');
+      $msg.collapse('show');
+      $threadline.addClass('collapsed');
+    })
+    // endregion
   }
 
-  addPostCallbacks($(document));
+  $('.full-post').each((_, p) => addPostCallbacks($(p)));
 
   // region * handle login button
   let $loginButton = $('#login_button');
@@ -511,7 +572,6 @@ window.onload = () => {
         $(e.target.dataset.postButton).click();
       }
       if (e.target.tagName !== 'TEXTAREA') {
-        console.log(e.target.tagName);
         e.preventDefault();
       }
     }
@@ -524,34 +584,6 @@ window.onload = () => {
   if (scroll) {
     $('html, body').scrollTop(scroll);
   }
-  // endregion
-
-  // region * imitating anchor-links without mandatory scroll-jumps and with yellow-fade
-  const scrollAnimationTime = 400;
-
-  function handleReferences($element) {
-    $element.find('[data-post-reference]').on('click', e => {
-      let post = $(e.target.dataset.postReference);
-      let animated = scrollTo(post);
-      setTimeout(() => {
-        post.removeClass('target-fade').addClass('target-fade');
-        setTimeout(() => post.removeClass('target-fade'), 700);
-      }, animated ? scrollAnimationTime : 0);
-    });
-
-    function scrollTo($target) {
-      let windowHeight = window.innerHeight || document.documentElement.clientHeight;
-      let top = $target.offset().top;
-      if (top < $(window).scrollTop()) {
-        $('html, body').animate({scrollTop: top - 10}, scrollAnimationTime);
-        return true;
-      } else if (top + $target.height() > $(window).scrollTop() + windowHeight) {
-        $('html, body').animate({scrollTop: top - windowHeight + $target.height() + 10}, scrollAnimationTime);
-        return true;
-      }
-    }
-  }
-  handleReferences($(document));
   // endregion
 
   // region * handle filenames in attachments
@@ -572,6 +604,7 @@ window.onload = () => {
       }
     });
   }
+
   handleAttachments($(document));
   // endregion
 

@@ -158,18 +158,44 @@ input[type="checkbox"].cross:checked:after {
   width: 0.9em;
 }
 
-.threadline:hover .threadline-line, .threadline-line:hover {
+.threadline:hover .threadline-line, .threadline.collapsed .threadline-line {
   background: black;
+  width: 2px;
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
 }
 
 .threadline-line {
-  width: 2px;
+  width: 1px;
   height: 100%;
   background: #89939b;
   transition: background .15s ease-in-out;
 }
 
+.list-group-item {
+  line-height: 1;
+}
+
 .custom-file, .custom-file-input, .custom-file-label, .custom-file-label::after {
   line-height: 1;
   height: initial;
+}
+
+.attachment-list-item {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.attachment-action {
+  padding: 0.7rem;
+  color: #495057;
+  transition: color .15s ease-in-out;
+}
+
+.attachment-action:hover {
+  color: #80bdff;
+}
+
+.attachment-action.trash.active {
+  color: red;
 }

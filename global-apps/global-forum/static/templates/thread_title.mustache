@@ -1,13 +1,14 @@
 <div class="row align-items-center">
     <div class="col">
         <div id="thread-title"
-             class="form-control font-weight-bold text-dark px-2 m-0 text-truncate unselectable"
-             style="border: 1px solid transparent; background: transparent;">
+             class="form-control font-weight-bold text-dark p-0 my-2 px-2 text-truncate unselectable"
+             style="height: initial; border: 1px solid transparent; background: transparent;">
             {{thread.title}}
         </div>
         <form class="validate" action="#" novalidate>
             <input id="thread-title-input"
-                   class="form-control font-weight-bold m-0 p-2 pr-5 d-none"
+                   class="form-control font-weight-bold p-0 my-2 pl-2 pr-5 d-none"
+                   style="height: initial"
                    type="text"
                    required pattern="\s*(?=\S).{1,120}\s*">
         </form>
@@ -22,7 +23,7 @@
                         rename
                     </div>
                     <div id="edit-thread-cancel"
-                            class="link-like text-secondary small unselectable d-none mt-0">
+                            class="btn btn-sm btn-outline-secondary small unselectable d-none mt-0">
                         cancel
                     </div>
                 </div>
@@ -34,7 +35,7 @@
                         delete
                     </div>
                     <div id="edit-thread-save"
-                            class="link-like text-secondary small unselectable d-none mt-0"
+                            class="btn btn-sm btn-secondary small d-none mt-0"
                             data-thread-id="{{thread.threadId}}">
                         save
                     </div>

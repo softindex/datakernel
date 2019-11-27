@@ -335,10 +335,9 @@ public final class PublicServlet {
 		CommDao commDao = request.getAttachment(CommDao.class);
 		UserId userId = request.getAttachment(UserId.class);
 		UserRole userRole = request.getAttachment(UserRole.class);
-		return templater.render("render_post", map(
+		return templater.render(partial ? "render_post_body" : "render_post", map(
 				".", threadDao.getPost(pid).then(post -> PostView.single(commDao, post, userId, userRole, MAX_DEPTH)),
-				"thread", ThreadView.root(commDao, tid, userId, userRole),
-				"partialReply", partial
+				"thread", ThreadView.root(commDao, tid, userId, userRole)
 		));
 	}
 
