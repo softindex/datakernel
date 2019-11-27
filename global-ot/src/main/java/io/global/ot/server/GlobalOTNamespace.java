@@ -31,6 +31,7 @@ import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.common.collection.CollectionUtils.union;
 import static io.datakernel.promise.Promises.firstSuccessful;
 import static io.datakernel.promise.Promises.retry;
+import static io.datakernel.promise.Promises.toList;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toSet;
@@ -69,10 +70,10 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return Promise.complete();
 		}
 		return ensureMasterNodes()
-				.then(masters -> firstSuccessful(masters.stream()
-						.map(master -> AsyncSupplier.cast(() ->
-								master.list(space))))
-						.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))
+				.then(masters -> toList(masters.stream()
+						.map(master -> master.list(space)
+								.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet())))))
+				.map(lists -> lists.stream().flatMap(Collection::stream).collect(toSet()))
 				.whenResult(repoNames -> repoNames.forEach(name -> ensureRepository(RepoID.of(space, name))))
 				.whenResult($ -> updateRepositoriesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
 				.toVoid();
@@ -129,11 +130,6 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		// region API methods
 		public Promise<Map<RawServerId, MasterRepository>> ensureMasterRepositories() {
 			return ensureMasterRepositories.get();
-		}
-
-		public Promise<Void> ensureUpdated() {
-			return ensureMasterNodes()
-					.then($ -> node.isMasterFor(space) ? Promise.complete() : update().toTry().toVoid());
 		}
 
 		public Promise<Void> update() {
@@ -291,9 +287,9 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					.then(masters -> node.getCommitStorage().listSnapshotIds(repositoryId)
 							.then(localSnapshotIds -> firstSuccessful(masters.stream()
 									.map(master -> AsyncSupplier.cast(() ->
-											master.listSnapshots(repositoryId, localSnapshotIds)
+											master.listSnapshots(repositoryId)
 													.then(newSnapshotIds -> Promises.toList(
-															newSnapshotIds.stream()
+															difference(localSnapshotIds, newSnapshotIds).stream()
 																	.map(snapshotId -> master.loadSnapshot(repositoryId, snapshotId)
 																			.then(Promise::ofOptional))))))))
 							.then(snapshots -> Promises.all(snapshots.stream().map(node.getCommitStorage()::saveSnapshot))))
@@ -374,7 +370,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			return forEachMaster(master -> {
 				logger.trace("{} pushing snapshots to {}", repositoryId, master);
 				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in node.getCommitStorage().listSnapshotIds()
-				return master.listSnapshots(repositoryId, emptySet())
+				return master.listSnapshots(repositoryId)
 						.then(remoteSnapshotIds -> node.getCommitStorage().listSnapshotIds(repositoryId)
 								.map(localSnapshotIds -> difference(localSnapshotIds, remoteSnapshotIds)))
 						.then(snapshotsIds -> Promises.toList(snapshotsIds.stream()

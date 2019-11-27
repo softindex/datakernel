@@ -16,7 +16,6 @@
 
 package io.global.launchers;
 
-import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
@@ -65,7 +64,8 @@ import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.dns.RemoteAsyncDnsClient.DEFAULT_TIMEOUT;
 import static io.datakernel.dns.RemoteAsyncDnsClient.GOOGLE_PUBLIC_DNS;
 import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
-import static io.datakernel.launchers.initializers.Initializers.*;
+import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
+import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static io.global.launchers.Initializers.ofAbstractGlobalNode;
 import static io.global.launchers.fs.Initializers.ofGlobalFsNodeImpl;
@@ -77,6 +77,7 @@ public class GlobalNodesModule extends AbstractModule {
 	protected void configure() {
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
 		bind(GlobalKvNode.class).to(GlobalKvNodeImpl.class);
+		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
 	}
 
 	@Provides
@@ -87,7 +88,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalOTNode globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+	GlobalOTNodeImpl globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, commitStorage, factory)
 				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
@@ -217,34 +218,4 @@ public class GlobalNodesModule extends AbstractModule {
 	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
 	}
-
-	// region schedulers
-	@Provides
-	@Named("FS push")
-	EventloopTaskScheduler fsPushScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("fs.push")));
-	}
-
-	@Provides
-	@Named("FS catch up")
-	EventloopTaskScheduler fsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("fs.catchUp")));
-	}
-
-	@Provides
-	@Named("KV push")
-	EventloopTaskScheduler kvPushScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("kv.push")));
-	}
-
-	@Provides
-	@Named("KV catch up")
-	EventloopTaskScheduler kvCatchUpScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
-	}
-	//endregion
 }

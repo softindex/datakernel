@@ -156,14 +156,13 @@ public final class GlobalKvTest {
 
 		Set<KvItem<String, String>> content = createContent();
 
-		// upload to the caching node, it'll cache and also forward to one of the masters
+		// upload to the caching node, it'll cache and also forward to all masters (on background)
 		await(ChannelSupplier.ofIterable(content).streamTo(await(cachingAliceGateway.upload("test"))));
 
 		List<KvItem<String, String>> firstList = await(await(firstAliceAdapter.download("test")).toList());
 		List<KvItem<String, String>> secondList = await(await(secondAliceAdapter.download("test")).toList());
 
-		// on first or on second but not on both (with default 0-1 setting)
-		assertTrue(firstList.isEmpty() ^ secondList.isEmpty());
+		assertTrue(!firstList.isEmpty() && !secondList.isEmpty());
 	}
 
 	@Test

@@ -18,13 +18,12 @@ package io.global.fs.local;
 
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.common.Initializable;
-import io.datakernel.common.ref.RefBoolean;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.Promises;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -46,19 +45,17 @@ import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.global.util.Utils.*;
+import static io.global.util.Utils.tolerantCollectBoolean;
+import static io.global.util.Utils.untilTrue;
 
 public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl, GlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<GlobalFsNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeImpl.class);
 
-	private int uploadCallNumber = 1;
-	private int uploadSuccessNumber = 0;
-
-	private boolean doesDownloadCaching = true;
-	private boolean doesUploadCaching = true;
+	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
 
 	private final Function<PubKey, FsClient> storageFactory;
 	private final Function<PubKey, CheckpointStorage> checkpointStorageFactory;
+	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
 	// region creators
 	private GlobalFsNodeImpl(RawServerId id, DiscoveryService discoveryService,
@@ -85,30 +82,17 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 				key -> new RemoteFsCheckpointStorage(checkpoints.subfolder(key.asString())));
 	}
 
-	public GlobalFsNodeImpl withDownloadCaching(boolean caching) {
-		doesDownloadCaching = caching;
-		return this;
-	}
-
-	public GlobalFsNodeImpl withUploadCaching(boolean caching) {
-		doesUploadCaching = caching;
-		return this;
-	}
-
-	public GlobalFsNodeImpl withoutCaching() {
-		return withDownloadCaching(false);
-	}
-
-	public GlobalFsNodeImpl withUploadRedundancy(int minUploads, int maxUploads) {
-		uploadSuccessNumber = minUploads;
-		uploadCallNumber = maxUploads;
+	public GlobalFsNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
+		this.retryPolicy = retryPolicy;
 		return this;
 	}
 	// endregion
 
 	@Override
 	protected GlobalFsNamespace createNamespace(PubKey space) {
-		return new GlobalFsNamespace(this, space);
+		GlobalFsNamespace ns = new GlobalFsNamespace(this, space);
+		ns.fetch();
+		return ns;
 	}
 
 	public Function<PubKey, FsClient> getStorageFactory() {
@@ -119,90 +103,52 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 		return checkpointStorageFactory;
 	}
 
+	public RetryPolicy getRetryPolicy() {
+		return retryPolicy;
+	}
+
 	@Override
 	public Promise<ChannelConsumer<DataFrame>> upload(PubKey space, String filename, long offset, long revision) {
 		GlobalFsNamespace ns = ensureNamespace(space);
 		// check only after ensureMasterNodes because it could've made us master
-		return ns.ensureMasterNodes()
-				.then(masters -> {
-					if (isMasterFor(space)) { // check only after ensureMasterNodes because it could've made us master
-						return ns.upload(filename, offset, revision);
-					}
-					return nSuccessesOrLess(uploadCallNumber, masters.stream()
-							.map(master -> AsyncSupplier.cast(() -> master.upload(space, filename, offset, revision))))
-							.map(consumers -> {
-								ChannelZeroBuffer<DataFrame> buffer = new ChannelZeroBuffer<>();
-								ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(buffer.getSupplier()).lenient();
-
-								RefBoolean localCompleted = new RefBoolean(false);
-								if (doesUploadCaching || consumers.isEmpty()) {
-									splitter.addOutput()
-											.set(ChannelConsumer.ofPromise(ns.upload(filename, offset, revision))
-													.withAcknowledgement(ack -> ack
-															.whenComplete(($, e) -> {
-																if (e == null) {
-																	localCompleted.set(true);
-																} else {
-																	splitter.close(e);
-																}
-															})));
-								} else {
-									localCompleted.set(true);
-								}
-
-								Promise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
-								return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
-							});
-				})
+		return ns.upload(filename, offset, revision)
+				.map(consumer -> consumer.withAcknowledgement(ack -> ack
+						.whenResult($ -> {
+							if (!isMasterFor(space)) {
+								ns.push(filename);
+							}
+						})))
 				.whenComplete(toLogger(logger, "upload", space, filename, offset, this));
 	}
 
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long length) {
 		GlobalFsNamespace ns = ensureNamespace(space);
-		// if we have cached file and it is same as or better than remote
-		return Promises.toTuple(ns.getMetadata(filename), getMetadata(space, filename))
-				.then(t -> {
-					GlobalFsCheckpoint localMeta = t.getValue1() != null ? t.getValue1().getValue() : null;
-					GlobalFsCheckpoint remoteMeta = t.getValue2() != null ? t.getValue2().getValue() : null;
-
-					// if we have cached file and it is same as or better than remote
-					if (localMeta != null) {
-						if (remoteMeta == null || GlobalFsCheckpoint.COMPARATOR.compare(localMeta, remoteMeta) >= 0) {
-							return localMeta.isTombstone() ?
-									Promise.ofException(FILE_NOT_FOUND) :
-									ns.download(filename, offset, length);
-						}
+		return ns.getMetadata(filename)
+				.then(metadata -> {
+					if (metadata != null) {
+						return ns.download(filename, offset, length);
 					}
-					if (remoteMeta == null || remoteMeta.isTombstone()) {
-						return Promise.ofException(FILE_NOT_FOUND);
-					}
-					return ns.ensureMasterNodes()
-							.then(nodes -> Promises.firstSuccessful(nodes.stream()
-									.map(node -> node.download(space, filename, offset, length)
-											.map(supplier -> {
-												if (!doesDownloadCaching) {
-													logger.trace("Trying to download file at " + filename + " from " + node + "...");
-													return supplier;
-												}
-												logger.trace("Trying to download and cache file at " + filename + " from " + node + "...");
-
-												ChannelSplitter<DataFrame> splitter = ChannelSplitter.create(supplier);
-
-												splitter.addOutput().set(ns.upload(filename, offset, remoteMeta.getRevision()));
-
-												return splitter.addOutput()
-														.getSupplier()
-														.withEndOfStream(eos -> eos.both(splitter.getProcessCompletion()));
-											}))
-									.iterator()));
+					return simpleMethod(space,
+							master -> master.getMetadata(space, filename)
+									.then(meta -> meta == null ?
+											Promise.ofException(FILE_NOT_FOUND) :
+											master.download(space, filename, offset, length)
+													.map(supplier -> {
+														ChannelSplitter<DataFrame> splitter = ChannelSplitter.create();
+														ChannelOutput<DataFrame> output = splitter.addOutput();
+														splitter.addOutput().set(ChannelConsumer.ofPromise(ns.upload(filename, offset, meta.getValue().getRevision())));
+														splitter.getInput().set(supplier);
+														return output.getSupplier();
+													})),
+							$ -> Promise.ofException(FILE_NOT_FOUND));
 				})
 				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 
 	@Override
 	public Promise<List<SignedData<GlobalFsCheckpoint>>> listEntities(PubKey space, String glob) {
-		return simpleMethod(space, node -> node.listEntities(space, glob), ns -> ns.list(glob))
+		return ensureNamespace(space).list(glob)
 				.whenComplete(toLogger(logger, TRACE, "list", space, glob, this));
 	}
 
@@ -215,42 +161,27 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	@Override
 	public Promise<Void> delete(PubKey space, SignedData<GlobalFsCheckpoint> tombstone) {
-		return simpleMethod(space, node -> node.delete(space, tombstone), ns -> ns.delete(tombstone))
+		GlobalFsNamespace ns = ensureNamespace(space);
+		return ns.delete(tombstone)
+				.whenResult($ -> ns.push(tombstone.getValue().getFilename()))
 				.whenComplete(toLogger(logger, "delete", space, tombstone, this));
 	}
 
 	public Promise<Boolean> push() {
-		return tolerantCollectBoolean(namespaces.values(), this::push)
-				.whenComplete(toLogger(logger, "push", this));
-	}
-
-	public Promise<Boolean> push(PubKey space) {
-		return push(ensureNamespace(space));
-	}
-
-	private Promise<Boolean> push(GlobalFsNamespace ns) {
-		return ns.ensureMasterNodes()
-				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.push(node, "**")))
-				.whenComplete(toLogger(logger, "push", ns.getSpace(), this));
+		return tolerantCollectBoolean(namespaces.values(), GlobalFsNamespace::push)
+				.whenComplete(toLogger(logger, TRACE, "push", this));
 	}
 
 	public Promise<Boolean> fetch() {
-		return tolerantCollectBoolean(getManagedPublicKeys(), this::fetch)
-				.whenComplete(toLogger(logger, "fetch", this));
-	}
-
-	public Promise<Boolean> fetch(PubKey space) {
-		GlobalFsNamespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.then(nodes -> tolerantCollectBoolean(nodes, node -> ns.fetch(node, "**")))
-				.whenComplete(toLogger(logger, "fetch", space, this));
+		return tolerantCollectBoolean(namespaces.values(), GlobalFsNamespace::fetch)
+				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
 	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 
 	public Promise<Void> catchUp() {
 		return catchUp.get()
-				.whenComplete(toLogger(logger, "catchUp", this));
+				.whenComplete(toLogger(logger, TRACE, "catchUp", this));
 	}
 
 	private Promise<Void> doCatchUp() {

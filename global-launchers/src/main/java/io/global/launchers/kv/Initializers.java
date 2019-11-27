@@ -4,8 +4,10 @@ import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
 import io.global.kv.GlobalKvNodeImpl;
 
-import static io.datakernel.config.ConfigConverters.ofBoolean;
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.datakernel.config.ConfigConverters.ofRetryPolicy;
+import static io.global.kv.GlobalKvNodeImpl.DEFAULT_RETRY_POLICY;
+import static io.global.kv.GlobalKvNodeImpl.DEFAULT_SYNC_MARGIN;
 
 public class Initializers {
 	private Initializers() {
@@ -14,9 +16,7 @@ public class Initializers {
 
 	public static Initializer<GlobalKvNodeImpl> ofGlobalKvNodeImpl(Config config) {
 		return node -> node
-				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))
-				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false))
-				.withUploadRedundancy(config.get(ofInteger(), "uploadSuccessNumber", 0),
-						config.get(ofInteger(), "uploadCallNumber", 1));
+				.withSyncMargin(config.get(ofDuration(), "syncMargin", DEFAULT_SYNC_MARGIN))
+				.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy", DEFAULT_RETRY_POLICY));
 	}
 }

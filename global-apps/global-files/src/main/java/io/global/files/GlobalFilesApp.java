@@ -22,6 +22,8 @@ import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
@@ -42,6 +44,7 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 import static io.global.Utils.cachedContent;
 import static io.global.ot.OTUtils.REGISTRY;
 
@@ -107,6 +110,10 @@ public final class GlobalFilesApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("app.http.staticPath", DEFAULT_STATIC_PATH)
 				.with("app.http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
+				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
@@ -131,7 +138,9 @@ public final class GlobalFilesApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule<SimpleUserContainer>(SESSION_ID) {},
 				override(new GlobalNodesModule(),
-						new LocalNodeCommonModule(DEFAULT_SERVER_ID))
+						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
+				new KvSyncModule(),
+				new FsSyncModule()
 		);
 	}
 

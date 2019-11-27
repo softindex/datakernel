@@ -180,7 +180,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	@Test
 	public void listSnapshots() {
-		doTest(client.listSnapshots(repository, emptySet()), repository, emptySet());
+		doTest(client.listSnapshots(repository), repository);
 	}
 
 	// region helpers
@@ -233,13 +233,13 @@ public class GlobalOTNodeHttpClientTest {
 			}
 
 			@Override
-			public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> snapshotIds) {
+			public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId) {
 				Set<CommitId> commitIds = set(
 						CommitId.of(1, new byte[]{1, 2, 3}),
 						CommitId.of(2, new byte[]{4, 5, 6}),
 						CommitId.of(3, new byte[]{7, 8, 9})
 				);
-				return resultOf(commitIds, repositoryId, snapshotIds);
+				return resultOf(commitIds, repositoryId);
 			}
 
 			@Override

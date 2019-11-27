@@ -23,6 +23,9 @@ import io.global.comm.pojo.UserData;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerModule;
@@ -39,6 +42,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
+import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 
 public final class GlobalBlogApp extends Launcher {
 	public static final String PROPERTIES_FILE = "blog.properties";
@@ -78,6 +82,11 @@ public final class GlobalBlogApp extends Launcher {
 				.with("ot.storage", DEFAULT_OT_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
 				.with("appStoreUrl", "http://127.0.0.1:8088")
+				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
@@ -95,7 +104,10 @@ public final class GlobalBlogApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new MustacheModule()
+				new MustacheModule(),
+				new KvSyncModule(),
+				new OTSyncModule(),
+				new FsSyncModule()
 		);
 	}
 

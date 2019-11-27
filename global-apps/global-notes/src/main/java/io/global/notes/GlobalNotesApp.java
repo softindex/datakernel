@@ -19,6 +19,8 @@ import io.global.LocalNodeCommonModule;
 import io.global.common.PrivKey;
 import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
 import io.global.ot.*;
 import io.global.ot.client.OTDriver;
 import io.global.ot.edit.EditOperation;
@@ -38,6 +40,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
+import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 import static io.global.Utils.cachedContent;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
 import static io.global.ot.edit.EditOTSystem.createOTSystem;
@@ -62,6 +65,9 @@ public final class GlobalNotesApp extends Launcher {
 		return Config.create()
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 				.with("node.serverId", DEFAULT_SERVER_ID)
+				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
@@ -122,7 +128,9 @@ public final class GlobalNotesApp extends Launcher {
 				new MapModule<String, String>(NOTES_INDEX_REPO) {},
 				// override for debug purposes
 				override(new GlobalNodesModule(),
-						new LocalNodeCommonModule(DEFAULT_SERVER_ID))
+						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
+				new KvSyncModule(),
+				new OTSyncModule()
 		);
 	}
 

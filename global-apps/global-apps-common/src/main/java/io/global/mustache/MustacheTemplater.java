@@ -6,6 +6,7 @@ import io.datakernel.common.ref.Ref;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,7 +30,7 @@ public final class MustacheTemplater {
 		this.mustacheSupplier = mustacheSupplier;
 	}
 
-	public void put(String name, Object object) {
+	public void put(String name, @Nullable Object object) {
 		staticContext.put(name, object);
 	}
 
@@ -38,7 +39,7 @@ public final class MustacheTemplater {
 	}
 
 	@SuppressWarnings("SuspiciousMethodCalls")
-	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope, boolean compress) {
+	public Promise<HttpResponse> render(int code, String templateName, Map<String, @Nullable Object> scope, boolean useGzip) {
 		Map<String, Object> map = new HashMap<>(scope);
 		map.putAll(staticContext);
 		List<Promise<?>> promisesToWait = new ArrayList<>();
@@ -69,32 +70,24 @@ public final class MustacheTemplater {
 							context.add(map);
 							ByteBufWriter writer = new ByteBufWriter();
 							mustacheSupplier.getMustache(templateName + ".mustache").execute(writer, context);
-							HttpResponse httpResponse = HttpResponse.ofCode(code);
-			if (compress){
-				httpResponse.withBodyGzipCompression();
-			}
-			return httpResponse
+
+							HttpResponse httpResponse = HttpResponse.ofCode(code)
 									.withBody(writer.getBuf())
 									.withHeader(CACHE_CONTROL, "no-store")
 									.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8));
+
+							if (useGzip) {
+								httpResponse.setBodyGzipCompression();
+							}
+							return httpResponse;
 						}));
 	}
-	public Promise<HttpResponse> render(int code, String templateName, Map<String, Object> scope) {
-		return render(code, templateName, scope, false);
+
+	public Promise<HttpResponse> render(String templateName, Map<String, @Nullable Object> scope, boolean useGzip) {
+		return render(200, templateName, scope, useGzip);
 	}
 
-	public Promise<HttpResponse> render(String templateName, Map<String, Object> scope) {
-		return render(200, templateName, scope, false);
-	}
-	public Promise<HttpResponse> render(String templateName, Map<String, Object> scope, boolean compress) {
-		return render(200, templateName, scope, compress);
-	}
-
-	public Promise<HttpResponse> render(String templateName) {
-		return render(200, templateName, emptyMap(), false);
-	}
-
-	public Promise<HttpResponse> render(String templateName, boolean compress) {
-		return render(200, templateName, emptyMap(), compress);
+	public Promise<HttpResponse> render(String templateName, boolean useGzip) {
+		return render(200, templateName, emptyMap(), useGzip);
 	}
 }

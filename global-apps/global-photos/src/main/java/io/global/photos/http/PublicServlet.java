@@ -33,7 +33,7 @@ import static io.datakernel.http.HttpHeaders.HOST;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
-import static io.global.Utils.generateString;
+import static io.global.Utils.*;
 import static io.global.ot.session.AuthService.DK_APP_STORE;
 import static io.global.photos.dao.AlbumDao.ALBUM_NOT_FOUND_EXCEPTION;
 import static io.global.photos.dao.AlbumDao.ROOT_ALBUM;
@@ -67,7 +67,7 @@ public final class PublicServlet {
 					String origin = request.getQueryParameter("origin");
 					return request.getAttachment(UserId.class) != null ?
 							Promise.of(redirectToReferer(request, "/")) :
-							templater.render("login", map("origin", origin));
+							templater.render("login", map("origin", origin), isGzipAccepted(request));
 				})
 				.map(GET, "/authorize", request -> {
 					String token = request.getQueryParameter("token");
@@ -126,7 +126,8 @@ public final class PublicServlet {
 												"amountItems", amount,
 												"allAlbums", getAllAlbums(mainDao),
 												"rootAlbum", true,
-												"photos", true), false));
+												"photos", true),
+										isGzipAccepted(request)));
 					});
 				}))
 				.map(GET, "/albums/", request -> {
@@ -142,11 +143,13 @@ public final class PublicServlet {
 										.then(albumViews -> templater.render("albumList",
 												map("albumList", albumViews.entrySet(),
 														"amountItems", amount,
-														"albums", true)));
+														"albums", true),
+												isGzipAccepted(request)));
 							});
 				})
 				.map(GET, "/new/:albumId", request -> templater.render("uploadPhotos",
-						map("albumId", request.getPathParameter("albumId"))))
+						map("albumId", request.getPathParameter("albumId")),
+						isGzipAccepted(request)))
 				.map(POST, "/update/:albumId", loadBody(BODY_LIMIT)
 						.serve(request -> {
 							try {
@@ -182,7 +185,8 @@ public final class PublicServlet {
 								return albumDao.getAlbum()
 										.map(album -> albumViewFrom(albumId, album, params.getValue1() - 1, params.getValue2(), mainDao::getBase64))
 										.then(albumView -> templater.render("photoList",
-												map("album", albumView, "amountItems", amount, "showBar", true)));
+												map("album", albumView, "amountItems", amount, "showBar", true),
+												isGzipAccepted(request)));
 							});
 				})
 				.map(POST, "/delete/:albumId", request -> {
@@ -199,14 +203,14 @@ public final class PublicServlet {
 								MainDao mainDao = request.getAttachment(MainDao.class);
 								Tuple3<String, String, Set<String>> album = JsonUtils.fromJson(ALBUM_CODEC, request.getBody().asString(UTF_8));
 								String title = album.getValue1();
-								String desciption = album.getValue2();
+								String description = album.getValue2();
 								Set<String> photoIds = album.getValue3();
 								return photoIds.isEmpty() ?
 										Promise.ofException(new ParseException(PublicServlet.class, "'photo id' cannot be empty")) :
 										validate(title, 120, "Title", true)
-												.then($ -> validate(desciption, 1024, "Description", false))
+												.then($ -> validate(description, 1024, "Description", false))
 												.then($ -> mainDao.generateAlbumId())
-												.then(aid -> mainDao.crateAlbum(aid, title, desciption)
+												.then(aid -> mainDao.crateAlbum(aid, title, description)
 														.map($ -> aid))
 												.then(aid -> mainDao.movePhotos(ROOT_ALBUM, aid, photoIds))
 												.map($ -> redirect302("/albums/"));
@@ -280,7 +284,7 @@ public final class PublicServlet {
 								return Promise.ofException(e);
 							}
 						}))
-				.map(GET, "/download/:thumbnail/:albumId/:photoId", request -> {
+				.map(GET, "/download/:thumbnail/:albumId/:photoId", cachedContent().serve(request -> {
 					MainDao mainDao = request.getAttachment(MainDao.class);
 					String albumId = request.getPathParameter("albumId");
 					String photoID = request.getPathParameter("photoId");
@@ -308,7 +312,7 @@ public final class PublicServlet {
 											return Promise.of(HttpResponse.notFound404());
 										}
 									}));
-				})
+				}))
 				.then(servlet ->
 						request -> {
 							UserId userId = request.getAttachment(UserId.class);

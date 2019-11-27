@@ -16,7 +16,10 @@ import io.global.LocalNodeCommonModule;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.launchers.GlobalNodesModule;
-import io.global.mustache.DebugMustacheModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
+import io.global.mustache.MustacheModule;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
 import io.global.photos.container.GlobalPhotosContainer;
@@ -30,6 +33,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
+import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 
 public class GlobalPhotosApp extends Launcher {
 	public static final String PROPERTIES_FILE = "photos.properties";
@@ -62,6 +66,11 @@ public class GlobalPhotosApp extends Launcher {
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("ot.storage", DEFAULT_OT_STORAGE)
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
+				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("appStoreUrl", "http://127.0.0.1:8088")
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
@@ -80,7 +89,10 @@ public class GlobalPhotosApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new DebugMustacheModule()
+				new MustacheModule(),
+				new KvSyncModule(),
+				new OTSyncModule(),
+				new FsSyncModule()
 		);
 	}
 

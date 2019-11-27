@@ -55,7 +55,6 @@ import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static java.nio.file.FileVisitResult.CONTINUE;
-import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -698,7 +697,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		// common route
 		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
 
-		int relativeSubfolderLength = storage.relativize(folder).toString().length();
+		int relativeSubfolderLength =
+				storage.equals(folder) ?
+						0 :
+						storage.relativize(folder).toString().length() + 1;
 
 		walkFiles(folder, glob, path -> {
 			FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
