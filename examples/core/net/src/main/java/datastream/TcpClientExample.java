@@ -29,7 +29,7 @@ public final class TcpClientExample {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
 		eventloop.connect(new InetSocketAddress("localhost", PORT), (socketChannel, e) -> {
-			if (e != null) {
+			if (e == null) {
 				AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(eventloop, socketChannel, null);
 
 				StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)

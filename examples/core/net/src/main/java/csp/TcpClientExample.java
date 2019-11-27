@@ -44,7 +44,7 @@ public final class TcpClientExample {
 	private void run() {
 		System.out.println("Connecting to server at localhost (port 9922)...");
 		eventloop.connect(new InetSocketAddress("localhost", 9922), (socketChannel, e) -> {
-			if (e != null) {
+			if (e == null) {
 				System.out.println("Connected to server, enter some text and send it by pressing 'Enter'.");
 				AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(getCurrentEventloop(), socketChannel, null);
 
