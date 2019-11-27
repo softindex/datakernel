@@ -1,10 +1,12 @@
 package io.global.kv.util;
 
 import io.datakernel.common.parse.ParseException;
+import io.datakernel.test.rules.ByteBufRule;
 import io.global.common.Hash;
 import io.global.common.KeyPair;
 import io.global.common.SignedData;
 import io.global.kv.api.RawKvItem;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static io.global.kv.util.BinaryDataFormats.RAW_KV_ITEM_CODEC;
@@ -15,6 +17,9 @@ import static org.junit.Assert.assertTrue;
 public final class UtilsTest {
 	private static final KeyPair KEY_PAIR = KeyPair.generate();
 	private static final byte[] KEY = "key".getBytes(UTF_8);
+
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testPackUnpackNoHash() throws ParseException {
