@@ -386,7 +386,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}
 		writeEndOfStream |= buf == null;
-		if (write != null) return write;
 
 		if (writeBuf == null) {
 			writeBuf = buf;
@@ -397,6 +396,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				buf.recycle();
 			}
 		}
+
+		if (write != null) return write;
 
 		try {
 			doWrite();
