@@ -35,10 +35,10 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.forum.util.Utils.REGISTRY;
 import static io.global.forum.util.Utils.renderErrors;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
+import static io.global.launchers.Initializers.sslServerInitializer;
 
 public final class GlobalForumModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
@@ -76,9 +76,9 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, ContainerServlet servlet) {
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Executor executor, Config config, ContainerServlet servlet) {
 		return AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("http")));
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 	}
 
 	@Provides

@@ -41,7 +41,6 @@ import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -78,7 +77,7 @@ public final class GlobalFsSetup {
 	@Test
 	public void uploadDownload() {
 		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop());
-		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
+		DiscoveryService discoveryService = HttpDiscoveryService.create("http://127.0.0.1:9001/", client);
 
 		String firstAddress = "http://127.0.0.1:8001/";
 		String secondAddress = "http://127.0.0.1:8002/";
@@ -116,7 +115,7 @@ public final class GlobalFsSetup {
 	@Test
 	public void announceNodes() {
 		AsyncHttpClient client = create(getCurrentEventloop());
-		DiscoveryService discoveryService = HttpDiscoveryService.create(new InetSocketAddress(9001), client);
+		DiscoveryService discoveryService = HttpDiscoveryService.create("http://127.0.0.1:9001/", client);
 
 		Set<RawServerId> servers = new HashSet<>();
 

@@ -45,7 +45,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
+import static io.global.launchers.Initializers.sslServerInitializer;
 
 public class DiscoveryServiceLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "discovery-service.properties";
@@ -86,8 +86,9 @@ public class DiscoveryServiceLauncher extends Launcher {
 	}
 
 	@Provides
-	AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, Config config) {
-		return AsyncHttpServer.create(eventloop, servlet).initialize(ofHttpServer(config.getChild("http")));
+	AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, ExecutorService executor, Config config) {
+		return AsyncHttpServer.create(eventloop, servlet)
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 	}
 
 	@Provides

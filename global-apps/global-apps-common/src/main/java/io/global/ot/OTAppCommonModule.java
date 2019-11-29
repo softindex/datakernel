@@ -18,17 +18,17 @@ import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
+import static io.global.launchers.Initializers.sslServerInitializer;
 
 public class OTAppCommonModule extends AbstractModule {
 	private static final SimKey DEMO_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	private static final String RESOURCES_PATH = "front/build";
 
 	@Provides
-	AsyncHttpServer server(Eventloop eventloop, ContainerServlet servlet, Config config) {
+	AsyncHttpServer server(Eventloop eventloop, Executor executor, ContainerServlet servlet, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("http")));
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 	}
 
 	@Provides

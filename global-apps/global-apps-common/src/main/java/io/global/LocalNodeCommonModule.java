@@ -16,12 +16,10 @@ import io.global.ot.stub.CommitStorageStub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofList;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static java.util.Collections.singletonList;
@@ -39,7 +37,7 @@ public final class LocalNodeCommonModule extends AbstractModule {
 	DiscoveryService provideDiscoveryService(Eventloop eventloop, Config config, IAsyncHttpClient client) {
 		List<RawServerId> customMastersList = config.get(ofList(ofRawServerId()), "discovery.customMasters", singletonList(localServerId));
 		Set<RawServerId> customMasters = new HashSet<>(customMastersList);
-		InetSocketAddress discoveryAddress = config.get(ofInetSocketAddress(), "discovery.address", null);
+		String discoveryAddress = config.get( "discovery.address", null);
 		if (discoveryAddress != null) {
 			logger.info("Using remote discovery service at " + discoveryAddress);
 			HttpDiscoveryService discoveryService = HttpDiscoveryService.create(discoveryAddress, client);

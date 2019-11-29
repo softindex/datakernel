@@ -37,8 +37,8 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.di.module.Modules.combine;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class GlobalNodesLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
@@ -54,8 +54,8 @@ public class GlobalNodesLauncher extends Launcher {
 	}
 
 	@Provides
-	Executor executor() {
-		return newSingleThreadExecutor();
+	Executor executor(Config config) {
+		return getExecutor(config);
 	}
 
 	@Override

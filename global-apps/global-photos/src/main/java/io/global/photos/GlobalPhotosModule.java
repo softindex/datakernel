@@ -51,8 +51,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import static io.datakernel.config.ConfigConverters.*;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
+import static io.global.launchers.Initializers.sslServerInitializer;
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static io.global.photos.ot.AlbumOtSystem.SYSTEM;
 import static io.global.photos.util.Utils.REGISTRY;
@@ -91,9 +91,9 @@ public class GlobalPhotosModule extends AbstractModule {
 	}
 
 	@Provides
-	AsyncHttpServer asyncHttpServer(Config config, Eventloop eventloop, ContainerServlet servlet) {
+	AsyncHttpServer asyncHttpServer(Config config, Executor executor, Eventloop eventloop, ContainerServlet servlet) {
 		return AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("http")));
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 	}
 
 	@Provides

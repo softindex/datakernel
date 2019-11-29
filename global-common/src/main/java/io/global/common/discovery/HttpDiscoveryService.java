@@ -31,7 +31,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.async.util.LogUtils.toLogger;
@@ -45,23 +44,22 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	private static final Logger logger = LoggerFactory.getLogger(HttpDiscoveryService.class);
 
 	private final IAsyncHttpClient client;
-	private final InetSocketAddress address;
+	private final String url;
 
-	private HttpDiscoveryService(InetSocketAddress address, IAsyncHttpClient client) {
+	private HttpDiscoveryService(String url, IAsyncHttpClient client) {
 		this.client = client;
-		this.address = address;
+		this.url = url.endsWith("/") ? url : (url + "/");
 	}
 
-	public static HttpDiscoveryService create(InetSocketAddress address, IAsyncHttpClient client) {
-		return new HttpDiscoveryService(address, client);
+	public static HttpDiscoveryService create(String url, IAsyncHttpClient client) {
+		return new HttpDiscoveryService(url, client);
 	}
 
 	@Override
 	public Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData) {
 		return client.request(
 				HttpRequest.of(HttpMethod.PUT,
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(ANNOUNCE)
 								.appendPathPart(space.asString())
 								.build())
@@ -90,8 +88,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	@Override
 	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return client.request(HttpRequest.get(
-				UrlBuilder.http()
-						.withAuthority(address)
+				url + UrlBuilder.relative()
 						.appendPathPart(FIND)
 						.appendPathPart(space.asString())
 						.build()))
@@ -109,8 +106,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	public Promise<Void> shareKey(PubKey receiver, SignedData<SharedSimKey> simKey) {
 		return client.request(
 				HttpRequest.post(
-						UrlBuilder.http()
-								.withAuthority(address)
+						url + UrlBuilder.relative()
 								.appendPathPart(SHARE_KEY)
 								.appendPathPart(receiver.asString())
 								.build())
@@ -123,8 +119,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	@Override
 	public Promise<@Nullable SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash hash) {
 		return client.request(HttpRequest.get(
-				UrlBuilder.http()
-						.withAuthority(address)
+				url + UrlBuilder.relative()
 						.appendPathPart(GET_SHARED_KEY)
 						.appendPathPart(receiver.asString())
 						.appendPathPart(hash.asString())
@@ -137,8 +132,7 @@ public final class HttpDiscoveryService implements DiscoveryService {
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
 		return client.request(HttpRequest.get(
-				UrlBuilder.http()
-						.withAuthority(address)
+				url + UrlBuilder.relative()
 						.appendPathPart(GET_SHARED_KEY)
 						.appendPathPart(receiver.asString())
 						.build()))

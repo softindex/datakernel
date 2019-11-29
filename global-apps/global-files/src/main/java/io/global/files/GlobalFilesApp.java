@@ -43,9 +43,9 @@ import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 import static io.global.Utils.cachedContent;
+import static io.global.launchers.Initializers.sslServerInitializer;
 import static io.global.ot.OTUtils.REGISTRY;
 
 public final class GlobalFilesApp extends Launcher {
@@ -87,7 +87,7 @@ public final class GlobalFilesApp extends Launcher {
 
 	@Provides
 	StaticLoader staticLoader(Executor executor, Config config) {
-		return StaticLoader.ofClassPath(executor, config.get("app.http.staticPath"));
+		return StaticLoader.ofClassPath(executor, config.get("http.staticPath"));
 	}
 
 	@Provides
@@ -98,9 +98,9 @@ public final class GlobalFilesApp extends Launcher {
 	}
 
 	@Provides
-	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Config config, ContainerServlet servlet) {
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Executor executor, Config config, ContainerServlet servlet) {
 		return AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("app.http")));
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 	}
 
 	@Provides
@@ -108,8 +108,8 @@ public final class GlobalFilesApp extends Launcher {
 		return Config.create()
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("fs.storage", DEFAULT_FS_STORAGE)
-				.with("app.http.staticPath", DEFAULT_STATIC_PATH)
-				.with("app.http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
+				.with("http.staticPath", DEFAULT_STATIC_PATH)
+				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)

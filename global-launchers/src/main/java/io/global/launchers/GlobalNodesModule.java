@@ -57,6 +57,8 @@ import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
 
+import javax.net.ssl.SSLContext;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
@@ -65,9 +67,9 @@ import static io.datakernel.dns.RemoteAsyncDnsClient.DEFAULT_TIMEOUT;
 import static io.datakernel.dns.RemoteAsyncDnsClient.GOOGLE_PUBLIC_DNS;
 import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static io.global.launchers.Initializers.ofAbstractGlobalNode;
+import static io.global.launchers.Initializers.sslServerInitializer;
 import static io.global.launchers.fs.Initializers.ofGlobalFsNodeImpl;
 import static io.global.launchers.kv.Initializers.ofGlobalKvNodeImpl;
 import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
@@ -132,13 +134,14 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	DiscoveryService discoveryService(Config config, IAsyncHttpClient client) {
-		return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "discovery.address"), client);
+		return HttpDiscoveryService.create(config.get("discovery.address"), client);
 	}
 
 	@Provides
-	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient) {
+	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient, Executor executor) throws NoSuchAlgorithmException {
 		return AsyncHttpClient.create(eventloop)
-				.withDnsClient(dnsClient);
+				.withDnsClient(dnsClient)
+				.withSslEnabled(SSLContext.getDefault(), executor);
 	}
 
 	@Provides
@@ -151,9 +154,9 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Named("Nodes")
-	AsyncHttpServer asyncHttpServer(Eventloop eventloop, @Named("Nodes") AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, @Named("Nodes") AsyncServlet servlet, RawServerServlet rawServerServlet, Executor executor, Config config) {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("http")));
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 
 		rawServerServlet.setCloseNotification(server.getCloseNotification());
 
