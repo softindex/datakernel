@@ -33,12 +33,14 @@ import static io.global.util.Utils.eitherComplete;
 public final class MessagingService implements EventloopService {
 	public static final StacklessException STOPPED_EXCEPTION = new StacklessException(MessagingService.class, "Service has been stopped");
 	@NotNull
-	public static final Duration POLL_INTERVAL = ApplicationSettings.getDuration(MessagingService.class, "message.poll.interval", Duration.ofSeconds(5));
+	public static final Duration DEFAULT_POLL_INTERVAL = ApplicationSettings.getDuration(MessagingService.class, "message.poll.interval", Duration.ofSeconds(5));
 
 	private final Eventloop eventloop;
 	private final Messenger<Long, CreateSharedRepo> messenger;
 	private final CommonUserContainer<?> commonUserContainer;
 	private final String mailBox;
+
+	private Duration pollInterval = DEFAULT_POLL_INTERVAL;
 
 	private SettablePromise<Message<Long, CreateSharedRepo>> stopPromise = new SettablePromise<>();
 
@@ -52,6 +54,11 @@ public final class MessagingService implements EventloopService {
 	public static MessagingService create(Eventloop eventloop, Messenger<Long, CreateSharedRepo> messenger,
 			CommonUserContainer<?> commonUserContainer, String mailBox) {
 		return new MessagingService(eventloop, messenger, commonUserContainer, mailBox);
+	}
+
+	public MessagingService withPollInterval(Duration pollInterval){
+		this.pollInterval = pollInterval;
+		return this;
 	}
 
 	@NotNull
@@ -88,7 +95,7 @@ public final class MessagingService implements EventloopService {
 		AsyncSupplier<@Nullable Message<Long, CreateSharedRepo>> messagesSupplier = AsyncSupplier.cast(() -> messenger.poll(keys, mailBox))
 				.withExecutor(retry(POLL_RETRY_POLICY));
 
-		repeat(() -> eitherComplete(messagesSupplier.get(), stopPromise)
+		repeat(() -> eitherComplete(stopPromise, messagesSupplier.get())
 				.then(message -> {
 					if (message != null) {
 						CreateSharedRepo createSharedRepo = message.getPayload();
@@ -108,7 +115,7 @@ public final class MessagingService implements EventloopService {
 								.toTry()
 								.toVoid();
 					}
-					return Promises.delay(POLL_INTERVAL, Promise.complete());
+					return Promises.delay(pollInterval, Promise.complete());
 				}));
 	}
 

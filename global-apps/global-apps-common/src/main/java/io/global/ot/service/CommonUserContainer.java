@@ -20,6 +20,8 @@ import io.global.pm.Messenger;
 import io.global.session.KvSessionStore;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Duration;
+
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static io.global.ot.OTUtils.SHARED_REPOS_OPERATION_CODEC;
 import static io.global.ot.shared.SharedReposOTSystem.createOTSystem;
@@ -37,19 +39,20 @@ public final class CommonUserContainer<D> implements UserContainer {
 
 	private CommonUserContainer(Eventloop eventloop, MyRepositoryId<D> myRepositoryId, OTDriver driver, OTSystem<D> otSystem,
 			OTStateManager<CommitId, SharedReposOperation> stateManager, Messenger<Long, CreateSharedRepo> messenger,
-			KvSessionStore<UserId> sessionStore, String indexRepoName) {
+			KvSessionStore<UserId> sessionStore, String indexRepoName, Duration messagePollInterval) {
 		this.eventloop = eventloop;
 		this.myRepositoryId = myRepositoryId;
 		this.stateManager = stateManager;
 		this.sessionStore = sessionStore;
 		this.synchronizationService = SynchronizationService.create(eventloop, driver, this, otSystem);
-		this.messagingService = MessagingService.create(eventloop, messenger, this, indexRepoName);
+		this.messagingService = MessagingService.create(eventloop, messenger, this, indexRepoName)
+				.withPollInterval(messagePollInterval);
 	}
 
 	public static <D> CommonUserContainer<D> create(Eventloop eventloop, OTDriver driver, OTSystem<D> otSystem, MyRepositoryId<D> myRepositoryId,
-			Messenger<Long, CreateSharedRepo> messenger, KvSessionStore<UserId> sessionStore, String indexRepoName) {
+			Messenger<Long, CreateSharedRepo> messenger, KvSessionStore<UserId> sessionStore, String indexRepoName, Duration messagePollInterval) {
 		OTStateManager<CommitId, SharedReposOperation> stateManager = createStateManager(eventloop, driver, myRepositoryId, indexRepoName);
-		return new CommonUserContainer<>(eventloop, myRepositoryId, driver, otSystem, stateManager, messenger, sessionStore, indexRepoName);
+		return new CommonUserContainer<>(eventloop, myRepositoryId, driver, otSystem, stateManager, messenger, sessionStore, indexRepoName, messagePollInterval);
 	}
 
 	@NotNull

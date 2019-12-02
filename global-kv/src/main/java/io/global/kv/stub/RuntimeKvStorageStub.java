@@ -24,11 +24,11 @@ import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class RuntimeKvStorageStub implements KvStorage {
-	private final Map<ByteArrayWrapper, SignedData<RawKvItem>> storage = new HashMap<>();
+	private final Map<ByteArrayWrapper, SignedData<RawKvItem>> storage = new ConcurrentHashMap<>();
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<RawKvItem>>> upload() {

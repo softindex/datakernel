@@ -3,6 +3,7 @@ package io.global.documents;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
@@ -36,6 +37,7 @@ import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.messaging.CreateSharedRepo;
+import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.session.AuthModule;
 import io.global.ot.session.UserId;
 import io.global.ot.shared.IndexRepoModule;
@@ -45,11 +47,13 @@ import io.global.session.KvSessionStore;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Random;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
@@ -121,12 +125,19 @@ public final class GlobalDocumentsApp extends Launcher {
 	}
 
 	@Provides
+	@Eager
+	@Named("poll interval") Duration pollInterval(Config config){
+		return config.get(ofDuration(), "message.poll.interval", MessagingService.DEFAULT_POLL_INTERVAL);
+	}
+
+	@Provides
 	@ContainerScope
-	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver, Messenger<Long, CreateSharedRepo> messenger) {
+	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver,
+			Messenger<Long, CreateSharedRepo> messenger, @Named("poll interval") Duration interval) {
 		RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
 		MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
 		KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), DOCUMENTS_SESSION_TABLE);
-		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore, DOCUMENTS_INDEX_REPO);
+		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore, DOCUMENTS_INDEX_REPO, interval);
 	}
 
 	@Override
