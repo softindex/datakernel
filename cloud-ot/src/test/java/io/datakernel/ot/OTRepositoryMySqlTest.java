@@ -60,6 +60,7 @@ public class OTRepositoryMySqlTest {
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private OTRepositoryMySql<TestOp> repository;
+	private IdGeneratorStub idGenerator;
 
 	static {
 		Logger rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
@@ -68,14 +69,15 @@ public class OTRepositoryMySqlTest {
 
 	@Before
 	public void before() throws IOException, SQLException {
-		repository = OTRepositoryMySql.create(Eventloop.getCurrentEventloop(), Executors.newFixedThreadPool(4), dataSource("test.properties"), new IdGeneratorStub(),
+		idGenerator = new IdGeneratorStub();
+		repository = OTRepositoryMySql.create(Eventloop.getCurrentEventloop(), Executors.newFixedThreadPool(4), dataSource("test.properties"), idGenerator,
 				createTestOp(), OP_CODEC);
 		repository.initialize();
 		repository.truncateTables();
 	}
 
 	@SafeVarargs
-	static <T> Set<T> set(T... values) {
+	private static <T> Set<T> set(T... values) {
 		return Arrays.stream(values).collect(toSet());
 	}
 
@@ -144,6 +146,7 @@ public class OTRepositoryMySqlTest {
 					g.add(1, 3, add(1));
 					g.add(1, 4, add(1));
 				}))));
+		idGenerator.set(4);
 
 		Set<Long> heads = await(repository.getHeads());
 		assertEquals(3, heads.size());
@@ -232,6 +235,7 @@ public class OTRepositoryMySqlTest {
 					g.add(5, 7, add(1));
 					g.add(6, 8, add(1));
 				}))));
+		idGenerator.set(8);
 
 		await(mergeAndUpdateHeads(repository, SYSTEM));
 		//		assertEquals(searchSurface, rootNodesFuture.get());

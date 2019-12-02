@@ -23,6 +23,7 @@ import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.ot.exceptions.OTNoCommitException;
 import io.datakernel.ot.util.IdGenerator;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.RetryPolicy;
@@ -326,7 +327,7 @@ public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJ
 						}
 
 						if (timestamp == 0) {
-							throw new IOException("No commit with id: " + revisionId);
+							throw new OTNoCommitException(revisionId);
 						}
 
 						return OTCommit.of(epoch, revisionId, parentDiffs)
