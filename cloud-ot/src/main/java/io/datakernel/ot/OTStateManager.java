@@ -301,7 +301,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	@SuppressWarnings("AssignmentToNull") // state is invalid, no further calls should be made
-	private void invalidateInternalState() {
+	public void invalidateInternalState() {
 		state = null;
 
 		commitId = null;
