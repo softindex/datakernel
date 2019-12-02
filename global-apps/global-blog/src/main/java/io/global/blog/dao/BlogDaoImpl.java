@@ -15,10 +15,8 @@ public final class BlogDaoImpl implements BlogDao {
 	private final OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
 	private final ChangeValueContainer<BlogMetadata> metadataView;
 
-	@Inject
-	private KeyPair keys;
-	@Inject
-	private CommDao commDao;
+	@Inject private KeyPair keys;
+	@Inject private CommDao commDao;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -53,7 +51,7 @@ public final class BlogDaoImpl implements BlogDao {
 	public Promise<Void> setBlogDescription(String description) {
 		BlogMetadata prev = metadataView.getValue();
 		return applyAndSync(metadataStateManager,
-				ChangeValue.of(prev, new BlogMetadata(prev == null ? null : prev.getName(), description), now.currentTimeMillis()));
+				ChangeValue.of(prev, new BlogMetadata(prev == null ? null : prev.getTitle(), description), now.currentTimeMillis()));
 	}
 
 	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {

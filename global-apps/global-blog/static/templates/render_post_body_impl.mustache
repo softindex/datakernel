@@ -1,0 +1,108 @@
+<div class="card no-gutters post"
+     id="post_{{postId}}"
+     data-post-id="{{postId}}"
+     data-thread-id="{{threadId}}">
+    <div class="card-body py-1">
+        <!-- region post header -->
+        <div class="row my-1 align-items-center">
+            <div style="{{#deletedBy}} opacity: 0.5; filter: alpha(opacity=50);{{/deletedBy}} width: 15px; height: 15px; float: left">
+                <img class="rounded" alt="avatar"
+                     style="width: 100%; height: 100%; border: 1px solid gray; vertical-align: top;"
+                     src="{{avatarUrl}}">
+            </div>
+            <div class="col-auto px-2 font-weight-bold small">
+                {{#user.role.privileged}}
+                    {{#author}}
+                        <a href="/profile/{{userId}}" class="text-dark">{{.}}</a>
+                    {{/author}}
+                {{/user.role.privileged}}
+                {{^user.role.privileged}}
+                    {{author}}
+                {{/user.role.privileged}}
+                {{^author}}<i>ghost</i>{{/author}}
+            </div>
+            {{#author.ban}}
+                {{#user.role.privileged}}
+                    <a href="/admin/user-ban/{{author.userId}}" class="badge badge-warning">banned</a>
+                {{/user.role.privileged}}
+                {{^user.role.privileged}}
+                    <span class="badge badge-warning">banned</span>
+                {{/user.role.privileged}}
+            {{/author.ban}}
+            <div class="col-auto pl-2 pr-0 small text-secondary monospace">
+                {{initialTimestamp}}
+            </div>
+            {{#lastEditTimestamp}}
+                <div class="col-auto monospace small unselectable pointer p-0" title="edited at: {{.}}">
+                    *
+                </div>
+            {{/lastEditTimestamp}}
+            {{#deepest}}
+                <span class="col-auto px-1 ml-1"
+                      style="border: 1px solid rgba(128,128,128,0.51); border-radius: 0.5em;; cursor: pointer; font-size: 0.7rem;"
+                      data-post-reference="#post_{{parent.postId}}"> Reply to: {{author}}</span>
+            {{/deepest}}
+
+            <div class="col"></div>
+            {{#deletedBy}}
+                <div class="col-auto small px-0 mx-1">
+                    deleted by: <b>{{.}}</b>
+                </div>
+            {{/deletedBy}}
+        </div>
+        <!-- endregion -->
+        <!-- region post content -->
+        <div class="row">
+            <div class="col">
+                <div class="row text-wrap text-break">
+                    <p id="content_{{postId}}" class="content multiline m-0 px-1 {{#deletedBy}} deleted{{/deletedBy}}"
+                       style="border: 1px solid transparent">{{content}}</p>
+                </div>
+            </div>
+        </div>
+        <!-- endregion -->
+        <!-- region post controls -->
+        <div class="row py-1 post-controls">
+            {{^deletedBy}}
+                {{#user}}
+                    {{#role.known}}
+                        <div class="col-auto pl-1">
+                            <div class="reply-button link-like text-secondary small unselectable">
+                                reply
+                            </div>
+                        </div>
+                    {{/role.known}}
+                    {{#editable}}
+                        <div class="col-auto pl-0">
+                            <div class="dropdown">
+                                <div class="link-like text-secondary small unselectable dropdown-toggle"
+                                     data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    change
+                                </div>
+                                <div class="dropdown-menu p-0" style="min-width: initial">
+                                    <button class="dropdown-item px-2 edit-button small">
+                                        edit
+                                    </button>
+                                    <button class="dropdown-item px-2 small"
+                                            data-post-call="/{{threadId}}/{{postId}}/delete">
+                                        delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {{/editable}}
+                {{/user}}
+            {{/deletedBy}}
+            {{#deletedBy}}{{#editable}}
+                <div class="col-auto pl-1">
+                    <div class="link-like text-secondary small unselectable"
+                         data-post-call="/{{threadId}}/{{postId}}/restore">
+                        restore
+                    </div>
+                </div>
+            {{/editable}}{{/deletedBy}}
+
+        </div>
+        <!-- endregion -->
+    </div>
+</div>

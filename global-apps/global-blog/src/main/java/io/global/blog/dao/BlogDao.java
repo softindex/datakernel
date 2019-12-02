@@ -6,7 +6,6 @@ import io.global.comm.dao.CommDao;
 import io.global.common.KeyPair;
 
 public interface BlogDao {
-
 	KeyPair getKeys();
 
 	CommDao getCommDao();

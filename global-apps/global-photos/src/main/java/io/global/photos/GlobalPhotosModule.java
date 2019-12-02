@@ -5,6 +5,7 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Eager;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.module.AbstractModule;
@@ -48,6 +49,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -120,8 +122,14 @@ public class GlobalPhotosModule extends AbstractModule {
 	}
 
 	@Provides
+	@Named("photoHandler")
+	Executor executor() {
+		return Executors.newCachedThreadPool();
+	}
+
+	@Provides
 	@Eager
-	AlbumDaoImpl.Builder albumDaoBuilder(Config config, Executor executor, Map<String, ThumbnailDesc> thumbnailMap, GlobalFsDriver fsDriver) {
+	AlbumDaoImpl.Builder albumDaoBuilder(Config config, @Named("photoHandler") Executor executor, Map<String, ThumbnailDesc> thumbnailMap, GlobalFsDriver fsDriver) {
 		MemSize memSize = config.get(ofMemSize(), "image.upload.limit");
 		return new AlbumDaoImpl.Builder(memSize, (ExecutorService) executor, thumbnailMap);
 	}

@@ -1,4 +1,4 @@
-package io.global.blog.preprocessor;
+package io.global.blog.interceptors;
 
 public interface Preprocessor<T> {
 	T process(T instance, Object... contextParams);

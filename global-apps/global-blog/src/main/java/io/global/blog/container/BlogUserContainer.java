@@ -22,20 +22,13 @@ import static io.datakernel.async.util.LogUtils.toLogger;
 public final class BlogUserContainer implements UserContainer {
 	private static final Logger logger = LoggerFactory.getLogger(BlogUserContainer.class);
 
-	@Inject
-	private Eventloop eventloop;
+	@Inject private Eventloop eventloop;
+	@Inject private BlogDao blogDao;
+	@Inject private OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
+	@Inject private CommState comm;
+	@Inject private KeyPair keys;
 
-	@Inject
-	private BlogDao blogDao;
-	@Inject
-	private OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
-	@Inject
-	private CommState comm;
-	@Inject
-	private KeyPair keys;
-
-	private BlogUserContainer() {
-	}
+	private BlogUserContainer() { }
 
 	@Inject
 	public static BlogUserContainer create() {

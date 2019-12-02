@@ -79,6 +79,7 @@ img.img-thumbnail:hover {opacity: 0.7;}
 
 .modal-content {
   margin: auto;
+  background: black;
   display: block;
   width: 80%;
   max-width: 700px;

@@ -6,6 +6,7 @@ import io.datakernel.http.HttpException;
 import io.datakernel.promise.Promise;
 import io.global.blog.ot.BlogMetadata;
 import io.global.mustache.MustacheTemplater;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.codec.StructuredCodecs.tuple;
@@ -21,7 +22,7 @@ public final class Utils {
 
 	public static final CodecRegistry REGISTRY = createCommRegistry()
 			.with(BlogMetadata.class, registry -> tuple(BlogMetadata::new,
-					BlogMetadata::getName, STRING_CODEC.nullable(),
+					BlogMetadata::getTitle, STRING_CODEC.nullable(),
 					BlogMetadata::getDescription, STRING_CODEC.nullable()));
 
 	public static AsyncServletDecorator renderErrors(MustacheTemplater templater) {
@@ -43,6 +44,7 @@ public final class Utils {
 								});
 	}
 
+	@Nullable
 	public static <T> T castIfExist(Object o, Class<T> type) {
 		return o == null ? null : type.isInstance(o) ? type.cast(o) : null;
 	}

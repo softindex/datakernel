@@ -1,4 +1,4 @@
-package io.global.blog.preprocessor;
+package io.global.blog.interceptors;
 
 import com.vladsch.flexmark.html.HtmlRenderer;
 import com.vladsch.flexmark.parser.Parser;
@@ -10,6 +10,7 @@ import static java.lang.Math.min;
 public final class FlexmarkMarkdownPreviewPostViewPreprocessor implements Preprocessor<PostView> {
 	private static final int DEFAULT_PREVIEW_LENGTH = 356;
 	private static final String START_PREVIEW = "\n\n";
+	private static final String FULL_LINK_PATTERN = "!.?\\[[\\w-]+]\\(.*?\\)";
 
 	private final HtmlRenderer renderer;
 	private final Parser parser;
@@ -21,7 +22,7 @@ public final class FlexmarkMarkdownPreviewPostViewPreprocessor implements Prepro
 
 	@Override
 	public PostView process(PostView postView, Object... params) {
-		String content = postView.getContent();
+		String content = postView.getContent().replaceAll(FULL_LINK_PATTERN, "");
 
 		String previewContent;
 		int start = content.indexOf(START_PREVIEW);

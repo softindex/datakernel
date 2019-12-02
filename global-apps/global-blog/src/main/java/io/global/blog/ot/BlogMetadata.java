@@ -3,16 +3,16 @@ package io.global.blog.ot;
 public final class BlogMetadata {
 	public static final BlogMetadata EMPTY = new BlogMetadata("", "");
 
-	private final String name;
+	private final String title;
 	private final String description;
 
-	public BlogMetadata(String name, String description) {
-		this.name = name;
+	public BlogMetadata(String title, String description) {
+		this.title = title;
 		this.description = description;
 	}
 
-	public String getName() {
-		return name;
+	public String getTitle() {
+		return title;
 	}
 
 	public String getDescription() {
@@ -21,6 +21,6 @@ public final class BlogMetadata {
 
 	@Override
 	public String toString() {
-		return "BlogMetadata{name='" + name + "\', description='" + description + "'}";
+		return "BlogMetadata{title='" + title + "\', description='" + description + "'}";
 	}
 }

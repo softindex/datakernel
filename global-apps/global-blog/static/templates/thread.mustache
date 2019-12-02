@@ -1,24 +1,27 @@
 {{<infobase}}
     {{$mainContent}}
-        <div class="container">
+        <div class="container" style="min-width: 320px">
             {{#post}}
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item active" aria-current="page" style="overflow: hidden" data-value="{{thread.title}}" data-field="title" id="title">{{thread.title}}</li>
-                     {{#deletedBy}}<li class="breadcrumb-item active" aria-current="page">Deleted</li>{{/deletedBy}}
-                </ol>
-            </nav>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item active" data-maxLength="120" aria-current="page" style="overflow: hidden; cursor: pointer"
+                            data-value="{{thread.title}}" data-edit-action="/owner/{{threadId}}/edit" data-field="title" id="thread-title" id="title">
+                            {{thread.title}}
+                        </li>
+                        {{#deletedBy}}<li class="breadcrumb-item active" aria-current="page">Deleted</li>{{/deletedBy}}
+                    </ol>
+                </nav>
 
                 {{>thread_root_post}}
             {{/post}}
 
             <div>
-                <div class="card" id="comments">
-                    <div class="card-header">
-                        <a class="card-link" data-toggle="collapse" href="#collapseOne">
+                <div class="card mt-3" id="comments">
+                    <a class="card-link" data-toggle="collapse" style="color: grey;" href="#collapseOne">
+                        <div class="card-header dropdown-toggle">
                             Comments
-                        </a>
-                    </div>
+                        </div>
+                    </a>
                     <div id="collapseOne" class="collapse show" data-parent="#comments">
                         <div class="card-body">
                             {{#post.children}}

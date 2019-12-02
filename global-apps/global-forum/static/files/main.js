@@ -532,7 +532,6 @@ window.onload = () => {
   $cancel.click(() => {
     $title.removeClass('d-none');
     $input.addClass('d-none');
-    inputForm.removeClass('was-validated');
 
     $edit.removeClass('d-none');
     $cancel.addClass('d-none');

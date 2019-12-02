@@ -17,7 +17,7 @@ import io.global.blog.dao.BlogDao;
 import io.global.blog.dao.BlogDaoImpl;
 import io.global.blog.http.PublicServlet;
 import io.global.blog.http.view.PostView;
-import io.global.blog.preprocessor.Preprocessor;
+import io.global.blog.interceptors.Preprocessor;
 import io.global.blog.util.Utils;
 import io.global.comm.container.CommModule;
 import io.global.ot.TypedRepoNames;
@@ -88,12 +88,11 @@ public final class GlobalBlogModule extends AbstractModule {
 	@Provides
 	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader, Executor executor,
 						 @Named("threadList") Preprocessor<PostView> threadListPostViewPreprocessor,
-						 @Named("postView") Preprocessor<PostView> postViewPreprocessor,
-						 @Named("comments") Preprocessor<PostView> commentsPreprocessor) {
+						 @Named("postView") Preprocessor<PostView> postViewPreprocessor) {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater, executor,
-						threadListPostViewPreprocessor, postViewPreprocessor, commentsPreprocessor))
+						threadListPostViewPreprocessor, postViewPreprocessor))
 				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
 				.then(renderErrors(templater));
 	}

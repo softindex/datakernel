@@ -3,7 +3,7 @@
         <div class="list-group">
             {{#threads}}
                 {{#user.role.privileged}}
-                    <div class="list-group-item list-group-item-action">
+                    <div class="list-group-item list-group-item-action box m-1 p-2">
                         <div class="row">
                             <div class="col">
                                 <a href="/{{id}}" style="color: black; text-decoration: none">
@@ -17,16 +17,16 @@
                             <a href="/{{id}}" class="btn btn-sm btn-secondary"><i
                                     class="fa fa-calendar">{{root.initialTimestamp}}</i></a>
                         </div>
-                        <div style="overflow: hidden; text-overflow: ellipsis; background: #f7f7f7;"
+                        <div style="overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0);"
                              class="small mt-2 alert alert-dismissible">
                             {{{root.renderedContent}}}
                         </div>
-                        <a href="/{{id}}" class="stretched-link">Read more [...]</a>
+                        <a href="/{{id}}" class="stretched-link text-secondary">Read more [...]</a>
                     </div>
                 {{/user.role.privileged}}
                 {{^user.role.privileged}}
                     {{^root.deletedBy}}
-                        <div class="list-group-item list-group-item-action">
+                        <div class="list-group-item list-group-item-action box m-1 p-2">
                             <div class="row">
                                 <div class="col">
                                     <a href="/{{id}}" style="color: black; text-decoration: none">
@@ -40,15 +40,36 @@
                                 <a href="/{{id}}" class="btn btn-sm btn-secondary"><i
                                         class="fa fa-calendar">{{root.initialTimestamp}}</i></a>
                             </div>
-                            <div style="overflow: hidden; text-overflow: ellipsis; background: #f7f7f7;"
+                            <div style="overflow: hidden; text-overflow: ellipsis; background: rgba(0,0,0,0);"
                                  class="small mt-2 alert alert-dismissible">
                                 {{{root.renderedContent}}}
                             </div>
-                            <a href="/{{id}}" class="stretched-link">Read more [...]</a>
+                            <a href="/{{id}}" class="stretched-link text-secondary">Read more [...]</a>
                         </div>
                     {{/root.deletedBy}}
                 {{/user.role.privileged}}
             {{/threads}}
+        </div>
+
+        <div style="position: absolute; bottom: -10%; left: 50%;">
+            <ul class="pagination mt-2" data-max-elements="{{amountItems}}"
+                id="pagination"
+                data-amout-photos="{{amountItems}}">
+                <li class="page-item btn-link"><a class="page-link" onclick="prevPage()">Previous</a></li>
+                <li class="page-item"><a class="page-link" id="firstPage"></a></li>
+                <li class="page-item"><a class="page-link" id="secondPage"></a></li>
+                <li class="page-item"><a class="page-link" id="thirdPage"></a></li>
+                <li class="page-item btn-link"><a class="page-link" onclick="nextPage({{amountItems}})">Next</a>
+                </li>
+                <li class="page-item ml-2">
+                    <select class="form-control" id="pageSizeSelect">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </li>
+            </ul>
         </div>
     {{/mainContent}}
 {{/infobase}}

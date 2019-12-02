@@ -3,17 +3,18 @@ package io.global.blog.http;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.common.collection.Either;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.http.*;
+import io.datakernel.http.decoder.DecodeErrors;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
 import io.global.appstore.AppStore;
 import io.global.blog.container.BlogUserContainer;
 import io.global.blog.dao.BlogDao;
-import io.global.blog.http.view.BlogView;
 import io.global.blog.http.view.PostView;
-import io.global.blog.preprocessor.Preprocessor;
+import io.global.blog.interceptors.Preprocessor;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.http.AttachmentDataHandler;
@@ -41,6 +42,9 @@ import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpResponse.redirect302;
 import static io.global.Utils.*;
+import static io.global.blog.util.EntityUtil.blogViewListFrom;
+import static io.global.blog.util.EntityUtil.postViewFrom;
+import static io.global.blog.util.HttpUtil.*;
 import static io.global.comm.dao.ThreadDao.ATTACHMENT_NOT_FOUND;
 import static io.global.comm.pojo.UserRole.COMMON;
 import static io.global.comm.pojo.UserRole.OWNER;
@@ -49,32 +53,38 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 
 public final class PublicServlet {
-	public static final String WHITESPACE = "^(?:\\p{Z}|\\p{C})*$";
 	private static final String SESSION_ID = "BLOG_SID";
 	private static final StructuredCodec<Map<String, String>> PARAM_CODEC = StructuredCodecs.ofMap(STRING_CODEC, STRING_CODEC);
+	private static final int MIN_LIMIT_ITEMS_PER_PAGE = 50;
 
 	public static AsyncServlet create(String appStoreUrl, AppStore appStore,
-			MustacheTemplater templater, Executor executor,
-			Preprocessor<PostView> threadListPostViewPreprocessor,
-			Preprocessor<PostView> postViewPreprocessor,
-			Preprocessor<PostView> commentsPreprocessor) {
+									  MustacheTemplater templater, Executor executor,
+									  Preprocessor<PostView> threadListPostViewPreprocessor,
+									  Preprocessor<PostView> postViewPreprocessor) {
 		return RoutingServlet.create()
 				.map("/auth/*", authServlet(appStore, templater))
 				.map("/owner/*", ownerServlet(templater))
 				.map(GET, "/", request -> {
-					CommDao commDao = request.getAttachment(CommDao.class);
-					UserId userId = request.getAttachment(UserId.class);
-					return commDao.getThreads("root").get()
-							.then(threads -> BlogView.from(commDao, threads, userId))
-							.map(threadViews -> threadViews.stream()
-									.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
-									.collect(Collectors.toList()))
-							.then(threadViews -> Promise.ofBlockingCallable(executor, () -> {
-								threadViews.forEach(threadView ->
-										threadListPostViewPreprocessor.process(threadView.getRoot(), threadView.getId()));
-								return threadViews;
-							}))
-							.then(threads -> templater.render("threadList", map("threads", threads), isGzipAccepted(request)));
+					Either<Pagination, DecodeErrors> result = PAGINATION_DECODER.decode(request);
+					if (result.isLeft()) {
+						Pagination pagination = result.getLeft();
+						CommDao commDao = request.getAttachment(CommDao.class);
+						UserId userId = request.getAttachment(UserId.class);
+						return commDao.getThreads("root").get()
+								.then(threads -> blogViewListFrom(commDao, threads, userId, pagination.getPage() - 1, pagination.getSize())
+										.map(threadViews -> threadViews.stream()
+												.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
+												.collect(Collectors.toList()))
+										.then(threadViews -> Promise.ofBlockingCallable(executor, () -> {
+											threadViews.forEach(threadView ->
+													threadListPostViewPreprocessor.process(threadView.getRoot(), threadView.getId()));
+											return threadViews;
+										}))
+										.then(threadsViews -> templater.render("threadList"
+												, map("threads", threadsViews, "amountItems", threads.size()),
+												isGzipAccepted(request))));
+					}
+					return Promise.of(redirect302("/?page=1&size=" + MIN_LIMIT_ITEMS_PER_PAGE));
 				})
 				.map(GET, "/profile", request -> {
 					UserId userId = request.getAttachment(UserId.class);
@@ -135,8 +145,8 @@ public final class PublicServlet {
 							});
 				})
 				.map("/:threadID/*", RoutingServlet.create()
-						.map(GET, "/", postViewServlet(templater, executor, postViewPreprocessor, commentsPreprocessor))
-						.map(GET, "/:postID/", postViewServlet(templater, executor, postViewPreprocessor, commentsPreprocessor))
+						.map(GET, "/", postViewServlet(templater, executor, postViewPreprocessor))
+						.map(GET, "/:postID/", postViewServlet(templater, executor, postViewPreprocessor))
 						.map("/:postID/*", postOperations())
 						.then(attachThreadDao()))
 				.then(session(templater))
@@ -172,11 +182,11 @@ public final class PublicServlet {
 							try {
 								Map<String, String> params = JsonUtils.fromJson(PARAM_CODEC, request.getBody().asString(UTF_8));
 								String description = params.get("content");
-								String name = params.get("name");
+								String title = params.get("title");
 								BlogDao blogDao = request.getAttachment(BlogDao.class);
 								return validate(description, 1024, "Description")
-										.then($ -> validate(name, 32, "Name"))
-										.then($ -> (name != null ? blogDao.setBlogName(name) : Promise.complete())
+										.then($ -> validate(title, 32, "Name"))
+										.then($ -> (title != null ? blogDao.setBlogName(title) : Promise.complete())
 												.then($1 -> description != null ? blogDao.setBlogDescription(description) : Promise.complete())
 												.map($1 -> HttpResponse.ok200()));
 							} catch (ParseException e) {
@@ -325,18 +335,12 @@ public final class PublicServlet {
 								.map($ -> postOpRedirect(request)))
 				.map(POST, "/edit", loadBody(kilobytes(256))
 						.serve(request -> {
-							try {
-								Map<String, String> params = JsonUtils.fromJson(PARAM_CODEC, request.getBody().asString(UTF_8));
-								ThreadDao threadDao = request.getAttachment(ThreadDao.class);
-								String pid = request.getPathParameter("postID");
-
-								String content = params.get("content");
-								return validate(content, 1024, "Content", true)
-										.then($ -> threadDao.updatePost(pid, content, Collections.emptyMap(), emptySet())
-												.map($2 -> postOpRedirect(request)));
-							} catch (ParseException e) {
-								return Promise.ofException(new ParseException("Illegal arguments", e));
-							}
+							ThreadDao threadDao = request.getAttachment(ThreadDao.class);
+							String pid = request.getPathParameter("postID");
+							String content = request.getPostParameter("content");
+							return validate(content, 1024, "Content", true)
+									.then($ -> threadDao.updatePost(pid, content, Collections.emptyMap(), emptySet())
+											.map($2 -> postOpRedirect(request)));
 						}))
 				.map(GET, "/download/:filename", cachedContent().serve(request -> {
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
@@ -366,8 +370,7 @@ public final class PublicServlet {
 	}
 
 	@NotNull
-	private static AsyncServlet postViewServlet(MustacheTemplater templater, Executor executor, Preprocessor<PostView> postViewPreprocessor,
-			Preprocessor<PostView> commentsPreprocessor) {
+	private static AsyncServlet postViewServlet(MustacheTemplater templater, Executor executor, Preprocessor<PostView> postViewPreprocessor) {
 		return request -> {
 			String tid = request.getPathParameter("threadID");
 			String pid = request.getPathParameters().get("postID");
@@ -380,10 +383,9 @@ public final class PublicServlet {
 			ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 
 			Promise<PostView> postViewPromise = threadDao.getPost(pid != null ? pid : "root")
-					.then(post -> PostView.from(commDao, post, userId, 2, null))
+					.then(post -> postViewFrom(commDao, post, userId, 2, null))
 					.then(postView -> Promise.ofBlockingCallable(executor,
-							() -> commentsPreprocessor.process(
-									pid == null ? postViewPreprocessor.process(postView, tid) : postView)));
+							() -> pid == null ? postViewPreprocessor.process(postView, tid) : postView));
 			return postViewPromise.then(postView ->
 					postView.getDeletedBy() != null && (userData == null || !userData.getRole().isPrivileged()) ?
 							Promise.ofException(HttpException.ofCode(403, "Not privileged")) :
@@ -436,19 +438,6 @@ public final class PublicServlet {
 														.withPath("/"))));
 					});
 				};
-	}
-
-	private static Promise<Void> validate(String param, int maxLength, String paramName) {
-		return validate(param, maxLength, paramName, false);
-	}
-
-	private static Promise<Void> validate(String param, int maxLength, String paramName, boolean required) {
-		if (param == null && required || (param != null && param.matches(WHITESPACE) && required)) {
-			return Promise.ofException(new ParseException(PublicServlet.class, "'" + paramName + "' POST parameter is required"));
-		}
-		return param != null && param.length() > maxLength ?
-				Promise.ofException(new ParseException(PublicServlet.class, paramName + " is too long (" + param.length() + ">" + maxLength + ")")) :
-				Promise.complete();
 	}
 
 	private static AsyncServletDecorator attachThreadDao() {
