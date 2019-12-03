@@ -151,6 +151,21 @@ describe('CancelablePromise', () => {
         fail(PresenceError);
       }
     });
+
+    it('Should call cancel of promise in then chain', async () => {
+      let innerPromise = null;
+      const promise = CancelablePromise.resolve()
+        .then(() => {
+          innerPromise = wait(100);
+          innerPromise.cancel = jest.fn();
+
+          return innerPromise;
+        });
+      await wait(50);
+      promise.cancel();
+
+      expect(innerPromise.cancel).toBeCalled();
+    });
   });
 
   describe('then method', () => {

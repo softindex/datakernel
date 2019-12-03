@@ -195,8 +195,9 @@ export class CancelablePromise {
   }
 
   _onHandlerResult(handler, value, resolve, reject) {
+    let result;
     const promise = new CancelablePromise((resolve, reject) => {
-      let result = handler(value);
+      result = handler(value);
 
       if (result instanceof Promise) {
         result = CancelablePromise.fromPromise(result);
@@ -206,6 +207,10 @@ export class CancelablePromise {
         result.then(resolve, reject);
       } else {
         resolve(result);
+      }
+    }, () => {
+      if (result instanceof CancelablePromise) {
+        result.cancel();
       }
     });
     promise._onResult(resolve, reject);
