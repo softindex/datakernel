@@ -1,6 +1,6 @@
 {
   "name": "global-apps-common",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Common JS modules for global apps",
   "main": "lib",
   "engines": {
