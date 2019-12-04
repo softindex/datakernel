@@ -20,6 +20,7 @@ import static io.datakernel.async.util.LogUtils.thisMethod;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.CollectorsEx.throwingMerger;
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.GraphReducer.Result.*;
 import static io.datakernel.promise.Promises.toList;
@@ -373,11 +374,13 @@ public final class OTAlgorithms {
 	}
 
 	private static class LoadGraphReducer<K, D> implements GraphReducer<K, D, OTLoadedGraph<K, D>> {
+		private final OTSystem<D> system;
 		private final OTLoadedGraph<K, D> graph;
 		private final Map<K, Set<K>> head2roots = new HashMap<>();
 		private final Map<K, Set<K>> root2heads = new HashMap<>();
 
 		private LoadGraphReducer(OTSystem<D> system) {
+			this.system = system;
 			this.graph = new OTLoadedGraph<>(system);
 		}
 
@@ -409,7 +412,18 @@ public final class OTAlgorithms {
 				}
 			}
 
-			graph.addNode(commit);
+			graph.addNode(node, commit.getLevel(), parents);
+			for (Map.Entry<K, List<? extends D>> entry : new HashMap<>(nullToEmpty(graph.getChildren(node))).entrySet()) {
+				K child = entry.getKey();
+				List<? extends D> childDiffs = entry.getValue();
+				Map<K, List<? extends D>> grandChildren = nullToEmpty(graph.getChildren(child));
+				Map<K, List<? extends D>> coParents = nullToEmpty(graph.getParents(child));
+				if (grandChildren.size() != 1 || coParents.size() != 1) continue;
+				K grandChild = first(grandChildren.keySet());
+				List<? extends D> grandChildDiffs = first(grandChildren.values());
+				graph.addEdge(node, grandChild, system.squash(concat(childDiffs, grandChildDiffs)));
+				graph.removeNode(child);
+			}
 
 			if (head2roots.keySet()
 					.stream()
@@ -428,10 +442,10 @@ public final class OTAlgorithms {
 	public static <K, D> Promise<OTLoadedGraph<K, D>> loadGraph(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads, OTLoadedGraph<K, D> graph) {
 		return reduce(repository, system, heads,
 				commit -> {
-					if (graph.hasVisited(commit.getId())) {
+					if (graph.hasChild(commit.getId())) {
 						return skipPromise();
 					}
-					graph.addNode(commit);
+					graph.addNode(commit.getId(), commit.getLevel(), commit.getParents());
 					return resumePromise();
 				})
 				.thenEx((v, e) -> {

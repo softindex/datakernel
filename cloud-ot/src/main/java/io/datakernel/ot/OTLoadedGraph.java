@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Utils.firstNonNull;
@@ -29,7 +30,6 @@ import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.common.collection.CollectionUtils.*;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingInt;
-import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.*;
 
 @SuppressWarnings("StringConcatenationInsideStringBufferAppend")
@@ -79,54 +79,70 @@ public class OTLoadedGraph<K, D> {
 
 	private final OTSystem<D> otSystem;
 
-	private final Map<K, Long> levels = new HashMap<>();
 	private final Map<K, Map<K, List<? extends D>>> child2parent = new HashMap<>();
 	private final Map<K, Map<K, List<? extends D>>> parent2child = new HashMap<>();
+	private final Map<K, Long> levels = new HashMap<>();
 	private Function<K, String> idToString = Objects::toString;
 	private Function<D, String> diffToString = Objects::toString;
 
-	void setNodeLevel(K node, long level) {
-		levels.put(node, level);
+	public void addNode(K node, long level) {
+		addNode(node, level, emptyMap());
 	}
 
-	void addEdge(K parent, K child, List<? extends D> diff) {
+	public void addNode(K child, long level, Map<K, List<D>> parents) {
+		levels.put(child, level);
+		parents.forEach((parent, diffs) -> addEdge(parent, child, diffs));
+	}
+
+	public void addEdge(K parent, K child, List<? extends D> diff) {
 		child2parent.computeIfAbsent(child, $ -> new HashMap<>()).put(parent, diff);
 		parent2child.computeIfAbsent(parent, $ -> new HashMap<>()).put(child, diff);
 	}
 
-	public void addNode(OTCommit<K, D> commit) {
-		K node = commit.getId();
-		levels.put(node, commit.getLevel());
-
-		if (commit.isRoot()) {
-			parent2child.computeIfAbsent(node, $ -> new HashMap<>());
-			return;
-		}
-
-		commit.getParents().forEach((parent, diffs) -> addEdge(parent, node, diffs));
+	public void removeNode(K node) {
+		Set<K> parents = new HashSet<>(child2parent.getOrDefault(node, emptyMap()).keySet());
+		Set<K> children = new HashSet<>(parent2child.getOrDefault(node, emptyMap()).keySet());
+		parents.forEach(parent -> parent2child.get(parent).remove(node));
+		children.forEach(child -> child2parent.get(child).remove(node));
+		child2parent.remove(node);
+		parent2child.remove(node);
+		levels.remove(node);
 	}
 
-	public boolean hasVisited(K node) {
-		return levels.containsKey(node);
+	public void removeEdge(K parent, K child) {
+		parent2child.get(parent).remove(child);
+		child2parent.get(child).remove(parent);
+	}
+
+	public void setLevel(K node, long level) {
+		levels.put(node, level);
+	}
+
+	public boolean hasParent(K node) {
+		return parent2child.containsKey(node);
+	}
+
+	public boolean hasChild(K node) {
+		return child2parent.containsKey(node);
 	}
 
 	public Map<K, List<? extends D>> getParents(K child) {
 		return child2parent.get(child);
 	}
 
+	public Map<K, List<? extends D>> getChildren(K parent) {
+		return parent2child.get(parent);
+	}
+
 	public Set<K> getRoots() {
-		return difference(parent2child.keySet(), child2parent.keySet());
+		return Stream.concat(levels.keySet().stream(), parent2child.keySet().stream())
+				.filter(node -> !child2parent.containsKey(node))
+				.collect(toSet());
 	}
 
 	public Set<K> getTips() {
-		return difference(child2parent.keySet(), parent2child.keySet());
-	}
-
-	public Set<K> getOriginalTips() {
-		return child2parent.keySet().stream()
-				.filter(node -> !(node instanceof MergeNode) &&
-						nullToEmpty(parent2child.get(node)).keySet().stream()
-								.allMatch(child -> child instanceof MergeNode))
+		return Stream.concat(levels.keySet().stream(), child2parent.keySet().stream())
+				.filter(node -> !parent2child.containsKey(node))
 				.collect(toSet());
 	}
 
@@ -286,7 +302,7 @@ public class OTLoadedGraph<K, D> {
 		}
 
 		sb.append("\t{ rank=same; " +
-				getOriginalTips().stream().map(this::nodeToGraphViz).collect(joining(" ")) +
+				getTips().stream().map(this::nodeToGraphViz).collect(joining(" ")) +
 				" }\n");
 		sb.append("\t{ rank=same; " +
 				roots.stream().map(this::nodeToGraphViz).collect(joining(" ")) +
@@ -316,23 +332,5 @@ public class OTLoadedGraph<K, D> {
 	public String toString() {
 		return "{nodes=" + union(child2parent.keySet(), parent2child.keySet()) +
 				", edges:" + parent2child.values().stream().mapToInt(Map::size).sum() + '}';
-	}
-
-	public void cleanUp(int levelsToKeep) {
-		Optional<Long> maybeMaxLevel = this.levels.values().stream()
-				.max(naturalOrder());
-		if (!maybeMaxLevel.isPresent() || maybeMaxLevel.get() - levelsToKeep < 1) {
-			return;
-		}
-
-		long minLevel = maybeMaxLevel.get() - levelsToKeep;
-
-		clearMap(parent2child, minLevel);
-		clearMap(child2parent, minLevel + 1);
-	}
-
-	private void clearMap(Map<K, ?> map, long minLevel) {
-		Set<K> toKeep = map.keySet().stream().filter(k -> levels.get(k) > minLevel).collect(toSet());
-		map.keySet().retainAll(toKeep);
 	}
 }
