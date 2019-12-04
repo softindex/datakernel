@@ -15,13 +15,16 @@ import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.promise.Promises.retry;
+import static io.global.ot.client.RepoSynchronizer.DEFAULT_INITIAL_BACKOFF;
 
 public final class SynchronizationService<D> implements EventloopService {
 	private final Eventloop eventloop;
@@ -29,6 +32,8 @@ public final class SynchronizationService<D> implements EventloopService {
 	private final OTDriver driver;
 	private final OTSystem<D> system;
 	private final Map<String, RepoSynchronizer<D>> synchronizers = new HashMap<>();
+	@Nullable
+	private Duration initialBackoff;
 
 	private SynchronizationService(Eventloop eventloop, CommonUserContainer<D> commonUserContainer, OTDriver driver, OTSystem<D> system) {
 		this.eventloop = eventloop;
@@ -39,6 +44,11 @@ public final class SynchronizationService<D> implements EventloopService {
 
 	public static <D> SynchronizationService<D> create(Eventloop eventloop, OTDriver driver, CommonUserContainer<D> commonUserContainer, OTSystem<D> system) {
 		return new SynchronizationService<>(eventloop, commonUserContainer, driver, system);
+	}
+
+	public SynchronizationService<D> withInitialBackOff(Duration initialBackOff){
+		this.initialBackoff = initialBackOff;
+		return this;
 	}
 
 	@NotNull
@@ -78,7 +88,8 @@ public final class SynchronizationService<D> implements EventloopService {
 
 	public RepoSynchronizer<D> ensureSynchronizer(String id) {
 		return synchronizers.computeIfAbsent(id, $ ->
-				RepoSynchronizer.create(eventloop, driver, system, getMyRepositoryId(id)));
+				RepoSynchronizer.create(eventloop, driver, system, getMyRepositoryId(id))
+						.withInitialBackOff(initialBackoff == null ? DEFAULT_INITIAL_BACKOFF : initialBackoff));
 	}
 
 	private MyRepositoryId<D> getMyRepositoryId(String id) {

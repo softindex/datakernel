@@ -195,8 +195,8 @@ public class GlobalOTNodeSynchronizationTest {
 		AsyncSupplier<Set<CommitId>> heads1Supplier = repository1.pollHeads();
 		AsyncSupplier<Set<CommitId>> heads2Supplier = repository2.pollHeads();
 
-		repeat(() -> heads1Supplier.get().then(heads -> sync(repository2, otSystem, heads)));
-		repeat(() -> heads2Supplier.get().then(heads -> sync(repository1, otSystem, heads)));
+		repeat(() -> heads1Supplier.get().then(heads -> sync(repository2, otSystem, heads).toVoid()));
+		repeat(() -> heads2Supplier.get().then(heads -> sync(repository1, otSystem, heads).toVoid()));
 	}
 
 	private void syncAll() {

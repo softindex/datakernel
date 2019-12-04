@@ -28,6 +28,7 @@ import io.global.ot.*;
 import io.global.ot.api.RepoID;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
+import io.global.ot.client.RepoSynchronizer;
 import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.edit.EditOTSystem;
@@ -131,13 +132,19 @@ public final class GlobalDocumentsApp extends Launcher {
 	}
 
 	@Provides
+	@Eager
+	@Named("initial back off") Duration initialBackOff(Config config){
+		return config.get(ofDuration(), "sync.initialBackOff", RepoSynchronizer.DEFAULT_INITIAL_BACKOFF);
+	}
+
+	@Provides
 	@ContainerScope
 	CommonUserContainer<EditOperation> factory(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver,
-			Messenger<Long, CreateSharedRepo> messenger, @Named("poll interval") Duration interval) {
+			Messenger<Long, CreateSharedRepo> messenger, @Named("poll interval") Duration interval, @Named("initial back off") Duration backOff) {
 		RepoID repoID = RepoID.of(privKey, DOCUMENT_REPO_PREFIX);
 		MyRepositoryId<EditOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, EDIT_OPERATION_CODEC);
 		KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), DOCUMENTS_SESSION_TABLE);
-		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore, DOCUMENTS_INDEX_REPO, interval);
+		return CommonUserContainer.create(eventloop, driver, EditOTSystem.createOTSystem(), myRepositoryId, messenger, sessionStore, DOCUMENTS_INDEX_REPO, interval, backOff);
 	}
 
 	@Override

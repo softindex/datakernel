@@ -27,7 +27,7 @@ import org.junit.Test;
 import java.util.List;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.ot.OTAlgorithms.merge;
+import static io.datakernel.ot.OTAlgorithms.mergeAndPush;
 import static io.datakernel.ot.OTAlgorithms.mergeAndUpdateHeads;
 import static io.datakernel.ot.utils.Utils.*;
 import static io.datakernel.promise.TestUtils.await;
@@ -117,7 +117,7 @@ public final class OTSystemTest {
 		System.out.println();
 		System.out.println(repository);
 
-		await(merge(repository, SYSTEM));
+		await(mergeAndPush(repository, SYSTEM));
 		System.out.println(stateManager);
 		System.out.println();
 	}
@@ -159,7 +159,7 @@ public final class OTSystemTest {
 		System.out.println(stateManager);
 		System.out.println();
 
-		await(merge(repository, SYSTEM));
+		await(mergeAndPush(repository, SYSTEM));
 		System.out.println(repository);
 		System.out.println(stateManager);
 	}
