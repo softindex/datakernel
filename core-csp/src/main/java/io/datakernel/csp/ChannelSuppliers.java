@@ -39,6 +39,7 @@ import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
@@ -47,6 +48,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.lang.Math.min;
 
 /**
@@ -359,6 +361,10 @@ public final class ChannelSuppliers {
 	}
 
 	public static InputStream channelSupplierAsInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier) {
+		return channelSupplierAsInputStream(eventloop, channelSupplier, Long.MAX_VALUE);
+	}
+
+	public static InputStream channelSupplierAsInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier, long miliseconds) {
 		return new InputStream() {
 			@Nullable ByteBuf current = null;
 			private boolean isClosed;
@@ -387,13 +393,15 @@ public final class ChannelSuppliers {
 					do {
 						CompletableFuture<ByteBuf> future = eventloop.submit(channelSupplier::get);
 						try {
-							buf = future.get();
+							buf = future.get(miliseconds, MILLISECONDS);
 						} catch (InterruptedException e) {
 							isClosed = true;
 							eventloop.submit(() -> channelSupplier.close(e));
 							throw new IOException(e);
 						} catch (ExecutionException e) {
 							handleException(e);
+						} catch (TimeoutException e) {
+							return -1; // cannot fetch more data
 						}
 						if (buf == null) {
 							isClosed = true;

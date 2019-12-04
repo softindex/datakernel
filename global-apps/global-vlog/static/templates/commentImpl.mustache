@@ -1,0 +1,148 @@
+<div class="card no-gutters" id="comment_{{id}}">
+    <div class="card-body clearfix py-1">
+        <div class="row mb-2">
+            <div class="col">
+                <span class="badge badge-primary {{#deletedBy}}text-secondary{{/deletedBy}} badge-light"
+                      style="background-color: white">
+                    {{initialTimestamp}}
+                    {{#parent}}
+                        <span class="p-1" id="comment_{{id}}"
+                              style="width: 80%; background-color: white; border: solid lightgray 1px;
+                               border-radius: 0.5rem; color: black; text-decoration: none; cursor: pointer;">
+                             reply to {{author}}
+                         </span>
+                    {{/parent}}
+                </span>
+            </div>
+            <div class="col-auto text-secondary small px-0 mx-1">
+                {{^deletedBy}}
+                    {{#lastEditTimestamp}}
+                        Edited {{#user.role.privileged}}{{lastEditTimestamp}}{{/user.role.privileged}}
+                    {{/lastEditTimestamp}}
+                {{/deletedBy}}
+                {{#deletedBy}}
+                    Deleted
+                {{/deletedBy}}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-auto mx-3 text-center {{#deletedBy}} text-secondary{{/deletedBy}}">
+                <div style="{{#deletedBy}} opacity: 0.5; filter: alpha(opacity=50);{{/deletedBy}} width: 30px; height: 30px;">
+                    <img class="rounded" alt="avatar" style="width: 30px; height: 30px;" src="{{avatarUrl}}">
+                </div>
+
+                <span class="row badge badge-primary badge-light text-wrap text-break {{#deletedBy}} text-secondary{{/deletedBy}}">
+                    {{#user.role.privileged}}
+                        {{#author}}
+                            <a href="/private/profile/{{authorId}}"
+                               style="width: 100%; background-color: white; border: solid lightgray 1px;
+                               border-radius: 0.5rem; color: black; text-decoration: none">{{.}}</a>
+                        {{/author}}
+                    {{/user.role.privileged}}
+
+                    {{^user.role.privileged}}
+                        {{#author}}
+                            {{.}}
+                        {{/author}}
+                        {{^author}}
+                            ghost
+                        {{/author}}
+                    {{/user.role.privileged}}
+                </span>
+            </div>
+
+            <div class="col {{#deletedBy}} text-secondary{{/deletedBy}}">
+                {{#deletedBy}}
+                <details>
+                    <summary>show...</summary>
+                {{/deletedBy}}
+                <div class="row text-wrap text-break mr-2">
+                    <p id="content_{{id}}" class="{{^deletedBy}}form-control{{/deletedBy}}" data-field="content"
+                       data-value="{{content}}"
+                       style="border: 1px solid transparent; height: initial; {{^deletedBy}}color: initial; {{/deletedBy}} white-space: pre-line">{{content}}</p>
+                </div>
+                {{#deletedBy}}
+                </details>
+                {{/deletedBy}}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col"></div>
+            <div class="col-auto mx-2 mb-2">
+                <div class="row">
+                    {{#deletedBy}}
+                        {{#editable}}
+                            <form action="/private/thread/{{videoView.id}}/{{id}}/restore" method="post">
+                                <button class="btn btn-outline-primary btn-sm">restore</button>
+                            </form>
+                        {{/editable}}
+                    {{/deletedBy}}
+
+                    {{^deletedBy}}
+                        {{#user}}
+                            {{#editable}}
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
+                                            type="button"
+                                            id="change_menu_{{id}}"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        change
+                                    </button>
+                                    <div class="dropdown-menu" aria-labelledby="change_menu_{{id}}">
+                                        <button class="edit-button dropdown-item" type="button"
+                                                data-edit="#content_{{id}}"
+                                                data-maxLength="1024"
+                                                data-edit-action="/private/thread/{{videoView.id}}/{{id}}/edit">
+                                            edit
+                                        </button>
+                                        <form action="/private/thread/{{videoView.id}}/{{id}}/delete" method="post">
+                                            <button class="dropdown-item" type="submit">delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            {{/editable}}
+                            {{#user.role.known}}
+                                <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
+                                        data-target="#reply_{{id}}">
+                                    reply
+                                </button>
+                            {{/user.role.known}}
+                        {{/user}}
+                    {{/deletedBy}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ml-3 border-dark">
+    {{^deletedBy}}
+        {{#user}}
+            <div class="collapse" id="reply_{{id}}">
+                <form class="pt-3"
+                      action="/private/thread/{{videoView.id}}/{{id}}"
+                      method="post">
+                    <div class="mx-3">
+                        <textarea class="form-control" placeholder="Post your reply" maxlength="1024" name="content"
+                                  onfocus="var val=this.value; this.value=''; this.value= val;"></textarea>
+                    </div>
+                    <div class="p-3">
+                        <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{id}}">post</button>
+                    </div>
+                </form>
+            </div>
+        {{/user}}
+    {{/deletedBy}}
+
+    {{#deletedBy}}
+    <div class="disabled-comments">
+    {{/deletedBy}}
+    {{#children}}
+        {{>comment}}
+    {{/children}}
+    {{#deletedBy}}
+    </div>
+    {{/deletedBy}}
+</div>

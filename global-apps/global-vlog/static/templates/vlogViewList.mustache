@@ -1,0 +1,72 @@
+{{<base}}
+    {{$content}}
+        <div class="row mb-5">
+            {{#list}}
+                {{^header.deletedBy}}
+                    {{^header.pending}}
+                        <a class="col-lg-3 col-md-4 col-sm-6 col-12 hover-effect" href="/thread/{{id}}"
+                           style="text-decoration: none; max-width: 450px; height: 220px; position: relative">
+                            <div class="img-view videoBox" style="overflow: hidden; position: relative;">
+                                <img id="{{key}}"
+                                     onerror="this.onerror=null;this.src='/static/not_found_poster.png';"
+                                     src="/thread/{{id}}/download/{{header.videoPoster}}" class="card-img-top">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)">
+                                    <button type="button" class="btn btn-lg btn-outline-light hover-butt on"
+                                            style="text-shadow: 1px 1px 3px black; box-shadow: 0px 0px 18px 1px rgba(0,0,0,0.75);">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="pt-2" style="position: absolute">
+                                <p style="margin-bottom: 0.05rem; font-weight: bold; color: black; overflow: hidden;">{{meta.title}}</p>
+                                <p>
+                                    <small style=" color: gray">{{header.initialTimestamp}}</small>
+                                </p>
+                            </div>
+                        </a>
+                    {{/header.pending}}
+                    {{#header.pending}}
+                        <a class="col-lg-3 col-md-4 col-sm-6 col-12 hover-effect"
+                           style="text-decoration: none; max-width: 450px; height: 220px;position: relative">
+                            <div class="img-view videoBox" id="pending_task_{{id}}" data-id="{{id}}"
+                                 style="width: 100%; position: relative; height: 150px; border: 1px solid gray;">
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%)">
+                                    <progress class="pure-material-progress-circular"></progress>
+                                    <span class="text-center" style="display: block" id="status_task_{{id}}"></span>
+                                </div>
+
+                            </div>
+                            <div class="pt-2" style="position: absolute">
+                                <p style="margin-bottom: 0.05rem; font-weight: bold; color: black">{{meta.title}}</p>
+                                <p>
+                                    <small style=" color: gray">{{header.initialTimestamp}}</small>
+                                </p>
+                            </div>
+                        </a>
+                    {{/header.pending}}
+                {{/header.deletedBy}}
+            {{/list}}
+        </div>
+
+        <div style="position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 0)">
+            <ul class="pagination mt-2" data-max-elements="{{amountItems}}"
+                id="pagination"
+                data-amout-photos="{{amountItems}}">
+                <li class="page-item btn-link"><a class="page-link" onclick="prevPage()">Previous</a></li>
+                <li class="page-item"><a class="page-link" id="firstPage"></a></li>
+                <li class="page-item"><a class="page-link" id="secondPage"></a></li>
+                <li class="page-item"><a class="page-link" id="thirdPage"></a></li>
+                <li class="page-item btn-link"><a class="page-link" onclick="nextPage({{amountItems}})">Next</a>
+                </li>
+                <li class="page-item ml-2">
+                    <select class="form-control" id="pageSizeSelect">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </li>
+            </ul>
+        </div>
+    {{/content}}
+{{/base}}

@@ -24,6 +24,7 @@
     <module>global-apps-common</module>
     <module>global-blog</module>
     <module>global-forum</module>
+    <module>global-vlog</module>
     <module>global-photos</module>
   </modules>
 

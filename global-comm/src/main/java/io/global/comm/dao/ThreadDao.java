@@ -29,6 +29,10 @@ public interface ThreadDao {
 		return addPost(author, null, "root", content, attachments);
 	}
 
+	default Promise<Void> addRootPost(UserId author, String content, String postId, Map<String, AttachmentType> attachments) {
+		return addPost(author, null, postId, content, attachments);
+	}
+
 	Promise<Void> addPost(UserId author, @Nullable String parentId, String postId, @Nullable String content, Map<String, AttachmentType> attachments);
 
 	Promise<Post> getPost(String postId);

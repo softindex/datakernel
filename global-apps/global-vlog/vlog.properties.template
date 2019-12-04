@@ -1,0 +1,6 @@
+http.staticPath=
+http.listenAddresses=
+discovery.address=
+fs.storage=
+appStoreUrl=
+cached.path=

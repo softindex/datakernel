@@ -1,0 +1,219 @@
+{{<base}}
+    {{$content}}
+        <div style="max-width: 100%; min-width: 890px!important;">
+            <div class="video-parent" style="position: relative">
+                <video class="modal-content" id="modalVideoTag"
+                       src="/thread/{{videoView.id}}/download/{{videoView.header.videoResource.720}}"
+                       controls
+                       style="max-height: 720px;">
+                </video>
+                <select id="resolution_selector" class="form-control video-selector">
+                    <option value="/thread/{{videoView.id}}/download/{{videoView.header.videoResource.320}}"
+                            id="resolution_button_320">
+                        320p
+                    </option>
+                    <option value="/thread/{{videoView.id}}/download/{{videoView.header.videoResource.720}}"
+                            id="resolution_button_720" selected>
+                        720p
+                    </option>
+                    <option
+                            value="/thread/{{videoView.id}}/download/{{videoView.header.videoResource.1080}}"
+                            id="resolution_button_1080">
+                        1080p
+                    </option>
+                    <option value="/thread/{{videoView.id}}/download/{{videoView.header.videoResource.origin}}"
+                            id="resolution_button_origin">
+                        origin
+                    </option>
+                </select>
+            </div>
+
+            <div id="extra" class="card mt-2">
+                <div class="card-header p-1 px-3 m-0">
+                    <div class="row justify-content-between">
+                        <a class="card-link align-self-center ml-1 dropdown-toggle" data-toggle="collapse"
+                           href="#collapseExtra">
+                            Description
+                        </a>
+
+                        <div class="btn-group">
+                            {{#user}}
+                                <button id="reply"
+                                        data-toggle="collapse"
+                                        data-target="#reply_{{videoView.header.id}}"
+                                        type="button" class="btn btn-link text-secondary">
+                                    Reply
+                                </button>
+                            {{/user}}
+                            {{#user.role.privileged}}
+                                <button id="idVideoHeader"
+                                        type="button"
+                                        data-toggle="collapse"
+                                        data-target="#edit_{{videoView.header.id}}"
+                                        class="btn btn-link text-primary">
+                                    Edit
+                                </button>
+                                <button type="button"
+                                        data-toggle="modal" data-target="#modalBlock"
+                                        class="btn btn-link text-danger"
+                                        style="width: 100%">
+                                    Delete
+                                </button>
+                            {{/user.role.privileged}}
+                        </div>
+                    </div>
+                </div>
+                <div id="collapseExtra" class="collapse show" data-parent="#extra">
+                    <div class="card-body" style="position: relative">
+                        <div class="row">
+                            <div class="col col-md-2" style="text-align: center;">
+                                <div>
+                                    <img src="{{videoView.header.avatarUrl}}">
+                                </div>
+                                <a class="p-1"
+                                   style="width: 80%; background-color: white; border: solid lightgray 1px; border-radius: 0.5rem; color: black; text-decoration: none"
+                                   href="{{#user.role.privileged}}/private/profile/{{videoView.header.authorId}}{{/user.role.privileged}}">
+                                    {{videoView.header.author}}
+                                </a>
+                            </div>
+
+                            <div class="col col-md-10">
+                                <h4 class="mx-auto">{{videoView.meta.title}}</h4>
+                                <textarea class="form-control" maxlength="1024" readonly
+                                          style="background-color: transparent; width: 100%; border: none; padding: 0!important; box-shadow: none!important;"
+                                          name="content" id="description-field"
+                                          onfocus="const val=this.value; this.value=''; this.value= val;">{{videoView.header.content}}</textarea>
+                            </div>
+                        </div>
+                        {{#user}}
+                            <div class="list-group list-group-horizontal"
+                                 style="top: 10px; right: 10px; position: absolute;;">
+                                <form action="/private/thread/{{videoView.id}}/{{videoView.header.id}}/rate/dislike"
+                                      method="post">
+                                    <button class="btn" style="background-color:transparent;">
+                                        <i class="fas fa-thumbs-down
+                                            {{^videoView.header.dislikedBy}}text-secondary{{/videoView.header.dislikedBy}}
+                                            {{#videoView.header.dislikedBy}}text-danger{{/videoView.header.dislikedBy}}"
+                                           style="text-shadow: 1px 1px 1px rgba(0,0,0,0.4);">
+                                            {{videoView.header.dislikes}}
+                                        </i>
+                                    </button>
+                                </form>
+
+                                <form action="/private/thread/{{videoView.id}}/{{videoView.header.id}}/rate/like"
+                                      method="post">
+                                    <button type="submit"
+                                            class="btn
+                                                {{^videoView.header.likedBy}}text-secondary{{/videoView.header.likedBy}}
+                                                {{#videoView.header.likedBy}}text-primary{{/videoView.header.likedBy}}"
+                                            style="text-shadow: 1px 1px 1px rgba(0,0,0,0.4);">
+                                        <i class="fas fa-thumbs-up">{{videoView.header.likes}}</i>
+                                    </button>
+                                </form>
+                            </div>
+                        {{/user}}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal -->
+            <div class="modal fade" id="modalBlock" tabindex="-1" role="dialog"
+                 aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            Are you sure?
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <form action="/private/thread/{{videoView.id}}/{{videoView.header.id}}/delete"
+                                  method="post">
+                                <button id="deleteVideo" type="submit"
+                                        class="btn btn-outline-danger col mt-1"
+                                        style="width: 100%">Delete
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="collapse" id="reply_{{videoView.header.id}}">
+                <form class="pt-3"
+                      action="/private/thread/{{videoView.id}}/{{videoView.header.id}}/"
+                      method="post">
+                    <div class="mx-3">
+                        <textarea required class="form-control" placeholder="Post your reply" maxlength="1024"
+                                  name="content"
+                                  onfocus="const val=this.value; this.value=''; this.value= val;"></textarea>
+                    </div>
+                    <div class="p-1 ml-3">
+                        <button type="submit" class="btn btn-sm btn-secondary">post</button>
+                        <button type="button"
+                                data-toggle="collapse"
+                                data-target="#reply_{{videoView.header.id}}"
+                                class="btn btn-sm btn-danger">cancel</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="collapse" id="edit_{{videoView.header.id}}" style="background-color: whitesmoke;">
+                <form class="pt-3" enctype="multipart/form-data"
+                      action="/private/thread/{{videoView.id}}/edit/"
+                      method="post">
+                    <div class="mx-3">
+                        Title: <input class="mt-1 mb-1 form-control" name="title" value="{{videoView.meta.title}}"
+                                      style="width: 100%;" maxlength="32" required>
+                        <textarea class="form-control" placeholder="Post your reply" maxlength="1024" required
+                                  name="content" rows="6"
+                                  onfocus="const val=this.value; this.value=''; this.value= val;">{{videoView.header.content}}</textarea>
+                    </div>
+                    <h4 class="text-center mt-3">Video preview:</h4>
+                    <div class="row justify-content-center">
+                        <div class="col-5 m-2">
+                            <img id="new_poster" class="boxShadow-sm w-100" onerror="this.onerror=null;this.src='/static/not_found_poster.png';"
+                                 src="/thread/{{videoView.id}}/download/{{videoView.header.videoPoster}}">
+                        </div>
+
+                        <div class="col-5 m-2 align-self-center">
+                                <div class="w-100 custom-file">
+                                    <input type="file" accept="image/**" class="custom-file-input"
+                                           id="poster_attachment"
+                                           name="image_attachment">
+                                    <label class="custom-file-label text-truncate text-left" for="poster_attachment">Upload new
+                                        preview to change the current one</label>
+                                </div>
+                                <button type="submit" class="w-100 btn btn-sm btn-primary mt-1" id="post_button_{{id}}">save
+                                </button>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+
+            <div id="comments" class="mt-2">
+                <div class="card">
+                    <div class="card-header  p-1 px-3 m-0">
+                        <a class="card-link" data-toggle="collapse" href="#collapseComments">
+                            Comments
+                        </a>
+                    </div>
+                    <div id="collapseComments" aria-expanded="false" class="collapse show" data-parent="#comments">
+                        <div class="card-body">
+                            {{#videoView.comments}}
+                                {{>comment}}
+                            {{/videoView.comments}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}
