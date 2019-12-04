@@ -81,7 +81,7 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 
 	@Override
 	public Promise<Set<String>> list(PubKey pubKey) {
-		return httpClient.request(request(GET, LIST, urlEncodePubKey(pubKey)))
+		return httpClient.request(request(GET, LIST, pubKey.asString()))
 				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, ofSet(STRING_CODEC))));
 	}
@@ -216,14 +216,14 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 
 	@Override
 	public Promise<SignedData<SharedSimKey>> getSharedKey(PubKey receiver, Hash simKeyHash) {
-		return httpClient.request(request(GET, GET_SHARED_KEY, urlEncodePubKey(receiver) + "/" + simKeyHash.asString()))
+		return httpClient.request(request(GET, GET_SHARED_KEY, receiver.asString() + "/" + simKeyHash.asString()))
 				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, SIGNED_SHARED_KEY_JSON)));
 	}
 
 	@Override
 	public Promise<List<SignedData<SharedSimKey>>> getSharedKeys(PubKey receiver) {
-		return httpClient.request(request(GET, GET_SHARED_KEYS, urlEncodePubKey(receiver)))
+		return httpClient.request(request(GET, GET_SHARED_KEYS, receiver.asString()))
 				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, ofList(SIGNED_SHARED_KEY_JSON))));
 	}

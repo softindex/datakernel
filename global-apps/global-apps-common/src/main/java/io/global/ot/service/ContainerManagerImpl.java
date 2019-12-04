@@ -9,6 +9,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.common.PrivKey;
+import io.global.common.PubKey;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	private final Eventloop eventloop;
 
 	private final Map<PrivKey, Promise<C>> containers = new HashMap<>();
+	private final Map<PubKey, Injector> containerScopes = new HashMap<>();
 	private final Map<String, PrivKey> idMapping = new HashMap<>();
 
 	private final EventloopTaskScheduler synchronizer;
@@ -97,6 +99,7 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 				.map($2 -> container);
 
 		containers.put(privKey, promise);
+		containerScopes.put(privKey.computePubKey(), subinjector);
 
 		return promise.whenComplete(toLogger(logger, "ensureUserContainer", id));
 	}
@@ -115,6 +118,11 @@ public final class ContainerManagerImpl<C extends UserContainer> implements Cont
 	public C getUserContainer(String id) {
 		Promise<C> promise = containers.get(idMapping.get(id));
 		return promise != null ? promise.getResult() : null;
+	}
+
+	@Nullable
+	public Injector getContainerScope(PubKey pubKey) {
+		return containerScopes.get(pubKey);
 	}
 
 	@Override

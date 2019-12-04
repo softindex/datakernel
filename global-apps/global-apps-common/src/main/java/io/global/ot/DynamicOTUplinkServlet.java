@@ -11,6 +11,7 @@ import io.datakernel.ot.OTUplinkImpl;
 import io.datakernel.promise.Async;
 import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
+import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RepoID;
@@ -139,17 +140,24 @@ public final class DynamicOTUplinkServlet<D> implements AsyncServlet {
 		String pubKeyParameter = request.getPathParameters().get("key");
 		String suffix = request.getPathParameters().get("suffix");
 		String repositoryName = prefix + (suffix == null ? "" : ('/' + suffix));
-		KeyPair keys;
+
+		PubKey pubKey;
+		PrivKey privKey;
+
 		if (pubKeyParameter == null) {
-			keys = request.getAttachment(KeyPair.class);
+			KeyPair keys = request.getAttachment(KeyPair.class);
 			assert keys != null : "Key pair should be attached to request";
+			pubKey = keys.getPubKey();
+			privKey = keys.getPrivKey();
 		} else {
-			if (!read) throw READ_ONLY;
-			//noinspection ConstantConditions - will be used for read operations
-			keys = new KeyPair(null, PubKey.fromString(pubKeyParameter));
+			if (!read) {
+				throw READ_ONLY;
+			}
+			pubKey = PubKey.fromString(pubKeyParameter);
+			privKey = null;
 		}
-		RepoID repoID = RepoID.of(keys, repositoryName);
-		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
+		RepoID repoID = RepoID.of(pubKey, repositoryName);
+		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, privKey, diffCodec);
 		OTRepositoryAdapter<D> adapter = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 		return OTUplinkImpl.create(adapter, otSystem);
 	}

@@ -16,12 +16,15 @@
 
 package io.datakernel.http;
 
+import io.datakernel.promise.Async;
+import io.datakernel.promise.Promise;
+
 /**
  * This is a special exception, that is formatted as HTTP response with code and text from it by default.
  * It is a stackless exception.
  * Please be aware that when a cause is given, its stacktrace is printed too
  */
-public class HttpException extends Exception {
+public class HttpException extends Exception implements Async<HttpResponse> {
 	private final int code;
 
 	protected HttpException(int code) {
@@ -77,6 +80,11 @@ public class HttpException extends Exception {
 
 	public final int getCode() {
 		return code;
+	}
+
+	@Override
+	public Promise<HttpResponse> get() {
+		return Promise.ofException(this);
 	}
 
 	@Override

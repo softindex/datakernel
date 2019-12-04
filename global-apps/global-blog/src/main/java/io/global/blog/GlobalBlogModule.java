@@ -20,7 +20,7 @@ import io.global.blog.http.view.PostView;
 import io.global.blog.preprocessor.Preprocessor;
 import io.global.blog.util.Utils;
 import io.global.comm.container.CommModule;
-import io.global.comm.container.TypedRepoNames;
+import io.global.ot.TypedRepoNames;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.fs.local.GlobalFsDriver;

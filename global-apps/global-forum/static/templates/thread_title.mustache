@@ -1,43 +1,44 @@
 <div class="row align-items-center">
-    <div class="col-10 mr-n2">
+    <div class="col">
         <div id="thread-title"
-             class="form-control font-weight-bold text-dark px-2 m-0 text-truncate unselectable"
-             style="border: 1px solid transparent; background: transparent;">
+             class="form-control font-weight-bold text-dark p-0 my-2 px-2 text-truncate unselectable"
+             style="height: initial; border: 1px solid transparent; background: transparent;">
             {{thread.title}}
         </div>
         <form class="validate" action="#" novalidate>
             <input id="thread-title-input"
-                   class="form-control font-weight-bold m-0 p-2 pr-5 d-none"
+                   class="form-control font-weight-bold p-0 my-2 pl-2 pr-5 d-none"
+                   style="height: initial"
                    type="text"
                    required pattern="\s*(?=\S).{1,120}\s*">
         </form>
     </div>
 
     {{#thread.root.editable}}
-        <div class="col-2 mr-2 text-truncate">
+        <div class="col-auto mr-3 text-truncate">
             <div class="row">
-                <div class="col px-1 my-1">
-                    <button id="edit-thread"
-                            class="btn btn-sm btn-block btn-outline-primary">
+                <div class="col px-1">
+                    <div id="edit-thread"
+                            class="link-like text-secondary small unselectable">
                         rename
-                    </button>
-                    <button id="edit-thread-cancel"
-                            class="btn btn-sm btn-block btn-outline-primary d-none mt-0">
+                    </div>
+                    <div id="edit-thread-cancel"
+                            class="btn btn-sm btn-outline-secondary small unselectable d-none mt-0">
                         cancel
-                    </button>
+                    </div>
                 </div>
-                <div class="col px-1 my-1">
-                    <button id="delete-thread"
-                            class="btn btn-sm btn-block btn-outline-danger"
+                <div class="col px-1">
+                    <div id="delete-thread"
+                            class="link-like text-danger small unselectable"
                             data-toggle="modal"
                             data-target="#delete-modal">
                         delete
-                    </button>
-                    <button id="edit-thread-save"
-                            class="btn btn-sm btn-block btn-primary d-none mt-0"
+                    </div>
+                    <div id="edit-thread-save"
+                            class="btn btn-sm btn-secondary small d-none mt-0"
                             data-thread-id="{{thread.threadId}}">
                         save
-                    </button>
+                    </div>
                 </div>
             </div>
         </div>

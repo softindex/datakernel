@@ -40,5 +40,10 @@ public final class UserId implements Comparable<UserId> {
 		if (result != 0) return result;
 		return authId.compareTo(o.authId);
 	}
+
+	@Override
+	public String toString() {
+		return "UserId{pk='" + authId + "'}";
+	}
 }
 

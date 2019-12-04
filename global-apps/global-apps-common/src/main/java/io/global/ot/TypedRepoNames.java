@@ -1,4 +1,4 @@
-package io.global.comm.container;
+package io.global.ot;
 
 import io.datakernel.di.core.Key;
 import org.jetbrains.annotations.Nullable;
@@ -9,7 +9,10 @@ import java.util.Map;
 public final class TypedRepoNames {
 	private final String prefix;
 	private final Map<Key<?>, String> repoNames = new HashMap<>();
+	private final Map<String, Key<?>> repoNamesReverse = new HashMap<>();
+
 	private final Map<Key<?>, String> repoPrefixes = new HashMap<>();
+	private final Map<String, Key<?>> repoPrefixesReverse = new HashMap<>();
 
 	private TypedRepoNames(String prefix) {
 		this.prefix = prefix + '/';
@@ -21,15 +24,20 @@ public final class TypedRepoNames {
 
 	public TypedRepoNames withRepoName(Key<?> key, String repoName) {
 		repoNames.put(key, prefix + repoName);
+		repoNamesReverse.put(repoName, key);
 		return this;
 	}
 
 	public TypedRepoNames withRepoPrefix(Key<?> key, String repoPrefix) {
 		repoPrefixes.put(key, prefix + repoPrefix + '/');
+		repoPrefixesReverse.put(repoPrefix, key);
 		return this;
 	}
 
-	@Nullable
+	public String getPrefix() {
+		return prefix;
+	}
+
 	public String getRepoName(Key<?> key) {
 		String repoName = repoNames.get(key);
 		if (repoName == null) {
@@ -44,6 +52,15 @@ public final class TypedRepoNames {
 			throw new IllegalArgumentException("No repo prefix for type " + key.getDisplayString() + " provided");
 		}
 		return repoPrefix;
+	}
+
+	@Nullable
+	public Key<?> getKeyByRepo(String repoName) {
+		Key<?> plain = repoNamesReverse.get(repoName.substring(prefix.length()));
+		if (plain != null) {
+			return plain;
+		}
+		return repoPrefixesReverse.get(repoName.substring(prefix.length(), repoName.lastIndexOf('/')));
 	}
 
 	@Override

@@ -16,10 +16,7 @@
 
 package io.global.common;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codec.StructuredDecoder;
-import io.datakernel.codec.StructuredInput;
-import io.datakernel.codec.StructuredOutput;
+import io.datakernel.codec.*;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.common.parse.ParseException;
@@ -76,9 +73,8 @@ public final class BinaryDataFormats {
 								Signature::getS, registry.get(BigInteger.class)))
 
 				.withGeneric(SignedData.class, (registry, subCodecs) ->
-						tuple((bytes, signature) ->
-										SignedData.parse((StructuredDecoder<?>) subCodecs[0], bytes, signature),
-								SignedData::getBytes, registry.get(byte[].class),
+						tuple((value, signature) -> SignedData.parse(subCodecs[0], value, signature),
+								SignedData::getValue, subCodecs[0],
 								SignedData::getSignature, registry.get(Signature.class)))
 
 				.with(EncryptedData.class, registry ->

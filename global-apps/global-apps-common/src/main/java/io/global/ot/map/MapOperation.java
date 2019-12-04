@@ -38,4 +38,9 @@ public final class MapOperation<K, V> {
 	public int hashCode() {
 		return operations.hashCode();
 	}
+
+	@Override
+	public String toString() {
+		return "MapOperation{" + operations + '}';
+	}
 }
