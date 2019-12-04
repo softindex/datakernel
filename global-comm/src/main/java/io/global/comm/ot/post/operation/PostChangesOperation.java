@@ -97,12 +97,42 @@ public final class PostChangesOperation implements ThreadOperation {
 
 	@Override
 	public String toString() {
-		return "PostChangesOperation{" +
-				"contentOps=" + changeContentOps +
-				", attachmentsOps=" + changeAttachmentsOps +
-				", ratingOps=" + changeRatingOps +
-				", deleteOps=" + deletePostOps +
-				", lastEditTimestamps=" + changeLastEditTimestamps +
-				'}';
+		StringBuilder sb = new StringBuilder("PostChangesOperation{");
+		boolean was = false;
+		if (!changeContentOps.isEmpty()) {
+			was = true;
+			sb.append("contentOps=").append(changeContentOps);
+		}
+		if (!changeAttachmentsOps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			} else {
+				was = true;
+			}
+			sb.append("attachmentsOps=").append(changeAttachmentsOps);
+		}
+		if (!changeRatingOps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			} else {
+				was = true;
+			}
+			sb.append("ratingOps=").append(changeRatingOps);
+		}
+		if (!deletePostOps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			} else {
+				was = true;
+			}
+			sb.append("deleteOps=").append(deletePostOps);
+		}
+		if (!changeLastEditTimestamps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			}
+			sb.append("lastEditTimestamps=").append(changeLastEditTimestamps);
+		}
+		return sb.append('}').toString();
 	}
 }

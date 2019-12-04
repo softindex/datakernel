@@ -55,9 +55,7 @@ public final class OTGraphServlet<K, D> implements AsyncServlet {
 		return currentCommitFunction.apply(request)
 				.then(currentCommit -> repository.getHeads()
 						.then(heads -> loadGraph(repository, otSystem, heads, graph))
-						.map(graph -> HttpResponse.ok200()
-								.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
-								.withBody(graph.toGraphViz(currentCommit).getBytes(UTF_8))))
+						.map(graph -> HttpResponse.ok200().withPlainText(graph.toGraphViz(currentCommit))))
 				.whenComplete(toLogger(logger, thisMethod(), request, this));
 	}
 }

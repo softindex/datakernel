@@ -120,7 +120,7 @@ public final class GlobalKvNodeServlet {
 						return node.list(space)
 								.map(list ->
 										HttpResponse.ok200()
-												.withBody(encode(SET_STRING_CODEC, list)));
+												.withJson(SET_STRING_CODEC, list));
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}

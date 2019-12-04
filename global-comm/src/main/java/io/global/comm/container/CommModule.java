@@ -19,6 +19,7 @@ import io.global.comm.util.PagedAsyncMap;
 import io.global.common.KeyPair;
 import io.global.kv.api.KvClient;
 import io.global.ot.OTGeneratorsModule;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.api.CommitId;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
@@ -56,7 +57,7 @@ public final class CommModule extends AbstractModule {
 	@Provides
 	@ContainerScope
 	KvSessionStore<UserId> sessionStore(Eventloop eventloop, KvClient<String, UserId> kvClient, TypedRepoNames repoNames) {
-		return KvSessionStore.create(eventloop, kvClient, repoNames.getRepoName(new Key<KvSessionStore<UserId>>(){}));
+		return KvSessionStore.create(eventloop, kvClient, repoNames.getRepoName(new Key<KvClient<String, UserId>>(){}));
 	}
 
 	@Provides

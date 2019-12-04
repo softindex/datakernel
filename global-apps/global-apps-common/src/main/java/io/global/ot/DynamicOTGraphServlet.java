@@ -3,7 +3,9 @@ package io.global.ot;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.common.parse.ParseException;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.ot.OTLoadedGraph;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
@@ -19,11 +21,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
 import static io.global.ot.DynamicOTUplinkServlet.KEYS_REQUIRED;
 import static io.global.util.Utils.limit;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
 
 public final class DynamicOTGraphServlet<D> implements AsyncServlet {
@@ -61,9 +61,7 @@ public final class DynamicOTGraphServlet<D> implements AsyncServlet {
 		OTRepository<CommitId, D> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
 		return repository.getHeads()
 				.then(heads -> loadGraph(repository, otSystem, heads, new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)))
-				.map(graph -> HttpResponse.ok200()
-						.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
-						.withBody(graph.toGraphViz().getBytes(UTF_8)));
+				.map(graph -> HttpResponse.ok200().withPlainText(graph.toGraphViz()));
 	}
 
 	private OTRepository<CommitId, D> getRepo(HttpRequest request) throws ParseException {

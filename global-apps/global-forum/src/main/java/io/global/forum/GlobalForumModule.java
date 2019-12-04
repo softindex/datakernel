@@ -3,6 +3,8 @@ package io.global.forum;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Eager;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -12,7 +14,7 @@ import io.datakernel.remotefs.FsClient;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.comm.container.CommModule;
-import io.global.comm.container.TypedRepoNames;
+import io.global.ot.TypedRepoNames;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.forum.container.ForumUserContainer;
@@ -82,12 +84,16 @@ public final class GlobalForumModule extends AbstractModule {
 	}
 
 	@Provides
-	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader) {
+	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader, @Optional @Named("debug") AsyncServlet debugServlet) {
 		String appStoreUrl = config.get("appStoreUrl");
-		return RoutingServlet.create()
+		RoutingServlet servlet = RoutingServlet.create();
+		if (debugServlet != null) {
+			servlet.map("/debug/*", debugServlet);
+		}
+		return servlet
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
-				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
-				.then(renderErrors(templater));
+				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000));
+//				.then(renderErrors(templater));
 	}
 
 	@Provides

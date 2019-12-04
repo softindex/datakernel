@@ -18,6 +18,7 @@ package io.global.fs.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredEncoder;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.TypeT;
 import io.datakernel.csp.ChannelSupplier;
@@ -34,6 +35,7 @@ import io.global.fs.transformers.FrameDecoder;
 import io.global.fs.transformers.FrameEncoder;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.codec.StructuredEncoder.ofList;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
@@ -91,8 +93,7 @@ public final class GlobalFsNodeServlet {
 						return node.listEntities(space, glob != null ? glob : "**")
 								.map(list ->
 										HttpResponse.ok200()
-												.withBodyStream(ChannelSupplier.ofStream(list.stream()
-														.map(meta -> encodeWithSizePrefix(SIGNED_CHECKPOINT_CODEC, meta)))));
+												.withJson(ofList(SIGNED_CHECKPOINT_CODEC), list));
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}

@@ -15,7 +15,8 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.blog.container.BlogUserContainer;
 import io.global.blog.ot.BlogMetadata;
-import io.global.comm.container.TypedRepoNames;
+import io.global.kv.api.KvClient;
+import io.global.ot.TypedRepoNames;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
@@ -57,9 +58,9 @@ public final class GlobalBlogApp extends Launcher {
 
 			.withRepoName(new Key<MapOperation<String, ThreadMetadata>>() {}, "threads")
 
-			.withRepoPrefix(Key.of(ThreadOperation.class), "threads")
+			.withRepoPrefix(Key.of(ThreadOperation.class), "thread")
 
-			.withRepoName(new Key<KvSessionStore<UserId>>() {}, "session");
+			.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 
 	@Inject
 	AsyncHttpServer server;

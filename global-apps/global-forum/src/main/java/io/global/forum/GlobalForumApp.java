@@ -13,23 +13,23 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.comm.container.TypedRepoNames;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
+import io.global.debug.DebugViewerModule;
 import io.global.forum.container.ForumUserContainer;
 import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
+import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
-import io.global.mustache.DebugMustacheModule;
+import io.global.mustache.MustacheModule;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.map.MapOperation;
-import io.global.ot.server.CommitStorage;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
-import io.global.session.KvSessionStore;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -58,19 +58,17 @@ public final class GlobalForumApp extends Launcher {
 
 			.withRepoName(new Key<MapOperation<String, ThreadMetadata>>() {}, "threads")
 
-			.withRepoPrefix(Key.of(ThreadOperation.class), "threads")
+			.withRepoPrefix(Key.of(ThreadOperation.class), "thread")
 
-			.withRepoName(new Key<KvSessionStore<UserId>>() {}, "session");
+			.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 
 	@Inject
 	AsyncHttpServer server;
 
 	@Inject
-	@SuppressWarnings("unused")
 	GlobalFsDriver fsDriver;
 
 	@Inject
-	@SuppressWarnings("unused")
 	GlobalKvDriver<String, UserId> kvDriver;
 
 	@Provides
@@ -96,9 +94,9 @@ public final class GlobalForumApp extends Launcher {
 				new ContainerModule<ForumUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
-				new GlobalNodesModule()
-						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID).rebindExport(CommitStorage.class, Key.of(CommitStorage.class, "stub"))),
-				new DebugMustacheModule()
+				new GlobalNodesModule().overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
+				new MustacheModule(),
+				new DebugViewerModule<ForumUserContainer>() {}
 		);
 	}
 

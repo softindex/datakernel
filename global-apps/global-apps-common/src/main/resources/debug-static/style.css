@@ -1,0 +1,163 @@
+
+.header {
+  color: #fff;
+  background-color: #343a40;
+  padding: 1em 1.5em;
+  margin: 0;
+  z-index: 1;
+}
+
+.key {
+  font-size: 0.5em;
+  font-family: monospace;
+  font-weight: normal;
+  vertical-align: middle;
+  background-color: #6a777d;
+  padding: 0.5em;
+  border-radius: 5px;
+  user-select: all;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  background: #efefef;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  font-family: monospace;
+  font-size: 1.2em;
+  padding: 1em 2em;
+  background: #bfbfbf;
+  height: 100%;
+}
+
+.body {
+  display: flex;
+  flex: 1;
+}
+
+.line {
+  height: 100%;
+  width: 1px;
+  background: black
+}
+
+.has-children, .repo {
+  cursor: pointer;
+}
+
+.repo:hover {
+  color: darkslateblue;
+  text-decoration: underline;
+  background: #b7b7b7;
+}
+
+.has-children:hover {
+  background: #b7b7b7;
+}
+
+.has-children::before {
+  content: "+";
+}
+
+.has-children.expanded::before {
+  content: "-";
+}
+
+g.edge:hover > polygon, g.edge:hover > path {
+  fill: yellowgreen;
+  stroke: yellowgreen;
+}
+
+g.node > ellipse {
+  cursor: pointer;
+}
+
+g.node > text {
+  font-family: sans-serif;
+  pointer-events: none;
+}
+
+.diff-modal {
+  position: absolute;
+  z-index: 1;
+  tab-index: -1;
+  left: 500px;
+  top: 200px;
+  border-radius: 5px;
+
+  font-family: sans-serif;
+}
+
+.diff-title {
+  font-weight: bold;
+  text-align: center;
+  padding-bottom: 0.2em;
+  background: #bfbfbf;
+  border-radius: 5px 5px 0 0;
+  border-top: 1px solid black;
+  border-left: 1px solid black;
+  border-right: 1px solid black;
+}
+
+.diff-body {
+  background: #d5d5d5;
+  border-radius: 0 0 5px 5px;
+  padding: 0.8em;
+  border-bottom: 1px solid black;
+  border-left: 1px solid black;
+  border-right: 1px solid black;
+}
+
+.diff {
+  cursor: default;
+  padding: 0.2em;
+  border-radius: 2px;
+}
+
+.diff:before {
+  content: " - ";
+}
+
+.diff:hover {
+  background: #b9b9b9;
+}
+
+.diff-hide {
+  font-size: 0.8em;
+}
+
+.diff-hide:hover {
+  background: #878787;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.user-id {
+  text-decoration: underline;
+  color: #343a40;
+  cursor: pointer;
+}
+
+svg {
+  transform-origin: top left;
+}
+
+svg * {
+  user-select: none;
+}
+
+.graph-coords {
+  font-family: monospace;
+  position: absolute;
+  z-index: 1;
+  top: 6em;
+  left: 1em;
+  user-select: none;
+}
