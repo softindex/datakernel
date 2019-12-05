@@ -9,9 +9,22 @@
 </head>
 <body>
 
-<h3 class="header"><span class="title"></span><span class="ml-2 key"></span></h3>
-<div class="graph-coords" style="display: none"></div>
-<div class="body"></div>
+<div class="header row">
+  <div id="title" class="col-auto"></div>
+  <div class="col"></div>
+  <div class="col-auto">
+    <label class="btn btn-secondary non-default mb-0" id="polling">
+      <input type="checkbox" class="align-middle"> polling
+    </label>
+  </div>
+  <div class="col-auto btn-group">
+    <a href="/debug/ot" class="btn btn-secondary" id="ot-link">OT</a>
+    <a href="/debug/fs" class="btn btn-secondary" id="fs-link">FS</a>
+    <a href="/debug/kv" class="btn btn-secondary" id="kv-link">KV</a>
+  </div>
+</div>
+<div class="non-default" id="graph-coords"></div>
+<div id="body"></div>
 
 <div class="diff-modal collapse">
   <div class="diff-title"><span class="diff-title-content"></span><span class="float-right px-2 py-0 m-1 diff-hide">&times;</span>
@@ -19,7 +32,9 @@
   <div class="diff-body"></div>
 </div>
 
-<script src="/debug/static/list.js"></script>
+<script type="application/javascript">const pk = '{pk}';
+const type = '{type}'</script>
+<script src="/debug/static/common.js"></script>
 <script src="/debug/static/{type}.js"></script>
 
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"

@@ -1,5 +1,11 @@
+/* make display width unaffected by scrollbar presence */
+body {
+  width: 100vw;
+  overflow-x: hidden;
+}
 
 .header {
+  font-size: 1.5em;
   color: #fff;
   background-color: #343a40;
   padding: 1em 1.5em;
@@ -7,8 +13,8 @@
   z-index: 1;
 }
 
-.key {
-  font-size: 0.5em;
+#key {
+  font-size: 0.7em;
   font-family: monospace;
   font-weight: normal;
   vertical-align: middle;
@@ -37,7 +43,7 @@ body {
   height: 100%;
 }
 
-.body {
+#body {
   display: flex;
   flex: 1;
 }
@@ -70,9 +76,12 @@ body {
   content: "-";
 }
 
-g.edge:hover > polygon, g.edge:hover > path {
-  fill: yellowgreen;
-  stroke: yellowgreen;
+g.edge:hover > polygon {
+  stroke-width: 2;
+}
+g.edge:hover > path {
+  stroke-dasharray: 5, 1;
+  stroke-width: 2;
 }
 
 g.node > ellipse {
@@ -80,6 +89,7 @@ g.node > ellipse {
 }
 
 g.node > text {
+  font-size: 0.7em;
   font-family: sans-serif;
   pointer-events: none;
 }
@@ -153,11 +163,15 @@ svg * {
   user-select: none;
 }
 
-.graph-coords {
+#graph-coords {
   font-family: monospace;
   position: absolute;
   z-index: 1;
   top: 6em;
   left: 1em;
   user-select: none;
+}
+
+.non-default {
+  display: none;
 }

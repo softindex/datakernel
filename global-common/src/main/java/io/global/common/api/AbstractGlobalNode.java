@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 
 public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, L extends AbstractGlobalNamespace<L, S, N>, N>
 		implements Initializable<S> {
-	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(AbstractGlobalNode.class, "latencyMargin", Duration.ofMinutes(5));
+	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(AbstractGlobalNode.class, "latencyMargin", Duration.ofSeconds(5));
 
 	private final Set<PubKey> managedPublicKeys = new HashSet<>();
 

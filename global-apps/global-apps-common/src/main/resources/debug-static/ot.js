@@ -1,24 +1,33 @@
 window.onload = () => {
-  let $title = $('.title');
-  let $key = $('.key');
-  let $body = $('.body');
+  let $title = $('#title');
+  let $body = $('#body');
   let $diffModal = $('.diff-modal');
-  let $graphCoords = $('.graph-coords');
+  let $graphCoords = $('#graph-coords');
+  let $polling = $('#polling');
+  let $pollingCb = $polling.find('input:first');
+
+  let $collapses = $('.collapse');
+  let $nonDefault = $('.non-default');
 
   let $svg = null;
+  let pollTimerId = null;
+  let listTimerId = null;
 
-  let graphTimerId = null;
-
+  init();
   $diffModal.find('.diff-hide').click(() => $diffModal.collapse('hide'));
 
   let viz = new Viz();
 
-  function updateGraph(pk, repo) {
-    fetch('/debug/ot/api/' + pk + '/' + repo)
+  function updateGraph(repo) {
+    fetch('/debug/ot/api/' + repo)
       .then(r => r.text())
       .then(text => {
-        let s = text.replace(/label=/g, 'xlabel=');//.replace(/label="([^"]*?)\|([^"]*?)"/g, 'label="$1"');
-        return viz.renderSVGElement(s);
+        return viz.renderSVGElement(text.replace(/label="([^"]*?)"/g, (_, content) => {
+          let diffs = content.split(',\n');
+          let label = diffs.map(d => d.split('|')[0]).join('\n+');
+          let xlabel = diffs.map(d => d.split('|')[1]).join('\n');
+          return 'label="+' + label + '"; xlabel="' + xlabel + '"';
+        }));
       })
       .then(svg => {
         let pos = [0, 0];
@@ -35,16 +44,17 @@ window.onload = () => {
         $svg.find('g.edge > text').each((_, e) => {
           let $e = $(e);
           let text = $e.text();
-          let diff = text.endsWith(',') ? text.substring(0, text.length - 1) : text;
+          if (text.startsWith('+')) {
+            $e.text(text.substring(1)).attr('font-family', 'sans-serif').attr('font-size', '10');
+            return;
+          }
           let edge = $e.parent().attr('id');
           let diffs = diffMap[edge];
           if (!diffs) {
             diffs = [];
             diffMap[edge] = diffs;
           }
-          diffs.push(diff.split('|'));
-          // diffs.push([diff, diff]);
-          // $e.attr('font-family', 'sans-serif').attr('font-size', '10');
+          diffs.push(text);
           $e.remove();
         });
 
@@ -52,7 +62,7 @@ window.onload = () => {
         $svg.find('g.graph > polygon').remove(); // remove white background
 
         let $graph = $svg.find('g.graph');
-        $graph.attr('transform', null);
+        $graph.attr('transform', 'scale(1.5)');
 
         $svg.find('g.edge').click(e => {
           let id = e.currentTarget.id;
@@ -64,7 +74,7 @@ window.onload = () => {
           $diffModal.data('edge', id);
           $diffModal.find('.diff-title-content').text('Diffs for: ' + $(e.currentTarget).find('title').text());
           $diffModal.find('.diff-body').empty()
-            .append(diffMap[id].map(diff => $('<div class="diff"></div>').html(diff[1].replace(/UserId{pl='([^']*)'}/g, '<div class="user-id" title="$1">USER</div>'))));
+            .append(diffMap[id].map(diff => $('<div class="diff"></div>').html(diff.replace(/UserId{pl='([^']*)'}/g, '<div class="user-id" title="$1">USER</div>'))));
 
           let rect = e.currentTarget.getBoundingClientRect();
           $diffModal.css('left', rect.x - $diffModal.width() / 2);
@@ -72,12 +82,12 @@ window.onload = () => {
           $diffModal.collapse('show');
         });
 
-        $body.empty().append($('<div class="mx-auto"></div>').append($svg));
+        $body.empty().append($('<div class="mx-auto mt-5"></div>').append($svg));
 
         let bbox = $svg[0].getBBox();
-        $svg.attr('width', bbox.width);
-        $svg.attr('height', bbox.height);
-        $svg.attr('viewBox', [bbox.x - 10, bbox.y - 10, bbox.width + 10, bbox.height + 10].join(' '));
+        $svg.attr('width', bbox.width + 2);
+        $svg.attr('height', bbox.height + 2);
+        $svg.attr('viewBox', [bbox.x - 2, bbox.y - 2, bbox.width + 4, bbox.height + 4].join(' '));
 
         transform(pos[0], pos[1], scale)
       }, e => {
@@ -86,51 +96,73 @@ window.onload = () => {
       })
   }
 
-  function graphView(pk, repo) {
-    $title.text('Commit graph for a repo:');
-    $key.text(repo);
+  function graphView(repo) {
+    $title.text('Commit graph of repository \'' + repo + '\'');
     $graphCoords.show();
-    document.body.style.overflow = 'hidden';
-    updateGraph(pk, repo);
+    $polling.show();
 
-    function graphTimer() {
-      graphTimerId = setTimeout(() => {
-        updateGraph(pk, repo);
-        graphTimer();
-      }, 1000);
+    document.body.style.overflow = 'hidden';
+
+    function pollTimer() {
+      updateGraph(repo);
+      pollTimerId = setTimeout(pollTimer, 1000);
     }
 
-    // graphTimer();
+    let pollingDisabled = localStorage.getItem(type + '-no-polling');
+
+    $pollingCb.prop('checked', !pollingDisabled);
+
+    if (pollingDisabled) {
+      updateGraph(repo);
+    } else {
+      pollTimer();
+    }
+
+    $pollingCb.off('click').click(() => {
+      if (pollTimerId) {
+        clearTimeout(pollTimerId);
+        pollTimerId = null;
+        localStorage.setItem(type + '-no-polling', 'true');
+      } else {
+        pollTimer();
+        localStorage.removeItem(type + '-no-polling');
+      }
+    });
   }
 
-  function listView(pk) {
-    function update() {
-      $title.text('OT repos of:');
-      $key.text(pk);
+  function listView() {
+    $title.text('OT repositories');
 
-      createTreeList('/debug/ot/api/' + pk, repo => view(pk + '/' + repo))
-        .then($list => $body.append($('<div class="container"></div>').append($list)), console.log);
+    function update() {
+      createTreeList('/debug/ot/api', repo => view(repo, true), x => x)
+        .then($list => $body.empty().append($('<div class="container"></div>').append($list)), console.log);
     }
 
     update();
+    listTimerId = setInterval(update, 3000);
   }
 
-  function view(path, push = true) {
-    let [pk, ...tail] = path.split('/');
-
-    $diffModal.removeClass('show');
-    $graphCoords.hide();
-    $svg = null;
+  function view(path, push) {
+    $collapses.removeClass('show');
+    $nonDefault.hide();
     $body.empty();
-    document.body.style.overflow = 'initial';
-    if (graphTimerId) {
-      clearTimeout(graphTimerId);
+
+    $svg = null;
+    document.body.style.overflow = '';
+
+    if (pollTimerId) {
+      clearTimeout(pollTimerId);
+      pollTimerId = null;
+    }
+    if (listTimerId) {
+      clearInterval(listTimerId);
+      listTimerId = null;
     }
 
-    if (tail.length === 0) {
-      listView(pk);
+    if (path === '') {
+      listView();
     } else {
-      graphView(pk, tail.join('/'));
+      graphView(path);
     }
     if (push) {
       window.history.pushState(null, null, '/debug/ot/' + path);
@@ -138,8 +170,7 @@ window.onload = () => {
   }
 
   function pathView() {
-    let path = location.pathname;
-    view(path.substring('/debug/ot/'.length, path.endsWith('/') ? path.length - 1 : undefined), false);
+    view(location.pathname.substring('/debug/fs'.length).replace(/^\/|\/$/g, ''));
   }
 
   pathView();
@@ -149,10 +180,10 @@ window.onload = () => {
   let grabbed = null;
 
   function transform(x, y, scale) {
+    $graphCoords.text('x: ' + x.toFixed(0) + ', y: ' + y.toFixed(0) + ', scale: ' + scale.toFixed(3));
     $svg.data('pos', [x, y]);
     $svg.data('scale', scale);
     $svg.css('transform', 'translate(' + x + 'px, ' + y + 'px) scale(' + scale + ')');
-    $graphCoords.text('x: ' + x.toFixed(0) + ', y: ' + y.toFixed(0) + ', scale: ' + scale.toFixed(3));
   }
 
   function handleDrag(x, y, pressed) {
@@ -205,8 +236,8 @@ window.onload = () => {
   }
 
   let pressed = false;
-  $(document).mousedown(() => pressed = true);
+  $body.mousedown(() => pressed = true);
+  $body.mousewheel(e => handleScale(e.pageX, e.pageY, e.deltaY));
   $(document).mouseup(e => handleDrag(e.pageX, e.pageY, pressed = false));
   $(document).mousemove(e => handleDrag(e.pageX, e.pageY, pressed));
-  $(document).mousewheel(e => handleScale(e.pageX, e.pageY, e.deltaY));
 };

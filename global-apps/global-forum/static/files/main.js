@@ -322,6 +322,7 @@ window.onload = () => {
           })
           .then(text => {
             $reply.remove();
+            shownReply = null;
             let $rerendered = $(text);
             if ($rerendered.find('.post').data('inlineParent')) {
               $fullPost.parent().append($rerendered);

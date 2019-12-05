@@ -1,20 +1,20 @@
 window.onload = () => {
-  let $title = $('.title');
-  let $key = $('.key');
-  let $body = $('.body');
+  let $title = $('#title');
+  let $body = $('#body');
 
-  function listView(pk) {
+  init();
+
+  function listView() {
+    $title.text('FS files');
+
     function update() {
-      $title.text('FS files of:');
-      $key.text(pk);
-
-      createTreeList('/debug/fs/api/' + pk, file => window.open('/debug/fs/' + pk + '/' + file), meta => meta[0])
+      createTreeList('/debug/fs/api', file => window.open('/debug/fs/' + file), meta => meta[0])
         .then($list => $body.empty().append($('<div class="container"></div>').append($list)), console.log);
     }
 
     update();
+    setInterval(update, 3000);
   }
 
-  let path = location.pathname;
-  listView(path.substring('/debug/fs/'.length, path.endsWith('/') ? path.length - 1 : undefined), false);
-}
+  listView(location.pathname.substring('/debug/fs'.length).replace(/^\/|\/$/g, ''), false);
+};
