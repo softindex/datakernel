@@ -364,10 +364,7 @@ public final class ByteBufQueue implements Recyclable {
 	@Contract(pure = true)
 	public ByteBuf peekBuf(int n) {
 		assert n <= remainingBufs();
-		int i = first + n;
-		if (i >= bufs.length)
-			i -= bufs.length;
-		return bufs[i];
+		return bufs[(first + n) % bufs.length];
 	}
 
 	/**
@@ -375,7 +372,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@Contract(pure = true)
 	public int remainingBufs() {
-		return last >= first ? last - first : bufs.length + (last - first);
+		return (bufs.length + (last - first)) % bufs.length;
 	}
 
 	/**
@@ -465,6 +462,18 @@ public final class ByteBufQueue implements Recyclable {
 			ByteBuf buf = bufs[i];
 			if (index < buf.readRemaining())
 				return buf.peek(index);
+			index -= buf.readRemaining();
+		}
+	}
+
+	public void setByte(int index, byte b) {
+		assert hasRemainingBytes(index + 1);
+		for (int i = first; ; i = next(i)) {
+			ByteBuf buf = bufs[i];
+			if (index < buf.readRemaining()) {
+				buf.array[buf.head + index] = b;
+				return;
+			}
 			index -= buf.readRemaining();
 		}
 	}
