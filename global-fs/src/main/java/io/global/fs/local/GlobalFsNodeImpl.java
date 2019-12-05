@@ -23,6 +23,7 @@ import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.promise.RetryPolicy;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
@@ -154,7 +155,16 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	@Override
 	public Promise<@Nullable SignedData<GlobalFsCheckpoint>> getMetadata(PubKey space, String filename) {
-		return simpleMethod(space, node -> node.getMetadata(space, filename), ns -> ns.getMetadata(filename))
+		GlobalFsNamespace ns = ensureNamespace(space);
+		return ns.getMetadata(filename)
+				.thenEx((signedData, e) -> {
+					if (!isMasterFor(space) && (signedData == null || e != null)) {
+						return ns.ensureMasterNodes()
+								.then(masters -> Promises.firstSuccessful(masters.stream()
+										.map(master -> AsyncSupplier.cast(() -> master.getMetadata(space, filename)))));
+					}
+					return Promise.of(signedData);
+				})
 				.mapEx((res, e) -> e != null ? null : res)
 				.whenComplete(toLogger(logger, TRACE, "getMetadata", space, filename, this));
 	}
