@@ -653,6 +653,58 @@ public final class ByteBufQueue implements Recyclable {
 		return maxSize - s;
 	}
 
+	public interface ByteScanner {
+		boolean consume(byte value);
+	}
+
+	public int scanBytes(ByteScanner byteScanner) {
+		int skipped = 0;
+		for (int n = first; n != last; n = next(n)) {
+			ByteBuf buf = bufs[n];
+			byte[] array = buf.array();
+			int tail = buf.tail();
+			for (int i = buf.head(); i != tail; i++) {
+				if (byteScanner.consume(array[i])) {
+					return skipped + i - buf.head();
+				}
+			}
+			skipped += buf.readRemaining();
+		}
+		return skipped;
+	}
+
+	public int scanBytes(int offset, ByteScanner byteScanner) {
+		ByteBuf buf = null;
+		int i = 0;
+		int n;
+		int skipped = 0;
+		for (n = first; n != last; n = next(n)) {
+			buf = bufs[n];
+			int readRemaining = buf.readRemaining();
+			if (offset < readRemaining) {
+				i = buf.head() + offset;
+				break;
+			}
+			offset -= readRemaining;
+			skipped += readRemaining;
+		}
+		while (n != last) {
+			byte[] array = buf.array();
+			int tail = buf.tail();
+			for (; i != tail; i++) {
+				if (byteScanner.consume(array[i])) {
+					return skipped + i - buf.head();
+				}
+			}
+			skipped += buf.readRemaining();
+			n = next(n);
+			if (n == last) break;
+			buf = bufs[n];
+			i = buf.head();
+		}
+		return skipped;
+	}
+
 	@NotNull
 	public Iterator<ByteBuf> asIterator() {
 		if (!hasRemaining()) return emptyIterator();

@@ -250,11 +250,10 @@ public abstract class AbstractHttpConnection {
 	private byte[] readHeaderEx(int i) throws ParseException {
 		int remainingBytes = readQueue.remainingBytes();
 		while (true) {
+			i = readQueue.scanBytes(i, b -> b == CR || b == LF);
 			if (i >= remainingBytes) return null;
 			byte b = readQueue.peekByte(i++);
-			if (b != CR && b != LF) {
-				continue;
-			}
+			assert b == CR || b == LF;
 			byte[] bytes;
 			if (b == CR) {
 				if (i >= remainingBytes) return null;
