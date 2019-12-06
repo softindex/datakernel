@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
@@ -24,10 +25,9 @@ import org.junit.Test;
 
 import java.nio.ByteBuffer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
-public class CodeGenSerializerDefByteBufferTestX {
+public class CodeGenSerializerDefByteBufferTest {
 
 	private static <T> T doTest(T testData1, BinarySerializer<T> serializer, BinarySerializer<T> deserializer) {
 		byte[] array = new byte[1000];
@@ -178,6 +178,33 @@ public class CodeGenSerializerDefByteBufferTestX {
 		assertNotNull(testBuffer3);
 		assertNotNull(testBuffer3.getBuffer());
 		assertEquals(testBuffer1.getBuffer(), testBuffer3.getBuffer());
+	}
+
+
+	public static class TestByteBuffer {
+		@Serialize(order = 0)
+		@SerializeNullable
+		public ByteBuffer buffer;
+	}
+
+	@Test
+	public void testByteBuffer() {
+		TestByteBuffer object = new TestByteBuffer();
+
+		{
+			BinarySerializer<TestByteBuffer> serializer = SerializerBuilder.create(DefiningClassLoader.create())
+					.withCompatibilityLevel(CompatibilityLevel.LEVEL_2)
+					.build(TestByteBuffer.class);
+			TestByteBuffer deserialized = doTest(object, serializer, serializer);
+			assertNull(deserialized.buffer);
+		}
+
+		{
+			BinarySerializer<TestByteBuffer> serializer = SerializerBuilder.create(DefiningClassLoader.create())
+					.build(TestByteBuffer.class);
+			TestByteBuffer deserialized = doTest(object, serializer, serializer);
+			assertNull(deserialized.buffer);
+		}
 	}
 
 }
