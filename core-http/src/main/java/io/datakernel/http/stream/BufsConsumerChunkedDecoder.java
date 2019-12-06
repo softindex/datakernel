@@ -171,21 +171,23 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 	private void validateLastChunk() {
 		int remainingBytes = bufs.remainingBytes();
-		for (int i = 0; i < remainingBytes - 3; i++) {
-			if (bufs.peekByte(i) == CR
-					&& bufs.peekByte(i + 1) == LF
-					&& bufs.peekByte(i + 2) == CR
-					&& bufs.peekByte(i + 3) == LF) {
-				bufs.skip(i + 4);
+		if (remainingBytes >= 4) {
+			for (int i = 0; i < remainingBytes - 3; i++) {
+				if (bufs.peekByte(i) == CR
+						&& bufs.peekByte(i + 1) == LF
+						&& bufs.peekByte(i + 2) == CR
+						&& bufs.peekByte(i + 3) == LF) {
+					bufs.skip(i + 4);
 
-				input.endOfStream()
-						.then($ -> output.accept(null))
-						.whenResult($ -> completeProcess());
-				return;
+					input.endOfStream()
+							.then($ -> output.accept(null))
+							.whenResult($ -> completeProcess());
+					return;
+				}
 			}
-		}
 
-		bufs.skip(remainingBytes - 3);
+			bufs.skip(remainingBytes - 3);
+		}
 
 		input.needMoreData()
 				.whenResult($ -> validateLastChunk());
