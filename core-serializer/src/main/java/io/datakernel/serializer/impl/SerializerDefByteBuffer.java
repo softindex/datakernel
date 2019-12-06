@@ -64,21 +64,21 @@ public final class SerializerDefByteBuffer implements SerializerDefWithNullable 
 	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return let(
 				cast(value, ByteBuffer.class),
-				buffer ->
-						let(call(buffer, "remaining"), remaining -> {
-
-							if (!nullable) {
-								return sequence(
+				buffer -> {
+					if (!nullable) {
+						return let(call(buffer, "remaining"), remaining ->
+								sequence(
 										writeVarInt(buf, pos, remaining),
-										writeBytes(buf, pos, call(buffer, "array"), call(buffer, "position"), remaining));
-							} else {
-								return ifThenElse(isNull(buffer),
-										writeByte(buf, pos, value((byte) 0)),
+										writeBytes(buf, pos, call(buffer, "array"), call(buffer, "position"), remaining)));
+					} else {
+						return ifThenElse(isNull(buffer),
+								writeByte(buf, pos, value((byte) 0)),
+								let(call(buffer, "remaining"), remaining ->
 										sequence(
 												writeVarInt(buf, pos, inc(remaining)),
-												writeBytes(buf, pos, call(buffer, "array"), call(buffer, "position"), remaining)));
-							}
-						}));
+												writeBytes(buf, pos, call(buffer, "array"), call(buffer, "position"), remaining))));
+					}
+				});
 	}
 
 	@Override
@@ -94,14 +94,13 @@ public final class SerializerDefByteBuffer implements SerializerDefWithNullable 
 														readBytes(in, array),
 														staticCall(ByteBuffer.class, "wrap", array)));
 							} else {
-								return let(
-										arrayNew(byte[].class, dec(length)),
-										array ->
-												ifThenElse(cmpEq(length, value(0)),
-														nullRef(ByteBuffer.class),
-														sequence(length,
-																readBytes(in, array),
-																staticCall(ByteBuffer.class, "wrap", array))));
+								return ifThenElse(cmpEq(length, value(0)),
+										nullRef(ByteBuffer.class),
+										let(
+												arrayNew(byte[].class, dec(length)),
+												array -> sequence(
+														readBytes(in, array),
+														staticCall(ByteBuffer.class, "wrap", array))));
 							}
 						}) :
 				let(readVarInt(in),

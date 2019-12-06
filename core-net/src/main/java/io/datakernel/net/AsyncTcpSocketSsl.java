@@ -55,6 +55,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	private SettablePromise<ByteBuf> read;
 	@Nullable
 	private SettablePromise<Void> write;
+	@Nullable
+	private Promise<Void> pendingUpstreamWrite;
 
 	public static AsyncTcpSocketSsl wrapClientSocket(AsyncTcpSocket asyncTcpSocket,
 			String host, int port,
@@ -103,7 +105,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
+		if (!isOpen())return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
@@ -140,7 +142,11 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		upstream.read()
 				.thenEx(this::sanitize)
 				.whenResult(buf -> {
-					assert isOpen();
+					if (!isOpen()) {
+						assert pendingUpstreamWrite != null;
+						tryRecycle(buf);
+						return;
+					}
 					if (buf != null) {
 						net2engine = ByteBufPool.append(net2engine, buf);
 						sync();
@@ -156,10 +162,20 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	}
 
 	private void doWrite(ByteBuf dstBuf) {
-		upstream.write(dstBuf)
+		Promise<Void> writePromise = upstream.write(dstBuf);
+		if (this.pendingUpstreamWrite != null) {
+			return;
+		}
+		if (!writePromise.isComplete()) {
+			this.pendingUpstreamWrite = writePromise;
+		}
+		writePromise
 				.thenEx(this::sanitize)
+				.whenComplete(() -> this.pendingUpstreamWrite = null)
 				.whenResult($ -> {
-					assert isOpen();
+					if (!isOpen()) {
+						return;
+					}
 					if (engine.isOutboundDone()) {
 						close();
 						return;
@@ -364,10 +380,19 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		if (!isOpen()) return;
 		if (!engine.isOutboundDone()) {
 			engine.closeOutbound();
-			sync(); // sync is used here to send close_notify message to recipient (will be sent once)
+			sync(); // sync is used here to send a close-notify message to recipient (will be sent once)
 		}
 		recycleByteBufs();
-		upstream.close(e);
+		if (pendingUpstreamWrite != null) {
+			pendingUpstreamWrite.whenComplete((result, e2) -> {
+				if (e2 != null) {
+					e.addSuppressed(e2);
+				}
+				upstream.close(e);
+			});
+		} else {
+			upstream.close(e);
+		}
 		if (write != null) {
 			write.setException(e);
 			write = null;

@@ -45,7 +45,6 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.security.KeyStore;
 import java.security.SecureRandom;
-import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -76,7 +75,9 @@ public final class AsyncTcpSocketSslTest {
 			.andThen(ByteBuf::asArray)
 			.andThen(ByteBufStrings::decodeAscii);
 
-	private static final int LENGTH = 10_000 + TEST_STRING.length() * 1_000;
+	public static final int LARGE_STRING_SIZE = 10_000;
+	public static final int SMALL_STRING_SIZE = 1000;
+	private static final int LENGTH = LARGE_STRING_SIZE + TEST_STRING.length() * SMALL_STRING_SIZE;
 
 	private static final ByteBufsParser<String> PARSER_LARGE = ByteBufsParser.ofFixedSize(LENGTH)
 			.andThen(ByteBuf::asArray)
@@ -244,17 +245,19 @@ public final class AsyncTcpSocketSslTest {
 	}
 
 	private Promise<?> sendData(AsyncTcpSocket socket) {
-		String largeData = generateLargeString(10_000);
+		String largeData = generateLargeString(LARGE_STRING_SIZE);
 		ByteBuf largeBuf = wrapAscii(largeData);
 		sentData.append(largeData);
-		sentData.append(String.join("", Collections.nCopies(1000, TEST_STRING)));
 
 		return socket.write(largeBuf)
-				.then($ -> Promises.loop(1000,
+				.then($ -> Promises.loop(SMALL_STRING_SIZE,
 						i -> i != 0,
-						i -> socket.write(wrapAscii(TEST_STRING))
-								.async()
-								.map($2 -> i - 1)));
+						i -> {
+							sentData.append(TEST_STRING);
+							return socket.write(wrapAscii(TEST_STRING))
+									.async()
+									.map($2 -> i - 1);
+						}));
 	}
 	// endregion
 }

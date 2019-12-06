@@ -387,7 +387,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public int head() {
-		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return head;
 	}
 
@@ -398,7 +397,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 *            Must be smaller or equal to {@link #tail}
 	 */
 	public void head(int pos) {
-		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert pos <= tail;
 		head = pos;
 	}
@@ -410,7 +408,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public int tail() {
-		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		return tail;
 	}
 
@@ -422,7 +419,6 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 *            and smaller than length of the {@link #array}
 	 */
 	public void tail(int pos) {
-		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
 		assert pos >= head && pos <= array.length;
 		tail = pos;
 	}

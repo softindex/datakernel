@@ -364,10 +364,7 @@ public final class ByteBufQueue implements Recyclable {
 	@Contract(pure = true)
 	public ByteBuf peekBuf(int n) {
 		assert n <= remainingBufs();
-		int i = first + n;
-		if (i >= bufs.length)
-			i -= bufs.length;
-		return bufs[i];
+		return bufs[(first + n) % bufs.length];
 	}
 
 	/**
@@ -375,7 +372,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@Contract(pure = true)
 	public int remainingBufs() {
-		return last >= first ? last - first : bufs.length + (last - first);
+		return (bufs.length + (last - first)) % bufs.length;
 	}
 
 	/**
@@ -465,6 +462,18 @@ public final class ByteBufQueue implements Recyclable {
 			ByteBuf buf = bufs[i];
 			if (index < buf.readRemaining())
 				return buf.peek(index);
+			index -= buf.readRemaining();
+		}
+	}
+
+	public void setByte(int index, byte b) {
+		assert hasRemainingBytes(index + 1);
+		for (int i = first; ; i = next(i)) {
+			ByteBuf buf = bufs[i];
+			if (index < buf.readRemaining()) {
+				buf.array[buf.head + index] = b;
+				return;
+			}
 			index -= buf.readRemaining();
 		}
 	}
@@ -642,6 +651,58 @@ public final class ByteBufQueue implements Recyclable {
 			s -= buf.readRemaining();
 		}
 		return maxSize - s;
+	}
+
+	public interface ByteScanner {
+		boolean consume(byte value);
+	}
+
+	public int scanBytes(ByteScanner byteScanner) {
+		int skipped = 0;
+		for (int n = first; n != last; n = next(n)) {
+			ByteBuf buf = bufs[n];
+			byte[] array = buf.array();
+			int tail = buf.tail();
+			for (int i = buf.head(); i != tail; i++) {
+				if (byteScanner.consume(array[i])) {
+					return skipped + i - buf.head();
+				}
+			}
+			skipped += buf.readRemaining();
+		}
+		return skipped;
+	}
+
+	public int scanBytes(int offset, ByteScanner byteScanner) {
+		ByteBuf buf = null;
+		int i = 0;
+		int n;
+		int skipped = 0;
+		for (n = first; n != last; n = next(n)) {
+			buf = bufs[n];
+			int readRemaining = buf.readRemaining();
+			if (offset < readRemaining) {
+				i = buf.head() + offset;
+				break;
+			}
+			offset -= readRemaining;
+			skipped += readRemaining;
+		}
+		while (n != last) {
+			byte[] array = buf.array();
+			int tail = buf.tail();
+			for (; i != tail; i++) {
+				if (byteScanner.consume(array[i])) {
+					return skipped + i - buf.head();
+				}
+			}
+			skipped += buf.readRemaining();
+			n = next(n);
+			if (n == last) break;
+			buf = bufs[n];
+			i = buf.head();
+		}
+		return skipped;
 	}
 
 	@NotNull
