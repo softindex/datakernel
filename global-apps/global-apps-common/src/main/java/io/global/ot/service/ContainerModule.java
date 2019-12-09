@@ -5,7 +5,6 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.di.util.Types;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncServlet;
 import io.global.common.KeyPair;
@@ -37,9 +36,7 @@ public abstract class ContainerModule<C extends UserContainer> extends AbstractM
 	}
 
 	@Provides
-	ContainerManager<C> containerManager(Injector injector, Eventloop eventloop, KeyExchanger keyExchanger, Config config) {
-		Key<C> containerKey = Key.ofType(Types.resolveTypeVariables(new Key<C>() {}.getType(), getClass()));
-
+	ContainerManager<C> containerManager(Injector injector, Eventloop eventloop, KeyExchanger keyExchanger, Config config, Key<C> containerKey) {
 		PrivKey privKey = config.get(ofPrivKey(), "privateKey", null);
 		if (privKey == null) {
 			logger.info("No private key specified, running in multi container mode");

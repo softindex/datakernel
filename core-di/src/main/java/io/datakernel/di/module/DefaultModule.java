@@ -35,7 +35,7 @@ public final class DefaultModule implements Module {
 
 	static {
 		// generating bindings for classes that have @Inject constructors/factory methods
-		generators.put(Object.class, singleton((bindings, scope, key) -> ReflectionUtils.generateImplicitBinding(key)));
+		generators.put(Object.class, singleton((bindings, scope, key) -> ReflectionUtils.generateImplicitBinding(key, null)));
 
 		// generating dummy bindings for reified type requests (can be used in templated providers to get a Key<T> instance)
 		generators.put(Key.class, singleton((bindings, scope, key) -> Binding.toInstance(key.getTypeParameter(0))));
@@ -81,7 +81,7 @@ public final class DefaultModule implements Module {
 		generators.put(InstanceInjector.class, singleton(
 				(bindings, scope, key) -> {
 					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
-					BindingInitializer<Object> bindingInitializer = generateInjectingInitializer(instanceKey);
+					BindingInitializer<Object> bindingInitializer = generateInjectingInitializer(instanceKey, null);
 					return new Binding<>(
 							bindingInitializer.getDependencies(),
 							(compiledBindings, threadsafe, synchronizedScope, slot) ->

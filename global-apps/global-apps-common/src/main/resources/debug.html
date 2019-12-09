@@ -18,16 +18,19 @@
     </label>
   </div>
   <div class="col-auto btn-group">
-    <a href="/debug/ot" class="btn btn-secondary" id="ot-link">OT</a>
-    <a href="/debug/fs" class="btn btn-secondary" id="fs-link">FS</a>
-    <a href="/debug/kv" class="btn btn-secondary" id="kv-link">KV</a>
+    <a href="/debug/ot" class="btn btn-secondary links d-none" id="ot-link">OT</a>
+    <a href="/debug/fs" class="btn btn-secondary links d-none" id="fs-link">FS</a>
+    <a href="/debug/kv" class="btn btn-secondary links d-none" id="kv-link">KV</a>
   </div>
 </div>
 <div class="non-default unselectable" id="graph-coords"></div>
 <div id="body"></div>
 
-<script type="application/javascript">const pk = '{pk}';
-const type = '{type}'</script>
+<script type="application/javascript">
+  const enabledTypes = {enabled_types};
+  const pk = '{pk}';
+  const type = '{type}';
+</script>
 <script src="/debug/static/common.js"></script>
 <script src="/debug/static/{type}.js"></script>
 

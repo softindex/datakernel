@@ -71,7 +71,16 @@ function createTreeList(url, pathCallback, pathFactory,) {
 }
 
 function init() {
-  $('#' + type + '-link').addClass('active');
+  if (enabledTypes.length > 1) {
+    $('#' + type + '-link').addClass('active');
+    for (let enabledType of enabledTypes) {
+      $('#' + enabledType + '-link').removeClass('d-none');
+    }
+    $('.links.d-none').remove();
+  } else {
+    $('.links').remove();
+  }
+
   let scrollKey = type + '-scroll';
   $(window).on('beforeunload', () => localStorage.setItem(scrollKey, $(document).scrollTop()));
   let scroll = localStorage.getItem(scrollKey);

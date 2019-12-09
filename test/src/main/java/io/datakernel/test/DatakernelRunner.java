@@ -39,7 +39,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 		surroundings.addAll(getTestClass().getAnnotatedMethods(After.class));
 
 		staticDependencies = surroundings.stream()
-				.flatMap(m -> Arrays.stream(ReflectionUtils.toDependencies(clazz, m.getMethod().getParameters())))
+				.flatMap(m -> Arrays.stream(ReflectionUtils.toDependencies(clazz, null, m.getMethod().getParameters())))
 				.collect(toSet());
 	}
 
@@ -64,7 +64,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 			currentModule = Modules.combine(modules);
 
 			currentDependencies =
-					Arrays.stream(ReflectionUtils.toDependencies(cls, method.getMethod().getParameters()))
+					Arrays.stream(ReflectionUtils.toDependencies(cls, null, method.getMethod().getParameters()))
 							.collect(toSet());
 
 		} catch (ExceptionInInitializerError e) {
@@ -151,7 +151,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 	}
 
 	protected Object[] getArgs(FrameworkMethod method) {
-		return Arrays.stream(ReflectionUtils.toDependencies(getTestClass().getJavaClass(), method.getMethod().getParameters()))
+		return Arrays.stream(ReflectionUtils.toDependencies(getTestClass().getJavaClass(), null, method.getMethod().getParameters()))
 				.map(dependency -> dependency.isRequired() ?
 						currentInjector.getInstance(dependency.getKey()) :
 						currentInjector.getInstanceOrNull(dependency.getKey()))

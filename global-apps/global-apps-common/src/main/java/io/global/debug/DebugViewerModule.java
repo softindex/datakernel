@@ -6,10 +6,10 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Multibinder;
@@ -39,10 +39,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Type;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
@@ -73,6 +70,20 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 					Tuple3::getValue2, STRING_CODEC,
 					Tuple3::getValue3, LONG_CODEC));
 
+	private final EnumSet<DebugView> views;
+	private final List<String> viewStrs;
+
+	public DebugViewerModule(DebugView... views) {
+		this.views = views.length == 0 ?
+				EnumSet.allOf(DebugView.class) :
+				EnumSet.of(views[0], views);
+		this.viewStrs = this.views.stream().map(v -> v.name().toLowerCase()).collect(toList());
+	}
+
+	public enum DebugView {
+		OT, FS, KV
+	}
+
 	private AsyncServlet createHtmlServingServlet(Executor executor, String type, Type containerType) {
 		StaticLoader loader = StaticLoader.ofClassPath(executor, "");
 		return request ->
@@ -82,173 +93,200 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 								.withBody(ByteBuf.wrapForReading(buf.asString(UTF_8)
 										.replace("{pk}", ((UserContainer) request.getAttachment(containerType)).getKeys().getPubKey().asString())
 										.replace("{type}", type)
+										.replace("{enabled_types}", "['" + String.join("', '", viewStrs) + "']")
 										.getBytes(UTF_8))));
 	}
 
 	@Override
 	protected void configure() {
+		if (views.contains(DebugView.OT)) {
+			scan(new OtViewer());
+		}
+		if (views.contains(DebugView.FS)) {
+			scan(new FsViewer());
+		}
+		if (views.contains(DebugView.KV)) {
+			scan(new KvViewer());
+		}
+
+		Dependency[] dependencies = new Dependency[1 + views.size()];
+		dependencies[0] = Dependency.toKey(Key.of(Executor.class));
+		for (int i = 0; i < views.size(); i++) {
+			dependencies[i + 1] = Dependency.toKey(Key.of(AsyncServlet.class, viewStrs.get(i)));
+		}
+
+		bind(AsyncServlet.class)
+				.export()
+				.named("debug")
+				.to(args -> {
+					Executor executor = (Executor) args[0];
+					RoutingServlet router = RoutingServlet.create()
+							.map("/static/*", StaticServlet.create(StaticLoader.ofClassPath(executor, "debug-static")));
+					for (int i = 0; i < viewStrs.size(); i++) {
+						router.map("/" + viewStrs.get(i) + "/*", (AsyncServlet) args[i + 1]);
+					}
+					return router;
+				}, dependencies);
+
 		multibind(Key.of(ObjectDisplayRegistry.class), Multibinder.ofBinaryOperator(ObjectDisplayRegistry::merge));
 	}
 
-	@Provides
-	@Named("fs")
-	AsyncServlet fsViewer(@Optional GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
-		if (fsNode == null || driver == null) {
-			return request -> HttpException.ofCode(404, "No FS node used by this app");
+	private final class OtViewer {
+		private Map<RepoID, SoftReference<OTLoadedGraph<CommitId, Object>>> loadedGraphs = new HashMap<>();
+
+		@Provides
+		@Named("ot")
+		AsyncServlet otViewer(Executor executor,
+				@Optional GlobalOTNode otNode, @Optional OTDriver otDriver,
+				TypedRepoNames repoNames, CodecFactory codecs,
+				ContainerManager<C> containerManager, Key<C> reifiedC
+		) {
+			if (otNode == null || otDriver == null) {
+				return request -> HttpException.ofCode(404, "No FS node used by this app");
+			}
+			return RoutingServlet.create()
+					.map(GET, "/*", createHtmlServingServlet(executor, "ot", reifiedC.getType()))
+					.map(GET, "/api/*", request -> {
+						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						String path = request.getRelativePath();
+						String prefix = repoNames.getPrefix();
+
+						return otNode.list(pk)
+								.then(list -> {
+									if (path.isEmpty()) {
+										return Promise.of(HttpResponse.ok200()
+												.withJson(STRING_LIST_CODEC, list.stream()
+														.filter(x -> x.startsWith(prefix))
+														.map(x -> x.substring(prefix.length()))
+														.collect(toList())));
+									}
+									String repo = prefix + path;
+									if (!list.contains(repo)) {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No repo " + repo));
+									}
+
+									Key<?> diffType = repoNames.getKeyByRepo(repo);
+									if (diffType == null) {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No diff type for repo " + repo));
+									}
+									Injector containerInjector = containerManager.getContainerScope(pk);
+									if (containerInjector == null) {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No container for key " + pk));
+									}
+									OTSystem<Object> otSystem = containerInjector.getInstance(Key.ofType(Types.parameterized(OTSystem.class, diffType.getType())));
+									ObjectDisplayRegistry prettyPrinter = containerInjector.getInstance(ObjectDisplayRegistry.class);
+
+									StructuredCodec<Object> diffCodec = codecs.get(diffType.getType());
+									RepoID repoID = RepoID.of(pk, repo);
+									MyRepositoryId<Object> myRepositoryId = new MyRepositoryId<>(repoID, null, diffCodec);
+									OTRepository<CommitId, Object> repository = new OTRepositoryAdapter<>(otDriver, myRepositoryId, emptySet());
+
+									Function<Object, String> diffToString = object ->
+											prettyPrinter.getShortDisplay(object).replaceAll("\"", "\\\\\\\"") + "|" + prettyPrinter.getLongDisplay(object).replaceAll("\"", "\\\\\\\"");
+
+									SoftReference<OTLoadedGraph<CommitId, Object>> graphRef = loadedGraphs.computeIfAbsent(repoID, $ ->
+											new SoftReference<>(new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)));
+
+									OTLoadedGraph<CommitId, Object> graph = graphRef.get();
+									if (graph == null) {
+										graph = new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString);
+										loadedGraphs.put(repoID, new SoftReference<>(graph));
+									}
+
+									OTLoadedGraph<CommitId, Object> finalGraph = graph;
+									return repository.getHeads()
+											.then(heads -> loadGraph(repository, otSystem, heads, finalGraph))
+											.map($ -> HttpResponse.ok200()
+													.withHeader(CONTENT_TYPE, CONTENT_TYPE_GRAPHVIZ)
+													.withBody(finalGraph.toGraphViz(null).getBytes(UTF_8)));
+								});
+					});
 		}
-		return RoutingServlet.create()
-				.map(GET, "/", createHtmlServingServlet(executor, "fs", reifiedC.getType()))
-				.map(GET, "/*", request -> {
-					PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
-					String filename = repoNames.getPrefix() + request.getRelativePath();
-					return driver.getMetadata(pk, filename)
-							.then(meta -> {
-								if (meta == null) {
-									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "no such file"));
-								}
-								return HttpResponse.file(
-										(offset, limit) -> driver.download(pk, filename, offset, limit),
-										filename,
-										meta.getPosition(),
-										request.getHeader(HttpHeaders.RANGE),
-										true
-								);
-							});
-				})
-				.map(GET, "/api", request -> {
-					PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
-					String prefix = repoNames.getPrefix();
-					return fsNode.listEntities(pk, "**")
-							.map(list -> HttpResponse.ok200()
-									.withJson(FILE_LIST_CODEC, list.stream()
-											.filter(signedCheckpoint -> signedCheckpoint.getValue().getFilename().startsWith(prefix))
-											.map(signedCheckpoint -> new Tuple2<>(signedCheckpoint.getValue().getFilename().substring(prefix.length()), signedCheckpoint.getValue().getPosition()))
-											.collect(toList())));
-				});
 	}
 
-	private static Map<RepoID, SoftReference<OTLoadedGraph<CommitId, Object>>> loadedGraphs = new HashMap<>();
+	private final class FsViewer {
 
-	@Provides
-	@Named("ot")
-	AsyncServlet otViewer(Executor executor,
-			@Optional GlobalOTNode otNode, @Optional OTDriver otDriver,
-			TypedRepoNames repoNames, CodecFactory codecs,
-			ContainerManager<C> containerManager, Key<C> reifiedC
-	) {
-		if (otNode == null || otDriver == null) {
-			return request -> HttpException.ofCode(404, "No FS node used by this app");
+		@Provides
+		@Named("fs")
+		AsyncServlet fsViewer(@Optional GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
+			if (fsNode == null || driver == null) {
+				return request -> HttpException.ofCode(404, "No FS node used by this app");
+			}
+			return RoutingServlet.create()
+					.map(GET, "/", createHtmlServingServlet(executor, "fs", reifiedC.getType()))
+					.map(GET, "/*", request -> {
+						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						String filename = repoNames.getPrefix() + request.getRelativePath();
+						return driver.getMetadata(pk, filename)
+								.then(meta -> {
+									if (meta == null) {
+										return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "no such file"));
+									}
+									return HttpResponse.file(
+											(offset, limit) -> driver.download(pk, filename, offset, limit),
+											filename,
+											meta.getPosition(),
+											request.getHeader(HttpHeaders.RANGE),
+											true
+									);
+								});
+					})
+					.map(GET, "/api", request -> {
+						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						String prefix = repoNames.getPrefix();
+						return fsNode.listEntities(pk, "**")
+								.map(list -> HttpResponse.ok200()
+										.withJson(FILE_LIST_CODEC, list.stream()
+												.filter(signedCheckpoint -> signedCheckpoint.getValue().getFilename().startsWith(prefix))
+												.map(signedCheckpoint -> new Tuple2<>(signedCheckpoint.getValue().getFilename().substring(prefix.length()), signedCheckpoint.getValue().getPosition()))
+												.collect(toList())));
+					});
 		}
-		return RoutingServlet.create()
-				.map(GET, "/*", createHtmlServingServlet(executor, "ot", reifiedC.getType()))
-				.map(GET, "/api/*", request -> {
-					PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
-					String path = request.getRelativePath();
-					String prefix = repoNames.getPrefix();
+	}
 
-					return otNode.list(pk)
-							.then(list -> {
-								if (path.isEmpty()) {
-									return Promise.of(HttpResponse.ok200()
+	private final class KvViewer {
+
+		@SuppressWarnings("unchecked")
+		@Provides
+		@Named("kv")
+		AsyncServlet kvViewer(@Optional GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
+			if (kvNode == null) {
+				return request -> HttpException.ofCode(404, "No FS node used by this app");
+			}
+			return RoutingServlet.create()
+					.map(GET, "/*", createHtmlServingServlet(executor, "kv", reifiedC.getType()))
+					.map(GET, "/api/*", request -> {
+						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						String path = request.getRelativePath();
+						String prefix = repoNames.getPrefix();
+						if (path.isEmpty()) {
+							return kvNode.list(pk)
+									.map(list -> HttpResponse.ok200()
 											.withJson(STRING_LIST_CODEC, list.stream()
 													.filter(x -> x.startsWith(prefix))
 													.map(x -> x.substring(prefix.length()))
 													.collect(toList())));
-								}
-								String repo = prefix + path;
-								if (!list.contains(repo)) {
-									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No repo " + repo));
-								}
+						}
 
-								Key<?> diffType = repoNames.getKeyByRepo(repo);
-								if (diffType == null) {
-									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No diff type for repo " + repo));
-								}
-								Injector containerInjector = containerManager.getContainerScope(pk);
-								if (containerInjector == null) {
-									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No container for key " + pk));
-								}
-								OTSystem<Object> otSystem = containerInjector.getInstance(Key.ofType(Types.parameterized(OTSystem.class, diffType.getType())));
-								ObjectDisplayRegistry prettyPrinter = containerInjector.getInstance(ObjectDisplayRegistry.class);
+						String table = prefix + path;
+						Key<?> kvClientType = repoNames.getKeyByRepo(table);
+						if (kvClientType == null) {
+							return HttpException.ofCode(404, "No repo " + table);
+						}
+						Injector containerScope = containerManager.getContainerScope(pk);
+						if (containerScope == null) {
+							return HttpException.ofCode(404, "No container for key " + pk);
+						}
 
-								StructuredCodec<Object> diffCodec = codecs.get(diffType.getType());
-								RepoID repoID = RepoID.of(pk, repo);
-								MyRepositoryId<Object> myRepositoryId = new MyRepositoryId<>(repoID, null, diffCodec);
-								OTRepository<CommitId, Object> repository = new OTRepositoryAdapter<>(otDriver, myRepositoryId, emptySet());
+						KvClient<Object, Object> kvClient = (KvClient<Object, Object>) containerScope.getInstance(kvClientType);
 
-								Function<Object, String> diffToString = object ->
-										prettyPrinter.getShortDisplay(object).replaceAll("\"", "\\\\\\\"") + "|" + prettyPrinter.getLongDisplay(object).replaceAll("\"", "\\\\\\\"");
-
-								SoftReference<OTLoadedGraph<CommitId, Object>> graphRef = loadedGraphs.computeIfAbsent(repoID, $ ->
-										new SoftReference<>(new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)));
-
-								OTLoadedGraph<CommitId, Object> graph = graphRef.get();
-								if (graph == null) {
-									graph = new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString);
-									loadedGraphs.put(repoID, new SoftReference<>(graph));
-								}
-
-								OTLoadedGraph<CommitId, Object> finalGraph = graph;
-								return repository.getHeads()
-										.then(heads -> loadGraph(repository, otSystem, heads, finalGraph))
-										.map($ -> HttpResponse.ok200()
-												.withHeader(CONTENT_TYPE, CONTENT_TYPE_GRAPHVIZ)
-												.withBody(finalGraph.toGraphViz(null).getBytes(UTF_8)));
-							});
-				});
-	}
-
-	@SuppressWarnings("unchecked")
-	@Provides
-	@Named("kv")
-	AsyncServlet kvViewer(@Optional GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
-		if (kvNode == null) {
-			return request -> HttpException.ofCode(404, "No FS node used by this app");
-		}
-		return RoutingServlet.create()
-				.map(GET, "/*", createHtmlServingServlet(executor, "kv", reifiedC.getType()))
-				.map(GET, "/api/*", request -> {
-					PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
-					String path = request.getRelativePath();
-					String prefix = repoNames.getPrefix();
-					if (path.isEmpty()) {
-						return kvNode.list(pk)
+						return kvClient.download(table)
+								.then(ChannelSupplier::toList)
 								.map(list -> HttpResponse.ok200()
-										.withJson(STRING_LIST_CODEC, list.stream()
-												.filter(x -> x.startsWith(prefix))
-												.map(x -> x.substring(prefix.length()))
+										.withJson(KV_ITEM_LIST_CODEC, list.stream()
+												.map(kvItem -> new Tuple3<>(kvItem.getKey().toString(), Objects.toString(kvItem.getValue()), kvItem.getTimestamp()))
 												.collect(toList())));
-					}
-
-					String table = prefix + path;
-					Key<?> kvClientType = repoNames.getKeyByRepo(table);
-					if (kvClientType == null) {
-						return HttpException.ofCode(404, "No repo " + table);
-					}
-					Injector containerScope = containerManager.getContainerScope(pk);
-					if (containerScope == null) {
-						return HttpException.ofCode(404, "No container for key " + pk);
-					}
-
-					KvClient<Object, Object> kvClient = (KvClient<Object, Object>) containerScope.getInstance(kvClientType);
-
-					return kvClient.download(table)
-							.then(ChannelSupplier::toList)
-							.map(list -> HttpResponse.ok200()
-									.withJson(KV_ITEM_LIST_CODEC, list.stream()
-											.map(kvItem -> new Tuple3<>(kvItem.getKey().toString(), Objects.toString(kvItem.getValue()), kvItem.getTimestamp()))
-											.collect(toList())));
-				});
-	}
-
-	@Export
-	@Provides
-	@Named("debug")
-	AsyncServlet debugServlet(@Named("fs") AsyncServlet fsServlet, @Named("ot") AsyncServlet otServlet, @Named("kv") AsyncServlet kvServlet, Executor executor) {
-		return RoutingServlet.create()
-				.map("/static/*", StaticServlet.create(StaticLoader.ofClassPath(executor, "debug-static")))
-				.map("/fs/*", fsServlet)
-				.map("/ot/*", otServlet)
-				.map("/kv/*", kvServlet);
+					});
+		}
 	}
 }

@@ -200,7 +200,31 @@ public final class Types {
 		}
 	}
 
-	private static final Map<Type, Map<TypeVariable<?>, Type>> genericMappingCache = new HashMap<>();
+	private static final Map<Object, Map<TypeVariable<?>, Type>> genericMappingCache = new WeakHashMap<>();
+
+	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container, @Nullable Object containerInstance) {
+		return genericMappingCache.computeIfAbsent(containerInstance != null ? containerInstance : container, $ -> {
+			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
+
+			getGenericTypeMappingImpl(container, mapping);
+			Object outerInstance = ReflectionUtils.getOuterClassInstance(containerInstance);
+			while (outerInstance != null) {
+				getGenericTypeMappingImpl(outerInstance.getClass(), mapping);
+				outerInstance = ReflectionUtils.getOuterClassInstance(outerInstance);
+			}
+
+			Set<TypeVariable<?>> unsatisfiedGenerics = mapping.entrySet().stream()
+					.filter(e -> e.getValue() == null)
+					.map(e -> (TypeVariable<?>) e.getKey())
+					.collect(toSet());
+			if (!unsatisfiedGenerics.isEmpty()) {
+				throw new DIException(unsatisfiedGenerics.stream()
+						.map(typevar -> typevar + " from " + typevar.getGenericDeclaration())
+						.collect(joining(", ", "Actual types for generics [", "] were not found in class hierarchy")));
+			}
+			return mapping;
+		});
+	}
 
 	private static void getGenericTypeMappingImpl(Type t, Map<TypeVariable<?>, @Nullable Type> mapping) {
 		Class<?> cls = getRawType(t);
@@ -223,27 +247,8 @@ public final class Types {
 				.forEach(supertype -> getGenericTypeMappingImpl(supertype, mapping));
 	}
 
-	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container) {
-		return genericMappingCache.computeIfAbsent(container, t -> {
-			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
-
-			getGenericTypeMappingImpl(t, mapping);
-
-			Set<TypeVariable<?>> unsatisfiedGenerics = mapping.entrySet().stream()
-					.filter(e -> e.getValue() == null)
-					.map(e -> (TypeVariable<?>) e.getKey())
-					.collect(toSet());
-			if (!unsatisfiedGenerics.isEmpty()) {
-				throw new DIException(unsatisfiedGenerics.stream()
-						.map(typevar -> typevar + " from " + typevar.getGenericDeclaration())
-						.collect(joining(", ", "Actual types for generics [", "] were not found in class hierarchy")));
-			}
-			return mapping;
-		});
-	}
-
-	public static Type resolveTypeVariables(Type type, Type container) {
-		return resolveTypeVariables(type, getGenericTypeMapping(container));
+	public static Type resolveTypeVariables(Type type, Type container, @Nullable Object containerInstance) {
+		return resolveTypeVariables(type, getGenericTypeMapping(container, containerInstance));
 	}
 
 	@Contract("null, _ -> null")
