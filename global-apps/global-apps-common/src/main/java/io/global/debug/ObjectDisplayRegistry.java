@@ -3,6 +3,7 @@ package io.global.debug;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Key;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -67,15 +68,34 @@ public final class ObjectDisplayRegistry {
 	// endregion
 
 	@SuppressWarnings("unchecked")
-	public String getShortDisplay(@NotNull Object object) {
-		ObjectDisplay<Object> shortDisplay = (ObjectDisplay<Object>) shortDisplays.getOrDefault(object.getClass(), DEFAULT_SHORT_DISPLAY);
-		return shortDisplay.display(this, object);
+	private String getDisplay(Map<Type, ObjectDisplay<?>> displayMap, Type type, @Nullable Object instance, ObjectDisplay<?> defaultDisplay) {
+		if (instance == null) {
+			return "null";
+		}
+		ObjectDisplay<?> display = displayMap.get(type);
+		if (display == null) {
+			display = displayMap.get(instance.getClass());
+		}
+		if (display == null) {
+			display = defaultDisplay;
+		}
+		return ((ObjectDisplay<Object>) display).display(this, instance);
 	}
 
-	@SuppressWarnings("unchecked")
-	public String getLongDisplay(@NotNull Object object) {
-		ObjectDisplay<Object> longDisplay = (ObjectDisplay<Object>) longDisplays.getOrDefault(object.getClass(), DEFAULT_LONG_DISPLAY);
-		return longDisplay.display(this, object);
+	public <T> String getShortDisplay(Key<? extends T> type, @Nullable T instance) {
+		return getDisplay(shortDisplays, type.getType(), instance, DEFAULT_SHORT_DISPLAY);
+	}
+
+	public <T> String getLongDisplay(Key<? extends T> type, @Nullable T instance) {
+		return getDisplay(longDisplays, type.getType(), instance, DEFAULT_LONG_DISPLAY);
+	}
+
+	public String getShortDisplay(@Nullable Object object) {
+		return object == null ? "null" : getShortDisplay(Key.of(object.getClass()), object);
+	}
+
+	public String getLongDisplay(@Nullable Object object) {
+		return object == null ? "null" : getLongDisplay(Key.of(object.getClass()), object);
 	}
 
 	@FunctionalInterface

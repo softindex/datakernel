@@ -122,14 +122,12 @@ body {
   border-radius: 5px;
 }
 
-.user-id {
-  text-decoration: underline dotted;
-  color: #343a40;
-  cursor: pointer;
-}
-
 svg {
   transform-origin: top left;
+}
+
+g.edge {
+  cursor: pointer;
 }
 
 g.edge:hover > polygon {
@@ -141,21 +139,9 @@ g.edge:hover > path {
   stroke-width: 2;
 }
 
-g.node > ellipse {
-  cursor: pointer;
-}
-
 g.node > text {
   font-size: 0.7em;
   font-family: sans-serif;
-}
-
-#graph-coords {
-  font-family: monospace;
-  position: absolute;
-  z-index: -1;
-  top: 6em;
-  left: 1em;
 }
 
 .non-default {
@@ -164,4 +150,13 @@ g.node > text {
 
 .unselectable {
   user-select: none;
+}
+
+.special {
+  text-decoration: underline dotted;
+  font-family: monospace;
+  user-select: all;
+  /*font-size: 0.9em;*/
+  /*background: #cccccc;*/
+  color: #343a40;
 }

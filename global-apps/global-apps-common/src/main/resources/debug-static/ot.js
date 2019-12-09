@@ -1,7 +1,6 @@
 window.onload = () => {
   let $title = $('#title');
   let $body = $('#body');
-  let $graphCoords = $('#graph-coords');
   let $polling = $('#polling');
   let $pollingCb = $polling.find('input:first');
 
@@ -27,7 +26,7 @@ window.onload = () => {
       .then(text => {
         let replaced = text.replace(/label="([^]*?)"]/gm, (_, content) => {
           let diffs = content.split(',\n').map(d => d.split('|'));
-          let label = diffs.map(d => d[0]).join('\n+');
+          let label = diffs.map(d => d[0].replace(/\n/g, '\n+')).join('\n+');
           let xlabel = diffs.map(d => d[1]).join('\n');
           return 'label="+' + label + '"; xlabel="' + xlabel + '"]';
         });
@@ -58,7 +57,7 @@ window.onload = () => {
             diffs = [];
             diffMap[edge] = diffs;
           }
-          diffs.push(text);
+          diffs.unshift(text);
           $e.remove();
         });
 
@@ -125,7 +124,6 @@ window.onload = () => {
 
   function graphView(repo) {
     $title.text('Commit graph of repository \'' + repo + '\'');
-    $graphCoords.show();
     $polling.show();
 
     document.body.style.overflow = 'hidden';
@@ -209,7 +207,6 @@ window.onload = () => {
   let $movingModal = false;
 
   function transform(x, y, scale) {
-    $graphCoords.text('x: ' + x.toFixed(0) + ', y: ' + y.toFixed(0) + ', scale: ' + scale.toFixed(3));
     $svg.data('pos', [x, y]);
     $svg.data('scale', scale);
     $svg.css('transform', 'translate(' + x + 'px, ' + y + 'px) scale(' + scale + ')');
@@ -297,9 +294,8 @@ window.onload = () => {
       '<div class="diff-body"></div>' +
       '</div>');
     $diffModal.on('hidden.bs.collapse', e => $(e.currentTarget).remove());
-    $diffModal.find('.diff-hide').click(() => $diffModal.collapse('hide'));
     $diffModal.find('.diff-title').mousedown(e => {
-      if (e.button === 1) { // close on title middle click
+      if (e.target.classList.contains('diff-hide') || e.button === 1) {
         $diffModal.collapse('hide');
         return;
       }
@@ -308,10 +304,7 @@ window.onload = () => {
       $movingModal.appendTo($movingModal.parent());
     });
     $diffModal.find('.diff-body')
-      .append(diffs.map(diff => {
-        let fixedDiff = diff.replace(/UserId\{pk='([^']*)'}/g, '<span class="user-id" title="$1">USER</span>');
-        return $('<div class="diff"></div>').html(fixedDiff);
-      }));
+      .append(diffs.map(diff => $('<div class="diff"></div>').html(diff)));
     return $diffModal
   }
 

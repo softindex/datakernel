@@ -137,13 +137,10 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@Provides
 		@Named("ot")
 		AsyncServlet otViewer(Executor executor,
-				@Optional GlobalOTNode otNode, @Optional OTDriver otDriver,
+				GlobalOTNode otNode, OTDriver otDriver,
 				TypedRepoNames repoNames, CodecFactory codecs,
 				ContainerManager<C> containerManager, Key<C> reifiedC
 		) {
-			if (otNode == null || otDriver == null) {
-				return request -> HttpException.ofCode(404, "No FS node used by this app");
-			}
 			return RoutingServlet.create()
 					.map(GET, "/*", createHtmlServingServlet(executor, "ot", reifiedC.getType()))
 					.map(GET, "/api/*", request -> {
@@ -182,7 +179,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 									OTRepository<CommitId, Object> repository = new OTRepositoryAdapter<>(otDriver, myRepositoryId, emptySet());
 
 									Function<Object, String> diffToString = object ->
-											prettyPrinter.getShortDisplay(object).replaceAll("\"", "\\\\\\\"") + "|" + prettyPrinter.getLongDisplay(object).replaceAll("\"", "\\\\\\\"");
+											prettyPrinter.getShortDisplay(diffType, object).replaceAll("\"", "\\\\\\\"") + "|" + prettyPrinter.getLongDisplay(diffType, object).replaceAll("\"", "\\\\\\\"");
 
 									SoftReference<OTLoadedGraph<CommitId, Object>> graphRef = loadedGraphs.computeIfAbsent(repoID, $ ->
 											new SoftReference<>(new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)));
@@ -208,10 +205,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 
 		@Provides
 		@Named("fs")
-		AsyncServlet fsViewer(@Optional GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
-			if (fsNode == null || driver == null) {
-				return request -> HttpException.ofCode(404, "No FS node used by this app");
-			}
+		AsyncServlet fsViewer(GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
 			return RoutingServlet.create()
 					.map(GET, "/", createHtmlServingServlet(executor, "fs", reifiedC.getType()))
 					.map(GET, "/*", request -> {
@@ -249,10 +243,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@SuppressWarnings("unchecked")
 		@Provides
 		@Named("kv")
-		AsyncServlet kvViewer(@Optional GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
-			if (kvNode == null) {
-				return request -> HttpException.ofCode(404, "No FS node used by this app");
-			}
+		AsyncServlet kvViewer(GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
 			return RoutingServlet.create()
 					.map(GET, "/*", createHtmlServingServlet(executor, "kv", reifiedC.getType()))
 					.map(GET, "/api/*", request -> {

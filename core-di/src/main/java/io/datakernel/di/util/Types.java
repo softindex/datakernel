@@ -200,13 +200,13 @@ public final class Types {
 		}
 	}
 
-	private static final Map<Object, Map<TypeVariable<?>, Type>> genericMappingCache = new WeakHashMap<>();
+	private static final Map<Type, Map<TypeVariable<?>, Type>> genericMappingCache = new HashMap<>();
 
 	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container, @Nullable Object containerInstance) {
-		return genericMappingCache.computeIfAbsent(containerInstance != null ? containerInstance : container, $ -> {
+		return genericMappingCache.computeIfAbsent(containerInstance != null ? containerInstance.getClass() : container, t -> {
 			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
 
-			getGenericTypeMappingImpl(container, mapping);
+			getGenericTypeMappingImpl(t, mapping);
 			Object outerInstance = ReflectionUtils.getOuterClassInstance(containerInstance);
 			while (outerInstance != null) {
 				getGenericTypeMappingImpl(outerInstance.getClass(), mapping);
