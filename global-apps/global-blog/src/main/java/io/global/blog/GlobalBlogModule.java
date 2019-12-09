@@ -20,6 +20,7 @@ import io.global.blog.http.view.PostView;
 import io.global.blog.interceptors.Preprocessor;
 import io.global.blog.util.Utils;
 import io.global.comm.container.CommModule;
+import io.global.debug.DebugViewerModule;
 import io.global.ot.TypedRepoNames;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
@@ -58,6 +59,7 @@ public final class GlobalBlogModule extends AbstractModule {
 		bind(CodecFactory.class).toInstance(Utils.REGISTRY);
 		bind(TypedRepoNames.class).toInstance(blogRepoNames);
 
+		install(new DebugViewerModule<BlogUserContainer>() {});
 		bind(BlogUserContainer.class).in(ContainerScope.class);
 		bind(BlogDao.class).to(BlogDaoImpl.class).in(ContainerScope.class);
 	}
@@ -88,12 +90,13 @@ public final class GlobalBlogModule extends AbstractModule {
 	@Provides
 	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader, Executor executor,
 						 @Named("threadList") Preprocessor<PostView> threadListPostViewPreprocessor,
-						 @Named("postView") Preprocessor<PostView> postViewPreprocessor) {
+						 @Named("postView") Preprocessor<PostView> postViewPreprocessor, @Named("debug") AsyncServlet debugServlet) {
 		String appStoreUrl = config.get("appStoreUrl");
 		return RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater, executor,
 						threadListPostViewPreprocessor, postViewPreprocessor))
 				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
+				.map("/debug/*", debugServlet)
 				.then(renderErrors(templater));
 	}
 

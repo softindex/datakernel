@@ -50,8 +50,8 @@ public final class EntityUtil {
 						.then(dao -> dao == null ?
 								Promise.of(null) :
 								dao.getPost("root").thenEx((rootPost, ex) -> {
-									if (ex != null) {
-										return null;
+									if (ex != null || rootPost == null) {
+										return Promise.of(null);
 									}
 									int commentsCount = rootPost.getChildren().size();
 									return postViewFrom(commDao, rootPost, currentUser, 0, null)

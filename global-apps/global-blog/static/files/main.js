@@ -353,7 +353,7 @@ function addPostCallbacks($fullPost) {
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         },
         method: 'POST',
-        body: "content=" + $textarea.val().trim()
+        body: "content=" + encodeURIComponent($textarea.val().trim())
       })
         .then(r => {
           if (r.ok) {

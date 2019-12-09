@@ -29,32 +29,36 @@
         </div>
         <div class="col-sm-9 col-12" style="margin: auto;">
             <div class="row justify-content-md-center">
-                <a href="/" class="col-12 col-md-3 col-sm-6 border m-1 p-3" style="width:170px; height: 30px; position: relative">
+                <a href="/" class="col-12 col-md-3 col-sm-6 border m-1 p-3"
+                   style="width:170px; height: 30px; position: relative">
                     <i class="fas fa-align-justify"
                        style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">All photos</i>
                 </a>
-                <a href="/albums" class="col-12 col-md-2 col-sm-5 border m-1 p-3" style="width:170px; height: 30px; position: relative">
+                <a href="/albums" class="col-12 col-md-2 col-sm-5 border m-1 p-3"
+                   style="width:170px; height: 30px; position: relative">
                     <i class="fas fa-book-open"
                        style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">Albums</i>
                 </a>
 
                 {{^albums}}{{^photos}}
-                    <a href="/#" class="col-12 col-md-2 col-sm-5 border m-1 p-3" style="width:170px; height: 30px; position: relative">
+                    <a href="#" class="col-12 col-md-2 col-sm-5 border m-1 p-3"
+                       style="width:170px; height: 30px; position: relative">
                         <i class="fas fa-book-open"
                            style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">{{album.title}}</i>
                     </a>
                 {{/photos}}{{/albums}}
 
                 {{#photos}}
-                        <a href="/new/{{album.id}}" class="col-12 col-md-2 col-sm-6 border m-1 p-3"
-                           id="uploadImageButton" style="width:160px; height: 30px; position: relative">
-                            <i class="fas fa-plus"
-                               style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">Upload</i>
-                        </a>
+                    <a href="/new/{{album.id}}" class="col-12 col-md-2 col-sm-6 border m-1 p-3"
+                       id="uploadImageButton" style="width:160px; height: 30px; position: relative">
+                        <i class="fas fa-plus"
+                           style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">Upload</i>
+                    </a>
                 {{/photos}}
 
                 {{^albums}}
-                    <div class="col-12 col-sm-5 col-md-2 tools m-1 p-3 border" style="width:170px; height: 30px; position: relative">
+                    <div class="col-12 col-sm-5 col-md-2 tools m-1 p-3 border"
+                         style="width:170px; height: 30px; position: relative">
                         <div data-toggle="dropdown"
                              data-target="#tools">
                             <a href="/new/{{album.id}}" class="btn btn-link">
@@ -74,7 +78,8 @@
                                         Move Photos
                                     </button>
 
-                                    <button type="button" class="btn btn-outline-light text-dark" style="width: 100%" id="create-album">
+                                    <button type="button" class="btn btn-outline-light text-dark" style="width: 100%"
+                                            id="create-album">
                                         Create album
                                     </button>
                                 {{/rootAlbum}}
@@ -103,28 +108,31 @@
     <nav class="col-sm-12 col-12 mt-2">
         <ul class="nav nav-pills flex-column">
             <li class="nav-item">
-                <div id="new_album_form" style="display: none; background-color: rgb(245,245,245); border-radius: 0.5em;"
-                     data-url="/new/album" class="p-2">
-                    <div>
-                        <input maxlength="120" class="form-control" id="title_album" name="title"
-                               type="text"
-                               placeholder="New album title" required max="120">
-                        <textarea class="form-control mt-1 mb-1" name="content" id="description_album"
-                                  maxlength="1024"
-                                  placeholder="Description" rows="4"></textarea>
-                    </div>
-                    <div class="col-12">
-                        <div class="row justify-content-end">
-                            <button class="btn btn btn-link text-success col-sm-1" type="submit" id="create_album">
-                                Create
-                            </button>
-                            <button class="btn btn btn-link text-danger col-sm-1" type="submit"
-                                    id="cancel_creation_album">
-                                Cancel
-                            </button>
+                <form class="needs-validation" novalidate>
+                    <div id="new_album_form"
+                         style="display: none; background-color: rgb(245,245,245); border-radius: 0.5em;"
+                         data-url="/new/album" class="p-2">
+                        <div>
+                            <input maxlength="120" class="form-control" id="title_album" name="title"
+                                   type="text"
+                                   placeholder="New album title" required max="120">
+                            <textarea class="form-control mt-1 mb-1" name="content" id="description_album"
+                                      maxlength="1024"
+                                      placeholder="Description" rows="4"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="row justify-content-end">
+                                <button class="btn btn btn-link text-success col-sm-1" type="submit" id="create_album">
+                                    Create
+                                </button>
+                                <button class="btn btn btn-link text-danger col-sm-1" type="button"
+                                        id="cancel_creation_album">
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </form>
             </li>
 
             {{^albums}}{{^photos}}
@@ -134,42 +142,49 @@
             {{/photos}}{{/albums}}
 
             <li class="nav-item">
-                <div class="mb-3 mt-2 p-2" id="update_album_form"
-                     data-url="/update/{{album.id}}" style="display: none; border-radius: 0.5em; background-color: rgb(245,245,245)">
-                    <div>
-                        <input maxlength="120" class="form-control mt-3" id="update_title_album" name="title"
-                               type="text" value="{{album.title}}"
-                               placeholder="New album title" required>
-                        <textarea class="form-control mt-2" name="content" id="update_description_album"
-                                  maxlength="1024"
-                                  placeholder="Description" rows="3">{{album.description}}</textarea>
+                <form class="needs-validation-update" novalidate>
+                    <div class="mb-3 mt-2 p-2" id="update_album_form"
+                         data-url="/update/{{album.id}}"
+                         style="display: none; border-radius: 0.5em; background-color: rgb(245,245,245)">
+                        <div>
+                            <input maxlength="120" class="form-control mt-3" id="update_title_album" name="title"
+                                   type="text" value="{{album.title}}"
+                                   placeholder="New album title" required>
+                            <textarea class="form-control mt-2" name="content" id="update_description_album"
+                                      maxlength="1024"
+                                      placeholder="Description" rows="3">{{album.description}}</textarea>
+                        </div>
+                        <div class="input-group input-group-append nav-item row mt-2 justify-content-end">
+                            <button class="btn btn btn-link text-success col-sm-1" type="submit" id="update_album">
+                                Update
+                            </button>
+                            <button class="btn btn btn-link text-danger col-sm-1" type="button"
+                                    id="cancel_updating_album">
+                                Cancel
+                            </button>
+                        </div>
                     </div>
-                    <div class="input-group input-group-append nav-item row mt-2 justify-content-end">
-                        <button class="btn btn btn-link text-success col-sm-1" type="submit" id="update_album">
-                            Update
-                        </button>
-                        <button class="btn btn btn-link text-danger col-sm-1" type="submit"
-                                id="cancel_updating_album">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
+                </form>
             </li>
 
             <li class="row justify-content-between align-self-center p-2 mb-1 mt-2" id="delete_photos_form"
-                data-url="/delete/photo/{{album.id}}" style="display: none; width: 100%; border: 1px solid #ced4da; background-color: rgb(245,245,245); border-radius: 0.5em">
-                    <div class="text-center col-12 col-md-6 align-self-center" style="color: gray; font-size: 1.3em">Select photos to delete</div>
-                    <div class="col-12 col-md-3 input-group input-group-append">
-                        <button class="btn btn-link text-success col-6" type="submit" id="deletePhotos">Delete</button>
-                        <button class="btn btn-link text-danger col-6" type="submit"
-                                id="cancelDeletionPhotos">Cancel
-                        </button>
-                    </div>
+                data-url="/delete/photo/{{album.id}}"
+                style="display: none; width: 100%; border: 1px solid #ced4da; background-color: rgb(245,245,245); border-radius: 0.5em">
+                <div class="text-center col-12 col-md-6 align-self-center" style="color: gray; font-size: 1.3em">Select
+                    photos to delete
+                </div>
+                <div class="col-12 col-md-3 input-group input-group-append">
+                    <button class="btn btn-link text-danger col-6" type="submit" id="deletePhotos">Delete</button>
+                    <button class="btn btn-link text-secondary col-6" type="submit"
+                            id="cancelDeletionPhotos">Cancel
+                    </button>
+                </div>
             </li>
 
             <li class="nav-item" id="move_photos_form" style="display: none"
                 data-url="/move/photo">
-                <div class="row justify-con tent-between  p-2" style="background-color: rgb(245,245,245); border-radius: 0.5em;">
+                <div class="row justify-con tent-between  p-2"
+                     style="background-color: rgb(245,245,245); border-radius: 0.5em;">
                     <select required class="custom-select form-control col-md-6 col-sm-12 col-12" id="albumSelect">
                         <option value="">Select album and photos to move</option>
                         {{#allAlbums}}

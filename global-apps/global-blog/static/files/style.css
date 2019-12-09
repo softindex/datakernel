@@ -88,14 +88,18 @@ img, video {
 
 .threadline:hover .threadline-line, .threadline.collapsed .threadline-line {
   background: black;
-  width: 2px;
+  width: 3px;
   border-top-right-radius: 1rem;
   border-bottom-right-radius: 1rem;
 }
 
 .threadline-line {
-  width: 1px;
+  width: 2px;
   height: 100%;
   background: #89939b;
   transition: background .15s ease-in-out;
+}
+
+.button-poiner {
+    cursor: pointer;
 }

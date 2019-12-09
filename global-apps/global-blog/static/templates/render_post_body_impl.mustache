@@ -56,7 +56,7 @@
             <div class="col">
                 <div class="row text-wrap text-break">
                     <p id="content_{{postId}}" class="content multiline m-0 px-1 {{#deletedBy}} deleted{{/deletedBy}}"
-                       style="border: 1px solid transparent">{{content}}</p>
+                       style="border: 1px solid transparent; height: initial; {{^deletedBy}}color: initial; {{/deletedBy}} white-space: pre-line">{{content}}</p>
                 </div>
             </div>
         </div>
@@ -67,7 +67,7 @@
                 {{#user}}
                     {{#role.known}}
                         <div class="col-auto pl-1">
-                            <div class="reply-button link-like text-secondary small unselectable">
+                            <div class="reply-button button-poiner link-like text-secondary small unselectable">
                                 reply
                             </div>
                         </div>
@@ -75,7 +75,7 @@
                     {{#editable}}
                         <div class="col-auto pl-0">
                             <div class="dropdown">
-                                <div class="link-like text-secondary small unselectable dropdown-toggle"
+                                <div class="link-like text-secondary small button-poiner unselectable dropdown-toggle"
                                      data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     change
                                 </div>

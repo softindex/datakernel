@@ -19,6 +19,7 @@ import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
+import io.global.mustache.DebugMustacheModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
@@ -89,7 +90,7 @@ public class GlobalPhotosApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new MustacheModule(),
+				new DebugMustacheModule(),
 				new KvSyncModule(),
 				new OTSyncModule(),
 				new FsSyncModule()

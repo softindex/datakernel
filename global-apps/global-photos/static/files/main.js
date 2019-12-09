@@ -32,8 +32,9 @@ window.onload = () => {
   const savePhotoDescription = $("#savePhotoDescription");
   const editPhotoDescription = $("#editPhotoDescription");
   const editDescriptionButtonGroup = $("#editDescriptionButtonGroup");
-  enableEditingDescriptionPhoto(savePhotoDescription, editDescriptionButtonGroup, editPhotoDescription);
-
+  const photoDescription = $("#photo_description");
+  const photoDescriptionStatic = $("#photo_description_static");
+  enableEditingDescriptionPhoto(savePhotoDescription, editDescriptionButtonGroup, editPhotoDescription, photoDescription, photoDescriptionStatic);
 
   // ======== move album handling ======
   const movePhotosForm = $("#move_photos_form");
@@ -73,6 +74,13 @@ window.onload = () => {
   $loginButton.attr('href', $loginButton.attr('href') + '?redirectURI=' + encodeURIComponent(location.origin) + '/auth/authorize%3Forigin=' + encodeURIComponent(location.href));
 };
 
+function autoresize($textarea) {
+  let $stub = $('<div style="height: ' + $textarea.height() + 'px"></div>');
+  $textarea.after($stub);
+  $textarea.css('height', '1px');
+  $textarea.css('height', (10 + $textarea[0].scrollHeight) + 'px');
+  $stub.remove();
+}
 
 function preloadImage(allImages) {
   // === Preload image ====
@@ -244,13 +252,12 @@ function enableMovingPhotosListener(movePhotos, movePhotosForm, cancelMovingPhot
 }
 
 
-function enableEditingDescriptionPhoto(savePhotoDescription, editDescriptionButtonGroup, editPhotoDescription) {
+function enableEditingDescriptionPhoto(savePhotoDescription, editDescriptionButtonGroup, editPhotoDescription, photoDescription, photoDescriptionStatic) {
   const modal = $("#modal");
   const close = $("#close");
   const albumBar = $("#album_bar");
   const modalImg = $("#modalImg");
   const downloadButton = $("#downloadButton");
-  const photoDescription = $("#photo_description");
   savePhotoDescription.click(() => {
     fetch(modalImg[0].dataset.url, {
       headers: {
@@ -264,6 +271,10 @@ function enableEditingDescriptionPhoto(savePhotoDescription, editDescriptionButt
   const cancelEditingPhotoDescription = $("#cancelEditingPhotoDescription");
   cancelEditingPhotoDescription.click(() => {
     downloadButton.show();
+    if (photoDescriptionStatic.text()) {
+      photoDescriptionStatic.show();
+    }
+    photoDescription.hide();
     editDescriptionButtonGroup.css({display: "none"});
     editPhotoDescription.css({display: ""});
     photoDescription.val(modalImg[0].dataset.description);
@@ -272,17 +283,32 @@ function enableEditingDescriptionPhoto(savePhotoDescription, editDescriptionButt
 
   editPhotoDescription.click(() => {
     downloadButton.hide();
+    photoDescriptionStatic.hide();
+    photoDescription.show();
+    autoresize(photoDescription);
     editDescriptionButtonGroup.css({display: ""});
     editPhotoDescription.css({display: "none"});
     photoDescription.prop('readonly', false).focus();
   });
 
-  close.click(() => {
+  function doClose() {
+    photoDescriptionStatic.val("");
     photoDescription.val("");
     editDescriptionButtonGroup.css({display: "none"});
     editPhotoDescription.css({display: ""});
     albumBar.css({display: ""});
     modal.css({display: "none"});
+  }
+
+  modal.click(e => {
+    var target = $( e.target );
+    if (target.is("div")) {
+      doClose();
+    }
+  });
+
+  close.click(() => {
+      doClose();
   });
 }
 
@@ -377,23 +403,30 @@ function enableUpdatingAlbum(updateAlbumTool, updateAlbumForm, currentDescriptio
     currentDescriptionAlbum.toggle();
   });
 
-  updateAlbum.click(() => {
-    fetch(updateAlbumForm[0].dataset.url, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      },
-      method: 'POST',
-      body: JSON.stringify([
-        updateTitleAlbum[0].value,
-        updateDesciptionAlbum[0].value,
-      ])
-    }).then((response) => {
-      if (response.redirected) {
-        window.location.href = response.url;
-      } else {
-        location.reload()
+  var validation = Array.prototype.filter.call($(".needs-validation-update"), function(form) {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!form.checkValidity() === false) {
+        fetch(updateAlbumForm[0].dataset.url, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          },
+          method: 'POST',
+          body: JSON.stringify([
+            updateTitleAlbum[0].value,
+            updateDesciptionAlbum[0].value,
+          ])
+        }).then((response) => {
+          if (response.redirected) {
+            window.location.href = response.url;
+          } else {
+            location.reload()
+          }
+        }, console.error);
       }
-    }, console.error);
+      form.classList.add('was-validated');
+    }, false);
   });
 }
 
@@ -404,25 +437,33 @@ function enableAlbumCreationListener(createAlbum, cancelCreationAlbum, albumForm
 
   const tools = $("#tools");
   const imageCheckboxs = $("[id^=image_checkbox_]");
-  createAlbum.click(() => {
-    const selectedImages = imageCheckboxs.filter('.image-checkbox-checked').map((index, value) => value.dataset.id).get();
-    fetch(albumForm.dataset.url, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      },
-      method: 'POST',
-      body: JSON.stringify([
-        titleAlbum.value,
-        descriptionAlbum.value,
-        selectedImages
-      ])
-    }).then((response) => {
-      if (response.redirected) {
-        window.location.href = response.url;
-      } else {
-        location.reload()
+
+  var validation = Array.prototype.filter.call($(".needs-validation"), function(form) {
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!form.checkValidity() === false) {
+        const selectedImages = imageCheckboxs.filter('.image-checkbox-checked').map((index, value) => value.dataset.id).get();
+        fetch(albumForm.dataset.url, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          },
+          method: 'POST',
+          body: JSON.stringify([
+            titleAlbum.value,
+            descriptionAlbum.value,
+            selectedImages
+          ])
+        }).then((response) => {
+          if (response.redirected) {
+            window.location.href = response.url;
+          } else {
+            location.reload()
+          }
+        }, console.error);
       }
-    }, console.error);
+      form.classList.add('was-validated');
+    }, false);
   });
 
   cancelCreationAlbum.click(() => {
@@ -442,7 +483,7 @@ function enableAlbumCreationListener(createAlbum, cancelCreationAlbum, albumForm
     $(albumForm).toggle();
     enableSelection();
   });
-}
+};
 
 function enableSelection() {
   const imageCheckboxs = $("[id^=image_checkbox_]");
@@ -466,6 +507,7 @@ function enableZoom() {
   const modalImg = $("#modalImg");
   const downloadButton = $("#downloadButton");
   const photoDescription = $("#photo_description");
+  const photoDescriptionStatic = $("#photo_description_static");
   const allImages = $("img[id]");
   const modal = $("#modal");
   allImages.each((index, img) => {
@@ -476,6 +518,10 @@ function enableZoom() {
       modalImg.attr("src", $img[0].dataset.thumbnailImg);
       modalImg.attr("data-description", $img[0].dataset.description);
       modalImg.attr("data-url", $img[0].dataset.url);
+      photoDescriptionStatic.text(modalImg[0].dataset.description);
+      if (!modalImg[0].dataset.description) {
+        photoDescriptionStatic.hide();
+      }
       photoDescription.val(modalImg[0].dataset.description);
     };
   });
@@ -487,7 +533,6 @@ function disableZoom() {
     img.onclick = null;
   });
 }
-
 
 function lazyLoad() {
   const allImages = $("img[id]");

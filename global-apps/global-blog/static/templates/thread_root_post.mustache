@@ -58,10 +58,10 @@
         {{#attachments}}
             <div class="row p-2">
                 {{#image}}
-                    <div class="col-lg-3 col-md-4 col-sm-6 col-12 m-0 pl-1 text-center" title="{{.}}" style="position: relative">
+                    <div class="col-lg-3 col-md-4 col-sm-6 col-12 m-0 pl-0   text-center align-self-center" title="{{.}}" style="position: relative;">
                         <a href="/{{threadId}}/{{postId}}/download/{{.}}">
-                            <img src="/{{threadId}}/{{postId}}/download/{{.}}"
-                                 class="img-thumbnail m-2" alt="image"/>
+                            <img src="/{{threadId}}/{{postId}}/download/{{.}}" style="border-radius: 0.5rem"
+                                 class="m-2 align-content-center" alt="image"/>
                         </a>
                         <label class="customCheckbox" style="position: absolute; top: 50%; left: 50%;
                                     transform: translate(-50%, -50%)">
