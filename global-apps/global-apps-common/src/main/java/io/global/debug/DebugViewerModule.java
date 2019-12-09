@@ -12,13 +12,13 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
+import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.Types;
 import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.ot.OTLoadedGraph;
 import io.datakernel.ot.OTRepository;
-import io.datakernel.ot.OTStateManager;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executor;
+import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.http.ContentTypes.HTML_UTF_8;
@@ -84,6 +85,11 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 										.getBytes(UTF_8))));
 	}
 
+	@Override
+	protected void configure() {
+		multibind(Key.of(ObjectDisplayRegistry.class), Multibinder.ofBinaryOperator(ObjectDisplayRegistry::merge));
+	}
+
 	@Provides
 	@Named("fs")
 	AsyncServlet fsViewer(@Optional GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
@@ -121,17 +127,14 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 				});
 	}
 
-	private static String diffToString(Object diff) {
-		return diff.getClass().getSimpleName() + '|' + diff;
-	}
-
 	private static Map<RepoID, SoftReference<OTLoadedGraph<CommitId, Object>>> loadedGraphs = new HashMap<>();
 
 	@Provides
 	@Named("ot")
 	AsyncServlet otViewer(Executor executor,
 			@Optional GlobalOTNode otNode, @Optional OTDriver otDriver,
-			TypedRepoNames repoNames, CodecFactory codecs, ContainerManager<C> containerManager, Key<C> reifiedC
+			TypedRepoNames repoNames, CodecFactory codecs,
+			ContainerManager<C> containerManager, Key<C> reifiedC
 	) {
 		if (otNode == null || otDriver == null) {
 			return request -> HttpException.ofCode(404, "No FS node used by this app");
@@ -142,47 +145,56 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 					PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
 					String path = request.getRelativePath();
 					String prefix = repoNames.getPrefix();
-					if (path.isEmpty()) {
-						return otNode.list(pk)
-								.map(list -> HttpResponse.ok200()
-										.withJson(STRING_LIST_CODEC, list.stream()
-												.filter(x -> x.startsWith(prefix))
-												.map(x -> x.substring(prefix.length()))
-												.collect(toList())));
-					}
-					String repo = prefix + path;
-					Key<?> diffType = repoNames.getKeyByRepo(repo);
-					if (diffType == null) {
-						return HttpException.ofCode(404, "No repo " + repo);
-					}
-					Injector containerScope = containerManager.getContainerScope(pk);
-					if (containerScope == null) {
-						return HttpException.ofCode(404, "No container for key " + pk);
-					}
 
-					OTSystem<Object> otSystem = containerScope.getInstance(Key.ofType(Types.parameterized(OTSystem.class, diffType.getType())));
-					OTStateManager<CommitId, Object> stateManager = containerScope.getInstanceOrNull(Key.ofType(Types.parameterized(OTStateManager.class, CommitId.class,  diffType.getType())));
+					return otNode.list(pk)
+							.then(list -> {
+								if (path.isEmpty()) {
+									return Promise.of(HttpResponse.ok200()
+											.withJson(STRING_LIST_CODEC, list.stream()
+													.filter(x -> x.startsWith(prefix))
+													.map(x -> x.substring(prefix.length()))
+													.collect(toList())));
+								}
+								String repo = prefix + path;
+								if (!list.contains(repo)) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No repo " + repo));
+								}
 
-					StructuredCodec<Object> diffCodec = codecs.get(diffType.getType());
-					RepoID repoID = RepoID.of(pk, repo);
-					MyRepositoryId<Object> myRepositoryId = new MyRepositoryId<>(repoID, null, diffCodec);
-					OTRepository<CommitId, Object> repository = new OTRepositoryAdapter<>(otDriver, myRepositoryId, emptySet());
+								Key<?> diffType = repoNames.getKeyByRepo(repo);
+								if (diffType == null) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No diff type for repo " + repo));
+								}
+								Injector containerInjector = containerManager.getContainerScope(pk);
+								if (containerInjector == null) {
+									return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No container for key " + pk));
+								}
+								OTSystem<Object> otSystem = containerInjector.getInstance(Key.ofType(Types.parameterized(OTSystem.class, diffType.getType())));
+								ObjectDisplayRegistry prettyPrinter = containerInjector.getInstance(ObjectDisplayRegistry.class);
 
-					SoftReference<OTLoadedGraph<CommitId, Object>> graphRef = loadedGraphs.computeIfAbsent(repoID, $ ->
-							new SoftReference<>(new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, DebugViewerModule::diffToString)));
+								StructuredCodec<Object> diffCodec = codecs.get(diffType.getType());
+								RepoID repoID = RepoID.of(pk, repo);
+								MyRepositoryId<Object> myRepositoryId = new MyRepositoryId<>(repoID, null, diffCodec);
+								OTRepository<CommitId, Object> repository = new OTRepositoryAdapter<>(otDriver, myRepositoryId, emptySet());
 
-					OTLoadedGraph<CommitId, Object> graph = graphRef.get();
-					if (graph == null) {
-						graph = new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, DebugViewerModule::diffToString);
-						loadedGraphs.put(repoID, new SoftReference<>(graph));
-					}
+								Function<Object, String> diffToString = object ->
+										prettyPrinter.getShortDisplay(object).replaceAll("\"", "\\\\\\\"") + "|" + prettyPrinter.getLongDisplay(object).replaceAll("\"", "\\\\\\\"");
 
-					OTLoadedGraph<CommitId, Object> finalGraph = graph;
-					return repository.getHeads()
-							.then(heads -> loadGraph(repository, otSystem, heads, finalGraph))
-							.map($ -> HttpResponse.ok200()
-									.withHeader(CONTENT_TYPE, CONTENT_TYPE_GRAPHVIZ)
-									.withBody(finalGraph.toGraphViz(stateManager != null ? stateManager.getCommitId() : null).getBytes(UTF_8)));
+								SoftReference<OTLoadedGraph<CommitId, Object>> graphRef = loadedGraphs.computeIfAbsent(repoID, $ ->
+										new SoftReference<>(new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)));
+
+								OTLoadedGraph<CommitId, Object> graph = graphRef.get();
+								if (graph == null) {
+									graph = new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString);
+									loadedGraphs.put(repoID, new SoftReference<>(graph));
+								}
+
+								OTLoadedGraph<CommitId, Object> finalGraph = graph;
+								return repository.getHeads()
+										.then(heads -> loadGraph(repository, otSystem, heads, finalGraph))
+										.map($ -> HttpResponse.ok200()
+												.withHeader(CONTENT_TYPE, CONTENT_TYPE_GRAPHVIZ)
+												.withBody(finalGraph.toGraphViz(null).getBytes(UTF_8)));
+							});
 				});
 	}
 

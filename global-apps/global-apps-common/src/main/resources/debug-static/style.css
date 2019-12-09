@@ -10,18 +10,7 @@ body {
   background-color: #343a40;
   padding: 1em 1.5em;
   margin: 0;
-  z-index: 1;
-}
-
-#key {
-  font-size: 0.7em;
-  font-family: monospace;
-  font-weight: normal;
-  vertical-align: middle;
-  background-color: #6a777d;
-  padding: 0.5em;
-  border-radius: 5px;
-  user-select: all;
+  z-index: 2;
 }
 
 html {
@@ -76,31 +65,13 @@ body {
   content: "-";
 }
 
-g.edge:hover > polygon {
-  stroke-width: 2;
-}
-g.edge:hover > path {
-  stroke-dasharray: 5, 1;
-  stroke-width: 2;
-}
-
-g.node > ellipse {
-  cursor: pointer;
-}
-
-g.node > text {
-  font-size: 0.7em;
-  font-family: sans-serif;
-  pointer-events: none;
-}
-
 .diff-modal {
   position: absolute;
   z-index: 1;
   tab-index: -1;
-  left: 500px;
-  top: 200px;
   border-radius: 5px;
+  max-width: 100vw;
+  white-space: nowrap;
 
   font-family: sans-serif;
 }
@@ -129,6 +100,8 @@ g.node > text {
   cursor: default;
   padding: 0.2em;
   border-radius: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .diff:before {
@@ -150,7 +123,7 @@ g.node > text {
 }
 
 .user-id {
-  text-decoration: underline;
+  text-decoration: underline dotted;
   color: #343a40;
   cursor: pointer;
 }
@@ -159,19 +132,36 @@ svg {
   transform-origin: top left;
 }
 
-svg * {
-  user-select: none;
+g.edge:hover > polygon {
+  stroke-width: 2;
+}
+
+g.edge:hover > path {
+  stroke-dasharray: 5, 1;
+  stroke-width: 2;
+}
+
+g.node > ellipse {
+  cursor: pointer;
+}
+
+g.node > text {
+  font-size: 0.7em;
+  font-family: sans-serif;
 }
 
 #graph-coords {
   font-family: monospace;
   position: absolute;
-  z-index: 1;
+  z-index: -1;
   top: 6em;
   left: 1em;
-  user-select: none;
 }
 
 .non-default {
   display: none;
+}
+
+.unselectable {
+  user-select: none;
 }

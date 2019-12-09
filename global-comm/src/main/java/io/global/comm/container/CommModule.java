@@ -7,16 +7,20 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
+import io.datakernel.promise.Promise;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.CommDaoImpl;
 import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.ThreadOTSystem;
+import io.global.comm.ot.post.operation.AddPost;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.ThreadMetadata;
+import io.global.comm.pojo.UserData;
 import io.global.comm.util.OTPagedAsyncMap;
 import io.global.comm.util.PagedAsyncMap;
 import io.global.common.KeyPair;
+import io.global.debug.ObjectDisplayRegistry;
 import io.global.kv.api.KvClient;
 import io.global.ot.OTGeneratorsModule;
 import io.global.ot.TypedRepoNames;
@@ -29,6 +33,10 @@ import io.global.ot.service.ContainerScope;
 import io.global.ot.session.UserId;
 import io.global.session.KvSessionStore;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.TreeMap;
 import java.util.function.Function;
 
@@ -56,8 +64,30 @@ public final class CommModule extends AbstractModule {
 
 	@Provides
 	@ContainerScope
+	ObjectDisplayRegistry diffDisplay(PagedAsyncMap<UserId, UserData> users) {
+		return ObjectDisplayRegistry.create()
+				.withDisplay(Long.class,
+						($, ts) -> "ts:" + ts,
+						($, ts) -> Instant.ofEpochMilli(ts).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME).replace('T', '/'))
+				.withDisplay(UserId.class,
+						($, user) -> "pk:" + user.getAuthId(),
+						($, user) -> {
+							Promise<UserData> userDataPromise = users.get(user);
+							String username = userDataPromise.isResult() ? userDataPromise.getResult().getUsername() : "<i>&lt;unknown&gt;</i>";
+							return "<span class=\"user-id\" title=\"" + user.getAuthId() + "\">" + username + "</span>";
+						})
+				.withDisplay(AddPost.class,
+						($, p) -> (p.isRemove() ? "remove" : "add") + (p.getParentId() == null ? " root" : "") + " post",
+						(d, p) -> {
+							String post = p.getParentId() == null ? "root post" : "post (" + p.getPostId() + "->" + p.getParentId() + ")";
+							return "add " + post + " by " + d.getLongDisplay(p.getAuthor()) + " at " + d.getLongDisplay(p.getInitialTimestamp());
+						});
+	}
+
+	@Provides
+	@ContainerScope
 	KvSessionStore<UserId> sessionStore(Eventloop eventloop, KvClient<String, UserId> kvClient, TypedRepoNames repoNames) {
-		return KvSessionStore.create(eventloop, kvClient, repoNames.getRepoName(new Key<KvClient<String, UserId>>(){}));
+		return KvSessionStore.create(eventloop, kvClient, repoNames.getRepoName(new Key<KvClient<String, UserId>>() {}));
 	}
 
 	@Provides

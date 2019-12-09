@@ -33,7 +33,7 @@ public final class Utils {
 	}
 
 	public static String getScopeDisplayString(Scope[] scope) {
-		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()", ""));
+		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", ""));
 	}
 
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {

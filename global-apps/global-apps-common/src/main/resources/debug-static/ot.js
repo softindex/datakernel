@@ -1,7 +1,6 @@
 window.onload = () => {
   let $title = $('#title');
   let $body = $('#body');
-  let $diffModal = $('.diff-modal');
   let $graphCoords = $('#graph-coords');
   let $polling = $('#polling');
   let $pollingCb = $polling.find('input:first');
@@ -14,20 +13,25 @@ window.onload = () => {
   let listTimerId = null;
 
   init();
-  $diffModal.find('.diff-hide').click(() => $diffModal.collapse('hide'));
 
   let viz = new Viz();
 
   function updateGraph(repo) {
     fetch('/debug/ot/api/' + repo)
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) {
+          throw new Error('failed to load the graph');
+        }
+        return r.text();
+      })
       .then(text => {
-        return viz.renderSVGElement(text.replace(/label="([^"]*?)"/g, (_, content) => {
-          let diffs = content.split(',\n');
-          let label = diffs.map(d => d.split('|')[0]).join('\n+');
-          let xlabel = diffs.map(d => d.split('|')[1]).join('\n');
-          return 'label="+' + label + '"; xlabel="' + xlabel + '"';
-        }));
+        let replaced = text.replace(/label="([^]*?)"]/gm, (_, content) => {
+          let diffs = content.split(',\n').map(d => d.split('|'));
+          let label = diffs.map(d => d[0]).join('\n+');
+          let xlabel = diffs.map(d => d[1]).join('\n');
+          return 'label="+' + label + '"; xlabel="' + xlabel + '"]';
+        });
+        return viz.renderSVGElement(replaced);
       })
       .then(svg => {
         let pos = [0, 0];
@@ -62,34 +66,57 @@ window.onload = () => {
         $svg.find('g.graph > polygon').remove(); // remove white background
 
         let $graph = $svg.find('g.graph');
+        $svg.addClass('unselectable');
         $graph.attr('transform', 'scale(1.5)');
-
-        $svg.find('g.edge').click(e => {
-          let id = e.currentTarget.id;
-          if (id === $diffModal.data('edge') && $diffModal.hasClass('show')) {
-            $diffModal.collapse('hide');
-            return
-          }
-          $diffModal.removeClass('show');
-          $diffModal.data('edge', id);
-          $diffModal.find('.diff-title-content').text('Diffs for: ' + $(e.currentTarget).find('title').text());
-          $diffModal.find('.diff-body').empty()
-            .append(diffMap[id].map(diff => $('<div class="diff"></div>').html(diff.replace(/UserId{pl='([^']*)'}/g, '<div class="user-id" title="$1">USER</div>'))));
-
-          let rect = e.currentTarget.getBoundingClientRect();
-          $diffModal.css('left', rect.x - $diffModal.width() / 2);
-          $diffModal.css('top', rect.y + rect.height / 2 + $(window).scrollTop());
-          $diffModal.collapse('show');
-        });
 
         $body.empty().append($('<div class="mx-auto mt-5"></div>').append($svg));
 
+        // set the size of svg to match its fixed contents (no big white background rect)
         let bbox = $svg[0].getBBox();
         $svg.attr('width', bbox.width + 2);
         $svg.attr('height', bbox.height + 2);
         $svg.attr('viewBox', [bbox.x - 2, bbox.y - 2, bbox.width + 4, bbox.height + 4].join(' '));
 
-        transform(pos[0], pos[1], scale)
+        let $edges = $svg.find('g.edge');
+
+        // create and show a diff modal on edge click
+        $edges.click(e => {
+          if (grabbed) { // prevent this when releasing mouse after drag finish
+            return;
+          }
+          let edgeId = e.currentTarget.id;
+          let $prev = $('[data-edge="' + edgeId + '"]');
+          if ($prev.length > 0) {
+            $prev.collapse('hide');
+            return;
+          }
+
+          let title = 'Diffs for: ' + $(e.currentTarget).find('title').text();
+          let rect = e.currentTarget.getBoundingClientRect();
+          let $diffModal = createDiffModal(title, edgeId, diffMap[edgeId]);
+
+          $(document.body).append($diffModal);
+
+          $diffModal
+            .css('left', rect.x - $diffModal.width() / 2)
+            .css('top', rect.y + rect.height / 2 + $(window).scrollTop())
+            .collapse('show');
+        });
+
+        // add transparent rects to each edge group for them to be clickable
+        $edges.each((_, e) => {
+          let bbox = e.getBBox();
+          // jquery can't properly create svg elements
+          let $rect = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
+            .attr('x', bbox.x)
+            .attr('y', bbox.y)
+            .attr('width', bbox.width)
+            .attr('height', bbox.height)
+            .attr('opacity', '0');
+          $(e).prepend($rect);
+        });
+
+        transform(pos[0], pos[1], scale);
       }, e => {
         viz = new Viz();
         console.error(e);
@@ -178,6 +205,8 @@ window.onload = () => {
   window.onpopstate = pathView;
 
   let grabbed = null;
+  let grabbedModals = null;
+  let $movingModal = false;
 
   function transform(x, y, scale) {
     $graphCoords.text('x: ' + x.toFixed(0) + ', y: ' + y.toFixed(0) + ', scale: ' + scale.toFixed(3));
@@ -189,7 +218,17 @@ window.onload = () => {
   function handleDrag(x, y, pressed) {
     if (grabbed == null) {
       if (pressed) {
-        $diffModal.collapse('hide');
+        if ($movingModal) {
+          $movingModal.addClass('unselectable');
+          grabbedModals = [x - parseFloat($movingModal.css('left')), y - parseFloat($movingModal.css('top'))];
+        } else {
+          let $diffModals = $('.diff-modal');
+          $diffModals.addClass('unselectable');
+          grabbedModals = $diffModals.toArray().map(e => {
+            let $e = $(e);
+            return [$e, x - parseFloat($e.css('left')), y - parseFloat($e.css('top'))];
+          });
+        }
         let pos = $svg.data('pos');
         if (pos) {
           grabbed = [x - pos[0], y - pos[1]]
@@ -197,21 +236,33 @@ window.onload = () => {
           grabbed = [x, y];
         }
       }
+    } else if ($movingModal) {
+      if (pressed) {
+        $movingModal.css('left', x - grabbedModals[0]).css('top', y - grabbedModals[1]);
+      } else {
+        $movingModal.removeClass('unselectable');
+        $movingModal = null;
+        grabbedModals = null;
+        grabbed = null;
+      }
     } else if ($svg != null) {
-      let offX = x - grabbed[0];
-      let offY = y - grabbed[1];
       let scale = $svg.data('scale') || 1;
       if (pressed) {
+        let offX = x - grabbed[0];
+        let offY = y - grabbed[1];
         transform(offX, offY, scale);
+        grabbedModals.forEach(([$e, gx, gy]) => $e.css('left', x - gx).css('top', y - gy));
       } else {
-        grabbed = null;
+        $('.diff-modal').removeClass('unselectable');
+        grabbedModals = null;
+        setTimeout(() => grabbed = null, 1); // for the modal-after-drag prevention
       }
     }
   }
 
   function handleScale(x, y, factor) {
     if ($svg) {
-      $diffModal.collapse('hide');
+      $('.diff-modal').collapse('hide');
 
       let prevScale = $svg.data('scale') || 1;
       let scale = prevScale;
@@ -236,6 +287,34 @@ window.onload = () => {
   }
 
   let pressed = false;
+
+  function createDiffModal(title, edge, diffs) {
+    let $diffModal = $('<div class="diff-modal collapse" data-edge="' + edge + '">' +
+      '<div class="diff-title unselectable">' +
+      '<span class="diff-title-content">' + title + '</span>' +
+      '<span class="float-right px-2 py-0 m-1 diff-hide">&times;</span>' +
+      '</div>' +
+      '<div class="diff-body"></div>' +
+      '</div>');
+    $diffModal.on('hidden.bs.collapse', e => $(e.currentTarget).remove());
+    $diffModal.find('.diff-hide').click(() => $diffModal.collapse('hide'));
+    $diffModal.find('.diff-title').mousedown(e => {
+      if (e.button === 1) { // close on title middle click
+        $diffModal.collapse('hide');
+        return;
+      }
+      pressed = true;
+      $movingModal = $(e.currentTarget).parent();
+      $movingModal.appendTo($movingModal.parent());
+    });
+    $diffModal.find('.diff-body')
+      .append(diffs.map(diff => {
+        let fixedDiff = diff.replace(/UserId\{pk='([^']*)'}/g, '<span class="user-id" title="$1">USER</span>');
+        return $('<div class="diff"></div>').html(fixedDiff);
+      }));
+    return $diffModal
+  }
+
   $body.mousedown(() => pressed = true);
   $body.mousewheel(e => handleScale(e.pageX, e.pageY, e.deltaY));
   $(document).mouseup(e => handleDrag(e.pageX, e.pageY, pressed = false));

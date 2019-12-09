@@ -53,7 +53,7 @@ import static java.util.stream.Collectors.toSet;
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
-	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
+	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.exponentialBackoff(1, 60_000); //.immediateRetry().withMaxTotalRetryCount(10);
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
 
 	private final Eventloop eventloop;
