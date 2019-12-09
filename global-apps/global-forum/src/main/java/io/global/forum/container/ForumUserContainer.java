@@ -9,6 +9,7 @@ import io.global.comm.container.CommState;
 import io.global.common.KeyPair;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.ot.ForumMetadata;
+import io.global.ot.StateManagerWithMerger;
 import io.global.ot.api.CommitId;
 import io.global.ot.service.UserContainer;
 import io.global.ot.session.UserId;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import static io.datakernel.async.util.LogUtils.toLogger;
 
+@Inject
 public final class ForumUserContainer implements UserContainer {
 	private static final Logger logger = LoggerFactory.getLogger(ForumUserContainer.class);
 
@@ -28,19 +30,11 @@ public final class ForumUserContainer implements UserContainer {
 	@Inject
 	private ForumDao forumDao;
 	@Inject
-	private OTStateManager<CommitId, ChangeValue<ForumMetadata>> metadataStateManager;
+	private StateManagerWithMerger<ChangeValue<ForumMetadata>> metadataStateManagerWithMerger;
 	@Inject
 	private CommState comm;
 	@Inject
 	private KeyPair keys;
-
-	private ForumUserContainer() {
-	}
-
-	@Inject
-	public static ForumUserContainer create() {
-		return new ForumUserContainer();
-	}
 
 	@Override
 	@NotNull
@@ -52,7 +46,7 @@ public final class ForumUserContainer implements UserContainer {
 	@Override
 	public Promise<?> start() {
 		return comm.start()
-				.then($ -> metadataStateManager.start())
+				.then($ -> metadataStateManagerWithMerger.start())
 				.whenComplete(toLogger(logger, "start"));
 	}
 
@@ -60,12 +54,12 @@ public final class ForumUserContainer implements UserContainer {
 	@Override
 	public Promise<?> stop() {
 		return comm.stop()
-				.then($ -> metadataStateManager.stop())
+				.then($ -> metadataStateManagerWithMerger.stop())
 				.whenComplete(toLogger(logger, "stop"));
 	}
 
 	public OTStateManager<CommitId, ChangeValue<ForumMetadata>> getMetadataStateManager() {
-		return metadataStateManager;
+		return metadataStateManagerWithMerger.getStateManager();
 	}
 
 	public ForumDao getForumDao() {

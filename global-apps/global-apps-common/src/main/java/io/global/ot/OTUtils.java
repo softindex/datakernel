@@ -7,6 +7,7 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.promise.RetryPolicy;
+import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.edit.DeleteOperation;
 import io.global.ot.edit.EditOperation;
 import io.global.ot.edit.InsertOperation;
@@ -23,6 +24,7 @@ import io.global.ot.value.ChangeValue;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.global.Utils.PUB_KEY_HEX_CODEC;
+import static io.global.ot.contactlist.ContactsOperation.CONTACTS_OPERATION_CODEC;
 import static io.global.ot.edit.DeleteOperation.DELETE_CODEC;
 import static io.global.ot.edit.InsertOperation.INSERT_CODEC;
 
@@ -106,6 +108,8 @@ public final class OTUtils {
 				.withGeneric(MapOperation.class, (registry, subCodecs) -> getMapOperationCodec(subCodecs[0], subCodecs[1]))
 				.withGeneric(SetValue.class, (registry, subCodecs) -> getSetValueCodec(subCodecs[0]))
 				.withGeneric(ChangeValue.class, (registry, subCodecs) -> ofChangeValue(subCodecs[0]))
+				.with(ContactsOperation.class, registry -> CONTACTS_OPERATION_CODEC)
+				.with(SharedReposOperation.class, registry -> SHARED_REPOS_OPERATION_CODEC)
 				.with(UserId.class, registry -> tuple(UserId::new,
 						UserId::getAuthService, ofEnum(AuthService.class),
 						UserId::getAuthId, STRING_CODEC));

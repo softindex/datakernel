@@ -28,6 +28,12 @@ public final class TypedRepoNames {
 		return this;
 	}
 
+	public TypedRepoNames withGlobalRepoName(Key<?> key, String globalRepoName){
+		repoNames.put(key, globalRepoName);
+		repoPrefixesReverse.put(globalRepoName, key);
+		return this;
+	}
+
 	public TypedRepoNames withRepoPrefix(Key<?> key, String repoPrefix) {
 		repoPrefixes.put(key, prefix + repoPrefix + '/');
 		repoPrefixesReverse.put(repoPrefix, key);
@@ -61,6 +67,10 @@ public final class TypedRepoNames {
 			return plain;
 		}
 		return repoPrefixesReverse.get(repoName.substring(prefix.length(), repoName.lastIndexOf('/')));
+	}
+
+	public boolean hasRepoName(Key<?> key){
+		return repoNames.containsKey(key);
 	}
 
 	@Override

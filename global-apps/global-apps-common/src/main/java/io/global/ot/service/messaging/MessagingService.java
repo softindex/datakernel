@@ -4,6 +4,8 @@ import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.exception.StacklessException;
+import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Named;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
@@ -12,7 +14,6 @@ import io.datakernel.promise.SettablePromise;
 import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
-import io.global.ot.service.CommonUserContainer;
 import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
@@ -30,36 +31,29 @@ import static io.datakernel.promise.Promises.repeat;
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static io.global.util.Utils.eitherComplete;
 
+@Inject
 public final class MessagingService implements EventloopService {
 	public static final StacklessException STOPPED_EXCEPTION = new StacklessException(MessagingService.class, "Service has been stopped");
-	@NotNull
 	public static final Duration DEFAULT_POLL_INTERVAL = ApplicationSettings.getDuration(MessagingService.class, "message.poll.interval", Duration.ofSeconds(5));
 
-	private final Eventloop eventloop;
-	private final Messenger<Long, CreateSharedRepo> messenger;
-	private final CommonUserContainer<?> commonUserContainer;
-	private final String mailBox;
+	@Inject
+	private Eventloop eventloop;
+	@Inject
+	private Messenger<Long, CreateSharedRepo> messenger;
+	@Inject
+	private KeyPair keys;
+	@Inject
+	@Named("mail box")
+	private String mailBox;
 
-	private Duration pollInterval = DEFAULT_POLL_INTERVAL;
+	@Inject
+	@Named("poll interval")
+	private Duration pollInterval;
 
-	private SettablePromise<Message<Long, CreateSharedRepo>> stopPromise = new SettablePromise<>();
+	@Inject
+	OTStateManager<CommitId, SharedReposOperation> stateManager;
 
-	private MessagingService(Eventloop eventloop, Messenger<Long, CreateSharedRepo> messenger, CommonUserContainer<?> commonUserContainer, String mailBox) {
-		this.eventloop = eventloop;
-		this.messenger = messenger;
-		this.commonUserContainer = commonUserContainer;
-		this.mailBox = mailBox;
-	}
-
-	public static MessagingService create(Eventloop eventloop, Messenger<Long, CreateSharedRepo> messenger,
-			CommonUserContainer<?> commonUserContainer, String mailBox) {
-		return new MessagingService(eventloop, messenger, commonUserContainer, mailBox);
-	}
-
-	public MessagingService withPollInterval(Duration pollInterval){
-		this.pollInterval = pollInterval;
-		return this;
-	}
+	private final SettablePromise<Message<Long, CreateSharedRepo>> stopPromise = new SettablePromise<>();
 
 	@NotNull
 	@Override
@@ -82,15 +76,11 @@ public final class MessagingService implements EventloopService {
 	}
 
 	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
-		KeyPair keys = commonUserContainer.getKeys();
 		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
 		return messenger.send(keys, receiver, mailBox, payload).toVoid();
 	}
 
-	@SuppressWarnings("ConstantConditions")
 	private void pollMessages() {
-		KeyPair keys = commonUserContainer.getMyRepositoryId().getPrivKey().computeKeys();
-		OTStateManager<CommitId, SharedReposOperation> stateManager = commonUserContainer.getStateManager();
 		SharedReposOTState state = (SharedReposOTState) stateManager.getState();
 		AsyncSupplier<@Nullable Message<Long, CreateSharedRepo>> messagesSupplier = AsyncSupplier.cast(() -> messenger.poll(keys, mailBox))
 				.withExecutor(retry(POLL_RETRY_POLICY));

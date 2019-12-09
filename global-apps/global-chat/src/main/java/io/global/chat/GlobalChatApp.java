@@ -3,7 +3,6 @@ package io.global.chat;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
@@ -11,7 +10,6 @@ import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
@@ -19,43 +17,30 @@ import io.datakernel.ot.OTSystem;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.operation.ChatRoomOperation;
-import io.global.common.PrivKey;
-import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
 import io.global.ot.*;
-import io.global.ot.api.RepoID;
-import io.global.ot.client.MyRepositoryId;
-import io.global.ot.client.OTDriver;
-import io.global.ot.client.RepoSynchronizer;
-import io.global.ot.contactlist.ContactsModule;
 import io.global.ot.contactlist.ContactsOperation;
 import io.global.ot.map.MapOperation;
-import io.global.ot.service.CommonUserContainer;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
-import io.global.ot.service.messaging.CreateSharedRepo;
-import io.global.ot.service.messaging.MessagingService;
+import io.global.ot.service.SharedUserContainer;
 import io.global.ot.session.AuthModule;
 import io.global.ot.session.UserId;
-import io.global.ot.shared.IndexRepoModule;
 import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.Messenger;
 import io.global.pm.MessengerServlet;
-import io.global.session.KvSessionStore;
+import io.global.session.KvSessionModule;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
-import java.util.Random;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
-import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
@@ -64,16 +49,11 @@ import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
 import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
 import static io.global.common.CryptoUtils.randomBytes;
 import static io.global.common.CryptoUtils.toHexString;
-import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 
 public final class GlobalChatApp extends Launcher {
 	private static final String PROPERTIES_FILE = "global-chat.properties";
 	private static final String DEFAULT_LISTEN_ADDRESSES = "*:8080";
 	private static final String DEFAULT_SERVER_ID = "Global Chat";
-	private static final String CHAT_REPO_PREFIX = "chat/room";
-	private static final String CHAT_INDEX_REPO = "chat/index";
-	private static final String CHAT_SESSION_TABLE = "chat/session";
-	private static final String PROFILE_REPO_NAME = "profile";
 	private static final String SESSION_ID = "CHAT_SID";
 	private static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
@@ -93,8 +73,13 @@ public final class GlobalChatApp extends Launcher {
 	}
 
 	@Provides
-	OTSystem<ChatRoomOperation> chatRoomOTSystem() {
-		return CHAT_ROOM_OT_SYSTEM;
+	TypedRepoNames typedRepoNames() {
+		return TypedRepoNames.create("global-chat")
+				.withRepoName(Key.of(SharedReposOperation.class), "index")
+				.withGlobalRepoName(new Key<MapOperation<String, String>>() {}, "profile")
+				.withGlobalRepoName(new Key<ContactsOperation>() {}, "contacts")
+				.withRepoPrefix(Key.of(ChatRoomOperation.class), "room")
+				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 	}
 
 	@Provides
@@ -128,36 +113,14 @@ public final class GlobalChatApp extends Launcher {
 	}
 
 	@Provides
-	Messenger<Long, CreateSharedRepo> messenger(GlobalKvNode node) {
-		Random random = new Random();
-		return Messenger.create(node, LONG_CODEC, SHARED_REPO_MESSAGE_CODEC, random::nextLong);
-	}
-
-	@Provides
 	Messenger<String, String> notificationsMessenger(GlobalKvNode node) {
 		return Messenger.create(node, STRING_CODEC, STRING_CODEC, () -> toHexString(randomBytes(8)));
 	}
 
 	@Provides
-	@Eager
-	@Named("poll interval") Duration pollInterval(Config config){
-		return config.get(ofDuration(), "message.poll.interval", MessagingService.DEFAULT_POLL_INTERVAL);
-	}
-
-	@Provides
-	@Eager
-	@Named("initial back off") Duration initialBackOff(Config config){
-		return config.get(ofDuration(), "sync.initialBackOff", RepoSynchronizer.DEFAULT_INITIAL_BACKOFF);
-	}
-
-	@Provides
-	@ContainerScope
-	CommonUserContainer<ChatRoomOperation> userContainer(Eventloop eventloop, PrivKey privKey, OTDriver driver, GlobalKvDriver<String, UserId> kvDriver,
-			Messenger<Long, CreateSharedRepo> messenger, @Named("poll interval") Duration interval, @Named("initial back off") Duration backOff) {
-		RepoID repoID = RepoID.of(privKey, CHAT_REPO_PREFIX);
-		MyRepositoryId<ChatRoomOperation> myRepositoryId = new MyRepositoryId<>(repoID, privKey, CHAT_ROOM_OPERATION_CODEC);
-		KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), CHAT_SESSION_TABLE);
-		return CommonUserContainer.create(eventloop, driver, CHAT_ROOM_OT_SYSTEM, myRepositoryId, messenger, sessionStore, CHAT_INDEX_REPO, interval, backOff);
+	@Named("repo prefix")
+	String repoPrefix(TypedRepoNames names) {
+		return names.getRepoPrefix(Key.of(ChatRoomOperation.class));
 	}
 
 	@Override
@@ -168,14 +131,20 @@ public final class GlobalChatApp extends Launcher {
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new OTAppCommonModule(),
-				new AuthModule<CommonUserContainer<ChatRoomOperation>>(SESSION_ID) {},
-				new ContactsModule(),
-				new MapModule<String, String>(PROFILE_REPO_NAME) {},
-				new IndexRepoModule(CHAT_INDEX_REPO),
-				new ContainerModule<CommonUserContainer<ChatRoomOperation>>() {}
+				new AuthModule<SharedUserContainer<ChatRoomOperation>>(SESSION_ID) {},
+				OTGeneratorsModule.create(),
+				KvSessionModule.create(),
+				new ContainerModule<SharedUserContainer<ChatRoomOperation>>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
-				new SharedRepoModule<ChatRoomOperation>(CHAT_REPO_PREFIX) {},
-				// override for debug purposes
+				new SharedRepoModule<ChatRoomOperation>() {
+					@Override
+					protected void configure() {
+						bind(new Key<SharedUserContainer<ChatRoomOperation>>() {}).in(ContainerScope.class);
+						bind(Key.of(String.class).named("mail box")).toInstance("global-chat");
+						bind(new Key<OTSystem<ChatRoomOperation>>() {}).toInstance(CHAT_ROOM_OT_SYSTEM);
+						super.configure();
+					}
+				},
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new KvSyncModule(),

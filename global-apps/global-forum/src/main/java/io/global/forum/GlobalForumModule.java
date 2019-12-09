@@ -24,8 +24,6 @@ import io.global.forum.dao.ForumDaoImpl;
 import io.global.forum.http.PublicServlet;
 import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.GlobalKvDriver;
-import io.global.kv.api.KvClient;
 import io.global.mustache.MustacheTemplater;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.api.GlobalOTNode;
@@ -73,12 +71,6 @@ public final class GlobalForumModule extends AbstractModule {
 	@ContainerScope
 	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
 		return fsDriver.adapt(keyPair).subfolder(forumFsDir);
-	}
-
-	@Provides
-	@ContainerScope
-	KvClient<String, UserId> kvClient(KeyPair keyPair, GlobalKvDriver<String, UserId> kvDriver) {
-		return kvDriver.adapt(keyPair);
 	}
 
 	@Provides

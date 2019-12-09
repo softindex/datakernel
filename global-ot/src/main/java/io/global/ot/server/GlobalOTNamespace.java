@@ -30,7 +30,6 @@ import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.common.collection.CollectionUtils.union;
 import static io.datakernel.promise.Promises.firstSuccessful;
-import static io.datakernel.promise.Promises.retry;
 import static io.datakernel.promise.Promises.toList;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.Collections.emptySet;
@@ -124,7 +123,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		public void start() {
-			Promises.loop((Void) null, $ -> node.pollMasterRepositories, $ -> retry(this::doPollMasterHeads, node.retryPolicy));
+			Promises.retry(() -> Promises.loop((Void) null, $ -> node.pollMasterRepositories, $ -> doPollMasterHeads()), node.retryPolicy);
 		}
 
 		// region API methods

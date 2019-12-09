@@ -1,10 +1,7 @@
-package io.global.comm.ot;
+package io.global.ot.map;
 
-import io.global.ot.map.MapOTState;
-import io.global.ot.map.MapOperation;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
 

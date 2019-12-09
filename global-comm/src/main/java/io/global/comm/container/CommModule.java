@@ -1,37 +1,35 @@
 package io.global.comm.container;
 
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.InstanceProvider;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTState;
+import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.OTSystem;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.CommDaoImpl;
-import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.ot.post.ThreadOTState;
 import io.global.comm.ot.post.ThreadOTSystem;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.util.OTPagedAsyncMap;
 import io.global.comm.util.PagedAsyncMap;
+import io.global.debug.ObjectDisplayRegistry;
 import io.global.common.KeyPair;
 import io.global.kv.api.KvClient;
 import io.global.ot.OTGeneratorsModule;
-import io.global.ot.TypedRepoNames;
 import io.global.ot.api.CommitId;
-import io.global.ot.client.MyRepositoryId;
-import io.global.ot.client.OTDriver;
-import io.global.ot.client.OTRepositoryAdapter;
+import io.global.ot.map.MapOTStateListenerProxy;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.session.UserId;
-import io.global.session.KvSessionStore;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.TreeMap;
+import java.util.stream.Stream;
 import java.util.function.Function;
 
+import static java.util.stream.Collectors.joining;
 import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
 import static java.util.Collections.emptySet;
 
@@ -48,50 +46,18 @@ public final class CommModule extends AbstractModule {
 	protected void configure() {
 		install(OTGeneratorsModule.create());
 
+		bind(new Key<OTSystem<ThreadOperation>>() {}).toInstance(ThreadOTSystem.SYSTEM);
 		install(new CommDisplays());
 
 		bind(CommDao.class).to(CommDaoImpl.class).in(ContainerScope.class);
 		bind(CommState.class).in(ContainerScope.class);
 		bind(new Key<OTState<ThreadOperation>>() {}).in(ContainerScope.class).to(ThreadOTState::new).asTransient();
-		bind(new Key<OTSystem<ThreadOperation>>() {}).in(ContainerScope.class).toInstance(ThreadOTSystem.SYSTEM);
-	}
-
-	@Provides
-	@ContainerScope
-	KvSessionStore<UserId> sessionStore(Eventloop eventloop, KvClient<String, UserId> kvClient, TypedRepoNames repoNames) {
-		return KvSessionStore.create(eventloop, kvClient, repoNames.getRepoName(new Key<KvClient<String, UserId>>() {}));
 	}
 
 	@Provides
 	@ContainerScope
 	OTState<MapOperation<String, ThreadMetadata>> threadState() {
 		return new MapOTStateListenerProxy<>(new TreeMap<>());
-	}
-
-	private static <D> OTStateManager<CommitId, D> createStateManager(String name, Eventloop eventloop, OTDriver driver, KeyPair keys, StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state) {
-		OTRepositoryAdapter<D> repositoryAdapter = new OTRepositoryAdapter<>(driver, MyRepositoryId.of(keys.getPrivKey(), name, diffCodec), emptySet());
-		OTUplink<CommitId, D, OTCommit<CommitId, D>> node = OTUplinkImpl.create(repositoryAdapter, otSystem);
-		return OTStateManager.create(eventloop, otSystem, node, state)
-				.withPoll(POLL_RETRY_POLICY);
-	}
-
-	@Provides
-	@ContainerScope
-	<D> OTStateManager<CommitId, D> create(
-			Eventloop eventloop, OTDriver driver, KeyPair keys,
-			StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state, Key<D> key,
-			TypedRepoNames names
-	) {
-		return createStateManager(names.getRepoName(key), eventloop, driver, keys, diffCodec, otSystem, state);
-	}
-
-	@Provides
-	@ContainerScope
-	<D> Function<String, OTStateManager<CommitId, D>> createFactory(Eventloop eventloop, OTDriver driver, KeyPair keys,
-			StructuredCodec<D> diffCodec, OTSystem<D> otSystem, InstanceProvider<OTState<D>> states, Key<D> key,
-			TypedRepoNames names
-	) {
-		return name -> createStateManager(names.getRepoPrefix(key) + name, eventloop, driver, keys, diffCodec, otSystem, states.get());
 	}
 
 	@Provides

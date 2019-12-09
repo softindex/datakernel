@@ -20,7 +20,7 @@ import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.GlobalKvDriver;
+import io.global.kv.api.KvClient;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
@@ -32,6 +32,7 @@ import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
+import io.global.session.KvSessionModule;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -71,9 +72,6 @@ public final class GlobalBlogApp extends Launcher {
 	@Inject
 	GlobalFsDriver fsDriver;
 
-	@Inject
-	GlobalKvDriver<String, UserId> kvDriver;
-
 	@Provides
 	Config config() {
 		return Config.create()
@@ -105,6 +103,7 @@ public final class GlobalBlogApp extends Launcher {
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new MustacheModule(),
+				KvSessionModule.create(),
 				new KvSyncModule(),
 				new OTSyncModule(),
 				new FsSyncModule()

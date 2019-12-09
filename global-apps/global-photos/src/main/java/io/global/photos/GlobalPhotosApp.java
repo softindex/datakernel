@@ -14,16 +14,19 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.GlobalKvDriver;
+import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.DebugMustacheModule;
+import io.global.ot.OTGeneratorsModule;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
 import io.global.photos.container.GlobalPhotosContainer;
-import io.global.photos.container.RepoNames;
+import io.global.photos.ot.operation.AlbumOperation;
+import io.global.session.KvSessionModule;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -43,16 +46,12 @@ public class GlobalPhotosApp extends Launcher {
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 	public static final String DEFAULT_FORUM_FS_DIR = "global-photos";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
-	public static final RepoNames DEFAULT_FORUM_REPO_NAMES = RepoNames.ofDefault("global-photos");
 
 	@Inject
 	AsyncHttpServer server;
 
 	@Inject
 	GlobalFsDriver fsDriver;
-
-	@Inject
-	GlobalKvDriver<String, UserId> kvDriver;
 
 	public static void main(String[] args) throws Exception {
 		new GlobalPhotosApp().launch(args);
@@ -76,6 +75,13 @@ public class GlobalPhotosApp extends Launcher {
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
+	@Provides
+	TypedRepoNames typedRepoNames() {
+		return TypedRepoNames.create("global-photos")
+				.withRepoName(Key.of(AlbumOperation.class), "albums")
+				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -84,12 +90,14 @@ public class GlobalPhotosApp extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new GlobalPhotosModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
+				new GlobalPhotosModule(DEFAULT_FORUM_FS_DIR),
 				new ContainerModule<GlobalPhotosContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new DebugMustacheModule(),
+				OTGeneratorsModule.create(),
+				KvSessionModule.create(),
 				new KvSyncModule(),
 				new OTSyncModule(),
 				new FsSyncModule()

@@ -1,6 +1,5 @@
 package io.global.photos;
 
-import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
@@ -12,7 +11,8 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
-import io.datakernel.ot.*;
+import io.datakernel.ot.OTState;
+import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.FsClient;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
@@ -21,26 +21,21 @@ import io.global.common.SimKey;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
-import io.global.kv.api.KvClient;
 import io.global.mustache.MustacheTemplater;
-import io.global.ot.api.CommitId;
 import io.global.ot.api.GlobalOTNode;
-import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
-import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
 import io.global.ot.session.UserId;
 import io.global.photos.container.GlobalPhotosContainer;
-import io.global.photos.container.RepoNames;
 import io.global.photos.dao.AlbumDaoImpl;
 import io.global.photos.dao.AlbumDaoImpl.ThumbnailDesc;
 import io.global.photos.dao.MainDao;
 import io.global.photos.dao.MainDaoImpl;
 import io.global.photos.http.PublicServlet;
 import io.global.photos.ot.AlbumOtState;
+import io.global.photos.ot.AlbumOtSystem;
 import io.global.photos.ot.operation.AlbumOperation;
-import io.global.session.KvSessionStore;
 
 import java.awt.*;
 import java.nio.file.Path;
@@ -55,11 +50,8 @@ import java.util.stream.Collectors;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.Initializers.sslServerInitializer;
-import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
-import static io.global.photos.ot.AlbumOtSystem.SYSTEM;
 import static io.global.photos.util.Utils.REGISTRY;
 import static io.global.photos.util.Utils.renderErrors;
-import static java.util.Collections.emptySet;
 import static org.imgscalr.Scalr.Method.SPEED;
 import static org.imgscalr.Scalr.Method.ULTRA_QUALITY;
 
@@ -68,19 +60,16 @@ public class GlobalPhotosModule extends AbstractModule {
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
 	private final String albumFsDir;
-	private final RepoNames forumRepoNames;
 
 	@Override
 	protected void configure() {
 		bind(GlobalPhotosContainer.class).in(ContainerScope.class);
 		bind(MainDao.class).to(MainDaoImpl.class).in(ContainerScope.class);
 		bind(CodecFactory.class).toInstance(REGISTRY);
-		bind(RepoNames.class).toInstance(forumRepoNames);
 	}
 
-	public GlobalPhotosModule(String albumFsDir, RepoNames forumRepoNames) {
+	public GlobalPhotosModule(String albumFsDir) {
 		this.albumFsDir = albumFsDir;
-		this.forumRepoNames = forumRepoNames;
 	}
 
 	@Provides
@@ -146,12 +135,6 @@ public class GlobalPhotosModule extends AbstractModule {
 	}
 
 	@Provides
-	@ContainerScope
-	KvClient<String, UserId> kvClient(KeyPair keyPair, GlobalKvDriver<String, UserId> kvDriver) {
-		return kvDriver.adapt(keyPair);
-	}
-
-	@Provides
 	@Eager
 	OTDriver otDriver(GlobalOTNode node, Config config) {
 		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
@@ -168,24 +151,16 @@ public class GlobalPhotosModule extends AbstractModule {
 		return getExecutor(config);
 	}
 
-	@ContainerScope
 	@Provides
-	KvSessionStore<UserId> sessionStore(Eventloop eventloop, KvClient<String, UserId> kvClient, RepoNames names) {
-		return KvSessionStore.create(eventloop, kvClient, names.getSession());
+	@ContainerScope
+	OTState<AlbumOperation> state() {
+		return new AlbumOtState();
 	}
 
-	@ContainerScope
 	@Provides
-	OTStateManager<CommitId, AlbumOperation> stateManager(RepoNames names, CodecFactory registry, Eventloop eventloop, KeyPair keys, OTDriver otDriver) {
-		StructuredCodec<AlbumOperation> albumOpCodec = registry.get(AlbumOperation.class);
-		return createStateManager(names.getAlbums(), albumOpCodec, SYSTEM, new AlbumOtState(), eventloop, keys, otDriver);
+	@Eager
+	OTSystem<AlbumOperation> system() {
+		return AlbumOtSystem.SYSTEM;
 	}
 
-	public static <D> OTStateManager<CommitId, D> createStateManager(String repoName, StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state,
-																	 Eventloop eventloop, KeyPair keys, OTDriver otDriver) {
-		OTRepositoryAdapter<D> repositoryAdapter = new OTRepositoryAdapter<>(otDriver, MyRepositoryId.of(keys.getPrivKey(), repoName, diffCodec), emptySet());
-		OTUplink<CommitId, D, OTCommit<CommitId, D>> node = OTUplinkImpl.create(repositoryAdapter, otSystem);
-		return OTStateManager.create(eventloop, otSystem, node, state)
-				.withPoll(POLL_RETRY_POLICY);
-	}
 }

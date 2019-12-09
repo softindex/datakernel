@@ -2,7 +2,6 @@ package io.global.comm.container;
 
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.InstanceProvider;
-import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
@@ -10,10 +9,10 @@ import io.datakernel.remotefs.FsClient;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.dao.ThreadDaoImpl;
-import io.global.comm.ot.MapOTStateListenerProxy;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.ot.api.CommitId;
+import io.global.ot.StateManagerWithMerger;
+import io.global.ot.map.MapOTStateListenerProxy;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
 import org.slf4j.Logger;
@@ -29,27 +28,27 @@ public final class CategoryState {
 	private static final Logger logger = LoggerFactory.getLogger(CategoryState.class);
 
 	@Inject
-	private Function<String, OTStateManager<CommitId, ThreadOperation>> threadStateManagerFactory;
+	private Function<String, StateManagerWithMerger<ThreadOperation>> threadStateManagerWithMergerFactory;
 
 	@Inject
 	private FsClient fsClient;
 	@Inject
 	private InstanceProvider<CommDao> commDao;
 
-	private final OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager;
+	private final StateManagerWithMerger<MapOperation<String, ThreadMetadata>> threadsStateManagerWithMerger;
 	private final MapOTStateListenerProxy<String, ThreadMetadata> threadsState;
 
-	private final Map<String, Promise<OTStateManager<CommitId, ThreadOperation>>> postStateManagers = new HashMap<>();
+	private final Map<String, Promise<StateManagerWithMerger<ThreadOperation>>> postStateManagersWithMergers = new HashMap<>();
 	private final Map<String, Promise<ThreadDao>> threadDaos = new HashMap<>();
 
 	@Inject
-	public CategoryState(OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadsStateManager) {
-		this.threadsStateManager = threadsStateManager;
-		this.threadsState = (MapOTStateListenerProxy<String, ThreadMetadata>) threadsStateManager.getState();
+	public CategoryState(StateManagerWithMerger<MapOperation<String, ThreadMetadata>> threadsStateManagerWithMerger) {
+		this.threadsStateManagerWithMerger = threadsStateManagerWithMerger;
+		this.threadsState = (MapOTStateListenerProxy<String, ThreadMetadata>) threadsStateManagerWithMerger.getStateManager().getState();
 	}
 
 	public Promise<?> start() {
-		return threadsStateManager.start()
+		return threadsStateManagerWithMerger.start()
 				.then($ -> Promises.all(threadsState
 						.getMap()
 						.keySet()
@@ -71,50 +70,38 @@ public final class CategoryState {
 	}
 
 	public Promise<?> stop() {
-		return threadsStateManager.stop()
-				.then($ -> Promises.all(postStateManagers.values().stream().map(s -> s.then(OTStateManager::stop))))
-				.whenResult($ -> postStateManagers.clear())
+		return threadsStateManagerWithMerger.stop()
+				.then($ -> Promises.all(postStateManagersWithMergers.values().stream().map(s -> s.then(StateManagerWithMerger::stop))))
+				.whenResult($ -> postStateManagersWithMergers.clear())
 				.whenComplete(toLogger(logger, "stop"));
 	}
 
-	private Promise<OTStateManager<CommitId, ThreadOperation>> ensureThread(String threadId) {
-		return postStateManagers.computeIfAbsent(threadId,
+	private Promise<StateManagerWithMerger<ThreadOperation>> ensureThread(String threadId) {
+		return postStateManagersWithMergers.computeIfAbsent(threadId,
 				tid -> {
-					OTStateManager<CommitId, ThreadOperation> stateManager = threadStateManagerFactory.apply(tid);
+					StateManagerWithMerger<ThreadOperation> stateManagerWithMerger = threadStateManagerWithMergerFactory.apply(tid);
 					SettablePromise<ThreadDao> daoPromise = new SettablePromise<>();
 					threadDaos.put(tid, daoPromise);
-					return stateManager.start()
-							.whenResult($ -> daoPromise.set(new ThreadDaoImpl(commDao.get(), tid, stateManager, fsClient.subfolder(tid))))
-							.map($2 -> stateManager);
+					return stateManagerWithMerger.start()
+							.whenResult($ -> daoPromise.set(new ThreadDaoImpl(commDao.get(), tid, stateManagerWithMerger.getStateManager(), fsClient.subfolder(tid))))
+							.map($2 -> stateManagerWithMerger);
 				})
 				.whenComplete(toLogger(logger, "ensureThread", threadId));
 	}
 
-	private Promise<Void> removeThread(String threadId) {
+	private Promise<?> removeThread(String threadId) {
 		threadDaos.remove(threadId);
-		Promise<OTStateManager<CommitId, ThreadOperation>> stateManagerPromise = postStateManagers.remove(threadId);
+		Promise<StateManagerWithMerger<ThreadOperation>> stateManagerWithMergerPromise = postStateManagersWithMergers.remove(threadId);
 
-		if (stateManagerPromise != null) {
-			OTStateManager<CommitId, ThreadOperation> stateManager = stateManagerPromise.getResult();
-			if (stateManager != null) {
-				return stateManager.stop()
+		if (stateManagerWithMergerPromise != null) {
+			StateManagerWithMerger<ThreadOperation> stateManagerWithMerger = stateManagerWithMergerPromise.getResult();
+			if (stateManagerWithMerger != null) {
+				return stateManagerWithMerger.stop()
 						.whenComplete(toLogger(logger, "removeThread", threadId));
 			}
 		}
 		return Promise.complete()
 				.whenComplete(toLogger(logger, "removeThread", threadId));
-	}
-
-	public OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> getThreadsStateManager() {
-		return threadsStateManager;
-	}
-
-	public MapOTStateListenerProxy<String, ThreadMetadata> getThreadsState() {
-		return threadsState;
-	}
-
-	public Map<String, Promise<OTStateManager<CommitId, ThreadOperation>>> getPostStateManagers() {
-		return postStateManagers;
 	}
 
 	public Map<String, Promise<ThreadDao>> getThreadDaos() {

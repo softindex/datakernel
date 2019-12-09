@@ -8,6 +8,7 @@ import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
+import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -17,20 +18,20 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
-import io.global.common.PrivKey;
 import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.GlobalKvDriver;
+import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
 import io.global.ot.service.SimpleUserContainer;
 import io.global.ot.session.AuthModule;
 import io.global.ot.session.UserId;
-import io.global.session.KvSessionStore;
+import io.global.session.KvSessionModule;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,14 +56,10 @@ public final class GlobalFilesApp extends Launcher {
 	public static final String DEFAULT_STATIC_PATH = "/build";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 	private static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
-	private static final String FILES_SESSION_TABLE = "files/session";
 	private static final String SESSION_ID = "FILES_SID";
 
 	@Inject
 	AsyncHttpServer server;
-
-	@Inject
-	GlobalKvDriver<String, UserId> kvDriver;
 
 	@Provides
 	Executor executor(Config config) {
@@ -83,6 +80,12 @@ public final class GlobalFilesApp extends Launcher {
 	@Provides
 	CodecFactory codecFactory() {
 		return REGISTRY;
+	}
+
+	@Provides
+	TypedRepoNames typedRepoNames(){
+		return TypedRepoNames.create("global-files")
+				.withRepoName(new Key<KvClient<String, UserId>>(){}, "session");
 	}
 
 	@Provides
@@ -118,14 +121,6 @@ public final class GlobalFilesApp extends Launcher {
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
-	@Provides
-	@ContainerScope
-	SimpleUserContainer userContainer(Eventloop eventloop, PrivKey privKey, GlobalKvDriver<String, UserId> kvDriver) {
-		KvSessionStore<UserId> sessionStore = KvSessionStore.create(eventloop, kvDriver.adapt(privKey), FILES_SESSION_TABLE);
-		return SimpleUserContainer.create(eventloop, privKey.computeKeys(), sessionStore);
-	}
-
-
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -134,6 +129,13 @@ public final class GlobalFilesApp extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+				new AbstractModule() {
+					@Override
+					protected void configure() {
+						bind(SimpleUserContainer.class).in(ContainerScope.class);
+					}
+				},
+				KvSessionModule.create(),
 				new ContainerModule<SimpleUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule<SimpleUserContainer>(SESSION_ID) {},

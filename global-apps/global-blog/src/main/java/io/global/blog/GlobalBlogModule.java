@@ -20,19 +20,16 @@ import io.global.blog.http.view.PostView;
 import io.global.blog.interceptors.Preprocessor;
 import io.global.blog.util.Utils;
 import io.global.comm.container.CommModule;
-import io.global.debug.DebugViewerModule;
-import io.global.ot.TypedRepoNames;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
+import io.global.debug.DebugViewerModule;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.GlobalKvDriver;
-import io.global.kv.api.KvClient;
 import io.global.mustache.MustacheTemplater;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
-import io.global.ot.session.UserId;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -73,12 +70,6 @@ public final class GlobalBlogModule extends AbstractModule {
 	@ContainerScope
 	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
 		return fsDriver.adapt(keyPair).subfolder(blogFsDir);
-	}
-
-	@Provides
-	@ContainerScope
-	KvClient<String, UserId> kvClient(KeyPair keyPair, GlobalKvDriver<String, UserId> kvDriver) {
-		return kvDriver.adapt(keyPair);
 	}
 
 	@Provides

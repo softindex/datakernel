@@ -4,13 +4,12 @@ import io.datakernel.async.service.EventloopService;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
-import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.UserData;
-import io.global.ot.api.CommitId;
+import io.global.ot.StateManagerWithMerger;
 import io.global.ot.map.MapOperation;
 import io.global.ot.session.UserId;
 import io.global.session.KvSessionStore;
@@ -34,24 +33,24 @@ public final class CommState implements EventloopService {
 	private KvSessionStore<UserId> sessionStore;
 
 	@Inject
-	private OTStateManager<CommitId, MapOperation<UserId, UserData>> usersStateManager;
+	private StateManagerWithMerger<MapOperation<UserId, UserData>> usersStateManagerWithMerger;
 	@Inject
-	private OTStateManager<CommitId, MapOperation<UserId, InetAddress>> userLastIpManager;
+	private StateManagerWithMerger<MapOperation<UserId, InetAddress>> userLastIpManagerWithMerger;
 	@Inject
-	private OTStateManager<CommitId, MapOperation<String, IpBanState>> bansStateManager;
+	private StateManagerWithMerger<MapOperation<String, IpBanState>> bansStateManagerWithMerger;
 
 	@Inject
 	private CategoryState root;
 
 	@NotNull
 	public Promise<?> start() {
-		return Promises.all(usersStateManager.start(), bansStateManager.start(), userLastIpManager.start(), sessionStore.start(), root.start())
+		return Promises.all(usersStateManagerWithMerger.start(), bansStateManagerWithMerger.start(), userLastIpManagerWithMerger.start(), sessionStore.start(), root.start())
 				.whenComplete(toLogger(logger, "start"));
 	}
 
 	@NotNull
 	public Promise<?> stop() {
-		return Promises.all(usersStateManager.stop(), bansStateManager.stop(), userLastIpManager.stop(), sessionStore.stop(), root.stop())
+		return Promises.all(usersStateManagerWithMerger.stop(), bansStateManagerWithMerger.stop(), userLastIpManagerWithMerger.stop(), sessionStore.stop(), root.stop())
 				.whenComplete(toLogger(logger, "stop"));
 	}
 
