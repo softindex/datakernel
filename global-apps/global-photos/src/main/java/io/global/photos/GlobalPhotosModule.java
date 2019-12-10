@@ -3,10 +3,8 @@ package io.global.photos;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
-import io.datakernel.di.annotation.Eager;
-import io.datakernel.di.annotation.Named;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.annotation.*;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -18,6 +16,7 @@ import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
+import io.global.debug.ObjectDisplayRegistry;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
@@ -33,9 +32,11 @@ import io.global.photos.dao.AlbumDaoImpl.ThumbnailDesc;
 import io.global.photos.dao.MainDao;
 import io.global.photos.dao.MainDaoImpl;
 import io.global.photos.http.PublicServlet;
+import io.global.photos.ot.Album;
 import io.global.photos.ot.AlbumOtState;
 import io.global.photos.ot.AlbumOtSystem;
-import io.global.photos.ot.operation.AlbumOperation;
+import io.global.photos.ot.Photo;
+import io.global.photos.ot.operation.*;
 
 import java.awt.*;
 import java.nio.file.Path;
@@ -48,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import static io.datakernel.config.ConfigConverters.*;
+import static io.global.debug.ObjectDisplayRegistryUtils.*;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.Initializers.sslServerInitializer;
 import static io.global.photos.util.Utils.REGISTRY;
@@ -66,6 +68,7 @@ public class GlobalPhotosModule extends AbstractModule {
 		bind(GlobalPhotosContainer.class).in(ContainerScope.class);
 		bind(MainDao.class).to(MainDaoImpl.class).in(ContainerScope.class);
 		bind(CodecFactory.class).toInstance(REGISTRY);
+		bind(new Key<OTState<AlbumOperation>>() {}).to(AlbumOtState.class).in(ContainerScope.class);
 	}
 
 	public GlobalPhotosModule(String albumFsDir) {
@@ -73,11 +76,16 @@ public class GlobalPhotosModule extends AbstractModule {
 	}
 
 	@Provides
-	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader) {
+	AsyncServlet servlet(Config config, AppStore appStore, MustacheTemplater templater, StaticLoader staticLoader,
+			@Optional @Named("debug") AsyncServlet debugServlet) {
 		String appStoreUrl = config.get("appStoreUrl");
-		return RoutingServlet.create()
+		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/*", PublicServlet.create(appStoreUrl, appStore, templater))
-				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000))
+				.map("/static/*", StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000));
+		if (debugServlet != null) {
+			routingServlet.map("/debug/*", debugServlet);
+		}
+		return routingServlet
 				.then(renderErrors(templater));
 	}
 
@@ -152,15 +160,85 @@ public class GlobalPhotosModule extends AbstractModule {
 	}
 
 	@Provides
+	@Eager
+	OTSystem<AlbumOperation> system() {
+		return AlbumOtSystem.SYSTEM;
+	}
+
+	@Provides
 	@ContainerScope
-	OTState<AlbumOperation> state() {
+	AlbumOtState albumOtState() {
 		return new AlbumOtState();
 	}
 
 	@Provides
-	@Eager
-	OTSystem<AlbumOperation> system() {
-		return AlbumOtSystem.SYSTEM;
+	@ContainerScope
+	ObjectDisplayRegistry objectDisplayRegistry(AlbumOtState albumOtState) {
+		Map<String, Album> map = albumOtState.getMap();
+		return ObjectDisplayRegistry.create()
+				.withDisplay(AlbumAddOperation.class,
+						($, p) -> (p.isRemove() ? "Remove" : "Add") + " album '" + text(p.getTitle()) + '\'',
+						(r, p) -> r.getShortDisplay(p) + " with id " + hashId(p.getAlbumId()) + " and description '" + text(p.getDescription()) + "'")
+				.withDisplay(AlbumAddPhotoOperation.class,
+						($, p) -> {
+							Album album = map.get(p.getAlbumId());
+							return (p.isRemove() ? "Remove photo from album '" : "Add photo to album '") +
+									(album == null ?
+											p.getAlbumId().substring(0, Math.min(7, p.getAlbumId().length())) :
+											text(album.getTitle()))
+									+ '\'';
+						},
+						($, p) -> {
+							Album album = map.get(p.getAlbumId());
+							return (p.isRemove() ? "Remove" : "Add") + " photo '" + text(p.getPhoto().getFilename()) +
+									"' " + (p.isRemove() ? "from" : "to") + " album '" + (album == null ? hashId(p.getAlbumId()) : text(album.getTitle())) +
+									"' " + ts(p.getPhoto().getTimeUpload()) +
+									" with description '" + text(p.getPhoto().getDescription()) +
+									"' and id " + hashId(p.getPhotoId());
+						})
+				.withDisplay(AlbumChangeOperation.class,
+						($, p) -> "set album " + hashId(p.getAlbumId()) + " title to '" + text(p.getNextTitle()) + "', description to '" + text(p.getNextDescription()) + '\'',
+						($, p) -> {
+							String result = "";
+							if (!p.getPrevTitle().equals(p.getNextTitle())) {
+								result += "change album " + hashId(p.getAlbumId()) + " title from '" + text(p.getPrevTitle()) + "' to '" + text(p.getNextTitle()) + '\'';
+							}
+							if (!p.getPrevDescription().equals(p.getNextDescription())) {
+								boolean titleChanged = !result.isEmpty();
+								if (titleChanged) result += ", ";
+								result += "change";
+								if (!titleChanged) result += " album " + hashId(p.getAlbumId());
+								result += " description from '" + p.getPrevDescription() + "' to '" + p.getNextDescription() + '\'';
+							}
+							if (result.isEmpty()) {
+								result += "nothing has been changed";
+							}
+							result += " " + ts(p.getMetadata().getTimestamp());
+							return result;
+						})
+				.withDisplay(AlbumChangePhotoOperation.class,
+						($, p) -> {
+							Album album = map.get(p.getAlbumId());
+							Photo photo = album == null ? null : album.getPhoto(p.getPhotoId());
+							return (p.getDescription().isEmpty() ?
+									("nothing has been changed for photo ") :
+									"change description of photo ") +
+									(photo == null ?
+											p.getPhotoId().substring(0, Math.min(7, p.getPhotoId().length())) :
+											text(photo.getFilename()));
+						},
+						($, p) -> {
+							Album album = map.get(p.getAlbumId());
+							Photo photo = album == null ? null : album.getPhoto(p.getPhotoId());
+							return (p.getDescription().isEmpty() ?
+									("nothing has been changed for photo ") :
+									("change description of photo " +
+											(photo == null ? hashId(p.getPhotoId()) : text(photo.getFilename()))
+											+ " in album " + (album == null ? hashId(p.getAlbumId()) : text(album.getTitle())) +
+											" from '" + text(p.getPrevDescription()) + "' to '" + text(p.getNextDescription()) +
+											"' " + ts(p.getDescription().getTimestamp())));
+						});
+
 	}
 
 }

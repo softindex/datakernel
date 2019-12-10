@@ -13,13 +13,14 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.debug.DebugViewerModule;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
-import io.global.mustache.DebugMustacheModule;
+import io.global.mustache.MustacheModule;
 import io.global.ot.OTGeneratorsModule;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.service.ContainerModule;
@@ -95,7 +96,8 @@ public class GlobalPhotosApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new DebugMustacheModule(),
+				new MustacheModule(),
+				new DebugViewerModule<GlobalPhotosContainer>() {},
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
 				new KvSyncModule(),

@@ -15,11 +15,15 @@ public final class TypedRepoNames {
 	private final Map<String, Key<?>> repoPrefixesReverse = new HashMap<>();
 
 	private TypedRepoNames(String prefix) {
-		this.prefix = prefix + '/';
+		this.prefix = prefix;
 	}
 
 	public static TypedRepoNames create(String prefix) {
-		return new TypedRepoNames(prefix);
+		return new TypedRepoNames(prefix + '/');
+	}
+
+	public static TypedRepoNames create() {
+		return new TypedRepoNames("");
 	}
 
 	public TypedRepoNames withRepoName(Key<?> key, String repoName) {
@@ -28,9 +32,9 @@ public final class TypedRepoNames {
 		return this;
 	}
 
-	public TypedRepoNames withGlobalRepoName(Key<?> key, String globalRepoName){
+	public TypedRepoNames withGlobalRepoName(Key<?> key, String globalRepoName) {
 		repoNames.put(key, globalRepoName);
-		repoPrefixesReverse.put(globalRepoName, key);
+		repoNamesReverse.put(globalRepoName, key);
 		return this;
 	}
 
@@ -62,14 +66,14 @@ public final class TypedRepoNames {
 
 	@Nullable
 	public Key<?> getKeyByRepo(String repoName) {
-		Key<?> plain = repoNamesReverse.get(repoName.substring(prefix.length()));
+		Key<?> plain = repoNamesReverse.get(repoName.startsWith(prefix) ? repoName.substring(prefix.length()) : repoName);
 		if (plain != null) {
 			return plain;
 		}
 		return repoPrefixesReverse.get(repoName.substring(prefix.length(), repoName.lastIndexOf('/')));
 	}
 
-	public boolean hasRepoName(Key<?> key){
+	public boolean hasRepoName(Key<?> key) {
 		return repoNames.containsKey(key);
 	}
 

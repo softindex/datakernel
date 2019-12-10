@@ -124,7 +124,7 @@ public final class OTGeneratorsModule extends AbstractModule {
 	@Eager
 	@Named("initial delay")
 	Duration initialDelay(Config config){
-		return config.get(ofDuration(), "sync.initialDelay", RepoSynchronizer.DEFAULT_INITIAL_DELAY);
+		return config.get(ofDuration(), "merge.initialDelay", RepoSynchronizer.DEFAULT_INITIAL_DELAY);
 	}
 
 	private static <D> OTStateManager<CommitId, D> createStateManager(String name, Eventloop eventloop, OTDriver driver, KeyPair keys, StructuredCodec<D> diffCodec, OTSystem<D> otSystem, OTState<D> state) {

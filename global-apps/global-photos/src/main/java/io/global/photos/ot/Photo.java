@@ -38,7 +38,7 @@ public final class Photo {
 		return height;
 	}
 
-	public int getWidht() {
+	public int getWidth() {
 		return width;
 	}
 

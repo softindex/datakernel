@@ -13,6 +13,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.debug.DebugViewerModule;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
@@ -35,6 +36,8 @@ import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
+import static io.global.debug.DebugViewerModule.DebugView.KV;
+import static io.global.debug.DebugViewerModule.DebugView.OT;
 
 public final class GlobalTodoApp extends Launcher {
 	private static final String PROPERTIES_FILE = "global-todo.properties";
@@ -80,6 +83,7 @@ public final class GlobalTodoApp extends Launcher {
 				new AuthModule<GlobalTodoContainer>(SESSION_ID) {},
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
+				new DebugViewerModule<GlobalTodoContainer>(OT, KV) {},
 				new ContainerModule<GlobalTodoContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				override(new GlobalNodesModule(),

@@ -14,9 +14,9 @@ import io.global.ot.shared.SharedReposOperation;
 @Inject
 public final class SharedUserContainer<D> extends AbstractUserContainer {
 	@Inject
-	private StateManagerWithMerger<SharedReposOperation> stateManagerWithMerger;
+	private StateManagerWithMerger<SharedReposOperation> indexStateManagerWithMerger;
 	@Inject
-	private MergeService<CommitId, ContactsOperation> contactsMergeService;
+	private StateManagerWithMerger<ContactsOperation> contactsStateManagerWithMerger;
 	@Inject
 	private MergeService<CommitId, MapOperation<String, String>> profileMergeService;
 	@Inject
@@ -27,8 +27,8 @@ public final class SharedUserContainer<D> extends AbstractUserContainer {
 	@Override
 	protected Promise<?> doStart() {
 		return Promise.complete()
-				.then($ -> stateManagerWithMerger.start())
-				.then($ -> contactsMergeService.start())
+				.then($ -> indexStateManagerWithMerger.start())
+				.then($ -> contactsStateManagerWithMerger.start())
 				.then($ -> profileMergeService.start())
 				.then($ -> synchronizationService.start())
 				.then($ -> messagingService.start());
@@ -37,8 +37,8 @@ public final class SharedUserContainer<D> extends AbstractUserContainer {
 	@Override
 	protected Promise<?> doStop() {
 		return Promise.complete()
-				.then($ -> stateManagerWithMerger.stop())
-				.then($ -> contactsMergeService.stop())
+				.then($ -> indexStateManagerWithMerger.stop())
+				.then($ -> contactsStateManagerWithMerger.stop())
 				.then($ -> profileMergeService.stop())
 				.then($ -> synchronizationService.stop())
 				.then($ -> messagingService.stop());

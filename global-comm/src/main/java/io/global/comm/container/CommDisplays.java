@@ -21,6 +21,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
+import static io.global.debug.ObjectDisplayRegistryUtils.*;
 import static java.util.stream.Collectors.joining;
 
 public final class CommDisplays extends AbstractModule {
@@ -168,10 +169,6 @@ public final class CommDisplays extends AbstractModule {
 		return "root".equals(threadId) ? "<span class=\"special\">root</span> thread" : "thread <span class=\"special\">" + threadId + "</span>";
 	}
 
-	public static String ts(long ts) {
-		return "<span class=\"timestamp\">" + ts + "</span>";
-	}
-
 	private static String id(UserId id, @Nullable UserData userData) {
 		String username = "<i>&lt;unknown&gt;</i>";
 		if (userData != null) {
@@ -186,28 +183,8 @@ public final class CommDisplays extends AbstractModule {
 		return id(id, users.get(id).getResult());
 	}
 
-	private static String rating(Rating rating) {
+	private static String rating(@Nullable Rating rating) {
 		return "<span class=\"special\">" + (rating == null ? "not rated" : rating.name().toLowerCase()) + "</span>";
-	}
-
-	private static String file(String postId, String filename) {
-		return "<a class=\"special\" href=\"javascript:void(0)\" onclick=\"window.open(location.pathname.replace('ot/thread', 'fs')+'/" + postId + "/" + filename + "', '_blank')\">" + filename + "</a>";
-	}
-
-	public static String shortText(String text) {
-		return (text.length() <= 20 ? text : text.substring(0, 17) + "...").replaceAll("\n", "\\n");
-	}
-
-	public static String text(String text) {
-		if (text == null) {
-			return special(null);
-		}
-		return "<span class=\"special\" title=\"" + text.replaceAll("\n", "\\\\\\\n") + "\">" +
-				shortText(text).replaceAll("\\\\n", "<span class=\"newline\">\\\\\\\\n</span>") + "</span>";
-	}
-
-	public static String special(String text) {
-		return text == null ? "<span class=\"null\">null</span>" : "<span class=\"special\">" + text + "</span>";
 	}
 
 	private static String banState(BanState banState, PagedAsyncMap<UserId, UserData> users) {

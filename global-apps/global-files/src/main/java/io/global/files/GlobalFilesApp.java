@@ -5,6 +5,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
@@ -18,6 +19,7 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.debug.DebugViewerModule;
 import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.KvClient;
@@ -46,6 +48,8 @@ import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 import static io.global.Utils.cachedContent;
+import static io.global.debug.DebugViewerModule.DebugView.FS;
+import static io.global.debug.DebugViewerModule.DebugView.KV;
 import static io.global.launchers.Initializers.sslServerInitializer;
 import static io.global.ot.OTUtils.REGISTRY;
 
@@ -69,12 +73,18 @@ public final class GlobalFilesApp extends Launcher {
 	@Provides
 	AsyncServlet servlet(StaticServlet staticServlet, GlobalFsDriver fsDriver,
 			@Named("authorization") RoutingServlet authorizationServlet,
-			@Named("session") AsyncServletDecorator sessionDecorator) {
-		return RoutingServlet.create()
+			@Named("session") AsyncServletDecorator sessionDecorator,
+			@Optional @Named("debug") AsyncServlet debugServlet
+	) {
+		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(GlobalFsDriverServlet.create(fsDriver)))
 				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
+		if (debugServlet != null){
+			routingServlet.map("/debug/*", debugServlet);
+		}
+		return routingServlet;
 	}
 
 	@Provides
@@ -84,7 +94,7 @@ public final class GlobalFilesApp extends Launcher {
 
 	@Provides
 	TypedRepoNames typedRepoNames(){
-		return TypedRepoNames.create("global-files")
+		return TypedRepoNames.create()
 				.withRepoName(new Key<KvClient<String, UserId>>(){}, "session");
 	}
 
@@ -139,6 +149,7 @@ public final class GlobalFilesApp extends Launcher {
 				new ContainerModule<SimpleUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule<SimpleUserContainer>(SESSION_ID) {},
+				new DebugViewerModule<SimpleUserContainer>(FS, KV) {},
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new KvSyncModule(),

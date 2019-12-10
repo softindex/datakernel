@@ -88,7 +88,7 @@ public final class AlbumOtSystem {
 						if (left.isRemove()) {
 							Photo leftPhoto = left.getPhoto();
 							return TransformResult.right(new AlbumAddPhotoOperation(left.getAlbumId(), left.getPhotoId(),
-									Photo.create(right.getNextDescription(), leftPhoto.getTimeUpload(), leftPhoto.getFilename(), leftPhoto.getWidht(), leftPhoto.getHeight()), true));
+									Photo.create(right.getNextDescription(), leftPhoto.getTimeUpload(), leftPhoto.getFilename(), leftPhoto.getWidth(), leftPhoto.getHeight()), true));
 						}
 						throw new OTTransformException("ID collision");
 					})

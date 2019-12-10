@@ -25,6 +25,9 @@ window.onload = () => {
       })
       .then(text => {
         let replaced = text.replace(/label="([^]*?)"/gm, (_, b64) => {
+          if (b64 === '∅') {
+            return 'label="+∅"; xlabel="<i class=\\"empty-merge\\">empty merge</i>"';
+          }
           let diffs = b64.split(',\n').map(encoded => JSON.parse(atob(encoded)));
           let shortLabels = diffs.map(d => d[0].replace(/\n/g, '\n+').replace(/"/g, '\\"'));
           shortLabels.reverse();

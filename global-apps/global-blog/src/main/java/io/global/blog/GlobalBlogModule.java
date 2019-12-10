@@ -5,10 +5,12 @@ import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
+import io.datakernel.ot.OTState;
 import io.datakernel.remotefs.FsClient;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
@@ -18,11 +20,13 @@ import io.global.blog.dao.BlogDaoImpl;
 import io.global.blog.http.PublicServlet;
 import io.global.blog.http.view.PostView;
 import io.global.blog.interceptors.Preprocessor;
+import io.global.blog.ot.BlogMetadata;
 import io.global.blog.util.Utils;
 import io.global.comm.container.CommModule;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.debug.DebugViewerModule;
+import io.global.debug.ObjectDisplayRegistry;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.mustache.MustacheTemplater;
 import io.global.ot.TypedRepoNames;
@@ -30,6 +34,8 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
+import io.global.ot.value.ChangeValue;
+import io.global.ot.value.ChangeValueContainer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -38,6 +44,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.global.blog.util.Utils.renderErrors;
+import static io.global.debug.ObjectDisplayRegistryUtils.ts;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.Initializers.sslServerInitializer;
 
@@ -112,5 +119,40 @@ public final class GlobalBlogModule extends AbstractModule {
 	@Provides
 	Executor executor(Config config) {
 		return getExecutor(config);
+	}
+
+
+	@Provides
+	@ContainerScope
+	OTState<ChangeValue<BlogMetadata>> forumMetadataState() {
+		return ChangeValueContainer.of(BlogMetadata.EMPTY);
+	}
+
+	@Provides
+	@ContainerScope
+	ObjectDisplayRegistry diffDisplay() {
+		return ObjectDisplayRegistry.create()
+				.withDisplay(new Key<ChangeValue<BlogMetadata>>() {},
+						($, p) -> p.getNext() == BlogMetadata.EMPTY ? "remove forum metadata" :
+								("set forum title to '" + p.getNext().getTitle() + "', forum description to '" + p.getNext().getDescription() + '\''),
+						($, p) -> {
+							BlogMetadata prev = p.getPrev();
+							BlogMetadata next = p.getNext();
+							String result = "";
+							if (!prev.getTitle().equals(next.getTitle())) {
+								result += "change forum title from '" + prev.getTitle() + "' to '" + next.getTitle() + '\'';
+							}
+							if (!prev.getDescription().equals(next.getDescription())) {
+								if (!result.isEmpty()) {
+									result += ", ";
+								}
+								result += "change forum description from '" + prev.getDescription() + "' to '" + next.getDescription() + '\'';
+							}
+							if (result.isEmpty()){
+								result += "nothing has been changed";
+							}
+							result += "" + ts(p.getTimestamp());
+							return result;
+						});
 	}
 }

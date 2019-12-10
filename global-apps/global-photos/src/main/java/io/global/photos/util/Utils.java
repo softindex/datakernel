@@ -65,7 +65,7 @@ public final class Utils {
 					Photo::getDescription, STRING_CODEC,
 					Photo::getTimeUpload, LONG_CODEC,
 					Photo::getFilename, STRING_CODEC,
-					Photo::getWidht, INT_CODEC,
+					Photo::getWidth, INT_CODEC,
 					Photo::getHeight, INT_CODEC))
 			.with(AlbumAddOperation.class, tuple(AlbumAddOperation::new,
 					AlbumAddOperation::getAlbumId, STRING_CODEC,

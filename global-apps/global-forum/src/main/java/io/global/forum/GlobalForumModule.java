@@ -11,6 +11,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
+import io.datakernel.ot.OTState;
 import io.datakernel.remotefs.FsClient;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
@@ -30,8 +31,8 @@ import io.global.ot.api.GlobalOTNode;
 import io.global.ot.client.OTDriver;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.ContainerServlet;
-import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
+import io.global.ot.value.ChangeValueContainer;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,7 +40,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
-import static io.global.comm.container.CommDisplays.*;
+import static io.global.debug.ObjectDisplayRegistryUtils.*;
 import static io.global.forum.util.Utils.REGISTRY;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.Initializers.sslServerInitializer;
@@ -116,11 +117,17 @@ public final class GlobalForumModule extends AbstractModule {
 
 	@Provides
 	@ContainerScope
+	OTState<ChangeValue<ForumMetadata>> forumMetadataState() {
+		return ChangeValueContainer.of(ForumMetadata.EMPTY);
+	}
+
+	@Provides
+	@ContainerScope
 	ObjectDisplayRegistry diffDisplay() {
 		return ObjectDisplayRegistry.create()
 				.withDisplay(new Key<ChangeValue<ForumMetadata>>() {},
 						($, p) -> p.getNext() == ForumMetadata.EMPTY ? "remove forum metadata" :
-								("set forum title to '" + p.getNext().getTitle() + "', forum description to '" + p.getNext().getDescription() + '\''),
+								("set forum title to '" + shortText(p.getNext().getTitle()) + "', forum description to '" + shortText(p.getNext().getDescription()) + '\''),
 						($, p) -> {
 							ForumMetadata prev = p.getPrev();
 							ForumMetadata next = p.getNext();

@@ -24,7 +24,7 @@ public final class PhotoView {
 	}
 
 	public static PhotoView of(Photo value, @Nullable String base64) {
-		int w = value.getWidht();
+		int w = value.getWidth();
 		int h = value.getHeight();
 		return new PhotoView(value.getDescription(), value.getTimeUpload(), value.getFilename(), w, h, 100.0f * h / w, base64);
 	}

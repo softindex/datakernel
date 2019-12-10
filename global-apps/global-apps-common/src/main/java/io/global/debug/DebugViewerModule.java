@@ -35,13 +35,13 @@ import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.OTRepositoryAdapter;
 import io.global.ot.service.ContainerManager;
+import io.global.ot.service.ContainerScope;
 import io.global.ot.service.UserContainer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.ref.SoftReference;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
@@ -52,9 +52,11 @@ import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
+import static io.global.debug.DebugViewerModule.DebugView.OT;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
@@ -76,27 +78,32 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 
 	private final EnumSet<DebugView> views;
 	private final List<String> viewStrs;
+	private final List<String> extraRepos;
+
+	public DebugViewerModule(List<String> extraRepos, DebugView... views) {
+		this.views = views.length == 0 && extraRepos.isEmpty() ?
+				EnumSet.allOf(DebugView.class) :
+				EnumSet.of(extraRepos.isEmpty() ? views[0] : OT, views);
+		this.viewStrs = this.views.stream().map(v -> v.name().toLowerCase()).collect(toList());
+		this.extraRepos = extraRepos;
+	}
 
 	public DebugViewerModule(DebugView... views) {
-		this.views = views.length == 0 ?
-				EnumSet.allOf(DebugView.class) :
-				EnumSet.of(views[0], views);
-
-		this.viewStrs = this.views.stream().map(v -> v.name().toLowerCase()).collect(toList());
+		this(emptyList(), views);
 	}
 
 	public enum DebugView {
 		OT, FS, KV
 	}
 
-	private AsyncServlet createHtmlServingServlet(Executor executor, String type, Type containerType) {
+	private AsyncServlet createHtmlServingServlet(Executor executor, String type, Class<C> containerRawType) {
 		StaticLoader loader = StaticLoader.ofClassPath(executor, "");
 		return request ->
 				loader.load("debug.html")
 						.map(buf -> HttpResponse.ok200()
 								.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8))
 								.withBody(ByteBuf.wrapForReading(buf.asString(UTF_8)
-										.replace("{pk}", ((UserContainer) request.getAttachment(containerType)).getKeys().getPubKey().asString())
+										.replace("{pk}", request.getAttachment(containerRawType).getKeys().getPubKey().asString())
 										.replace("{type}", type)
 										.replace("{enabled_types}", "['" + String.join("', '", viewStrs) + "']")
 										.getBytes(UTF_8))));
@@ -104,7 +111,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 
 	@Override
 	protected void configure() {
-		if (views.contains(DebugView.OT)) {
+		if (views.contains(OT)) {
 			scan(new OtViewer());
 		}
 		if (views.contains(DebugView.FS)) {
@@ -134,6 +141,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 					return router;
 				}, dependencies);
 
+		bind(ObjectDisplayRegistry.class).in(ContainerScope.class).export();
 		multibind(Key.of(ObjectDisplayRegistry.class), Multibinder.ofBinaryOperator(ObjectDisplayRegistry::merge));
 	}
 
@@ -147,10 +155,11 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 				TypedRepoNames repoNames, CodecFactory codecs,
 				ContainerManager<C> containerManager, Key<C> reifiedC
 		) {
+			Class<C> rawType = reifiedC.getRawType();
 			return RoutingServlet.create()
-					.map(GET, "/*", createHtmlServingServlet(executor, "ot", reifiedC.getType()))
+					.map(GET, "/*", createHtmlServingServlet(executor, "ot", rawType))
 					.map(GET, "/api/*", request -> {
-						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
 						String path = request.getRelativePath();
 						String prefix = repoNames.getPrefix();
 
@@ -159,11 +168,11 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 									if (path.isEmpty()) {
 										return Promise.of(HttpResponse.ok200()
 												.withJson(STRING_LIST_CODEC, list.stream()
-														.filter(x -> x.startsWith(prefix))
-														.map(x -> x.substring(prefix.length()))
+														.filter(x -> x.startsWith(prefix) || extraRepos.contains(x))
+														.map(x -> x.startsWith(prefix) ? x.substring(prefix.length()) : x)
 														.collect(toList())));
 									}
-									String repo = prefix + path;
+									String repo = extraRepos.contains(path) ? path : (prefix + path);
 									if (!list.contains(repo)) {
 										return Promise.<HttpResponse>ofException(HttpException.ofCode(404, "No repo " + repo));
 									}
@@ -227,10 +236,11 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@Provides
 		@Named("fs")
 		AsyncServlet fsViewer(GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
+			Class<C> rawType = reifiedC.getRawType();
 			return RoutingServlet.create()
-					.map(GET, "/", createHtmlServingServlet(executor, "fs", reifiedC.getType()))
+					.map(GET, "/", createHtmlServingServlet(executor, "fs", rawType))
 					.map(GET, "/*", request -> {
-						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
 						String path = UrlParser.urlDecode(request.getRelativePath());
 						if (path == null) {
 							return Promise.ofException(FILE_NOT_FOUND);
@@ -251,7 +261,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 								});
 					})
 					.map(GET, "/api", request -> {
-						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
 						String prefix = repoNames.getPrefix();
 						return fsNode.listEntities(pk, "**")
 								.map(list -> HttpResponse.ok200()
@@ -272,10 +282,11 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@Provides
 		@Named("kv")
 		AsyncServlet kvViewer(GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
+			Class<C> rawType = reifiedC.getRawType();
 			return RoutingServlet.create()
-					.map(GET, "/*", createHtmlServingServlet(executor, "kv", reifiedC.getType()))
+					.map(GET, "/*", createHtmlServingServlet(executor, "kv", rawType))
 					.map(GET, "/api/*", request -> {
-						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
 						String path = request.getRelativePath();
 						String prefix = repoNames.getPrefix();
 						if (path.isEmpty()) {
