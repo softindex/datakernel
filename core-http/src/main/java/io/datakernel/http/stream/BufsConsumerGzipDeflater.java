@@ -114,8 +114,8 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 						if (buf.canRead()) {
 							crc32.update(buf.array(), buf.head(), buf.readRemaining());
 							deflater.setInput(buf.array(), buf.head(), buf.readRemaining());
-							buf.recycle();
 							ByteBufQueue queue = deflate();
+							buf.recycle();
 							output.acceptAll(queue.asIterator())
 									.whenResult($ -> writeBody());
 						} else {

@@ -76,6 +76,16 @@ public final class ByteBufPool {
 	static final boolean STATS = ApplicationSettings.getBoolean(ByteBufPool.class, "stats", false);
 
 	/**
+	 * Allows to clear byte bufs when being returned to the pool
+	 * if set at value {@code true} (note that this is resource intensive).
+	 * By default set at value {@code false}. If changed,
+	 * influences the performance of {@link #recycle(ByteBuf)} operation.
+	 * <strong>Should only be used for testing to catch bugs with premature {@link ByteBuf} recycling,
+	 * should not be used in production code</strong>
+	 */
+	static final boolean CLEAR_ON_RECYCLE = ApplicationSettings.getBoolean(ByteBufPool.class, "clearOnRecycle", false);
+
+	/**
 	 * {@code ByteBufConcurrentStack} allows to work with slabs and their ByteBufs.
 	 * Basically, it is a singly linked list with basic stack operations:
 	 * {@code push, pop, peek, clear, isEmpty, size}.
@@ -287,6 +297,7 @@ public final class ByteBufPool {
 	static void recycle(@NotNull ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
 		ByteBufConcurrentStack stack = slabs[slab];
+		if (CLEAR_ON_RECYCLE) Arrays.fill(buf.array(), (byte) 0);
 		stack.push(buf);
 		if (REGISTRY) registerRecycle(buf);
 	}

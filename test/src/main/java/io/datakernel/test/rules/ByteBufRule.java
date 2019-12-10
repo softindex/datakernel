@@ -39,6 +39,7 @@ public final class ByteBufRule implements TestRule {
 		System.setProperty("ByteBufPool.registry", "true");
 		System.setProperty("ByteBufPool.minSize", "0");
 		System.setProperty("ByteBufPool.maxSize", "0");
+		System.setProperty("ByteBufPool.clearOnRecycle", "true");
 	}
 
 	@Override
