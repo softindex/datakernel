@@ -11,7 +11,7 @@ export class Service extends EventEmitter {
       ...this.state,
       ...changes
     };
-    this.emit('change', this.state);
+    this.emit('change', this.getAll());
   }
 
   getAll() {

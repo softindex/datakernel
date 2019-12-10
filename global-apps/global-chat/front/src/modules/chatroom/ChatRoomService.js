@@ -23,7 +23,9 @@ class ChatRoomService extends Service {
         handled: new Map()
       },
       chatReady: false,
-      isHostValid: false
+      isHostValid: false,
+      joiningCall: false,
+      finishingCall: false
     });
     this._chatOTStateManager = chatOTStateManager;
     this._publicKey = publicKey;
@@ -76,6 +78,24 @@ class ChatRoomService extends Service {
     this._callsValidationService.removeChangeListener(this._onHostValidChange);
   }
 
+  getAll() {
+    let callStatus = null;
+
+    if (this.state.isHostValid && this.state.call.callerInfo.peerId && !this.state.call.handled.has(this._publicKey)) {
+      callStatus = 'OBTRUSIVE';
+    }
+
+    if (this.state.isHostValid && (this.state.call.callerInfo.publicKey === this._publicKey ||
+      [...this.state.call.handled.values()].some(value => value))) {
+      callStatus = 'UNOBTRUSIVE';
+    }
+
+    return {
+      ...this.state,
+      callStatus
+    };
+  }
+
   async sendMessage(content) {
     const timestamp = Date.now();
     const operation = new MessageOperation(timestamp, this._publicKey, content, false);
@@ -83,10 +103,20 @@ class ChatRoomService extends Service {
   }
 
   async startCall() {
+    if (this._callsService.state.peerId) {
+      return;
+    }
+
+    if (this.state.isHostValid) {
+      await this.acceptCall();
+      return;
+    }
+
     await this._callsService.hostCall();
-    this._callsService.addListener('finish', this._onCallFinish);
+    this._callsService.addFinishListener(this._onCallFinish);
     this.setState({
-      isHostValid: true
+      isHostValid: true,
+      finishingCall: false
     });
     const operation = CallOperation.create({
       pubKey: this._publicKey,
@@ -97,10 +127,13 @@ class ChatRoomService extends Service {
   }
 
   async acceptCall() {
-    this._callsService.addListener('finish', this._onCallFinish);
-    this._callsService.addListener('disconnect', this._onCallDisconnect);
+    this._callsService.addFinishListener(this._onCallFinish);
     this._callsValidationService.stop();
     this._joinPromise = this._callsService.joinCall(this.state.call.callerInfo);
+    this.setState({
+      joiningCall: true,
+      finishingCall: false
+    });
 
     try {
       await this._joinPromise;
@@ -108,6 +141,10 @@ class ChatRoomService extends Service {
       if (!(error instanceof RejectionError)) {
         throw error;
       }
+    } finally {
+      this.setState({
+        joiningCall: false
+      })
     }
 
     this._joinPromise = null;
@@ -119,11 +156,17 @@ class ChatRoomService extends Service {
   }
 
   async declineCall() {
+    this.setState({
+      finishingCall: true
+    });
     const operation = HandleCallOperation.reject(this._publicKey, null);
     await this._addOperation(operation);
   }
 
   finishCall() {
+    this.setState({
+      finishingCall: true
+    });
     this._callsService.finishCall();
   }
 
@@ -145,17 +188,17 @@ class ChatRoomService extends Service {
         .sort((left, right) => left.timestamp - right.timestamp),
       chatReady: true,
       call: {...otState.call},
-      isHostValid: newPeerId === oldPeerId && this.state.isHostValid || inThisCall
+      isHostValid: (newPeerId === oldPeerId && this.state.isHostValid) || inThisCall
     });
 
     if (newPeerId !== oldPeerId) {
       this._callsValidationService.stop();
     }
 
-    if (
-      ![null, oldPeerId, this._callsService.state.peerId].includes(newPeerId)
-      && newPeerId !== this._callsService.state.hostPeerId
-    ) {
+    if (![null, oldPeerId, this._callsService.state.peerId, this._callsService.state.hostPeerId].includes(newPeerId)) {
+      this.setState({
+        finishingCall: false
+      });
       this._callsValidationService.start(otState.call.callerInfo);
 
       if (oldPeerId === this._callsService.state.hostPeerId) {
@@ -163,9 +206,13 @@ class ChatRoomService extends Service {
       }
     }
 
-    if (callFinished && this._joinPromise) {
-      this._joinPromise.cancel();
-      this._joinPromise = null;
+    if (callFinished) {
+      this._callsService.finishCall();
+
+      if (this._joinPromise) {
+        this._joinPromise.cancel();
+        this._joinPromise = null;
+      }
     }
   };
 
@@ -186,11 +233,12 @@ class ChatRoomService extends Service {
     }
   }
 
-  _onCallFinish = async hostPeerId => {
+  _onCallFinish = async (hostPeerId, isDisconnect) => {
+    this.setState({
+      isHostValid: false
+    });
+
     if (hostPeerId !== this.state.call.callerInfo.peerId) {
-      this.setState({
-        isHostValid: false
-      });
       return;
     }
 
@@ -209,20 +257,10 @@ class ChatRoomService extends Service {
       this._callsValidationService.start(this.state.call.callerInfo);
     }
 
-    this._callsService.removeListener('finish', this._onCallFinish);
-    this._callsService.removeListener('disconnect', this._onCallDisconnect);
-    await this._addOperation(operation);
-  };
+    this._callsService.removeFinishListener(this._onCallFinish);
 
-  _onCallDisconnect = hostPeerId => {
-    if (hostPeerId === this.state.call.callerInfo.peerId) {
-      this.setState({
-        isHostValid: false
-      });
-
-      this._callsService.removeListener('finish', this._onCallFinish);
-      this._callsService.removeListener('disconnect', this._onCallDisconnect);
-      this._callsValidationService.start(this.state.call.callerInfo);
+    if (!isDisconnect) {
+      await this._addOperation(operation);
     }
   };
 

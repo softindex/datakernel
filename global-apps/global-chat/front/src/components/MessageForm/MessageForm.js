@@ -11,7 +11,7 @@ import IconButton from '@material-ui/core/IconButton';
 import {getInstance, useService} from 'global-apps-common';
 import ChatRoomService from '../../modules/chatroom/ChatRoomService';
 
-function MessageFormView({classes, message, onChangeMessage, onSubmit, inCall, onCall}) {
+function MessageFormView({classes, message, onChangeMessage, onSubmit, joiningCall, onCall}) {
   return (
     <form className={classes.form} onSubmit={onSubmit}>
       <Paper className={classes.root} elevation={2}>
@@ -29,7 +29,7 @@ function MessageFormView({classes, message, onChangeMessage, onSubmit, inCall, o
         <IconButton color="primary" type="submit">
           <SendIcon/>
         </IconButton>
-        <IconButton color="primary" onClick={onCall} disabled={inCall}>
+        <IconButton color="primary" onClick={onCall} disabled={joiningCall}>
           <PhoneIcon/>
         </IconButton>
       </Paper>
@@ -37,16 +37,15 @@ function MessageFormView({classes, message, onChangeMessage, onSubmit, inCall, o
   );
 }
 
-function MessageForm({classes, publicKey, enqueueSnackbar}) {
+function MessageForm({classes, enqueueSnackbar}) {
   const chatRoomService = getInstance(ChatRoomService);
-  const {call, isHostValid} = useService(chatRoomService);
-  const inCall = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
+  const {joiningCall} = useService(chatRoomService);
   const [message, setMessage] = useState('');
 
   const props = {
     classes,
     message,
-    inCall,
+    joiningCall,
     onChangeMessage(event) {
       setMessage(event.target.value);
     },

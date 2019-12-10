@@ -12,15 +12,21 @@ import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import ScrollArea from 'react-scrollbar';
 import CallsService from '../../modules/calls/CallsService';
 import CallButtons from '../CallButtons/CallButtons';
+import Call from '../../assets/call.mp3';
+import Calling from '../../assets/calling.wav';
+import FinishCall from '../../assets/finishCall.wav';
 
 class MessagesView extends React.Component {
   scrollArea = React.createRef();
+  oldCallerPeerId = null;
 
   componentDidUpdate(prevProps) {
     const currentScroll = this.scrollArea.current;
     if (currentScroll && this.props.messages.length !== prevProps.messages.length) {
       currentScroll.scrollYTo(currentScroll.state.realHeight);
     }
+
+    this.oldCallerPeerId = prevProps.callerPeerId || this.oldCallerPeerId;
   }
 
   render() {
@@ -30,11 +36,12 @@ class MessagesView extends React.Component {
       namesReady,
       messages,
       publicKey,
-      isHostValid,
       peerId,
       callerPeerId,
-      calling,
-      beingCalled,
+      streamsSize,
+      joiningCall,
+      finishingCall,
+      callStatus,
       callLoading,
       onAccept,
       onDecline,
@@ -63,7 +70,7 @@ class MessagesView extends React.Component {
                 if (previousMessageAuthor === message.authorPublicKey) {
                   shape = 'medium';
                 }
-                return !(message.authorPeerId && message.authorPeerId === callerPeerId && !isHostValid) && (
+                return !(message.authorPeerId && message.authorPeerId === callerPeerId && !callStatus) && (
                   <MessageItem
                     key={index}
                     text={message.content}
@@ -82,7 +89,7 @@ class MessagesView extends React.Component {
             </div>
           </ScrollArea>
         )}
-        {beingCalled && (
+        {callStatus === 'OBTRUSIVE' && (
           <div className={classes.fabWrapper}>
             <Paper elevation={0} className={classes.message}>
               <Typography
@@ -102,7 +109,7 @@ class MessagesView extends React.Component {
             </Paper>
           </div>
         )}
-        {calling && (
+        {callStatus === 'UNOBTRUSIVE' && (
           <Paper elevation={0} className={classes.callingMessage}>
             <CallButtons
               showAccept={!peerId}
@@ -113,6 +120,18 @@ class MessagesView extends React.Component {
             />
           </Paper>
         )}
+        {callStatus === 'OBTRUSIVE' && !joiningCall && (
+          <audio src={Call} autoPlay loop style={{display: 'none'}}/>
+        )}
+        {callStatus === 'UNOBTRUSIVE' && streamsSize === 1 && (
+          <audio src={Calling} autoPlay loop style={{display: 'none'}}/>
+        )}
+        {joiningCall && (
+          <audio src={Calling} autoPlay loop style={{display: 'none'}}/>
+        )}
+        {(finishingCall || (this.oldCallerPeerId && callerPeerId === null)) && (
+          <audio src={FinishCall} autoPlay style={{display: 'none'}}/>
+        )}
       </div>
     )
   }
@@ -122,12 +141,9 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
   const namesService = getInstance(NamesService);
   const {names, namesReady} = useService(namesService);
   const chatRoomService = getInstance(ChatRoomService);
-  const {messages, chatReady, call, isHostValid} = useService(chatRoomService);
+  const {messages, chatReady, call, joiningCall, finishingCall, callStatus} = useService(chatRoomService);
   const callsService = getInstance(CallsService);
-  const {peerId} = useService(callsService);
-  const calling = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
-  const beingCalled = isHostValid && ![null, publicKey].includes(call.callerInfo.publicKey) &&
-    !call.handled.has(publicKey);
+  const {peerId, streams} = useService(callsService);
   const [callLoading, setCallLoading] = useState(false);
 
   const props = {
@@ -137,11 +153,12 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
     namesReady,
     messages,
     chatReady,
-    isHostValid,
     peerId,
     callerPeerId: call.callerInfo.peerId,
-    calling,
-    beingCalled,
+    streamsSize: streams.size,
+    joiningCall,
+    finishingCall,
+    callStatus,
     callLoading,
     onAccept(event) {
       event.preventDefault();

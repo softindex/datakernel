@@ -37,12 +37,12 @@ class CallsService extends Service {
     return new CallsService(publicKey, notificationsService, createWebRTCPeer, 60000, 10000);
   }
 
-  addListener(event, listener) {
-    this._eventEmitter.addListener(event, listener);
+  addFinishListener(listener) {
+    this._eventEmitter.addListener('finish', listener);
   }
 
-  removeListener(event, listener) {
-    this._eventEmitter.removeListener(event, listener);
+  removeFinishListener(listener) {
+    this._eventEmitter.removeListener('finish', listener);
   }
 
   stop() {
@@ -177,7 +177,7 @@ class CallsService extends Service {
           delete this._peers[callerInfo.peerId];
 
           if (!Object.keys(this._peers).length) {
-            this._disconnectCall();
+            this.finishCall(true);
           }
         };
 
@@ -216,22 +216,17 @@ class CallsService extends Service {
         }
       })
       .catch(error => {
-        this._disconnectCall();
+        this.finishCall(true);
         throw error;
       });
   }
 
-  finishCall() {
+  finishCall(isDisconnect = false) {
     if (!this.state.peerId) {
       return;
     }
 
-    this._eventEmitter.emit('finish', this.state.hostPeerId);
-    this._clearState();
-  }
-
-  _disconnectCall() {
-    this._eventEmitter.emit('disconnect', this.state.hostPeerId);
+    this._eventEmitter.emit('finish', this.state.hostPeerId, isDisconnect);
     this._clearState();
   }
 

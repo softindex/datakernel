@@ -22,7 +22,7 @@ function ChatRoom({roomId, publicKey, enqueueSnackbar, classes}) {
     <RegisterDependency name={ChatRoomService} value={chatRoomService}>
       <div className={classes.root}>
         <Messages publicKey={publicKey}/>
-        <MessageForm publicKey={publicKey}/>
+        <MessageForm/>
       </div>
     </RegisterDependency>
   );
