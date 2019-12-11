@@ -138,29 +138,6 @@ public final class Post {
 		return depth;
 	}
 
-	public int countAllPosts() {
-//		return 1 + children.stream().mapToInt(Post::countLeafChildren).sum();
-
-		// this was just a bit fun to implement without recursion
-
-		int number = 1;
-		Stack<List<Post>> stack = new Stack<>();
-		if (!children.isEmpty()) {
-			stack.add(children);
-		}
-		while (!stack.isEmpty()) {
-			List<Post> list = stack.pop();
-			number += list.size();
-			for (Post child : list) {
-				List<Post> subchildren = child.getChildren();
-				if (!subchildren.isEmpty()) {
-					stack.push(subchildren);
-				}
-			}
-		}
-		return number;
-	}
-
 	public List<Post> getChildren() {
 		return children;
 	}

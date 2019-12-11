@@ -50,8 +50,6 @@ public final class PostView implements Comparable<PostView> {
 
 	private final List<PostView> children;
 
-	private final int numberOfAllChildren;
-
 	@Nullable
 	private PostView inlineParent;
 
@@ -62,8 +60,7 @@ public final class PostView implements Comparable<PostView> {
 			@Nullable UserView deletedBy,
 			boolean own, boolean editable, boolean deletedVisible,
 			int likes, boolean liked, boolean disliked,
-			List<PostView> children,
-			int numberOfAllChildren) {
+			List<PostView> children) {
 		this.id = id;
 		this.content = content;
 		this.initialTimestamp = initialTimestamp;
@@ -79,7 +76,6 @@ public final class PostView implements Comparable<PostView> {
 		this.liked = liked;
 		this.disliked = disliked;
 		this.children = children;
-		this.numberOfAllChildren = numberOfAllChildren;
 	}
 
 	public String getPostId() {
@@ -145,10 +141,6 @@ public final class PostView implements Comparable<PostView> {
 
 	public List<PostView> getChildren() {
 		return children;
-	}
-
-	public int getNumberOfAllChildren() {
-		return numberOfAllChildren;
 	}
 
 	@Nullable
@@ -239,8 +231,7 @@ public final class PostView implements Comparable<PostView> {
 										likes.size() - dislikes.size(),
 										currentUser != null && likes.contains(currentUser),
 										currentUser != null && dislikes.contains(currentUser),
-										children,
-										depth == -1 ? 1 : post.countAllPosts());
+										children);
 							});
 				});
 	}

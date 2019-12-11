@@ -1,5 +1,6 @@
 package io.global.debug;
 
+import com.google.gson.stream.JsonWriter;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
@@ -7,7 +8,6 @@ import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.di.annotation.Named;
-import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Injector;
@@ -37,6 +37,8 @@ import io.global.ot.service.ContainerManager;
 import io.global.ot.service.UserContainer;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.IOException;
+import java.io.StringWriter;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Type;
 import java.util.*;
@@ -77,6 +79,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		this.views = views.length == 0 ?
 				EnumSet.allOf(DebugView.class) :
 				EnumSet.of(views[0], views);
+
 		this.viewStrs = this.views.stream().map(v -> v.name().toLowerCase()).collect(toList());
 	}
 
@@ -121,7 +124,8 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 				.to(args -> {
 					Executor executor = (Executor) args[0];
 					RoutingServlet router = RoutingServlet.create()
-							.map("/static/*", StaticServlet.create(StaticLoader.ofClassPath(executor, "debug-static")));
+							.map("/static/*", StaticServlet.create(StaticLoader.ofClassPath(executor, "debug-static")))
+							.map("/", request -> HttpResponse.redirect302(request.getPath() + (request.getPath().endsWith("/") ? "" : "/") + viewStrs.get(0)));
 					for (int i = 0; i < viewStrs.size(); i++) {
 						router.map("/" + viewStrs.get(i) + "/*", (AsyncServlet) args[i + 1]);
 					}
@@ -178,8 +182,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 									MyRepositoryId<Object> myRepositoryId = new MyRepositoryId<>(repoID, null, diffCodec);
 									OTRepository<CommitId, Object> repository = new OTRepositoryAdapter<>(otDriver, myRepositoryId, emptySet());
 
-									Function<Object, String> diffToString = object ->
-											prettyPrinter.getShortDisplay(diffType, object).replaceAll("\"", "\\\\\\\"") + "|" + prettyPrinter.getLongDisplay(diffType, object).replaceAll("\"", "\\\\\\\"");
+									Function<Object, String> diffToString = object -> encode(diffType, prettyPrinter, object);
 
 									SoftReference<OTLoadedGraph<CommitId, Object>> graphRef = loadedGraphs.computeIfAbsent(repoID, $ ->
 											new SoftReference<>(new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)));
@@ -198,6 +201,22 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 													.withBody(finalGraph.toGraphViz(null).getBytes(UTF_8)));
 								});
 					});
+		}
+	}
+
+	private static final Base64.Encoder BASE64_ENCODER = Base64.getEncoder();
+
+	private static String encode(Key<?> diffType, ObjectDisplayRegistry prettyPrinter, Object object) {
+		try {
+			StringWriter sw = new StringWriter();
+			JsonWriter writer = new JsonWriter(sw);
+			writer.beginArray();
+			writer.value(prettyPrinter.getShortDisplay(diffType, object));
+			writer.value(prettyPrinter.getLongDisplay(diffType, object));
+			writer.endArray();
+			return BASE64_ENCODER.encodeToString(sw.toString().getBytes(UTF_8));
+		} catch (IOException e) {
+			throw new AssertionError("I/O errors never happen when using StringWriter", e);
 		}
 	}
 

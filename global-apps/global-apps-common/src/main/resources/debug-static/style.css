@@ -160,3 +160,15 @@ g.node > text {
   /*background: #cccccc;*/
   color: #343a40;
 }
+
+.timestamp {
+  text-decoration: underline dotted;
+  font-size: 0.9em;
+  font-family: monospace;
+  padding-left: 1em;
+}
+
+.newline, .null {
+  color: #813d0c;
+  font-weight: bolder;
+}

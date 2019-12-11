@@ -24,11 +24,13 @@ window.onload = () => {
         return r.text();
       })
       .then(text => {
-        let replaced = text.replace(/label="([^]*?)"]/gm, (_, content) => {
-          let diffs = content.split(',\n').map(d => d.split('|'));
-          let label = diffs.map(d => d[0].replace(/\n/g, '\n+')).join('\n+');
-          let xlabel = diffs.map(d => d[1]).join('\n');
-          return 'label="+' + label + '"; xlabel="' + xlabel + '"]';
+        let replaced = text.replace(/label="([^]*?)"/gm, (_, b64) => {
+          let diffs = b64.split(',\n').map(encoded => JSON.parse(atob(encoded)));
+          let shortLabels = diffs.map(d => d[0].replace(/\n/g, '\n+').replace(/"/g, '\\"'));
+          shortLabels.reverse();
+          let labels = '+' + shortLabels.join('\n+');
+          let xlabels = diffs.map(d => d[1].replace(/"/g, '\\"')).join('\n');
+          return 'label="' + labels + '"; xlabel="' + xlabels + '"';
         });
         return viz.renderSVGElement(replaced);
       })
@@ -173,6 +175,7 @@ window.onload = () => {
     $body.empty();
 
     $svg = null;
+    $('.diff-modal').remove();
     document.body.style.overflow = '';
 
     if (pollTimerId) {
@@ -303,8 +306,8 @@ window.onload = () => {
       $movingModal = $(e.currentTarget).parent();
       $movingModal.appendTo($movingModal.parent());
     });
-    $diffModal.find('.diff-body')
-      .append(diffs.map(diff => $('<div class="diff"></div>').html(diff)));
+    $diffModal.find('.diff-body').append(diffs.map(diff => $('<div class="diff"></div>').html(diff)));
+    updateTimestamps($diffModal);
     return $diffModal
   }
 

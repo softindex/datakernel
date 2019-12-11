@@ -70,6 +70,19 @@ function createTreeList(url, pathCallback, pathFactory,) {
     });
 }
 
+function updateTimestamps($element) {
+  $element.find('.timestamp').each((_, e) => {
+    let $e = $(e);
+    let ts = $e.data('ts');
+    if (!ts) {
+      ts = new Date(parseInt($e.text()));
+      $e.data('ts', ts);
+      $e.attr('title', $.format.date(ts, 'yyyy-MM-dd/HH:mm:ss'))
+    }
+    $e.text($.format.prettyDate(ts));
+  });
+}
+
 function init() {
   if (enabledTypes.length > 1) {
     $('#' + type + '-link').addClass('active');
@@ -80,6 +93,8 @@ function init() {
   } else {
     $('.links').remove();
   }
+
+  setInterval(() => updateTimestamps($(document)), 10000);
 
   let scrollKey = type + '-scroll';
   $(window).on('beforeunload', () => localStorage.setItem(scrollKey, $(document).scrollTop()));

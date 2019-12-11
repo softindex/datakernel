@@ -477,8 +477,11 @@ window.onload = () => {
       let $msg = $threadline.next().children(':first');
       let $post = $msg.next();
 
+      $msg.children(':first').text('(' + $post.find('.post').length + ' hidden)');
+
       $post.collapse('hide');
       $msg.collapse('show');
+
       $threadline.addClass('collapsed');
     })
     // endregion
