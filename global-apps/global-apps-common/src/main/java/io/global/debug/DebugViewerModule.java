@@ -22,6 +22,7 @@ import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
+import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.GlobalKvNode;
@@ -51,6 +52,7 @@ import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
+import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptySet;
@@ -229,7 +231,11 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 					.map(GET, "/", createHtmlServingServlet(executor, "fs", reifiedC.getType()))
 					.map(GET, "/*", request -> {
 						PubKey pk = ((UserContainer) request.getAttachment(reifiedC.getType())).getKeys().getPubKey();
-						String filename = repoNames.getPrefix() + request.getRelativePath();
+						String path = UrlParser.urlDecode(request.getRelativePath());
+						if (path == null) {
+							return Promise.ofException(FILE_NOT_FOUND);
+						}
+						String filename = repoNames.getPrefix() + path;
 						return driver.getMetadata(pk, filename)
 								.then(meta -> {
 									if (meta == null) {
@@ -251,7 +257,10 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 								.map(list -> HttpResponse.ok200()
 										.withJson(FILE_LIST_CODEC, list.stream()
 												.filter(signedCheckpoint -> signedCheckpoint.getValue().getFilename().startsWith(prefix))
-												.map(signedCheckpoint -> new Tuple2<>(signedCheckpoint.getValue().getFilename().substring(prefix.length()), signedCheckpoint.getValue().getPosition()))
+												.map(signedCheckpoint -> {
+													GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
+													return new Tuple2<>(checkpoint.getFilename().substring(prefix.length()), checkpoint.isTombstone() ? -1 : checkpoint.getPosition());
+												})
 												.collect(toList())));
 					});
 		}

@@ -165,7 +165,6 @@ g.node > text {
   text-decoration: underline dotted;
   font-size: 0.9em;
   font-family: monospace;
-  padding-left: 1em;
 }
 
 .newline, .null {

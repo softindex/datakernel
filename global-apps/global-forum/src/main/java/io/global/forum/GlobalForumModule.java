@@ -134,10 +134,10 @@ public final class GlobalForumModule extends AbstractModule {
 							ForumMetadata next = p.getNext();
 							String result = "";
 							if (prev == null) {
-								result += "set forum title to " + special(next.getTitle()) + ", and description to " + text(next.getDescription());
+								result += "set forum title to " + text(next.getTitle()) + ", and description to " + text(next.getDescription());
 							} else {
 								if (!prev.getTitle().equals(next.getTitle())) {
-									result += "change forum title from " + special(prev.getTitle()) + " to " + special(next.getTitle());
+									result += "change forum title from " + text(prev.getTitle()) + " to " + text(next.getTitle());
 								}
 								if (!prev.getDescription().equals(next.getDescription())) {
 									if (!result.isEmpty()) {

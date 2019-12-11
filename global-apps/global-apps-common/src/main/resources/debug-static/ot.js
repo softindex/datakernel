@@ -161,7 +161,7 @@ window.onload = () => {
     $title.text('OT repositories');
 
     function update() {
-      createTreeList('/debug/ot/api', repo => view(repo, true), x => x)
+      createTreeList('/debug/ot/api', repo => view(repo, true), x => x, (_, x) => x)
         .then($list => $body.empty().append($('<div class="container"></div>').append($list)), console.log);
     }
 

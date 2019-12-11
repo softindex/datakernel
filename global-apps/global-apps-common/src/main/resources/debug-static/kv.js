@@ -68,7 +68,7 @@ window.onload = () => {
     $title.text('KV tables');
 
     function update() {
-      createTreeList('/debug/kv/api', table => view(table, true), x => x)
+      createTreeList('/debug/kv/api', table => view(table, true), x => x, (_, x) => x)
         .then($list => $body.empty().append($('<div class="container"></div>').append($list)), console.log);
     }
 

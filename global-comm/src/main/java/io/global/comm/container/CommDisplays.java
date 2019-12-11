@@ -36,8 +36,8 @@ public final class CommDisplays extends AbstractModule {
 						($, p) -> (p.isDelete() ? "" : "un") + "mark post as deleted",
 						(d, p) -> (p.isDelete() ? "" : "un") + "mark " + post(p.getPostId()) + " as deleted by " + id(p.getDeletedBy(), users) + " " + ts(p.getTimestamp()))
 				.withDisplay(ChangeContent.class,
-						($, p) -> ("".equals(p.getPrev()) ? "add" : "edit") + ("root".equals(p.getPostId()) ? " root" : "") + " post content",
-						(d, p) -> ("".equals(p.getPrev()) ? "set content of " + post(p.getPostId()) : "change content of " + post(p.getPostId()) + " from " + text(p.getPrev())) + " to " + text(p.getNext()) + " " + ts(p.getTimestamp()))
+						($, p) -> (nullOrEmpty(p.getPrev()) ? "add" : "edit") + ("root".equals(p.getPostId()) ? " root" : "") + " post content",
+						(d, p) -> (nullOrEmpty(p.getPrev()) ? "set content of " + post(p.getPostId()) : "change content of " + post(p.getPostId()) + " from " + text(p.getPrev())) + " to " + text(p.getNext()) + " " + ts(p.getTimestamp()))
 
 				.withDisplay(ChangeLastEditTimestamp.class,
 						($, p) -> "update last edit time",
@@ -57,6 +57,29 @@ public final class CommDisplays extends AbstractModule {
 								.flatMap(ops -> ops.stream().map(d::getLongDisplay))
 								.collect(joining("\n")))
 
+				.withDisplay(new Key<MapOperation<String, ThreadMetadata>>() {},
+						(d, p) -> p.getOperations().values().stream()
+								.map(threadMeta -> setOperation(threadMeta, v -> "thread " + v.getTitle(), ($, $2) -> ""))
+								.collect(joining("\n")),
+						(d, p) -> p.getOperations().entrySet().stream()
+								.map(e -> setOperation(e.getValue(),
+										v -> thread(e.getKey()),
+										v -> thread(e.getKey()) + ", title: " + text(v.getTitle()),
+										(prev, next) -> {
+											String s = "";
+											if (!prev.getTitle().equals(next.getTitle())) {
+												s += nullOrEmpty(prev.getTitle()) ?
+														", set title to " + text(next.getTitle()) :
+														", title from " + text(prev.getTitle()) + " to " + text(next.getTitle());
+											}
+											if (prev.getLastUpdate() != next.getLastUpdate()) {
+												s += prev.getLastUpdate() == 0 ?
+														", set last update timestamp to " + ts(next.getLastUpdate()) :
+														", last update timestamp from " + ts(prev.getLastUpdate()) + " to " + ts(next.getLastUpdate());
+											}
+											return s;
+										}))
+								.collect(joining("\n")))
 				.withDisplay(new Key<MapOperation<UserId, UserData>>() {},
 						(d, p) -> p.getOperations().values().stream()
 								.map(userData -> setOperation(userData, v -> v.getUsername() != null ? "user " + v.getUsername() : "some user", $ -> "", ($, $2) -> ""))
@@ -66,13 +89,13 @@ public final class CommDisplays extends AbstractModule {
 										v -> "user " + id(e.getKey(), v),
 										v -> {
 											List<String> details = new ArrayList<>();
-											if (v.getEmail() != null) {
+											if (nullOrEmpty(v.getEmail())) {
 												details.add("email: " + special(v.getEmail()));
 											}
-											if (v.getFirstName() != null) {
+											if (nullOrEmpty(v.getFirstName())) {
 												details.add("first name: " + special(v.getFirstName()));
 											}
-											if (v.getLastName() != null) {
+											if (nullOrEmpty(v.getLastName())) {
 												details.add("last name: " + special(v.getLastName()));
 											}
 											BanState banState = v.getBanState();
@@ -103,7 +126,7 @@ public final class CommDisplays extends AbstractModule {
 						(d, p) -> p.getOperations().entrySet().stream()
 								.map(e -> setOperation(e.getValue(), v -> {
 									UserData userData = users.get(e.getKey()).getResult();
-									return "last IP of " + (userData.getUsername() != null ? "user " + userData.getUsername() : "some user");
+									return "last IP of " + (nullOrEmpty(userData.getUsername()) ? "user " + userData.getUsername() : "some user");
 								}, ($, $2) -> ""))
 								.collect(joining("\n")),
 						(d, p) -> p.getOperations().entrySet().stream()
@@ -116,10 +139,10 @@ public final class CommDisplays extends AbstractModule {
 						(d, p) -> p.getOperations().values().stream()
 								.map(ipBan -> setOperation(ipBan, v -> "IP ban for " + ipRange(v.getIpRange()), $ -> "", ($, $2) -> ""))
 								.collect(joining("\n")),
-						(d, p) -> p.getOperations().values().stream()
-								.map(ipBanState -> setOperation(ipBanState,
-										v -> "IP ban for " + ipRange(v.getIpRange()),
-										v -> "IP " + ipRange(v.getIpRange()) + " " + banState(v.getBanState(), users),
+						(d, p) -> p.getOperations().entrySet().stream()
+								.map(e -> setOperation(e.getValue(),
+										v -> "IP ban for " + ipRange(v.getIpRange()) + ", ban id " + special(e.getKey()),
+										v -> "IP ban for " + ipRange(v.getIpRange()) + " " + banState(v.getBanState(), users) + ", ban id " + special(e.getKey()),
 										(prev, next) -> {
 											String s = "change IP ban " + ipRange(next.getIpRange());
 											if (!prev.getBanState().getUntil().equals(next.getBanState().getUntil())) {
@@ -128,13 +151,21 @@ public final class CommDisplays extends AbstractModule {
 											if (!prev.getBanState().getReason().equals(next.getBanState().getReason())) {
 												s += " reason from " + text(prev.getBanState().getReason()) + " to " + text(next.getBanState().getReason());
 											}
-											return s;
+											return s + ", ban id " + special(e.getKey());
 										}))
 								.collect(joining("\n")));
 	}
 
+	private static boolean nullOrEmpty(@Nullable String s) {
+		return s == null || s.isEmpty();
+	}
+
 	private static String post(String postId) {
 		return "root".equals(postId) ? "<span class=\"special\">root</span> post" : "post <span class=\"special\">" + postId + "</span>";
+	}
+
+	private static String thread(String threadId) {
+		return "root".equals(threadId) ? "<span class=\"special\">root</span> thread" : "thread <span class=\"special\">" + threadId + "</span>";
 	}
 
 	public static String ts(long ts) {
@@ -144,7 +175,7 @@ public final class CommDisplays extends AbstractModule {
 	private static String id(UserId id, @Nullable UserData userData) {
 		String username = "<i>&lt;unknown&gt;</i>";
 		if (userData != null) {
-			if (userData.getUsername() != null) {
+			if (nullOrEmpty(userData.getUsername())) {
 				username = userData.getUsername();
 			}
 		}
@@ -163,9 +194,16 @@ public final class CommDisplays extends AbstractModule {
 		return "<a class=\"special\" href=\"javascript:void(0)\" onclick=\"window.open(location.pathname.replace('ot/thread', 'fs')+'/" + postId + "/" + filename + "', '_blank')\">" + filename + "</a>";
 	}
 
+	public static String shortText(String text) {
+		return (text.length() <= 20 ? text : text.substring(0, 17) + "...").replaceAll("\n", "\\n");
+	}
+
 	public static String text(String text) {
+		if (text == null) {
+			return special(null);
+		}
 		return "<span class=\"special\" title=\"" + text.replaceAll("\n", "\\\\\\\n") + "\">" +
-				(text.length() <= 20 ? text : text.substring(0, 17) + "...").replaceAll("\n", "<span class=\"newline\">\\\\\\\\n</span>") + "</span>";
+				shortText(text).replaceAll("\\\\n", "<span class=\"newline\">\\\\\\\\n</span>") + "</span>";
 	}
 
 	public static String special(String text) {

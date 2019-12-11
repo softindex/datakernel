@@ -1,21 +1,22 @@
-function createChildrenHtml(children, prefix) {
-  function createLeafHtml(key, children, prefix) {
+function createChildrenHtml(children, prefix, itemMapper) {
+  function createLeafHtml(key, children, prefix, itemMapper) {
+    let path = prefix + key;
     if ($.isEmptyObject(children)) {
-      return '<div class="row repo" data-repo="' + prefix + key + '">' + key + '</div>';
+      return '<div class="row repo" data-repo="' + prefix + key + '">' + itemMapper(path, key) + '</div>';
     }
     return '' +
       '<div class="row has-children" data-path="' + prefix + key + '">' + key + '</div>' +
       '<div class="row collapse">' +
       '<div class="col-auto p-0 px-2"><div class="line"></div></div>' +
       '<div class="col">' +
-      createChildrenHtml(children, prefix + key + '/') +
+      createChildrenHtml(children, path + '/', itemMapper) +
       '</div></div>';
   }
 
-  return Object.entries(children).map(([k, v]) => createLeafHtml(k, v, prefix)).join('');
+  return Object.entries(children).map(([k, v]) => createLeafHtml(k, v, prefix, itemMapper)).join('');
 }
 
-function createTreeList(url, pathCallback, pathFactory,) {
+function createTreeList(url, pathCallback, pathFactory, itemMapper) {
   return fetch(url)
     .then(r => r.json())
     .then(json => {
@@ -39,7 +40,7 @@ function createTreeList(url, pathCallback, pathFactory,) {
         }
       }
 
-      let $list = $('<div class="list">' + createChildrenHtml(stuff, '') + '</div>');
+      let $list = $('<div class="list">' + createChildrenHtml(stuff, '', itemMapper) + '</div>');
 
       let expandedItems = type + '-list-expanded';
 

@@ -183,7 +183,7 @@ public final class PublicServlet {
 					CommDao commDao = request.getAttachment(CommDao.class);
 
 					return commDao.generateThreadId()
-							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("<unnamed>", 0)).map($ -> id))
+							.then(id -> commDao.getThreads("root").put(id, ThreadMetadata.of("", 0)).map($ -> id))
 							.then(tid -> commDao.getThreadDao(tid)
 									.then(threadDao -> {
 										assert threadDao != null : "No thread dao just after creating the thread";
