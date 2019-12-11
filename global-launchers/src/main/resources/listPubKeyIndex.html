@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css"
+        integrity="sha384-Re/I8sla3AIFEoz6DrgkHWaLDSWKXaLOYm5yn3Gwmf/QhWS3/ajG7O2qr1zBmF3d" crossorigin="anonymous">
+
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css"
+        integrity="sha384-fJH2gz4kcHl6LNRYI7TauVxjt5r/u+NfM+XpXDSSyHTCS7PMUXXW0Qo677Xr+bok" crossorigin="anonymous">
+  <title>Pub keys</title>
+</head>
+<body style="">
+<div class="container mb-2" style="background-color: initial; position: relative">
+  <h2>Pub keys</h2>
+  <p>List pub keys to nodes</p>
+
+  <p style="display: inline-block;">Polling:</p>
+  <input class="form-check-input ml-2" style="display: inline-block;" type="checkbox" id="pollChecker">
+  <div id="mainDiv"></div>
+</div>
+
+<script type="text/javascript">
+    let mainDiv = document.getElementById('mainDiv');
+    let pollChecker = document.getElementById("pollChecker");
+
+    function update() {
+        mainDiv.innerHTML = '';
+        fetch('/adminPanel/findAll/', {
+            method: "GET"
+        })
+            .then(r => r.json())
+            .then(data => {
+                for (let index of Object.keys(data)) {
+                    const entry = data[index];
+                    const pubKey = entry[0];
+
+                    const accordion = document.createElement("div");
+                    accordion.id = "a" + index;
+
+                    const card = document.createElement("div");
+                    card.className = "card";
+                    card.style.border = "1px lightgrey solid";
+                    const cardHeader = document.createElement("div");
+                    cardHeader.className = "card-header";
+                    cardHeader.style.backgroundColor = 'ghostwhite';
+                    const cardLink = document.createElement("a");
+                    cardLink.className = "card-link stretched-link";
+                    cardLink.dataset.toggle = "collapse";
+                    cardLink.style.color = "dimgrey";
+                    cardLink.href = "#a1" + index;
+                    cardLink.text = "Key: " + pubKey.substring(0, 32) + "...";
+                    cardLink.onclick = function () {
+                        if (cardLink.text.endsWith("...")) {
+                            cardLink.text = "Key: " + pubKey;
+                        } else {
+                            cardLink.text = "Key: " + pubKey.substring(0, 32) + "..."
+                        }
+                    };
+
+                    accordion.appendChild(card);
+                    card.appendChild(cardHeader);
+                    cardHeader.appendChild(cardLink);
+                    for (let i = 0; i < entry[1].length; i++) {
+                        const host = entry[1][i];
+
+                        const collapseOne = document.createElement("div");
+                        collapseOne.id = "a1" + index;
+                        collapseOne.className = "collapse";
+                        collapseOne.dataset.parent = "#a" + index;
+                        const cardBody = document.createElement("div");
+                        cardBody.className = "card-body";
+                        cardBody.textContent = " • " + host;
+                        collapseOne.appendChild(cardBody);
+                        card.appendChild(collapseOne);
+                    }
+                    mainDiv.appendChild(accordion);
+                }
+            })
+            .catch(console.error);
+    }
+
+    setInterval(function () {
+        if (pollChecker.checked) {
+            update();
+        }
+    }, 10000);
+    update();
+</script>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"
+        integrity="sha384-fYxN7HsDOBRo1wT/NSZ0LkoNlcXvpDpFy6WzB42LxuKAX7sBwgo7vuins+E1HCaw"
+        crossorigin="anonymous"></script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/js/tempusdominus-bootstrap-4.min.js"
+  integrity="sha384-97pmbvZb0qdIXSwrjd4JuG6+4TJhp4eL0totTka0FF1Bf2E42dPiSXsqq09yQxjD"
+  crossorigin="anonymous"></script>
+</body>
+</html>

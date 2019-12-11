@@ -21,8 +21,12 @@ import io.global.common.PubKey;
 import io.global.common.SignedData;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
+
 public interface AnnouncementStorage {
 	Promise<Void> store(PubKey space, SignedData<AnnounceData> announceData);
 
 	Promise<@Nullable SignedData<AnnounceData>> load(PubKey space);
+
+	Promise<Map<PubKey, SignedData<AnnounceData>>> loadAll();
 }

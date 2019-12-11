@@ -16,6 +16,7 @@
 
 package io.global.launchers.discovery;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
@@ -24,10 +25,11 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.*;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
@@ -44,11 +46,17 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
+import static io.global.common.api.DiscoveryCommand.FIND_ALL;
 import static io.global.launchers.Initializers.sslServerInitializer;
+import static io.global.util.Utils.PUB_KEYS_MAP_HEX;
 
 public class DiscoveryServiceLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "discovery-service.properties";
+	private static final String BASIC_AUTH_LOGIN = ApplicationSettings.getString(DiscoveryServlet.class, "basic.login", "admin");
+	private static final String BASIC_AUTH_PASSWORD = ApplicationSettings.getString(DiscoveryServlet.class, "basic.passoword", "admin");
 
 	@Inject
 	AsyncHttpServer httpServer;
@@ -86,7 +94,21 @@ public class DiscoveryServiceLauncher extends Launcher {
 	}
 
 	@Provides
-	AsyncHttpServer httpServer(Eventloop eventloop, DiscoveryServlet servlet, ExecutorService executor, Config config) {
+	AsyncServlet extendedDiscoveryServlet(DiscoveryServlet discoveryServlet, ExecutorService executor, DiscoveryService discoveryService) {
+		return RoutingServlet.create()
+				.map("/*", discoveryServlet)
+				.map("/adminPanel/*", RoutingServlet.create()
+						.map(GET, "/*", StaticServlet.ofClassPath(executor, "/").withMappingTo("listPubKeyIndex.html"))
+						.map(GET, "/" + FIND_ALL + "/", request -> discoveryService.findAll()
+								.map(pubKeys -> ok200()
+										.withJson(PUB_KEYS_MAP_HEX, pubKeys))
+						)
+						.then(BasicAuth.decorator("list pub keys", (l, p) -> Promise.of(BASIC_AUTH_LOGIN.equals(l) && BASIC_AUTH_PASSWORD.equals(p))))
+				);
+	}
+
+	@Provides
+	AsyncHttpServer httpServer(Eventloop eventloop, AsyncServlet servlet, ExecutorService executor, Config config) {
 		return AsyncHttpServer.create(eventloop, servlet)
 				.initialize(sslServerInitializer(executor, config.getChild("http")));
 	}

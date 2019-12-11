@@ -134,7 +134,7 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	DiscoveryService discoveryService(Config config, IAsyncHttpClient client) {
-		return HttpDiscoveryService.create(config.get("discovery.address"), client);
+		return HttpDiscoveryService.create(config.get("discovery.address"), config.get(ofInetSocketAddress(), "discovery.address"), client);
 	}
 
 	@Provides

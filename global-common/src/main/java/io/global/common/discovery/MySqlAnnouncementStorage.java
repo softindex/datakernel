@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.async.util.LogUtils.thisMethod;
@@ -91,6 +93,27 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 					}
 				})
 				.whenComplete(toLogger(logger, thisMethod(), space));
+	}
+
+	@Override
+	public Promise<Map<PubKey, SignedData<AnnounceData>>> loadAll() {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement stmt = connection.prepareStatement(
+								sql("SELECT 'pubKey', `announcement` FROM {announcements} "))) {
+							ResultSet resultSet = stmt.executeQuery();
+							Map<PubKey, SignedData<AnnounceData>> result = new HashMap<>();
+							while (resultSet.next()) {
+								PubKey pubKey = PubKey.fromString(resultSet.getString(1));
+								SignedData<AnnounceData> data = fromJson(ANNOUNCEMENT_CODEC, resultSet.getString(2));
+								result.put(pubKey, data);
+							}
+							return result;
+						}
+					}
+				})
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public void initialize() throws IOException, SQLException {

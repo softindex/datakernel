@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static io.datakernel.common.collection.CollectionUtils.union;
@@ -68,6 +69,11 @@ public final class AppDiscoveryService implements DiscoveryService {
 					AnnounceData custom = new AnnounceData(actual.getTimestamp(), union(actual.getServerIds(), customMasterServers));
 					return SignedData.sign(ANNOUNCE_DATA_CODEC, custom, STUB_PK);
 				});
+	}
+
+	@Override
+	public Promise<Map<PubKey, Set<RawServerId>>> findAll() {
+		return discoveryService.findAll();
 	}
 
 	@Override

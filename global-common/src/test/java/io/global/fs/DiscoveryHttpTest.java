@@ -36,6 +36,7 @@ import org.junit.rules.TemporaryFolder;
 import org.spongycastle.crypto.CryptoException;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.collection.CollectionUtils.set;
@@ -60,7 +61,7 @@ public final class DiscoveryHttpTest {
 	public void test() throws IOException, CryptoException {
 		FsClient storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath()).withRevisions();
 		StubHttpClient client = StubHttpClient.of(DiscoveryServlet.create(LocalDiscoveryService.create(Eventloop.getCurrentEventloop(), storage)));
-		DiscoveryService clientService = HttpDiscoveryService.create("http://127.0.0.1:8080", client);
+		DiscoveryService clientService = HttpDiscoveryService.create("http://127.0.0.1:8080", new InetSocketAddress(0), client);
 
 		KeyPair alice = KeyPair.generate();
 		KeyPair bob = KeyPair.generate();
