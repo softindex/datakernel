@@ -57,7 +57,8 @@ public final class BinaryDataFormats {
 
 				.with(RawServerId.class, registry ->
 						tuple(RawServerId::parse,
-								RawServerId::getServerIdString, registry.get(String.class)))
+								RawServerId::getServerIdString, registry.get(String.class),
+								RawServerId::getPriority, registry.get(Integer.class)))
 
 				.with(PubKey.class, registry ->
 						tuple(PubKey::parse,
