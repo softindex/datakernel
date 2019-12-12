@@ -36,11 +36,10 @@ import org.jetbrains.annotations.Nullable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static java.util.stream.Collectors.toList;
 
 /**
  * This is an implementation of the asynchronous HTTP server on top of {@link Eventloop}.
@@ -285,11 +284,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 						: "") + "/";
 	}
 
-	public List<String> getHttpAddresses() {
-		return Stream.concat(
+	@Override
+	protected void onListen() {
+		logger.info("HTTP Server is now available at " + Stream.concat(
 				listenAddresses.stream().map(address -> format(address, false)),
 				sslListenAddresses.stream().map(address -> format(address, true))
-		).collect(toList());
+		).collect(Collectors.joining(", ")));
 	}
 
 	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)

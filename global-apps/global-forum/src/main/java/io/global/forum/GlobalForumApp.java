@@ -114,7 +114,6 @@ public final class GlobalForumApp extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		logger.info("HTTP Server is now available at " + String.join(", ", server.getHttpAddresses()));
 		awaitShutdown();
 	}
 

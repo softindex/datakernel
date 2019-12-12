@@ -15,26 +15,23 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.blog.container.BlogUserContainer;
 import io.global.blog.ot.BlogMetadata;
-import io.global.debug.DebugViewerModule;
-import io.global.kv.api.KvClient;
-import io.global.mustache.DebugMustacheModule;
-import io.global.ot.TypedRepoNames;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
+import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.MustacheModule;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
-import io.global.session.KvSessionStore;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -116,7 +113,6 @@ public final class GlobalBlogApp extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		logger.info("HTTP Server is now available at " + String.join(", ", server.getHttpAddresses()));
 		awaitShutdown();
 	}
 

@@ -20,7 +20,6 @@ import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.DebugMustacheModule;
-import io.global.mustache.MustacheModule;
 import io.global.ot.service.ContainerModule;
 import io.global.ot.session.UserId;
 import io.global.photos.container.GlobalPhotosContainer;
@@ -99,7 +98,6 @@ public class GlobalPhotosApp extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		logger.info("HTTP Server is now available at " + String.join(", ", server.getHttpAddresses()));
 		awaitShutdown();
 	}
 }
