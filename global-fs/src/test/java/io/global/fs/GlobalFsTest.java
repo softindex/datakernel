@@ -333,7 +333,11 @@ public final class GlobalFsTest {
 		// delete on first
 		await(firstAliceAdapter.delete(FILENAME));
 
-		// second should check the actual metadata when trying to download
+		byte[] resAfterDelete = await(await(secondAliceAdapter.download(FILENAME)).toCollector(ByteBufQueue.collector())).asArray();
+		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), res);
+
+		await(rawSecondClient.fetch());
+
 		assertSame(FILE_NOT_FOUND, awaitException(secondAliceAdapter.download(FILENAME)));
 	}
 

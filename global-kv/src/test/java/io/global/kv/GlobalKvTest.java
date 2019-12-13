@@ -217,9 +217,6 @@ public final class GlobalKvTest {
 
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
 
-		// ping second node so that if would find out that it is master for alice
-		await(secondAliceAdapter.list());
-
 		await(rawSecondClient.fetch());
 
 		assertEquals(content, await(await(secondAliceAdapter.download("test")).toCollector(toSet())));

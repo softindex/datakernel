@@ -69,9 +69,11 @@ public final class OTDriverTest {
 		InMemorySharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
 		DiscoveryService discoveryService = LocalDiscoveryService.create(eventloop, announcementStorage, sharedKeyStorage);
 
-		GlobalOTNode node = GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, new CommitStorageStub(), $ -> {
-			throw new IllegalStateException();
-		});
+		GlobalOTNode node = GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, new CommitStorageStub(),
+				$ -> {
+					throw new IllegalStateException();
+				})
+				.withPollMasterRepositories(false);
 
 		MyRepositoryId<TestOp> myRepositoryId1 = new MyRepositoryId<>(repoID1, keys1.getPrivKey(), OP_CODEC);
 		MyRepositoryId<TestOp> myRepositoryId2 = new MyRepositoryId<>(repoID2, keys2.getPrivKey(), OP_CODEC);
