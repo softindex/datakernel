@@ -17,42 +17,57 @@
 package io.global.common.discovery;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.parse.ParserFunction;
 import io.datakernel.http.*;
 import io.datakernel.promise.Promise;
-import io.global.common.Hash;
-import io.global.common.PubKey;
-import io.global.common.SharedSimKey;
-import io.global.common.SignedData;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.http.HttpHeaders.AUTHORIZATION;
 import static io.global.common.api.DiscoveryCommand.*;
 import static io.global.common.discovery.DiscoveryServlet.*;
+import static io.global.util.Utils.PUB_KEYS_MAP;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.emptyMap;
 
 public final class HttpDiscoveryService implements DiscoveryService {
 	private static final Logger logger = LoggerFactory.getLogger(HttpDiscoveryService.class);
-
+	private static final Base64.Encoder encoder = Base64.getEncoder();
 	private final IAsyncHttpClient client;
 	private final String url;
 
-	private HttpDiscoveryService(String url, IAsyncHttpClient client) {
+	@Nullable
+	private final String login;
+	@Nullable
+	private final String password;
+
+	public HttpDiscoveryService(String url, IAsyncHttpClient client, @Nullable String login, @Nullable String password) {
 		this.client = client;
-		this.url = url.endsWith("/") ? url : (url + "/");
+		this.login = login;
+		this.password = password;
+		this.url = url;
+	}
+
+	public static HttpDiscoveryService create(String url, IAsyncHttpClient client, String login, String password) {
+		return new HttpDiscoveryService(url.endsWith("/") ? url : (url + "/"), client, login, password);
 	}
 
 	public static HttpDiscoveryService create(String url, IAsyncHttpClient client) {
-		return new HttpDiscoveryService(url, client);
+		return new HttpDiscoveryService(url.endsWith("/") ? url : (url + "/"), client, null, null);
 	}
 
 	@Override
@@ -99,6 +114,27 @@ public final class HttpDiscoveryService implements DiscoveryService {
 					}
 					return response.loadBody()
 							.then(body -> tryParseResponse(response, body, buf -> decode(SIGNED_ANNOUNCE, buf.slice())));
+				});
+	}
+
+	@Override
+	public Promise<Map<PubKey, Set<RawServerId>>> findAll() {
+		if (login == null || password == null) {
+			return Promise.ofException(new StacklessException("No credentials given"));
+		}
+		String credentials = login + ":" + password;
+		return client.request(HttpRequest.get(
+				url + UrlBuilder.relative()
+						.appendPathPart(FIND_ALL)
+						.build())
+				.withHeader(AUTHORIZATION, "Basic " + new String(encoder.encode(credentials.getBytes()))))
+				.thenEx((response, e) -> {
+					if (e != null) {
+						logger.trace("Failed to get list pubkeys", e);
+						return Promise.of(emptyMap());
+					}
+					return response.loadBody()
+							.then(body -> tryParseResponse(response, body, buf -> decode(PUB_KEYS_MAP, buf.slice())));
 				});
 	}
 

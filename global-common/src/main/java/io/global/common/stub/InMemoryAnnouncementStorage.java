@@ -22,6 +22,7 @@ import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,6 +38,11 @@ public class InMemoryAnnouncementStorage implements AnnouncementStorage {
 	@Override
 	public Promise<SignedData<AnnounceData>> load(PubKey space) {
 		return Promise.of(announcements.get(space));
+	}
+
+	@Override
+	public Promise<Map<PubKey, SignedData<AnnounceData>>> loadAll() {
+		return Promise.of(Collections.unmodifiableMap(announcements));
 	}
 
 	public void addAnnouncements(Map<PubKey, SignedData<AnnounceData>> announcements) {

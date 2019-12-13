@@ -2,24 +2,32 @@ package io.global.util;
 
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.process.Cancellable;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.common.collection.Try;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
+import io.global.common.PubKey;
+import io.global.common.RawServerId;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.promise.Promises.asPromises;
 import static io.datakernel.promise.Promises.reduceEx;
+import static io.global.common.BinaryDataFormats.REGISTRY;
 
 public class Utils {
+	public static final StructuredCodec<Map<PubKey, Set<RawServerId>>> PUB_KEYS_MAP =
+			StructuredCodecs.ofMap(REGISTRY.get(PubKey.class), StructuredCodecs.ofSet(REGISTRY.get(RawServerId.class)));
+	public static final StructuredCodec<Map<PubKey, Set<RawServerId>>> PUB_KEYS_MAP_HEX =
+			StructuredCodecs.ofMap(STRING_CODEC.transform(PubKey::fromString, PubKey::asString), StructuredCodecs.ofSet(REGISTRY.get(RawServerId.class)));
+
 	private Utils() {
 	}
 

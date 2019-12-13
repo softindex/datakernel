@@ -20,10 +20,7 @@ import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.global.common.Hash;
-import io.global.common.PubKey;
-import io.global.common.SharedSimKey;
-import io.global.common.SignedData;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
 import io.global.common.api.DiscoveryService;
@@ -34,9 +31,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
+import static java.util.stream.Collectors.toMap;
 
 public final class LocalDiscoveryService implements DiscoveryService, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(LocalDiscoveryService.class);
@@ -83,6 +83,14 @@ public final class LocalDiscoveryService implements DiscoveryService, EventloopS
 	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
 		return announcementStorage.load(space)
 				.whenComplete(toLogger(logger, TRACE, "find", space, this));
+	}
+
+	@Override
+	public Promise<Map<PubKey, Set<RawServerId>>> findAll() {
+		return announcementStorage.loadAll()
+				.map(map -> map.entrySet()
+						.stream()
+						.collect(toMap(Map.Entry::getKey, o -> o.getValue().getValue().getServerIds())));
 	}
 
 	@Override
