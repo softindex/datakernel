@@ -26,6 +26,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
@@ -47,16 +48,14 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpResponse.ok200;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.global.common.api.DiscoveryCommand.FIND_ALL;
 import static io.global.launchers.Initializers.sslServerInitializer;
 import static io.global.util.Utils.PUB_KEYS_MAP_HEX;
 
 public class DiscoveryServiceLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "discovery-service.properties";
-	private static final String BASIC_AUTH_LOGIN = ApplicationSettings.getString(DiscoveryServlet.class, "basic.login", "admin");
-	private static final String BASIC_AUTH_PASSWORD = ApplicationSettings.getString(DiscoveryServlet.class, "basic.passoword", "admin");
+	private static final String BASIC_AUTH_LOGIN = ApplicationSettings.getString(DiscoveryServlet.class, "debug.login", "admin");
+	private static final String BASIC_AUTH_PASSWORD = ApplicationSettings.getString(DiscoveryServlet.class, "debug.passoword", "admin");
 
 	@Inject
 	AsyncHttpServer httpServer;
@@ -97,13 +96,12 @@ public class DiscoveryServiceLauncher extends Launcher {
 	AsyncServlet extendedDiscoveryServlet(DiscoveryServlet discoveryServlet, ExecutorService executor, DiscoveryService discoveryService) {
 		return RoutingServlet.create()
 				.map("/*", discoveryServlet)
-				.map("/adminPanel/*", RoutingServlet.create()
-						.map(GET, "/*", StaticServlet.ofClassPath(executor, "/").withMappingTo("listPubKeyIndex.html"))
-						.map(GET, "/" + FIND_ALL + "/", request -> discoveryService.findAll()
-								.map(pubKeys -> ok200()
-										.withJson(PUB_KEYS_MAP_HEX, pubKeys))
-						)
-						.then(BasicAuth.decorator("list pub keys", (l, p) -> Promise.of(BASIC_AUTH_LOGIN.equals(l) && BASIC_AUTH_PASSWORD.equals(p))))
+				.map("/debug/*", RoutingServlet.create()
+						.map(GET, "/*", StaticServlet.create(StaticLoader.ofClassPath(executor, "/"), "discovery-debug.html"))
+						.map(GET, "/api/", request -> discoveryService.findAll()
+								.map(pks -> HttpResponse.ok200()
+										.withJson(PUB_KEYS_MAP_HEX, pks)))
+						.then(BasicAuth.decorator("discovery debug", (l, p) -> Promise.of(BASIC_AUTH_LOGIN.equals(l) && BASIC_AUTH_PASSWORD.equals(p))))
 				);
 	}
 
