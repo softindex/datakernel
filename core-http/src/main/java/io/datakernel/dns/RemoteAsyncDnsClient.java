@@ -26,7 +26,7 @@ import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.eventloop.net.DatagramSocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.net.AsyncUdpSocket;
-import io.datakernel.net.AsyncUdpSocketImpl;
+import io.datakernel.net.AsyncUdpSocketNio;
 import io.datakernel.net.UdpPacket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -69,7 +69,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 	private AsyncUdpSocket socket;
 
 	@Nullable
-	private AsyncUdpSocketImpl.Inspector socketInspector;
+	private AsyncUdpSocketNio.Inspector socketInspector;
 	@Nullable
 	private Inspector inspector;
 
@@ -107,7 +107,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		return this;
 	}
 
-	public RemoteAsyncDnsClient setSocketInspector(AsyncUdpSocketImpl.Inspector socketInspector) {
+	public RemoteAsyncDnsClient setSocketInspector(AsyncUdpSocketNio.Inspector socketInspector) {
 		this.socketInspector = socketInspector;
 		return this;
 	}
@@ -138,7 +138,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		try {
 			logger.trace("Incoming query, opening UDP socket");
 			DatagramChannel channel = Eventloop.createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
-			return AsyncUdpSocketImpl.connect(eventloop, channel)
+			return AsyncUdpSocketNio.connect(eventloop, channel)
 					.map(s -> this.socket = s.withInspector(socketInspector));
 		} catch (IOException e) {
 			logger.error("UDP socket creation failed.", e);
@@ -278,8 +278,8 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 	@JmxAttribute
 	@Nullable
-	public AsyncUdpSocketImpl.JmxInspector getSocketStats() {
-		return BaseInspector.lookup(socketInspector, AsyncUdpSocketImpl.JmxInspector.class);
+	public AsyncUdpSocketNio.JmxInspector getSocketStats() {
+		return BaseInspector.lookup(socketInspector, AsyncUdpSocketNio.JmxInspector.class);
 	}
 
 	@JmxAttribute(name = "")

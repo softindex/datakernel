@@ -20,10 +20,10 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.asm.SerializerDef;
-import io.datakernel.serializer.asm.SerializerDefArray;
-import io.datakernel.serializer.asm.SerializerDefByte;
-import io.datakernel.serializer.asm.SerializerDefClass;
+import io.datakernel.serializer.SerializerDef;
+import io.datakernel.serializer.impl.SerializerDefArray;
+import io.datakernel.serializer.impl.SerializerDefByte;
+import io.datakernel.serializer.impl.SerializerDefClass;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -42,10 +42,10 @@ public final class MeasureHyperLogLog extends Measure {
 		}
 
 		private static SerializerDef serializerDef() {
-			SerializerDefClass serializer = new SerializerDefClass(HyperLogLog.class);
+			SerializerDefClass serializer = SerializerDefClass.of(HyperLogLog.class);
 			try {
 				serializer.addGetter(HyperLogLog.class.getMethod("getRegisters"),
-						new SerializerDefArray(new SerializerDefByte(), byte[].class), -1, -1);
+						new SerializerDefArray(new SerializerDefByte(false), byte[].class), -1, -1);
 				serializer.setConstructor(HyperLogLog.class.getConstructor(byte[].class),
 						singletonList("registers"));
 			} catch (NoSuchMethodException ignored) {

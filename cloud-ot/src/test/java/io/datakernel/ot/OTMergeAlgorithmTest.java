@@ -39,7 +39,7 @@ public class OTMergeAlgorithmTest {
 			Utils.calcLevels(commitId, levels,
 					parentId -> firstNonNull(graph.getParents(parentId), Collections.<K, List<D>>emptyMap()).keySet());
 		}
-		levels.forEach(graph::setNodeLevel);
+		levels.forEach(graph::setLevel);
 
 		return graph;
 	}

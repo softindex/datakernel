@@ -18,9 +18,8 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerDefBuilder;
-import io.datakernel.serializer.asm.SerializerDefInt;
-import io.datakernel.serializer.asm.SerializerDefLong;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefWithVarLength;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 
@@ -29,17 +28,8 @@ public final class SerializeVarLengthHandler implements AnnotationHandler<Serial
 	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeVarLength annotation, CompatibilityLevel compatibilityLevel) {
 		return (type, generics, target) -> {
 			checkArgument(generics.length == 0, "Type should have no generics");
-			if (type == Integer.TYPE) {
-				return new SerializerDefInt(true);
-			}
-			if (type == Integer.class) {
-				return new SerializerDefInt(true);
-			}
-			if (type == Long.TYPE) {
-				return new SerializerDefLong(true);
-			}
-			if (type == Long.class) {
-				return new SerializerDefLong(true);
+			if (target instanceof SerializerDefWithVarLength) {
+				return ((SerializerDefWithVarLength) target).ensureVarLength();
 			}
 			throw new IllegalArgumentException("Unsupported type " + type);
 		};

@@ -17,8 +17,8 @@
 package io.datakernel.serializer.examples;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.serializer.asm.AbstractSerializerDefCollection;
-import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.SerializerDef;
+import io.datakernel.serializer.impl.AbstractSerializerDefCollection;
 
 import java.util.function.Function;
 
@@ -47,7 +47,7 @@ public final class SerializerDefHppc7Collection extends AbstractSerializerDefCol
 	}
 
 	@Override
-	public SerializerDef withNullable() {
-		return new SerializerDefHppc7Collection(valueSerializer, collectionType, elementType, collectionImplType, true);
+	public SerializerDef ensureNullable() {
+		return new SerializerDefHppc7Collection(valueSerializer, encodeType, elementType, decodeType, true);
 	}
 }

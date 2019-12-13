@@ -1,33 +1,19 @@
-<p align="center">
-  <a href="https://datakernel.io" target="_blank">
-    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="350">
-  </a>
-</p>
-
 [![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
 [![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
 
 ## Introduction
 
-DataKernel is a full-featured alternative Java framework, created from ground up for **efficient** and **scalable** solutions.
+DataKernel is a full-featured alternative web and big data Java framework built from the ground up. It does not use Netty, Jetty, Spring/Guice DI, RxJava etc. Instead, it features a full application stack: Event Loop, Promises, HTTP, DI and others, including decentralized big-data technologies and map-reduce algorithms.
 
-## Features
-
-- 💕 Natively **asynchronous** modular framework
-- 🧩 Exceptionally fast, powerful, and simple **Dependency Injection**
-- ⏱ Magnificently **fast build** and **start-up times** for your applications with **extremely small** JAR sizes
-- 🚀 A wide selection of application launchers and **embedded servers**
-- 🌎 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
-- 🏎 Scalable and fault-tolerant **microservice** architecture with ultra-fast binary messaging 
-- 📖 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**
+No overhead of intermediate abstractions, legacy standards and third-party libraries makes the framework minimalistic, streamlined and lightning-fast!
 
 ## Getting started
 
 Just insert this snippet to your terminal...
 
 ```
-mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=archetype-http -DarchetypeVersion=3.0.0
+mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=archetype-http -DarchetypeVersion=3.1.0
 ```
 
 ... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 

@@ -100,7 +100,7 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	}
 
 	@Override
-	protected void onStart() throws Exception {
+	protected void onStart() {
 		this.address = config.get("client.address");
 		this.totalRequests = config.get(ofInteger(), "benchmark.totalRequests", TOTAL_REQUESTS);
 		this.warmupRounds = config.get(ofInteger(), "benchmark.warmupRounds", WARMUP_ROUNDS);

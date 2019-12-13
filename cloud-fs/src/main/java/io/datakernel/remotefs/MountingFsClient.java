@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static io.datakernel.remotefs.RemoteFsUtils.copyFile;
+
 final class MountingFsClient implements FsClient {
 	private final FsClient root;
 	private final Map<String, FsClient> mounts;
@@ -93,10 +95,7 @@ final class MountingFsClient implements FsClient {
 		if (first == second) {
 			return first.copy(name, target, targetRevision);
 		}
-		return first.download(name)
-				.then(supplier ->
-						second.upload(name, 0, targetRevision)
-								.then(supplier::streamTo));
+		return copyFile(first, second, name, targetRevision);
 	}
 
 	@Override

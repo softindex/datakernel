@@ -1,14 +1,13 @@
 package io.datakernel.memcache.protocol;
 
-import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutputUtils;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.HasNullable;
-import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.SerializerDef;
+import io.datakernel.serializer.impl.SerializerDefWithNullable;
 
 import java.util.Set;
 
@@ -16,7 +15,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")
-public class SerializerDefSlice implements SerializerDef, HasNullable {
+public class SerializerDefSlice implements SerializerDefWithNullable {
 	private final boolean nullable;
 
 	public SerializerDefSlice() {
@@ -37,21 +36,21 @@ public class SerializerDefSlice implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public Class<?> getRawType() {
+	public Class<?> getEncodeType() {
 		return Slice.class;
 	}
 
 	@Override
-	public Expression encoder(DefiningClassLoader classLoader, StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
+	public Expression encoder(StaticEncoders staticEncoders, Expression buf, Variable pos, Expression value, int version, CompatibilityLevel compatibilityLevel) {
 		return set(pos,
-				callStatic(SerializerDefSlice.class,
+				staticCall(SerializerDefSlice.class,
 						"write" + (nullable ? "Nullable" : ""),
 						buf, pos, cast(value, Slice.class)));
 	}
 
 	@Override
-	public Expression decoder(DefiningClassLoader classLoader, StaticDecoders staticDecoders, Expression in, Class<?> targetType, int version, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerDefSlice.class,
+	public Expression decoder(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel) {
+		return staticCall(SerializerDefSlice.class,
 				"read" + (nullable ? "Nullable" : ""),
 				in);
 	}
@@ -90,7 +89,7 @@ public class SerializerDefSlice implements SerializerDef, HasNullable {
 	}
 
 	@Override
-	public SerializerDef withNullable() {
+	public SerializerDef ensureNullable() {
 		return new SerializerDefSlice(true);
 	}
 }

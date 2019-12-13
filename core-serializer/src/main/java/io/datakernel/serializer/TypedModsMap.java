@@ -16,9 +16,8 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.serializer.asm.SerializerDef;
-import io.datakernel.serializer.asm.SerializerDefBuilder;
-import io.datakernel.serializer.asm.SerializerDefBuilder.SerializerForType;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefBuilder.SerializerForType;
 
 import java.util.*;
 

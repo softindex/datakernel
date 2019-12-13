@@ -24,6 +24,7 @@ import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.common.Initializable;
 import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerWithResult;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.*;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
@@ -224,7 +225,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @return consumer for streaming data to aggregation
 	 */
 	@SuppressWarnings("unchecked")
-	public <T, C, K extends Comparable> Promise<AggregationDiff> consume(StreamSupplier<T> supplier,
+	public <T, C, K extends Comparable> StreamConsumerWithResult<T, AggregationDiff> consume(
 			Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(),
@@ -252,13 +253,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				keyFunction,
 				aggregate, chunkSize, classLoader);
 
-		return supplier.streamTo(groupReducer)
-				.then($ -> groupReducer.getResult())
-				.map(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
+		return StreamConsumerWithResult.of(groupReducer,
+				groupReducer.getResult()
+						.map(chunks -> AggregationDiff.of(new HashSet<>(chunks))));
 	}
 
-	public <T> Promise<AggregationDiff> consume(StreamSupplier<T> supplier, Class<T> inputClass) {
-		return consume(supplier, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
+	public <T> StreamConsumerWithResult<T, AggregationDiff> consume(Class<T> inputClass) {
+		return consume(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
 	}
 
 	public double estimateCost(AggregationQuery query) {

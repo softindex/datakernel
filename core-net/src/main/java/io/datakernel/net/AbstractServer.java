@@ -24,7 +24,7 @@ import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.eventloop.net.ServerSocketSettings;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.net.AsyncTcpSocketImpl.Inspector;
+import io.datakernel.net.AsyncTcpSocketNio.Inspector;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -46,8 +46,8 @@ import java.util.concurrent.Future;
 
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
-import static io.datakernel.net.AsyncSslSocket.wrapServerSocket;
-import static io.datakernel.net.AsyncTcpSocketImpl.wrapChannel;
+import static io.datakernel.net.AsyncTcpSocketNio.wrapChannel;
+import static io.datakernel.net.AsyncTcpSocketSsl.wrapServerSocket;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -337,8 +337,8 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 		accepts.recordEvent();
 		if (ssl) acceptsSsl.recordEvent();
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);
-		AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
-		AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+		AsyncTcpSocket asyncTcpSocket = wrapChannel(eventloop, socketChannel, socketSettings);
+		asyncTcpSocket = ssl ? wrapServerSocket(asyncTcpSocket, sslContext, sslExecutor) : asyncTcpSocket;
 		serve(asyncTcpSocket, remoteAddress);
 	}
 
@@ -388,16 +388,16 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 
 	@JmxAttribute
 	@Nullable
-	public final AsyncTcpSocketImpl.JmxInspector getSocketStats() {
+	public final AsyncTcpSocketNio.JmxInspector getSocketStats() {
 		return this instanceof PrimaryServer || acceptServer.listenAddresses.isEmpty() ? null :
-				BaseInspector.lookup(socketInspector, AsyncTcpSocketImpl.JmxInspector.class);
+				BaseInspector.lookup(socketInspector, AsyncTcpSocketNio.JmxInspector.class);
 	}
 
 	@JmxAttribute
 	@Nullable
-	public final AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
+	public final AsyncTcpSocketNio.JmxInspector getSocketStatsSsl() {
 		return this instanceof PrimaryServer || acceptServer.sslListenAddresses.isEmpty() ? null :
-				BaseInspector.lookup(socketSslInspector, AsyncTcpSocketImpl.JmxInspector.class);
+				BaseInspector.lookup(socketSslInspector, AsyncTcpSocketNio.JmxInspector.class);
 	}
 
 	@Override

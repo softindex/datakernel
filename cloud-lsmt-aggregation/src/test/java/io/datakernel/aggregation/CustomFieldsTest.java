@@ -127,7 +127,7 @@ public class CustomFieldsTest {
 				new EventRecord(2, 0.42, 3),
 				new EventRecord(3, 0.13, 20));
 
-		AggregationDiff diff = await(aggregation.consume(supplier, EventRecord.class));
+		AggregationDiff diff = await(supplier.streamTo(aggregation.consume(EventRecord.class)));
 		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(diff);
 
@@ -136,7 +136,7 @@ public class CustomFieldsTest {
 				new EventRecord(1, 0.22, 1000),
 				new EventRecord(2, 0.91, 33));
 
-		diff = await(aggregation.consume(supplier, EventRecord.class));
+		diff = await(supplier.streamTo(aggregation.consume(EventRecord.class)));
 		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(diff);
 
@@ -145,7 +145,7 @@ public class CustomFieldsTest {
 				new EventRecord(3, 0.88, 20),
 				new EventRecord(3, 1.01, 21));
 
-		diff = await(aggregation.consume(supplier, EventRecord.class));
+		diff = await(supplier.streamTo(aggregation.consume(EventRecord.class)));
 		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(diff);
 
@@ -154,7 +154,7 @@ public class CustomFieldsTest {
 				new EventRecord(1, 0.59, 17),
 				new EventRecord(2, 0.85, 50));
 
-		diff = await(aggregation.consume(supplier, EventRecord.class));
+		diff = await(supplier.streamTo(aggregation.consume(EventRecord.class)));
 		aggregationChunkStorage.finish(diff.getAddedChunks().stream().map(AggregationChunk::getChunkId).map(id -> (long) id).collect(Collectors.toSet()));
 		aggregation.getState().apply(diff);
 

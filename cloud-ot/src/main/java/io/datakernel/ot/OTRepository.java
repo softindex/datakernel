@@ -80,6 +80,9 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 	}
 
 	@NotNull
+	Promise<Boolean> hasCommit(@NotNull K revisionId);
+
+	@NotNull
 	Promise<OTCommit<K, D>> loadCommit(@NotNull K revisionId);
 
 	@NotNull

@@ -47,7 +47,7 @@ import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
  */
 @SuppressWarnings({"UnusedReturnValue", "WeakerAccess", "unused"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
-	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ofSeconds(30));
+	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ZERO);
 	public static final Duration READ_WRITE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout_Shutdown", Duration.ofSeconds(3));
 	public static final Duration KEEP_ALIVE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "keepAliveTimeout", Duration.ofSeconds(30));
 	public static final MemSize MAX_BODY_SIZE = ApplicationSettings.getMemSize(AsyncHttpServer.class, "maxBodySize", MemSize.ZERO);

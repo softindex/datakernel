@@ -44,11 +44,11 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		AsyncCollector<List<D>> diffsCollector = AsyncCollector.create(new ArrayList<>());
 		Splitter splitter = new Splitter();
 		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
-			StreamConsumerWithResult<?, List<D>> consumer = logDataConsumer.consume();
-			diffsCollector.addPromise(consumer.getResult(), List::addAll);
 			Splitter.Output<Object> output = splitter.new Output<>();
 			splitter.outputs.add(output);
-			output.streamTo((StreamConsumer<Object>) consumer.getConsumer());
+			diffsCollector.addPromise(
+					output.streamTo(((LogDataConsumer<Object, D>) logDataConsumer).consume()),
+					List::addAll);
 		}
 		return StreamConsumerWithResult.of(splitter.getInput(), diffsCollector.run().get());
 	}

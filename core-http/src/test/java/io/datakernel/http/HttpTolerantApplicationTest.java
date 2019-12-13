@@ -39,6 +39,7 @@ import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.asserting;
 import static io.datakernel.test.TestUtils.getFreePort;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -90,6 +91,7 @@ public final class HttpTolerantApplicationTest {
 		int port = getFreePort();
 
 		ServerSocket listener = new ServerSocket(port);
+		String text = "/abc";
 		new Thread(() -> {
 			while (Thread.currentThread().isAlive()) {
 				try (Socket socket = listener.accept()) {
@@ -99,7 +101,7 @@ public final class HttpTolerantApplicationTest {
 					//noinspection StatementWithEmptyBody
 					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF)) ;
 					System.out.println("write: " + socket);
-					write(socket, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc");
+					write(socket, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n" + text);
 				} catch (IOException ignored) {
 				}
 			}
@@ -108,10 +110,12 @@ public final class HttpTolerantApplicationTest {
 
 		String header = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.get("http://127.0.0.1:" + port))
-				.map(response -> response.getHeader(HttpHeaders.CONTENT_TYPE))
-				.whenComplete(asserting(($, e) -> {
-					listener.close();
-				})));
+				.then(response -> response.loadBody()
+						.whenResult(body -> assertEquals(text, body.getString(UTF_8)))
+						.map($ -> response.getHeader(HttpHeaders.CONTENT_TYPE))
+						.whenComplete(asserting(($, e) -> {
+							listener.close();
+						}))));
 
 		assertEquals("text/html; charset=UTF-8", header);
 	}

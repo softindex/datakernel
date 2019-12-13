@@ -18,7 +18,7 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 

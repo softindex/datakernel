@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.Initializable;
-import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
@@ -287,20 +286,20 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 						emptyMap();
 	}
 
-	private boolean containsPostParameters() {
-		ByteBuf buf = getHeaderBuf(CONTENT_TYPE);
-		if (buf == null) {
+	public boolean containsPostParameters() {
+		if (method != POST && method != PUT) {
 			return false;
 		}
-		try {
-			ContentType contentType = HttpHeaderValue.toContentType(buf);
-			if (method != POST || contentType.getMediaType() != MediaTypes.X_WWW_FORM_URLENCODED) {
-				return false;
-			}
-		} catch (ParseException e) {
+		String contentType = getHeader(CONTENT_TYPE);
+		return contentType != null && contentType.startsWith("application/x-www-form-urlencoded");
+	}
+
+	public boolean containsMultipartData() {
+		if (method != POST && method != PUT) {
 			return false;
 		}
-		return true;
+		String contentType = getHeader(CONTENT_TYPE);
+		return contentType != null && contentType.startsWith("multipart/form-data; boundary=");
 	}
 
 	@NotNull

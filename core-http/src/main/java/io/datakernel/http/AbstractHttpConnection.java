@@ -39,8 +39,6 @@ import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.function.Consumer;
-
 import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaderValue.ofBytes;
@@ -58,6 +56,7 @@ public abstract class AbstractHttpConnection {
 	public static final ParseException TOO_MANY_HEADERS = new ParseException(AbstractHttpConnection.class, "Too many headers");
 	public static final ParseException INCOMPLETE_MESSAGE = new ParseException(AbstractHttpConnection.class, "Incomplete HTTP message");
 	public static final ParseException UNEXPECTED_READ = new ParseException(AbstractHttpConnection.class, "Unexpected read data");
+	public static final ParseException INVALID_CRLF = new ParseException(AbstractHttpConnection.class, "Invalid CRLF");
 
 	public static final ChannelConsumer<ByteBuf> BUF_RECYCLER = ChannelConsumer.of(AsyncConsumer.of(ByteBuf::recycle));
 
@@ -65,13 +64,13 @@ public abstract class AbstractHttpConnection {
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = ApplicationSettings.getInt(HttpMessage.class, "maxHeaders", 100); // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 	public static final int MAX_RECURSIVE_CALLS = ApplicationSettings.getInt(AbstractHttpConnection.class, "maxRecursiveCalls", 64);
-	public static final boolean MULTILINE_HEADERS = ApplicationSettings.getBoolean(AbstractHttpConnection.class, "multilineHeaders", true);
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
+	private static final byte[] EMPTY_HEADER = new byte[0];
 
 	protected final Eventloop eventloop;
 
@@ -87,8 +86,6 @@ public abstract class AbstractHttpConnection {
 
 	@MagicConstant(flags = {KEEP_ALIVE, GZIPPED, CHUNKED, BODY_RECEIVED, BODY_SENT, CLOSED})
 	protected byte flags = 0;
-
-	private final Consumer<ByteBuf> onHeaderBuf = this::onHeaderBuf;
 
 	@Nullable
 	protected ConnectionsLinkedList pool;
@@ -198,75 +195,99 @@ public abstract class AbstractHttpConnection {
 		socket.read().whenComplete(startLineConsumer);
 	}
 
+	@SuppressWarnings({"UnnecessaryLabelOnContinueStatement", "UnnecessaryContinue", "UnnecessaryLabelOnBreakStatement"})
 	private void readHeaders() throws ParseException {
 		assert !isClosed();
-		NEXT_HEADER:
-		while (true) {
-			int size = 1;
-			for (int i = 0; i < readQueue.remainingBufs(); i++) {
-				ByteBuf buf = readQueue.peekBuf(i);
-				byte[] array = buf.array();
-				int head = buf.head();
-				int tail = buf.tail();
-				for (int p = head; p < tail; p++) {
-					if (array[p] == LF) {
+		PROCESS_HEADERS:
+		while (readQueue.hasRemaining()) {
+			ByteBuf buf = readQueue.peekBuf(0);
+			byte[] array = buf.array();
+			int head = buf.head();
+			int tail = buf.tail();
+			int i;
+			SEARCH_HEADER:
+			for (i = head; i < tail; i++) {
+				if (array[i] != LF) continue;
 
-						// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-						if (MULTILINE_HEADERS && isMultilineHeader(array, head, tail, p)) {
-							preprocessMultiline(array, p);
-							continue;
-						}
-
-						if (i == 0) {
-							int limit = (p - 1 >= head && array[p - 1] == CR) ? p - 1 : p;
-							if (limit != head) {
-								processHeaderLine(array, head, limit);
-								readQueue.skip(p - head + 1, onHeaderBuf);
-								head = buf.head();
-							} else {
-								onHeaderBuf(buf);
-								readQueue.skip(p - head + 1);
-								break NEXT_HEADER;
-							}
-							size = 1;
-						} else {
-							size += p - head;
-							byte[] tmp = new byte[size];
-							readQueue.drainTo(tmp, 0, size, onHeaderBuf);
-							int limit = (tmp.length - 2 >= 0 && tmp[tmp.length - 2] == CR) ? tmp.length - 2 : tmp.length - 1;
-							if (limit != 0) {
-								processHeaderLine(tmp, 0, limit);
-							} else {
-								break NEXT_HEADER;
-							}
-							continue NEXT_HEADER;
-						}
+				// check next byte to see if this is multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
+				if (i <= head + 1 || (i + 1 < tail && (array[i + 1] != SP && array[i + 1] != HT))) {
+					// fast processing path
+					int limit = (i - 1 >= head && array[i - 1] == CR) ? i - 1 : i;
+					if (limit != head) {
+						processHeaderLine(array, head, limit);
+						readQueue.skip(i - head + 1, this::onHeaderBuf);
+						head = buf.head();
+						continue SEARCH_HEADER;
+					} else {
+						onHeaderBuf(buf);
+						readQueue.skip(i - head + 1);
+						readBody();
+						return;
 					}
 				}
-				size += buf.readRemaining();
+				break SEARCH_HEADER;
 			}
 
-			if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
-			socket.read().whenComplete(headersConsumer);
-			return;
+			if (i == tail && readQueue.remainingBufs() <= 1) {
+				break PROCESS_HEADERS; // cannot determine if this is multiline header or not, need more data
+			}
+
+			byte[] header = readHeaderEx(max(0, i - head - 1));
+			if (header == null) break PROCESS_HEADERS;
+			if (header.length != 0) {
+				processHeaderLine(header, 0, header.length);
+				continue PROCESS_HEADERS;
+			} else {
+				readBody();
+				return;
+			}
 		}
 
-		readBody();
+		if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE_BYTES)) throw TOO_LONG_HEADER;
+		socket.read().whenComplete(headersConsumer);
 	}
 
-	private static boolean isMultilineHeader(byte[] array, int offset, int limit, int p) {
-		return p + 1 < limit && (array[p + 1] == SP || array[p + 1] == HT) &&
-				isDataBetweenStartAndLF(array, offset, p);
-	}
+	private byte[] readHeaderEx(int i) throws ParseException {
+		int remainingBytes = readQueue.remainingBytes();
+		while (true) {
+			i = readQueue.scanBytes(i, b -> b == CR || b == LF);
+			if (i >= remainingBytes) return null;
+			byte b = readQueue.peekByte(i++);
+			assert b == CR || b == LF;
+			byte[] bytes;
+			if (b == CR) {
+				if (i >= remainingBytes) return null;
+				b = readQueue.peekByte(i++);
+				if (b != LF) throw INVALID_CRLF;
+				if (i == 2) {
+					bytes = EMPTY_HEADER;
+				} else {
+					if (i >= remainingBytes) return null;
+					b = readQueue.peekByte(i);
+					if (b == SP || b == HT) {
+						readQueue.setByte(i - 2, SP);
+						readQueue.setByte(i - 1, SP);
+						continue;
+					}
+					bytes = new byte[i - 2];
+				}
+			} else {
+				if (i == 1) {
+					bytes = EMPTY_HEADER;
+				} else {
+					if (i >= remainingBytes) return null;
+					b = readQueue.peekByte(i);
+					if (b == SP || b == HT) {
+						readQueue.setByte(i - 1, SP);
+						continue;
+					}
+					bytes = new byte[i - 1];
+				}
+			}
 
-	private static boolean isDataBetweenStartAndLF(byte[] array, int offset, int p) {
-		return !(p == offset || (p - offset == 1 && array[p - 1] == CR));
-	}
-
-	private static void preprocessMultiline(byte[] array, int p) {
-		array[p] = SP;
-		if (array[p - 1] == CR) {
-			array[p - 1] = SP;
+			readQueue.drainTo(bytes, 0, bytes.length, this::onHeaderBuf);
+			readQueue.skip(i - bytes.length, this::onHeaderBuf);
+			return bytes;
 		}
 	}
 

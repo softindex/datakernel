@@ -1,9 +1,6 @@
 package io.datakernel.launchers.http;
 
-import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ScopeAnnotation;
+import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.Module;
@@ -33,18 +30,6 @@ public final class ComplexHttpLauncher extends Launcher {
 	public static final int SERVER_TWO_PORT = 8082;
 	public static final int SERVER_THREE_PORT = 8083;
 
-	@Inject
-	@Named("First")
-	PrimaryServer primaryServer1;
-
-	@Inject
-	@Named("Second")
-	PrimaryServer primaryServer2;
-
-	@Inject
-	@Named("Third")
-	PrimaryServer primaryServer3;
-
 	@ScopeAnnotation
 	@Target(METHOD)
 	@Retention(RUNTIME)
@@ -53,17 +38,20 @@ public final class ComplexHttpLauncher extends Launcher {
 
 	// region primary eventloops
 	@Provides
+	@Eager
 	Eventloop eventloop1() {
 		return Eventloop.create();
 	}
 
 	@Provides
+	@Eager
 	@Named("Second")
 	Eventloop eventloop2() {
 		return Eventloop.create();
 	}
 
 	@Provides
+	@Eager
 	@Named("Third")
 	Eventloop eventloop3() {
 		return Eventloop.create();

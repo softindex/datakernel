@@ -85,6 +85,11 @@ public interface StreamSupplier<T> extends Cancellable {
 		return streamTo(StreamConsumer.ofPromise(consumerPromise));
 	}
 
+	default <X> Promise<X> streamTo(@NotNull StreamConsumerWithResult<T, X> consumerWithResult) {
+		return this.streamTo(consumerWithResult.getConsumer())
+				.then($ -> consumerWithResult.getResult());
+	}
+
 	static <T> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		consumer.accept(forwarder.getInput());

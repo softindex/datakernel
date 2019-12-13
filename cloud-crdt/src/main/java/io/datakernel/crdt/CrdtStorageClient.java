@@ -28,19 +28,17 @@ import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.function.Function;
 
 import static io.datakernel.crdt.CrdtMessaging.*;
@@ -195,19 +193,8 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	private Promise<MessagingWithBinaryStreaming<CrdtResponse, CrdtMessage>> connect() {
-		return Promise.ofCallback(cb ->
-				eventloop.connect(address, new ConnectCallback() {
-					@Override
-					public void onConnect(@NotNull SocketChannel channel) {
-						AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, socketSettings);
-						cb.set(MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
-					}
-
-					@Override
-					public void onException(@NotNull Throwable e) {
-						cb.setException(e);
-					}
-				}));
+		return AsyncTcpSocketNio.connect(address, null, socketSettings)
+				.map(socket -> MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
 	}
 
 	// region JMX

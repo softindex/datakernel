@@ -1,5 +1,5 @@
 import io.datakernel.async.service.EventloopService;
-import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -11,10 +11,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-@SuppressWarnings("unused")
 //[START EXAMPLE]
 public class EventloopServiceExample extends Launcher {
-	@Inject CustomEventloopService testService;
 
 	@Provides
 	Eventloop eventloop() {
@@ -27,6 +25,7 @@ public class EventloopServiceExample extends Launcher {
 	}
 
 	@Provides
+	@Eager
 	CustomEventloopService customEventloopService(Eventloop eventloop, Executor executor) {
 		return new CustomEventloopService(eventloop, executor);
 	}

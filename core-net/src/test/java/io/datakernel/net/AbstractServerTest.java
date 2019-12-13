@@ -17,8 +17,12 @@
 package io.datakernel.net;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.common.ref.RefLong;
 import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -27,10 +31,11 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.Objects;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.promise.Promises.repeat;
 import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
@@ -44,31 +49,47 @@ public final class AbstractServerTest {
 	@Test
 	public void testTimeouts() throws IOException {
 		String message = "Hello!";
-		InetSocketAddress address = new InetSocketAddress("localhost", 5588);
+		InetSocketAddress address = new InetSocketAddress("localhost", getFreePort());
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(Duration.ofMillis(100000L)).withImplWriteTimeout(Duration.ofMillis(100000L));
 
-		SimpleServer.create(socket ->
-				repeat(() ->
-						socket.read()
-								.whenResult(buf -> {
-									if (buf == null) {
-										socket.close();
-										return;
-									}
-									getCurrentEventloop().delay(5L, () ->
+		RefLong delay = new RefLong(5);
+		SimpleServer.create(socket -> {
+			Promises.<ByteBuf>until(null, $ ->
+							socket.read()
+									.whenResult(buf -> {
+										getCurrentEventloop().delay(delay.inc(), () -> {
 											socket.write(buf)
-													.whenResult($ -> socket.close()));
-								})
-								.toVoid()))
+													.whenComplete(($2, e) -> {
+														if (buf == null) {
+															socket.close();
+														}
+													});
+										});
+									}),
+					Objects::isNull);
+		})
 				.withSocketSettings(settings)
 				.withListenAddress(address)
 				.withAcceptOnce()
 				.listen();
 
-		ByteBuf response = await(AsyncTcpSocketImpl.connect(address)
+		ByteBuf response = await(AsyncTcpSocketNio.connect(address)
 				.then(socket ->
 						socket.write(ByteBufStrings.wrapAscii(message))
-								.then($ -> socket.read())
+								.then($ -> socket.write(null))
+								.then($ -> {
+									ByteBufQueue queue = new ByteBufQueue();
+									return Promises.<ByteBuf>until(null,
+											$2 -> socket.read()
+													.then(buf -> {
+														if (buf != null) {
+															queue.add(buf);
+														}
+														return Promise.of(buf);
+													}),
+											Objects::isNull)
+											.map($2 -> queue.takeRemaining());
+								})
 								.whenComplete(socket::close)));
 
 		assertEquals(message, response.asString(UTF_8));

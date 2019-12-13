@@ -473,8 +473,8 @@ public class ExpressionTest {
 				.withMethod("callOther2", call(self(), "method"))
 				.withMethod("method", int.class, asList(int.class), arg(0))
 				.withMethod("method", long.class, Collections.emptyList(), value(-1L))
-				.withMethod("callStatic1", int.class, asList(int.class, int.class), callStaticSelf("method", arg(0), arg(1)))
-				.withMethod("callStatic2", long.class, asList(long.class), callStaticSelf("method", arg(0)))
+				.withMethod("callStatic1", int.class, asList(int.class, int.class), staticCallSelf("method", arg(0), arg(1)))
+				.withMethod("callStatic2", long.class, asList(long.class), staticCallSelf("method", arg(0)))
 				.withStaticMethod("method", int.class, asList(int.class, int.class), arg(1))
 				.withStaticMethod("method", long.class, asList(long.class), arg(0))
 				.buildClassAndCreateNewInstance();
@@ -856,7 +856,7 @@ public class ExpressionTest {
 	public void testArraySet() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		TestArraySet instance = ClassBuilder.create(definingClassLoader, TestArraySet.class)
-				.withMethod("ints", sequence(setArrayItem(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
+				.withMethod("ints", sequence(arraySet(arg(0), value(0), cast(value(42), Integer.class)), arg(0)))
 				.buildClassAndCreateNewInstance();
 		Integer[] ints = {1, 2, 3, 4};
 
@@ -871,7 +871,7 @@ public class ExpressionTest {
 	public void testCallStatic() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		TestCallStatic instance = ClassBuilder.create(definingClassLoader, TestCallStatic.class)
-				.withMethod("method", callStatic(Math.class, "min", arg(0), arg(1)))
+				.withMethod("method", staticCall(Math.class, "min", arg(0), arg(1)))
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.method(5, 0), 0);
 		assertEquals(instance.method(5, 10), 5);
@@ -916,8 +916,8 @@ public class ExpressionTest {
 	public void testNewArray() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		TestNewArray instance = ClassBuilder.create(definingClassLoader, TestNewArray.class)
-				.withMethod("ints", newArray(int[].class, arg(0)))
-				.withMethod("integers", newArray(String[].class, arg(0)))
+				.withMethod("ints", arrayNew(int[].class, arg(0)))
+				.withMethod("integers", arrayNew(String[].class, arg(0)))
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.ints(1).length, 1);
 		assertEquals(instance.integers(2).length, 2);

@@ -50,7 +50,7 @@ public final class UdpSocketHandlerTest {
 	public void testEchoUdpServer() throws IOException {
 		DatagramChannel serverDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), SERVER_ADDRESS, null);
 
-		AsyncUdpSocketImpl.connect(Eventloop.getCurrentEventloop(), serverDatagramChannel)
+		AsyncUdpSocketNio.connect(Eventloop.getCurrentEventloop(), serverDatagramChannel)
 				.then(serverSocket -> serverSocket.receive()
 						.then(serverSocket::send)
 						.whenComplete(serverSocket::close))
@@ -58,7 +58,7 @@ public final class UdpSocketHandlerTest {
 
 		DatagramChannel clientDatagramChannel = createDatagramChannel(DatagramSocketSettings.create(), null, null);
 
-		Promise<AsyncUdpSocketImpl> promise = AsyncUdpSocketImpl.connect(Eventloop.getCurrentEventloop(), clientDatagramChannel)
+		Promise<AsyncUdpSocketNio> promise = AsyncUdpSocketNio.connect(Eventloop.getCurrentEventloop(), clientDatagramChannel)
 				.whenComplete(assertComplete(clientSocket -> {
 
 					clientSocket.send(UdpPacket.of(ByteBuf.wrapForReading(bytesToSend), SERVER_ADDRESS))

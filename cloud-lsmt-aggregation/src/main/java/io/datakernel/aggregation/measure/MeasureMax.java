@@ -46,7 +46,7 @@ public final class MeasureMax extends Measure {
 	@Override
 	public Expression reduce(Variable accumulator,
 			Variable nextAccumulator) {
-		return set(accumulator, callStatic(Math.class, "max", accumulator, nextAccumulator));
+		return set(accumulator, staticCall(Math.class, "max", accumulator, nextAccumulator));
 	}
 
 	@Override
@@ -58,6 +58,6 @@ public final class MeasureMax extends Measure {
 	@Override
 	public Expression accumulate(Variable accumulator,
 			Variable nextValue) {
-		return set(accumulator, callStatic(Math.class, "max", accumulator, nextValue));
+		return set(accumulator, staticCall(Math.class, "max", accumulator, nextValue));
 	}
 }

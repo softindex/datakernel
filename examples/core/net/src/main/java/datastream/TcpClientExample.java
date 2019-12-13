@@ -6,13 +6,11 @@ import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocketImpl;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketNio;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
@@ -30,10 +28,9 @@ public final class TcpClientExample {
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError());
 
-		eventloop.connect(new InetSocketAddress("localhost", PORT), new ConnectCallback() {
-			@Override
-			public void onConnect(@NotNull SocketChannel socketChannel) {
-				AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, null);
+		eventloop.connect(new InetSocketAddress("localhost", PORT), (socketChannel, e) -> {
+			if (e == null) {
+				AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(eventloop, socketChannel, null);
 
 				StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 						.transformWith(ChannelSerializer.create(INT_SERIALIZER))
@@ -47,10 +44,8 @@ public final class TcpClientExample {
 
 				consumer.getResult()
 						.whenResult(list -> list.forEach(System.out::println));
-			}
 
-			@Override
-			public void onException(@NotNull Throwable e) {
+			} else {
 				System.out.printf("Could not connect to server, make sure it is started: %s\n", e);
 			}
 		});

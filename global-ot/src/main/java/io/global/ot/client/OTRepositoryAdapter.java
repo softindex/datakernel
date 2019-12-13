@@ -78,6 +78,11 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 		return driver.pollHeads(myRepositoryId.getRepositoryId());
 	}
 
+	@Override
+	public @NotNull Promise<Boolean> hasCommit(@NotNull CommitId revisionId) {
+		throw new UnsupportedOperationException("OTRepositoryAdapter#hasCommit is not implemented yet");
+	}
+
 	@NotNull
 	@Override
 	public Promise<OTCommit<CommitId, D>> loadCommit(@NotNull CommitId revisionId) {

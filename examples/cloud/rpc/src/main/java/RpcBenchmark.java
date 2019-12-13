@@ -4,10 +4,7 @@ import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.datastream.csp.ChannelSerializer;
-import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ProvidesIntoSet;
+import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -30,6 +27,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.lang.Math.min;
 
+@SuppressWarnings("WeakerAccess")
 public class RpcBenchmark extends Launcher {
 	private final static int TOTAL_REQUESTS = 10000000;
 	private final static int WARMUP_ROUNDS = 3;
@@ -39,17 +37,14 @@ public class RpcBenchmark extends Launcher {
 	private final static int ACTIVE_REQUESTS_MAX = 10000;
 
 	@Inject
-	private RpcClient rpcClient;
-
-	@Inject
-	private RpcServer rpcServer;
+	RpcClient rpcClient;
 
 	@Inject
 	@Named("client")
-	private Eventloop eventloop;
+	Eventloop eventloop;
 
 	@Inject
-	private Config config;
+	Config config;
 
 	@Provides
 	@Named("client")
@@ -79,6 +74,7 @@ public class RpcBenchmark extends Launcher {
 	}
 
 	@Provides
+	@Eager
 	public RpcServer rpcServer(@Named("server") Eventloop eventloop, Config config) {
 		return RpcServer.create(eventloop)
 				.withStreamProtocol(
@@ -193,6 +189,7 @@ public class RpcBenchmark extends Launcher {
 		Callback<Integer> callback = new Callback<Integer>() {
 			@Override
 			public void accept(Integer result, @Nullable Throwable e) {
+				if (e != null) return;
 				completed++;
 
 				int active = sent - completed;

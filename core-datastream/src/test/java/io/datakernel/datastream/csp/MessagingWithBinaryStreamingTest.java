@@ -21,7 +21,7 @@ import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.net.SimpleServer;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ActivePromisesRule;
@@ -95,7 +95,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		await(AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketNio.connect(ADDRESS)
 				.whenComplete(assertComplete(socket -> ping(3, MessagingWithBinaryStreaming.create(socket, INTEGER_SERIALIZER)))));
 	}
 
@@ -121,7 +121,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		List<Long> list = await(AsyncTcpSocketImpl.connect(ADDRESS)
+		List<Long> list = await(AsyncTcpSocketNio.connect(ADDRESS)
 				.then(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
@@ -162,7 +162,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		await(AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketNio.connect(ADDRESS)
 				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
@@ -203,7 +203,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		String msg = await(AsyncTcpSocketImpl.connect(ADDRESS)
+		String msg = await(AsyncTcpSocketNio.connect(ADDRESS)
 				.then(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, serializer);
@@ -242,7 +242,7 @@ public final class MessagingWithBinaryStreamingTest {
 				.withAcceptOnce()
 				.listen();
 
-		await(AsyncTcpSocketImpl.connect(ADDRESS)
+		await(AsyncTcpSocketNio.connect(ADDRESS)
 				.whenResult(socket -> {
 					MessagingWithBinaryStreaming<String, String> messaging =
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);

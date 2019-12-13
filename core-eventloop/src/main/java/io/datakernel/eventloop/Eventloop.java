@@ -16,6 +16,7 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.callback.Callback;
 import io.datakernel.async.callback.Completable;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Stopwatch;
@@ -50,6 +51,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
@@ -704,7 +706,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			return;
 		}
 
-		AcceptCallback acceptCallback = (AcceptCallback) key.attachment();
+		//noinspection unchecked
+		Consumer<SocketChannel> acceptCallback = (Consumer<SocketChannel>) key.attachment();
 		for (; ; ) {
 			SocketChannel channel;
 			try {
@@ -720,7 +723,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			}
 
 			try {
-				acceptCallback.onAccept(channel);
+				acceptCallback.accept(channel);
 			} catch (Throwable e) {
 				recordFatalError(e, acceptCallback);
 				closeChannel(channel, null);
@@ -736,22 +739,22 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
-		ConnectCallback cb = (ConnectCallback) key.attachment();
+		@SuppressWarnings("unchecked") Callback<SocketChannel> cb = (Callback<SocketChannel>) key.attachment();
 		SocketChannel channel = (SocketChannel) key.channel();
 		boolean connected;
 		try {
 			connected = channel.finishConnect();
 		} catch (IOException e) {
 			closeChannel(channel, key);
-			cb.onException(e);
+			cb.accept(null, e);
 			return;
 		}
 
 		try {
 			if (connected) {
-				cb.onConnect(channel);
+				cb.accept(channel, null);
 			} else {
-				cb.onException(NOT_CONNECTED);
+				cb.accept(null, NOT_CONNECTED);
 			}
 		} catch (Throwable e) {
 			recordFatalError(e, channel);
@@ -803,7 +806,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @throws IOException If some I/O error occurs
 	 */
 	@NotNull
-	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @NotNull AcceptCallback acceptCallback) throws IOException {
+	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @NotNull Consumer<SocketChannel> acceptCallback) throws IOException {
 		assert inEventloopThread();
 		ServerSocketChannel serverSocketChannel = null;
 		try {
@@ -812,6 +815,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			serverSocketChannel.configureBlocking(false);
 			serverSocketChannel.bind(address, serverSocketSettings.getBacklog());
 			serverSocketChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
+			if (selector != null) {
+				selector.wakeup();
+			}
 			return serverSocketChannel;
 		} catch (IOException e) {
 			if (serverSocketChannel != null) {
@@ -860,11 +866,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param address socketChannel's address
 	 */
-	public void connect(SocketAddress address, @NotNull ConnectCallback cb) {
+	public void connect(SocketAddress address, @NotNull Callback<SocketChannel> cb) {
 		connect(address, 0, cb);
 	}
 
-	public void connect(SocketAddress address, @Nullable Duration timeout, @NotNull ConnectCallback cb) {
+	public void connect(SocketAddress address, @Nullable Duration timeout, @NotNull Callback<SocketChannel> cb) {
 		connect(address, timeout == null ? 0L : timeout.toMillis(), cb);
 	}
 
@@ -875,14 +881,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param address socketChannel's address
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
-	public void connect(@NotNull SocketAddress address, long timeout, @NotNull ConnectCallback cb) {
+	public void connect(@NotNull SocketAddress address, long timeout, @NotNull Callback<SocketChannel> cb) {
 		assert inEventloopThread();
 		SocketChannel channel;
 		try {
 			channel = SocketChannel.open();
 		} catch (IOException e) {
 			try {
-				cb.onException(e);
+				cb.accept(null, e);
 			} catch (Throwable e1) {
 				recordFatalError(e1, cb);
 			}
@@ -892,30 +898,28 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			channel.configureBlocking(false);
 			channel.connect(address);
 
-			channel.register(ensureSelector(), SelectionKey.OP_CONNECT, timeout == 0 ?
-					cb :
-					new ConnectCallback() {
-						final ScheduledRunnable scheduledTimeout = delay(timeout, () -> {
-							closeChannel(channel, null);
-							cb.onException(CONNECT_TIMEOUT);
+			if (timeout == 0) {
+				channel.register(ensureSelector(), SelectionKey.OP_CONNECT, cb);
+			} else {
+				ScheduledRunnable scheduledTimeout = delay(timeout, () -> {
+					closeChannel(channel, null);
+					cb.accept(null, CONNECT_TIMEOUT);
+				});
+
+				channel.register(ensureSelector(), SelectionKey.OP_CONNECT,
+						(Callback<SocketChannel>) (result, e) -> {
+							scheduledTimeout.cancel();
+							cb.accept(result, e);
 						});
+			}
 
-						@Override
-						public void onConnect(@NotNull SocketChannel socketChannel) {
-							scheduledTimeout.cancel();
-							cb.onConnect(socketChannel);
-						}
-
-						@Override
-						public void onException(@NotNull Throwable e) {
-							scheduledTimeout.cancel();
-							cb.onException(e);
-						}
-					});
+			if (selector != null) {
+				selector.wakeup();
+			}
 		} catch (IOException e) {
 			closeChannel(channel, null);
 			try {
-				cb.onException(e);
+				cb.accept(null, e);
 			} catch (Throwable e1) {
 				recordFatalError(e1, cb);
 			}

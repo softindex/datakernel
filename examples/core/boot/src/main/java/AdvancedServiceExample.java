@@ -1,5 +1,5 @@
 import io.datakernel.async.service.EventloopService;
-import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -16,21 +16,20 @@ import java.util.concurrent.Executors;
 @SuppressWarnings("unused")
 //[START EXAMPLE]
 public class AdvancedServiceExample extends Launcher {
-	@Inject DBService dbService;
-	@Inject AuthService authService;
-	@Inject EmailService emailService;
-
 	@Provides
+	@Eager
 	DBService dbService() {
 		return new DBService();
 	}
 
 	@Provides
+	@Eager
 	EmailService emailService(DBService dbService, AuthService authService) {
 		return new EmailService(dbService, authService);
 	}
 
 	@Provides
+	@Eager
 	AuthService authService(Eventloop eventloop, Executor executor, DBService dbService) {
 		return new AuthService(eventloop, executor, dbService);
 	}

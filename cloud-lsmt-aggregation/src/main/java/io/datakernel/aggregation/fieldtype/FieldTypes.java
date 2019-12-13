@@ -24,8 +24,9 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.RecursiveType;
+import io.datakernel.serializer.SerializerDef;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.serializer.asm.*;
+import io.datakernel.serializer.impl.*;
 
 import java.lang.reflect.Type;
 import java.time.DateTimeException;
@@ -39,31 +40,35 @@ import static java.time.temporal.ChronoUnit.DAYS;
 public final class FieldTypes {
 
 	public static FieldType<Byte> ofByte() {
-		return new FieldType<>(byte.class, new SerializerDefByte(), BYTE_CODEC);
+		return new FieldType<>(byte.class, new SerializerDefByte(false), BYTE_CODEC);
 	}
 
 	public static FieldType<Short> ofShort() {
-		return new FieldType<>(short.class, new SerializerDefShort(), SHORT_CODEC);
+		return new FieldType<>(short.class, new SerializerDefShort(false), SHORT_CODEC);
 	}
 
 	public static FieldType<Integer> ofInt() {
-		return new FieldType<>(int.class, new SerializerDefInt(true), INT_CODEC);
+		return new FieldType<>(int.class, new SerializerDefInt(false, true), INT_CODEC);
 	}
 
 	public static FieldType<Long> ofLong() {
-		return new FieldType<>(long.class, new SerializerDefLong(true), LONG_CODEC);
+		return new FieldType<>(long.class, new SerializerDefLong(false, true), LONG_CODEC);
 	}
 
 	public static FieldType<Float> ofFloat() {
-		return new FieldType<>(float.class, new SerializerDefFloat(), FLOAT_CODEC);
+		return new FieldType<>(float.class, new SerializerDefFloat(false), FLOAT_CODEC);
 	}
 
 	public static FieldType<Double> ofDouble() {
-		return new FieldType<>(double.class, new SerializerDefDouble(), DOUBLE_CODEC);
+		return new FieldType<>(double.class, new SerializerDefDouble(false), DOUBLE_CODEC);
 	}
 
 	public static <T> FieldType<Set<T>> ofSet(FieldType<T> fieldType) {
-		SerializerDefSet serializer = new SerializerDefSet(fieldType.getSerializer());
+		SerializerDef itemSerializer = fieldType.getSerializer();
+		if (itemSerializer instanceof SerializerDefPrimitive) {
+			itemSerializer = ((SerializerDefPrimitive) itemSerializer).ensureWrapped();
+		}
+		SerializerDefSet serializer = new SerializerDefSet(itemSerializer);
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();
@@ -100,7 +105,7 @@ public final class FieldTypes {
 		}
 
 		FieldTypeDate(LocalDate startDate) {
-			super(int.class, LocalDate.class, new SerializerDefInt(true), LOCAL_DATE_CODEC, INT_CODEC);
+			super(int.class, LocalDate.class, new SerializerDefInt(false, true), LOCAL_DATE_CODEC, INT_CODEC);
 			this.startDate = startDate;
 		}
 

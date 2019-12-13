@@ -49,11 +49,6 @@ public class OTLoadedGraphTest {
 
 		assertEquals(set(7), graph.getTips());
 		assertEquals(set(0), graph.getRoots());
-
-		graph.cleanUp(3);
-
-		assertEquals(set(7), graph.getTips());
-		assertEquals(set(5), graph.getRoots());
 	}
 
 	@Test
@@ -74,11 +69,6 @@ public class OTLoadedGraphTest {
 
 		assertEquals(set(4, 7), graph.getTips());
 		assertEquals(set(0), graph.getRoots());
-
-		graph.cleanUp(4);
-
-		assertEquals(set(4, 7), graph.getTips());
-		assertEquals(set(1, 5), graph.getRoots());
 	}
 
 	@Test

@@ -5,7 +5,7 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>core</artifactId>
-    <version>3.1-SNAPSHOT</version>
+    <version>3.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -17,6 +17,26 @@
     <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-datastream</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-di</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-launcher</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-servicegraph</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-config</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>

@@ -47,6 +47,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
+import static java.lang.Math.min;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -369,7 +370,7 @@ public final class ChannelSuppliers {
 
 			@Override
 			public int read(@NotNull byte[] b, int off, int len) throws IOException {
-				return doRead(buf -> buf.read(b, off, Math.min(len, buf.readRemaining())));
+				return doRead(buf -> buf.read(b, off, min(len, buf.readRemaining())));
 			}
 
 			@Override

@@ -21,6 +21,7 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
  * This example demonstrates downloading file from RemoteFS server.
  * To run this example you should first launch ServerSetupExample and then FileUploadExample
  */
+@SuppressWarnings("unused")
 public final class FileDownloadExample extends Launcher {
 	private static final int SERVER_PORT = 6732;
 	private static final String REQUIRED_FILE = "example.txt";

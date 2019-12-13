@@ -7,7 +7,8 @@ import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.net.ServerSocketSettings;
-import io.datakernel.net.AsyncTcpSocketImpl;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketNio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -26,7 +27,7 @@ public final class TcpServerExample {
 		Eventloop eventloop = Eventloop.create();
 
 		eventloop.listen(new InetSocketAddress("localhost", TcpClientExample.PORT), ServerSocketSettings.create(100), channel -> {
-			AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, null);
+			AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(eventloop, channel, null);
 
 			try {
 				System.out.println("Client connected: " + channel.getRemoteAddress());

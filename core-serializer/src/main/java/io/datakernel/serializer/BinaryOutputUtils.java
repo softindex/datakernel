@@ -16,12 +16,11 @@
 
 package io.datakernel.serializer;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 /**
  * Provides methods for writing primitives
  * and Strings to byte arrays
  */
+@SuppressWarnings({"WeakerAccess", "unused", "DuplicatedCode"})
 public final class BinaryOutputUtils {
 
 	public static int write(byte[] buf, int off, byte[] bytes) {
@@ -57,6 +56,12 @@ public final class BinaryOutputUtils {
 	public static int writeChar(byte[] buf, int off, char v) {
 		buf[off] = (byte) (v >>> 8);
 		buf[off + 1] = (byte) v;
+		return off + 2;
+	}
+
+	public static int writeCharLE(byte[] buf, int off, char v) {
+		buf[off] = (byte) v;
+		buf[off + 1] = (byte) (v >>> 8);
 		return off + 2;
 	}
 
@@ -105,25 +110,25 @@ public final class BinaryOutputUtils {
 	}
 
 	public static int writeVarInt(byte[] buf, int off, int v) {
-		if ((v & ~0x7F) == 0) {
+		if (v >= 0 && v <= 127) {
 			buf[off] = (byte) v;
 			return off + 1;
 		}
 		buf[off] = (byte) (v | 0x80);
 		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
+		if (v <= 127) {
 			buf[off + 1] = (byte) v;
 			return off + 2;
 		}
 		buf[off + 1] = (byte) (v | 0x80);
 		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
+		if (v <= 127) {
 			buf[off + 2] = (byte) v;
 			return off + 3;
 		}
 		buf[off + 2] = (byte) (v | 0x80);
 		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
+		if (v <= 127) {
 			buf[off + 3] = (byte) v;
 			return off + 4;
 		}
@@ -134,7 +139,7 @@ public final class BinaryOutputUtils {
 	}
 
 	public static int writeVarLong(byte[] buf, int off, long v) {
-		if ((v & ~0x7F) == 0) {
+		if (v >= 0 && v <= 127) {
 			buf[off] = (byte) v;
 			return off + 1;
 		}
@@ -142,7 +147,7 @@ public final class BinaryOutputUtils {
 		v >>>= 7;
 		off++;
 		for (; ; ) {
-			if ((v & ~0x7F) == 0) {
+			if (v <= 127) {
 				buf[off] = (byte) v;
 				return off + 1;
 			} else {
@@ -185,10 +190,35 @@ public final class BinaryOutputUtils {
 	}
 
 	public static int writeUTF8(byte[] buf, int off, String s) {
-		byte[] bytes = s.getBytes(UTF_8);
-		off = writeVarInt(buf, off, bytes.length);
-		System.arraycopy(bytes, 0, buf, off, bytes.length);
-		return off + bytes.length;
+		int pos = off;
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c <= '\u007F') {
+				buf[++pos] = (byte) c;
+			} else {
+				if (c <= '\u07FF') {
+					buf[pos + 1] = (byte) (0xC0 | c >>> 6);
+					buf[pos + 2] = (byte) (0x80 | c & 0x3F);
+					pos += 2;
+				} else if (c < '\uD800' || c > '\uDFFF') {
+					buf[pos + 1] = (byte) (0xE0 | c >>> 12);
+					buf[pos + 2] = (byte) (0x80 | c >> 6 & 0x3F);
+					buf[pos + 3] = (byte) (0x80 | c & 0x3F);
+					pos += 3;
+				} else {
+					pos += writeUtf8char4(buf, pos, c, s, i++);
+				}
+			}
+		}
+		int bytes = pos - off;
+		if (bytes <= 127) {
+			buf[off] = (byte) bytes;
+			return pos + 1;
+		}
+		int bytesVarintSize = 1 + (31 - Integer.numberOfLeadingZeros(bytes)) / 7;
+		System.arraycopy(buf, off + 1, buf, off + bytesVarintSize, bytes);
+		off = writeVarInt(buf, off, bytes);
+		return off + bytes;
 	}
 
 	public static int writeUTF8Nullable(byte[] buf, int off, String s) {
@@ -196,12 +226,55 @@ public final class BinaryOutputUtils {
 			buf[off] = (byte) 0;
 			return off + 1;
 		}
-		byte[] bytes = s.getBytes(UTF_8);
-		off = writeVarInt(buf, off, bytes.length + 1);
-		System.arraycopy(bytes, 0, buf, off, bytes.length);
-		return off + bytes.length;
+		int pos = off;
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+
+			if (c <= '\u007F') {
+				buf[++pos] = (byte) c;
+			} else {
+				if (c <= '\u07FF') {
+					buf[pos + 1] = (byte) (0xC0 | c >>> 6);
+					buf[pos + 2] = (byte) (0x80 | c & 0x3F);
+					pos += 2;
+				} else if (c < '\uD800' || c > '\uDFFF') {
+					buf[pos + 1] = (byte) (0xE0 | c >>> 12);
+					buf[pos + 2] = (byte) (0x80 | c >> 6 & 0x3F);
+					buf[pos + 3] = (byte) (0x80 | c & 0x3F);
+					pos += 3;
+				} else {
+					pos += writeUtf8char4(buf, pos, c, s, i++);
+				}
+			}
+		}
+		int bytesPlus1 = ++pos - off;
+		if (bytesPlus1 <= 127) {
+			buf[off] = (byte) bytesPlus1;
+			return pos;
+		}
+		int bytesVarintSize = 1 + (31 - Integer.numberOfLeadingZeros(bytesPlus1)) / 7;
+		int bytes = bytesPlus1 - 1;
+		System.arraycopy(buf, off + 1, buf, off + bytesVarintSize, bytes);
+		off = writeVarInt(buf, off, bytesPlus1);
+		return off + bytes;
 	}
 
+	private static byte writeUtf8char4(byte[] buf, int pos, char c, String s, int i) {
+		if (i + 1 < s.length()) {
+			int cp = Character.toCodePoint(c, s.charAt(i + 1));
+			if ((cp >= 1 << 16) && (cp < 1 << 21)) {
+				buf[pos + 1] = (byte) (240 | cp >>> 18);
+				buf[pos + 2] = (byte) (128 | cp >>> 12 & 63);
+				buf[pos + 3] = (byte) (128 | cp >>> 6 & 63);
+				buf[pos + 4] = (byte) (128 | cp & 63);
+				return 4;
+			}
+		}
+		buf[pos + 1] = (byte) '?';
+		return 1;
+	}
+
+	@Deprecated
 	public static int writeUTF8mb3(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
@@ -210,12 +283,13 @@ public final class BinaryOutputUtils {
 			if (c <= 0x007F) {
 				buf[off++] = (byte) c;
 			} else {
-				off = writeUtfChar(buf, off, c);
+				off = writeMb3UtfChar(buf, off, c);
 			}
 		}
 		return off;
 	}
 
+	@Deprecated
 	public static int writeUTF8mb3Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			buf[off] = (byte) 0;
@@ -228,19 +302,20 @@ public final class BinaryOutputUtils {
 			if (c <= 0x007F) {
 				buf[off++] = (byte) c;
 			} else {
-				off = writeUtfChar(buf, off, c);
+				off = writeMb3UtfChar(buf, off, c);
 			}
 		}
 		return off;
 	}
 
-	private static int writeUtfChar(byte[] buf, int off, int c) {
+	@Deprecated
+	private static int writeMb3UtfChar(byte[] buf, int off, int c) {
 		if (c <= 0x07FF) {
-			buf[off] = (byte) (0xC0 | c >> 6 & 0x1F);
+			buf[off] = (byte) (0xC0 | c >>> 6);
 			buf[off + 1] = (byte) (0x80 | c & 0x3F);
 			return off + 2;
 		} else {
-			buf[off] = (byte) (0xE0 | c >> 12 & 0x0F);
+			buf[off] = (byte) (0xE0 | c >>> 12);
 			buf[off + 1] = (byte) (0x80 | c >> 6 & 0x3F);
 			buf[off + 2] = (byte) (0x80 | c & 0x3F);
 			return off + 3;

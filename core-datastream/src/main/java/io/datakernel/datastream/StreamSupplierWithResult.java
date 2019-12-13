@@ -16,7 +16,9 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
@@ -34,6 +36,16 @@ public final class StreamSupplierWithResult<T, X> {
 
 	public static <T, X> StreamSupplierWithResult<T, X> of(StreamSupplier<T> supplier, Promise<X> result) {
 		return new StreamSupplierWithResult<>(supplier, result);
+	}
+
+	public Promise<X> streamTo(StreamConsumer<T> consumer) {
+		return supplier.streamTo(consumer)
+				.then($ -> result);
+	}
+
+	public <Y> Promise<Tuple2<X, Y>> streamTo(StreamConsumerWithResult<T, Y> consumer) {
+		return supplier.streamTo(consumer.getConsumer())
+				.then($ -> Promises.toTuple(result, consumer.getResult()));
 	}
 
 	protected StreamSupplierWithResult<T, X> sanitize() {

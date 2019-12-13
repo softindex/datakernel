@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.annotations;
 
-import io.datakernel.serializer.asm.SerializerDef;
+import io.datakernel.serializer.SerializerDef;
 
 import java.lang.annotation.*;
 

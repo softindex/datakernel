@@ -186,10 +186,6 @@ public class Expressions {
 		return new ExpressionCmp(eq, left, right);
 	}
 
-	public static Expression cmp(String eq, Expression left, Expression right) {
-		return new ExpressionCmp(CompareOperation.operation(eq), left, right);
-	}
-
 	/**
 	 * Verifies that the arguments are equal
 	 *
@@ -506,19 +502,19 @@ public class Expressions {
 		return new ExpressionLength(field);
 	}
 
-	public static Expression newArray(Class<?> type, Expression length) {
-		return new ExpressionNewArray(type, length);
+	public static Expression arrayNew(Class<?> type, Expression length) {
+		return new ExpressionArrayNew(type, length);
 	}
 
-	public static Expression callStatic(Class<?> owner, String method, Expression... arguments) {
-		return new ExpressionCallStatic(owner, method, asList(arguments));
+	public static Expression staticCall(Class<?> owner, String method, Expression... arguments) {
+		return new ExpressionStaticCall(owner, method, asList(arguments));
 	}
 
-	public static Expression callStaticSelf(String method, Expression... arguments) {
-		return new ExpressionCallStaticSelf(method, asList(arguments));
+	public static Expression staticCallSelf(String method, Expression... arguments) {
+		return new ExpressionStaticCallSelf(method, asList(arguments));
 	}
 
-	public static Expression getArrayItem(Expression array, Expression nom) {
+	public static Expression arrayGet(Expression array, Expression nom) {
 		return new ExpressionArrayGet(array, nom);
 	}
 
@@ -584,7 +580,7 @@ public class Expressions {
 		return new ExpressionSwitch(key, matchCases, matchExpressions, defaultExpression);
 	}
 
-	public static Expression setArrayItem(Expression array, Expression position, Expression newElement) {
+	public static Expression arraySet(Expression array, Expression position, Expression newElement) {
 		return new ExpressionArraySet(array, position, newElement);
 	}
 
