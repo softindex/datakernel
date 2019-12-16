@@ -162,9 +162,17 @@ public final class OTAlgorithms {
 				});
 	}
 
-	public static <K, D> Promise<K> merge(OTRepository<K, D> repository, OTSystem<D> system) {
+	public static <K, D> Promise<K> mergeAndPush(OTRepository<K, D> repository, OTSystem<D> system) {
 		return repository.getHeads()
-				.then(heads -> merge(repository, system, heads))
+				.then(heads -> mergeAndPush(repository, system, heads))
+				.whenComplete(toLogger(logger, thisMethod()));
+	}
+
+	public static <K, D> Promise<K> mergeAndPush(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
+		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
+		return merge(repository, system, heads)
+				.then(mergeCommit -> repository.push(mergeCommit)
+						.map($ -> mergeCommit.getId()))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
@@ -174,7 +182,7 @@ public final class OTAlgorithms {
 	}
 
 	public static <K, D> Promise<K> mergeAndUpdateHeads(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads) {
-		return merge(repository, system, heads)
+		return mergeAndPush(repository, system, heads)
 				.then(mergeId -> repository.updateHeads(difference(singleton(mergeId), heads), difference(heads, singleton(mergeId)))
 						.map($ -> mergeId))
 				.whenComplete(toLogger(logger, thisMethod()));
@@ -191,9 +199,7 @@ public final class OTAlgorithms {
 	}
 
 	@NotNull
-	public static <K, D> Promise<K> merge(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
-		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
-
+	public static <K, D> Promise<OTCommit<K, D>> merge(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
 		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
 		return repository.getLevels(heads)
 				.then(levels ->
@@ -218,9 +224,7 @@ public final class OTAlgorithms {
 														head -> head,
 														head -> new DiffsWithLevel<>(levels.get(head), mergeResult.get(head)),
 														throwingMerger(),
-														LinkedHashMap::new))))
-								.then(mergeCommit -> repository.push(mergeCommit)
-										.map($ -> mergeCommit.getId())));
+														LinkedHashMap::new)))));
 	}
 
 	public static <K, D> Promise<Set<K>> findCut(OTRepository<K, D> repository, OTSystem<D> system, Set<K> startNodes,

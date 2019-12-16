@@ -62,7 +62,7 @@ public final class OTUplinkImpl<K, D, PC> implements OTUplink<K, D, PC> {
 		return repository.push(commit)
 				.then($ -> repository.getHeads())
 				.then(initalHeads -> excludeParents(repository, otSystem, union(initalHeads, singleton(commit.getId())))
-						.then(heads -> merge(repository, otSystem, heads))
+						.then(heads -> mergeAndPush(repository, otSystem, heads))
 						.then(mergeHead -> {
 							Set<K> mergeHeadSet = singleton(mergeHead);
 							return repository.updateHeads(mergeHeadSet, difference(initalHeads, mergeHeadSet))
