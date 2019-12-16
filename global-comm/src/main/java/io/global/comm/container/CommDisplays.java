@@ -170,11 +170,9 @@ public final class CommDisplays extends AbstractModule {
 	}
 
 	private static String id(UserId id, @Nullable UserData userData) {
-		String username = "<i>&lt;unknown&gt;</i>";
-		if (userData != null) {
-			if (nullOrEmpty(userData.getUsername())) {
-				username = userData.getUsername();
-			}
+		String username = "<i>unknown</i>";
+		if (userData != null && !nullOrEmpty(userData.getUsername())) {
+			username = userData.getUsername();
 		}
 		return "<span class=\"special\" title=\"" + id.getAuthId() + "\">" + username + "</span>";
 	}
