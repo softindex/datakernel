@@ -56,7 +56,7 @@ public final class GlobalFsDriverServlet {
 	public static RoutingServlet create(GlobalFsDriver driver) {
 		return RoutingServlet.create()
 				.map(GET, "/download/*", request -> {
-					PubKey space = request.getAttachment(KeyPair.class).getPubKey();
+					PubKey space = request.getAttachment(PubKey.class);
 					return doDownload(driver, request, space);
 				})
 				.map(POST, "/upload", request -> {
@@ -70,7 +70,7 @@ public final class GlobalFsDriverServlet {
 					}
 				})
 				.map("/list", request -> {
-					PubKey space = request.getAttachment(KeyPair.class).getPubKey();
+					PubKey space = request.getAttachment(PubKey.class);
 					String glob = request.getQueryParameter("glob");
 					return driver.listEntities(space, glob != null ? glob : "**")
 							.map(list -> HttpResponse.ok200()
@@ -78,7 +78,7 @@ public final class GlobalFsDriverServlet {
 									.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
 				})
 				.map("/getMetadata/*", request -> {
-					PubKey space = request.getAttachment(KeyPair.class).getPubKey();
+					PubKey space = request.getAttachment(PubKey.class);
 					return driver.getMetadata(space, request.getRelativePath())
 							.map(list -> HttpResponse.ok200()
 									.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))

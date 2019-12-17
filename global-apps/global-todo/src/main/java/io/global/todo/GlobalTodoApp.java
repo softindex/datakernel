@@ -80,7 +80,7 @@ public final class GlobalTodoApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalTodoModule(),
 				new OTAppCommonModule(),
-				new AuthModule<GlobalTodoContainer>(SESSION_ID) {},
+				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
 				new DebugViewerModule<GlobalTodoContainer>(OT, KV) {},

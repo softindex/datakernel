@@ -27,10 +27,7 @@ import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.ot.TypedRepoNames;
-import io.global.ot.service.ContainerModule;
-import io.global.ot.service.ContainerScope;
-import io.global.ot.service.ContainerServlet;
-import io.global.ot.service.SimpleUserContainer;
+import io.global.ot.service.*;
 import io.global.ot.session.AuthModule;
 import io.global.ot.session.UserId;
 import io.global.session.KvSessionModule;
@@ -46,6 +43,7 @@ import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
+import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 import static io.global.Utils.cachedContent;
 import static io.global.debug.DebugViewerModule.DebugView.FS;
@@ -76,12 +74,17 @@ public final class GlobalFilesApp extends Launcher {
 			@Named("session") AsyncServletDecorator sessionDecorator,
 			@Optional @Named("debug") AsyncServlet debugServlet
 	) {
+		RoutingServlet driverServlet = GlobalFsDriverServlet.create(fsDriver);
+		RoutingServlet download = driverServlet.getSubtree("/download");
+		assert download != null;
+
 		RoutingServlet routingServlet = RoutingServlet.create()
-				.map("/fs/*", sessionDecorator.serve(GlobalFsDriverServlet.create(fsDriver)))
+				.map("/fs/*", sessionDecorator.serve(driverServlet))
+				.map("/fs/download/*", download.then(onRequest(request -> request.attach(request.getAttachment(UserContainer.class).getKeys().getPubKey()))))
 				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
-		if (debugServlet != null){
+		if (debugServlet != null) {
 			routingServlet.map("/debug/*", debugServlet);
 		}
 		return routingServlet;
@@ -93,9 +96,9 @@ public final class GlobalFilesApp extends Launcher {
 	}
 
 	@Provides
-	TypedRepoNames typedRepoNames(){
+	TypedRepoNames typedRepoNames() {
 		return TypedRepoNames.create()
-				.withRepoName(new Key<KvClient<String, UserId>>(){}, "session");
+				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 	}
 
 	@Provides
@@ -148,7 +151,7 @@ public final class GlobalFilesApp extends Launcher {
 				KvSessionModule.create(),
 				new ContainerModule<SimpleUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
-				new AuthModule<SimpleUserContainer>(SESSION_ID) {},
+				new AuthModule(SESSION_ID),
 				new DebugViewerModule<SimpleUserContainer>(FS, KV) {},
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),

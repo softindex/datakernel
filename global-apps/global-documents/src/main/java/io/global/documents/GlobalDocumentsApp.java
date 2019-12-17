@@ -84,7 +84,7 @@ public final class GlobalDocumentsApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new OTAppCommonModule(),
 				new GlobalDocumentsModule(),
-				new AuthModule<SharedUserContainer<EditOperation>>(SESSION_ID) {},
+				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
 				new ContainerModule<SharedUserContainer<EditOperation>>() {}

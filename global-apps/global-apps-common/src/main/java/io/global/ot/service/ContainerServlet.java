@@ -35,6 +35,7 @@ public final class ContainerServlet implements AsyncServlet {
 	public Async<HttpResponse> serve(@NotNull HttpRequest request) {
 		if (singleContainer != null) {
 			request.attach(singleContainer);
+			request.attach(UserContainer.class, singleContainer);
 			return next.serve(request);
 		}
 		String header = request.getHeader(HOST);
@@ -50,6 +51,7 @@ public final class ContainerServlet implements AsyncServlet {
 			return Promise.of(HttpResponse.notFound404().withPlainText("No container is running for a given id"));
 		}
 		request.attach(container);
+		request.attach(UserContainer.class, container);
 		return next.serve(request);
 	}
 }

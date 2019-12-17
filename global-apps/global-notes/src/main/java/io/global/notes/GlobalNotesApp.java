@@ -82,7 +82,7 @@ public final class GlobalNotesApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalNotesModule(),
 				new OTAppCommonModule(),
-				new AuthModule<GlobalNotesContainer>(SESSION_ID) {},
+				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
 				new DebugViewerModule<GlobalNotesContainer>(OT, KV) {},

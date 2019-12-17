@@ -84,7 +84,7 @@ public final class GlobalChatApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalChatModule(),
 				new OTAppCommonModule(),
-				new AuthModule<SharedUserContainer<ChatRoomOperation>>(SESSION_ID) {},
+				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
 				new ContainerModule<SharedUserContainer<ChatRoomOperation>>() {}
