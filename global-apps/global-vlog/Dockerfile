@@ -4,7 +4,7 @@ WORKDIR /build
 # tool layer
 RUN apk --update add --no-cache git
 
-ARG BRANCH=global-vlog
+ARG BRANCH=global-cloud
 
 
 # cache javacv dependency

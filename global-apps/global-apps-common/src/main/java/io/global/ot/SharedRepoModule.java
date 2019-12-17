@@ -102,7 +102,7 @@ public abstract class SharedRepoModule<D> extends AbstractModule {
 
 			private String getName(PubKey pubKey, String fallbackName) {
 				if (keys.getPubKey().equals(pubKey)) {
-					return "Myself";
+					return "'Myself'";
 				}
 				String name = contactsState.getContacts().get(pubKey);
 				if (name != null) {

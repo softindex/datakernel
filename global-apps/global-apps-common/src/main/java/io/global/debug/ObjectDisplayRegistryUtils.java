@@ -41,7 +41,7 @@ public final class ObjectDisplayRegistryUtils {
 		return ObjectDisplayRegistry.create()
 				.withDisplay(InsertOperation.class,
 						($, p) -> "Insert text at position " + p.getPosition(),
-						($, p) -> "Insert text '" + text(p.getContent()) + "' at position " + p.getPosition() + '\'')
+						($, p) -> "Insert text '" + text(p.getContent()) + "' at position " + p.getPosition())
 				.withDisplay(DeleteOperation.class,
 						($, p) -> "Delete text starting from position " + p.getPosition(),
 						($, p) -> "Delete text '" + text(p.getContent()) + "' starting from position " + p.getPosition());

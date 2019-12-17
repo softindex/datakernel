@@ -23,8 +23,7 @@ import io.global.ot.map.SetValue;
 import io.global.ot.service.ContainerScope;
 
 import static io.global.Utils.cachedContent;
-import static io.global.debug.ObjectDisplayRegistryUtils.hashId;
-import static io.global.debug.ObjectDisplayRegistryUtils.text;
+import static io.global.debug.ObjectDisplayRegistryUtils.*;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
 import static io.global.ot.OTUtils.createOTRegistry;
 import static java.util.stream.Collectors.joining;
@@ -84,12 +83,12 @@ public final class GlobalNotesModule extends AbstractModule {
 										}
 										if (setValue.getPrev() == null) {
 											assert setValue.getNext() != null;
-											return "Created note '" + text(setValue.getNext()) + '\'';
+											return "Created note '" + shortText(setValue.getNext()) + '\'';
 										}
 										if (setValue.getNext() == null) {
-											return "Deleted note '" + text(setValue.getPrev()) + '\'';
+											return "Deleted note '" + shortText(setValue.getPrev()) + '\'';
 										}
-										return "Renamed note '" + text(setValue.getPrev()) + "' to '" + text(setValue.getNext()) + '\'';
+										return "Renamed note '" + shortText(setValue.getPrev()) + "' to '" + shortText(setValue.getNext()) + '\'';
 									})
 									.collect(joining("\n"));
 						},
