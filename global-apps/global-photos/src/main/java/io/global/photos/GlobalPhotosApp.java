@@ -45,7 +45,7 @@ public class GlobalPhotosApp extends Launcher {
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + File.separator + "global-fs";
 	public static final String DEFAULT_OT_STORAGE = System.getProperty("java.io.tmpdir") + File.separator + "global-ot";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
-	public static final String DEFAULT_FORUM_FS_DIR = "global-photos";
+	public static final String DEFAULT_FORUM_FS_DIR = "ApplicationData/global-photos";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
 	@Inject

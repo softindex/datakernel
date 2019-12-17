@@ -21,7 +21,6 @@ import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.KvClient;
-import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
@@ -51,7 +50,7 @@ public final class GlobalBlogApp extends Launcher {
 	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + File.separator + "global-fs";
 	public static final String DEFAULT_OT_STORAGE = System.getProperty("java.io.tmpdir") + File.separator + "global-ot";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
-	public static final String DEFAULT_BLOG_FS_DIR = "global-blog";
+	public static final String DEFAULT_BLOG_FS_DIR = "ApplicationData/global-blog";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
 	public static final TypedRepoNames DEFAULT_BLOG_REPO_NAMES = TypedRepoNames.create("global-blog")

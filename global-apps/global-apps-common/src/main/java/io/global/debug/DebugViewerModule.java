@@ -52,8 +52,8 @@ import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
-import static io.global.debug.DebugViewerModule.DebugView.OT;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
+import static io.global.debug.DebugViewerModule.DebugView.OT;
 import static io.global.ot.graph.OTGraphServlet.COMMIT_ID_TO_STRING;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
@@ -156,12 +156,12 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 				ContainerManager<C> containerManager, Key<C> reifiedC
 		) {
 			Class<C> rawType = reifiedC.getRawType();
+			String prefix = repoNames.getPrefix();
 			return RoutingServlet.create()
 					.map(GET, "/*", createHtmlServingServlet(executor, "ot", rawType))
 					.map(GET, "/api/*", request -> {
 						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
 						String path = request.getRelativePath();
-						String prefix = repoNames.getPrefix();
 
 						return otNode.list(pk)
 								.then(list -> {
@@ -237,6 +237,8 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@Named("fs")
 		AsyncServlet fsViewer(GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
 			Class<C> rawType = reifiedC.getRawType();
+			String repoNamesPrefix = repoNames.getPrefix();
+			String prefix = repoNamesPrefix.equals("") ? repoNamesPrefix : ("ApplicationData/" + repoNamesPrefix);
 			return RoutingServlet.create()
 					.map(GET, "/", createHtmlServingServlet(executor, "fs", rawType))
 					.map(GET, "/*", request -> {
@@ -245,7 +247,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 						if (path == null) {
 							return Promise.ofException(FILE_NOT_FOUND);
 						}
-						String filename = repoNames.getPrefix() + path;
+						String filename = prefix + path;
 						return driver.getMetadata(pk, filename)
 								.then(meta -> {
 									if (meta == null) {
@@ -262,7 +264,6 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 					})
 					.map(GET, "/api", request -> {
 						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
-						String prefix = repoNames.getPrefix();
 						return fsNode.listEntities(pk, "**")
 								.map(list -> HttpResponse.ok200()
 										.withJson(FILE_LIST_CODEC, list.stream()
@@ -283,12 +284,12 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@Named("kv")
 		AsyncServlet kvViewer(GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
 			Class<C> rawType = reifiedC.getRawType();
+			String prefix = repoNames.getPrefix();
 			return RoutingServlet.create()
 					.map(GET, "/*", createHtmlServingServlet(executor, "kv", rawType))
 					.map(GET, "/api/*", request -> {
 						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
 						String path = request.getRelativePath();
-						String prefix = repoNames.getPrefix();
 						if (path.isEmpty()) {
 							return kvNode.list(pk)
 									.map(list -> HttpResponse.ok200()

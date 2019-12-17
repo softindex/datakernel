@@ -55,7 +55,7 @@ public final class GlobalVlogApp extends Launcher {
 	public static final String DEFAULT_OT_STORAGE = System.getProperty("java.io.tmpdir") + File.separator + "global-ot";
 	public static final String DEFAULT_CACHED_PATH = System.getProperty("java.io.tmpdir") + File.separator + "cachedPath";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
-	public static final String DEFAULT_VLOG_FS_DIR = "global-vlog";
+	public static final String DEFAULT_VLOG_FS_DIR = "ApplicationData/global-vlog";
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
 	public static final TypedRepoNames DEFAULT_VLOG_REPO_NAMES = TypedRepoNames.create("global-vlog")
