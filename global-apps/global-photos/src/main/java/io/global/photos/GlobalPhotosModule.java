@@ -17,6 +17,7 @@ import io.global.appstore.HttpAppStore;
 import io.global.common.KeyPair;
 import io.global.common.SimKey;
 import io.global.debug.ObjectDisplayRegistry;
+import io.global.fs.local.GlobalFsAdapter;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.GlobalKvDriver;
 import io.global.kv.api.GlobalKvNode;
@@ -138,15 +139,22 @@ public class GlobalPhotosModule extends AbstractModule {
 
 	@Provides
 	@ContainerScope
-	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
-		return fsDriver.adapt(keyPair).subfolder(albumFsDir);
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, SimKey simKey) {
+		GlobalFsAdapter adapt = fsDriver.adapt(keyPair);
+		adapt.setCurrentSimKey(simKey);
+		return adapt.subfolder(albumFsDir);
 	}
 
 	@Provides
 	@Eager
-	OTDriver otDriver(GlobalOTNode node, Config config) {
-		SimKey simKey = config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
+	OTDriver otDriver(GlobalOTNode node, SimKey simKey) {
 		return new OTDriver(node, simKey);
+	}
+
+	@Provides
+	@Eager
+	SimKey simKey(Config config){
+		return config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
 	}
 
 	@Provides
