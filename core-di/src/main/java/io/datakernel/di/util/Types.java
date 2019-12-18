@@ -8,8 +8,9 @@ import java.lang.reflect.*;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static java.util.Map.Entry;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * This class contains reflection utilities to work with Java types.
@@ -202,6 +203,25 @@ public final class Types {
 
 	private static final Map<Type, Map<TypeVariable<?>, Type>> genericMappingCache = new HashMap<>();
 
+	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container) {
+		return getGenericTypeMapping(container, null);
+	}
+
+	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container, @Nullable Object containerInstance) {
+		return genericMappingCache.computeIfAbsent(containerInstance != null ? containerInstance.getClass() : container, t -> {
+			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
+			getGenericTypeMappingImpl(t, mapping);
+			Object outerInstance = ReflectionUtils.getOuterClassInstance(containerInstance);
+			while (outerInstance != null) {
+				getGenericTypeMappingImpl(outerInstance.getClass(), mapping);
+				outerInstance = ReflectionUtils.getOuterClassInstance(outerInstance);
+			}
+			return mapping.entrySet().stream()
+					.filter(e -> e.getValue() != null)
+					.collect(toMap(Entry::getKey, Entry::getValue));
+		});
+	}
+
 	private static void getGenericTypeMappingImpl(Type t, Map<TypeVariable<?>, @Nullable Type> mapping) {
 		Class<?> cls = getRawType(t);
 
@@ -209,9 +229,6 @@ public final class Types {
 			Type[] typeArgs = ((ParameterizedType) t).getActualTypeArguments();
 			if (typeArgs.length != 0) {
 				TypeVariable<? extends Class<?>>[] typeVars = cls.getTypeParameters();
-				for (TypeVariable<?> typeVar : typeVars) {
-					mapping.putIfAbsent(typeVar, null);
-				}
 				for (int i = 0; i < typeArgs.length; i++) {
 					Type typeArg = typeArgs[i];
 					mapping.put(typeVars[i], typeArg instanceof TypeVariable ? mapping.get(typeArg) : typeArg);
@@ -223,37 +240,40 @@ public final class Types {
 				.forEach(supertype -> getGenericTypeMappingImpl(supertype, mapping));
 	}
 
-	public static Map<TypeVariable<?>, Type> getGenericTypeMapping(Type container) {
-		return genericMappingCache.computeIfAbsent(container, t -> {
-			Map<TypeVariable<?>, @Nullable Type> mapping = new HashMap<>();
-
-			getGenericTypeMappingImpl(t, mapping);
-
-			Set<TypeVariable<?>> unsatisfiedGenerics = mapping.entrySet().stream()
-					.filter(e -> e.getValue() == null)
-					.map(e -> (TypeVariable<?>) e.getKey())
-					.collect(toSet());
-			if (!unsatisfiedGenerics.isEmpty()) {
-				throw new DIException(unsatisfiedGenerics.stream()
-						.map(typevar -> typevar + " from " + typevar.getGenericDeclaration())
-						.collect(joining(", ", "Actual types for generics [", "] were not found in class hierarchy")));
-			}
-			return mapping;
-		});
+	public static Type resolveTypeVariables(Type type, Type container) {
+		return resolveTypeVariables(type, container, null);
 	}
 
-	public static Type resolveTypeVariables(Type type, Type container) {
-		return resolveTypeVariables(type, getGenericTypeMapping(container));
+	public static Type resolveTypeVariables(Type type, Type container, @Nullable Object containerInstance) {
+		return resolveTypeVariables(type, getGenericTypeMapping(container, containerInstance));
 	}
 
 	@Contract("null, _ -> null")
 	public static Type resolveTypeVariables(Type type, Map<TypeVariable<?>, Type> mapping) {
+		Set<TypeVariable<?>> unresolved = new HashSet<>();
+		Type result = resolveTypeVariablesImpl(type, mapping, unresolved);
+		if (!unresolved.isEmpty()) {
+			throw new DIException(unresolved.stream()
+					.map(typevar -> typevar + " from " + typevar.getGenericDeclaration())
+					.collect(joining(", ", "Actual types for generics [", "] were not found in class hierarchy")));
+		}
+		return result;
+	}
+
+	private static Type resolveTypeVariablesImpl(Type type, Map<TypeVariable<?>, Type> mapping, Set<TypeVariable<?>> unresolved) {
 		if (type == null) {
 			return null;
 		}
 		if (type instanceof TypeVariable) {
 			Type resolved = mapping.get(type);
-			return resolved != null ? ensureEquality(resolved) : type;
+			if (resolved != null) {
+				return ensureEquality(resolved);
+			}
+			TypeVariable<?> typevar = (TypeVariable<?>) type;
+			if (typevar.getGenericDeclaration() instanceof Class) {
+				unresolved.add(typevar);
+			}
+			return type;
 		}
 		if (type instanceof ParameterizedType) {
 			ParameterizedType parameterized = (ParameterizedType) type;

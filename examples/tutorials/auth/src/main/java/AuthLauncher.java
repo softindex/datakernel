@@ -39,7 +39,8 @@ public final class AuthLauncher extends HttpServerLauncher {
 
 	@Provides
 	SessionStore<String> sessionStore() {
-		return SessionStoreInMemory.create();
+		return SessionStoreInMemory.<String>create()
+				.withLifetime(Duration.ofDays(30));
 	}
 
 	@Provides

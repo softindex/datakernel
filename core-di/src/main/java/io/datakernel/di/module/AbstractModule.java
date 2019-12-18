@@ -66,7 +66,7 @@ public abstract class AbstractModule implements Module {
 	 */
 	protected final <T> ModuleBuilderBinder<T> bind(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bind(Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName()));
+		return builder.bind(key);
 	}
 
 	/**

@@ -178,16 +178,6 @@ public final class OTAlgorithms {
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	static class Tuple<K, D> {
-		final Map<K, List<D>> mergeDiffs;
-		final long parentsMaxLevel;
-
-		Tuple(Map<K, List<D>> mergeDiffs, long parentsMaxLevel) {
-			this.mergeDiffs = mergeDiffs;
-			this.parentsMaxLevel = parentsMaxLevel;
-		}
-	}
-
 	@NotNull
 	public static <K, D> Promise<K> merge(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
 		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge

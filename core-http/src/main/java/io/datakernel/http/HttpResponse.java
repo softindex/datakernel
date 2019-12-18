@@ -112,6 +112,11 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 
 	@NotNull
 	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader) {
+		return file(downloader, name, size, rangeHeader, false);
+	}
+
+	@NotNull
+	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader, boolean inline) {
 		HttpResponse response = new HttpResponse(rangeHeader == null ? 200 : 206);
 
 		String localName = name.substring(name.lastIndexOf('/') + 1);
@@ -122,7 +127,7 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 
 		response.addHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(mediaType)));
 		response.addHeader(ACCEPT_RANGES, "bytes");
-		response.addHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"");
+		response.addHeader(CONTENT_DISPOSITION, inline ? "inline" : "attachment; filename=\"" + localName + "\"");
 
 		long contentLength, offset;
 		if (rangeHeader != null) {

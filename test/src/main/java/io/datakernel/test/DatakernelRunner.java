@@ -34,14 +34,14 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 	protected Injector currentInjector;
 
-	public DatakernelRunner(Class<?> clazz) throws InitializationError {
-		super(clazz);
+	public DatakernelRunner(Class<?> cls) throws InitializationError {
+		super(cls);
 
 		surroundings.addAll(getTestClass().getAnnotatedMethods(Before.class));
 		surroundings.addAll(getTestClass().getAnnotatedMethods(After.class));
 
 		staticDependencies = surroundings.stream()
-				.flatMap(m -> Arrays.stream(ReflectionUtils.toDependencies(clazz, m.getMethod().getParameters())))
+				.flatMap(m -> Arrays.stream(ReflectionUtils.toDependencies(cls, m.getMethod().getParameters())))
 				.collect(toSet());
 	}
 

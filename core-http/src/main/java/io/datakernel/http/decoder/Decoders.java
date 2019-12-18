@@ -14,10 +14,10 @@ import java.util.function.Function;
  */
 @SuppressWarnings("RedundantCast")
 public final class Decoders {
-	public static final String REQUIRED_GET_PARAM = "Required GET param: %1";
-	public static final String REQUIRED_POST_PARAM = "Required POST param: %1";
-	public static final String REQUIRED_PATH_PARAM = "Required path param";
-	public static final String REQUIRED_COOKIE = "Required cookie: %1";
+	public static final String REQUIRED_GET_PARAM = "Required GET param: %s";
+	public static final String REQUIRED_POST_PARAM = "Required POST param: %s";
+	public static final String REQUIRED_PATH_PARAM = "Required path param: %s";
+	public static final String REQUIRED_COOKIE = "Required cookie: %s";
 
 	private static <T> Decoder<T> ofParamEx(String paramName,
 			@NotNull Mapper<String, T> fn,

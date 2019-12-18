@@ -698,7 +698,10 @@ public final class LocalFsClient implements FsClient, EventloopService {
 		// common route
 		PathMatcher matcher = storage.getFileSystem().getPathMatcher("glob:" + glob);
 
-		int relativeSubfolderLength = storage.relativize(folder).toString().length();
+		int relativeSubfolderLength =
+				storage.equals(folder) ?
+						0 :
+						storage.relativize(folder).toString().length() + 1;
 
 		walkFiles(folder, glob, path -> {
 			FilenameInfo info = namingScheme.decode(path, storage.relativize(path).toString());
