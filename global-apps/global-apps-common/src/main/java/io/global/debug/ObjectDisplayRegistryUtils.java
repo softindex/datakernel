@@ -117,6 +117,10 @@ public final class ObjectDisplayRegistryUtils {
 		return hashId(pk.asString());
 	}
 
+	public static String shortHashId(String hashId) {
+		return hashId.length() <= 7 ? hashId : hashId.substring(0, 7);
+	}
+
 	public static String hashId(String hashId) {
 		return "<span class=\"special\" title=\"" + hashId + "\">" + (hashId.length() <= 7 ? hashId : hashId.substring(0, 7)) + "</span>";
 	}

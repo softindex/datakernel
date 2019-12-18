@@ -153,7 +153,7 @@ public class GlobalPhotosModule extends AbstractModule {
 
 	@Provides
 	@Eager
-	SimKey simKey(Config config){
+	SimKey simKey(Config config) {
 		return config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY);
 	}
 
@@ -185,15 +185,15 @@ public class GlobalPhotosModule extends AbstractModule {
 		Map<String, Album> map = albumOtState.getMap();
 		return ObjectDisplayRegistry.create()
 				.withDisplay(AlbumAddOperation.class,
-						($, p) -> (p.isRemove() ? "Remove" : "Add") + " album '" + text(p.getTitle()) + '\'',
+						($, p) -> (p.isRemove() ? "Remove" : "Add") + " album '" + shortText(p.getTitle()) + '\'',
 						(r, p) -> r.getShortDisplay(p) + " with id " + hashId(p.getAlbumId()) + " and description '" + text(p.getDescription()) + "'")
 				.withDisplay(AlbumAddPhotoOperation.class,
 						($, p) -> {
 							Album album = map.get(p.getAlbumId());
 							return (p.isRemove() ? "Remove photo from album '" : "Add photo to album '") +
 									(album == null ?
-											p.getAlbumId().substring(0, Math.min(7, p.getAlbumId().length())) :
-											text(album.getTitle()))
+											shortHashId(p.getAlbumId()) :
+											shortText(album.getTitle()))
 									+ '\'';
 						},
 						($, p) -> {
@@ -205,7 +205,7 @@ public class GlobalPhotosModule extends AbstractModule {
 									"' and id " + hashId(p.getPhotoId());
 						})
 				.withDisplay(AlbumChangeOperation.class,
-						($, p) -> "set album " + hashId(p.getAlbumId()) + " title to '" + text(p.getNextTitle()) + "', description to '" + text(p.getNextDescription()) + '\'',
+						($, p) -> "set album " + shortHashId(p.getAlbumId()) + " title to '" + text(p.getNextTitle()) + "', description to '" + text(p.getNextDescription()) + '\'',
 						($, p) -> {
 							String result = "";
 							if (!p.getPrevTitle().equals(p.getNextTitle())) {
@@ -232,7 +232,7 @@ public class GlobalPhotosModule extends AbstractModule {
 									("nothing has been changed for photo ") :
 									"change description of photo ") +
 									(photo == null ?
-											p.getPhotoId().substring(0, Math.min(7, p.getPhotoId().length())) :
+											shortHashId(p.getPhotoId()) :
 											text(photo.getFilename()));
 						},
 						($, p) -> {

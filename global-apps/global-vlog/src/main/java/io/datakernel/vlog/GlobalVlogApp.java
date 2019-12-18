@@ -24,6 +24,9 @@ import io.global.debug.DebugViewerModule;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.api.GlobalOTNode;
@@ -126,7 +129,10 @@ public final class GlobalVlogApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new MustacheModule()
+				new MustacheModule(),
+				new OTSyncModule(),
+				new KvSyncModule(),
+				new FsSyncModule()
 		);
 	}
 
