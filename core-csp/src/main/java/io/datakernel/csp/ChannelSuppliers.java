@@ -39,13 +39,17 @@ import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.lang.Math.min;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -359,6 +363,7 @@ public final class ChannelSuppliers {
 	public static InputStream channelSupplierAsInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier) {
 		return new InputStream() {
 			@Nullable ByteBuf current = null;
+			private boolean isClosed;
 
 			@Override
 			public int read() throws IOException {
@@ -367,28 +372,33 @@ public final class ChannelSuppliers {
 
 			@Override
 			public int read(@NotNull byte[] b, int off, int len) throws IOException {
-				return doRead(buf -> buf.read(b, off, len));
+				return doRead(buf -> buf.read(b, off, min(len, buf.readRemaining())));
+			}
+
+			@Override
+			public int available() {
+				return current != null && !isClosed ? current.readRemaining() : 0;
 			}
 
 			private int doRead(ToIntFunction<ByteBuf> reader) throws IOException {
+				checkState(!eventloop.inEventloopThread(), "In eventloop thread");
+				if (isClosed) return -1;
 				ByteBuf peeked = current;
 				if (peeked == null) {
-					ByteBuf buf;
+					ByteBuf buf = null;
 					do {
 						CompletableFuture<ByteBuf> future = eventloop.submit(channelSupplier::get);
 						try {
 							buf = future.get();
 						} catch (InterruptedException e) {
-							eventloop.execute(channelSupplier::cancel);
+							isClosed = true;
+							eventloop.submit(() -> channelSupplier.close(e));
 							throw new IOException(e);
 						} catch (ExecutionException e) {
-							Throwable cause = e.getCause();
-							if (cause instanceof IOException) throw (IOException) cause;
-							if (cause instanceof RuntimeException) throw (RuntimeException) cause;
-							if (cause instanceof Exception) throw new IOException(cause);
-							throw (Error) cause;
+							handleException(e);
 						}
 						if (buf == null) {
+							isClosed = true;
 							return -1;
 						}
 					} while (!buf.canRead());
@@ -405,9 +415,31 @@ public final class ChannelSuppliers {
 			}
 
 			@Override
-			public void close() {
-				current = nullify(current, ByteBuf::recycle);
-				eventloop.execute(channelSupplier::close);
+			public void close() throws IOException {
+				checkState(!eventloop.inEventloopThread(), "In eventloop thread");
+				if (isClosed) {
+					current = nullify(current, ByteBuf::recycle);
+					eventloop.submit((Runnable) channelSupplier::close);
+				} else {
+					isClosed = true;
+					CompletableFuture<Void> close = eventloop.submit(() -> channelSupplier.streamTo(ChannelConsumers.recycling()));
+					try {
+						close.get();
+					} catch (InterruptedException e) {
+						throw new IOException(e);
+					} catch (ExecutionException e) {
+						handleException(e);
+					}
+				}
+			}
+
+			private void handleException(Throwable e) throws IOException {
+				isClosed = true;
+				Throwable cause = e.getCause();
+				if (cause instanceof IOException) throw (IOException) cause;
+				if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+				if (cause instanceof Exception) throw new IOException(cause);
+				throw (Error) cause;
 			}
 		};
 	}
@@ -430,6 +462,10 @@ public final class ChannelSuppliers {
 	public static final class ChannelSupplierOfValue<T> extends AbstractChannelSupplier<T> {
 		private T item;
 
+		public ChannelSupplierOfValue(@NotNull T item) {
+			this.item = item;
+		}
+
 		public T getValue() {
 			return item;
 		}
@@ -438,10 +474,6 @@ public final class ChannelSuppliers {
 			T item = this.item;
 			this.item = null;
 			return item;
-		}
-
-		public ChannelSupplierOfValue(@NotNull T item) {
-			this.item = item;
 		}
 
 		@Override

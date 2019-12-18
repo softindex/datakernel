@@ -166,4 +166,57 @@ public class ChannelSupplierTest {
 					return null;
 				}));
 	}
+
+	@Test
+	public void testRepeatEOF() {
+		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
+		await(Promise.ofBlockingCallable(Executors.newSingleThreadExecutor(),
+				() -> {
+					try {
+						InputStream inputStream = channelSupplierAsInputStream(currentEventloop, ChannelSupplier.of());
+						int i = 0;
+						while (i < 10) {
+							i++;
+							int read = inputStream.read();
+							assertEquals(-1, read);
+						}
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+					return null;
+				}));
+	}
+
+	@SuppressWarnings("ResultOfMethodCallIgnored")
+	@Test
+	public void testClose() {
+		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
+		ChannelSupplier<ByteBuf> channelSupplier = ChannelSupplier.of(
+				ByteBuf.wrapForReading("Hello".getBytes()),
+				ByteBuf.wrapForReading("World".getBytes()));
+
+		Promise.ofBlockingCallable(Executors.newFixedThreadPool(1),
+				() -> {
+					try {
+						InputStream inputStream = channelSupplierAsInputStream(currentEventloop, channelSupplier);
+						inputStream.read();
+						inputStream.close();
+						int read = inputStream.read();
+						assertEquals(-1, read);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					}
+					return null;
+				});
+		currentEventloop.run();
+	}
+
+	@Test
+	public void testException() {
+		Eventloop currentEventloop = Eventloop.getCurrentEventloop();
+		ChannelSupplier<ByteBuf> channelSupplier = ChannelSupplier.of(() -> Promise.ofException(new RuntimeException()));
+
+		awaitException(Promise.ofBlockingCallable(Executors.newFixedThreadPool(1),
+				() -> channelSupplierAsInputStream(currentEventloop, channelSupplier).read()));
+	}
 }
