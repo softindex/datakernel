@@ -73,7 +73,7 @@ public final class GlobalTodoApp extends Launcher {
 
 	@Override
 	public Module getModule() {
-		return Modules.combine(
+        return Modules.combine(
 				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
@@ -82,7 +82,7 @@ public final class GlobalTodoApp extends Launcher {
 				new OTAppCommonModule(),
 				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
-				KvSessionModule.create(),
+                new KvSessionModule(),
 				new DebugViewerModule(OT, KV),
 				new ContainerModule<GlobalTodoContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),

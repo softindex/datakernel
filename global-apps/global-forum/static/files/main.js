@@ -354,7 +354,7 @@ window.onload = () => {
     // endregion
 
     // region * handle likes and dislikes
-    $post.find('.like').click(e => {
+    $post.find('.like.active').click(e => {
       let parent = $(e.target).parent();
       let prefix = parent.data('prefix');
       let child = parent.find('.rating');
@@ -377,7 +377,7 @@ window.onload = () => {
           }, console.error)
       }
     });
-    $post.find('.dislike').click(e => {
+    $post.find('.dislike.active').click(e => {
       let parent = $(e.target).parent();
       let prefix = parent.data('prefix');
       let child = parent.find('.rating');

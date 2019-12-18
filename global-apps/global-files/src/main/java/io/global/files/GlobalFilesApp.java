@@ -136,7 +136,7 @@ public final class GlobalFilesApp extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return combine(
+        return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
@@ -148,7 +148,7 @@ public final class GlobalFilesApp extends Launcher {
 						bind(SimpleUserContainer.class).in(ContainerScope.class);
 					}
 				},
-				KvSessionModule.create(),
+                new KvSessionModule(),
 				new ContainerModule<SimpleUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule(SESSION_ID),

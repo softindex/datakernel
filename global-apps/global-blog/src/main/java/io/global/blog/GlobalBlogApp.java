@@ -90,7 +90,7 @@ public final class GlobalBlogApp extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return combine(
+        return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
@@ -102,7 +102,7 @@ public final class GlobalBlogApp extends Launcher {
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new MustacheModule(),
-				KvSessionModule.create(),
+                new KvSessionModule(),
 				new KvSyncModule(),
 				new OTSyncModule(),
 				new FsSyncModule()

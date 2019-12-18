@@ -116,7 +116,7 @@ public final class GlobalVlogApp extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return combine(
+        return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
@@ -124,7 +124,7 @@ public final class GlobalVlogApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalVlogModule(DEFAULT_VLOG_FS_DIR, DEFAULT_VLOG_REPO_NAMES),
 				new DebugViewerModule(),
-				KvSessionModule.create(),
+                new KvSessionModule(),
 				new ContainerModule<AppUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()

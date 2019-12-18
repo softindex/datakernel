@@ -85,7 +85,7 @@ public class GlobalPhotosApp extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return combine(
+        return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
@@ -99,7 +99,7 @@ public class GlobalPhotosApp extends Launcher {
 				new MustacheModule(),
 				new DebugViewerModule(),
 				OTGeneratorsModule.create(),
-				KvSessionModule.create(),
+                new KvSessionModule(),
 				new KvSyncModule(),
 				new OTSyncModule(),
 				new FsSyncModule()

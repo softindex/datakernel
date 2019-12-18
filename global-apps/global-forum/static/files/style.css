@@ -12,21 +12,26 @@ body {
 
   transition: color .15s ease-in-out, background-color .15s ease-in-out;
 
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
 }
 
-.like, .dislike {
+.rating {
+  width: 2.5em;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.like.active, .dislike.active {
   cursor: pointer;
 }
 
-.like:hover, .liked > .like {
+.like.active:hover, .liked > .like {
   color: red;
 }
 
-.dislike:hover, .disliked > .dislike {
+.dislike.active:hover, .disliked > .dislike {
   color: blue;
 }
 
@@ -35,7 +40,7 @@ i.fa {
 }
 
 .multiline {
-  white-space: pre-line;
+  white-space: pre-wrap;
 }
 
 @keyframes yellowfade {

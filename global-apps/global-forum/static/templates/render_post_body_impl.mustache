@@ -51,12 +51,22 @@
                 <div class="col-auto">
                     <div class="row {{#liked}} liked{{/liked}}{{#disliked}} disliked{{/disliked}}"
                          data-prefix="/{{thread.threadId}}/{{postId}}">
+                        <div class="like active"><i class="fa fa-angle-up"></i></div>
+                        <div class="rating">{{likes}}</div>
+                        <div class="dislike active"><i class="fa fa-angle-down"></i></div>
+                    </div>
+                </div>
+            {{/user}}
+            {{^user}}
+                <div class="col-auto">
+                    <div class="row">
                         <div class="like"><i class="fa fa-angle-up"></i></div>
                         <div class="rating">{{likes}}</div>
                         <div class="dislike"><i class="fa fa-angle-down"></i></div>
                     </div>
                 </div>
             {{/user}}
+
         </div>
         <!-- endregion -->
         <!-- region post content -->

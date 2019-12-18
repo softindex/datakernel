@@ -26,6 +26,7 @@ import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
+import io.global.mustache.DebugMustacheModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.map.MapOperation;
@@ -101,9 +102,9 @@ public final class GlobalForumApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
 				new GlobalNodesModule().overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new MustacheModule(),
+				new DebugMustacheModule(),
 				new DebugViewerModule(),
-				KvSessionModule.create(),
+				new KvSessionModule(),
 				new KvSyncModule(),
 				new OTSyncModule(),
 				new FsSyncModule()

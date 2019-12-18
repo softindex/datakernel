@@ -12,13 +12,6 @@ import io.global.ot.service.ContainerScope;
 import io.global.ot.session.UserId;
 
 public final class KvSessionModule extends AbstractModule {
-	private KvSessionModule(){
-	}
-
-	public static KvSessionModule create(){
-		return new KvSessionModule();
-	}
-
 	@Provides
 	@ContainerScope
 	KvSessionStore<UserId> kvSessionStore(Eventloop eventloop, KvClient<String, UserId> client, TypedRepoNames names) {
