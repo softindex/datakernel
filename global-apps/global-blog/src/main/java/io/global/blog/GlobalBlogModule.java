@@ -63,7 +63,7 @@ public final class GlobalBlogModule extends AbstractModule {
 		bind(CodecFactory.class).toInstance(Utils.REGISTRY);
 		bind(TypedRepoNames.class).toInstance(blogRepoNames);
 
-		install(new DebugViewerModule<BlogUserContainer>() {});
+		install(new DebugViewerModule());
 		bind(BlogUserContainer.class).in(ContainerScope.class);
 		bind(BlogDao.class).to(BlogDaoImpl.class).in(ContainerScope.class);
 	}

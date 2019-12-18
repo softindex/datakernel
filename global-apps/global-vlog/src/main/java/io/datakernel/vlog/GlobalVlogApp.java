@@ -123,7 +123,7 @@ public final class GlobalVlogApp extends Launcher {
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalVlogModule(DEFAULT_VLOG_FS_DIR, DEFAULT_VLOG_REPO_NAMES),
-				new DebugViewerModule<AppUserContainer>() {},
+				new DebugViewerModule(),
 				KvSessionModule.create(),
 				new ContainerModule<AppUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),

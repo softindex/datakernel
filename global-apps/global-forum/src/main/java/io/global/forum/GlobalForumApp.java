@@ -102,7 +102,7 @@ public final class GlobalForumApp extends Launcher {
 				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
 				new GlobalNodesModule().overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new MustacheModule(),
-				new DebugViewerModule<ForumUserContainer>() {},
+				new DebugViewerModule(),
 				KvSessionModule.create(),
 				new KvSyncModule(),
 				new OTSyncModule(),

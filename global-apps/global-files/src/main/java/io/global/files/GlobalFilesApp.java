@@ -152,7 +152,7 @@ public final class GlobalFilesApp extends Launcher {
 				new ContainerModule<SimpleUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule(SESSION_ID),
-				new DebugViewerModule<SimpleUserContainer>(FS, KV) {},
+				new DebugViewerModule(FS, KV),
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new KvSyncModule(),

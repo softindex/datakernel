@@ -90,7 +90,7 @@ public final class GlobalChatApp extends Launcher {
 				new ContainerModule<SharedUserContainer<ChatRoomOperation>>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new SharedRepoModule<ChatRoomOperation>() {},
-				new DebugViewerModule<SharedUserContainer<ChatRoomOperation>>(asList("contacts", "profile"), KV) {},
+				new DebugViewerModule(asList("contacts", "profile"), KV),
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new KvSyncModule(),

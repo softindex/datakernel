@@ -90,7 +90,7 @@ public final class GlobalDocumentsApp extends Launcher {
 				new ContainerModule<SharedUserContainer<EditOperation>>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new SharedRepoModule<EditOperation>() {},
-				new DebugViewerModule<SharedUserContainer<EditOperation>>(asList("contacts", "profile"), KV) {},
+				new DebugViewerModule(asList("contacts", "profile"), KV),
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new KvSyncModule(),

@@ -97,7 +97,7 @@ public class GlobalPhotosApp extends Launcher {
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new MustacheModule(),
-				new DebugViewerModule<GlobalPhotosContainer>() {},
+				new DebugViewerModule(),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
 				new KvSyncModule(),

@@ -60,7 +60,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptySet;
 import static java.util.stream.Collectors.toList;
 
-public abstract class DebugViewerModule<C extends UserContainer> extends AbstractModule {
+public final class DebugViewerModule extends AbstractModule {
 	private static final @NotNull HttpHeaderValue CONTENT_TYPE_GRAPHVIZ =
 			ofContentType(ContentType.of(MediaType.of("text/vnd.graphviz"), UTF_8));
 
@@ -96,14 +96,14 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		OT, FS, KV
 	}
 
-	private AsyncServlet createHtmlServingServlet(Executor executor, String type, Class<C> containerRawType) {
+	private AsyncServlet createHtmlServingServlet(Executor executor, String type) {
 		StaticLoader loader = StaticLoader.ofClassPath(executor, "");
 		return request ->
 				loader.load("debug.html")
 						.map(buf -> HttpResponse.ok200()
 								.withHeader(CONTENT_TYPE, ofContentType(HTML_UTF_8))
 								.withBody(ByteBuf.wrapForReading(buf.asString(UTF_8)
-										.replace("{pk}", request.getAttachment(containerRawType).getKeys().getPubKey().asString())
+										.replace("{pk}", request.getAttachment(UserContainer.class).getKeys().getPubKey().asString())
 										.replace("{type}", type)
 										.replace("{enabled_types}", "['" + String.join("', '", viewStrs) + "']")
 										.getBytes(UTF_8))));
@@ -153,14 +153,13 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		AsyncServlet otViewer(Executor executor,
 				GlobalOTNode otNode, OTDriver otDriver,
 				TypedRepoNames repoNames, CodecFactory codecs,
-				ContainerManager<C> containerManager, Key<C> reifiedC
+				ContainerManager<?> containerManager
 		) {
-			Class<C> rawType = reifiedC.getRawType();
 			String prefix = repoNames.getPrefix();
 			return RoutingServlet.create()
-					.map(GET, "/*", createHtmlServingServlet(executor, "ot", rawType))
+					.map(GET, "/*", createHtmlServingServlet(executor, "ot"))
 					.map(GET, "/api/*", request -> {
-						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(UserContainer.class).getKeys().getPubKey();
 						String path = request.getRelativePath();
 
 						return otNode.list(pk)
@@ -235,14 +234,13 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 
 		@Provides
 		@Named("fs")
-		AsyncServlet fsViewer(GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames, Key<C> reifiedC) {
-			Class<C> rawType = reifiedC.getRawType();
+		AsyncServlet fsViewer(GlobalFsNode fsNode, GlobalFsDriver driver, Executor executor, TypedRepoNames repoNames) {
 			String repoNamesPrefix = repoNames.getPrefix();
 			String prefix = repoNamesPrefix.equals("") ? repoNamesPrefix : ("ApplicationData/" + repoNamesPrefix);
 			return RoutingServlet.create()
-					.map(GET, "/", createHtmlServingServlet(executor, "fs", rawType))
+					.map(GET, "/", createHtmlServingServlet(executor, "fs"))
 					.map(GET, "/*", request -> {
-						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(UserContainer.class).getKeys().getPubKey();
 						String path = UrlParser.urlDecode(request.getRelativePath());
 						if (path == null) {
 							return Promise.ofException(FILE_NOT_FOUND);
@@ -263,7 +261,7 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 								});
 					})
 					.map(GET, "/api", request -> {
-						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(UserContainer.class).getKeys().getPubKey();
 						return fsNode.listEntities(pk, "**")
 								.map(list -> HttpResponse.ok200()
 										.withJson(FILE_LIST_CODEC, list.stream()
@@ -282,13 +280,12 @@ public abstract class DebugViewerModule<C extends UserContainer> extends Abstrac
 		@SuppressWarnings("unchecked")
 		@Provides
 		@Named("kv")
-		AsyncServlet kvViewer(GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<C> containerManager, Key<C> reifiedC) {
-			Class<C> rawType = reifiedC.getRawType();
+		AsyncServlet kvViewer(GlobalKvNode kvNode, Executor executor, TypedRepoNames repoNames, ContainerManager<?> containerManager) {
 			String prefix = repoNames.getPrefix();
 			return RoutingServlet.create()
-					.map(GET, "/*", createHtmlServingServlet(executor, "kv", rawType))
+					.map(GET, "/*", createHtmlServingServlet(executor, "kv"))
 					.map(GET, "/api/*", request -> {
-						PubKey pk = request.getAttachment(rawType).getKeys().getPubKey();
+						PubKey pk = request.getAttachment(UserContainer.class).getKeys().getPubKey();
 						String path = request.getRelativePath();
 						if (path.isEmpty()) {
 							return kvNode.list(pk)

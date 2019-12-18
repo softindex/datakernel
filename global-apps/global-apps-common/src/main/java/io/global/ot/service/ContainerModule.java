@@ -36,7 +36,9 @@ public abstract class ContainerModule<C extends UserContainer> extends AbstractM
 	}
 
 	@Provides
-	ContainerManager<C> containerManager(Injector injector, Eventloop eventloop, KeyExchanger keyExchanger, Config config, Key<C> containerKey) {
+	ContainerManager<?> containerManager(Injector injector, Eventloop eventloop, KeyExchanger keyExchanger, Config config) {
+		Key<C> containerKey = new Key<C>(){};
+
 		PrivKey privKey = config.get(ofPrivKey(), "privateKey", null);
 		if (privKey == null) {
 			logger.info("No private key specified, running in multi container mode");
@@ -49,7 +51,7 @@ public abstract class ContainerModule<C extends UserContainer> extends AbstractM
 	}
 
 	@Provides
-	ContainerServlet serviceEnsuringServlet(ContainerManager<C> containerManager, AsyncServlet servlet) {
+	ContainerServlet serviceEnsuringServlet(ContainerManager<?> containerManager, AsyncServlet servlet) {
 		return ContainerServlet.create(containerManager, servlet);
 	}
 }

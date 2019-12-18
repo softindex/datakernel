@@ -85,7 +85,7 @@ public final class GlobalNotesApp extends Launcher {
 				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
-				new DebugViewerModule<GlobalNotesContainer>(OT, KV) {},
+				new DebugViewerModule(OT, KV),
 				new ContainerModule<GlobalNotesContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				override(new GlobalNodesModule(),

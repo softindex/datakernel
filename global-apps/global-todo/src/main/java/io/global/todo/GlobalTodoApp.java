@@ -83,7 +83,7 @@ public final class GlobalTodoApp extends Launcher {
 				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
 				KvSessionModule.create(),
-				new DebugViewerModule<GlobalTodoContainer>(OT, KV) {},
+				new DebugViewerModule(OT, KV),
 				new ContainerModule<GlobalTodoContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				override(new GlobalNodesModule(),
