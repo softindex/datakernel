@@ -79,7 +79,11 @@ public final class GlobalFsDriverServlet {
 				})
 				.map("/getMetadata/*", request -> {
 					PubKey space = request.getAttachment(PubKey.class);
-					return driver.getMetadata(space, request.getRelativePath())
+					String name = UrlParser.urlDecode(request.getRelativePath());
+					if (name == null) {
+						return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+					}
+					return driver.getMetadata(space, name)
 							.map(list -> HttpResponse.ok200()
 									.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
 									.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
@@ -89,7 +93,10 @@ public final class GlobalFsDriverServlet {
 					try {
 						KeyPair keys = request.getAttachment(KeyPair.class);
 						assert keys != null : "Key pair should be attached to request";
-						String name = request.getRelativePath();
+						String name = UrlParser.urlDecode(request.getRelativePath());
+						if (name == null) {
+							return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+						}
 						return driver.delete(keys, name, parseRevision(request))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {

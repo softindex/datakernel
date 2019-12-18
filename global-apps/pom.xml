@@ -26,6 +26,7 @@
     <module>global-forum</module>
     <module>global-vlog</module>
     <module>global-photos</module>
+    <module>global-cdn</module>
   </modules>
 
   <dependencies>
