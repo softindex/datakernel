@@ -9,7 +9,6 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -17,8 +16,10 @@ import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.common.KeyPair;
 import io.global.debug.DebugViewerModule;
 import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
@@ -107,6 +108,12 @@ public final class GlobalFilesApp extends Launcher {
 	}
 
 	@Provides
+	@ContainerScope
+	FsClient fsClient(KeyPair keys, GlobalFsDriver driver){
+		return driver.adapt(keys);
+	}
+
+	@Provides
 	StaticServlet staticServlet(StaticLoader resourceLoader) {
 		return StaticServlet.create(resourceLoader)
 				.withMapping(request -> request.getPath().substring(1))
@@ -136,20 +143,16 @@ public final class GlobalFilesApp extends Launcher {
 
 	@Override
 	protected Module getModule() {
-        return combine(
+		return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new AbstractModule() {
-					@Override
-					protected void configure() {
-						bind(SimpleUserContainer.class).in(ContainerScope.class);
-					}
-				},
-                new KvSessionModule(),
-				new ContainerModule<SimpleUserContainer>() {}
+				Module.create()
+						.bind(FsUserContainer.class).in(ContainerScope.class),
+				new KvSessionModule(),
+				new ContainerModule<FsUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule(SESSION_ID),
 				new DebugViewerModule(FS, KV),

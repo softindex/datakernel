@@ -9,7 +9,6 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -17,10 +16,10 @@ import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.common.KeyPair;
-import io.global.common.PubKey;
 import io.global.debug.DebugViewerModule;
 import io.global.fs.http.RemoteFsServlet;
 import io.global.fs.local.GlobalFsDriver;
@@ -44,7 +43,6 @@ import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
 import static io.global.Utils.cachedContent;
 import static io.global.debug.DebugViewerModule.DebugView.FS;
@@ -77,7 +75,7 @@ public final class GlobalCdnApp extends Launcher {
 	) {
 		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(fsServlet))
-				.map("/fs/download/*", downloadServlet.then(onRequest(request -> request.attach(request.getAttachment(UserContainer.class).getKeys().getPubKey()))))
+				.map("/fs/download/*", downloadServlet)
 				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
@@ -88,19 +86,24 @@ public final class GlobalCdnApp extends Launcher {
 	}
 
 	@Provides
+	@ContainerScope
+	FsClient fsClient(KeyPair keys, GlobalFsDriver driver) {
+		return driver.adapt(keys).subfolder(DEFAULT_CDN_FS_DIR);
+	}
+
+	@Provides
 	@Named("FS")
-	AsyncServlet fsServlet(GlobalFsDriver driver) {
-		return request -> RemoteFsServlet.create(driver.adapt(request.getAttachment(KeyPair.class))
-				.subfolder(DEFAULT_CDN_FS_DIR))
+	AsyncServlet fsServlet(GlobalFsDriver driver, ContainerManager<?> containerManager) {
+		return request -> RemoteFsServlet.create(request.getAttachment(FsUserContainer.class).getFsClient())
 				.serve(request);
 	}
 
 	@Provides
 	@Named("Download")
-	AsyncServlet downloadServletFactory(GlobalFsDriver driver) {
-		//noinspection ConstantConditions - /download is hardcoded in RemoteFsServlet
-		return request -> RemoteFsServlet.create(driver.adapt(request.getAttachment(PubKey.class))
-				.subfolder(DEFAULT_CDN_FS_DIR)).getSubtree("/download")
+	AsyncServlet downloadServlet(GlobalFsDriver driver, ContainerManager<?> containerManager) {
+		//noinspection ConstantConditions - /download is hardcoded inside RemoteFsServlet
+		return request -> RemoteFsServlet.create(request.getAttachment(FsUserContainer.class).getFsClient())
+				.getSubtree("/download")
 				.serve(request);
 	}
 
@@ -156,14 +159,11 @@ public final class GlobalCdnApp extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new AbstractModule() {
-					@Override
-					protected void configure() {
-						bind(SimpleUserContainer.class).in(ContainerScope.class);
-					}
-				},
+				Module.create()
+						.bind(FsUserContainer.class).in(ContainerScope.class)
+						.bind(Key.of(String.class).named("app-dir")).toInstance(DEFAULT_CDN_FS_DIR),
 				new KvSessionModule(),
-				new ContainerModule<SimpleUserContainer>() {}
+				new ContainerModule<FsUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new AuthModule(SESSION_ID),
 				new DebugViewerModule(FS, KV),

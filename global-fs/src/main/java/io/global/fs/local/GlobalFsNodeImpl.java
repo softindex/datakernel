@@ -187,6 +187,18 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
+	public Promise<Boolean> fetch(PubKey space, String glob) {
+		GlobalFsNamespace ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
+				.then(masters -> {
+					if (masters.isEmpty()) {
+						return Promise.of(false);
+					}
+					return Promises.firstSuccessful(masters.stream()
+							.map(master -> AsyncSupplier.cast(() -> ns.fetch(master, glob))));
+				});
+	}
+
 	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
 
 	public Promise<Void> catchUp() {
