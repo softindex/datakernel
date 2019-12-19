@@ -15,7 +15,7 @@ RUN mvn dependency:resolve && rm pom.xml
 ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/${BRANCH} last-commit.json
 RUN git clone --depth 1 -b ${BRANCH} https://github.com/softindex/datakernel \
  && cd datakernel \
- && mvn install -P global -DskipTests \
+ && mvn install -P global -P vlog -DskipTests \
  && cd ..
 
 # app-server layer
