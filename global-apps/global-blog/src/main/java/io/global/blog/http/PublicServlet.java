@@ -219,7 +219,9 @@ public final class PublicServlet {
 									.then($ -> {
 										String deleteAttachments = paramsMap.get("deleteAttachments");
 										String content = paramsMap.get("content");
-										Set<String> deleteAttachmentsSet = Stream.of(deleteAttachments.split(",")).collect(Collectors.toSet());
+										Set<String> deleteAttachmentsSet = deleteAttachments.isEmpty() ?
+												emptySet() :
+												Stream.of(deleteAttachments.split(",")).collect(Collectors.toSet());
 										return validate(content, 65256, "Content", true)
 												.then($1 -> threadDao.updatePost("root", content, attachmentMap, deleteAttachmentsSet)
 														.then($2 -> threadDao.deleteAttachments("root", deleteAttachmentsSet))
