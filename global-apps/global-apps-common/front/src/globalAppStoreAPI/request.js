@@ -4,7 +4,7 @@ export async function request(resource, init) {
   if (!response.ok) {
     let responseJson;
     try {
-      responseJson = await resource.json();
+      responseJson = await response.json();
     } catch (err) {
       throw new Error(response.statusText);
     }

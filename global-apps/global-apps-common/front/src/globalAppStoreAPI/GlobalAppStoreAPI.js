@@ -32,18 +32,32 @@ export class GlobalAppStoreAPI {
     });
   }
 
+  async signupByGoogle(newUser) {
+    await this._request(url.resolve(this._url, '/api/users/register/google'), {
+      method: 'POST',
+      body: JSON.stringify({
+        username: newUser.username,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        accessToken: newUser.accessToken
+      })
+    });
+  }
+
   async logout() {
     await this._request(url.resolve(this._url, '/api/auth/logout'), {
       method: 'POST'
     });
   }
 
-  async sendGoogleProfileCode(tokenCode) {
-    await this._request(url.resolve(this._url, '/api/auth/googleTokenLogin'), {
+  sendGoogleProfileCode(tokenCode) {
+    return this._request(url.resolve(this._url, '/api/auth/googleTokenLogin'), {
       method: 'POST',
       body: "code=" + tokenCode,
       headers: { 'Content-type': 'application/x-www-form-urlencoded' }
     })
+      .then(response => response && response.json());
   }
 
   getApplications() {
