@@ -5,10 +5,12 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
+import io.global.api.AppDir;
 import io.global.comm.container.CommState;
 import io.global.common.KeyPair;
 import io.global.forum.dao.ForumDao;
 import io.global.forum.ot.ForumMetadata;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.StateManagerWithMerger;
 import io.global.ot.api.CommitId;
 import io.global.ot.service.UserContainer;
@@ -36,6 +38,13 @@ public final class ForumUserContainer implements UserContainer {
 	@Inject
 	private KeyPair keys;
 
+	@Inject
+	@AppDir
+	private String appDir;
+
+	@Inject
+	private GlobalFsNodeImpl fsNode;
+
 	@Override
 	@NotNull
 	public Eventloop getEventloop() {
@@ -47,6 +56,7 @@ public final class ForumUserContainer implements UserContainer {
 	public Promise<?> start() {
 		return comm.start()
 				.then($ -> metadataStateManagerWithMerger.start())
+				.whenResult($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**"))
 				.whenComplete(toLogger(logger, "start"));
 	}
 

@@ -65,7 +65,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
 			DiscoveryService discoveryService,
-			@Nullable CommitStorage commitStorage,
+			CommitStorage commitStorage,
 			Function<RawServerId, GlobalOTNode> nodeFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.eventloop = checkNotNull(eventloop);

@@ -20,6 +20,7 @@ import io.datakernel.vlog.handler.ProgressListener;
 import io.datakernel.vlog.handler.VideoMultipartHandler;
 import io.datakernel.vlog.ot.VlogMetadata;
 import io.datakernel.vlog.servlets.PublicServlet;
+import io.global.api.AppDir;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.comm.container.CommModule;
@@ -44,6 +45,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.vlog.GlobalVlogApp.DEFAULT_VLOG_FS_DIR;
 import static io.datakernel.vlog.util.HttpUtil.renderErrors;
 import static io.datakernel.vlog.util.Utils.REGISTRY;
 import static io.global.debug.ObjectDisplayRegistryUtils.ts;
@@ -54,7 +56,6 @@ public class GlobalVlogModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 	private final TypedRepoNames repoNames;
-	private final String fsDir;
 
 	@Override
 	protected void configure() {
@@ -65,10 +66,10 @@ public class GlobalVlogModule extends AbstractModule {
 
 		bind(AppUserContainer.class).in(ContainerScope.class);
 		bind(AppDao.class).to(AppDaoImpl.class).in(ContainerScope.class);
+		bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_VLOG_FS_DIR);
 	}
 
-	public GlobalVlogModule(String fsDir, TypedRepoNames repoNames) {
-		this.fsDir = fsDir;
+	public GlobalVlogModule(TypedRepoNames repoNames) {
 		this.repoNames = repoNames;
 	}
 
@@ -80,8 +81,8 @@ public class GlobalVlogModule extends AbstractModule {
 
 	@Provides
 	@ContainerScope
-	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
-		return fsDriver.adapt(keyPair).subfolder(fsDir);
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, @AppDir String appDir) {
+		return fsDriver.adapt(keyPair).subfolder(appDir);
 	}
 
 	@Provides

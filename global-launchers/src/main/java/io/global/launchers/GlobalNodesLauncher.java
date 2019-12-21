@@ -67,9 +67,14 @@ public class GlobalNodesLauncher extends Launcher {
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new GlobalNodesModule(),
-				new KvSyncModule(),
-				new FsSyncModule(),
-				new OTSyncModule());
+				KvSyncModule.create()
+						.withCatchUp()
+						.withPush(),
+				OTSyncModule.create(),
+				FsSyncModule.create()
+						.withPush()
+						.withCatchUp()
+		);
 	}
 
 	@Override

@@ -21,7 +21,7 @@ public interface MainDao {
 
 	Promise<Album> getAlbum(String id);
 
-	Promise<Void> crateAlbum(String aid, String title, String description);
+	Promise<Void> createAlbum(String aid, String title, String description);
 
 	Promise<Void> updateAlbum(String aid, @Nullable String title, @Nullable String description);
 

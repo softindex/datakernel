@@ -3,6 +3,8 @@ package io.global.photos.container;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
+import io.global.api.AppDir;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.StateManagerWithMerger;
 import io.global.ot.api.CommitId;
 import io.global.ot.service.AbstractUserContainer;
@@ -26,6 +28,13 @@ public final class GlobalPhotosContainer extends AbstractUserContainer {
 	private MainDao mainDao;
 
 	@Inject
+	@AppDir
+	private String appDir;
+
+	@Inject
+	private GlobalFsNodeImpl fsNode;
+
+	@Inject
 	public GlobalPhotosContainer(MainDaoImpl mainDao) {
 		mainDao.setContainer(this);
 		this.mainDao = mainDao;
@@ -37,9 +46,10 @@ public final class GlobalPhotosContainer extends AbstractUserContainer {
 				.then($ -> {
 					AlbumDao albumDao = mainDao.getAlbumDao(ROOT_ALBUM);
 					return albumDao == null ?
-							mainDao.crateAlbum(ROOT_ALBUM, ROOT_ALBUM, "") :
+							mainDao.createAlbum(ROOT_ALBUM, ROOT_ALBUM, "") :
 							Promise.complete();
 				})
+				.whenResult($ -> fsNode.fetch(getKeys().getPubKey(), appDir + "/**"))
 				.whenComplete(toLogger(logger, "doStart"));
 	}
 

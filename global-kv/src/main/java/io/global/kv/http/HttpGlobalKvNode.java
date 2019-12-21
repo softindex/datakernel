@@ -140,6 +140,6 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 
 	@Override
 	public String toString() {
-		return "HttpGlobalKvNode{url='" + url + "'}";
+		return "HttpGlobalKvNode{" + url + "}";
 	}
 }

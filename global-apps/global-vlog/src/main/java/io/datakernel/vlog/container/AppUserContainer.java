@@ -9,8 +9,10 @@ import io.datakernel.vlog.dao.AppDao;
 import io.datakernel.vlog.handler.ProgressListener;
 import io.datakernel.vlog.handler.VideoMultipartHandler;
 import io.datakernel.vlog.ot.VlogMetadata;
+import io.global.api.AppDir;
 import io.global.comm.container.CommState;
 import io.global.common.KeyPair;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.api.CommitId;
 import io.global.ot.service.UserContainer;
 import io.global.ot.session.UserId;
@@ -33,11 +35,13 @@ public final class AppUserContainer implements UserContainer {
 	private final AppDao appDao;
 	private VideoMultipartHandler videoMultipartHandler;
 	private final KeyPair keys;
+	private final GlobalFsNodeImpl fsNode;
+	private final String appDir;
 
 	@Inject
 	public AppUserContainer(OTStateManager<CommitId, ChangeValue<VlogMetadata>> metadataStateManager, Eventloop eventloop,
 							KeyPair keys, CommState comm, AppDao appDao, Map<String, ProgressListener> progressListenerMap,
-							VideoMultipartHandler videoMultipartHandler) {
+							VideoMultipartHandler videoMultipartHandler, GlobalFsNodeImpl fsNode, @AppDir String appDir) {
 		this.metadataStateManager = metadataStateManager;
 		this.progressListenerMap = progressListenerMap;
 		this.eventloop = eventloop;
@@ -45,6 +49,8 @@ public final class AppUserContainer implements UserContainer {
 		this.comm = comm;
 		this.appDao = appDao;
 		this.videoMultipartHandler = videoMultipartHandler;
+		this.fsNode = fsNode;
+		this.appDir = appDir;
 	}
 
 	@Override
@@ -58,6 +64,7 @@ public final class AppUserContainer implements UserContainer {
 	public Promise<?> start() {
 		return comm.start()
 				.then($ -> metadataStateManager.start())
+				.whenResult($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**"))
 				.whenComplete(toLogger(logger, "start"));
 	}
 

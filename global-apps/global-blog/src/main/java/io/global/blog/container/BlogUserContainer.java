@@ -4,10 +4,12 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
+import io.global.api.AppDir;
 import io.global.blog.dao.BlogDao;
 import io.global.blog.ot.BlogMetadata;
 import io.global.comm.container.CommState;
 import io.global.common.KeyPair;
+import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.StateManagerWithMerger;
 import io.global.ot.service.UserContainer;
 import io.global.ot.session.UserId;
@@ -28,6 +30,13 @@ public final class BlogUserContainer implements UserContainer {
 	@Inject private CommState comm;
 	@Inject private KeyPair keys;
 
+	@Inject
+	@AppDir
+	private String appDir;
+
+	@Inject
+	private GlobalFsNodeImpl fsNode;
+
 	@Override
 	@NotNull
 	public Eventloop getEventloop() {
@@ -39,6 +48,7 @@ public final class BlogUserContainer implements UserContainer {
 	public Promise<?> start() {
 		return comm.start()
 				.then($ -> metadataStateManagerWithMerger.start())
+				.whenResult($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**"))
 				.whenComplete(toLogger(logger, "start"));
 	}
 

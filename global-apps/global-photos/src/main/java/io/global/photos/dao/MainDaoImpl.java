@@ -74,7 +74,7 @@ public class MainDaoImpl implements MainDao {
 	}
 
 	@Override
-	public Promise<Void> crateAlbum(String aid, @Nullable String title, @Nullable String description) {
+	public Promise<Void> createAlbum(String aid, @Nullable String title, @Nullable String description) {
 		return albumExist(aid)
 				.then(res -> {
 					if (res) {

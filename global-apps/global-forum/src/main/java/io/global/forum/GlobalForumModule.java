@@ -13,6 +13,7 @@ import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.ot.OTState;
 import io.datakernel.remotefs.FsClient;
+import io.global.api.AppDir;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.comm.container.CommModule;
@@ -41,6 +42,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.global.debug.ObjectDisplayRegistryUtils.*;
+import static io.global.forum.GlobalForumApp.DEFAULT_FORUM_FS_DIR;
 import static io.global.forum.util.Utils.REGISTRY;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.Initializers.sslServerInitializer;
@@ -49,11 +51,9 @@ public final class GlobalForumModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
-	private final String forumFsDir;
 	private final TypedRepoNames forumRepoNames;
 
-	public GlobalForumModule(String forumFsDir, TypedRepoNames forumRepoNames) {
-		this.forumFsDir = forumFsDir;
+	public GlobalForumModule(TypedRepoNames forumRepoNames) {
 		this.forumRepoNames = forumRepoNames;
 	}
 
@@ -66,12 +66,13 @@ public final class GlobalForumModule extends AbstractModule {
 
 		bind(ForumUserContainer.class).in(ContainerScope.class);
 		bind(ForumDao.class).to(ForumDaoImpl.class).in(ContainerScope.class);
+		bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_FORUM_FS_DIR);
 	}
 
 	@Provides
 	@ContainerScope
-	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
-		return fsDriver.adapt(keyPair).subfolder(forumFsDir);
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, @AppDir String appDir) {
+		return fsDriver.adapt(keyPair).subfolder(appDir);
 	}
 
 	@Provides

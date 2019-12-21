@@ -216,7 +216,7 @@ public final class PublicServlet {
 										validate(title, 120, "Title", true)
 												.then($ -> validate(description, 1024, "Description", false))
 												.then($ -> mainDao.generateAlbumId())
-												.then(aid -> mainDao.crateAlbum(aid, title, description)
+												.then(aid -> mainDao.createAlbum(aid, title, description)
 														.map($ -> aid))
 												.then(aid -> mainDao.movePhotos(ROOT_ALBUM, aid, photoIds))
 												.map($ -> redirect302("/albums/"));

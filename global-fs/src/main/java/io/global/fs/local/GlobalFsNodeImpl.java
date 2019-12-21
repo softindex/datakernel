@@ -91,9 +91,7 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	@Override
 	protected GlobalFsNamespace createNamespace(PubKey space) {
-		GlobalFsNamespace ns = new GlobalFsNamespace(this, space);
-		ns.fetch();
-		return ns;
+		return new GlobalFsNamespace(this, space);
 	}
 
 	public Function<PubKey, FsClient> getStorageFactory() {
@@ -187,15 +185,18 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
+	public Promise<Boolean> fetch(String glob) {
+		return tolerantCollectBoolean(namespaces.values(), ns -> fetch(ns.getSpace(), glob));
+	}
+
 	public Promise<Boolean> fetch(PubKey space, String glob) {
 		GlobalFsNamespace ns = ensureNamespace(space);
 		return ns.ensureMasterNodes()
 				.then(masters -> {
-					if (masters.isEmpty()) {
+					if (masters.isEmpty() && isMasterFor(space)) {
 						return Promise.of(false);
 					}
-					return Promises.firstSuccessful(masters.stream()
-							.map(master -> AsyncSupplier.cast(() -> ns.fetch(master, glob))));
+					return tolerantCollectBoolean(masters, master -> ns.fetch(master, glob));
 				});
 	}
 

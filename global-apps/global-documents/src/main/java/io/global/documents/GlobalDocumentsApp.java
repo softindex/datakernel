@@ -17,7 +17,6 @@ import io.global.debug.DebugViewerModule;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.KvSyncModule;
-import io.global.launchers.sync.OTSyncModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.OTGeneratorsModule;
 import io.global.ot.SharedRepoModule;
@@ -60,7 +59,6 @@ public final class GlobalDocumentsApp extends Launcher {
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
@@ -77,7 +75,7 @@ public final class GlobalDocumentsApp extends Launcher {
 
 	@Override
 	public Module getModule() {
-        return Modules.combine(
+		return Modules.combine(
 				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
@@ -86,15 +84,16 @@ public final class GlobalDocumentsApp extends Launcher {
 				new GlobalDocumentsModule(),
 				new AuthModule(SESSION_ID),
 				OTGeneratorsModule.create(),
-                new KvSessionModule(),
+				new KvSessionModule(),
 				new ContainerModule<SharedUserContainer<EditOperation>>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new SharedRepoModule<EditOperation>() {},
 				new DebugViewerModule(asList("contacts", "profile"), KV),
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new KvSyncModule(),
-				new OTSyncModule()
+				KvSyncModule.create()
+						.withCatchUp()
+						.withPush()
 		);
 	}
 

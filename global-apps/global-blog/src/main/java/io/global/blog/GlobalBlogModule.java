@@ -12,6 +12,7 @@ import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.ot.OTState;
 import io.datakernel.remotefs.FsClient;
+import io.global.api.AppDir;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.blog.container.BlogUserContainer;
@@ -43,6 +44,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.global.blog.GlobalBlogApp.DEFAULT_BLOG_FS_DIR;
 import static io.global.blog.util.Utils.renderErrors;
 import static io.global.debug.ObjectDisplayRegistryUtils.ts;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
@@ -52,7 +54,6 @@ public final class GlobalBlogModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
-	private final String blogFsDir;
 	private final TypedRepoNames blogRepoNames;
 
 	@Override
@@ -66,17 +67,17 @@ public final class GlobalBlogModule extends AbstractModule {
 		install(new DebugViewerModule());
 		bind(BlogUserContainer.class).in(ContainerScope.class);
 		bind(BlogDao.class).to(BlogDaoImpl.class).in(ContainerScope.class);
+		bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_BLOG_FS_DIR);
 	}
 
-	public GlobalBlogModule(String blogFsDir, TypedRepoNames blogRepoNames) {
-		this.blogFsDir = blogFsDir;
+	public GlobalBlogModule(TypedRepoNames blogRepoNames) {
 		this.blogRepoNames = blogRepoNames;
 	}
 
 	@Provides
 	@ContainerScope
-	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver) {
-		return fsDriver.adapt(keyPair).subfolder(blogFsDir);
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, @AppDir String appDir) {
+		return fsDriver.adapt(keyPair).subfolder(appDir);
 	}
 
 	@Provides

@@ -25,9 +25,7 @@ import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
-import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.DebugMustacheModule;
-import io.global.mustache.MustacheModule;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerModule;
@@ -82,9 +80,8 @@ public final class GlobalForumApp extends Launcher {
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.fetch.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				// .with("appStoreUrl", "http://127.0.0.1:8088")
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
@@ -100,14 +97,17 @@ public final class GlobalForumApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				new ContainerModule<ForumUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
-				new GlobalForumModule(DEFAULT_FORUM_FS_DIR, DEFAULT_FORUM_REPO_NAMES),
+				new GlobalForumModule(DEFAULT_FORUM_REPO_NAMES),
 				new GlobalNodesModule().overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new DebugMustacheModule(),
 				new DebugViewerModule(),
 				new KvSessionModule(),
-				new KvSyncModule(),
-				new OTSyncModule(),
-				new FsSyncModule()
+				KvSyncModule.create()
+						.withPush()
+						.withCatchUp(),
+				FsSyncModule.create()
+						.withPush()
+						.withFetch(DEFAULT_FORUM_FS_DIR + "/**")
 		);
 	}
 

@@ -89,6 +89,6 @@ public final class PubKey {
 
 	@Override
 	public String toString() {
-		return "PubKey@" + Integer.toHexString(hashCode());
+		return "PubKey@" + ecPublicKey.getQ().getXCoord().toString().substring(0, 7);
 	}
 }

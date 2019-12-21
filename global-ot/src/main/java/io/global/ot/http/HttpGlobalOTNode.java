@@ -295,4 +295,8 @@ public class HttpGlobalOTNode implements GlobalOTNode {
 		}
 	}
 
+	@Override
+	public String toString() {
+		return "HttpGlobalOTNode{" + url + '}';
+	}
 }

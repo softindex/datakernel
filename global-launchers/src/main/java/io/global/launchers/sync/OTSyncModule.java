@@ -12,6 +12,13 @@ import io.global.ot.server.GlobalOTNodeImpl;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
 
 public final class OTSyncModule extends AbstractModule {
+	private OTSyncModule() {
+	}
+
+	public static OTSyncModule create() {
+		return new OTSyncModule();
+	}
+
 	@Provides
 	@Eager
 	@Named("OT update")

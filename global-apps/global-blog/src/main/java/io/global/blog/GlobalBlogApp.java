@@ -24,7 +24,6 @@ import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
-import io.global.launchers.sync.OTSyncModule;
 import io.global.mustache.MustacheModule;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.map.MapOperation;
@@ -81,31 +80,33 @@ public final class GlobalBlogApp extends Launcher {
 				.with("appStoreUrl", "http://127.0.0.1:8088")
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.fetch.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("ot.update.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Override
 	protected Module getModule() {
-        return combine(
+		return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new GlobalBlogModule(DEFAULT_BLOG_FS_DIR, DEFAULT_BLOG_REPO_NAMES),
+				new GlobalBlogModule(DEFAULT_BLOG_REPO_NAMES),
 				new ContainerModule<BlogUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				new MustacheModule(),
-                new KvSessionModule(),
-				new KvSyncModule(),
-				new OTSyncModule(),
-				new FsSyncModule()
+				new KvSessionModule(),
+				KvSyncModule.create()
+						.withCatchUp()
+						.withPush(),
+				FsSyncModule.create()
+						.withPush()
+						.withFetch(DEFAULT_BLOG_FS_DIR + "/**")
 		);
 	}
 

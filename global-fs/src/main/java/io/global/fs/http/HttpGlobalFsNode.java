@@ -153,4 +153,9 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
 	}
+
+	@Override
+	public String toString() {
+		return "HttpGlobalFsNode{" + url + '}';
+	}
 }

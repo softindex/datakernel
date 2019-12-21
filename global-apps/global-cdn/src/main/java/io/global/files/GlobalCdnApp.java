@@ -19,6 +19,7 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.api.AppDir;
 import io.global.common.KeyPair;
 import io.global.debug.DebugViewerModule;
 import io.global.fs.http.RemoteFsServlet;
@@ -53,7 +54,7 @@ import static io.global.ot.OTUtils.REGISTRY;
 public final class GlobalCdnApp extends Launcher {
 	public static final String PROPERTIES_FILE = "global-cdn.properties";
 	public static final String DEFAULT_SERVER_ID = "Global CDN";
-	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-cdn";
+	public static final String DEFAULT_FS_STORAGE = System.getProperty("java.io.tmpdir") + '/' + "global-fs";
 	public static final String DEFAULT_STATIC_PATH = "front/build";
 	public static final String DEFAULT_LISTEN_ADDRESS = "8080";
 	private static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
@@ -145,7 +146,7 @@ public final class GlobalCdnApp extends Launcher {
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.fetch.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
@@ -161,7 +162,7 @@ public final class GlobalCdnApp extends Launcher {
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				Module.create()
 						.bind(FsUserContainer.class).in(ContainerScope.class)
-						.bind(Key.of(String.class).named("app-dir")).toInstance(DEFAULT_CDN_FS_DIR),
+						.bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_CDN_FS_DIR),
 				new KvSessionModule(),
 				new ContainerModule<FsUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
@@ -169,8 +170,12 @@ public final class GlobalCdnApp extends Launcher {
 				new DebugViewerModule(FS, KV),
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new KvSyncModule(),
-				new FsSyncModule()
+				KvSyncModule.create()
+						.withPush()
+						.withCatchUp(),
+				FsSyncModule.create()
+						.withPush()
+						.withFetch(DEFAULT_CDN_FS_DIR + "/**")
 		);
 	}
 

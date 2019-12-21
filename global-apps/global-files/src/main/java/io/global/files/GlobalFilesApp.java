@@ -19,6 +19,7 @@ import io.datakernel.launcher.OnStart;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.api.AppDir;
 import io.global.common.KeyPair;
 import io.global.debug.DebugViewerModule;
 import io.global.fs.http.GlobalFsDriverServlet;
@@ -109,7 +110,7 @@ public final class GlobalFilesApp extends Launcher {
 
 	@Provides
 	@ContainerScope
-	FsClient fsClient(KeyPair keys, GlobalFsDriver driver){
+	FsClient fsClient(KeyPair keys, GlobalFsDriver driver) {
 		return driver.adapt(keys);
 	}
 
@@ -135,7 +136,7 @@ public final class GlobalFilesApp extends Launcher {
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESS)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
-				.with("fs.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("fs.fetch.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("fs.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
@@ -150,7 +151,8 @@ public final class GlobalFilesApp extends Launcher {
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
 				Module.create()
-						.bind(FsUserContainer.class).in(ContainerScope.class),
+						.bind(FsUserContainer.class).in(ContainerScope.class)
+						.bind(Key.of(String.class).named(AppDir.class)).toInstance("."),
 				new KvSessionModule(),
 				new ContainerModule<FsUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
@@ -158,8 +160,12 @@ public final class GlobalFilesApp extends Launcher {
 				new DebugViewerModule(FS, KV),
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new KvSyncModule(),
-				new FsSyncModule()
+				KvSyncModule.create()
+						.withPush()
+						.withCatchUp(),
+				FsSyncModule.create()
+						.withPush()
+						.withCatchUp()
 		);
 	}
 

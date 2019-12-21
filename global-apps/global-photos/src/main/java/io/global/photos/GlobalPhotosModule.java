@@ -12,6 +12,7 @@ import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.ot.OTState;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.remotefs.FsClient;
+import io.global.api.AppDir;
 import io.global.appstore.AppStore;
 import io.global.appstore.HttpAppStore;
 import io.global.common.KeyPair;
@@ -53,6 +54,7 @@ import static io.datakernel.config.ConfigConverters.*;
 import static io.global.debug.ObjectDisplayRegistryUtils.*;
 import static io.global.launchers.GlobalConfigConverters.ofSimKey;
 import static io.global.launchers.Initializers.sslServerInitializer;
+import static io.global.photos.GlobalPhotosApp.DEFAULT_PHOTOS_FS_DIR;
 import static io.global.photos.util.Utils.REGISTRY;
 import static io.global.photos.util.Utils.renderErrors;
 import static org.imgscalr.Scalr.Method.SPEED;
@@ -62,18 +64,13 @@ public class GlobalPhotosModule extends AbstractModule {
 	public static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 	public static final Path DEFAULT_STATIC_PATH = Paths.get("static/files");
 
-	private final String albumFsDir;
-
 	@Override
 	protected void configure() {
 		bind(GlobalPhotosContainer.class).in(ContainerScope.class);
 		bind(MainDao.class).to(MainDaoImpl.class).in(ContainerScope.class);
 		bind(CodecFactory.class).toInstance(REGISTRY);
 		bind(new Key<OTState<AlbumOperation>>() {}).to(AlbumOtState.class).in(ContainerScope.class);
-	}
-
-	public GlobalPhotosModule(String albumFsDir) {
-		this.albumFsDir = albumFsDir;
+		bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_PHOTOS_FS_DIR);
 	}
 
 	@Provides
@@ -139,10 +136,10 @@ public class GlobalPhotosModule extends AbstractModule {
 
 	@Provides
 	@ContainerScope
-	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, SimKey simKey) {
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, SimKey simKey, @AppDir String appDir) {
 		GlobalFsAdapter adapt = fsDriver.adapt(keyPair);
 		adapt.setCurrentSimKey(simKey);
-		return adapt.subfolder(albumFsDir);
+		return adapt.subfolder(appDir);
 	}
 
 	@Provides

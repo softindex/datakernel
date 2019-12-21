@@ -46,6 +46,14 @@ public final class KeyPair {
 		return pubKey;
 	}
 
+	@Override
+	public String toString() {
+		return "KeyPair{" +
+				"privKey=" + privKey +
+				", pubKey=" + pubKey +
+				'}';
+	}
+
 	public static void main(String[] args) {
 		KeyPair keys = KeyPair.generate();
 		System.out.println(keys.getPubKey().asString());
