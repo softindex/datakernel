@@ -20,6 +20,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.parse.UnknownFormatException;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient.Inspector;
 import io.datakernel.net.AsyncTcpSocket;
@@ -174,7 +176,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
-		assert !isClosed();
+		if (isClosed()) return;
 
 		HttpResponse response = this.response;
 		//noinspection ConstantConditions
@@ -191,16 +193,38 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if (response != null && (flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED)) {
+		if (isClosed()) return;
+		flags |= BODY_RECEIVED;
+		if (response != null && (flags & BODY_SENT) != 0) {
 			onHttpMessageComplete();
 		}
 	}
 
 	@Override
 	protected void onBodySent() {
-		if (response != null && (flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED)) {
+		if (isClosed()) return;
+		flags |= BODY_SENT;
+		if (response != null && (flags & BODY_RECEIVED) != 0) {
 			onHttpMessageComplete();
 		}
+	}
+
+	@Override
+	protected void onNoContentLength() {
+		ChannelSupplier<ByteBuf> ofQueue = readQueue.hasRemaining() ? ChannelSupplier.of(readQueue.takeRemaining()) : ChannelSupplier.of();
+		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
+		ChannelSupplier.of(socket::read, socket).streamTo(buffer.getConsumer()
+				.withAcknowledgement(ack -> ack
+						.whenComplete((result, e) -> {
+							if (e == null) {
+								onBodyReceived();
+							} else {
+								closeWithError(e);
+							}
+						})));
+		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
+
+		onHeadersReceived(null, supplier);
 	}
 
 	private void onHttpMessageComplete() {
@@ -257,6 +281,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		request.recycle();
 		if (!isClosed()) {
 			try {
+				/*
+					as per RFC 7230, section 3.3.3,
+					if no Content-Length header is set, client should read body until a server closes the connection
+				 */
+				contentLength = UNSET_CONTENT_LENGTH;
 				readHttpMessage();
 			} catch (ParseException e) {
 				closeWithError(e);

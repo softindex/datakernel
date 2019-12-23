@@ -34,7 +34,10 @@ import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.DataInputStream;
 import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,8 +49,7 @@ import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.http.HttpClientConnection.INVALID_RESPONSE;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
-import static io.datakernel.test.TestUtils.assertComplete;
-import static io.datakernel.test.TestUtils.getFreePort;
+import static io.datakernel.test.TestUtils.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
@@ -172,4 +174,36 @@ public final class AsyncHttpClientTest {
 				}));
 		assertSame(READ_TIMEOUT_ERROR, e);
 	}
+
+	@Test
+	public void testClientNoContentLength() throws Exception {
+		int port = getFreePort();
+
+		ServerSocket listener = new ServerSocket(port);
+		String text = "content";
+		Thread serverThread = new Thread(() -> {
+				try (Socket socket = listener.accept()) {
+					DataInputStream in = new DataInputStream(socket.getInputStream());
+					//noinspection StatementWithEmptyBody
+					while (in.read() != CR || in.read() != LF || in.read() != CR || in.read() != LF) ;
+					ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+					socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
+				} catch (IOException ignored) {
+					throw new AssertionError();
+				}
+		});
+
+		serverThread.start();
+
+		String responseBody = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.request(HttpRequest.get("http://127.0.0.1:" + port))
+				.then(response -> response.loadBody()
+						.map(body -> body.getString(UTF_8))
+						.whenComplete(asserting(($, e) -> {
+							listener.close();
+						}))));
+
+		assertEquals(text, responseBody);
+	}
+
 }

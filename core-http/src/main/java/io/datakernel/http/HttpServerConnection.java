@@ -240,6 +240,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
+		if (isClosed()) return;
+
 		//noinspection ConstantConditions
 		request.flags |= MUST_LOAD_BODY;
 		request.body = body;
@@ -291,16 +293,25 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+		if (isClosed()) return;
+		flags |= BODY_RECEIVED;
+		if ((flags & BODY_SENT) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
 		}
 	}
 
 	@Override
 	protected void onBodySent() {
-		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+		if (isClosed()) return;
+		flags |= BODY_SENT;
+		if ((flags & BODY_RECEIVED) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
 		}
+	}
+
+	@Override
+	protected void onNoContentLength() {
+		throw new AssertionError("This method should not be called on a server");
 	}
 
 	private void onHttpMessageComplete() {
@@ -315,6 +326,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			switchPool(server.poolKeepAlive);
 			flags = 0;
 			try {
+				/*
+					as per RFC 7230, section 3.3.3,
+					if no Content-Length header is set, server can assume that a length of a message is 0
+				 */
+				contentLength = 0;
 				readHttpMessage();
 			} catch (ParseException e) {
 				closeWithError(e);
