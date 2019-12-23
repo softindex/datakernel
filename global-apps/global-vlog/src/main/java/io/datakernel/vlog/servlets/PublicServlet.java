@@ -85,13 +85,13 @@ public final class PublicServlet {
 											pagination.getSize(),
 											videoMultipartHandler.pendingView()
 									)
-									.map(list -> {
-										list.sort(VideoView::compareTo);
-										return list;
-									})
-									.then(list -> templater.render("vlogViewList",
-											map("list", list, "amountItems", threads.size()),
-											isGzipAccepted(request))));
+											.map(list -> {
+												list.sort(VideoView::compareTo);
+												return list;
+											})
+											.then(list -> templater.render("vlogViewList",
+													map("list", list, "amountItems", threads.size()),
+													isGzipAccepted(request))));
 						}
 						return Promise.of(redirect302("/?page=1&size=" + MIN_LIMIT_ITEMS_PER_PAGE));
 					}
@@ -108,7 +108,8 @@ public final class PublicServlet {
 					@RequestScope
 					@Provides
 					HttpResponse response(HttpRequest request) {
-						Map<String, ProgressListener> progressListenerMap = request.getAttachment(new TypeT<Map<String, ProgressListener>>() {}.getType());
+						Map<String, ProgressListener> progressListenerMap = request.getAttachment(new TypeT<Map<String, ProgressListener>>() {
+						}.getType());
 						if (progressListenerMap.isEmpty()) return HttpResponse.ok200();
 						return HttpResponse.ok200()
 								.withHeader(HttpHeaders.CONTENT_TYPE, "text/event-stream")
@@ -174,11 +175,16 @@ public final class PublicServlet {
 		CommDao commDao = request.getAttachment(CommDao.class);
 		UserId userId = request.getAttachment(UserId.class);
 		return videoViewFrom(commDao, tid, userId, CHILDREN_DEPTH, pending)
-				.then(videoView ->
-						videoView != null && videoView.getDeletedBy() != null && (userData == null || !userData.getRole().isPrivileged()) ?
-								Promise.ofException(HttpException.ofCode(403, "Not privileged")) :
-								templater.render("vlogView", map("videoView", videoView),
-										isGzipAccepted(request)));
+				.then(videoView -> {
+							if (videoView == null) {
+								return Promise.of(redirect302("/"));
+							}
+							return videoView.getDeletedBy() != null && (userData == null || !userData.getRole().isPrivileged()) ?
+									Promise.ofException(HttpException.ofCode(403, "Not privileged")) :
+									templater.render("vlogView", map("videoView", videoView),
+											isGzipAccepted(request));
+						}
+				);
 	}
 
 	private static AsyncServletDecorator setup(String appStoreUrl, MustacheTemplater templater) {
@@ -187,7 +193,7 @@ public final class PublicServlet {
 					AppUserContainer container = request.getAttachment(AppUserContainer.class);
 					AppDao appDao = container.getAppDao();
 					Map<String, ProgressListener> progressListenerMap = container.getProgressListenerMap();
-					request.attach(new TypeT<Map<String, ProgressListener>>(){}.getType(), progressListenerMap);
+					request.attach(new TypeT<Map<String, ProgressListener>>() {}.getType(), progressListenerMap);
 					request.attach(VideoMultipartHandler.class, container.getVideoMultipartHandler());
 					request.attach(AppDao.class, appDao);
 					request.attach(CommDao.class, appDao.getCommDao());

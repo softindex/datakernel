@@ -7,14 +7,15 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.MultipartParser;
-import io.datakernel.vlog.util.Utils;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import io.datakernel.vlog.util.Utils;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.AttachmentType;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -35,7 +36,7 @@ public final class VideoMultipartHandler {
 
 	public MultipartParser.MultipartDataHandler create(String threadId, ThreadDao threadDao, Map<String, AttachmentType> attachmentMap,
 													   List<VideoHandler> handlers, VideoPosterHandler posterHandler, CommDao commDao,
-													   Predicate<Map<String, String>> paramsValid) {
+													   Predicate<Map<String, String>> paramsValid, ExecutorService currentExecutor) {
 		HashMap<String, String> paramsMap = new HashMap<>();
 		return MultipartParser.MultipartDataHandler.fieldsToMap(paramsMap, (fieldName, fileName) -> {
 			if (fileName.isEmpty()) {
@@ -53,12 +54,13 @@ public final class VideoMultipartHandler {
 				return Promise.ofException(HttpException.ofCode(400, "Unsupported video format"));
 			}
 
-			return uploadVideo(threadId, threadDao, ORIGIN, posterHandler, attachmentMap, handlers, commDao);
+			return uploadVideo(threadId, threadDao, ORIGIN, posterHandler, attachmentMap, handlers, commDao, currentExecutor);
 		});
 	}
 
 	private Promise<ChannelConsumer<ByteBuf>> uploadVideo(String threadId, ThreadDao threadDao, String fileName, VideoPosterHandler posterHandler,
-														  Map<String, AttachmentType> attachmentMap, List<VideoHandler> handlers, CommDao commDao) {
+														  Map<String, AttachmentType> attachmentMap, List<VideoHandler> handlers, CommDao commDao,
+														  ExecutorService currentExecutor) {
 		return threadDao.uploadAttachment(VIDEO_VIEW_HEADER, fileName)
 				.map(uploader -> {
 					handlers.forEach(handler -> attachmentMap.put(handler.getName(), VIDEO));
@@ -75,6 +77,7 @@ public final class VideoMultipartHandler {
 											return handleVideos
 													.then($ -> posterHandler.handle(fileName))
 													.thenEx(($, e) -> {
+														currentExecutor.shutdown();
 														pendingTasks.remove(threadId);
 														return e != null ?
 																removeAttachments(threadId, fileName, threadDao, commDao, handlers) :

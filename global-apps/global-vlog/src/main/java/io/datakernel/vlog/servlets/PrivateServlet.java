@@ -14,13 +14,11 @@ import io.datakernel.http.*;
 import io.datakernel.http.decoder.DecodeErrors;
 import io.datakernel.http.di.RequestScope;
 import io.datakernel.http.di.ScopeServlet;
-import io.datakernel.vlog.handler.PosterMultipartHandler;
-import io.datakernel.vlog.handler.VideoMultipartHandler;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.vlog.handler.*;
 import io.datakernel.vlog.util.HttpEntities.Comment;
 import io.datakernel.vlog.util.HttpEntities.ProfileMetadata;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.Promises;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.AttachmentType;
@@ -36,8 +34,9 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.datakernel.common.MemSize.kilobytes;
@@ -84,7 +83,9 @@ public final class PrivateServlet {
 												.map(dao -> {
 													request.attach(ThreadDao.class, dao);
 													return id;
-												})));
+												})
+										)
+								);
 					}, HttpRequest.class);
 		return RoutingServlet.create()
 				.map(GET, "/", request -> templater.render("newVideo", isGzipAccepted(request)))
@@ -98,9 +99,10 @@ public final class PrivateServlet {
 
 					@Provides
 					@RequestScope
-					Promise<ProgressListener> progressListener(Promise<String> idPromise, HttpRequest request, Map<String, Dimension> resolutions) {
+					Promise<ProgressListener> progressListener(Promise<String> idPromise, HttpRequest request, Map<String, Dimension> resolutions, ExecutorService executorService) {
 						return idPromise.map(id -> {
-							Map<String, ProgressListener> progressListenerMap = request.getAttachment(new TypeT<Map<String, ProgressListener>>() {}.getType());
+							Map<String, ProgressListener> progressListenerMap = request.getAttachment(new TypeT<Map<String, ProgressListener>>() {
+							}.getType());
 							int listeners = resolutions.size();
 							ProgressListenerImpl progressListener = new ProgressListenerImpl(listeners + 1, listeners, (result, e) -> progressListenerMap.remove(id));
 							progressListenerMap.put(id, progressListener);
@@ -111,7 +113,7 @@ public final class PrivateServlet {
 					@Provides
 					@RequestScope
 					Promise<List<VideoHandler>> videoHandlers(HttpRequest request, Promise<String> idPromise, Map<String, String> params,
-															  Eventloop eventloop, Executor executor, Promise<ProgressListener> progressListenerPromise,
+															  Eventloop eventloop, ExecutorService executor, Promise<ProgressListener> progressListenerPromise,
 															  Map<String, Dimension> resolutions, @Named("cached") Path cachedPath) {
 						return progressListenerPromise.then(progressListener ->
 								idPromise.map(id -> {
@@ -136,7 +138,7 @@ public final class PrivateServlet {
 					@Provides
 					@RequestScope
 					Promise<VideoPosterHandler> videoPosterHandler(HttpRequest request, Promise<String> promiseId, Eventloop eventloop,
-																   Executor executor, Promise<ProgressListener> progressListenerPromise) {
+																   ExecutorService executor, Promise<ProgressListener> progressListenerPromise) {
 						CommDao commDao = request.getAttachment(CommDao.class);
 						return progressListenerPromise
 								.then(progressListener ->
@@ -145,13 +147,16 @@ public final class PrivateServlet {
 														threadDao,
 														executor,
 														eventloop,
-														new Dimension(300, 300), progressListener)))
+														new Dimension(150, 150),
+														progressListener)
+												)
+										)
 								);
 					}
 
 					@Provides
 					@RequestScope
-					Executor executor(Map<String, Dimension> formats) {
+					ExecutorService executor(Map<String, Dimension> formats) {
 						return Executors.newFixedThreadPool(formats.size());
 					}
 
@@ -159,20 +164,21 @@ public final class PrivateServlet {
 					@RequestScope
 					Promise<MultipartDataHandler> videoMultipartHandler(HttpRequest request, Map<String, AttachmentType> attachmentMap, Map<String, String> paramsMap,
 																		Promise<List<VideoHandler>> videoHandlers, Promise<String> promiseId,
-																		Promise<VideoPosterHandler> videoPosterHandler) {
+																		Promise<VideoPosterHandler> videoPosterHandler, ExecutorService executor) {
 						CommDao commDao = request.getAttachment(CommDao.class);
 						VideoMultipartHandler videoMultipartHandler = request.getAttachment(VideoMultipartHandler.class);
 						return promiseId.then(tid -> videoHandlers
 								.then(handlers -> commDao.getThreadDao(tid)
-										.then(threadDao -> videoPosterHandler.map(posterHandler ->
-												videoMultipartHandler.create(tid, threadDao, attachmentMap, handlers, posterHandler, commDao, map -> {
-													if (validate(map.get("title"), 120, true) &&
-															validate(map.get("content"), 65256)) {
-														paramsMap.putAll(map);
-														return true;
-													}
-													return false;
-												}))
+										.then(threadDao -> videoPosterHandler.map(posterHandler -> {
+													Predicate<Map<String, String>> condition = map -> {
+														if (validate(map.get("title"), 120, true) && validate(map.get("content"), 65256)) {
+															paramsMap.putAll(map);
+															return true;
+														}
+														return false;
+													};
+													return videoMultipartHandler.create(tid, threadDao, attachmentMap, handlers, posterHandler, commDao, condition, executor);
+												})
 										)
 								)
 						);
@@ -259,7 +265,8 @@ public final class PrivateServlet {
 										.map($1 -> redirectToReferer(request, "/"));
 							}
 							return Promise.ofException(decodeErrorsToHttpException(result.getRight()));
-						}));
+						})
+				);
 	}
 
 	private static AsyncServlet threadServlet(Injector injector) {
@@ -267,22 +274,22 @@ public final class PrivateServlet {
 				.map(POST, "/edit/", privilegedDecorator()
 						.serve(new ScopeServlet(injector, Module.create()
 								.bind(new Key<Map<String, String>>() {})
-								.in(RequestScope.class)
-								.toInstance(new HashMap<>())) {
+									.in(RequestScope.class)
+									.toInstance(new HashMap<>())) {
 							@Provides
 							@RequestScope
-							Executor executor() {
+							ExecutorService executor() {
 								return Executors.newSingleThreadExecutor();
 							}
 
 							@Provides
 							@RequestScope
-							MultipartDataHandler multipartDataHandler(HttpRequest request, Executor executor, Map<String, String> params) {
+							MultipartDataHandler multipartDataHandler(HttpRequest request, ExecutorService executor, Map<String, String> params) {
 								ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 								return PosterMultipartHandler.create(executor, threadDao, params, MemSize.megabytes(52), new Dimension(300, 300),
 										paramsMap -> {
-											if (validate(paramsMap.get("title"), 32, true)
-													&& validate(paramsMap.get("content"), 1024, true)) {
+											if (validate(paramsMap.get("title"), 32, true) &&
+													validate(paramsMap.get("content"), 1024, true)) {
 												params.putAll(paramsMap);
 												return true;
 											}
@@ -292,7 +299,7 @@ public final class PrivateServlet {
 
 							@RequestScope
 							@Provides
-							Promise<HttpResponse> response(HttpRequest request, MultipartDataHandler multipartDataHandler, Map<String, String> params) {
+							Promise<HttpResponse> response(HttpRequest request, MultipartDataHandler multipartDataHandler, Map<String, String> params, ExecutorService executorService) {
 								String videoViewID = request.getPathParameter("videoViewID");
 								ThreadDao threadDao = request.getAttachment(ThreadDao.class);
 								CommDao commDao = request.getAttachment(CommDao.class);
@@ -300,7 +307,9 @@ public final class PrivateServlet {
 										.then($ -> commDao.getThreads("root")
 												.put(videoViewID, ThreadMetadata.of(params.get("title"), 0))
 												.then($1 -> threadDao.updatePost(VIDEO_VIEW_HEADER, params.get("content"), emptyMap(), emptySet()))
-												.map($1 -> redirect302("/thread/" + videoViewID)));
+												.map($1 -> redirect302("/thread/" + videoViewID))
+										)
+										.whenComplete(executorService::shutdown);
 							}
 						}))
 				.map("/:commentID/*", commentOperations())
@@ -393,7 +402,8 @@ public final class PrivateServlet {
 										}
 										return Promise.ofException(decodeErrorsToHttpException(result.getRight()));
 									});
-						}));
+						})
+				);
 	}
 
 	private static AsyncServletDecorator privilegedDecorator() {

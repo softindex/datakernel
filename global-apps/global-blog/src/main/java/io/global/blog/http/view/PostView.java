@@ -16,6 +16,7 @@ public final class PostView {
 	private final boolean deletedVisible;
 	private final boolean editable;
 	private final boolean deepest;
+	private long initialTimestampValue;
 	private final Map<String, Set<String>> attachments;
 	private List<PostView> children;
 	private String content;
@@ -28,7 +29,7 @@ public final class PostView {
 			@Nullable String author, String authorId, String avatarUrl,
 			Map<String, Set<String>> attachments,
 			@Nullable String deletedBy, @Nullable PostView parent,
-			boolean editable, boolean deletedVisible) {
+			boolean editable, boolean deletedVisible, long initialTimestampValue) {
 		this.postId = postId;
 		this.content = content;
 		this.initialTimestamp = initialTimestamp;
@@ -42,6 +43,7 @@ public final class PostView {
 		this.parent = parent;
 		this.deletedVisible = deletedVisible;
 		this.deepest = deepest;
+		this.initialTimestampValue = initialTimestampValue;
 	}
 
 	public String getPostId() {
@@ -134,5 +136,9 @@ public final class PostView {
 	public PostView withChildren(List<PostView> children) {
 		this.children = children;
 		return this;
+	}
+
+	public long getInitialTimestampValue() {
+		return initialTimestampValue;
 	}
 }

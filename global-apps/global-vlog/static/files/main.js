@@ -274,7 +274,7 @@ function enableProgressBar() {
           if (progress == 1) {
             setTimeout(function () {
               location.reload();
-            }, 15000);
+            }, 5000);
             $(status[0]).text("wait...");
             source.close();
           } else {
@@ -299,7 +299,6 @@ function enableStoreScrollPosition() {
     $('html, body').scrollTop(scroll);
   }
 }
-
 
 function enableHandlingLoginButton() {
   let $loginButton = $('#login_button');
@@ -489,8 +488,8 @@ function addPostCallbacks($fullPost) {
 
 function enableUploadNewView() {
   const uploadImages = $("#upload_video");
-  var forms = document.getElementsByClassName('needs-validation');
-  var validation = Array.prototype.filter.call(forms, function(form) {
+  const forms = document.getElementsByClassName('needs-validation');
+  const validation = Array.prototype.filter.call(forms, function(form) {
     form.addEventListener('submit', function(event) {
       event.preventDefault();
       event.stopPropagation();

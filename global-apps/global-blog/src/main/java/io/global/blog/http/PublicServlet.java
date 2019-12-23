@@ -72,9 +72,6 @@ public final class PublicServlet {
 						UserId userId = request.getAttachment(UserId.class);
 						return commDao.getThreads("root").get()
 								.then(threads -> blogViewListFrom(commDao, threads, userId, pagination.getPage() - 1, pagination.getSize())
-										.map(threadViews -> threadViews.stream()
-												.sorted(Comparator.comparing(t -> t.getRoot().getInitialTimestamp()))
-												.collect(Collectors.toList()))
 										.then(threadViews -> Promise.ofBlockingCallable(executor, () -> {
 											threadViews.forEach(threadView ->
 													threadListPostViewPreprocessor.process(threadView.getRoot(), threadView.getId()));
@@ -221,7 +218,9 @@ public final class PublicServlet {
 										String content = paramsMap.get("content");
 										Set<String> deleteAttachmentsSet = deleteAttachments.isEmpty() ?
 												emptySet() :
-												Stream.of(deleteAttachments.split(",")).collect(Collectors.toSet());
+												Stream.of(deleteAttachments.split(","))
+														.filter(val -> !val.isEmpty())
+														.collect(Collectors.toSet());
 										return validate(content, 65256, "Content", true)
 												.then($1 -> threadDao.updatePost("root", content, attachmentMap, deleteAttachmentsSet)
 														.then($2 -> threadDao.deleteAttachments("root", deleteAttachmentsSet))

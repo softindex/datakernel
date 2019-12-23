@@ -107,18 +107,26 @@
 <div class="row">
     <nav class="col-sm-12 col-12 mt-2">
         <ul class="nav nav-pills flex-column">
-            <li class="nav-item">
+            <li class="nav-item" style="position: relative">
                 <form class="needs-validation" novalidate>
                     <div id="new_album_form"
                          style="display: none; background-color: rgb(245,245,245); border-radius: 0.5em;"
                          data-url="/new/album" class="p-2">
-                        <div>
+                        <div style="position: relative">
                             <input maxlength="120" class="form-control" id="title_album" name="title"
                                    type="text"
                                    placeholder="New album title" required max="120">
                             <textarea class="form-control mt-1 mb-1" name="content" id="description_album"
                                       maxlength="1024"
                                       placeholder="Description" rows="4"></textarea>
+                            <div id="warningToast" class="toast" style="position: absolute; top: 50%; left: 50%; z-index: 100; transform: translate(-50%, -50%)" data-delay="3000">
+                                <div class="toast-header text-danger">
+                                    Warning
+                                </div>
+                                <div class="toast-body">
+                                    Select images to create an album
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12">
                             <div class="row justify-content-end">
@@ -169,7 +177,7 @@
 
             <li class="row justify-content-between align-self-center p-2 mb-1 mt-2" id="delete_photos_form"
                 data-url="/delete/photo/{{album.id}}"
-                style="display: none; width: 100%; border: 1px solid #ced4da; background-color: rgb(245,245,245); border-radius: 0.5em">
+                style="display: none; width: 100%; border: 1px solid #ced4da; background-color: rgb(245,245,245); border-radius: 0.5em; position: relative">
                 <div class="text-center col-12 col-md-6 align-self-center" style="color: gray; font-size: 1.3em">Select
                     photos to delete
                 </div>
@@ -178,6 +186,14 @@
                     <button class="btn btn-link text-secondary col-6" type="submit"
                             id="cancelDeletionPhotos">Cancel
                     </button>
+                </div>
+                <div id="deleteWarningToast" class="toast" style="position: absolute; top: 50%; left: 50%; z-index: 100; transform: translate(-50%, -50%)" data-delay="3000">
+                    <div class="toast-header text-danger">
+                        Warning
+                    </div>
+                    <div class="toast-body">
+                        Select image to delete
+                    </div>
                 </div>
             </li>
 

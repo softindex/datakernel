@@ -106,6 +106,8 @@ public final class ThreadDaoVideoHandler implements VideoHandler {
 							if (e != null) {
 								progressListener.onError(e);
 								throw new StacklessException(e);
+							} else {
+								progressListener.onComplete();
 							}
 							return null;
 						})

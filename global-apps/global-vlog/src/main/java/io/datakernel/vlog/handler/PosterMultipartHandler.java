@@ -11,8 +11,8 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.MultipartParser;
-import io.datakernel.vlog.util.Utils;
 import io.datakernel.promise.Promise;
+import io.datakernel.vlog.util.Utils;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.AttachmentType;
 import org.imgscalr.Scalr;
@@ -21,7 +21,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Predicate;
 
 import static io.datakernel.vlog.handler.VideoMultipartHandler.ATTACHMENT_FIELD_NAMES;
@@ -35,7 +35,7 @@ public final class PosterMultipartHandler {
 	private static final String POSTER = "poster";
 	private static final String FORMAT = "png";
 
-	public static MultipartParser.MultipartDataHandler create(Executor executor, ThreadDao threadDao, Map<String, String> paramsMap,
+	public static MultipartParser.MultipartDataHandler create(ExecutorService executor, ThreadDao threadDao, Map<String, String> paramsMap,
 															  MemSize imageLimit, Dimension dimension, Predicate<Map<String, String>> validate) {
 		return MultipartParser.MultipartDataHandler.fieldsToMap(paramsMap, (fieldName, fileName) -> {
 			if (fileName.isEmpty()) {
@@ -72,5 +72,4 @@ public final class PosterMultipartHandler {
 					}));
 		});
 	}
-
 }

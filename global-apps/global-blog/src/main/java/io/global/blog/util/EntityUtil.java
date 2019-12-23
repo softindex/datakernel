@@ -53,14 +53,26 @@ public final class EntityUtil {
 									if (ex != null || rootPost == null) {
 										return Promise.of(null);
 									}
-									int commentsCount = rootPost.getChildren().size();
+									int commentsCount = countChildrenDeep(rootPost);
 									return postViewFrom(commDao, rootPost, currentUser, 0, null)
 											.map(post -> new BlogView(e.getKey(), e.getValue(), post, commentsCount));
 								}))
 				))
-				.map(list -> list.stream()
-						.filter(Objects::nonNull)
-						.collect(Collectors.toList()));
+				.map(list -> {
+					Comparator<BlogView> comparator = Comparator.comparingLong(f -> f.getRoot().getInitialTimestampValue());
+					return list.stream()
+							.filter(Objects::nonNull)
+							.sorted(comparator.reversed())
+							.collect(Collectors.toList());
+				});
+	}
+
+	private static int countChildrenDeep(Post rootPost) {
+		int result = rootPost.getChildren().size();
+		for (Post child : rootPost.getChildren()) {
+			result += countChildrenDeep(child);
+		}
+		return result;
 	}
 
 	public static Promise<List<BlogView>> blogViewListFrom(CommDao commDao, Map<String, ThreadMetadata> threads, @Nullable UserId currentUser) {
@@ -157,7 +169,8 @@ public final class EntityUtil {
 				deleter != null ? deleter.getUsername() : null,
 				parent,
 				editable,
-				deletedVisible
+				deletedVisible,
+				post.getInitialTimestamp()
 		);
 	}
 

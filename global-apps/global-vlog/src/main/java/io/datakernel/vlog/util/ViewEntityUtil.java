@@ -133,8 +133,8 @@ public final class ViewEntityUtil {
 				deleter != null ? deleter.getUsername() : null,
 				videoHeader.getRatings().get(Rating.LIKE).size(),
 				videoHeader.getRatings().get(Rating.DISLIKE).size(),
-				videoHeader.getRatings().get(Rating.LIKE).contains(videoHeader.getAuthor()),
-				videoHeader.getRatings().get(Rating.DISLIKE).contains(videoHeader.getAuthor()));
+				videoHeader.getRatings().get(Rating.LIKE).contains(currentUser),
+				videoHeader.getRatings().get(Rating.DISLIKE).contains(currentUser));
 	}
 
 	private static Map<String, String> getVideo(Map<String, AttachmentType> attachments) {
