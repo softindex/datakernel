@@ -14,13 +14,13 @@ import io.datakernel.http.decoder.DecodeErrors;
 import io.datakernel.http.di.RequestScope;
 import io.datakernel.http.di.ScopeServlet;
 import io.datakernel.http.session.SessionStore;
-import io.datakernel.vlog.handler.VideoMultipartHandler;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.vlog.container.AppUserContainer;
 import io.datakernel.vlog.dao.AppDao;
 import io.datakernel.vlog.handler.ProgressListener;
+import io.datakernel.vlog.handler.VideoMultipartHandler;
 import io.datakernel.vlog.view.VideoView;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.Promises;
 import io.global.appstore.AppStore;
 import io.global.comm.dao.CommDao;
 import io.global.comm.dao.ThreadDao;
@@ -225,18 +225,22 @@ public final class PublicServlet {
 												templater.put("user", user);
 												request.attach(userId);
 												request.attach(user);
-												return Promise.of(sessionStore.getSessionLifetime());
+												return Promise.of(sessionStore.getSessionLifetimeHint());
 											});
 								} else {
 									maxAge = Promise.of(Duration.ZERO);
 								}
-								return maxAge.then(m -> servlet.serveAsync(request)
-										.map(response ->
-												response.getCookie(SESSION_ID) != null ? // servlet itself had set the session (logout request)
-														response :
-														response.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-																.withMaxAge(m)
-																.withPath("/"))));
+								return maxAge.then(age -> servlet.serveAsync(request)
+										.map(response -> {
+											// servlet itself had set the session (logout request)
+											if (response.getCookie(SESSION_ID) != null) return response;
+											HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+													.withPath("/");
+											if (age != null){
+												sessionCookie.setMaxAge(age);
+											}
+											return response.withCookie(sessionCookie);
+										}));
 							});
 				};
 	}

@@ -73,7 +73,6 @@ public final class AuthModule extends AbstractModule {
 									.withCookie(HttpCookie.of(sessionId, sessionString)
 											.withPath("/")
 											.withMaxAge(Duration.ZERO)));
-
 				});
 	}
 
@@ -120,10 +119,16 @@ public final class AuthModule extends AbstractModule {
 		UserId userId = new UserId(DK_APP_STORE, pubKeyString);
 		String sessionString = generateString(32);
 		return sessionStore.save(sessionString, userId)
-				.map($2 -> HttpResponse.ok200()
-						.withPlainText(pubKeyString)
-						.withCookie(HttpCookie.of(sessionId, sessionString)
-								.withPath("/")
-								.withMaxAge(sessionStore.getSessionLifetime())));
+				.map($2 -> {
+					HttpCookie sessionCookie = HttpCookie.of(sessionId, sessionString)
+							.withPath("/");
+					Duration lifetimeHint = sessionStore.getSessionLifetimeHint();
+					if (lifetimeHint != null) {
+						sessionCookie.setMaxAge(lifetimeHint);
+					}
+					return HttpResponse.ok200()
+							.withPlainText(pubKeyString)
+							.withCookie(sessionCookie);
+				});
 	}
 }

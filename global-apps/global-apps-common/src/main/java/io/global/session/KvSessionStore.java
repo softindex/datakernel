@@ -96,7 +96,8 @@ public final class KvSessionStore<V> implements SessionStore<V>, EventloopServic
 		return kvClient.remove(table, sessionId);
 	}
 
-	public Duration getSessionLifetime() {
+	@Override
+	public Duration getSessionLifetimeHint() {
 		return sessionLifetime;
 	}
 

@@ -100,6 +100,10 @@ public final class ReflectionUtils {
 		}
 	}
 
+	public static <T> Key<T> keyOf(@Nullable Type container, Type type, AnnotatedElement annotatedElement) {
+		return keyOf(container, null, type, annotatedElement);
+	}
+
 	public static <T> Key<T> keyOf(@Nullable Type container, @Nullable Object containerInstance, Type type, AnnotatedElement annotatedElement) {
 		Type resolved = container != null ? Types.resolveTypeVariables(type, container, containerInstance) : type;
 		return Key.ofType(resolved, nameOf(annotatedElement));
@@ -192,11 +196,20 @@ public final class ReflectionUtils {
 //		}
 //	}
 
+	public static <T> Binding<T> generateImplicitBinding(Key<T> key) {
+		return generateImplicitBinding(key, null);
+	}
+
 	public static <T> Binding<T> generateImplicitBinding(Key<T> key, @Nullable T containerInstance) {
 		Binding<T> binding = generateConstructorBinding(key, containerInstance);
 		return binding != null ?
 				binding.initializeWith(generateInjectingInitializer(key, containerInstance)) :
 				null;
+	}
+
+	@Nullable
+	public static <T> Binding<T> generateConstructorBinding(Key<T> key) {
+		return generateConstructorBinding(key, null);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -259,6 +272,10 @@ public final class ReflectionUtils {
 		return new DIException("Failed to generate implicit binding for " + requestedKey.getDisplayString() + ", " + message);
 	}
 
+	public static <T> BindingInitializer<T> generateInjectingInitializer(Key<T> container) {
+		return generateInjectingInitializer(container, null);
+	}
+
 	public static <T> BindingInitializer<T> generateInjectingInitializer(Key<T> container, @Nullable T containerInstance) {
 		Class<T> rawType = container.getRawType();
 		List<BindingInitializer<T>> initializers = Stream.concat(
@@ -269,6 +286,10 @@ public final class ReflectionUtils {
 						.map(method -> methodInjector(container, containerInstance, method)))
 				.collect(toList());
 		return BindingInitializer.combine(initializers);
+	}
+
+	public static <T> BindingInitializer<T> fieldInjector(Key<T> container, Field field, boolean required) {
+		return fieldInjector(container, null, field, required);
 	}
 
 	public static <T> BindingInitializer<T> fieldInjector(Key<T> container, @Nullable T containerInstance, Field field, boolean required) {
@@ -293,6 +314,10 @@ public final class ReflectionUtils {
 						}
 					};
 				});
+	}
+
+	public static <T> BindingInitializer<T> methodInjector(Key<T> container, Method method) {
+		return methodInjector(container, null, method);
 	}
 
 	public static <T> BindingInitializer<T> methodInjector(Key<T> container, @Nullable T containerInstance, Method method) {
@@ -321,6 +346,11 @@ public final class ReflectionUtils {
 						}
 					};
 				});
+	}
+
+	@NotNull
+	public static Dependency[] toDependencies(@Nullable Type container, Parameter[] parameters) {
+		return toDependencies(container, null, parameters);
 	}
 
 	@NotNull
@@ -385,6 +415,10 @@ public final class ReflectionUtils {
 				},
 				dependencies);
 		return module != null ? binding.at(LocationInfo.from(module, method)) : binding;
+	}
+
+	public static <T> Binding<T> bindingFromConstructor(Key<T> key, Constructor<T> constructor) {
+		return bindingFromConstructor(key, null, constructor);
 	}
 
 	public static <T> Binding<T> bindingFromConstructor(Key<T> key, @Nullable T containerInstance, Constructor<T> constructor) {

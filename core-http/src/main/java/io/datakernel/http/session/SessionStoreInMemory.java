@@ -9,16 +9,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Extremely simple reference implementation of the session storage over a hash map.
+ * A simple reference implementation of the session storage over a hash map.
  */
 public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	private final Map<String, TWithTimestamp> store = new HashMap<>();
-	private final Duration sessionLifetime;
+
+	@Nullable
+	private Duration sessionLifetime;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public SessionStoreInMemory(Duration lifetime) {
-		sessionLifetime = lifetime;
+	private SessionStoreInMemory() {
+	}
+
+	public static <T> SessionStoreInMemory<T> create() {
+		return new SessionStoreInMemory<>();
+	}
+
+	public SessionStoreInMemory<T> withLifetime(Duration sessionLifetime) {
+		this.sessionLifetime = sessionLifetime;
+		return this;
 	}
 
 	@Override
@@ -34,7 +44,7 @@ public final class SessionStoreInMemory<T> implements SessionStore<T> {
 		if (tWithTimestamp == null) {
 			return Promise.of(null);
 		}
-		if (tWithTimestamp.timestamp + sessionLifetime.toMillis() < timestamp) {
+		if (sessionLifetime != null && tWithTimestamp.timestamp + sessionLifetime.toMillis() < timestamp) {
 			store.remove(sessionId);
 			return Promise.of(null);
 		}
@@ -49,7 +59,8 @@ public final class SessionStoreInMemory<T> implements SessionStore<T> {
 	}
 
 	@Override
-	public Duration getSessionLifetime() {
+	@Nullable
+	public Duration getSessionLifetimeHint() {
 		return sessionLifetime;
 	}
 

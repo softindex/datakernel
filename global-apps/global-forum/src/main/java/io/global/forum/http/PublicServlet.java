@@ -145,10 +145,14 @@ public final class PublicServlet {
 											return sessionStore.save(sessionId, userId)
 													.map($2 -> {
 														String origin = request.getQueryParameter("origin");
+														HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+																.withPath("/");
+														Duration lifetimeHint = sessionStore.getSessionLifetimeHint();
+														if (lifetimeHint != null) {
+															sessionCookie.setMaxAge(lifetimeHint);
+														}
 														return redirect302(origin != null ? origin : "/")
-																.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-																		.withPath("/")
-																		.withMaxAge(sessionStore.getSessionLifetime()));
+																.withCookie(sessionCookie);
 													});
 										});
 							});
@@ -741,22 +745,25 @@ public final class PublicServlet {
 												request.attach(userId);
 												request.attach(user);
 												request.attach(user.getRole());
-												return sessionStore.getSessionLifetime();
+												return sessionStore.getSessionLifetimeHint();
 											});
 								} else {
 									request.attach(UserRole.GUEST);
 									maxAge = Promise.of(Duration.ZERO);
 								}
-								return maxAge.then(m ->
+								return maxAge.then(age ->
 										servlet.serve(request).get()
 												.map(response -> {
 													if (response.getCookie(SESSION_ID) != null) { // servlet itself had set the session (logout request)
 														return response;
 													}
+													HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+															.withPath("/");
+													if (age != null) {
+														sessionCookie.setMaxAge(age);
+													}
 													return response
-															.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-																	.withMaxAge(m)
-																	.withPath("/"));
+															.withCookie(sessionCookie);
 												}));
 							});
 				};

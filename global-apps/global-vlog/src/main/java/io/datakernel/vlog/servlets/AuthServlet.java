@@ -80,10 +80,14 @@ public final class AuthServlet {
 											.map($2 -> request.getQueryParameter("origin"))
 											.map(origin -> {
 														String url = origin != null ? origin : "/";
+														HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+																.withPath("/");
+														Duration lifetimeHint = sessionStore.getSessionLifetimeHint();
+														if (lifetimeHint != null) {
+															sessionCookie.setMaxAge(lifetimeHint);
+														}
 														return redirect302(url)
-																.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-																		.withPath("/")
-																		.withMaxAge(sessionStore.getSessionLifetime()));
+																.withCookie(sessionCookie);
 													}
 											);
 								});

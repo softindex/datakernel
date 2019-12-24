@@ -58,9 +58,9 @@ public final class PublicServlet {
 	private static final int MIN_LIMIT_ITEMS_PER_PAGE = 50;
 
 	public static AsyncServlet create(String appStoreUrl, AppStore appStore,
-									  MustacheTemplater templater, Executor executor,
-									  Preprocessor<PostView> threadListPostViewPreprocessor,
-									  Preprocessor<PostView> postViewPreprocessor) {
+			MustacheTemplater templater, Executor executor,
+			Preprocessor<PostView> threadListPostViewPreprocessor,
+			Preprocessor<PostView> postViewPreprocessor) {
 		return RoutingServlet.create()
 				.map("/auth/*", authServlet(appStore, templater))
 				.map("/owner/*", ownerServlet(templater))
@@ -293,10 +293,14 @@ public final class PublicServlet {
 									SessionStore<UserId> sessionStore = commDao.getSessionStore();
 									return sessionStore.save(sessionId, userId).map($2 -> {
 										String origin = request.getQueryParameter("origin");
+										HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+												.withPath("/");
+										Duration lifetimeHint = sessionStore.getSessionLifetimeHint();
+										if (lifetimeHint != null) {
+											sessionCookie.setMaxAge(lifetimeHint);
+										}
 										return redirect302(origin != null ? origin : "/")
-												.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-														.withPath("/")
-														.withMaxAge(sessionStore.getSessionLifetime()));
+												.withCookie(sessionCookie);
 									});
 								});
 					});
@@ -427,17 +431,21 @@ public final class PublicServlet {
 									templater.put("user", user);
 									request.attach(userId);
 									request.attach(user);
-									return sessionStore.getSessionLifetime();
+									return sessionStore.getSessionLifetimeHint();
 								}) :
 								Promise.of(Duration.ZERO);
-						return maxAge.then(m -> servlet.serve(request)
+						return maxAge.then(age -> servlet.serve(request)
 								.get()
-								.map(response ->
-										response.getCookie(SESSION_ID) != null ? // servlet itself had set the session (logout request)
-												response :
-												response.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-														.withMaxAge(m)
-														.withPath("/"))));
+								.map(response -> {
+									HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+											.withPath("/");
+									if (age != null) {
+										sessionCookie.setMaxAge(age);
+									}
+									return response.getCookie(SESSION_ID) != null ? // servlet itself had set the session (logout request)
+											response :
+											response.withCookie(sessionCookie);
+								}));
 					});
 				};
 	}

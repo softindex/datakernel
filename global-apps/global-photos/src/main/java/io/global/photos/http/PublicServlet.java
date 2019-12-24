@@ -86,10 +86,16 @@ public final class PublicServlet {
 								String sessionId = generateString(32);
 								SessionStore<UserId> sessionStore = mainDao.getSessionStore();
 								return sessionStore.save(sessionId, userId)
-										.map($ -> redirect302("/")
-												.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-														.withPath("/")
-														.withMaxAge(sessionStore.getSessionLifetime())));
+										.map($ -> {
+											HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+													.withPath("/");
+											Duration lifetimeHint = sessionStore.getSessionLifetimeHint();
+											if (lifetimeHint != null) {
+												sessionCookie.setMaxAge(lifetimeHint);
+											}
+											return redirect302("/")
+													.withCookie(sessionCookie);
+										});
 							});
 				})
 				.map(POST, "/logout", request -> {
@@ -368,16 +374,23 @@ public final class PublicServlet {
 								if (userId != null) {
 									request.attach(UserId.class, userId);
 									templater.put("privileged", true);
-									return sessionStore.getSessionLifetime();
+									return sessionStore.getSessionLifetimeHint();
 								}
 								return Duration.ZERO;
 							})
 							.then(maxAge -> servlet.serveAsync(request)
-									.map(response -> response.getCookie(SESSION_ID) == null ? // servlet itself had set the session (logout request)
-											response.withCookie(HttpCookie.of(SESSION_ID, sessionId)
-													.withMaxAge(maxAge)
-													.withPath("/")) :
-											response));
+									.map(response -> {
+										// servlet itself had set the session (logout request)
+										if (response.getCookie(SESSION_ID) != null) {
+											return response;
+										}
+										HttpCookie sessionCookie = HttpCookie.of(SESSION_ID, sessionId)
+												.withPath("/");
+										if (maxAge != null) {
+											sessionCookie.setMaxAge(maxAge);
+										}
+										return response.withCookie(sessionCookie);
+									}));
 				};
 	}
 }

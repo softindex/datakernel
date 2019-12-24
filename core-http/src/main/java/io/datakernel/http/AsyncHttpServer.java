@@ -49,6 +49,7 @@ import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ZERO);
 	public static final Duration READ_WRITE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout_Shutdown", Duration.ofSeconds(3));
+	public static final Duration SERVE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpServer.class, "serveTimeout_Shutdown", Duration.ofSeconds(0));
 	public static final Duration KEEP_ALIVE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "keepAliveTimeout", Duration.ofSeconds(30));
 	public static final MemSize MAX_BODY_SIZE = ApplicationSettings.getMemSize(AsyncHttpServer.class, "maxBodySize", MemSize.ZERO);
 	public static final int MAX_KEEP_ALIVE_REQUESTS = ApplicationSettings.getInt(AsyncHttpServer.class, "maxKeepAliveRequests", 0);
@@ -61,6 +62,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	int readWriteTimeoutMillis = (int) READ_WRITE_TIMEOUT.toMillis();
 	int readWriteTimeoutMillisShutdown = (int) READ_WRITE_TIMEOUT_SHUTDOWN.toMillis();
+	int serveTimeoutMillisShutdown = (int) SERVE_TIMEOUT_SHUTDOWN.toMillis();
 	int keepAliveTimeoutMillis = (int) KEEP_ALIVE_TIMEOUT.toMillis();
 	int maxBodySize = MAX_BODY_SIZE.toInt();
 	int maxKeepAliveRequests = MAX_KEEP_ALIVE_REQUESTS;
@@ -185,6 +187,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
+	public AsyncHttpServer withServeTimeoutShutdown(@NotNull Duration serveTimeoutShutdown) {
+		this.serveTimeoutMillisShutdown = (int) serveTimeoutShutdown.toMillis();
+		return this;
+	}
+
 	public AsyncHttpServer withMaxBodySize(MemSize maxBodySize) {
 		return withMaxBodySize(maxBodySize.toInt());
 	}
@@ -269,6 +276,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (getConnectionsCount() == 0) {
 			cb.set(null);
 		} else {
+			if (!poolServing.isEmpty() && serveTimeoutMillisShutdown != 0){
+				eventloop.delayBackground(serveTimeoutMillisShutdown, poolServing::closeAllConnections);
+			}
 			closeCallback = cb;
 			logger.info("Waiting for " + this);
 		}
