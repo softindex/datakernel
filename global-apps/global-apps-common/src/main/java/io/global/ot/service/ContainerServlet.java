@@ -1,8 +1,6 @@
 package io.global.ot.service;
 
-import io.datakernel.http.AsyncServlet;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
+import io.datakernel.http.*;
 import io.datakernel.promise.Async;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -11,6 +9,8 @@ import org.jetbrains.annotations.Nullable;
 import static io.datakernel.http.HttpHeaders.HOST;
 
 public final class ContainerServlet implements AsyncServlet {
+	private static final HttpHeader X_FORWARDED_HOST = HttpHeaders.of("X-Forwarded-Host");
+
 	private final ContainerManager<?> containerManager;
 	private final AsyncServlet next;
 
@@ -38,7 +38,10 @@ public final class ContainerServlet implements AsyncServlet {
 			request.attach(UserContainer.class, singleContainer);
 			return next.serve(request);
 		}
-		String header = request.getHeader(HOST);
+		String header = request.getHeader(X_FORWARDED_HOST);
+		if (header == null) {
+			header = request.getHeader(HOST);
+		}
 		if (header == null) {
 			return Promise.of(HttpResponse.ofCode(400).withPlainText("HTTP Header 'Host' is required"));
 		}
