@@ -44,7 +44,7 @@ public final class StaticServlet implements AsyncServlet {
 
 	private final StaticLoader resourceLoader;
 	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
-	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
+	private Function<HttpRequest, @Nullable String> pathMapper = HttpRequest::getRelativePath;
 	private Supplier<HttpResponse> responseSupplier = HttpResponse::ok200;
 	private final Set<String> indexResources = new LinkedHashSet<>();
 
@@ -81,7 +81,7 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	public StaticServlet withMapping(Function<HttpRequest, String> fn) {
-		mapper = fn;
+		pathMapper = fn;
 		return this;
 	}
 
@@ -145,7 +145,7 @@ public final class StaticServlet implements AsyncServlet {
 	@NotNull
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
-		String mappedPath = mapper.apply(request);
+		String mappedPath = pathMapper.apply(request);
 		if (mappedPath == null) return Promise.ofException(HttpException.notFound404());
 		ContentType contentType = contentTypeResolver.apply(mappedPath);
 		return Promise.complete()

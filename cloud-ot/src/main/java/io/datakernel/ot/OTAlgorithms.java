@@ -188,16 +188,6 @@ public final class OTAlgorithms {
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	static class Tuple<K, D> {
-		final Map<K, List<D>> mergeDiffs;
-		final long parentsMaxLevel;
-
-		Tuple(Map<K, List<D>> mergeDiffs, long parentsMaxLevel) {
-			this.mergeDiffs = mergeDiffs;
-			this.parentsMaxLevel = parentsMaxLevel;
-		}
-	}
-
 	@NotNull
 	public static <K, D> Promise<OTCommit<K, D>> merge(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
 		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");

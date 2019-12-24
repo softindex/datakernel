@@ -148,7 +148,7 @@ public interface Decoder<T> {
 	static <R, T1, T2> Decoder<R> of(TupleConstructor2<T1, T2, R> constructor,
 			Decoder<T1> param1,
 			Decoder<T2> param2) {
-		return create(params -> constructor.create((T1) params[0], (T2) params[2]),
+		return create(params -> constructor.create((T1) params[0], (T2) params[1]),
 				param1, param2);
 	}
 

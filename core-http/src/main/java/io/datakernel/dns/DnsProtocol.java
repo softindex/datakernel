@@ -190,7 +190,19 @@ public final class DnsProtocol {
 			List<InetAddress> ips = new ArrayList<>();
 			int minTtl = Integer.MAX_VALUE;
 			for (int i = 0; i < answerCount; i++) {
-				payload.moveHead(2); // skip answer name (2 bytes)
+
+				// check for message compression (RFC 1035 section 4.1.4. Message compression, https://tools.ietf.org/rfc/rfc1035#section-4.1.4)
+				byte b = payload.readByte();
+				if ((b & 0xFF) >> 6 == 0b11) {
+					payload.moveHead(1); // skip domain pointer (second byte of 2 bytes)
+				} else {
+					// skip the fqdn
+					while (b != 0) {
+						payload.moveHead(b);
+						b = payload.readByte();
+					}
+				}
+
 				RecordType currentRecordType = RecordType.fromCode(payload.readShort());
 				payload.moveHead(2); // skip answer class (2 bytes)
 				if (currentRecordType != recordType) { // this is some other record
