@@ -151,7 +151,10 @@ public abstract class Key<T> {
 	@NotNull
 	private Type getTypeParameter() {
 		// this cannot possibly fail so not even a check here
-		return ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+		Type typeArgument = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+		Object outerInstance = ReflectionUtils.getOuterClassInstance(this);
+		// the outer instance is null in static context
+		return outerInstance != null ? Types.resolveTypeVariables(typeArgument, outerInstance.getClass(), outerInstance) : typeArgument;
 	}
 
 	@NotNull

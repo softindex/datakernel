@@ -383,7 +383,7 @@ public final class HttpCookie {
 				return new AvHandler() {
 					@Override
 					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
-						cookie.setMaxAge(trimAndDecodePositiveInt(bytes, start, end - start));
+						cookie.setMaxAge(parseMaxAge(bytes, start, end));
 					}
 				};
 			case DOMAIN_HC:

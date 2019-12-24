@@ -137,7 +137,7 @@ public class ChannelSupplierTest {
 						while ((b = inputStream.read()) != -1) {
 							buf.writeByte((byte) b);
 						}
-						assertEquals(buf.asString(UTF_8), "HelloWorld");
+						assertEquals("HelloWorld", buf.asString(UTF_8));
 					} catch (IOException e) {
 						throw new UncheckedIOException(e);
 					}
