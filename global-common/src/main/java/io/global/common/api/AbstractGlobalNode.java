@@ -7,6 +7,7 @@ import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
+import io.global.common.stub.InMemoryPubKeyStorage;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -21,6 +22,7 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 	public static final Duration DEFAULT_LATENCY_MARGIN = ApplicationSettings.getDuration(AbstractGlobalNode.class, "latencyMargin", Duration.ofSeconds(5));
 
 	private final Set<PubKey> managedPublicKeys = new HashSet<>();
+	private final Set<PubKey> blacklistedPublicKeys = new HashSet<>();
 
 	protected final Map<PubKey, L> namespaces = new HashMap<>();
 	protected Duration latencyMargin = DEFAULT_LATENCY_MARGIN;
@@ -29,6 +31,8 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 
 	protected final RawServerId id;
 	protected final DiscoveryService discoveryService;
+
+	private PubKeyStorage blacklistStorage = new InMemoryPubKeyStorage();
 
 	protected CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
@@ -62,6 +66,37 @@ public abstract class AbstractGlobalNode<S extends AbstractGlobalNode<S, L, N>, 
 	public S withCurrentTimeProvider(CurrentTimeProvider currentTimeProvider) {
 		this.now = currentTimeProvider;
 		return (S) this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public S withBlacklistStorage(PubKeyStorage blacklistStorage) {
+	    this.blacklistStorage = blacklistStorage;
+		blacklistStorage.loadPublicKeys().whenResult(blacklistedPublicKeys::addAll);
+	    return (S) this;
+	}
+
+	public Promise<Void> reset(PubKey space) {
+		L ns = namespaces.get(space);
+		return ns != null ? ns.reset().whenResult($ -> namespaces.remove(space)) : Promise.complete();
+	}
+
+	public Promise<Boolean> blockPublicKey(PubKey pubKey) {
+		managedPublicKeys.remove(pubKey);
+		boolean res = blacklistedPublicKeys.add(pubKey);
+		return blacklistStorage.storePublicKey(pubKey).map($ -> res);
+	}
+
+	public Promise<Boolean> unblockPublicKey(PubKey pubKey) {
+		boolean res = blacklistedPublicKeys.remove(pubKey);
+		return blacklistStorage.removePublicKey(pubKey).map($ -> res);
+	}
+
+	public boolean addManagedPublicKey(PubKey pubKey) {
+		return !blacklistedPublicKeys.contains(pubKey) && managedPublicKeys.add(pubKey);
+	}
+
+	public boolean removeManagedPublicKey(PubKey pubKey) {
+		return managedPublicKeys.remove(pubKey);
 	}
 
 	public Set<PubKey> getManagedPublicKeys() {

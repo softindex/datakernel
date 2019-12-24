@@ -49,6 +49,20 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 		checkpointStorage = node.getCheckpointStorageFactory().apply(space);
 	}
 
+	@Override
+	public Promise<Void> reset() {
+		return reset("**");
+	}
+
+	public Promise<Void> reset(String glob) {
+		return list(glob)
+				.then(list ->
+						Promises.all(list.stream().map(signedCheckpoint -> {
+							GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
+							return storage.delete(checkpoint.getFilename(), checkpoint.getRevision());
+						})));
+	}
+
 	public Promise<Boolean> push() {
 		return push.get();
 	}

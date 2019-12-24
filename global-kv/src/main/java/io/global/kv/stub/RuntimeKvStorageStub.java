@@ -51,11 +51,6 @@ public final class RuntimeKvStorageStub implements KvStorage {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<SignedData<byte[]>>> remove() {
-		return Promise.of(ChannelConsumer.ofConsumer(key -> storage.remove(wrap(key.getValue()))));
-	}
-
-	@Override
 	public Promise<SignedData<RawKvItem>> get(byte[] key) {
 		return Promise.of(storage.get(wrap(key)));
 	}
@@ -67,8 +62,8 @@ public final class RuntimeKvStorageStub implements KvStorage {
 	}
 
 	@Override
-	public Promise<Void> remove(SignedData<byte[]> key) {
-		storage.remove(wrap(key.getValue()));
+	public Promise<Void> reset() {
+		storage.clear();
 		return Promise.complete();
 	}
 

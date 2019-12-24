@@ -31,15 +31,11 @@ public interface KvStorage {
 		return download(0);
 	}
 
-	Promise<ChannelConsumer<SignedData<byte[]>>> remove();
-
 	Promise<@Nullable SignedData<RawKvItem>> get(byte[] key);
 
 	default Promise<Void> put(SignedData<RawKvItem> item) {
 		return ChannelSupplier.of(item).streamTo(ChannelConsumer.ofPromise(upload()));
 	}
 
-	default Promise<Void> remove(SignedData<byte[]> key) {
-		return ChannelSupplier.of(key).streamTo(ChannelConsumer.ofPromise(remove()));
-	}
+	Promise<Void> reset();
 }

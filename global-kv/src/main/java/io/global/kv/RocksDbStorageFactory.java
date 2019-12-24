@@ -15,7 +15,6 @@ import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -39,7 +38,7 @@ public final class RocksDbStorageFactory implements EventloopService, StorageFac
 	private final Eventloop eventloop;
 	private final Executor executor;
 	private final String rocksDbPath;
-	private final Map<Tuple2<PubKey, String>, Promise<RocksDbKvStorage>> handlesMap = new HashMap<>();
+	private final Map<Tuple2<PubKey, String>, Promise<RocksDbKvStorage>> storages = new HashMap<>();
 
 	private RocksDB db;
 
@@ -74,7 +73,7 @@ public final class RocksDbStorageFactory implements EventloopService, StorageFac
 						descriptors.add(new ColumnFamilyDescriptor(RocksDB.DEFAULT_COLUMN_FAMILY));
 					}
 
-					ArrayList<ColumnFamilyHandle> handles = new ArrayList<>();
+					List<ColumnFamilyHandle> handles = new ArrayList<>();
 					try (DBOptions dbOptions = new DBOptions().setCreateIfMissing(true)) {
 						Files.createDirectories(Paths.get(rocksDbPath).getParent());
 						db = RocksDB.open(dbOptions, rocksDbPath, descriptors, handles);
@@ -84,7 +83,7 @@ public final class RocksDbStorageFactory implements EventloopService, StorageFac
 					for (int i = 1; i < descriptors.size(); i++) {
 						ColumnFamilyDescriptor columnFamilyDescriptor = descriptors.get(i);
 						Tuple2<PubKey, String> descriptor = decode(DESCRIPTOR_CODEC, columnFamilyDescriptor.getName());
-						handlesMap.put(descriptor, Promise.of(new RocksDbKvStorage(executor, db, handles.get(i))));
+						storages.put(descriptor, Promise.of(new RocksDbKvStorage(executor, db, handles.get(i))));
 					}
 				})
 				.whenComplete(toLogger(logger, TRACE, TRACE, ERROR, thisMethod()));
@@ -92,7 +91,7 @@ public final class RocksDbStorageFactory implements EventloopService, StorageFac
 
 	@Override
 	public @NotNull Promise<Void> stop() {
-		return Promises.toList(handlesMap.values().stream()
+		return Promises.toList(storages.values().stream()
 				.map(storagePromise -> storagePromise
 						.then(storage -> storage.flush()
 								.map($ -> storage.getHandle()))))
@@ -107,13 +106,9 @@ public final class RocksDbStorageFactory implements EventloopService, StorageFac
 	@Override
 	public Promise<? extends KvStorage> create(PubKey pubKey, String table) {
 		Tuple2<PubKey, String> key = new Tuple2<>(pubKey, table);
-		return handlesMap.computeIfAbsent(key, $ -> Promise.ofBlockingCallable(executor,
-				() -> {
-					ColumnFamilyDescriptor cfd = new ColumnFamilyDescriptor(encodeAsArray(DESCRIPTOR_CODEC, key));
-					ColumnFamilyHandle handle = db.createColumnFamily(cfd);
-					return new RocksDbKvStorage(executor, db, handle);
-				})
-				.whenException(e -> handlesMap.remove(key))
+		return storages.computeIfAbsent(key, $ -> Promise.ofBlockingCallable(executor,
+				() -> new RocksDbKvStorage(executor, db, db.createColumnFamily(new ColumnFamilyDescriptor(encodeAsArray(DESCRIPTOR_CODEC, key)))))
+				.whenException(e -> storages.remove(key))
 				.whenComplete(toLogger(logger, TRACE, TRACE, WARN, thisMethod(), pubKey, table))
 		);
 	}

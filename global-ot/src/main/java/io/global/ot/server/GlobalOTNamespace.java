@@ -50,6 +50,16 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		super(node, pubKey);
 	}
 
+	@Override
+	public Promise<Void> reset() {
+		return Promises.all(repositories.values().stream().map(RepositoryEntry::reset));
+	}
+
+	public Promise<Void> reset(RepoID repoID) {
+		RepositoryEntry repo = repositories.get(repoID);
+		return repo != null ? repo.reset() : Promise.complete();
+	}
+
 	public RepositoryEntry ensureRepository(RepoID repositoryId) {
 		return repositories.computeIfAbsent(repositoryId, $ -> {
 			RepositoryEntry repositoryEntry = new RepositoryEntry(repositoryId);
@@ -92,31 +102,31 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 	}
 
 	class RepositoryEntry {
-		private final RepoID repositoryId;
+		final RepoID repositoryId;
 
-		private long updateTimestamp;
-		private long updateHeadsTimestamp;
-		private long updateSnapshotsTimestamp;
-		private long updatePullRequestsTimestamp;
+		long updateTimestamp;
+		long updateHeadsTimestamp;
+		long updateSnapshotsTimestamp;
+		long updatePullRequestsTimestamp;
 
-		private final AsyncSupplier<Map<RawServerId, MasterRepository>> ensureMasterRepositories = reuse(this::doEnsureMasterRepositories);
-		private final AsyncSupplier<Void> update = reuse(this::doUpdate);
-		private final AsyncSupplier<Void> updateHeads = reuse(this::doUpdateHeads);
-		private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
-		private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
-		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
-		private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
-		private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
-		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(HashSet::new, AbstractCollection::addAll, this::doSaveHeads);
+		final AsyncSupplier<Map<RawServerId, MasterRepository>> ensureMasterRepositories = reuse(this::doEnsureMasterRepositories);
+		final AsyncSupplier<Void> update = reuse(this::doUpdate);
+		final AsyncSupplier<Void> updateHeads = reuse(this::doUpdateHeads);
+		final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
+		final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
+		final AsyncSupplier<Void> fetch = reuse(this::doFetch);
+		final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
+		final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
+		final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
+		final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(HashSet::new, AbstractCollection::addAll, this::doSaveHeads);
 
-		private final Map<RawServerId, MasterRepository> masterRepositories = new HashMap<>();
-
-		@Nullable
-		private Set<SignedData<RawCommitHead>> polledHeads;
+		final Map<RawServerId, MasterRepository> masterRepositories = new HashMap<>();
 
 		@Nullable
-		private SettablePromise<Void> pollNotifier;
+		Set<SignedData<RawCommitHead>> polledHeads;
+
+		@Nullable
+		SettablePromise<Void> pollNotifier;
 
 		RepositoryEntry(RepoID repositoryId) {
 			this.repositoryId = repositoryId;
@@ -170,7 +180,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 
 		// region API methods implementation
 		@NotNull
-		private Promise<Map<RawServerId, MasterRepository>> doEnsureMasterRepositories() {
+		Promise<Map<RawServerId, MasterRepository>> doEnsureMasterRepositories() {
 			return ensureMasterNodes()
 					.whenResult($ -> {
 						difference(masterRepositories.keySet(), masterNodes.keySet())
@@ -182,14 +192,14 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					.map($ -> masterRepositories);
 		}
 
-		private Promise<Void> ensurePollNotifier() {
+		Promise<Void> ensurePollNotifier() {
 			if (pollNotifier == null) {
 				pollNotifier = new SettablePromise<>();
 			}
 			return pollNotifier;
 		}
 
-		private void notifyPoll() {
+		void notifyPoll() {
 			if (pollNotifier != null) {
 				SettablePromise<@Nullable Void> pollNotifier = this.pollNotifier;
 				this.pollNotifier = null;
@@ -225,7 +235,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doPollMasterHeads() {
+		Promise<Void> doPollMasterHeads() {
 			return ensureMasterRepositories()
 					.then(masterRepositories -> Promises.<Tuple2<GlobalOTNode, Set<SignedData<RawCommitHead>>>>until(
 							null,
@@ -250,7 +260,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doUpdate() {
+		Promise<Void> doUpdate() {
 			if (updateTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
@@ -263,7 +273,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doUpdateHeads() {
+		Promise<Void> doUpdateHeads() {
 			logger.trace("Updating heads");
 			if (updateHeadsTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
@@ -277,7 +287,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doUpdateSnapshots() {
+		Promise<Void> doUpdateSnapshots() {
 			logger.trace("Updating snapshots");
 			if (updateSnapshotsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
@@ -296,7 +306,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doUpdatePullRequests() {
+		Promise<Void> doUpdatePullRequests() {
 			logger.trace("Updating pull requests");
 			if (updatePullRequestsTimestamp >= node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
@@ -310,7 +320,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					.whenResult($ -> updatePullRequestsTimestamp = node.getCurrentTimeProvider().currentTimeMillis());
 		}
 
-		private Promise<Void> doSaveHeads(Set<SignedData<RawCommitHead>> signedNewHeads) {
+		Promise<Void> doSaveHeads(Set<SignedData<RawCommitHead>> signedNewHeads) {
 			if (signedNewHeads.isEmpty()) {
 				return Promise.complete();
 			}
@@ -331,27 +341,27 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doFetch() {
+		Promise<Void> doFetch() {
 			return forEachMaster(this::doFetch);
 		}
 
 		@NotNull
-		private Promise<Void> doFetch(GlobalOTNode targetNode) {
+		Promise<Void> doFetch(GlobalOTNode targetNode) {
 			logger.trace("{} fetching from {}", repositoryId, targetNode);
 			return transfer(targetNode, node);
 		}
 
 		@NotNull
-		private Promise<Void> doPush() {
+		Promise<Void> doPush() {
 			return forEachMaster(this::doPush);
 		}
 
-		private Promise<Void> doPush(GlobalOTNode targetNode) {
+		Promise<Void> doPush(GlobalOTNode targetNode) {
 			logger.trace("{} pushing to {}", repositoryId, targetNode);
 			return transfer(node, targetNode);
 		}
 
-		private Promise<Void> transfer(GlobalOTNode from, GlobalOTNode to) {
+		Promise<Void> transfer(GlobalOTNode from, GlobalOTNode to) {
 			return from.getHeads(repositoryId)
 					.then(heads -> ChannelSupplier.ofPromise(
 							from.download(
@@ -365,7 +375,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doPushSnapshots() {
+		Promise<Void> doPushSnapshots() {
 			return forEachMaster(master -> {
 				logger.trace("{} pushing snapshots to {}", repositoryId, master);
 				//noinspection OptionalGetWithoutIsPresent - snapshot presence is checked in node.getCommitStorage().listSnapshotIds()
@@ -380,7 +390,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		@NotNull
-		private Promise<Void> doPushPullRequests() {
+		Promise<Void> doPushPullRequests() {
 			return forEachMaster(master -> {
 				logger.trace("{} pushing pull requests to {}", repositoryId, master);
 				return master.getPullRequests(repositoryId)
@@ -389,10 +399,14 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 						.then(pullRequests -> tolerantCollectVoid(pullRequests, master::sendPullRequest));
 			});
 		}
+
+		Promise<Void> reset() {
+			return node.getCommitStorage().reset(repositoryId);
+		}
 		// endregion
 
 		// region Helper methods
-		public Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
+		Promise<Set<CommitId>> excludeParents(Set<CommitId> heads) {
 			PriorityQueue<CommitEntry> queue = new PriorityQueue<>();
 			return Promises.all(heads.stream()
 					.map(head -> node.loadCommit(repositoryId, head)
@@ -407,7 +421,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					.whenComplete(toLogger(logger, "excludeParents", heads, this));
 		}
 
-		private void doExcludeParents(PriorityQueue<CommitEntry> queue, long minLevel,
+		void doExcludeParents(PriorityQueue<CommitEntry> queue, long minLevel,
 				Set<CommitId> resultHeads, SettablePromise<Set<CommitId>> cb) {
 			CommitEntry entry = queue.poll();
 			if (entry == null || entry.getLevel() < minLevel) {
@@ -430,7 +444,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 					.whenException(cb::setException);
 		}
 
-		private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {
+		Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {
 			return ensureMasterNodes()
 					.then(masters -> tolerantCollectVoid(masters, action));
 		}

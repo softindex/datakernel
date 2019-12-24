@@ -18,7 +18,7 @@ import static io.global.kv.util.Utils.unpackValue;
 public class RocksDbKvStorage implements KvStorage {
 	private final Executor executor;
 	private final RocksDB db;
-	private final ColumnFamilyHandle handle;
+	private ColumnFamilyHandle handle;
 
 	private final FlushOptions flushOptions;
 	private final WriteOptions writeOptions;
@@ -104,12 +104,6 @@ public class RocksDbKvStorage implements KvStorage {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<SignedData<byte[]>>> remove() {
-		return Promise.of(ChannelConsumer.<SignedData<byte[]>>of(this::remove)
-				.withAcknowledgement(ack -> ack.then($ -> flush())));
-	}
-
-	@Override
 	public Promise<SignedData<RawKvItem>> get(byte[] key) {
 		return Promise.ofBlockingCallable(executor, () -> {
 			byte[] value = db.get(handle, key);
@@ -123,7 +117,12 @@ public class RocksDbKvStorage implements KvStorage {
 	}
 
 	@Override
-	public Promise<Void> remove(SignedData<byte[]> key) {
-		return Promise.ofBlockingRunnable(executor, () -> db.delete(handle, key.getValue()));
+	public Promise<Void> reset() {
+		return Promise.ofBlockingCallable(executor, () -> {
+			ColumnFamilyDescriptor descriptor = handle.getDescriptor();
+			db.dropColumnFamily(handle);
+			handle = db.createColumnFamily(descriptor);
+			return null;
+		});
 	}
 }

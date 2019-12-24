@@ -41,6 +41,8 @@ public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<
 		return ensureMasterNodes.get();
 	}
 
+	public abstract Promise<Void> reset();
+
 	private Promise<List<N>> doEnsureMasterNodes() {
 		if (updateNodesTimestamp > now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.of(ensuredNodes);
@@ -58,11 +60,11 @@ public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<
 					Set<RawServerId> newServerIds = new HashSet<>(announce.getServerIds());
 					masterNodes.keySet().removeIf(id -> !newServerIds.contains(id));
 					if (newServerIds.remove(node.getId())) { // ensure that we are master for the space if it was announced
-						if (node.getManagedPublicKeys().add(space)) {
+						if (node.addManagedPublicKey(space)) {
 							logger.trace("became a master for {}: {}", space, node);
 						}
 					} else {
-						if (node.getManagedPublicKeys().remove(space)) {
+						if (node.removeManagedPublicKey(space)) {
 							logger.trace("stopped being a master for {}: {}", space, node);
 						}
 					}

@@ -4,6 +4,7 @@ import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
@@ -33,6 +34,16 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 
 	public GlobalKvNamespace(GlobalKvNodeImpl node, PubKey space) {
 		super(node, space);
+	}
+
+	@Override
+	public Promise<Void> reset() {
+		return Promises.all(repos.values().stream().map(Repo::reset));
+	}
+
+	public Promise<Void> reset(String repoName) {
+		Repo repo = repos.get(repoName);
+		return repo != null ? repo.reset() : Promise.complete();
 	}
 
 	public Map<String, Repo> getRepos() {
@@ -68,16 +79,16 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 	}
 
 	final class Repo {
-		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
+		final AsyncSupplier<Void> fetch = reuse(this::doFetch);
+		final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
 
 		final KvStorage storage;
-		private final String table;
+		final String table;
 
 		long lastFetchTimestamp = 0;
 		long lastPushTimestamp = 0;
 
-		private Repo(KvStorage storage, String table) {
+		Repo(KvStorage storage, String table) {
 			this.storage = storage;
 			this.table = table;
 		}
@@ -94,15 +105,15 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 			return fetch.get();
 		}
 
-		private Promise<Void> doPush() {
+		Promise<Void> doPush() {
 			return forEachMaster(this::push);
 		}
 
-		private Promise<Void> doFetch() {
+		Promise<Void> doFetch() {
 			return forEachMaster(this::fetch);
 		}
 
-		private Promise<Void> fetch(GlobalKvNode from) {
+		Promise<Void> fetch(GlobalKvNode from) {
 			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
 			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getSyncMargin().toMillis());
 			return ChannelSupplier.ofPromise(from.download(space, table, fetchFromTimestamp))
@@ -110,7 +121,7 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 					.whenResult($ -> lastFetchTimestamp = currentTimestamp);
 		}
 
-		private Promise<Void> push(GlobalKvNode into) {
+		Promise<Void> push(GlobalKvNode into) {
 			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
 			long pushFromTimestamp = Math.max(0, lastPushTimestamp - node.getSyncMargin().toMillis());
 			return storage.download(pushFromTimestamp)
@@ -123,10 +134,13 @@ public final class GlobalKvNamespace extends AbstractGlobalNamespace<GlobalKvNam
 					.whenResult($ -> lastPushTimestamp = currentTimestamp);
 		}
 
-		private Promise<Void> forEachMaster(Function<GlobalKvNode, Promise<Void>> action) {
+		Promise<Void> forEachMaster(Function<GlobalKvNode, Promise<Void>> action) {
 			return ensureMasterNodes()
 					.then(masters -> tolerantCollectVoid(masters, action));
 		}
 
+		Promise<Void> reset() {
+			return storage.reset();
+		}
 	}
 }

@@ -61,5 +61,9 @@ public interface CommitStorage {
 
 	default Promise<Boolean> isIncompleteCommit(CommitId commitId) {
 		return isCompleteCommit(commitId).map(complete -> !complete);
-	};
+	}
+
+	Promise<Void> gc();
+
+	Promise<Void> reset(RepoID repoID);
 }

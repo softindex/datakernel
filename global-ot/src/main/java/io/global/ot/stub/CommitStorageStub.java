@@ -141,6 +141,19 @@ public class CommitStorageStub implements CommitStorage {
 		return Promise.of(commitId.isRoot() || commits.containsKey(commitId) && incompleteParentsCount.getOrDefault(commitId, 0) == 0);
 	}
 
+	public Promise<Void> gc() {
+		// TODO eduard: cleanup dangling commits (anton)
+		return Promise.complete();
+	}
+
+	@Override
+	public Promise<Void> reset(RepoID repoID) {
+		heads.remove(repoID);
+		snapshots.remove(repoID);
+		pullRequests.remove(repoID);
+		return Promise.complete();
+	}
+
 	public void clear() {
 		commits.clear();
 		snapshots.clear();

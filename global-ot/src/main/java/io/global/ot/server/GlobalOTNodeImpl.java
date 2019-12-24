@@ -115,6 +115,11 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return ensureMasterNodes(repositoryId.getOwner());
 	}
 
+	public Promise<Void> reset(RepoID repoID) {
+		GlobalOTNamespace ns = namespaces.get(repoID.getOwner());
+		return ns != null ? ns.reset(repoID) : Promise.complete();
+	}
+
 	@NotNull
 	@Override
 	public Eventloop getEventloop() {
@@ -130,13 +135,14 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		if (pollMasterRepositories) {
-			pollMasterRepositories = false;
-			namespaces.values()
-					.stream()
-					.flatMap(ns -> ns.getRepositories().values().stream())
-					.forEach(RepositoryEntry::stopPolling);
+		if (!pollMasterRepositories) {
+			return Promise.complete();
 		}
+		pollMasterRepositories = false;
+		namespaces.values()
+				.stream()
+				.flatMap(ns -> ns.getRepositories().values().stream())
+				.forEach(RepositoryEntry::stopPolling);
 		return Promise.complete();
 	}
 
@@ -291,7 +297,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
 		ensureRepository(repositoryId);
 		return commitStorage.getHeads(repositoryId)
-				.map(map -> (Set<SignedData<RawCommitHead>>)new HashSet<>(map.values()))
+				.map(map -> (Set<SignedData<RawCommitHead>>) new HashSet<>(map.values()))
 				.whenComplete(toLogger(logger, "getHeads", repositoryId));
 	}
 

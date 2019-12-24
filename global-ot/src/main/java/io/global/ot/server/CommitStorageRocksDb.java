@@ -343,6 +343,21 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 				.whenComplete(toLogger(logger, TRACE, thisMethod(), commitId, this));
 	}
 
+	public Promise<Void> gc() {
+		// TODO eduard: cleanup dangling commits (anton)
+		return Promise.complete();
+	}
+
+	@Override
+	public Promise<Void> reset(RepoID repoID) {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					// TODO eduard: do this too because idk how it works exactly (anton)
+					return (Void) null;
+				})
+				.whenComplete(toLogger(logger, TRACE, thisMethod(), repoID, this));
+	}
+
 	@NotNull
 	@Override
 	public Eventloop getEventloop() {

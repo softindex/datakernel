@@ -31,6 +31,7 @@ import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.PubKeyStorage;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.DataFrame;
 import io.global.fs.api.GlobalFsCheckpoint;
@@ -94,6 +95,11 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 		GlobalFsNamespace ns = new GlobalFsNamespace(this, space);
 		ns.fetch();
 		return ns;
+	}
+
+	public Promise<Void> reset(PubKey space, String glob) {
+		GlobalFsNamespace ns = namespaces.get(space);
+		return ns != null ? ns.reset(glob) : Promise.complete();
 	}
 
 	public Function<PubKey, FsClient> getStorageFactory() {

@@ -83,6 +83,11 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 		return new GlobalKvNamespace(this, space);
 	}
 
+	public Promise<Void> reset(PubKey space, String table) {
+		GlobalKvNamespace ns = namespaces.get(space);
+		return ns != null ? ns.reset(table) : Promise.complete();
+	}
+
 	public Duration getSyncMargin() {
 		return syncMargin;
 	}
