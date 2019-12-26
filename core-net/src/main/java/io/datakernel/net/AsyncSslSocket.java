@@ -105,7 +105,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		if (!isOpen())return Promise.ofException(CLOSE_EXCEPTION);
+		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
@@ -363,33 +363,36 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 		}
 	}
 
-	private boolean isOpen() {
-		return net2engine != null;
+	private void tryCloseOutbound() {
+		if (!engine.isOutboundDone()) {
+			engine.closeOutbound();
+			try {
+				while (!engine.isOutboundDone()) {
+					SSLEngineResult result = tryToWrap();
+					if (result.getStatus() == CLOSED) {
+						break;
+					}
+				}
+			} catch (SSLException ignored) {
+			}
+		}
 	}
 
-	@SuppressWarnings("AssignmentToNull") // bufs set to null only when socket is closing
-	private void recycleByteBufs() {
-		tryRecycle(net2engine);
-		tryRecycle(engine2app);
-		tryRecycle(app2engine);
-		net2engine = engine2app = app2engine = null;
+	private boolean isOpen() {
+		return net2engine != null;
 	}
 
 	@Override
 	public void close(@NotNull Throwable e) {
 		if (!isOpen()) return;
-		if (!engine.isOutboundDone()) {
-			engine.closeOutbound();
-			sync(); // sync is used here to send a close-notify message to recipient (will be sent once)
-		}
-		recycleByteBufs();
+		tryRecycle(net2engine);
+		tryRecycle(engine2app);
+		net2engine = engine2app = null;
+		tryCloseOutbound();
+		tryRecycle(app2engine); // app2Engine is recycled later as it is used while sending close notify messages
+		app2engine = null;
 		if (pendingUpstreamWrite != null) {
-			pendingUpstreamWrite.whenComplete((result, e2) -> {
-				if (e2 != null) {
-					e.addSuppressed(e2);
-				}
-				upstream.close(e);
-			});
+			pendingUpstreamWrite.whenResult($ -> upstream.close(e));
 		} else {
 			upstream.close(e);
 		}
