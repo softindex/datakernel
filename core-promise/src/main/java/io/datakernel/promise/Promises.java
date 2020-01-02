@@ -1496,6 +1496,10 @@ public final class Promises {
 			}
 		}
 
+		@Override
+		protected String describe() {
+			return "Promises.all()";
+		}
 	}
 
 	private static final class PromiseAllSettled<T> extends NextPromise<T, Void> {
@@ -1504,7 +1508,7 @@ public final class Promises {
 		@Nullable Throwable lastException;
 
 		@Override
-		public String toString() {
+		public String describe() {
 			return "PromiseAllSettled{" +
 					"countdown=" + countdown +
 					", lastException=" + lastException +
@@ -1539,6 +1543,11 @@ public final class Promises {
 				}
 			}
 		}
+
+		@Override
+		protected String describe() {
+			return "Promises.any()";
+		}
 	}
 
 	private static final class PromiseSome<T> extends NextPromise<T, List<T>> {
@@ -1564,6 +1573,11 @@ public final class Promises {
 					completeExceptionally(new StacklessException(Promises.class, "There are not enough promises to be complete"));
 				}
 			}
+		}
+
+		@Override
+		protected String describe() {
+			return "Promises.some(" + expectedSize + ")";
 		}
 
 		boolean isFull() {
@@ -1601,6 +1615,11 @@ public final class Promises {
 				tryCompleteExceptionally(e);
 			}
 		}
+
+		@Override
+		protected String describe() {
+			return "Promises.toArray()";
+		}
 	}
 
 	private static final class PromiseToList<T> extends NextPromise<T, List<T>> {
@@ -1629,6 +1648,11 @@ public final class Promises {
 			} else {
 				tryCompleteExceptionally(e);
 			}
+		}
+
+		@Override
+		protected String describe() {
+			return "Promises.toList()";
 		}
 	}
 

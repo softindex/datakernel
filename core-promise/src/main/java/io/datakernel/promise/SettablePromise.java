@@ -143,13 +143,7 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	}
 
 	@Override
-	public String toString() {
-		return "SettablePromise{" +
-				(isComplete() ?
-						(exception == null ?
-								"" + result :
-								"exception=" + exception.getClass().getSimpleName()) :
-						"<unset>")
-				+ "}";
-	}
+	public String describe() {
+		return "SettablePromise";
+ 	}
 }

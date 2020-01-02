@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
@@ -170,6 +171,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					completeExceptionally(e);
 				}
 			}
+
+			@Override
+			public String describe() {
+				return "Promise.map(" + formatToString(fn) + ')';
+			}
 		};
 		subscribe(resultPromise);
 		return resultPromise;
@@ -208,6 +214,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					complete(newResult);
 				}
 			}
+
+			@Override
+			public String describe() {
+				return "Promise.mapEx(" + formatToString(fn) + ')';
+			}
 		};
 		subscribe(resultPromise);
 		return resultPromise;
@@ -238,6 +249,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				} else {
 					completeExceptionally(e);
 				}
+			}
+
+			@Override
+			public String describe() {
+				return "Promise.then(" + formatToString(fn) + ')';
 			}
 		};
 		subscribe(resultPromise);
@@ -277,6 +293,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					promise.whenComplete(this::complete);
 				}
 			}
+
+			@Override
+			public String describe() {
+				return "Promise.thenEx(" + formatToString(fn) + ')';
+			}
 		};
 		subscribe(resultPromise);
 		return resultPromise;
@@ -300,7 +321,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			action.run();
 			return this;
 		}
-		subscribe((result, e) -> action.run());
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				action.run();
+			}
+
+			@Override
+			public String toString() {
+				return "Promise.whenComplete(" + formatToString(action) + ')';
+			}
+		});
 		return this;
 	}
 
@@ -311,9 +342,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			if (isResult()) action.accept(result);
 			return this;
 		}
-		subscribe((result, e) -> {
-			if (e == null) {
-				action.accept(result);
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					action.accept(result);
+				}
+			}
+
+			@Override
+			public String toString() {
+				return "Promise.whenResult(" + formatToString(action) + ')';
 			}
 		});
 		return this;
@@ -327,9 +366,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			}
 			return this;
 		}
-		subscribe((result, e) -> {
-			if (e != null) {
-				action.accept(e);
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e != null) {
+					action.accept(e);
+				}
+			}
+
+			@Override
+			public String toString() {
+				return "Promise.whenException(" + formatToString(action) + ')';
 			}
 		});
 		return this;
@@ -409,6 +456,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		void onAnyException(@NotNull Throwable e) {
 			tryCompleteExceptionally(e);
 		}
+
+		@Override
+		public String describe() {
+			return "Promise.combine(" + formatToString(fn) + ')';
+		}
 	}
 
 	@NotNull
@@ -438,6 +490,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			} else {
 				tryCompleteExceptionally(e);
 			}
+		}
+
+		@Override
+		public String describe() {
+			return "Promise.both()";
 		}
 	}
 
@@ -469,6 +526,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				}
 			}
 		}
+
+		@Override
+		public String describe() {
+			return "Promise.either()";
+		}
 	}
 
 	@NotNull
@@ -485,6 +547,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				} else {
 					complete(Try.ofException(e));
 				}
+			}
+
+			@Override
+			public String describe() {
+				return "Promise.toTry()";
 			}
 		};
 		subscribe(resultPromise);
@@ -506,6 +573,11 @@ abstract class AbstractPromise<T> implements Promise<T> {
 					completeExceptionally(e);
 				}
 			}
+
+			@Override
+			public String describe() {
+				return "Promise.toVoid()";
+			}
 		};
 		subscribe(resultPromise);
 		return resultPromise;
@@ -524,11 +596,19 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			}
 		}
 		CompletableFuture<T> future = new CompletableFuture<>();
-		subscribe((result, e) -> {
-			if (e == null) {
-				future.complete(result);
-			} else {
-				future.completeExceptionally(e);
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					future.complete(result);
+				} else {
+					future.completeExceptionally(e);
+				}
+			}
+
+			@Override
+			public String toString() {
+				return "Promise.toCompletableFuture()";
 			}
 		});
 		return future;
@@ -556,5 +636,65 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				callbacks[i].accept(result, e);
 			}
 		}
+	}
+
+	private static final String IDENT = "\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
+	private static final Pattern PACKAGE_NAME_AND_LAMBDA_PART = Pattern.compile("^(?:" + IDENT + "\\.)*((?:" + IDENT + "?)\\$\\$Lambda\\$\\d+)/.*$");
+	private static final Pattern START_OF_NEW_LINE = Pattern.compile("(?:\r?\n)(?!\\z)");
+
+	private static <T> void appendChildren(StringBuilder sb, Callback<T> callback, String indent) {
+		if (callback == null) {
+			return;
+		}
+		if (callback instanceof CallbackList) {
+			CallbackList<? super T> callbackList = (CallbackList<? super T>) callback;
+			for (int i = 0; i < callbackList.index; i++) {
+				appendChildren(sb, callbackList.callbacks[i], indent);
+			}
+		} else {
+			indent += "\t";
+			sb.append("\n");
+			if (callback instanceof AbstractPromise) {
+				sb.append(((AbstractPromise<T>) callback).toString(indent));
+			} else if (!(callback instanceof SimpleCallback)) {
+				sb.append(indent)
+						.append("Promise.whenComplete(")
+						.append(formatToString(callback))
+						.append(')');
+			} else {
+				sb.append(indent).append(callback);
+			}
+		}
+	}
+
+	private static <T> String formatToString(Object object) {
+		return PACKAGE_NAME_AND_LAMBDA_PART.matcher(object.toString()).replaceAll("$1");
+	}
+
+	private String toString(String indent) {
+		StringBuilder sb = new StringBuilder(indent);
+		sb.append(describe());
+		if (isComplete()) {
+			if (exception == null) {
+				sb.append(result);
+			} else {
+				sb.append("exception=");
+				sb.append(exception.getClass().getSimpleName());
+			}
+		} else {
+			sb.append("<unset>");
+		}
+		sb.append('}');
+		appendChildren(sb, next, indent);
+		return sb.toString();
+	}
+
+	protected String describe() {
+		return "AbstractPromise";
+	}
+
+	@Override
+	public String toString() {
+		return toString("");
 	}
 }

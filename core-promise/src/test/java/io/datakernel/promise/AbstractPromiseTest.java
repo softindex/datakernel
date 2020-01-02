@@ -7,12 +7,13 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 public final class AbstractPromiseTest {
+
 	@Test
 	public void testRecursionProblems() {
 		int count = 1_000_000;
 		SettablePromise<Void> settablePromise = new SettablePromise<>();
 		RefInt refInt = new RefInt(count);
-		for (int i = 0; i < count; i++){
+		for (int i = 0; i < count; i++) {
 			settablePromise.whenResult($ -> refInt.dec());
 		}
 
