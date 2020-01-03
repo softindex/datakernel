@@ -23,6 +23,7 @@ import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -132,17 +133,14 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	}
 
 	@Async.Schedule
-	protected void subscribe(@NotNull Callback<? super T> consumer) {
-		assert !isComplete();
+	protected void subscribe(@NotNull Callback<? super T> callback) {
+		assert !isComplete() : "Promise has already been completed";
 		if (next == null) {
-			next = consumer;
+			next = callback;
+		} else if (next instanceof CallbackList) {
+			((CallbackList<T>) next).add(callback);
 		} else {
-			assert !isComplete() : "Promise has already been completed";
-			Callback<? super T> finalNext = next;
-			next = (Callback<T>) (result, e) -> {
-				finalNext.accept(result, e);
-				consumer.accept(result, e);
-			};
+			next = new CallbackList<>(next, callback);
 		}
 	}
 
@@ -534,5 +532,29 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			}
 		});
 		return future;
+	}
+
+	private static class CallbackList<T> implements Callback<T> {
+		private int index = 2;
+		private Callback<? super T>[] callbacks = new Callback[4];
+
+		public CallbackList(Callback<? super T> first, Callback<? super T> second) {
+			callbacks[0] = first;
+			callbacks[1] = second;
+		}
+
+		public void add(Callback<? super T> callback) {
+			if (index == callbacks.length) {
+				callbacks = Arrays.copyOf(callbacks, callbacks.length * 2);
+			}
+			callbacks[index++] = callback;
+		}
+
+		@Override
+		public void accept(T result, @Nullable Throwable e) {
+			for (int i = 0; i < index; i++) {
+				callbacks[i].accept(result, e);
+			}
+		}
 	}
 }
