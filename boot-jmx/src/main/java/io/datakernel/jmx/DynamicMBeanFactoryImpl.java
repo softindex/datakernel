@@ -45,6 +45,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.eventloop.util.ReflectionUtils.*;
 import static io.datakernel.jmx.Utils.allInstancesAreOfSameType;
 import static java.lang.Math.ceil;
@@ -549,7 +550,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			List<JmxRefreshable> currentRefreshables = rootNode.getAllRefreshables(mbeanWrapper.getMBean());
 			if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
 				eventloopToJmxRefreshables.put(eventloop, currentRefreshables);
-				eventloop.execute(createRefreshTask(eventloop, null, 0));
+				eventloop.execute(wrapContext(this, createRefreshTask(eventloop, null, 0)));
 			} else {
 				List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
 				List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);
@@ -585,9 +586,9 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(jmxRefreshableList.size());
 			int totalRefreshes = currentRefreshes + previousRefreshes;
 			if (totalRefreshes == jmxRefreshableList.size()) {
-				eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, null, 0));
+				eventloop.scheduleBackground(nextTimestamp, wrapContext(this, createRefreshTask(eventloop, null, 0)));
 			} else {
-				eventloop.scheduleBackground(nextTimestamp, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes));
+				eventloop.scheduleBackground(nextTimestamp, wrapContext(this, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes)));
 			}
 		};
 	}

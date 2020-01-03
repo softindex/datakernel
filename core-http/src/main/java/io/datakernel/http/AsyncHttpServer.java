@@ -39,6 +39,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static java.util.stream.Collectors.toList;
 
@@ -228,7 +229,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
+		expiredConnectionsCheck = eventloop.delayBackground(1000L, wrapContext(this, () -> {
 			expiredConnectionsCheck = null;
 			boolean isClosing = closeCallback != null;
 			if (readWriteTimeoutMillis != 0 || isClosing) {
@@ -244,7 +245,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 					logger.info("...Waiting for " + this);
 				}
 			}
-		});
+		}));
 	}
 
 	@Override
@@ -277,8 +278,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (getConnectionsCount() == 0) {
 			cb.set(null);
 		} else {
-			if (!poolServing.isEmpty() && serveTimeoutMillisShutdown != 0){
-				eventloop.delayBackground(serveTimeoutMillisShutdown, poolServing::closeAllConnections);
+			if (!poolServing.isEmpty() && serveTimeoutMillisShutdown != 0) {
+				eventloop.delayBackground(serveTimeoutMillisShutdown, wrapContext(this, poolServing::closeAllConnections));
 			}
 			closeCallback = cb;
 			logger.info("Waiting for " + this);

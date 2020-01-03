@@ -28,7 +28,7 @@ public interface EventloopInspector extends BaseInspector<EventloopInspector> {
 
 	void onUpdateScheduledTasksStats(int newScheduledTasks, long loopTime, boolean background);
 
-	void onFatalError(@NotNull Throwable e, Object causedObject);
+	void onFatalError(@NotNull Throwable e, @Nullable Object causedObject);
 
 	void onScheduledTaskOverdue(int overdue, boolean background);
 }

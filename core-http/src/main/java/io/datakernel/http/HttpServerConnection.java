@@ -33,6 +33,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMessage.MUST_LOAD_BODY;
 import static io.datakernel.http.HttpMethod.*;
@@ -228,7 +229,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		ByteBuf buf = renderHttpMessage(httpResponse);
 		if (buf != null) {
 			if ((flags & KEEP_ALIVE) != 0) {
-				eventloop.post(() -> writeBuf(buf));
+				eventloop.post(wrapContext(this, () -> writeBuf(buf)));
 			} else {
 				writeBuf(buf);
 			}

@@ -46,6 +46,7 @@ import java.util.function.ToIntFunction;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -379,7 +380,7 @@ public final class ChannelSuppliers {
 						try {
 							buf = future.get();
 						} catch (InterruptedException e) {
-							eventloop.execute(channelSupplier::cancel);
+							eventloop.execute(wrapContext(channelSupplier, channelSupplier::cancel));
 							throw new IOException(e);
 						} catch (ExecutionException e) {
 							Throwable cause = e.getCause();
@@ -407,7 +408,7 @@ public final class ChannelSuppliers {
 			@Override
 			public void close() {
 				current = nullify(current, ByteBuf::recycle);
-				eventloop.execute(channelSupplier::close);
+				eventloop.execute(wrapContext(channelSupplier, channelSupplier::close));
 			}
 		};
 	}

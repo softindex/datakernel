@@ -31,6 +31,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 @SuppressWarnings({"unchecked", "WeakerAccess", "unused", "ConstantConditions"})
 abstract class AbstractPromise<T> implements Promise<T> {
@@ -389,9 +390,10 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	public Promise<T> async() {
 		if (isComplete()) {
 			SettablePromise<T> promise = new SettablePromise<>();
-			getCurrentEventloop().post(exception == null ?
-					() -> promise.set(result) :
-					() -> promise.setException(exception));
+			getCurrentEventloop().post(wrapContext(promise,
+					exception == null ?
+							() -> promise.set(result) :
+							() -> promise.setException(exception)));
 			return promise;
 		}
 		return this;
