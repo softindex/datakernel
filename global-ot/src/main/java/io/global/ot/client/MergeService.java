@@ -25,7 +25,7 @@ public final class MergeService<K, D> implements EventloopService {
 	private final Eventloop eventloop;
 	private final OTRepository<K, D> repository;
 	private final OTSystem<D> otSystem;
-	private final AsyncSupplier<Set<K>> headsSupplier;
+	private AsyncSupplier<Set<K>> headsSupplier;
 
 	private long initialDelay = DEFAULT_INITIAL_DELAY.toMillis();
 	private long delay = initialDelay;
@@ -35,7 +35,6 @@ public final class MergeService<K, D> implements EventloopService {
 		this.eventloop = eventloop;
 		this.repository = repository;
 		this.otSystem = otSystem;
-		this.headsSupplier = repository.pollHeads();
 	}
 
 	public static <K, D> MergeService<K, D> create(Eventloop eventloop, OTRepository<K, D> repository, OTSystem<D> otSystem) {
@@ -54,6 +53,7 @@ public final class MergeService<K, D> implements EventloopService {
 
 	@Override
 	public @NotNull Promise<?> start() {
+		this.headsSupplier = repository.pollHeads();
 		until((Void) null, $2 -> sync(), $2 -> stopped);
 		return Promise.complete();
 	}
