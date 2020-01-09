@@ -8,7 +8,9 @@ self.addEventListener('activate', event => event.waitUntil(self.clients.claim())
 // We need this in Webpack plugin (refer to swSrc option): https://developers.google.com/web/tools/workbox/modules/workbox-webpack-plugin#full_injectmanifest_config
 workbox.precaching.precacheAndRoute(self.__precacheManifest);
 
-workbox.routing.registerNavigationRoute('/index.html');
+workbox.routing.registerNavigationRoute('/index.html', {
+  blacklist: [/\/debug/]
+});
 
 // Cache the Google static and apis. Using for Google Fonts
 workbox.routing.registerRoute(
