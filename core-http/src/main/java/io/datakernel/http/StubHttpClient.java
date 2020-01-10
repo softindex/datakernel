@@ -20,6 +20,8 @@ import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+
 /**
  * A stub client which forwards requests straight to the underlying servlet without any real I/O operations.
  * Used for testing.
@@ -47,7 +49,7 @@ public final class StubHttpClient implements IAsyncHttpClient {
 		return servletResult.thenEx((res, e) -> {
 			request.recycle();
 			if (e == null) {
-				Eventloop.getCurrentEventloop().post(res::recycle);
+				Eventloop.getCurrentEventloop().post(wrapContext(res, res::recycle));
 				return Promise.of(res);
 			} else {
 				return Promise.ofException(e);

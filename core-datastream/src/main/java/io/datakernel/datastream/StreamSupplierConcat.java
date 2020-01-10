@@ -22,6 +22,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+
 /**
  * Represents {@link StreamSupplier}, which created with iterator with {@link AbstractStreamSupplier}
  * which will stream to this
@@ -42,13 +44,13 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 	private class InternalConsumer extends AbstractStreamConsumer<T> {
 		@Override
 		protected Promise<Void> onEndOfStream() {
-			eventloop.post(() -> {
+			eventloop.post(wrapContext(this, () -> {
 				supplier = null;
 				internalConsumer = null;
 				if (isReceiverReady()) {
 					onProduce(getCurrentDataAcceptor());
 				}
-			});
+			}));
 			return StreamSupplierConcat.this.getConsumer().getAcknowledgement();
 		}
 
@@ -62,7 +64,7 @@ class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
 	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		if (supplier == null) {
 			if (!iterator.hasNext()) {
-				eventloop.post(this::sendEndOfStream);
+				eventloop.post(wrapContext(this, this::sendEndOfStream));
 				return;
 			}
 			supplier = iterator.next();

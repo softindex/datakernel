@@ -55,6 +55,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.net.AsyncSslSocket.wrapClientSocket;
@@ -318,7 +319,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
+		expiredConnectionsCheck = eventloop.delayBackground(1000L, wrapContext(this, () -> {
 			expiredConnectionsCheck = null;
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 			boolean isClosing = closePromise != null;
@@ -332,7 +333,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					logger.info("...Waiting for " + this);
 				}
 			}
-		});
+		}));
 	}
 
 	@Nullable

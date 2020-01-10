@@ -30,6 +30,7 @@ import java.util.Set;
 
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.util.Collections.emptySet;
 
 /**
@@ -71,7 +72,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	protected void onWired() {
-		eventloop.post(this::onStarted);
+		eventloop.post(wrapContext(this, this::onStarted));
 	}
 
 	protected void onStarted() {
@@ -88,7 +89,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected final void acknowledge() {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.set(null);
-		eventloop.post(this::cleanup);
+		eventloop.post(wrapContext(this, this::cleanup));
 	}
 
 	protected abstract Promise<Void> onEndOfStream();
@@ -103,7 +104,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 			}
 		}
 		onError(e);
-		eventloop.post(this::cleanup);
+		eventloop.post(wrapContext(this, this::cleanup));
 	}
 
 	protected abstract void onError(Throwable e);

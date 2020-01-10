@@ -32,6 +32,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+
 /**
  * Implementation of {@link AsyncDnsClient} that asynchronously
  * connects to some DNS server and gets the response from it.
@@ -97,24 +99,24 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 				DnsQueryCacheResult cacheResult = cache.tryToResolve(query);
 				if (cacheResult != null) {
 					if (cacheResult.doesNeedRefreshing() && !refreshingNow.add(query)) {
-						eventloop.execute(() -> refresh(query));
+						eventloop.execute(wrapContext(this, () -> refresh(query)));
 					}
 					return cacheResult.getResponseAsPromise();
 				}
 
 				anotherEventloop.startExternalTask(); // keep other eventloop alive while we wait for an answer in main one
 				return Promise.ofCallback(cb ->
-						eventloop.execute(() ->
+						eventloop.execute(wrapContext(CachedAsyncDnsClient.this, () ->
 								CachedAsyncDnsClient.this.resolve(query)
 										.whenComplete((result, e) -> {
-											anotherEventloop.execute(() -> cb.accept(result, e));
+											anotherEventloop.execute(wrapContext(cb, () -> cb.accept(result, e)));
 											anotherEventloop.completeExternalTask();
-										})));
+										}))));
 			}
 
 			@Override
 			public void close() {
-				eventloop.execute(CachedAsyncDnsClient.this::close);
+				eventloop.execute(wrapContext(CachedAsyncDnsClient.this, CachedAsyncDnsClient.this::close));
 			}
 		};
 	}
