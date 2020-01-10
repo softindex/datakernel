@@ -389,6 +389,9 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		writeEndOfStream |= buf == null;
 
 		if (writeBuf == null) {
+			if (buf != null && !buf.canRead()){
+				return Promise.complete();
+			}
 			writeBuf = buf;
 		} else {
 			if (buf != null) {
