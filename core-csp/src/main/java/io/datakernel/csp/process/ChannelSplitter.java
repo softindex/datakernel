@@ -34,6 +34,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Sliceable.trySlice;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		implements WithChannelInput<ChannelSplitter<T>, T>, WithChannelOutputs<ChannelSplitter<T>, T> {
@@ -97,7 +98,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 
 	private void tryStart() {
 		if (input != null && outputs.stream().allMatch(Objects::nonNull)) {
-			getCurrentEventloop().post(this::startProcess);
+			getCurrentEventloop().post(wrapContext(this, this::startProcess));
 		}
 	}
 

@@ -31,6 +31,7 @@ import java.util.Set;
 
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.util.Collections.emptySet;
 
 /**
@@ -87,7 +88,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	protected void onWired() {
-		eventloop.post(this::onStarted);
+		eventloop.post(wrapContext(this, this::onStarted));
 	}
 
 	protected void onStarted() {
@@ -158,10 +159,10 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		if (produceStatus != null)
 			return; // recursive call from downstream - just hot-switch to another receiver
 		produceStatus = ProduceStatus.POSTED;
-		eventloop.post(() -> {
+		eventloop.post(wrapContext(this, () -> {
 			produceStatus = null;
 			tryProduce();
-		});
+		}));
 	}
 
 	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
@@ -201,7 +202,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		currentDataAcceptor = null;
 		lastDataAcceptor = Recyclable::tryRecycle;
 		endOfStream.set(null);
-		eventloop.post(this::cleanup);
+		eventloop.post(wrapContext(this, this::cleanup));
 		return consumer.getAcknowledgement();
 	}
 
@@ -216,7 +217,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		currentDataAcceptor = null;
 		lastDataAcceptor = Recyclable::tryRecycle;
 		endOfStream.setException(e);
-		eventloop.post(this::cleanup);
+		eventloop.post(wrapContext(this, this::cleanup));
 		onError(e);
 	}
 

@@ -261,7 +261,7 @@ public abstract class HttpMessage {
 					queue.add(buf);
 				},
 				ByteBufQueue::takeRemaining)
-				.whenComplete((body, e) -> {
+				.whenResult(body -> {
 					if (!isRecycled()) {
 						this.flags &= ~MUST_LOAD_BODY;
 						this.body = body;
@@ -372,6 +372,7 @@ public abstract class HttpMessage {
 
 	final void recycle() {
 		assert !isRecycled();
+		flags |= RECYCLED;
 		if (bufs != null) {
 			bufs.recycle();
 		}

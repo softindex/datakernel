@@ -152,6 +152,31 @@ public final class AsyncTcpSocketSslTest {
 	}
 
 	@Test
+	public void testLoopBackWithEmptyBufs() throws IOException {
+		int halfLength = TEST_STRING.length() / 2;
+		String TEST_STRING_PART_1 = TEST_STRING.substring(0, halfLength);
+		String TEST_STRING_PART_2 = TEST_STRING.substring(halfLength);
+		startServer(sslContext, serverSsl -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(serverSsl))
+				.parse(PARSER)
+				.then(result -> serverSsl.write(wrapAscii(result)))
+				.whenComplete(serverSsl::close)
+				.whenComplete(assertComplete()));
+
+		String result = await(AsyncTcpSocketNio.connect(ADDRESS)
+				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
+				.then(sslSocket ->
+						sslSocket.write(wrapAscii(TEST_STRING_PART_1))
+								.then($ -> sslSocket.write(ByteBuf.empty()))
+								.then($ -> sslSocket.write(wrapAscii(TEST_STRING_PART_2)))
+								.then($ -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(sslSocket))
+										.parse(PARSER))
+								.whenComplete(sslSocket::close)));
+
+		assertEquals(TEST_STRING, result);
+	}
+
+
+	@Test
 	public void sendsLargeAmountOfDataFromClientToServer() throws IOException {
 		startServer(sslContext, serverSsl -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(serverSsl))
 				.parse(PARSER_LARGE)

@@ -35,6 +35,7 @@ import org.jetbrains.annotations.NotNull;
 import java.time.Duration;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 public final class RpcStream {
 	private static final CloseException RPC_CLOSE_EXCEPTION = new CloseException(RpcStream.class, "RPC Channel Closed");
@@ -154,6 +155,6 @@ public final class RpcStream {
 	}
 
 	public void close() {
-		getCurrentEventloop().post(() -> socket.close(RPC_CLOSE_EXCEPTION));
+		getCurrentEventloop().post(wrapContext(socket, () -> socket.close(RPC_CLOSE_EXCEPTION)));
 	}
 }

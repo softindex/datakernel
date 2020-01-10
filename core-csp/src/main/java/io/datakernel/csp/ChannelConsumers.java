@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Provides additional functionality for managing {@link ChannelConsumer}s.
@@ -130,7 +131,7 @@ public final class ChannelConsumers {
 				try {
 					future.get();
 				} catch (InterruptedException e) {
-					eventloop.execute(channelConsumer::cancel);
+					eventloop.execute(wrapContext(channelConsumer, channelConsumer::cancel));
 					throw new IOException(e);
 				} catch (ExecutionException e) {
 					Throwable cause = e.getCause();

@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 
 import static io.datakernel.common.Utils.nullify;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.promise.Promises.retry;
 
 @SuppressWarnings("UnusedReturnValue")
@@ -189,7 +190,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 			timestamp = schedule.nextTimestamp(now, lastStartTime, lastCompleteTime);
 		}
 
-		scheduledTask = eventloop.scheduleBackground(timestamp, doCall::get);
+		scheduledTask = eventloop.scheduleBackground(timestamp, wrapContext(this, doCall::get));
 	}
 
 	private final AsyncSupplier<Void> doCall = AsyncSuppliers.reuse(this::doCall);

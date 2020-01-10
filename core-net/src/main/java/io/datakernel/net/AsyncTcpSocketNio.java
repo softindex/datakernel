@@ -47,6 +47,7 @@ import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventHandler {
@@ -244,21 +245,21 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	// timeouts management
 	private void scheduleReadTimeout() {
 		if (scheduledReadTimeout == null) {
-			scheduledReadTimeout = eventloop.delayBackground(readTimeout, () -> {
+			scheduledReadTimeout = eventloop.delayBackground(readTimeout, wrapContext(this, () -> {
 				if (inspector != null) inspector.onReadTimeout();
 				scheduledReadTimeout = null;
 				close(TIMEOUT_EXCEPTION);
-			});
+			}));
 		}
 	}
 
 	private void scheduleWriteTimeout() {
 		if (scheduledWriteTimeout == null) {
-			scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, () -> {
+			scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, wrapContext(this, () -> {
 				if (inspector != null) inspector.onWriteTimeout();
 				scheduledWriteTimeout = null;
 				close(TIMEOUT_EXCEPTION);
-			});
+			}));
 		}
 	}
 
@@ -376,6 +377,9 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		writeEndOfStream |= buf == null;
 
 		if (writeBuf == null) {
+			if (buf != null && !buf.canRead()){
+				return Promise.complete();
+			}
 			writeBuf = buf;
 		} else {
 			if (buf != null) {

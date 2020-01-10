@@ -45,6 +45,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.AsyncTcpSocketNio.wrapChannel;
 import static io.datakernel.net.AsyncTcpSocketSsl.wrapServerSocket;
@@ -321,8 +322,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 			accepts.recordEvent();
 			if (ssl) acceptsSsl.recordEvent();
 			onAccept(channel, localAddress, remoteAddress, ssl);
-			workerServerEventloop.execute(() ->
-					workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings));
+			workerServerEventloop.execute(wrapContext(workerServer, () -> workerServer.doAccept(channel, localAddress, remoteAddress, ssl, socketSettings)));
 		}
 
 		if (acceptOnce) {

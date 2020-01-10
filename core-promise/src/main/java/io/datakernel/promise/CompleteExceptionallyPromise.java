@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Represents a {@code Promise} which is completed with an exception.
@@ -162,7 +163,7 @@ public final class CompleteExceptionallyPromise<T> implements Promise<T> {
 	@Override
 	public Promise<T> async() {
 		SettablePromise<T> result = new SettablePromise<>();
-		getCurrentEventloop().post(() -> result.setException(exception));
+		getCurrentEventloop().post(wrapContext(result, () -> result.setException(exception)));
 		return result;
 	}
 
