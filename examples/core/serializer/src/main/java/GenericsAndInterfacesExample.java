@@ -1,114 +1,82 @@
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Example of using generics and interfaces with serializers and deserializers.
- */
+import static java.lang.ClassLoader.getSystemClassLoader;
+
 public final class GenericsAndInterfacesExample {
-
 	public static void main(String[] args) {
-		// Create a test object
-		TestDataGenericInterfaceImpl testData1 = new TestDataGenericInterfaceImpl();
+		//[START REGION_4]
+		Developer developer = new Developer();
+		developer.setSkills(Arrays.asList(
+				new Skill<>(1, "Java"),
+				new Skill<>(2, "ActiveJ")));
 
-		testData1.setList(Arrays.asList(
-				new TestDataGenericNested<>(10, "a"),
-				new TestDataGenericNested<>(20, "b")));
+		byte[] buffer = new byte[200];
+		BinarySerializer<Developer> serializer = SerializerBuilder.create(getSystemClassLoader())
+				.build(Developer.class);
+		//[END REGION_4]
 
-		// Serialize testData1 and then deserialize it to testData2
-		TestDataGenericInterfaceImpl testData2 =
-				serializeAndDeserialize(TestDataGenericInterfaceImpl.class, testData1);
+		//[START REGION_5]
+		serializer.encode(buffer, 0, developer);
+		Developer developer2 = serializer.decode(buffer, 0);
+		//[END REGION_5]
 
-		// Compare them
-		System.out.println(testData1.getList().size() + " " + testData2.getList().size());
-		for (int i = 0; i < testData1.getList().size(); i++) {
-			System.out.println(testData1.getList().get(i).getKey() + " " + testData1.getList().get(i).getValue()
-					+ ", " + testData2.getList().get(i).getKey() + " " + testData2.getList().get(i).getValue());
+		//[START REGION_6]
+		for (int i = 0; i < developer.getSkills().size(); i++) {
+			System.out.println(developer.getSkills().get(i).getKey() + " - " + developer.getSkills().get(i).getValue() +
+					", " + developer2.getSkills().get(i).getKey() + " - " + developer2.getSkills().get(i).getValue());
 		}
+		//[END REGION_6]
 	}
 
-	public interface TestDataGenericNestedInterface<K, V> {
+	//[START REGION_2]
+	public interface Person<K, V> {
 		@Serialize(order = 0)
-		K getKey();
-
-		@Serialize(order = 1)
-		V getValue();
+		List<Skill<K, V>> getSkills();
 	}
+	//[END REGION_2]
 
-	public static class TestDataGenericNested<K, V> implements TestDataGenericNestedInterface<K, V> {
-		private K key;
+	//[START REGION_3]
+	public static class Developer implements Person<Integer, String> {
+		private List<Skill<Integer, String>> list;
 
-		private V value;
-
-		@SuppressWarnings("UnusedDeclaration")
-		public TestDataGenericNested() {
+		@Serialize(order = 0)
+		@Override
+		public List<Skill<Integer, String>> getSkills() {
+			return list;
 		}
 
-		public TestDataGenericNested(K key, V value) {
+		public void setSkills(List<Skill<Integer, String>> list) {
+			this.list = list;
+		}
+	}
+	//[END REGION_3]
+
+	//[START REGION_1]
+	public static class Skill<K, V> {
+		private final K key;
+		private final V value;
+
+		public Skill(@Deserialize("key") K key,
+					 @Deserialize("value") V value) {
 			this.key = key;
 			this.value = value;
 		}
 
 		@Serialize(order = 0)
-		@Override
 		public K getKey() {
 			return key;
 		}
 
-		public void setKey(K key) {
-			this.key = key;
-		}
-
 		@Serialize(order = 1)
-		@Override
 		public V getValue() {
 			return value;
 		}
-
-		public void setValue(V value) {
-			this.value = value;
-		}
 	}
-
-	public interface TestDataGenericInterface<K, V> {
-		@Serialize(order = 0)
-		List<TestDataGenericNested<K, V>> getList();
-	}
-
-	public static class TestDataGeneric<K, V> implements TestDataGenericInterface<K, V> {
-		private List<TestDataGenericNested<K, V>> list;
-
-		@Serialize(order = 0)
-		@Override
-		public List<TestDataGenericNested<K, V>> getList() {
-			return list;
-		}
-
-		public void setList(List<TestDataGenericNested<K, V>> list) {
-			this.list = list;
-		}
-	}
-
-	public static class TestDataGenericInterfaceImpl extends TestDataGeneric<Integer, String> {
-	}
-
-	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder.create(getContextClassLoader())
-				.build(typeToken);
-		return serializeAndDeserialize(testData1, serializer, serializer);
-	}
-
-	private static <T> T serializeAndDeserialize(T testData1, BinarySerializer<T> serializer,
-			BinarySerializer<T> deserializer) {
-		byte[] array = new byte[1000];
-		serializer.encode(array, 0, testData1);
-		return deserializer.decode(array, 0);
-	}
-
-	private static ClassLoader getContextClassLoader() {
-		return Thread.currentThread().getContextClassLoader();
-	}
+	//[END REGION_1]
 }

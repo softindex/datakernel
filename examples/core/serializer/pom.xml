@@ -27,15 +27,6 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>ComplexObjectExample</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>ComplexObjectExample</mainClass>
-            </configuration>
-          </execution>
-          <execution>
             <id>FixedSizeFieldsExample</id>
             <goals>
               <goal>java</goal>
