@@ -9,11 +9,11 @@ import java.util.Arrays;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
 /**
- * Example of serialization and deserialization of an object with fixed size fields.
+ * Example of serialization and deserialization of an object with fixed size and nullable fields.
  */
 public final class FixedSizeFieldsExample {
 	//[START REGION_1]
-	public static class TestDataFixedSize {
+	public static class Storage {
 		@Serialize(order = 0)
 		@SerializeFixedSize(3)
 		@SerializeNullable(path = {0})
@@ -25,38 +25,26 @@ public final class FixedSizeFieldsExample {
 	}
 	//[END REGION_1]
 
-	@SuppressWarnings("SameParameterValue")
-	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder.create(getSystemClassLoader())
-				.build(typeToken);
-		return serializeAndDeserialize(testData1, serializer, serializer);
-	}
-
-	private static <T> T serializeAndDeserialize(T testData1,
-			BinarySerializer<T> serializer,
-			BinarySerializer<T> deserializer) {
-		byte[] array = new byte[1000];
-		serializer.encode(array, 0, testData1);
-		return deserializer.decode(array, 0);
-	}
 
 	public static void main(String[] args) {
-		// Create a test object
-		TestDataFixedSize testData1 = new TestDataFixedSize();
+		//[START REGION_2]
+		Storage storage = new Storage();
+		storage.strings = new String[]{"abc", null, "123", "superfluous"};
+		storage.bytes = new byte[]{1, 2, 3, 4};
 
-		// Fourth element will be discarded because the size of "strings" is fixed and is equal to 3
-		testData1.strings = new String[]{"abc", null, "123", "superfluous"};
+		byte[] buffer = new byte[200];
+		BinarySerializer<Storage> serializer = SerializerBuilder.create(getSystemClassLoader())
+				.build(Storage.class);
+		//[END REGION_2]
 
-		testData1.bytes = new byte[]{1, 2, 3, 4};
+		//[START REGION_3]
+		serializer.encode(buffer, 0, storage);
+		Storage limitedStorage = serializer.decode(buffer, 0);
+		//[END REGION_3]
 
-		/* The following would cause exception to be thrown (because the size of "bytes" is fixed and is equal to 4):
-		testData1.bytes = new byte[]{1, 2, 3}; */
-
-		// Serialize testData1 and then deserialize it to testData2
-		TestDataFixedSize testData2 = serializeAndDeserialize(TestDataFixedSize.class, testData1);
-
-		// Compare them
-		System.out.println(Arrays.toString(testData1.strings) + " " + Arrays.toString(testData2.strings));
-		System.out.println(Arrays.toString(testData1.bytes) + " " + Arrays.toString(testData2.bytes));
+		//[START REGION_4]
+		System.out.println(Arrays.toString(storage.strings) + " -> " + Arrays.toString(limitedStorage.strings));
+		System.out.println(Arrays.toString(storage.bytes) + " -> " + Arrays.toString(limitedStorage.bytes));
+		//[END REGION_4]
 	}
 }
