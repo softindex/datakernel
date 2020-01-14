@@ -126,7 +126,7 @@ public final class DefaultModule implements Module {
 		return emptyMap();
 	}
 
-	private static class InstanceProviderImpl implements InstanceProvider<Object> {
+	public static class InstanceProviderImpl implements InstanceProvider<Object> {
 		private final Key<Object> key;
 		private final CompiledBinding<Object> compiledBinding;
 		private final AtomicReferenceArray[] scopedInstances;
@@ -155,7 +155,7 @@ public final class DefaultModule implements Module {
 		}
 	}
 
-	private static class InstanceInjectorImpl implements InstanceInjector<Object> {
+	public static class InstanceInjectorImpl implements InstanceInjector<Object> {
 		private final Key<Object> key;
 		private final CompiledBindingInitializer<Object> compiledBindingInitializer;
 		private final AtomicReferenceArray[] scopedInstances;

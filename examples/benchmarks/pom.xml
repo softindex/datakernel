@@ -31,6 +31,11 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-specializer</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.openjdk.jmh</groupId>
       <artifactId>jmh-core</artifactId>
     </dependency>

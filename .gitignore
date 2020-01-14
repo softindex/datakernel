@@ -11,3 +11,5 @@ logback.xml
 *.effective.properties
 node_modules
 package-lock.json
+*.class
+tmp/

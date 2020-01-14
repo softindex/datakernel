@@ -7,12 +7,15 @@ import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
+import io.datakernel.specializer.Specializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
@@ -40,7 +43,7 @@ import static java.util.stream.Collectors.toMap;
  * associated with some {@link Key keys}.
  * Branches of the trie are used to {@link #enterScope enter scopes}.
  */
-@SuppressWarnings({"unused", "WeakerAccess"})
+@SuppressWarnings({"unused", "WeakerAccess", "rawtypes"})
 public final class Injector {
 	private static final class ScopeLocalData {
 		final Scope[] scope;
@@ -76,6 +79,44 @@ public final class Injector {
 	final Map<Key<?>, CompiledBinding<?>> localCompiledBindings;
 
 	final AtomicReferenceArray[] scopeCaches;
+
+	static {
+		String s = System.getProperty(Injector.class.getName() + "." + "specializer");
+		useSpecializer(s != null && (s.trim().isEmpty() || Boolean.parseBoolean(s)));
+		//		useSpecializer(true);
+	}
+
+	@Nullable
+	public static Consumer<Specializer> specializerSettings;
+
+	public static void useSpecializer() {
+		useSpecializer(true);
+	}
+
+	public static void useSpecializer(boolean useSpecializer) {
+		//passing direct lambda will generate synthetic method with Specializer as an argument
+		//which will lead to NoClassDefFoundError as specializer module is an optional dependency
+
+		//noinspection RedundantCast,unchecked
+		useSpecializer(useSpecializer ? (Consumer<Specializer>) (Consumer) s -> {} : null);
+	}
+
+	public static void useSpecializer(@Nullable Consumer<Specializer> specializerSettings) {
+		Injector.specializerSettings = specializerSettings;
+	}
+
+	private static Function<CompiledBinding<?>, CompiledBinding<?>> createSpecializer() {
+		if (specializerSettings == null) return Function.identity();
+		try {
+			Specializer specializer = Specializer.create()
+					.withPredicate(cls -> CompiledBinding.class.isAssignableFrom(cls) &&
+							!cls.getName().startsWith("io.datakernel.di.core.Multibinder$"));
+			specializerSettings.accept(specializer);
+			return specializer::specialize;
+		} catch (NoClassDefFoundError ignored) {
+		}
+		return Function.identity();
+	}
 
 	@SuppressWarnings("unchecked")
 	private Injector(@Nullable Injector parent, Trie<Scope, ScopeLocalData> scopeDataTree) {
@@ -197,28 +238,29 @@ public final class Injector {
 			Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent
 	) {
+		@Nullable Function<CompiledBinding<?>, CompiledBinding<?>> specializer = createSpecializer();
+
 		boolean threadsafe = path.length == 0 || path[path.length - 1].isThreadsafe();
 
 		Map<Key<?>, CompiledBinding<?>> compiledBindings = new HashMap<>();
-		compiledBindings.put(Key.of(Injector.class),
-				scope == 0 ?
-						new CompiledBinding<Object>() {
-							volatile Object instance;
+		compiledBindings.put(Key.of(Injector.class), specializer.apply(scope == 0 ?
+				new CompiledBinding<Object>() {
+					volatile Object instance;
 
-							@Override
-							public Object getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-								Object instance = this.instance;
-								if (instance != null) return instance;
-								this.instance = scopedInstances[scope].get(0);
-								return this.instance;
-							}
-						} :
-						new CompiledBinding<Object>() {
-							@Override
-							public Object getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-								return scopedInstances[scope].get(0);
-							}
-						});
+					@Override
+					public Object getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+						Object instance = this.instance;
+						if (instance != null) return instance;
+						this.instance = scopedInstances[scope].get(0);
+						return this.instance;
+					}
+				} :
+				new CompiledBinding<Object>() {
+					@Override
+					public Object getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
+						return scopedInstances[scope].get(0);
+					}
+				}));
 
 		Map<Key<?>, Integer> slotMapping = new HashMap<>();
 		slotMapping.put(Key.of(Injector.class), 0);
@@ -227,8 +269,11 @@ public final class Injector {
 
 		List<CompiledBinding<?>> eagerSingletons = new ArrayList<>();
 
-		bindings.forEach((key, binding) -> {
+		for (Entry<Key<?>, MarkedBinding<?>> entry : bindings.entrySet()) {
+			Key<?> key = entry.getKey();
+			MarkedBinding<?> binding = entry.getValue();
 			CompiledBinding<?> compiledBinding = compileBinding(
+					specializer,
 					scope, path, threadsafe,
 					key, bindings,
 					compiledBindings, compiledBindingsOfParent,
@@ -237,7 +282,7 @@ public final class Injector {
 			if (binding.getType() == EAGER) {
 				eagerSingletons.add(compiledBinding);
 			}
-		});
+		}
 
 		bindings.put(Key.of(Injector.class), new MarkedBinding<>(Binding.to(() -> {
 			throw new AssertionError("Injector constructor must never be called since it's instance is always put in the cache manually");
@@ -255,6 +300,7 @@ public final class Injector {
 	}
 
 	private static CompiledBinding<?> compileBinding(
+			Function<CompiledBinding<?>, CompiledBinding<?>> specializer,
 			int scope, Scope[] path, boolean threadsafe,
 			Key<?> key, Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindings, Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent,
@@ -289,12 +335,13 @@ public final class Injector {
 			index = null;
 		}
 
-		CompiledBinding<?> compiled = compiler.compile(
+		CompiledBinding<?> compiled = (CompiledBinding<?>) specializer.apply(compiler.compile(
 				new CompiledBindingLocator() {
 					@SuppressWarnings("unchecked")
 					@Override
 					public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
 						return (CompiledBinding<Q>) compileBinding(
+								specializer,
 								scope,
 								path,
 								threadsafe,
@@ -306,7 +353,7 @@ public final class Injector {
 								nextSlot
 						);
 					}
-				}, threadsafe, scope, index);
+				}, threadsafe, scope, index));
 
 		if (plain) {
 			Key<?> target = ((PlainCompiler<?>) compiler).getKey();

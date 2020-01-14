@@ -9,21 +9,18 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>datakernel-di</artifactId>
+  <artifactId>datakernel-specializer</artifactId>
 
-  <name>DataKernel : DI</name>
-  <description>
-    DataKernel has an extremely lightweight DI with ground-breaking design principles.
-    It supports nested scopes, singletons, object factories, modules and plugins which
-    allow to transform graph of dependencies at startup time without any reflection.
-  </description>
+  <name>DataKernel : Specializer</name>
 
   <dependencies>
     <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-specializer</artifactId>
-      <version>${project.version}</version>
-      <optional>true</optional>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.ow2.asm</groupId>
+      <artifactId>asm-commons</artifactId>
     </dependency>
   </dependencies>
 
@@ -35,7 +32,7 @@
         <configuration>
           <archive>
             <manifestEntries>
-              <Automatic-Module-Name>io.datakernel.di</Automatic-Module-Name>
+              <Automatic-Module-Name>io.datakernel.specializer</Automatic-Module-Name>
             </manifestEntries>
           </archive>
         </configuration>
