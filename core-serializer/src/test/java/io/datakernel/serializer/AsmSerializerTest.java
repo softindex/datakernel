@@ -72,32 +72,44 @@ public class AsmSerializerTest {
 		public float f;
 		@Serialize(order = 8)
 		public double d;
-
+		@SerializeVarLength
 		@Serialize(order = 9)
-		public Boolean zBoxed;
+		public int iVar;
+		@SerializeVarLength
 		@Serialize(order = 10)
-		public Character cBoxed;
-		@Serialize(order = 11)
-		public Byte bBoxed;
-		@Serialize(order = 12)
-		public Short sBoxed;
-		@Serialize(order = 13)
-		public Integer iBoxed;
-		@Serialize(order = 14)
-		public Long lBoxed;
-		@Serialize(order = 15)
-		public Float fBoxed;
-		@Serialize(order = 16)
-		public Double dBoxed;
+		public long lVar;
 
+		@Serialize(order = 11)
+		public Boolean zBoxed;
+		@Serialize(order = 12)
+		public Character cBoxed;
+		@Serialize(order = 13)
+		public Byte bBoxed;
+		@Serialize(order = 14)
+		public Short sBoxed;
+		@Serialize(order = 15)
+		public Integer iBoxed;
+		@Serialize(order = 16)
+		public Long lBoxed;
 		@Serialize(order = 17)
+		public Float fBoxed;
+		@Serialize(order = 18)
+		public Double dBoxed;
+		@SerializeVarLength
+		@Serialize(order = 19)
+		public int iBoxedVar;
+		@SerializeVarLength
+		@Serialize(order = 20)
+		public long lBoxedVar;
+
+		@Serialize(order = 21)
 		public byte[] bytes;
 
-		@Serialize(order = 18)
+		@Serialize(order = 22)
 		public String string;
-		@Serialize(order = 19)
+		@Serialize(order = 23)
 		public TestEnum testEnum;
-		@Serialize(order = 20)
+		@Serialize(order = 24)
 		public InetAddress address;
 	}
 
@@ -115,6 +127,8 @@ public class AsmSerializerTest {
 		testData1.l = rnd.nextLong();
 		testData1.f = rnd.nextFloat();
 		testData1.d = rnd.nextDouble();
+		testData1.iVar = rnd.nextInt();
+		testData1.lVar = rnd.nextLong();
 
 		testData1.zBoxed = true;
 		testData1.cBoxed = Character.MAX_VALUE;
@@ -124,6 +138,8 @@ public class AsmSerializerTest {
 		testData1.lBoxed = Long.MIN_VALUE;
 		testData1.fBoxed = Float.MIN_VALUE;
 		testData1.dBoxed = Double.MIN_VALUE;
+		testData1.iBoxedVar = Integer.MIN_VALUE;
+		testData1.lBoxedVar = Long.MIN_VALUE;
 
 		testData1.bytes = new byte[]{1, 2, 3};
 		testData1.string = "abc";
@@ -140,6 +156,8 @@ public class AsmSerializerTest {
 		assertEquals(testData1.l, testData2.l);
 		assertEquals(testData1.f, testData2.f, Double.MIN_VALUE);
 		assertEquals(testData1.d, testData2.d, Double.MIN_VALUE);
+		assertEquals(testData1.iVar, testData2.iVar);
+		assertEquals(testData1.lVar, testData2.lVar);
 
 		assertEquals(testData1.zBoxed, testData2.zBoxed);
 		assertEquals(testData1.cBoxed, testData2.cBoxed);
@@ -149,6 +167,8 @@ public class AsmSerializerTest {
 		assertEquals(testData1.lBoxed, testData2.lBoxed);
 		assertEquals(testData1.fBoxed, testData2.fBoxed);
 		assertEquals(testData1.dBoxed, testData2.dBoxed);
+		assertEquals(testData1.iBoxedVar, testData2.iBoxedVar);
+		assertEquals(testData1.lBoxedVar, testData2.lBoxedVar);
 
 		assertArrayEquals(testData1.bytes, testData2.bytes);
 		assertEquals(testData1.string, testData2.string);
