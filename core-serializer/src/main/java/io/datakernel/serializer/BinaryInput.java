@@ -222,8 +222,8 @@ public final class BinaryInput {
 		for (int offset = 7; offset < 64; offset += 7) {
 			b = array[pos++];
 			if (b >= 0)
-				return result | b << offset;
-			result |= (b & 0x7F) << offset;
+				return result | (long) b << offset;
+			result |= (long) (b & 0x7F) << offset;
 		}
 		throw new IllegalStateException("Read varlong was too long");
 	}
