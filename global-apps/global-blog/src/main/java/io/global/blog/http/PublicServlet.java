@@ -116,7 +116,7 @@ public final class PublicServlet {
 										isGzipAccepted(request));
 							});
 				})
-				.map(POST, "/profile/:userId", request -> {
+				.map(POST, "/profile/:userId", loadBody().serve(request -> {
 					UserId userId = request.getAttachment(UserId.class);
 					UserData user = request.getAttachment(UserData.class);
 					if (userId == null || user == null) {
@@ -143,7 +143,7 @@ public final class PublicServlet {
 										commDao.getUsers().put(updatingUserId, new UserData(oldData.getRole(), email, username, firstName, lastName))
 												.map($1 -> redirectToReferer(request, "/")));
 							});
-				})
+				}))
 				.map("/:threadID/*", RoutingServlet.create()
 						.map(GET, "/", postViewServlet(templater, executor, postViewPreprocessor))
 						.map(GET, "/:postID/", postViewServlet(templater, executor, postViewPreprocessor))

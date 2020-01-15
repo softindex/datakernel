@@ -34,6 +34,7 @@ import java.util.Set;
 
 import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.common.collection.CollectionUtils.map;
+import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
 import static io.datakernel.http.HttpHeaders.HOST;
 import static io.datakernel.http.HttpHeaders.REFERER;
@@ -246,7 +247,7 @@ public final class PublicServlet {
 											isGzipAccepted(request)) :
 									Promise.ofException(HttpException.ofCode(400, "No such user")));
 				})
-				.map(POST, "/:userId", request -> {
+				.map(POST, "/:userId", loadBody().serve(request -> {
 					UserId userId = request.getAttachment(UserId.class);
 					if (userId == null) {
 						return Promise.ofException(HttpException.ofCode(401, "Not authorized"));
@@ -275,7 +276,7 @@ public final class PublicServlet {
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
-				});
+				}));
 	}
 
 	private static AsyncServlet threadServlet(MustacheTemplater templater) {
@@ -290,7 +291,7 @@ public final class PublicServlet {
 
 	private static RoutingServlet threadOperations() {
 		return RoutingServlet.create()
-				.map(POST, "/rename", request -> {
+				.map(POST, "/rename", loadBody().serve(request -> {
 					String tid = request.getPathParameter("threadID");
 					CommDao commDao = request.getAttachment(CommDao.class);
 					ThreadDao threadDao = request.getAttachment(ThreadDao.class);
@@ -314,7 +315,7 @@ public final class PublicServlet {
 								}
 							})
 							.map($2 -> redirect302("/" + tid));
-				})
+				}))
 				.map(DELETE, "/", request -> {
 					String tid = request.getPathParameter("threadID");
 					CommDao commDao = request.getAttachment(CommDao.class);
@@ -678,7 +679,8 @@ public final class PublicServlet {
 								return Promise.ofException(HttpException.ofCode(403, "Not privileged"));
 							}
 							return servlet.serve(request);
-						});
+						})
+				.then(loadBody());
 	}
 
 	private static AsyncServlet postViewServlet(MustacheTemplater templater) {
