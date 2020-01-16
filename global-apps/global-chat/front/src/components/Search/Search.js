@@ -23,7 +23,7 @@ function Search({classes, searchReady, ...otherProps}) {
         classes={{input: classes.input}}
         autoFocus
         endAdornment={
-          <Grow in={searchReady === false && otherProps.value !== ''}>
+          <Grow in={searchReady === false && otherProps.value !== '' && !otherProps.disabled}>
             <div className={classes.progressWrapper}>
               <CircularProgress size={24}/>
             </div>

@@ -5,7 +5,7 @@ import {withRouter} from 'react-router-dom';
 import {AuthContext} from "./AuthContext";
 import AfterAuthRedirect from "./AfterAuthRedirect";
 
-function OAuthCallback({location, authByToken, authorized}) {
+function OAuthCallbackComponent({location, authByToken, authorized}) {
   const params = qs.parse(location.search);
 
   useEffect(() => {
@@ -17,7 +17,7 @@ function OAuthCallback({location, authByToken, authorized}) {
   if (authorized) {
     return <AfterAuthRedirect/>;
   }
-
+  
   if (!params.token) {
     return 'No token received';
   }
@@ -25,7 +25,7 @@ function OAuthCallback({location, authByToken, authorized}) {
   return null;
 }
 
-export default connectService(
+const OAuthCallback = connectService(
   AuthContext, ({authorized}, accountService) => ({
     authByToken(token) {
       accountService.authByToken(token);
@@ -33,5 +33,7 @@ export default connectService(
     authorized
   })
 )(
-  withRouter(OAuthCallback)
+  withRouter(OAuthCallbackComponent)
 );
+
+export {OAuthCallback};

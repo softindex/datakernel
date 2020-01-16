@@ -1,6 +1,5 @@
 import React from 'react';
 import {checkAuth, useService, getInstance} from 'global-apps-common';
-import {withSnackbar} from "notistack";
 import Header from "../Header/Header";
 import {withRouter} from "react-router-dom";
 import DocumentsService from "../../modules/documents/DocumentsService";
@@ -18,8 +17,4 @@ function MainLayout({match, children}) {
   );
 }
 
-export default checkAuth(
-  withRouter(
-    withSnackbar(MainLayout)
-  )
-);
+export default checkAuth(withRouter(MainLayout));

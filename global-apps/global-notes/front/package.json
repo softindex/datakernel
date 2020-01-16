@@ -8,7 +8,7 @@
     "global-apps-common": "^2.0.1",
     "js-cookie": "^2.2.0",
     "lodash": "^4.17.11",
-    "notistack": "^0.8.6",
+    "notistack": "^0.8.9",
     "ot-core": "git+https://github.com/softindex/ot-core.git#v0.2.3",
     "prop-types": "^15.7.2",
     "query-string": "^6.9.0",

@@ -1,5 +1,4 @@
 import React, {useState} from 'react';
-import {withSnackbar} from 'notistack';
 import Paper from '@material-ui/core/Paper';
 import SendIcon from '@material-ui/icons/Send';
 import PhoneIcon from '@material-ui/icons/Phone';
@@ -8,7 +7,7 @@ import {withStyles} from '@material-ui/core';
 import InputBase from '@material-ui/core/InputBase';
 import Divider from '@material-ui/core/Divider';
 import IconButton from '@material-ui/core/IconButton';
-import {getInstance, useService} from 'global-apps-common';
+import {getInstance, useSnackbar, useService} from 'global-apps-common';
 import ChatRoomService from '../../modules/chatroom/ChatRoomService';
 
 function MessageFormView({classes, message, onChangeMessage, onSubmit, inCall, onCall}) {
@@ -37,11 +36,12 @@ function MessageFormView({classes, message, onChangeMessage, onSubmit, inCall, o
   );
 }
 
-function MessageForm({classes, publicKey, enqueueSnackbar}) {
+function MessageForm({classes, publicKey}) {
   const chatRoomService = getInstance(ChatRoomService);
   const {call, isHostValid} = useService(chatRoomService);
   const inCall = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
   const [message, setMessage] = useState('');
+  const {showSnackbar} = useSnackbar();
 
   const props = {
     classes,
@@ -58,9 +58,7 @@ function MessageForm({classes, publicKey, enqueueSnackbar}) {
       setMessage('');
       chatRoomService.sendMessage(message)
         .catch((err) => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         });
     },
     onCall() {
@@ -76,4 +74,4 @@ function MessageForm({classes, publicKey, enqueueSnackbar}) {
   return <MessageFormView {...props}/>
 }
 
-export default withSnackbar(withStyles(messageFormStyles)(MessageForm));
+export default withStyles(messageFormStyles)(MessageForm);

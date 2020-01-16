@@ -8,9 +8,8 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
 import addContactDialogStyles from "./addContactDialogStyles";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 import ContactsService from "../../modules/contacts/ContactsService";
-import {withSnackbar} from "notistack";
 import {withRouter} from "react-router-dom";
 
 function AddContactDialogView({classes, onClose, name, loading, onSubmit, onNameChange}) {
@@ -63,9 +62,10 @@ function AddContactDialogView({classes, onClose, name, loading, onSubmit, onName
   );
 }
 
-function AddContactDialog({classes, enqueueSnackbar, closeSnackbar, contactPublicKey, onClose}) {
+function AddContactDialog({classes, contactPublicKey, onClose}) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const {showSnackbar, hideSnackbar} = useSnackbar();
   const contactsService = getInstance(ContactsService);
 
   const props = {
@@ -80,17 +80,15 @@ function AddContactDialog({classes, enqueueSnackbar, closeSnackbar, contactPubli
 
     onSubmit(event) {
       event.preventDefault();
-      enqueueSnackbar('Adding...');
+      showSnackbar('Adding...', 'loading');
       setLoading(true);
       return contactsService.addContact(contactPublicKey, name)
         .then(() => {
-          setTimeout(() => closeSnackbar(), 2000);
+          hideSnackbar();
           onClose();
         })
         .catch(err => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         })
         .finally(() => {
           setLoading(false);
@@ -101,7 +99,5 @@ function AddContactDialog({classes, enqueueSnackbar, closeSnackbar, contactPubli
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(addContactDialogStyles)(AddContactDialog)
-  )
+  withStyles(addContactDialogStyles)(AddContactDialog)
 );

@@ -1,5 +1,4 @@
 import React, {useState, useEffect} from 'react';
-import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import DialogActions from '@material-ui/core/DialogActions';
@@ -9,7 +8,7 @@ import TextField from '@material-ui/core/TextField';
 import noteDialogsStyles from './noteDialogsStyles';
 import Dialog from '../Dialog/Dialog'
 import {withRouter} from "react-router-dom";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 import NotesService from "../../modules/notes/NotesService";
 
 function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose, onNameChange}) {
@@ -56,10 +55,11 @@ function CreateNoteDialogView({classes, onSubmit, name, rename, loading, onClose
   );
 }
 
-function CreateNoteDialog({classes, enqueueSnackbar, closeSnackbar, onClose, rename, history}) {
+function CreateNoteDialog({classes, onClose, rename, history}) {
   const notesService = getInstance(NotesService);
   const [name, setName] = useState(rename.noteName || '');
   const [loading, setLoading] = useState(false);
+  const {showSnackbar, hideSnackbar} = useSnackbar();
 
   useEffect(
     () => {
@@ -90,20 +90,16 @@ function CreateNoteDialog({classes, enqueueSnackbar, closeSnackbar, onClose, ren
             history.push('/note/' + newNoteId);
           })
           .catch(err => {
-            enqueueSnackbar(err.message, {
-              variant: 'error'
-            });
+            showSnackbar(err.message, 'error');
           })
           .finally(() => setLoading(false));
       } else {
-        enqueueSnackbar('Renaming...');
+        showSnackbar('Renaming...', 'loading');
         onClose();
         notesService.renameNote(rename.noteId, name)
-          .then(() => setTimeout(() => closeSnackbar(), 1000))
+          .then(() => hideSnackbar())
           .catch(err => {
-            enqueueSnackbar(err.message, {
-              variant: 'error'
-            });
+            showSnackbar(err.message, 'error');
           });
       }
     }
@@ -113,7 +109,5 @@ function CreateNoteDialog({classes, enqueueSnackbar, closeSnackbar, onClose, ren
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(noteDialogsStyles)(CreateNoteDialog)
-  )
+  withStyles(noteDialogsStyles)(CreateNoteDialog)
 );

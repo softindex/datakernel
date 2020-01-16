@@ -13,27 +13,26 @@ function DocumentEditorView({classes, onContentChange, content, ready}) {
     if (ready) {
       textInput.focus();
     }
-  }, [textInput]);
+  }, [ready]);
+
+  if (!ready) {
+    return (
+      <CircularProgress
+        size={36}
+        className={classes.circularProgress}
+      />
+    )
+  }
 
   return (
-    <>
-      {!ready && (
-        <CircularProgress
-          size={36}
-          className={classes.circularProgress}
-        />
-      )}
-      {ready && (
-        <Paper className={classes.paper}>
-          <textarea
-            className={classes.editor}
-            value={content}
-            onChange={onContentChange}
-            ref={input => textInput = input}
-          />
-        </Paper>
-      )}
-    </>
+    <Paper className={classes.paper}>
+      <textarea
+        className={classes.editor}
+        value={content}
+        onChange={onContentChange}
+        ref={input => textInput = input}
+      />
+    </Paper>
   );
 }
 

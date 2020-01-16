@@ -1,5 +1,4 @@
 import React, {useMemo} from 'react';
-import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
 import Header from '../Header/Header';
 import SideBar from '../SideBar/SideBar';
@@ -13,10 +12,12 @@ import {
   AuthContext,
   connectService,
   RegisterDependency,
-  useService
+  useService,
+  useSnackbar
 } from 'global-apps-common';
 
-function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
+function MainScreen({match, classes, publicKey}) {
+  const {showSnackbar} = useSnackbar();
   const {notesService} = useMemo(() => {
     const notesService = NotesService.create();
     return {
@@ -25,9 +26,7 @@ function MainScreen({match, enqueueSnackbar, classes, publicKey}) {
   }, [publicKey]);
 
   function errorHandler(err) {
-    enqueueSnackbar(err.message, {
-      variant: 'error'
-    });
+    showSnackbar(err.message, 'error');
   }
 
   initService(notesService, errorHandler);
@@ -56,9 +55,7 @@ export default connectService(
   })
 )(
   checkAuth(
-    withSnackbar(
-      withStyles(mainScreenStyles)(MainScreen)
-    )
+    withStyles(mainScreenStyles)(MainScreen)
   )
 );
 

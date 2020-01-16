@@ -1,6 +1,5 @@
 import React from 'react';
 import {checkAuth, AuthContext, connectService, useService, getInstance} from 'global-apps-common';
-import {withSnackbar} from "notistack";
 import RoomsService from "../../modules/rooms/RoomsService";
 import NamesService from "../../modules/names/NamesService";
 import {getRoomName} from "../../common/utils";
@@ -34,8 +33,6 @@ export default connectService(
   AuthContext, ({publicKey}) => ({publicKey})
 )(
   checkAuth(
-    withRouter(
-      withSnackbar(MainLayout)
-    )
+    withRouter(MainLayout)
   )
 );

@@ -7,8 +7,7 @@ import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import TextField from '@material-ui/core/TextField';
-import {withSnackbar} from "notistack";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 import DocumentsService from "../../modules/documents/DocumentsService";
 
 function RenameDocumentDialogView({classes, name, loading, onNameChange, onClose, onSubmit}) {
@@ -53,10 +52,11 @@ function RenameDocumentDialogView({classes, name, loading, onNameChange, onClose
   );
 }
 
-function RenameDocumentDialog({classes, documentName, documentId, onClose, enqueueSnackbar}) {
+function RenameDocumentDialog({classes, documentName, documentId, onClose}) {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const documentsService = getInstance(DocumentsService);
+  const {showSnackbar} = useSnackbar();
 
   useEffect(() => {
     setName(documentName);
@@ -81,9 +81,7 @@ function RenameDocumentDialog({classes, documentName, documentId, onClose, enque
           onClose();
         })
         .catch(error => {
-          enqueueSnackbar(error.message, {
-            variant: 'error'
-          });
+          showSnackbar(error.message,  'error');
         })
         .finally(() => {
           setLoading(false);
@@ -94,4 +92,4 @@ function RenameDocumentDialog({classes, documentName, documentId, onClose, enque
   return <RenameDocumentDialogView {...props}/>
 }
 
-export default withSnackbar(withStyles(renameDocumentStyles)(RenameDocumentDialog));
+export default withStyles(renameDocumentStyles)(RenameDocumentDialog);

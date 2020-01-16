@@ -1,6 +1,5 @@
 import React, {useMemo} from 'react';
-import {checkAuth, AuthContext, connectService, RegisterDependency, initService} from 'global-apps-common';
-import {withSnackbar} from "notistack";
+import {checkAuth, AuthContext, connectService, RegisterDependency, initService, useSnackbar} from 'global-apps-common';
 import ContactsService from "../../modules/contacts/ContactsService";
 import MyProfileService from "../../modules/profile/MyProfileService";
 import {ClientOTNode, OTStateManager} from "ot-core/lib";
@@ -10,7 +9,8 @@ import contactsOTSystem from "../../modules/contacts/ot/ContactsOTSystem";
 import {withRouter} from "react-router-dom";
 import DocumentsService from "../../modules/documents/DocumentsService";
 
-function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
+function InitAuthorizedServices({publicKey, children}) {
+  const {showSnackbar} = useSnackbar();
   const {
     contactsOTStateManager,
     profileService,
@@ -39,9 +39,7 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
   }, [publicKey]);
 
   function errorHandler(err) {
-    enqueueSnackbar(err.message, {
-      variant: 'error'
-    });
+    showSnackbar(err.message, 'error');
   }
 
   initService(contactsService, errorHandler);
@@ -68,8 +66,5 @@ export default connectService(
   AuthContext, ({publicKey}) => ({publicKey})
 )(
   checkAuth(
-    withRouter(
-      withSnackbar(InitAuthorizedServices)
-    )
-  )
+    withRouter(InitAuthorizedServices))
 );

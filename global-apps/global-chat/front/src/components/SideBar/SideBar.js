@@ -1,12 +1,11 @@
 import React, {useMemo, useState} from 'react';
 import {withStyles} from '@material-ui/core';
 import sideBarStyles from "./sideBarStyles";
-import {useService, getInstance, initService} from "global-apps-common";
+import {useService, getInstance, initService, useSnackbar} from "global-apps-common";
 import AddContactDialog from "../AddContactDialog/AddContactDialog";
 import Search from "../Search/Search";
 import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
 import SideBarTabs from '../SideBarTabs/SideBarTabs';
-import {withSnackbar} from "notistack";
 
 function SideBarView({
                        classes,
@@ -44,16 +43,15 @@ function SideBarView({
   );
 }
 
-function SideBar({classes, publicKey, enqueueSnackbar}) {
+function SideBar({classes, publicKey}) {
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const {showSnackbar} = useSnackbar();
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
     [contactsOTStateManager, publicKey]
   );
-  initService(searchContactsService, err => enqueueSnackbar(err.message, {
-    variant: 'error'
-  }));
+  initService(searchContactsService, err => showSnackbar(err.message, 'error'));
 
   const {search, searchContacts, searchReady} = useService(searchContactsService);
   function onSearchChange(value) {
@@ -88,4 +86,4 @@ function SideBar({classes, publicKey, enqueueSnackbar}) {
   return <SideBarView {...props}/>;
 }
 
-export default withStyles(sideBarStyles)(withSnackbar(SideBar));
+export default withStyles(sideBarStyles)(SideBar);

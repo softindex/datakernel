@@ -14,29 +14,28 @@ function NoteEditorView({classes, content, ready, onChange}) {
     if (ready) {
       textInput.focus();
     }
-  }, [textInput]);
+  }, [ready]);
+
+  if (!ready) {
+    return (
+      <CircularProgress
+        size={36}
+        className={classes.circularProgress}
+      />
+    )
+  }
 
   return (
-    <>
-      {!ready && (
-        <CircularProgress
-          size={36}
-          className={classes.circularProgress}
-        />
-      )}
-      {ready && (
-        <Paper className={classes.paper}>
-        <textarea
-          className={`${classes.noteEditor} scrollbar`}
-          value={content}
-          onChange={onChange}
-          ref={input => {
-            textInput = input
-          }}
-        />
-        </Paper>
-      )}
-      </>
+    <Paper className={classes.paper}>
+      <textarea
+        className={`${classes.noteEditor} scrollbar`}
+        value={content}
+        onChange={onChange}
+        ref={input => {
+          textInput = input
+        }}
+      />
+    </Paper>
   );
 }
 

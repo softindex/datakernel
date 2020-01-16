@@ -17,7 +17,7 @@ accountService.init();
 ReactDOM.render((
   <MuiThemeProvider theme={theme}>
     <CssBaseline/>
-    <SnackbarProvider maxSnack={1}>
+    <SnackbarProvider maxSnack={5}>
       <AuthContext.Provider value={accountService}>
         <Router/>
       </AuthContext.Provider>

@@ -6,7 +6,7 @@ import MuiAvatar from "@material-ui/core/Avatar"
 import avatarStyles from "./avatarStyles";
 import {getAvatarLetters} from "../../index";
 
-function Avatar({classes, name, selected}) {
+function AvatarComponent({classes, name, selected}) {
   return (
     <ListItemAvatar className={classes.avatar}>
       <Badge
@@ -22,5 +22,6 @@ function Avatar({classes, name, selected}) {
   );
 }
 
-export default withStyles(avatarStyles)(Avatar);
+const Avatar = withStyles(avatarStyles)(AvatarComponent);
 
+export {Avatar};

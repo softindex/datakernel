@@ -5,7 +5,7 @@ import {getAvatarLetters} from "global-apps-common";
 import Avatar from "@material-ui/core/Avatar";
 import MuiChip from "@material-ui/core/Chip";
 
-function ContactChip({classes, ...otherProps}) {
+function ContactChipComponent({classes, ...otherProps}) {
   return (
     <MuiChip
       {...otherProps}
@@ -23,4 +23,6 @@ function ContactChip({classes, ...otherProps}) {
   );
 }
 
-export default withStyles(contactChipStyles)(ContactChip);
+const ContactChip = withStyles(contactChipStyles)(ContactChipComponent);
+
+export {ContactChip};

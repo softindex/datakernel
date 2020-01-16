@@ -1,7 +1,7 @@
 import React, {useState} from "react";
 import {Icon, withStyles} from '@material-ui/core';
 import profileDialogStyles from './profileDialogStyles'
-import {getInstance, useService} from "global-apps-common";
+import {getInstance, useService, useSnackbar} from "global-apps-common";
 import Dialog from "../Dialog/Dialog";
 import DialogTitle from "@material-ui/core/DialogTitle";
 import DialogContent from "@material-ui/core/DialogContent";
@@ -10,7 +10,6 @@ import DialogActions from "@material-ui/core/DialogActions";
 import Button from "@material-ui/core/Button";
 import Tooltip from "@material-ui/core/Tooltip";
 import IconButton from "@material-ui/core/IconButton";
-import {withSnackbar} from "notistack";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import MyProfileService from "../../modules/profile/MyProfileService";
 
@@ -97,11 +96,12 @@ function ProfileDialogView({
   );
 }
 
-function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
+function ProfileDialog({classes, publicKey, onClose}) {
   const profileService = getInstance(MyProfileService);
   const {profile, profileReady} = useService(profileService);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState(profile.name || '');
+  const {showSnackbar} = useSnackbar();
 
   const copyToClipboard = () => {
     navigator.clipboard && navigator.clipboard.writeText(document.getElementById('inputId').value);
@@ -130,14 +130,9 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
 
     onSubmit(event) {
       event.preventDefault();
-      if (name === profile.name) {
-        return;
-      }
       setLoading(true);
       profileService.setProfileField('name', name)
-        .catch(error => enqueueSnackbar(error.message, {
-          variant: 'error'
-        }))
+        .catch(err => showSnackbar(err.message, 'error'))
         .finally(() => {
           setLoading(false);
         });
@@ -147,4 +142,4 @@ function ProfileDialog({classes, enqueueSnackbar, publicKey, onClose}) {
   return <ProfileDialogView {...props}/>;
 }
 
-export default withSnackbar(withStyles(profileDialogStyles)(ProfileDialog));
+export default withStyles(profileDialogStyles)(ProfileDialog);

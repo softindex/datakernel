@@ -13,14 +13,15 @@
     "test": "jest --verbose /src"
   },
   "peerDependencies": {
+    "notistack": "0.8.9",
     "prop-types": "^15.5.4",
     "react": "^15.0.0 || ^16.0.0",
     "react-dom": "^15.0.0 || ^16.0.0",
+    "react-scripts": "3.1.1",
     "react-router-dom": "^5.0.0",
     "@material-ui/core": "^4.0.0",
     "@material-ui/icons": "^4.0.0",
-    "@material-ui/styles": "^4.3.0",
-    "notistack": "^0.8.9"
+    "@material-ui/styles": "^4.3.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.7.0",

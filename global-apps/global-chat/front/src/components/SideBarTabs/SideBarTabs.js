@@ -6,11 +6,10 @@ import Tabs from '@material-ui/core/Tabs';
 import Tab from '@material-ui/core/Tab';
 import Paper from "@material-ui/core/Paper";
 import RoomsList from "../RoomsList/RoomsList";
-import {useService, getInstance} from "global-apps-common";
+import {useService, getInstance, useSnackbar} from "global-apps-common";
 import Typography from "@material-ui/core/Typography";
 import {getRoomName} from '../../common/utils';
 import {withRouter} from "react-router-dom";
-import {withSnackbar} from "notistack";
 import ContactsList from "../ContactsList/ContactsList";
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
@@ -50,35 +49,35 @@ function SideBarTabsView({
           <Tab value={CONTACTS_TAB} label="Contacts"/>
         </Tabs>
       </Paper>
-        <div className={classes.chatsList}>
-          <RoomsList
-            rooms={rooms}
-            contacts={contacts}
-            names={names}
-            namesReady={namesReady}
-            roomsReady={roomsReady}
-            onRemoveContact={onRemoveContact}
-            publicKey={publicKey}
-            showDeleteButton={tabId === "contacts"}
-          />
-          {search !== '' && (
-            <>
-              <Paper square className={classes.paperDivider}>
-                <Typography className={classes.dividerText}>
-                  People
-                </Typography>
-              </Paper>
-              <ContactsList
-                searchReady={searchReady}
-                searchContacts={searchContacts}
-                onSearchClear={onSearchClear}
-              />
-              {searchContacts.size === 0 && searchReady && (
-                <InviteButton publicKey={publicKey}/>
-              )}
-            </>
-          )}
-        </div>
+      <div className={classes.chatsList}>
+        <RoomsList
+          rooms={rooms}
+          contacts={contacts}
+          names={names}
+          namesReady={namesReady}
+          roomsReady={roomsReady}
+          onRemoveContact={onRemoveContact}
+          publicKey={publicKey}
+          showDeleteButton={tabId === "contacts"}
+        />
+        {search !== '' && (
+          <>
+            <Paper square className={classes.paperDivider}>
+              <Typography className={classes.dividerText}>
+                People
+              </Typography>
+            </Paper>
+            <ContactsList
+              searchReady={searchReady}
+              searchContacts={searchContacts}
+              onSearchClear={onSearchClear}
+            />
+            {searchContacts.size === 0 && searchReady && (
+              <InviteButton publicKey={publicKey}/>
+            )}
+          </>
+        )}
+      </div>
     </>
   );
 }
@@ -92,9 +91,7 @@ function SideBarTabs({
                        onSearchClear,
                        onAddContact,
                        history,
-                       match,
-                       enqueueSnackbar,
-                       closeSnackbar
+                       match
                      }) {
   const [tabId, setTabId] = useState(ROOMS_TAB);
   const contactsService = getInstance(ContactsService);
@@ -103,6 +100,7 @@ function SideBarTabs({
   const {roomsReady, rooms} = useService(roomsService);
   const namesService = getInstance(NamesService);
   const {names, namesReady} = useService(namesService);
+  const {showSnackbar, hideSnackbar} = useSnackbar();
 
   const props = {
     classes,
@@ -142,19 +140,17 @@ function SideBarTabs({
     ),
 
     onRemoveContact(contactPublicKey) {
-      enqueueSnackbar('Deleting...');
+      showSnackbar('Deleting...', 'loading');
       return contactsService.removeContact(contactPublicKey)
         .then(({dialogRoomId}) => {
           const {roomId} = match.params;
-          setTimeout(() => closeSnackbar(), 1000);
+          hideSnackbar();
           if (roomId === dialogRoomId) {
             history.push(path.join('/room', ''));
           }
         })
         .catch((err) => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         });
     },
 
@@ -167,7 +163,5 @@ function SideBarTabs({
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(sideBarTabsStyles)(SideBarTabs)
-  )
+  withStyles(sideBarTabsStyles)(SideBarTabs)
 );

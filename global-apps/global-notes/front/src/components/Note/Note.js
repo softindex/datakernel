@@ -1,10 +1,10 @@
 import React, {useMemo} from 'react';
 import NoteService from '../../modules/note/NoteService';
 import NoteEditor from '../NoteEditor/NoteEditor';
-import {withSnackbar} from "notistack";
-import {RegisterDependency, initService} from 'global-apps-common';
+import {RegisterDependency, initService, useSnackbar} from 'global-apps-common';
 
-function Note({noteId, enqueueSnackbar}) {
+function Note({noteId}) {
+  const {showSnackbar} = useSnackbar();
   const noteService = useMemo(() => (
     NoteService.create(noteId)
   ), [noteId]);
@@ -21,9 +21,7 @@ function Note({noteId, enqueueSnackbar}) {
     noteService.replace(position, oldContent, newContent);
   };
 
-  initService(noteService, err => enqueueSnackbar(err.message, {
-    variant: 'error'
-  }));
+  initService(noteService, err =>  showSnackbar(err.message, 'error'));
 
   return (
     <RegisterDependency name={NoteService} value={noteService}>
@@ -36,4 +34,4 @@ function Note({noteId, enqueueSnackbar}) {
   );
 }
 
-export default withSnackbar(Note);
+export default Note;

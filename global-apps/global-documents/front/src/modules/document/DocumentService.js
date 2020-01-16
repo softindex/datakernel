@@ -19,13 +19,13 @@ class DocumentService extends Service {
     this._isNew = isNew;
   }
 
-  static createFrom(documentId, setNotNew) {
+  static createFrom(documentId, isNew) {
     const documentOTNode = ClientOTNode.createWithJsonKey({
       url: '/ot/document/' + documentId,
       serializer
     });
     const documentStateManager = new OTStateManager(() => '', documentOTNode, editorOTSystem);
-    return new DocumentService(documentStateManager, setNotNew);
+    return new DocumentService(documentStateManager, isNew);
   }
 
   async init() {

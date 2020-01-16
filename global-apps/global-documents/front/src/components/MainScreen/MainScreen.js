@@ -3,7 +3,6 @@ import Document from "../Document/Document"
 import SideBar from "../SideBar/SideBar";
 import {withStyles} from '@material-ui/core';
 import mainScreenStyles from "./mainScreenStyles";
-import {withSnackbar} from "notistack";
 import {checkAuth, getInstance} from 'global-apps-common';
 import EmptyDocumentScreen from "../EmptyDocumentScreen/EmptyDocumentScreen";
 import MainLayout from "../MainLayout/MainLayout";
@@ -31,8 +30,4 @@ function MainScreen({match, classes}) {
   );
 }
 
-export default checkAuth(
-  withSnackbar(
-    withStyles(mainScreenStyles)(MainScreen)
-  )
-);
+export default checkAuth(withStyles(mainScreenStyles)(MainScreen));

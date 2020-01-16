@@ -1,7 +1,6 @@
 const sideBarTabsStyles = theme => {
   return {
     paper: {
-      zIndex: 2,
       boxShadow: `0px 6px  9px -5px rgba(0,0,0,0.2)`,
       background: theme.palette.primary.background
     },

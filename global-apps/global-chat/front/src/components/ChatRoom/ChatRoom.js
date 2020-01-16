@@ -4,19 +4,17 @@ import chatStyles from './chatRoomStyles';
 import Messages from '../Messages/Messages';
 import MessageForm from '../MessageForm/MessageForm';
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
-import {withSnackbar} from "notistack";
-import {RegisterDependency, initService, getInstance} from "global-apps-common";
+import {RegisterDependency, initService, useSnackbar, getInstance} from "global-apps-common";
 import CallsService from '../../modules/calls/CallsService';
 
-function ChatRoom({roomId, publicKey, enqueueSnackbar, classes}) {
+function ChatRoom({roomId, publicKey, classes}) {
+  const {showSnackbar} = useSnackbar();
   const callsService = getInstance(CallsService);
   const chatRoomService = useMemo(() => (
     ChatRoomService.createFrom(roomId, publicKey, callsService)
   ), [roomId, publicKey, callsService]);
 
-  initService(chatRoomService, err => enqueueSnackbar(err.message, {
-    variant: 'error'
-  }));
+  initService(chatRoomService, err => showSnackbar(err.message, 'error'));
 
   return (
     <RegisterDependency name={ChatRoomService} value={chatRoomService}>
@@ -28,4 +26,4 @@ function ChatRoom({roomId, publicKey, enqueueSnackbar, classes}) {
   );
 }
 
-export default withSnackbar(withStyles(chatStyles)(ChatRoom));
+export default withStyles(chatStyles)(ChatRoom);

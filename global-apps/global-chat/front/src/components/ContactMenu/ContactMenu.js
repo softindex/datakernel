@@ -5,7 +5,6 @@ import MenuItem from '@material-ui/core/MenuItem';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import contactMenuStyles from "./contactMenuStyles";
 import {withStyles} from '@material-ui/core';
-import {withSnackbar} from "notistack";
 
 function ContactMenu({onAddContact, classes}) {
   const [anchorEl, setAnchorEl] = React.useState(null);
@@ -51,4 +50,4 @@ function ContactMenu({onAddContact, classes}) {
   );
 }
 
-export default withSnackbar(withStyles(contactMenuStyles)(ContactMenu));
+export default withStyles(contactMenuStyles)(ContactMenu);

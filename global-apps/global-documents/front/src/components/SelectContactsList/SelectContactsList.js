@@ -1,6 +1,5 @@
 import React from "react";
 import {withStyles} from '@material-ui/core';
-import {withSnackbar} from "notistack";
 import List from "@material-ui/core/List";
 import selectContactsListStyles from "./selectContactsListStyles";
 import ContactItem from "../ContactItem/ContactItem";
@@ -20,56 +19,54 @@ function SelectContactsListView({
                                   searchContacts,
                                   publicKey
                                 }) {
+
+  if (search === '' && filteredContacts.length === 0) {
+    return <EmptySelectScreen/>;
+  }
+
   return (
-    <>
-      {search === '' && filteredContacts.length === 0 && (
-        <EmptySelectScreen/>
+    <div className={`${classes.chatsList} scroller`}>
+      <List subheader={<li/>}>
+        {filteredContacts.length > 0 && (
+          <li>
+            <List className={classes.innerUl}>
+              <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
+              {filteredContacts
+                .map(([publicKey]) =>
+                  <ContactItem
+                    selected={participants.has(publicKey)}
+                    onClick={onContactToggle.bind(this, publicKey)}
+                    primaryName={names.get(publicKey)}
+                    showDeleteButton={true}
+                    onRemoveContact={onRemoveContact.bind(this, publicKey)}
+                  />
+                )}
+            </List>
+          </li>
+        )}
+        {search !== '' && (
+          <li>
+            <List className={classes.innerUl}>
+              <ListSubheader className={classes.listSubheader}>People</ListSubheader>
+              {[...searchContacts]
+                .sort(([, left], [, right]) => left.lastName.localeCompare(right.lastName))
+                .map(([publicKey, contact]) => (
+                  <ContactItem
+                    selected={participants.has(publicKey)}
+                    onClick={onContactToggle.bind(this, publicKey)}
+                    primaryName={contact.firstName + ' ' + contact.lastName}
+                    username={contact.username}
+                    onRemoveContact={onRemoveContact.bind(this, publicKey)}
+                  />
+                ))}
+            </List>
+          </li>
+        )}
+      </List>
+      {searchContacts.size === 0 && search !== '' && searchReady && (
+        <InviteButton publicKey={publicKey}/>
       )}
-      {(search !== '' || filteredContacts.length !== 0) && (
-        <div className={`${classes.chatsList} scroller`}>
-          <List subheader={<li/>}>
-            {filteredContacts.length > 0 && (
-              <li>
-                <List className={classes.innerUl}>
-                  <ListSubheader className={classes.listSubheader}>Friends</ListSubheader>
-                  {filteredContacts
-                    .map(([publicKey]) =>
-                      <ContactItem
-                        selected={participants.has(publicKey)}
-                        onClick={onContactToggle.bind(this, publicKey)}
-                        primaryName={names.get(publicKey)}
-                        showDeleteButton={true}
-                        onRemoveContact={onRemoveContact.bind(this, publicKey)}
-                      />
-                    )}
-                </List>
-              </li>
-            )}
-            {search !== '' && (
-              <li>
-                <List className={classes.innerUl}>
-                  <ListSubheader className={classes.listSubheader}>People</ListSubheader>
-                  {[...searchContacts]
-                    .sort(([, left], [, right]) => left.lastName.localeCompare(right.lastName))
-                    .map(([publicKey, contact]) => (
-                      <ContactItem
-                        selected={participants.has(publicKey)}
-                        onClick={onContactToggle.bind(this, publicKey)}
-                        primaryName={contact.firstName + ' ' + contact.lastName}
-                        username={contact.username}
-                        onRemoveContact={onRemoveContact.bind(this, publicKey)}
-                      />
-                    ))}
-                </List>
-              </li>
-            )}
-          </List>
-          {searchContacts.size === 0 && search !== '' && searchReady && (
-            <InviteButton publicKey={publicKey}/>
-          )}
-        </div>
-      )}
-    </>
+    </div>
   );
 }
 
@@ -113,4 +110,4 @@ function SelectContactsList({
   return <SelectContactsListView {...props}/>;
 }
 
-export default withSnackbar(withStyles(selectContactsListStyles)(SelectContactsList));
+export default withStyles(selectContactsListStyles)(SelectContactsList);

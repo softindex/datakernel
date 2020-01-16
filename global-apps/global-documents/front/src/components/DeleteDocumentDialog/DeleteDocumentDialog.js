@@ -6,10 +6,9 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {withSnackbar} from "notistack";
 import DialogContentText from "@material-ui/core/DialogContentText";
 import deleteDocumentStyles from "./deleteDocumentStyles";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 import DocumentsService from "../../modules/documents/DocumentsService";
 import {withRouter} from "react-router-dom";
 
@@ -42,15 +41,16 @@ function DeleteDocumentDialogView({classes, onClose, onDelete}) {
   );
 }
 
-function DeleteDocumentDialog({classes, documentId, onClose, history, match, enqueueSnackbar, closeSnackbar}) {
+function DeleteDocumentDialog({classes, documentId, onClose, history, match}) {
   const documentsService = getInstance(DocumentsService);
+  const {showSnackbar, hideSnackbar} = useSnackbar();
 
   const props = {
     classes,
     onClose,
 
     onDelete() {
-      enqueueSnackbar('Deleting...');
+      showSnackbar('Deleting...', 'loading');
       onClose();
       return documentsService.deleteDocument(documentId)
         .then((documentKey) => {
@@ -58,12 +58,10 @@ function DeleteDocumentDialog({classes, documentId, onClose, history, match, enq
           if (documentKey === documentId) {
             history.push(path.join('/document', ''));
           }
-          setTimeout(() => closeSnackbar(), 1000);
+          hideSnackbar();
         })
         .catch(error => {
-          enqueueSnackbar(error.message, {
-            variant: 'error'
-          })
+          showSnackbar(error.message, 'error');
         });
     }
   };
@@ -72,7 +70,5 @@ function DeleteDocumentDialog({classes, documentId, onClose, history, match, enq
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(deleteDocumentStyles)(DeleteDocumentDialog)
-  )
+  withStyles(deleteDocumentStyles)(DeleteDocumentDialog)
 );

@@ -6,38 +6,44 @@ import Dialog from '../Dialog/Dialog'
 import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
-import {getInstance, useService, getAppStoreContactName, initService, ContactChip} from "global-apps-common";
 import createDocumentStyles from "./createDocumentStyles";
 import {withRouter} from "react-router-dom";
 import Search from "../Search/Search";
 import SearchContactsService from "../../modules/searchContacts/SearchContactsService";
 import ContactsService from "../../modules/contacts/ContactsService";
 import SelectContactsList from "../SelectContactsList/SelectContactsList";
-import {withSnackbar} from "notistack";
 import NamesService from "../../modules/names/NamesService";
 import DocumentsService from "../../modules/documents/DocumentsService";
 import TextField from "@material-ui/core/TextField";
+import {
+  getInstance,
+  useService,
+  getAppStoreContactName,
+  initService,
+  ContactChip,
+  useSnackbar
+} from "global-apps-common";
 
 function CreateDocumentDialogView({
-                                classes,
-                                onClose,
-                                loading,
-                                onSubmit,
-                                onContactToggle,
-                                onRemoveContact,
-                                contacts,
-                                names,
-                                name,
-                                search,
-                                searchReady,
-                                searchContacts,
-                                onSearchChange,
-                                participants,
-                                activeStep,
-                                onNameChange,
-                                gotoStep,
-                                publicKey
-                              }) {
+                                    classes,
+                                    onClose,
+                                    loading,
+                                    onSubmit,
+                                    onContactToggle,
+                                    onRemoveContact,
+                                    contacts,
+                                    names,
+                                    name,
+                                    search,
+                                    searchReady,
+                                    searchContacts,
+                                    onSearchChange,
+                                    participants,
+                                    activeStep,
+                                    onNameChange,
+                                    gotoStep,
+                                    publicKey
+                                  }) {
   return (
     <Dialog
       onClose={onClose}
@@ -78,7 +84,8 @@ function CreateDocumentDialogView({
               placeholder="Search people..."
               value={search}
               onChange={onSearchChange}
-              searchReady={loading? true : searchReady}
+              searchReady={searchReady}
+              disabled={loading}
             />
             <SelectContactsList
               search={search}
@@ -130,7 +137,7 @@ function CreateDocumentDialogView({
   );
 }
 
-function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnackbar, closeSnackbar}) {
+function CreateDocumentDialog({classes, history, onClose, publicKey}) {
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
@@ -140,10 +147,13 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
   const documentsService = getInstance(DocumentsService);
   const namesService = getInstance(NamesService);
   const {names} = useService(namesService);
+  const snackbars = {
+    initServiceSnackbar: useSnackbar(),
+    submitFormSnackbar: useSnackbar(),
+    removeContactSnackbar: useSnackbar()
+  };
 
-  initService(searchContactsService, err => enqueueSnackbar(err.message, {
-    variant: 'error'
-  }));
+  initService(searchContactsService, err => snackbars.initServiceSnackbar.showSnackbar(err.message, 'error'));
 
   const [loading, setLoading] = useState(false);
   const [participants, setParticipants] = useState(new Map());
@@ -199,9 +209,9 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
         history.push(path.join('/document', documentId || ''));
         onClose();
       })()
-        .catch(error => enqueueSnackbar(error.message, {
-          variant: 'error'
-        }))
+        .catch(error => {
+          snackbars.submitFormSnackbar.showSnackbar(error.message, 'error')
+        })
         .finally(() => {
           setLoading(false);
         });
@@ -238,15 +248,13 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
         participants.delete(publicKey);
         setParticipants(participants);
       }
-      enqueueSnackbar('Deleting...');
+      snackbars.removeContactSnackbar.showSnackbar('Deleting...', 'loading');
       return contactsService.removeContact(publicKey)
         .then(() => {
-          setTimeout(() => closeSnackbar(), 1000);
+          snackbars.removeContactSnackbar.hideSnackbar();
         })
         .catch(error => {
-          enqueueSnackbar(error.message, {
-            variant: 'error'
-          })
+          snackbars.removeContactSnackbar.showSnackbar(error.message, 'error');
         })
     }
   };
@@ -255,7 +263,5 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(createDocumentStyles)(CreateDocumentDialog)
-  )
+  withStyles(createDocumentStyles)(CreateDocumentDialog)
 );

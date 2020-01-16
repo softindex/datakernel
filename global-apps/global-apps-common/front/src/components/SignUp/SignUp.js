@@ -13,7 +13,7 @@ import {SignUpAbstractionImage} from "../SignUpAbstractionImage/SignUpAbstractio
 import {withSnackbar} from "notistack";
 import AfterAuthRedirect from "../../auth/AfterAuthRedirect";
 
-class SignUp extends React.Component {
+class SignUpComponent extends React.Component {
   constructor(props) {
     super(props);
     this.state = {online: window.navigator.onLine, redirect: false};
@@ -123,10 +123,12 @@ class SignUp extends React.Component {
 
 }
 
-export default connectService(
+const SignUp = connectService(
   AuthContext, ({authorized, loading}, accountService) => (
     {authorized, loading, accountService})
 )(
-  withRouter(withSnackbar(withStyles(signUpStyles)(SignUp)))
+  withRouter(withSnackbar(withStyles(signUpStyles)(SignUpComponent)))
 );
+
+export {SignUp};
 

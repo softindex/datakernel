@@ -1,5 +1,4 @@
 import React from 'react';
-import {withSnackbar} from 'notistack';
 import {withStyles} from '@material-ui/core';
 import Button from '@material-ui/core/Button';
 import DialogActions from '@material-ui/core/DialogActions';
@@ -9,7 +8,7 @@ import DialogContentText from '@material-ui/core/DialogContentText';
 import noteDialogsStyles from '../CreateNoteDialog/noteDialogsStyles';
 import Dialog from '../Dialog/Dialog'
 import {withRouter} from "react-router-dom";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 import NotesService from "../../modules/notes/NotesService";
 
 function DeleteNoteDialogView({classes, onClose, onDelete}) {
@@ -45,28 +44,27 @@ function DeleteNoteDialogView({classes, onClose, onDelete}) {
   );
 }
 
-function DeleteNoteDialog({classes, match, history, onClose, enqueueSnackbar, closeSnackbar, currentNoteId}) {
+function DeleteNoteDialog({classes, match, history, onClose, currentNoteId}) {
   const notesService = getInstance(NotesService);
+  const {showSnackbar, hideSnackbar} = useSnackbar();
 
   const props = {
     classes,
     onClose,
 
     onDelete() {
-      enqueueSnackbar('Deleting...');
+      showSnackbar('Deleting...', 'loading');
       onClose();
       return notesService.deleteNote(currentNoteId)
         .then(() => {
           const {noteId} = match.params;
-          setTimeout(() => closeSnackbar(), 1000);
+          hideSnackbar();
           if (currentNoteId === noteId) {
             history.push('/note/');
           }
         })
         .catch(err => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         })
     }
   };
@@ -75,7 +73,5 @@ function DeleteNoteDialog({classes, match, history, onClose, enqueueSnackbar, cl
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(noteDialogsStyles)(DeleteNoteDialog)
-  )
+  withStyles(noteDialogsStyles)(DeleteNoteDialog)
 );

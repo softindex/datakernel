@@ -4,9 +4,8 @@ import {List, withStyles} from '@material-ui/core';
 import contactsListStyles from "./contactsListStyles";
 import CircularProgress from "@material-ui/core/CircularProgress";
 import ContactItem from "../ContactItem/ContactItem";
-import {withSnackbar} from "notistack";
 import ConfirmDialog from "../ConfirmDialog/ConfirmDialog";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 import ContactsService from "../../modules/contacts/ContactsService";
 import {withRouter} from "react-router-dom";
 
@@ -19,27 +18,28 @@ function ContactsListView({
                             onCloseAddDialog,
                             onConfirmAddContact
                           }) {
+  if (!searchReady) {
+    return (
+      <div className={classes.progressWrapper}>
+        <CircularProgress/>
+      </div>
+    )
+  }
+
   return (
     <>
-      {!searchReady && (
-        <div className={classes.progressWrapper}>
-          <CircularProgress/>
-        </div>
-      )}
-      {searchReady && searchContacts.size !== 0 && (
-        <>
-          <List>
-            {[...searchContacts]
-              .map(([publicKey, contact]) => (
-                <ContactItem
-                  username={contact.username}
-                  firstName={contact.firstName}
-                  lastName={contact.lastName}
-                  onClick={onContactClick.bind(this, publicKey)}
-                />
-              ))}
-          </List>
-        </>
+      {searchContacts.size !== 0 && (
+        <List>
+          {[...searchContacts]
+            .map(([publicKey, contact]) => (
+              <ContactItem
+                username={contact.username}
+                firstName={contact.firstName}
+                lastName={contact.lastName}
+                onClick={onContactClick.bind(this, publicKey)}
+              />
+            ))}
+        </List>
       )}
       {addContactId && (
         <ConfirmDialog
@@ -53,9 +53,10 @@ function ContactsListView({
   );
 }
 
-function ContactsList({classes, history, enqueueSnackbar, onSearchClear, searchReady, searchContacts}) {
+function ContactsList({classes, history, onSearchClear, searchReady, searchContacts}) {
   const contactsService = getInstance(ContactsService);
   const [addContactId, setContactId] = useState(null);
+  const {showSnackbar} = useSnackbar();
 
   const props = {
     classes,
@@ -79,9 +80,7 @@ function ContactsList({classes, history, enqueueSnackbar, onSearchClear, searchR
           props.onCloseAddDialog();
         })
         .catch(err => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         });
     }
   };
@@ -89,7 +88,5 @@ function ContactsList({classes, history, enqueueSnackbar, onSearchClear, searchR
 }
 
 export default withRouter(
-  withSnackbar(
-    withStyles(contactsListStyles)(ContactsList)
-  )
+  withStyles(contactsListStyles)(ContactsList)
 );
