@@ -22,7 +22,7 @@ public final class ObjectDisplayRegistryUtils {
 	}
 
 	public static String file(String postId, String filename) {
-		return "<a class=\"special\" href=\"javascript:void(0)\" onclick=\"window.open(location.pathname.replace('ot/thread', 'fs')+'/" + postId + "/" + filename + "', '_blank')\">" + filename + "</a>";
+		return "<a class=\"special\" href=\"javascript:void(0)\" onclick=\"window.open(location.pathname.replace('ot/thread', 'api/fs')+'/" + postId + "/" + filename + "', '_blank')\">" + filename + "</a>";
 	}
 
 	public static String text(String text) {
