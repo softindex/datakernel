@@ -330,14 +330,16 @@ public abstract class AbstractHttpConnection {
 	}
 
 	private void readBody() {
-		if ((flags & (CHUNKED | GZIPPED)) == 0){
-			if (contentLength == UNSET_CONTENT_LENGTH ) {
+		assert !isClosed();
+		if ((flags & (CHUNKED | GZIPPED)) == 0) {
+			if (contentLength == UNSET_CONTENT_LENGTH) {
 				onNoContentLength();
 				return;
 			}
 			if (readQueue.hasRemainingBytes(contentLength)) {
 				ByteBuf body = readQueue.takeExactSize(contentLength);
 				onHeadersReceived(body, null);
+				if (isClosed()) return;
 				onBodyReceived();
 				return;
 			}
@@ -388,10 +390,13 @@ public abstract class AbstractHttpConnection {
 
 		ChannelSupplier<ByteBuf> supplier = bodyStream.getSupplier(); // process gets started here and can cause connection closing
 
+		if (isClosed()) return;
+
 		onHeadersReceived(null, supplier);
 
 		process.getProcessCompletion()
 				.whenComplete(($, e) -> {
+					if (isClosed()) return;
 					if (e == null) {
 						onBodyReceived();
 					} else {
@@ -462,6 +467,7 @@ public abstract class AbstractHttpConnection {
 	protected void writeBuf(ByteBuf buf) {
 		socket.write(buf)
 				.whenComplete(($, e) -> {
+					if (isClosed()) return;
 					if (e == null) {
 						onBodySent();
 					} else {
@@ -473,6 +479,7 @@ public abstract class AbstractHttpConnection {
 	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
 		supplier.get()
 				.whenComplete((buf, e) -> {
+					if (isClosed()) return;
 					if (e == null) {
 						if (buf != null) {
 							socket.write(buf)

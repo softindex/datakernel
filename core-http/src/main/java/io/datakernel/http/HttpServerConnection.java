@@ -241,7 +241,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
-		if (isClosed()) return;
+		assert !isClosed();
 
 		//noinspection ConstantConditions
 		request.flags |= MUST_LOAD_BODY;
@@ -294,7 +294,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if (isClosed()) return;
+		assert !isClosed();
 		flags |= BODY_RECEIVED;
 		if ((flags & BODY_SENT) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
@@ -303,7 +303,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodySent() {
-		if (isClosed()) return;
+		assert !isClosed();
 		flags |= BODY_SENT;
 		if ((flags & BODY_RECEIVED) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();

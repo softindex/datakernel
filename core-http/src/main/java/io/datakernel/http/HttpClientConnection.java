@@ -176,7 +176,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
-		if (isClosed()) return;
+		assert !isClosed();
 
 		HttpResponse response = this.response;
 		//noinspection ConstantConditions
@@ -193,7 +193,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if (isClosed()) return;
+		assert !isClosed();
 		flags |= BODY_RECEIVED;
 		if (response != null && (flags & BODY_SENT) != 0) {
 			onHttpMessageComplete();
@@ -202,7 +202,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodySent() {
-		if (isClosed()) return;
+		assert !isClosed();
 		flags |= BODY_SENT;
 		if (response != null && (flags & BODY_RECEIVED) != 0) {
 			onHttpMessageComplete();
@@ -216,6 +216,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		ChannelSupplier.of(socket::read, socket).streamTo(buffer.getConsumer()
 				.withAcknowledgement(ack -> ack
 						.whenComplete((result, e) -> {
+							if (isClosed()) return;
 							if (e == null) {
 								onBodyReceived();
 							} else {
@@ -223,6 +224,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 							}
 						})));
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
+
+		if (isClosed()) return;
 
 		onHeadersReceived(null, supplier);
 	}
@@ -232,7 +235,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		response.recycle();
 		response = null;
 
-		if ((flags & KEEP_ALIVE) != 0 && client.keepAliveTimeoutMillis != 0) {
+		if ((flags & KEEP_ALIVE) != 0 && client.keepAliveTimeoutMillis != 0 && contentLength != UNSET_CONTENT_LENGTH) {
 			flags = 0;
 			socket.read()
 					.whenComplete((buf, e) -> {
@@ -246,6 +249,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 							closeWithError(e);
 						}
 					});
+			if (isClosed()) return;
 			client.returnToKeepAlivePool(this);
 		} else {
 			close();
@@ -258,6 +262,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param request request for sending
 	 */
 	public Promise<HttpResponse> send(HttpRequest request) {
+		assert !isClosed();
 		SettablePromise<HttpResponse> promise = new SettablePromise<>();
 		this.promise = promise;
 		assert pool == null;
