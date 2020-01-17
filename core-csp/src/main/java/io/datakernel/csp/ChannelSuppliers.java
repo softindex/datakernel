@@ -50,6 +50,7 @@ import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.lang.Math.min;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.

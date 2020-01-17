@@ -34,6 +34,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+
 /**
  * Replacement of default Java {@link CompletionStage} interface with
  * optimized design, which allows to handle different scenarios more
@@ -175,7 +177,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 			Eventloop eventloop = Eventloop.getCurrentEventloop();
 			eventloop.startExternalTask();
 			completionStage.whenCompleteAsync((result, e) -> {
-				eventloop.execute(() -> cb.accept(result, e));
+				eventloop.execute(wrapContext(cb, () -> cb.accept(result, e)));
 				eventloop.completeExternalTask();
 			});
 		});
@@ -197,11 +199,11 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 				executor.execute(() -> {
 					try {
 						T value = future.get();
-						eventloop.execute(() -> cb.set(value));
+						eventloop.execute(wrapContext(cb, () -> cb.set(value)));
 					} catch (ExecutionException e) {
-						eventloop.execute(() -> cb.setException(e.getCause()));
+						eventloop.execute(wrapContext(cb, () -> cb.setException(e.getCause())));
 					} catch (InterruptedException e) {
-						eventloop.execute(() -> cb.setException(e));
+						eventloop.execute(wrapContext(cb, () -> cb.setException(e)));
 					} catch (Throwable e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, future));
 					} finally {
@@ -237,13 +239,13 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 				executor.execute(() -> {
 					try {
 						T result = callable.call();
-						eventloop.execute(() -> cb.set(result));
+						eventloop.execute(wrapContext(cb, () -> cb.set(result)));
 					} catch (UncheckedException u) {
-						eventloop.execute(() -> cb.setException(u.getCause()));
+						eventloop.execute(wrapContext(cb, () -> cb.setException(u.getCause())));
 					} catch (RuntimeException e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, callable));
 					} catch (Exception e) {
-						eventloop.execute(() -> cb.setException(e));
+						eventloop.execute(wrapContext(cb, () -> cb.setException(e)));
 					} catch (Throwable e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, callable));
 					} finally {
@@ -275,13 +277,13 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 				executor.execute(() -> {
 					try {
 						runnable.run();
-						eventloop.execute(() -> cb.set(null));
+						eventloop.execute(wrapContext(cb, () -> cb.set(null)));
 					} catch (UncheckedException u) {
-						eventloop.execute(() -> cb.setException(u.getCause()));
+						eventloop.execute(wrapContext(cb, () -> cb.setException(u.getCause())));
 					} catch (RuntimeException e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
 					} catch (Exception e) {
-						eventloop.execute(() -> cb.setException(e));
+						eventloop.execute(wrapContext(cb, () -> cb.setException(e)));
 					} catch (Throwable e) {
 						eventloop.execute(() -> eventloop.recordFatalError(e, runnable));
 					} finally {

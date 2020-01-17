@@ -579,7 +579,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				tick++;
 				if (sw != null && inspector != null) inspector.onUpdateLocalTaskDuration(runnable, sw);
 			} catch (Throwable e) {
-				recordFatalError(e, runnable);
+				onFatalError(e, runnable);
 			}
 			localTasks++;
 		}
@@ -617,7 +617,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				executeTask(runnable);
 				if (sw != null && inspector != null) inspector.onUpdateConcurrentTaskDuration(runnable, sw);
 			} catch (Throwable e) {
-				recordFatalError(e, runnable);
+				onFatalError(e, runnable);
 			}
 			concurrentTasks++;
 		}
@@ -678,7 +678,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 				peeked.complete();
 				if (sw != null && inspector != null) inspector.onUpdateScheduledTaskDuration(runnable, sw, background);
 			} catch (Throwable e) {
-				recordFatalError(e, runnable);
+				onFatalError(e, runnable);
 			}
 
 			scheduledTasks++;
@@ -1119,6 +1119,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	private void recordIoError(@NotNull Exception e, @Nullable Object context) {
 		logger.warn("IO Error in {}: {}", context, e.toString());
+	}
+
+	private void onFatalError(@NotNull Throwable e, @Nullable Runnable runnable) {
+		if (runnable instanceof RunnableWithContext) {
+			recordFatalError(e, ((RunnableWithContext) runnable).getContext());
+		} else {
+			recordFatalError(e, runnable);
+		}
 	}
 
 	public void recordFatalError(@NotNull Throwable e, @Nullable Object context) {

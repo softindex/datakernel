@@ -27,6 +27,7 @@ import java.util.Set;
 
 import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 public final class StreamSuppliers {
 
@@ -46,7 +47,7 @@ public final class StreamSuppliers {
 
 		@Override
 		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(() -> endOfStream.trySetException(exception));
+			getCurrentEventloop().post(wrapContext(endOfStream, () -> endOfStream.trySetException(exception)));
 		}
 
 		@Override
@@ -85,7 +86,7 @@ public final class StreamSuppliers {
 
 		@Override
 		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(() -> endOfStream.trySet(null));
+			getCurrentEventloop().post(wrapContext(endOfStream, () -> endOfStream.trySet(null)));
 		}
 
 		@Override

@@ -47,6 +47,7 @@ import static io.datakernel.common.MemSize.kilobytes;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventHandler {
@@ -243,27 +244,25 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 
 	// timeouts management
 	private void scheduleReadTimeout() {
-		if (scheduledReadTimeout == null) {
-			scheduledReadTimeout = eventloop.delayBackground(readTimeout, () -> {
-				if (inspector != null) inspector.onReadTimeout();
-				scheduledReadTimeout = null;
-				close(TIMEOUT_EXCEPTION);
-			});
-		}
+		assert scheduledReadTimeout == null && readTimeout != NO_TIMEOUT;
+		scheduledReadTimeout = eventloop.delayBackground(readTimeout, wrapContext(this, () -> {
+			if (inspector != null) inspector.onReadTimeout();
+			scheduledReadTimeout = null;
+			close(TIMEOUT_EXCEPTION);
+		}));
 	}
 
 	private void scheduleWriteTimeout() {
-		if (scheduledWriteTimeout == null) {
-			scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, () -> {
-				if (inspector != null) inspector.onWriteTimeout();
-				scheduledWriteTimeout = null;
-				close(TIMEOUT_EXCEPTION);
-			});
-		}
+		assert scheduledWriteTimeout == null && writeTimeout != NO_TIMEOUT;
+		scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, wrapContext(this, () -> {
+			if (inspector != null) inspector.onWriteTimeout();
+			scheduledWriteTimeout = null;
+			close(TIMEOUT_EXCEPTION);
+		}));
 	}
 
 	private void updateInterests() {
-		if (ops < 0 || channel == null) return;
+		assert isOpen() && ops >= 0;
 		byte newOps = (byte) (((readBuf == null && !readEndOfStream) ? SelectionKey.OP_READ : 0) | (writeBuf == null || writeEndOfStream ? 0 : SelectionKey.OP_WRITE));
 		if (key == null) {
 			ops = newOps;
@@ -291,11 +290,14 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 			this.readBuf = null;
 			return Promise.of(readBuf);
 		}
-		read = new SettablePromise<>();
-		if (readTimeout != NO_TIMEOUT) {
+		SettablePromise<ByteBuf> read = new SettablePromise<>();
+		this.read = read;
+		if (scheduledReadTimeout == null && readTimeout != NO_TIMEOUT) {
 			scheduleReadTimeout();
 		}
-		updateInterests();
+		if (ops >= 0) {
+			updateInterests();
+		}
 		return read;
 	}
 
@@ -309,12 +311,13 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 			return;
 		}
 		if (read != null && (readBuf != null || readEndOfStream)) {
-			SettablePromise<ByteBuf> read = this.read;
+			SettablePromise<@Nullable ByteBuf> read = this.read;
 			ByteBuf readBuf = this.readBuf;
 			this.read = null;
 			this.readBuf = null;
 			read.set(readBuf);
 		}
+		if (!isOpen()) return;
 		ops = (byte) (ops & 0x7f);
 		updateInterests();
 	}
@@ -376,6 +379,9 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		writeEndOfStream |= buf == null;
 
 		if (writeBuf == null) {
+			if (buf != null && !buf.canRead()) {
+				return Promise.complete();
+			}
 			writeBuf = buf;
 		} else {
 			if (buf != null) {
@@ -397,11 +403,14 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		if (this.writeBuf == null) {
 			return Promise.complete();
 		}
-		write = new SettablePromise<>();
-		if (writeTimeout != NO_TIMEOUT) {
+		SettablePromise<Void> write = new SettablePromise<>();
+		this.write = write;
+		if (scheduledWriteTimeout == null && writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeout();
 		}
-		updateInterests();
+		if (ops >= 0) {
+			updateInterests();
+		}
 		return write;
 	}
 
@@ -416,10 +425,11 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 			return;
 		}
 		if (writeBuf == null) {
-			SettablePromise<Void> write = this.write;
+			SettablePromise<@Nullable Void> write = this.write;
 			this.write = null;
 			write.set(null);
 		}
+		if (!isOpen()) return;
 		ops = (byte) (ops & 0x7f);
 		updateInterests();
 	}
@@ -483,6 +493,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		return channel != null;
 	}
 
+	@Nullable
 	public SocketChannel getSocketChannel() {
 		return channel;
 	}

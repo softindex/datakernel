@@ -28,6 +28,7 @@
     <module>core-bytebuf</module>
     <module>core-codegen</module>
     <module>core-serializer</module>
+    <module>core-specializer</module>
     <module>core-codec</module>
     <module>core-promise</module>
     <module>core-csp</module>
@@ -120,12 +121,17 @@
       <dependency>
         <groupId>org.ow2.asm</groupId>
         <artifactId>asm</artifactId>
-        <version>6.2.1</version>
+        <version>7.2</version>
       </dependency>
       <dependency>
         <groupId>org.ow2.asm</groupId>
         <artifactId>asm-commons</artifactId>
-        <version>6.2.1</version>
+        <version>7.2</version>
+      </dependency>
+      <dependency>
+        <groupId>org.ow2.asm</groupId>
+        <artifactId>asm-tree</artifactId>
+        <version>7.2</version>
       </dependency>
       <dependency>
         <groupId>mysql</groupId>

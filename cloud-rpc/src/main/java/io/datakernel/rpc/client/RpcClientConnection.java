@@ -37,6 +37,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -111,7 +112,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			if (timeout != Integer.MAX_VALUE) {
 				ExpirationList list = expirationLists.computeIfAbsent(eventloop.currentTimeMillis() + timeout, t -> {
 					ExpirationList l = new ExpirationList(new int[BUCKET_CAPACITY]);
-					eventloop.scheduleBackground(t, () -> {
+					eventloop.scheduleBackground(t, wrapContext(this, () -> {
 						expirationLists.remove(t);
 
 						for (int i = 0; i < l.size; i++) {
@@ -128,7 +129,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 						if (serverClosing && activeRequests.size() == 0) {
 							shutdown();
 						}
-					});
+					}));
 					return l;
 				});
 

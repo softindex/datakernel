@@ -58,6 +58,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.async.callback.Callback.toAnotherEventloop;
 import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.common.Utils.nullToSupplier;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.net.AsyncTcpSocketSsl.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -376,12 +377,12 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		connectsStatsPerAddress.get(address).failedConnects++;
 
 		if (stopPromise == null) {
-			eventloop.delayBackground(reconnectIntervalMillis, () -> {
+			eventloop.delayBackground(reconnectIntervalMillis, wrapContext(this, () -> {
 				if (stopPromise == null) {
 					logger.info("Reconnecting: {}", address);
 					connect(address);
 				}
-			});
+			}));
 		} else {
 			if (connections.size() == 0) {
 				stopPromise.set(null);
@@ -419,8 +420,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
 				if (timeout > 0) {
-					eventloop.execute(() ->
-							requestSender.sendRequest(request, timeout, toAnotherEventloop(anotherEventloop, cb)));
+					eventloop.execute(wrapContext(requestSender, () ->
+							requestSender.sendRequest(request, timeout, toAnotherEventloop(anotherEventloop, cb))));
 				} else {
 					cb.accept(null, RPC_TIMEOUT_EXCEPTION);
 				}

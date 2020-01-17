@@ -34,6 +34,7 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 
 import static io.datakernel.common.Utils.nullify;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.max;
 
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
@@ -296,15 +297,15 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (autoFlushIntervalMillis == -1)
 				return;
 			if (autoFlushIntervalMillis == 0) {
-				eventloop.postLater(() -> {
+				eventloop.postLater(wrapContext(this, () -> {
 					flushPosted = false;
 					flush();
-				});
+				}));
 			} else {
-				eventloop.delayBackground(autoFlushIntervalMillis, () -> {
+				eventloop.delayBackground(autoFlushIntervalMillis, wrapContext(this, () -> {
 					flushPosted = false;
 					flush();
-				});
+				}));
 			}
 		}
 	}

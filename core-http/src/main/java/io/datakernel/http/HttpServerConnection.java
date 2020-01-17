@@ -33,6 +33,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMessage.MUST_LOAD_BODY;
 import static io.datakernel.http.HttpMethod.*;
@@ -228,7 +229,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		ByteBuf buf = renderHttpMessage(httpResponse);
 		if (buf != null) {
 			if ((flags & KEEP_ALIVE) != 0) {
-				eventloop.post(() -> writeBuf(buf));
+				eventloop.post(wrapContext(this, () -> writeBuf(buf)));
 			} else {
 				writeBuf(buf);
 			}
@@ -240,6 +241,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
+		assert !isClosed();
+
 		//noinspection ConstantConditions
 		request.flags |= MUST_LOAD_BODY;
 		request.body = body;
@@ -291,16 +294,25 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+		assert !isClosed();
+		flags |= BODY_RECEIVED;
+		if ((flags & BODY_SENT) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
 		}
 	}
 
 	@Override
 	protected void onBodySent() {
-		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+		assert !isClosed();
+		flags |= BODY_SENT;
+		if ((flags & BODY_RECEIVED) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
 		}
+	}
+
+	@Override
+	protected void onNoContentLength() {
+		throw new AssertionError("This method should not be called on a server");
 	}
 
 	private void onHttpMessageComplete() {
@@ -315,6 +327,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			switchPool(server.poolKeepAlive);
 			flags = 0;
 			try {
+				/*
+					as per RFC 7230, section 3.3.3,
+					if no Content-Length header is set, server can assume that a length of a message is 0
+				 */
+				contentLength = 0;
 				readHttpMessage();
 			} catch (ParseException e) {
 				closeWithError(e);

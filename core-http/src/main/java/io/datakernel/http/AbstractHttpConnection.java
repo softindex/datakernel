@@ -67,6 +67,7 @@ public abstract class AbstractHttpConnection {
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
+	protected static final int UNSET_CONTENT_LENGTH = -1;
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
@@ -136,6 +137,8 @@ public abstract class AbstractHttpConnection {
 
 	protected abstract void onBodySent();
 
+	protected abstract void onNoContentLength();
+
 	protected abstract void onClosed();
 
 	protected abstract void onClosedWithError(@NotNull Throwable e);
@@ -162,7 +165,6 @@ public abstract class AbstractHttpConnection {
 	}
 
 	protected final void readHttpMessage() throws ParseException {
-		contentLength = 0;
 		readStartLine();
 	}
 
@@ -328,13 +330,19 @@ public abstract class AbstractHttpConnection {
 	}
 
 	private void readBody() {
-		if ((flags & (CHUNKED | GZIPPED)) == 0 && readQueue.hasRemainingBytes(contentLength)) {
-			ByteBuf body = readQueue.takeExactSize(contentLength);
-			onHeadersReceived(body, null);
-			if (isClosed()) return;
-			flags |= BODY_RECEIVED;
-			onBodyReceived();
-			return;
+		assert !isClosed();
+		if ((flags & (CHUNKED | GZIPPED)) == 0) {
+			if (contentLength == UNSET_CONTENT_LENGTH) {
+				onNoContentLength();
+				return;
+			}
+			if (readQueue.hasRemainingBytes(contentLength)) {
+				ByteBuf body = readQueue.takeExactSize(contentLength);
+				onHeadersReceived(body, null);
+				if (isClosed()) return;
+				onBodyReceived();
+				return;
+			}
 		}
 
 		BinaryChannelSupplier encodedStream = BinaryChannelSupplier.ofProvidedQueue(
@@ -390,7 +398,6 @@ public abstract class AbstractHttpConnection {
 				.whenComplete(($, e) -> {
 					if (isClosed()) return;
 					if (e == null) {
-						flags |= BODY_RECEIVED;
 						onBodyReceived();
 					} else {
 						closeWithError(e);
@@ -462,7 +469,6 @@ public abstract class AbstractHttpConnection {
 				.whenComplete(($, e) -> {
 					if (isClosed()) return;
 					if (e == null) {
-						flags |= BODY_SENT;
 						onBodySent();
 					} else {
 						closeWithError(e);
@@ -473,6 +479,7 @@ public abstract class AbstractHttpConnection {
 	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
 		supplier.get()
 				.whenComplete((buf, e) -> {
+					if (isClosed()) return;
 					if (e == null) {
 						if (buf != null) {
 							socket.write(buf)
@@ -485,8 +492,6 @@ public abstract class AbstractHttpConnection {
 										}
 									});
 						} else {
-							if (isClosed()) return;
-							flags |= BODY_SENT;
 							onBodySent();
 						}
 					} else {

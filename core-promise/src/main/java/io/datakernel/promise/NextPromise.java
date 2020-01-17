@@ -16,11 +16,9 @@
 
 package io.datakernel.promise;
 
-import io.datakernel.async.callback.Callback;
-
 /**
  * Helps to create sequent chains of {@code Promise}s.
  */
-public abstract class NextPromise<T, R> extends AbstractPromise<R> implements Callback<T> {
+public abstract class NextPromise<T, R> extends AbstractPromise<R> implements SimpleCallback<T> {
 
 }

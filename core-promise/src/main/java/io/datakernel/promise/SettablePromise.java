@@ -22,6 +22,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Represents a {@link Promise} which can be completed or completedExceptionally
@@ -119,37 +120,31 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	}
 
 	public void post(T result) {
-		getCurrentEventloop().post(() -> set(result));
+		getCurrentEventloop().post(wrapContext(this, () -> set(result)));
 	}
 
 	public void postException(@NotNull Throwable e) {
-		getCurrentEventloop().post(() -> setException(e));
+		getCurrentEventloop().post(wrapContext(this, () -> setException(e)));
 	}
 
 	public void post(T result, @Nullable Throwable e) {
-		getCurrentEventloop().post(() -> accept(result, e));
+		getCurrentEventloop().post(wrapContext(this, () -> accept(result, e)));
 	}
 
 	public void tryPost(T result) {
-		getCurrentEventloop().post(() -> trySet(result));
+		getCurrentEventloop().post(wrapContext(this, () -> trySet(result)));
 	}
 
 	public void tryPostException(@NotNull Throwable e) {
-		getCurrentEventloop().post(() -> trySetException(e));
+		getCurrentEventloop().post(wrapContext(this, () -> trySetException(e)));
 	}
 
 	public void tryPost(T result, @Nullable Throwable e) {
-		getCurrentEventloop().post(() -> trySet(result, e));
+		getCurrentEventloop().post(wrapContext(this, () -> trySet(result, e)));
 	}
 
 	@Override
-	public String toString() {
-		return "SettablePromise{" +
-				(isComplete() ?
-						(exception == null ?
-								"" + result :
-								"exception=" + exception.getClass().getSimpleName()) :
-						"<unset>")
-				+ "}";
-	}
+	public String describe() {
+		return "SettablePromise";
+ 	}
 }

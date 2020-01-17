@@ -27,6 +27,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Represents a completed {@code Promise} with a result of unspecified type.
@@ -167,7 +168,7 @@ public abstract class CompletePromise<T> implements Promise<T> {
 	@Override
 	public final Promise<T> async() {
 		SettablePromise<T> result = new SettablePromise<>();
-		getCurrentEventloop().post(() -> result.set(getResult()));
+		getCurrentEventloop().post(wrapContext(result, () -> result.set(getResult())));
 		return result;
 	}
 

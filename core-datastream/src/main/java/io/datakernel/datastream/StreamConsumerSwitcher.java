@@ -25,6 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Set;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.util.Collections.emptySet;
 
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
@@ -124,7 +125,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 			suspended = false;
 
 			if (pendingItems != null) {
-				eventloop.post(() -> {
+				eventloop.post(wrapContext(this, () -> {
 					if (pendingItems.isEmpty()) {
 						return;
 					}
@@ -145,7 +146,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> i
 							getSupplier().suspend();
 						}
 					}
-				});
+				}));
 			} else {
 				if (currentInternalSupplier == this) {
 					StreamSupplier<T> supplier = getSupplier();

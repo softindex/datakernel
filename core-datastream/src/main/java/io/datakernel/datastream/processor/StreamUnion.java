@@ -23,6 +23,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+
 /**
  * It is Stream Transformer which unions all input streams and streams it
  * combination to the destination.
@@ -90,7 +92,7 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 					input.getSupplier().resume(dataAcceptor);
 				}
 			} else {
-				eventloop.post(this::sendEndOfStream);
+				eventloop.post(wrapContext(this, this::sendEndOfStream));
 			}
 		}
 

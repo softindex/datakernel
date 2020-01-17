@@ -3,6 +3,8 @@ package io.datakernel.async.callback;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+
 /**
  * Represents a universal Callback interface
  */
@@ -14,6 +16,6 @@ public interface Callback<T> {
 	void accept(T result, @Nullable Throwable e);
 
 	static <T> Callback<T> toAnotherEventloop(Eventloop anotherEventloop, Callback<T> cb) {
-		return (result, e) -> anotherEventloop.execute(() -> cb.accept(result, e));
+		return (result, e) -> anotherEventloop.execute(wrapContext(cb, () -> cb.accept(result, e)));
 	}
 }

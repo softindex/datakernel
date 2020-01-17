@@ -30,6 +30,7 @@ import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static org.slf4j.LoggerFactory.getLogger;
 
 @SuppressWarnings("WeakerAccess")
@@ -101,14 +102,14 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<?> start(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.start().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(wrapContext(instance, () -> instance.start().whenComplete(completeFuture(future))));
 				return future;
 			}
 
 			@Override
 			public CompletableFuture<?> stop(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.stop().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(wrapContext(instance, () -> instance.stop().whenComplete(completeFuture(future))));
 				return future;
 			}
 		};
@@ -119,21 +120,21 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<?> start(EventloopServer instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> {
+				instance.getEventloop().execute(wrapContext(instance, () -> {
 					try {
 						instance.listen();
 						future.complete(null);
 					} catch (IOException e) {
 						future.completeExceptionally(e);
 					}
-				});
+				}));
 				return future;
 			}
 
 			@Override
 			public CompletableFuture<?> stop(EventloopServer instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.close().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(wrapContext(instance, () -> instance.close().whenComplete(completeFuture(future))));
 				return future;
 			}
 		};
