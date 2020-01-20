@@ -157,7 +157,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 
 					if (length != -1 && sizeInCache >= offset + length) {
 						return cacheClient.download(name, offset, length)
-								.whenComplete((val, e) -> updateCacheStats(name));
+								.whenComplete(() -> updateCacheStats(name));
 					}
 
 					if (offset > sizeInCache) {

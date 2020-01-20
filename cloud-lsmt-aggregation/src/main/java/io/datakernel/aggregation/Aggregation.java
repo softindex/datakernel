@@ -62,6 +62,7 @@ import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.isEqual;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Represents an aggregation, which aggregates data using custom reducer and preaggregator.
@@ -296,31 +297,28 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		BinarySerializer<T> binarySerializer = createBinarySerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
 		Path sortDir = nullToSupplier(temporarySortDir, this::createSortDir);
-		StreamSupplier<T> stream = unsortedStream
+		return unsortedStream
 				.transformWith(StreamSorter.create(
 						StreamSorterStorageImpl.create(executor, binarySerializer, sortDir),
-						Function.identity(), keyComparator, false, sorterItemsInMemory));
-
-		stream.getEndOfStream()
-				.whenComplete(($, e) -> {
-					if (temporarySortDir == null) {
-						deleteSortDirSilent(sortDir);
-					}
-				});
-		return stream;
+						Function.identity(), keyComparator, false, sorterItemsInMemory))
+				.withEndOfStream(p -> p
+						.whenComplete(() -> {
+							if (temporarySortDir == null) {
+								deleteSortDirSilent(sortDir);
+							}
+						}));
 	}
 
 	private Promise<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
 		Set<String> aggregationFields = new HashSet<>(getMeasures());
-		Set<String> chunkFields = new HashSet<>();
-		for (AggregationChunk chunk : chunksToConsolidate) {
-			for (String measure : chunk.getMeasures()) {
-				if (aggregationFields.contains(measure))
-					chunkFields.add(measure);
-			}
-		}
+		Set<String> chunkFields = chunksToConsolidate.stream()
+				.flatMap(chunk -> chunk.getMeasures().stream())
+				.filter(aggregationFields::contains)
+				.collect(toSet());
 
-		List<String> measures = getMeasures().stream().filter(chunkFields::contains).collect(toList());
+		List<String> measures = getMeasures().stream()
+				.filter(chunkFields::contains)
+				.collect(toList());
 		Class<Object> resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		StreamSupplier<Object> consolidatedSupplier = consolidatedSupplier(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(),
