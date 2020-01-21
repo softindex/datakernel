@@ -64,7 +64,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 
-	private SocketSettings socketSettings = SocketSettings.create();
+	private SocketSettings socketSettings = SocketSettings.createDefault();
 
 	//region JMX
 	private final PromiseStats connectPromise = PromiseStats.create(Duration.ofMinutes(5));

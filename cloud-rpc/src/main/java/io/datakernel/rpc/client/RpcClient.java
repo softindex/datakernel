@@ -80,7 +80,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see RpcServer
  */
 public final class RpcClient implements IRpcClient, EventloopService, Initializable<RpcClient>, EventloopJmxMBeanEx {
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.createDefault();
 	public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);
 	public static final MemSize DEFAULT_PACKET_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
