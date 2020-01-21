@@ -43,7 +43,7 @@ public final class DatagraphClient {
 	private final DatagraphSerialization serialization;
 	private final ByteBufSerializer<DatagraphResponse, DatagraphCommand> serializer;
 
-	private final SocketSettings socketSettings = SocketSettings.create();
+	private final SocketSettings socketSettings = SocketSettings.createDefault();
 
 	/**
 	 * Constructs a datagraph client that runs in a given event loop and uses the specified DatagraphSerialization object for various serialization purposes.

@@ -52,7 +52,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	private final CrdtDataSerializer<K, S> serializer;
 	private final BinarySerializer<K> keySerializer;
 
-	private SocketSettings socketSettings = SocketSettings.create();
+	private SocketSettings socketSettings = SocketSettings.createDefault();
 
 	// region JMX
 	private boolean detailedStats;
