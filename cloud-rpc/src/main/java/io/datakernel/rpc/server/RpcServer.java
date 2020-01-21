@@ -23,7 +23,6 @@ import io.datakernel.eventloop.jmx.EventStats;
 import io.datakernel.eventloop.jmx.ExceptionStats;
 import io.datakernel.eventloop.jmx.ValueStats;
 import io.datakernel.eventloop.net.ServerSocketSettings;
-import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
@@ -75,7 +74,6 @@ import static java.util.Arrays.asList;
  */
 public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create().withTcpNoDelay(true);
 
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
 	public static final MemSize DEFAULT_MAX_MESSAGE_SIZE = ChannelSerializer.MAX_SIZE;

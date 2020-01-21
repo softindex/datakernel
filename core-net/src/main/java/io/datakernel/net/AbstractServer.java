@@ -68,7 +68,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	protected final Eventloop eventloop;
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(DEFAULT_BACKLOG);
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.createDefault();
 
 	protected ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
 	protected SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;

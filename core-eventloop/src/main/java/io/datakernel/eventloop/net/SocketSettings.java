@@ -60,6 +60,17 @@ public final class SocketSettings {
 		return new SocketSettings(0, 0, DEF_BOOL, DEF_BOOL, DEF_BOOL, 0, 0, 0);
 	}
 
+	/**
+	 * Creates a default socket settings with socket option {@code TCP_NODELAY} enabled.
+	 * Enabling this option turns off Nagle's algorithm.
+	 * Note, that by default, operating system has {@code TCP_NODELAY} option disabled.
+	 *
+	 * @return default socket settings
+	 */
+	public static SocketSettings createDefault() {
+		return new SocketSettings(0, 0, DEF_BOOL, DEF_BOOL, TRUE, 0, 0, 0);
+	}
+
 	public SocketSettings withSendBufferSize(@NotNull MemSize sendBufferSize) {
 		return new SocketSettings(sendBufferSize.toInt(), receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, implReadTimeout, implWriteTimeout, implReadBufferSize);
 	}
