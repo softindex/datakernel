@@ -45,6 +45,7 @@ import io.global.common.discovery.RemoteFsSharedKeyStorage;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.http.HttpMethod.GET;
@@ -83,7 +84,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 	@Provides
 	FsClient fsClient(Eventloop eventloop, ExecutorService executor, Config config) {
-		return LocalFsClient.create(eventloop, config.get(ofPath(), "discovery.storage"))
+		return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "discovery.storage"))
 				.withRevisions();
 	}
 
@@ -118,7 +119,9 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 	@Provides
 	Config config() {
-		return Config.ofClassPathProperties(PROPERTIES_FILE)
+		return Config.create()
+				.with("fs.executor.corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE))
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}
 

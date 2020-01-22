@@ -49,7 +49,9 @@ public class GlobalNodesLauncher extends Launcher {
 
 	@Provides
 	Config config() {
-		return ofClassPathProperties(PROPERTIES_FILE)
+		return Config.create()
+				.with("corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 

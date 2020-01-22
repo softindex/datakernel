@@ -54,6 +54,7 @@ public final class GlobalTodoApp extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
+				.with("executor.corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
 				.with("http.listenAddresses", DEFAULT_LISTEN_ADDRESSES)
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)

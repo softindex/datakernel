@@ -60,6 +60,7 @@ public class GlobalPhotosApp extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
+				.with("corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
 				.with("image.upload.limit", "52MB")
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("fs.storage", DEFAULT_FS_STORAGE)
