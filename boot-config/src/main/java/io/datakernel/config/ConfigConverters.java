@@ -38,10 +38,7 @@ import java.nio.file.Paths;
 import java.time.*;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -662,16 +659,35 @@ public final class ConfigConverters {
 		};
 	}
 
+	/**
+	 * Creates {@link ExecutorService} based on given {@link Config}
+	 * If config contains no settings related to thread pool, the default executor
+	 * will be single threaded with an unbounded task queue
+	 *
+	 * @param config - configuration of an executor
+	 * @return executor service
+	 */
 	public static ExecutorService getExecutor(Config config) {
 		int corePoolSize = config.get(ofInteger().withConstraint(x -> x >= 0), "corePoolSize", 0);
-		int maxPoolSize = config.get(ofInteger().withConstraint(x -> x == 0 || x >= corePoolSize), "maxPoolSize", 0);
+		int maxPoolSize = config.get(ofInteger().withConstraint(x -> x >= corePoolSize), "maxPoolSize", Integer.MAX_VALUE);
 		int keepAlive = config.get(ofInteger().withConstraint(x -> x >= 0), "keepAliveSeconds", 60);
+		int queueSize = config.get(ofInteger().withConstraint(x -> x >= 0), "queueSize", Integer.MAX_VALUE);
+
+		BlockingQueue<Runnable> queue;
+		if (queueSize == 0) {
+			queue = new SynchronousQueue<>();
+		} else if (queueSize == Integer.MAX_VALUE) {
+			queue = new LinkedBlockingQueue<>();
+		} else {
+			queue = new ArrayBlockingQueue<>(queueSize);
+		}
+
 		return new ThreadPoolExecutor(
 				corePoolSize,
 				maxPoolSize == 0 ? Integer.MAX_VALUE : maxPoolSize,
 				keepAlive,
 				TimeUnit.SECONDS,
-				new LinkedBlockingQueue<>());
+				queue);
 	}
 
 	public static ConfigConverter<ExecutorService> ofExecutor() {
