@@ -64,7 +64,7 @@ public final class ApplicationLauncher extends HttpServerLauncher {
 				.map(GET, "/get/all", request -> {
 					Map<Integer, Record> records = recordDAO.findAll();
 					return HttpResponse.ok200()
-							.withJson(ofMap(INT_CODEC, RECORD_CODEC), records);
+							.withJson(JsonUtils.toJson(ofMap(INT_CODEC, RECORD_CODEC), records));
 				})
 				//[START REGION_4]
 				.map(GET, "/delete/:recordId", request -> {
