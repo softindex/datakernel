@@ -15,14 +15,4 @@
     <artifactId>archetype-rpc</artifactId>
     <packaging>maven-archetype</packaging>
 
-    <build>
-        <extensions>
-            <extension>
-                <groupId>org.apache.maven.archetype</groupId>
-                <artifactId>archetype-packaging</artifactId>
-                <version>3.1.1</version>
-            </extension>
-        </extensions>
-    </build>
-
 </project>
