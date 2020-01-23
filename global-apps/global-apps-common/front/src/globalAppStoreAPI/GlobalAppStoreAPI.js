@@ -54,10 +54,10 @@ export class GlobalAppStoreAPI {
   sendGoogleProfileCode(tokenCode) {
     return this._request(url.resolve(this._url, '/api/auth/googleTokenLogin'), {
       method: 'POST',
-      body: "code=" + tokenCode,
+      body: 'code=' + tokenCode,
       headers: { 'Content-type': 'application/x-www-form-urlencoded' }
     })
-      .then(response => response && response.json());
+      .then(response => response.json());
   }
 
   getApplications() {
