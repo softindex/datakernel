@@ -65,6 +65,7 @@ import java.util.function.Function;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.dns.RemoteAsyncDnsClient.DEFAULT_TIMEOUT;
 import static io.datakernel.dns.RemoteAsyncDnsClient.GOOGLE_PUBLIC_DNS;
+import static io.datakernel.http.AsyncHttpClient.*;
 import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
@@ -138,10 +139,17 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient, Executor executor) throws NoSuchAlgorithmException {
+	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient, Executor executor, Config config) throws NoSuchAlgorithmException {
+		Config httpClientConfig = config.getChild("httpClient");
 		return AsyncHttpClient.create(eventloop)
 				.withDnsClient(dnsClient)
-				.withSslEnabled(SSLContext.getDefault(), executor);
+				.withSslEnabled(SSLContext.getDefault(), executor)
+				.withSocketSettings(httpClientConfig.get(ofSocketSettings(), "socketSettings", DEFAULT_SOCKET_SETTINGS))
+				.withConnectTimeout(httpClientConfig.get(ofDuration(), "connectTimeout", CONNECT_TIMEOUT))
+				.withKeepAliveTimeout(httpClientConfig.get(ofDuration(), "keepAliveTimeout", KEEP_ALIVE_TIMEOUT))
+				.withReadWriteTimeout(httpClientConfig.get(ofDuration(), "readWriteTimeout", READ_WRITE_TIMEOUT))
+				.withMaxBodySize(httpClientConfig.get(ofMemSize(), "maxBodySize", MAX_BODY_SIZE))
+				.withMaxKeepAliveRequests(httpClientConfig.get(ofInteger(), "maxKeepAliveRequests", MAX_KEEP_ALIVE_REQUESTS));
 	}
 
 	@Provides
