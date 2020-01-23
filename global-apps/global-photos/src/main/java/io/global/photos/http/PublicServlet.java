@@ -164,7 +164,7 @@ public final class PublicServlet {
 								if (albumId.equals(ROOT_ALBUM)) {
 									return Promise.of(redirectToReferer(request, "/"));
 								}
-								String body = request.getBody().asString(UTF_8);
+								String body = request.getBody().getString(UTF_8);
 								Tuple2<String, String> titleAndDescription = JsonUtils.fromJson(UPDATE_ALBUM_METADATA, body);
 								return mainDao.updateAlbum(albumId, titleAndDescription.getValue1(), titleAndDescription.getValue2())
 										.map($ -> redirectToReferer(request, "/" + albumId));
@@ -207,7 +207,7 @@ public final class PublicServlet {
 						.serve(request -> {
 							try {
 								MainDao mainDao = request.getAttachment(MainDao.class);
-								Tuple3<String, String, Set<String>> album = JsonUtils.fromJson(ALBUM_CODEC, request.getBody().asString(UTF_8));
+								Tuple3<String, String, Set<String>> album = JsonUtils.fromJson(ALBUM_CODEC, request.getBody().getString(UTF_8));
 								String title = album.getValue1();
 								String description = album.getValue2();
 								Set<String> photoIds = album.getValue3();
@@ -228,7 +228,7 @@ public final class PublicServlet {
 						.serve(request -> {
 							try {
 								MainDao mainDao = request.getAttachment(MainDao.class);
-								String body = request.getBody().asString(UTF_8);
+								String body = request.getBody().getString(UTF_8);
 								Tuple2<String, Set<String>> params = JsonUtils.fromJson(MOVE_PHOTOS_CODEC, body);
 								return mainDao.movePhotos(ROOT_ALBUM, params.getValue1(), params.getValue2())
 										.map($ -> redirect302("/"));
@@ -261,7 +261,7 @@ public final class PublicServlet {
 								if (albumDao == null) {
 									return Promise.ofException(ALBUM_NOT_FOUND_EXCEPTION);
 								}
-								Set<String> photoIds = JsonUtils.fromJson(SET_CODEC, request.getBody().asString(UTF_8));
+								Set<String> photoIds = JsonUtils.fromJson(SET_CODEC, request.getBody().getString(UTF_8));
 								return photoIds.isEmpty() ?
 										Promise.ofException(PHOTO_NOT_FOUND_EXCEPTION) :
 										albumDao.removePhotos(photoIds)
@@ -280,7 +280,7 @@ public final class PublicServlet {
 								if (albumDao == null) {
 									return Promise.ofException(ALBUM_NOT_FOUND_EXCEPTION);
 								}
-								String body = request.getBody().asString(UTF_8);
+								String body = request.getBody().getString(UTF_8);
 								Tuple1<String> description = JsonUtils.fromJson(PHOTO_DESCRIPTION_CODEC, body);
 								String descriptionValue = description.getValue1();
 								return validate(descriptionValue, 1024, "description", true)

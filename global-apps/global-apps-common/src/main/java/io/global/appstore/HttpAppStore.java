@@ -104,7 +104,7 @@ public final class HttpAppStore implements AppStore {
 					switch (response.getCode()) {
 						case 200:
 							try {
-								return Promise.of(fromJson(codec, body.asString(UTF_8)));
+								return Promise.of(fromJson(codec, body.getString(UTF_8)));
 							} catch (ParseException e) {
 								return Promise.ofException(HttpException.ofCode(400, e));
 							}

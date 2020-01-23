@@ -58,7 +58,7 @@ public final class HttpFsClient implements FsClient {
 								return Promise.of(response);
 							case 500:
 								try {
-									int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.asString(UTF_8)).getValue1();
+									int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.getString(UTF_8)).getValue1();
 									return Promise.ofException(code >= 1 && code <= KNOWN_ERRORS.length ?
 											KNOWN_ERRORS[code - 1] :
 											HttpException.ofCode(500));

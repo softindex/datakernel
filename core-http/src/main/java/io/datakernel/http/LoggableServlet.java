@@ -22,7 +22,7 @@ public final class LoggableServlet implements AsyncServlet {
 				if (res != null) {
 					code = res.getCode();
 					body = res.isBodyLoaded() ? res.getBody() : null;
-					message = (body != null && (code >= 400 && code < 500)) ? body.asString(UTF_8) : null;
+					message = (body != null && (code >= 400 && code < 500)) ? body.getString(UTF_8) : null;
 				}
 				return "HttpRequest[url: '" + (req != null ? req.getUrl() : "") + "'], " +
 						"HttpResponse[code: " + (code != -1 ? code : "") + (message != null ? " message:'" + message + "'" : "") + "]";

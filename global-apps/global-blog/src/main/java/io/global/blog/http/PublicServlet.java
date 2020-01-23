@@ -27,7 +27,10 @@ import io.global.ot.session.UserId;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -177,7 +180,7 @@ public final class PublicServlet {
 				.map(POST, "/blog", loadBody(kilobytes(256))
 						.serve(request -> {
 							try {
-								Map<String, String> params = JsonUtils.fromJson(PARAM_CODEC, request.getBody().asString(UTF_8));
+								Map<String, String> params = JsonUtils.fromJson(PARAM_CODEC, request.getBody().getString(UTF_8));
 								String description = params.get("content");
 								String title = params.get("title");
 								BlogDao blogDao = request.getAttachment(BlogDao.class);
@@ -194,7 +197,7 @@ public final class PublicServlet {
 						.map(POST, "/edit/", loadBody(kilobytes(256))
 								.serve(request -> {
 									try {
-										Map<String, String> params = JsonUtils.fromJson(PARAM_CODEC, request.getBody().asString(UTF_8));
+										Map<String, String> params = JsonUtils.fromJson(PARAM_CODEC, request.getBody().getString(UTF_8));
 										String title = params.get("title");
 										return validate(title, 120, "Title", true)
 												.then($ -> request.getAttachment(CommDao.class)

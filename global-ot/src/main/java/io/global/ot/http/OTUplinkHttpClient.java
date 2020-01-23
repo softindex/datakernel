@@ -51,7 +51,7 @@ public class OTUplinkHttpClient<K, D> implements OTUplink<K, D, byte[]> {
 		return httpClient.request(post(url + CREATE_COMMIT)
 				.withBody(toJson(fetchDataCodec, fetchData).getBytes(UTF_8)))
 				.then(response -> response.loadBody()
-						.map(ByteBuf::asArray));
+						.map(ByteBuf::getArray));
 	}
 
 	@Override

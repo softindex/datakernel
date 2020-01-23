@@ -134,7 +134,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 				.then(response -> response.loadBody()
 						.then(body -> {
 							try {
-								return Promise.of(decode(NULLABLE_SIGNED_CHECKPOINT_CODEC, body));
+								return Promise.of(decode(NULLABLE_SIGNED_CHECKPOINT_CODEC, body.slice()));
 							} catch (ParseException e) {
 								return Promise.ofException(HttpException.ofCode(400, e));
 							}

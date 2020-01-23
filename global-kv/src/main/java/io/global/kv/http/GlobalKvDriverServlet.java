@@ -63,7 +63,7 @@ public final class GlobalKvDriverServlet {
 					try {
 						SimKey simKey = simKeyString != null ? SimKey.fromString(simKeyString) : null;
 						KeyPair keys = PrivKey.fromString(key).computeKeys();
-						List<KvItem<K, V>> items = fromJson(listCodec, request.getBody().asString(UTF_8));
+						List<KvItem<K, V>> items = fromJson(listCodec, request.getBody().getString(UTF_8));
 						return driver.upload(keys, table, simKey)
 								.map(consumer -> consumer.acceptAll(items))
 								.map($ -> HttpResponse.ok200());
@@ -121,7 +121,7 @@ public final class GlobalKvDriverServlet {
 							try {
 								SimKey simKey = simKeyString != null ? SimKey.fromString(simKeyString) : null;
 								KeyPair keys = PrivKey.fromString(key).computeKeys();
-								return driver.put(keys, table, fromJson(codec, request.getBody().asString(UTF_8)), simKey)
+								return driver.put(keys, table, fromJson(codec, request.getBody().getString(UTF_8)), simKey)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
 								return Promise.ofException(e);

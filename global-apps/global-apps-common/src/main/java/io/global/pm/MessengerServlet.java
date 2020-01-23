@@ -25,7 +25,7 @@ public final class MessengerServlet {
 					try {
 						PubKey receiver = PubKey.fromString(request.getPathParameter("receiver"));
 						String mailbox = request.getPathParameter("mailbox");
-						V payload = fromJson(messenger.getValueCodec(), request.getBody().asString(UTF_8));
+						V payload = fromJson(messenger.getValueCodec(), request.getBody().getString(UTF_8));
 						KeyPair keys = request.getAttachment(KeyPair.class);
 						return messenger.send(keys, receiver, mailbox, payload)
 								.map(id -> HttpResponse.ok200()
@@ -44,7 +44,7 @@ public final class MessengerServlet {
 				.map(DELETE, "/drop/:mailbox", request -> {
 					try {
 						String mailbox = request.getPathParameter("mailbox");
-						K id = fromJson(messenger.getKeyCodec(), request.getBody().asString(UTF_8));
+						K id = fromJson(messenger.getKeyCodec(), request.getBody().getString(UTF_8));
 						KeyPair keys = request.getAttachment(KeyPair.class);
 						return messenger.drop(keys, mailbox, id)
 								.map($ -> HttpResponse.ok200());

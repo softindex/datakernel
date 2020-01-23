@@ -93,7 +93,7 @@ public final class GlobalKvNodeServlet {
 							String table = request.getPathParameter("table");
 							try {
 								PubKey space = PubKey.fromString(parameterSpace);
-								return node.get(space, table, body.asArray())
+								return node.get(space, table, body.getArray())
 										.map(item ->
 												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC.nullable(), item)));
 							} catch (ParseException e) {

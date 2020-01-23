@@ -34,7 +34,7 @@ public final class HttpUtil {
 									if (code < 400) {
 										return Promise.of(response);
 									}
-									String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
+									String message = response.isBodyLoaded() ? response.getBody().getString(UTF_8) : "";
 									return templater.render(code, "error",
 											map("code", code, "message", message),
 											isGzipAccepted(request));

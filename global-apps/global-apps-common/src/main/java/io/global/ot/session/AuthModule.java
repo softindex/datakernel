@@ -49,7 +49,7 @@ public final class AuthModule extends AbstractModule {
 				})
 				.map(POST, "/authByKey", loadBody()
 						.serve(request -> {
-							String keyString = request.getBody().asString(UTF_8);
+							String keyString = request.getBody().getString(UTF_8);
 							if (keyString.isEmpty()) {
 								return Promise.ofException(HttpException.ofCode(400));
 							}

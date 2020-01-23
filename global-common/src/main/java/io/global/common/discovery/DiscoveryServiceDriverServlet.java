@@ -43,7 +43,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 							try {
 								KeyPair keys = PrivKey.fromString(key).computeKeys();
 								ByteBuf body = request.getBody();
-								AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.asString(UTF_8));
+								AnnounceData data = JsonUtils.fromJson(ANNOUNCE_DATA_CODEC, body.getString(UTF_8));
 								return driver.announce(keys, data)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
@@ -72,7 +72,7 @@ public final class DiscoveryServiceDriverServlet implements AsyncServlet {
 								PubKey receiver = PubKey.fromString(parameterReceiver);
 								PrivKey sender = PrivKey.fromString(key);
 								ByteBuf body = request.getBody();
-								return driver.shareKey(sender, receiver, SimKey.fromString(body.asString(UTF_8)))
+								return driver.shareKey(sender, receiver, SimKey.fromString(body.getString(UTF_8)))
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
 								return Promise.ofException(HttpException.ofCode(400, e));

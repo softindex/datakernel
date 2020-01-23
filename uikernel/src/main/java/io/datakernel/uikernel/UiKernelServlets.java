@@ -81,7 +81,7 @@ public class UiKernelServlets {
 				.serve(request -> {
 					ByteBuf body = request.getBody();
 					try {
-						String json = body.asString(UTF_8);
+						String json = body.getString(UTF_8);
 						R obj = fromJson(gson, json, model.getRecordType());
 						return model.create(obj).map(response ->
 								createResponse(response.toJson(gson, model.getIdType())));
@@ -96,7 +96,7 @@ public class UiKernelServlets {
 				.serve(request -> {
 					ByteBuf body = request.getBody();
 					try {
-						String json = body.asString(UTF_8);
+						String json = body.getString(UTF_8);
 						List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
 						return model.update(list).map(result ->
 								createResponse(result.toJson(gson, model.getRecordType(), model.getIdType())));
