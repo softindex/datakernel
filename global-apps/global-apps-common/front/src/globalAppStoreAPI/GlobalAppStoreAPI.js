@@ -98,20 +98,9 @@ export class GlobalAppStoreAPI {
       .then(response => response.json());
   }
 
-  getKeys() {
-    return this._request(url.resolve(this._url, '/api/users/keys/pairs'), {method: 'GET'})
-      .then(response => response.json())
-      .then(([firstPair]) => firstPair);
-  }
-
-  getPublicKey() {
-    return this.getKeys()
-      .then((keys) => keys[1]);
-  }
-
-  getPrivateKey() {
-    return this.getKeys()
-      .then((keys) => keys[0]);
+  generateAuthToken(){
+    return this._request(path.join(this._url, `/api/auth/generateToken`), {method: 'POST'})
+      .then(response => response.text());
   }
 
   updateProfile(profileChanges) {
