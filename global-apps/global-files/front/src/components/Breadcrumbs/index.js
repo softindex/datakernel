@@ -53,7 +53,7 @@ function BreadcrumbsView({
             {breadcrumbs.length > 1 && (
               <BreadcrumbsMenu
                 anchorElement={anchorElement}
-                onDelete={onRemoveDir.bind(null, breadcrumbs[index - 1])}
+                onDelete={() => console.log('Hello!!!!!!!!!!!!!!!!!!!!!!!')}
                 onClose={onContextMenuClose}
               />
             )}
@@ -78,7 +78,6 @@ function BreadcrumbsView({
 function Breadcrumbs({classes, width, enqueueSnackbar, breadcrumbs, location, history}) {
   const fsService = getInstance(FSService);
   const [anchorElement, setAnchorElement] = useState(null);
-
   const props = {
     classes,
     width,
