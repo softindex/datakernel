@@ -18,6 +18,7 @@ package io.datakernel.net;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.eventloop.net.CloseWithoutNotifyException;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -43,6 +44,8 @@ import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
  * It allows SSL connections using Java {@link SSLEngine}.
  */
 public final class AsyncSslSocket implements AsyncTcpSocket {
+	public static final boolean ERROR_ON_CLOSE_WITHOUT_NOTIFY = ApplicationSettings.getBoolean(AsyncSslSocket.class, "errorOnCloseWithoutNotify", false);
+
 	private final SSLEngine engine;
 	private final Executor executor;
 	private final AsyncTcpSocket upstream;
@@ -158,6 +161,11 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 						try {
 							engine.closeInbound();
 						} catch (SSLException e) {
+							if (!ERROR_ON_CLOSE_WITHOUT_NOTIFY && read != null) {
+								SettablePromise<ByteBuf> read = this.read;
+								this.read = null;
+								read.set(null);
+							}
 							close(new CloseWithoutNotifyException(AsyncSslSocket.class, "Peer closed without sending close_notify", e));
 						}
 					}
