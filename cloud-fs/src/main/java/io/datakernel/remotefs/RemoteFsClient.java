@@ -26,6 +26,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.net.AsyncTcpSocketImpl;
@@ -50,7 +51,7 @@ import static io.datakernel.remotefs.RemoteFsUtils.KNOWN_ERRORS;
 /**
  * An implementation of {@link FsClient} which connects to a single {@link RemoteFsServer} and communicates with it.
  */
-public final class RemoteFsClient implements FsClient, EventloopService {
+public final class RemoteFsClient implements FsClient, EventloopService, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
 
 	public static final StacklessException INVALID_MESSAGE = new StacklessException(RemoteFsClient.class, "Invalid or unexpected message received");
