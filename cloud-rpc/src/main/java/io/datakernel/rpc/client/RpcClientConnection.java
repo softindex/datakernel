@@ -49,7 +49,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor = this::addIntoInitialBuffer;
 	private boolean overloaded = false;
 
-	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
+	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed");
+	public static final RpcException CONNECTION_UNRESPONSIVE = new RpcException(RpcClientConnection.class, "Unresponsive connection");
 
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
@@ -78,13 +79,17 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final EventStats totalRequests;
 	private final EventStats connectionRequests;
 
-	RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
-			InetSocketAddress address,
-			RpcStream stream) {
+	// keep-alive pings
+	private final long keepAliveMillis;
+	private boolean pongReceived;
+
+	RpcClientConnection(Eventloop eventloop, RpcClient rpcClient, InetSocketAddress address, RpcStream stream,
+			long keepAliveMillis) {
 		this.eventloop = eventloop;
 		this.rpcClient = rpcClient;
 		this.stream = stream;
 		this.address = address;
+		this.keepAliveMillis = keepAliveMillis;
 
 		// JMX
 		this.monitoring = false;
@@ -225,13 +230,31 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			if (activeRequests.size() == 0) {
 				shutdown();
 			}
+		} else if (controlMessage == RpcControlMessage.PONG) {
+			pongReceived = true;
 		} else {
 			throw new RuntimeException("Received unknown RpcControlMessage");
 		}
 	}
 
+	private void ping() {
+		if (isClosed()) return;
+		if (keepAliveMillis == 0) return;
+		pongReceived = false;
+		downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.PING));
+		eventloop.delayBackground(keepAliveMillis, () -> {
+			if (isClosed()) return;
+			if (!pongReceived) {
+				onReceiverError(CONNECTION_UNRESPONSIVE);
+			} else {
+				ping();
+			}
+		});
+	}
+
 	@Override
 	public void onReceiverEndOfStream() {
+		if (isClosed()) return;
 		logger.info("Receiver EOS: " + address);
 		stream.close();
 		doClose();
@@ -239,6 +262,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public void onReceiverError(@NotNull Throwable e) {
+		if (isClosed()) return;
 		logger.error("Receiver error: " + address, e);
 		rpcClient.getLastProtocolError().recordException(e, address);
 		stream.close();
@@ -247,6 +271,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public void onSenderError(@NotNull Throwable e) {
+		if (isClosed()) return;
 		logger.error("Sender error: " + address, e);
 		rpcClient.getLastProtocolError().recordException(e, address);
 		stream.close();
@@ -259,6 +284,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor) {
+		if (isClosed()) return;
 		downstreamDataAcceptor = acceptor;
 		overloaded = false;
 		if (initialBuffer != null) {
@@ -266,6 +292,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 				acceptor.accept(message);
 			}
 			initialBuffer = null;
+			ping();
 		}
 	}
 
@@ -275,6 +302,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	private void doClose() {
+		if (isClosed()) return;
+		downstreamDataAcceptor = null;
 		rpcClient.removeConnection(address);
 
 		while (!activeRequests.isEmpty()) {
@@ -287,7 +316,12 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		}
 	}
 
+	public boolean isClosed() {
+		return downstreamDataAcceptor == null;
+	}
+
 	public void shutdown() {
+		if (isClosed()) return;
 		stream.sendEndOfStream();
 	}
 

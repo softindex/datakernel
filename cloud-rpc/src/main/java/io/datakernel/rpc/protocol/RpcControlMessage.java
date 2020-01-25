@@ -17,5 +17,7 @@
 package io.datakernel.rpc.protocol;
 
 public enum RpcControlMessage {
-	CLOSE
+	CLOSE,
+	PING,
+	PONG
 }
