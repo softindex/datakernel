@@ -363,8 +363,18 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
+	public Promise<Void> fetch(RepoID repoID) {
+		return ensureRepository(repoID).fetch()
+				.whenComplete(toLogger(logger, TRACE, "fetch", this));
+	}
+
 	public Promise<Void> push() {
 		return forEachRepository(RepositoryEntry::push)
+				.whenComplete(toLogger(logger, "push", this));
+	}
+
+	public Promise<Void> push(RepoID repoID) {
+		return ensureRepository(repoID).push()
 				.whenComplete(toLogger(logger, "push", this));
 	}
 

@@ -69,7 +69,7 @@ public final class GlobalChatApp extends Launcher {
 		return TypedRepoNames.create("global-chat")
 				.withRepoName(Key.of(SharedReposOperation.class), "index")
 				.withGlobalRepoName(new Key<MapOperation<String, String>>() {}, "profile")
-				.withGlobalRepoName(new Key<ContactsOperation>() {}, "contacts")
+				.withGlobalRepoName(Key.of(ContactsOperation.class), "contacts")
 				.withRepoPrefix(Key.of(ChatRoomOperation.class), "room")
 				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 	}

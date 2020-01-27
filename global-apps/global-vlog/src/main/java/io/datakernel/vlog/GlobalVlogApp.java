@@ -13,7 +13,7 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.vlog.container.AppUserContainer;
+import io.datakernel.vlog.container.VlogUserContainer;
 import io.datakernel.vlog.ot.VlogMetadata;
 import io.global.LocalNodeCommonModule;
 import io.global.comm.ot.post.operation.ThreadOperation;
@@ -124,7 +124,7 @@ public final class GlobalVlogApp extends Launcher {
 				new GlobalVlogModule(DEFAULT_VLOG_REPO_NAMES),
 				new DebugViewerModule(),
 				new KvSessionModule(),
-				new ContainerModule<AppUserContainer>() {}
+				new ContainerModule<VlogUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),

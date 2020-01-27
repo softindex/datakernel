@@ -16,7 +16,7 @@ import io.datakernel.http.di.ScopeServlet;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.vlog.container.AppUserContainer;
+import io.datakernel.vlog.container.VlogUserContainer;
 import io.datakernel.vlog.dao.AppDao;
 import io.datakernel.vlog.handler.ProgressListener;
 import io.datakernel.vlog.handler.VideoMultipartHandler;
@@ -190,7 +190,7 @@ public final class PublicServlet {
 	private static AsyncServletDecorator setup(String appStoreUrl, MustacheTemplater templater) {
 		return servlet ->
 				request -> {
-					AppUserContainer container = request.getAttachment(AppUserContainer.class);
+					VlogUserContainer container = request.getAttachment(VlogUserContainer.class);
 					AppDao appDao = container.getAppDao();
 					Map<String, ProgressListener> progressListenerMap = container.getProgressListenerMap();
 					request.attach(new TypeT<Map<String, ProgressListener>>() {}.getType(), progressListenerMap);

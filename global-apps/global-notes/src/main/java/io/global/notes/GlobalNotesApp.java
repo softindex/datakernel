@@ -68,7 +68,7 @@ public final class GlobalNotesApp extends Launcher {
 	TypedRepoNames typedRepoNames() {
 		return TypedRepoNames.create("global-notes")
 				.withRepoName(new Key<MapOperation<String, String>>() {}, "notes")
-				.withRepoPrefix(new Key<EditOperation>() {}, "note")
+				.withRepoPrefix(Key.of(EditOperation.class), "note")
 				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 	}
 

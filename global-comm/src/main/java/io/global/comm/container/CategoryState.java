@@ -2,6 +2,7 @@ package io.global.comm.container;
 
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.InstanceProvider;
+import io.datakernel.di.core.Key;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
@@ -11,10 +12,14 @@ import io.global.comm.dao.ThreadDao;
 import io.global.comm.dao.ThreadDaoImpl;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.ThreadMetadata;
+import io.global.common.KeyPair;
 import io.global.ot.StateManagerWithMerger;
+import io.global.ot.TypedRepoNames;
+import io.global.ot.api.RepoID;
 import io.global.ot.map.MapOTStateListenerProxy;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
+import io.global.ot.server.GlobalOTNodeImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +39,12 @@ public final class CategoryState {
 	private FsClient fsClient;
 	@Inject
 	private InstanceProvider<CommDao> commDao;
+	@Inject
+	private GlobalOTNodeImpl otNode;
+	@Inject
+	private TypedRepoNames names;
+	@Inject
+	private KeyPair keys;
 
 	private final StateManagerWithMerger<MapOperation<String, ThreadMetadata>> threadsStateManagerWithMerger;
 	private final MapOTStateListenerProxy<String, ThreadMetadata> threadsState;
@@ -48,12 +59,14 @@ public final class CategoryState {
 	}
 
 	public Promise<?> start() {
-		return threadsStateManagerWithMerger.start()
+		return otNode.fetch(RepoID.of(keys, names.getRepoName(new Key<MapOperation<String, ThreadMetadata>>() {})))
+				.thenEx(($, e) -> threadsStateManagerWithMerger.start())
 				.then($ -> Promises.all(threadsState
 						.getMap()
 						.keySet()
 						.stream()
-						.map(this::ensureThread)))
+						.map(threadId -> otNode.fetch(RepoID.of(keys, names.getRepoPrefix(Key.of(ThreadOperation.class)) + threadId))
+								.thenEx(($2, e) -> ensureThread(threadId)))))
 				.whenResult($ -> threadsState.onOperationReceived(op -> {
 					Map<String, SetValue<ThreadMetadata>> operations = op.getOperations();
 					operations.forEach((id, setValue) -> {

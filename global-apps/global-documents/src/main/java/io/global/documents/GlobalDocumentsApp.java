@@ -69,7 +69,7 @@ public final class GlobalDocumentsApp extends Launcher {
 		return TypedRepoNames.create("global-documents")
 				.withRepoName(Key.of(SharedReposOperation.class), "index")
 				.withGlobalRepoName(new Key<MapOperation<String, String>>() {}, "profile")
-				.withGlobalRepoName(new Key<ContactsOperation>() {}, "contacts")
+				.withGlobalRepoName(Key.of(ContactsOperation.class), "contacts")
 				.withRepoPrefix(Key.of(EditOperation.class), "document")
 				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
 	}

@@ -1,15 +1,19 @@
 package io.global.notes;
 
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.core.Key;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.ot.StateManagerWithMerger;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.RepoID;
 import io.global.ot.client.MergeService;
 import io.global.ot.edit.EditOperation;
 import io.global.ot.map.MapOTStateListenerProxy;
 import io.global.ot.map.MapOperation;
 import io.global.ot.map.SetValue;
+import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.service.AbstractUserContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +32,10 @@ public final class GlobalNotesContainer extends AbstractUserContainer {
 
 	@Inject
 	private Function<String, MergeService<CommitId, EditOperation>> mergeServiceFactory;
+	@Inject
+	private GlobalOTNodeImpl node;
+	@Inject
+	TypedRepoNames names;
 
 	private final Map<String, Promise<MergeService<CommitId, EditOperation>>> mergers = new HashMap<>();
 
@@ -39,12 +47,14 @@ public final class GlobalNotesContainer extends AbstractUserContainer {
 
 	@Override
 	protected Promise<?> doStart() {
-		return stateManagerWithMerger.start()
+		return node.fetch(RepoID.of(getKeys(), names.getRepoName(new Key<MapOperation<String, String>>(){})))
+				.thenEx(($, e) -> stateManagerWithMerger.start())
 				.then($ -> Promises.all(notesState
 						.getMap()
 						.keySet()
 						.stream()
-						.map(this::ensureMerger)))
+						.map(noteId -> node.fetch(RepoID.of(getKeys(), names.getRepoPrefix(Key.of(EditOperation.class)) + noteId))
+								.thenEx(($2, e) -> ensureMerger(noteId)))))
 				.whenResult($ -> notesState.onOperationReceived(op -> {
 					Map<String, SetValue<String>> operations = op.getOperations();
 					operations.forEach((id, setValue) -> {

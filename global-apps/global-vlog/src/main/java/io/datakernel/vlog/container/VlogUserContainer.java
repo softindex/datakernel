@@ -1,6 +1,7 @@
 package io.datakernel.vlog.container;
 
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
@@ -13,7 +14,10 @@ import io.global.api.AppDir;
 import io.global.comm.container.CommState;
 import io.global.common.KeyPair;
 import io.global.fs.local.GlobalFsNodeImpl;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.RepoID;
+import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.service.UserContainer;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
@@ -25,8 +29,8 @@ import java.util.Map;
 
 import static io.datakernel.async.util.LogUtils.toLogger;
 
-public final class AppUserContainer implements UserContainer {
-	private static final Logger logger = LoggerFactory.getLogger(AppUserContainer.class);
+public final class VlogUserContainer implements UserContainer {
+	private static final Logger logger = LoggerFactory.getLogger(VlogUserContainer.class);
 
 	private final OTStateManager<CommitId, ChangeValue<VlogMetadata>> metadataStateManager;
 	private final Map<String, ProgressListener> progressListenerMap;
@@ -36,12 +40,15 @@ public final class AppUserContainer implements UserContainer {
 	private VideoMultipartHandler videoMultipartHandler;
 	private final KeyPair keys;
 	private final GlobalFsNodeImpl fsNode;
+	private final GlobalOTNodeImpl otNode;
+	private final TypedRepoNames names;
 	private final String appDir;
 
 	@Inject
-	public AppUserContainer(OTStateManager<CommitId, ChangeValue<VlogMetadata>> metadataStateManager, Eventloop eventloop,
-							KeyPair keys, CommState comm, AppDao appDao, Map<String, ProgressListener> progressListenerMap,
-							VideoMultipartHandler videoMultipartHandler, GlobalFsNodeImpl fsNode, @AppDir String appDir) {
+	public VlogUserContainer(OTStateManager<CommitId, ChangeValue<VlogMetadata>> metadataStateManager, Eventloop eventloop,
+			KeyPair keys, CommState comm, AppDao appDao, Map<String, ProgressListener> progressListenerMap,
+			VideoMultipartHandler videoMultipartHandler, GlobalFsNodeImpl fsNode, GlobalOTNodeImpl otNode,
+			TypedRepoNames names, @AppDir String appDir) {
 		this.metadataStateManager = metadataStateManager;
 		this.progressListenerMap = progressListenerMap;
 		this.eventloop = eventloop;
@@ -50,6 +57,8 @@ public final class AppUserContainer implements UserContainer {
 		this.appDao = appDao;
 		this.videoMultipartHandler = videoMultipartHandler;
 		this.fsNode = fsNode;
+		this.otNode = otNode;
+		this.names = names;
 		this.appDir = appDir;
 	}
 
@@ -63,8 +72,9 @@ public final class AppUserContainer implements UserContainer {
 	@Override
 	public Promise<?> start() {
 		return comm.start()
-				.then($ -> metadataStateManager.start())
-				.whenResult($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**"))
+				.then($ -> otNode.fetch(RepoID.of(keys, names.getRepoName(new Key<ChangeValue<VlogMetadata>>() {}))))
+				.thenEx(($, e) -> metadataStateManager.start())
+				.then($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**").toTry().toVoid())
 				.whenComplete(toLogger(logger, "start"));
 	}
 

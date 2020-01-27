@@ -1,6 +1,7 @@
 package io.global.blog.container;
 
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
@@ -11,6 +12,9 @@ import io.global.comm.container.CommState;
 import io.global.common.KeyPair;
 import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.StateManagerWithMerger;
+import io.global.ot.TypedRepoNames;
+import io.global.ot.api.RepoID;
+import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.service.UserContainer;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
@@ -24,11 +28,16 @@ import static io.datakernel.async.util.LogUtils.toLogger;
 public final class BlogUserContainer implements UserContainer {
 	private static final Logger logger = LoggerFactory.getLogger(BlogUserContainer.class);
 
-	@Inject private Eventloop eventloop;
-	@Inject private BlogDao blogDao;
-	@Inject private StateManagerWithMerger<ChangeValue<BlogMetadata>> metadataStateManagerWithMerger;
-	@Inject private CommState comm;
-	@Inject private KeyPair keys;
+	@Inject
+	private Eventloop eventloop;
+	@Inject
+	private BlogDao blogDao;
+	@Inject
+	private StateManagerWithMerger<ChangeValue<BlogMetadata>> metadataStateManagerWithMerger;
+	@Inject
+	private CommState comm;
+	@Inject
+	private KeyPair keys;
 
 	@Inject
 	@AppDir
@@ -36,6 +45,11 @@ public final class BlogUserContainer implements UserContainer {
 
 	@Inject
 	private GlobalFsNodeImpl fsNode;
+
+	@Inject
+	private GlobalOTNodeImpl otNode;
+	@Inject
+	TypedRepoNames names;
 
 	@Override
 	@NotNull
@@ -47,7 +61,8 @@ public final class BlogUserContainer implements UserContainer {
 	@Override
 	public Promise<?> start() {
 		return comm.start()
-				.then($ -> metadataStateManagerWithMerger.start())
+				.then($ -> otNode.fetch(RepoID.of(keys, names.getRepoName(new Key<ChangeValue<BlogMetadata>>() {}))))
+				.thenEx(($, e) -> metadataStateManagerWithMerger.start())
 				.whenResult($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**"))
 				.whenComplete(toLogger(logger, "start"));
 	}

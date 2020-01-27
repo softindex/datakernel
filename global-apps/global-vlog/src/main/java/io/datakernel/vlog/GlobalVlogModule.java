@@ -13,7 +13,7 @@ import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.ot.OTState;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.vlog.container.AppUserContainer;
+import io.datakernel.vlog.container.VlogUserContainer;
 import io.datakernel.vlog.dao.AppDao;
 import io.datakernel.vlog.dao.AppDaoImpl;
 import io.datakernel.vlog.handler.ProgressListener;
@@ -64,7 +64,7 @@ public class GlobalVlogModule extends AbstractModule {
 		bind(CodecFactory.class).toInstance(REGISTRY);
 		bind(TypedRepoNames.class).toInstance(repoNames);
 
-		bind(AppUserContainer.class).in(ContainerScope.class);
+		bind(VlogUserContainer.class).in(ContainerScope.class);
 		bind(AppDao.class).to(AppDaoImpl.class).in(ContainerScope.class);
 		bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_VLOG_FS_DIR);
 	}

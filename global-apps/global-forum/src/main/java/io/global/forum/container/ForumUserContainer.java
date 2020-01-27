@@ -1,6 +1,7 @@
 package io.global.forum.container;
 
 import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
@@ -12,7 +13,10 @@ import io.global.forum.dao.ForumDao;
 import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsNodeImpl;
 import io.global.ot.StateManagerWithMerger;
+import io.global.ot.TypedRepoNames;
 import io.global.ot.api.CommitId;
+import io.global.ot.api.RepoID;
+import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.service.UserContainer;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
@@ -44,6 +48,10 @@ public final class ForumUserContainer implements UserContainer {
 
 	@Inject
 	private GlobalFsNodeImpl fsNode;
+	@Inject
+	private GlobalOTNodeImpl otNode;
+	@Inject
+	private TypedRepoNames names;
 
 	@Override
 	@NotNull
@@ -55,8 +63,9 @@ public final class ForumUserContainer implements UserContainer {
 	@Override
 	public Promise<?> start() {
 		return comm.start()
-				.then($ -> metadataStateManagerWithMerger.start())
-				.whenResult($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**"))
+				.then($ -> otNode.fetch(RepoID.of(keys, names.getRepoName(new Key<ChangeValue<ForumMetadata>>() {}))))
+				.thenEx(($, e) -> metadataStateManagerWithMerger.start())
+				.then($ -> fsNode.fetch(keys.getPubKey(), appDir + "/**").toTry().toVoid())
 				.whenComplete(toLogger(logger, "start"));
 	}
 
