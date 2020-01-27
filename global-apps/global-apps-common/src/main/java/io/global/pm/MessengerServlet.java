@@ -1,6 +1,7 @@
 package io.global.pm;
 
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -29,7 +30,7 @@ public final class MessengerServlet {
 						KeyPair keys = request.getAttachment(KeyPair.class);
 						return messenger.send(keys, receiver, mailbox, payload)
 								.map(id -> HttpResponse.ok200()
-										.withJson(messenger.getKeyCodec(), id));
+										.withJson(JsonUtils.toJson(messenger.getKeyCodec(), id)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -39,7 +40,7 @@ public final class MessengerServlet {
 					KeyPair keys = request.getAttachment(KeyPair.class);
 					return messenger.poll(keys, mailbox)
 							.map(message -> HttpResponse.ok200()
-									.withJson(messageCodec.nullable(), message));
+									.withJson(JsonUtils.toJson(messageCodec.nullable(), message)));
 				})
 				.map(DELETE, "/drop/:mailbox", request -> {
 					try {

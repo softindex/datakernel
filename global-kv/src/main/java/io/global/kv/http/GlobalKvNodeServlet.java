@@ -18,6 +18,7 @@ package io.global.kv.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.TypeT;
 import io.datakernel.csp.ChannelSupplier;
@@ -120,7 +121,7 @@ public final class GlobalKvNodeServlet {
 						return node.list(space)
 								.map(list ->
 										HttpResponse.ok200()
-												.withJson(SET_STRING_CODEC, list));
+												.withJson(JsonUtils.toJson(SET_STRING_CODEC, list)));
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}

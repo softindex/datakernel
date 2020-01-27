@@ -2,6 +2,7 @@ package io.global.debug;
 
 import com.google.gson.stream.JsonWriter;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.common.tuple.Tuple3;
@@ -116,7 +117,7 @@ public final class DebugViewerModule extends AbstractModule {
 				.to(args -> {
 					RoutingServlet router = RoutingServlet.create()
 							.map(GET, "/api/check", request -> HttpResponse.ok200()
-									.withJson(STRING_LIST_CODEC, viewStrs));
+									.withJson(JsonUtils.toJson(STRING_LIST_CODEC, viewStrs)));
 					for (int i = 0; i < viewStrs.size(); i++) {
 						router.map("/api/" + viewStrs.get(i) + "/*", (AsyncServlet) args[i]);
 					}
@@ -146,10 +147,10 @@ public final class DebugViewerModule extends AbstractModule {
 						.then(list -> {
 							if (path.isEmpty()) {
 								return Promise.of(HttpResponse.ok200()
-										.withJson(STRING_LIST_CODEC, list.stream()
+										.withJson(JsonUtils.toJson(STRING_LIST_CODEC, list.stream()
 												.filter(x -> x.startsWith(prefix) || extraRepos.contains(x))
 												.map(x -> x.startsWith(prefix) ? x.substring(prefix.length()) : x)
-												.collect(toList())));
+												.collect(toList()))));
 							}
 							String repo = extraRepos.contains(path) ? path : prefix + path;
 							if (!list.contains(repo)) {
@@ -223,13 +224,13 @@ public final class DebugViewerModule extends AbstractModule {
 				if (relativePath.isEmpty()) {
 					return fsNode.listEntities(pk, "**")
 							.map(list -> HttpResponse.ok200()
-									.withJson(FILE_LIST_CODEC, list.stream()
+									.withJson(JsonUtils.toJson(FILE_LIST_CODEC, list.stream()
 											.filter(signedCheckpoint -> signedCheckpoint.getValue().getFilename().startsWith(prefix))
 											.map(signedCheckpoint -> {
 												GlobalFsCheckpoint checkpoint = signedCheckpoint.getValue();
 												return new Tuple2<>(checkpoint.getFilename().substring(prefix.length()), checkpoint.isTombstone() ? -1 : checkpoint.getPosition());
 											})
-											.collect(toList())));
+											.collect(toList()))));
 				}
 				String path = UrlParser.urlDecode(relativePath);
 				if (path == null) {
@@ -266,10 +267,10 @@ public final class DebugViewerModule extends AbstractModule {
 				if (path.isEmpty()) {
 					return kvNode.list(pk)
 							.map(list -> HttpResponse.ok200()
-									.withJson(STRING_LIST_CODEC, list.stream()
+									.withJson(JsonUtils.toJson(STRING_LIST_CODEC, list.stream()
 											.filter(x -> x.startsWith(prefix))
 											.map(x -> x.substring(prefix.length()))
-											.collect(toList())));
+											.collect(toList()))));
 				}
 
 				String table = prefix + path;
@@ -287,9 +288,9 @@ public final class DebugViewerModule extends AbstractModule {
 				return kvClient.download(table)
 						.then(ChannelSupplier::toList)
 						.map(list -> HttpResponse.ok200()
-								.withJson(KV_ITEM_LIST_CODEC, list.stream()
+								.withJson(JsonUtils.toJson(KV_ITEM_LIST_CODEC, list.stream()
 										.map(kvItem -> new Tuple3<>(kvItem.getKey().toString(), Objects.toString(kvItem.getValue()), kvItem.getTimestamp()))
-										.collect(toList())));
+										.collect(toList()))));
 			};
 		}
 	}

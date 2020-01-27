@@ -16,8 +16,6 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codec.StructuredEncoder;
-import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.Initializable;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
@@ -261,9 +259,9 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 	}
 
 	@NotNull
-	public <T> HttpResponse withJson(StructuredEncoder<T> encoder, T object) {
+	public HttpResponse withJson(@NotNull String text) {
 		return withHeader(CONTENT_TYPE, ofContentType(JSON_UTF_8))
-				.withBody(JsonUtils.toJson(encoder, object).getBytes(UTF_8));
+				.withBody(text.getBytes(UTF_8));
 	}
 
 	@Override

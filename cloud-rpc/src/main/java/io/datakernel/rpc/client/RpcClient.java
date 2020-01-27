@@ -104,6 +104,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	private MemSize maxPacketSize = MAX_PACKET_SIZE;
 	private boolean compression = false;
 	private Duration autoFlushInterval = Duration.ZERO;
+	private Duration keepAliveInterval = Duration.ZERO;
 
 	private List<Class<?>> messageTypes;
 	private long connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT.toMillis();
@@ -226,8 +227,18 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return this;
 	}
 
-	public RpcClient withAutoFlushInterval(Duration autoFlushInterval) {
+	public RpcClient withAutoFlush(Duration autoFlushInterval) {
 		this.autoFlushInterval = autoFlushInterval;
+		return this;
+	}
+
+	@Deprecated
+	public RpcClient withAutoFlushInterval(Duration autoFlushInterval) {
+		return withAutoFlush(autoFlushInterval);
+	}
+
+	public RpcClient withKeepAlive(Duration keepAliveInterval) {
+		this.keepAliveInterval = keepAliveInterval;
 		return this;
 	}
 
@@ -339,7 +350,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 							wrapClientSocket(asyncTcpSocketImpl, sslContext, sslExecutor);
 					RpcStream stream = new RpcStream(socket, serializer, defaultPacketSize, maxPacketSize,
 							autoFlushInterval, compression, false); // , statsSerializer, statsDeserializer, statsCompressor, statsDecompressor);
-					RpcClientConnection connection = new RpcClientConnection(eventloop, this, address, stream);
+					RpcClientConnection connection = new RpcClientConnection(eventloop, this, address, stream, keepAliveInterval.toMillis());
 					stream.setListener(connection);
 
 					// jmx

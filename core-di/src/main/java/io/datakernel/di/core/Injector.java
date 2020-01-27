@@ -335,7 +335,7 @@ public final class Injector {
 			index = null;
 		}
 
-		CompiledBinding<?> compiled = (CompiledBinding<?>) specializer.apply(compiler.compile(
+		CompiledBinding<?> compiled = specializer.apply(compiler.compile(
 				new CompiledBindingLocator() {
 					@SuppressWarnings("unchecked")
 					@Override

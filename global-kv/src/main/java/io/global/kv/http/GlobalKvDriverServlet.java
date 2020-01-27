@@ -18,6 +18,7 @@ package io.global.kv.http;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpResponse;
@@ -87,7 +88,7 @@ public final class GlobalKvDriverServlet {
 						}
 						return driver.download(space, table, offset, simKey)
 								.then(ChannelSupplier::toList)
-								.map(items -> HttpResponse.ok200().withJson(listCodec, items));
+								.map(items -> HttpResponse.ok200().withJson(JsonUtils.toJson(listCodec, items)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -105,7 +106,7 @@ public final class GlobalKvDriverServlet {
 								SimKey simKey = simKeyString != null ? SimKey.fromString(simKeyString) : null;
 								PubKey space = PubKey.fromString(parameterSpace);
 								return driver.get(space, table, fromJson(keyCodec, key), simKey)
-										.map(item -> HttpResponse.ok200().withJson(codec, item));
+										.map(item -> HttpResponse.ok200().withJson(JsonUtils.toJson(codec, item)));
 							} catch (ParseException e) {
 								return Promise.ofException(e);
 							}
@@ -131,7 +132,7 @@ public final class GlobalKvDriverServlet {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						return driver.list(PubKey.fromString(parameterSpace))
-								.map(list -> HttpResponse.ok200().withJson(SET_STRING_CODEC, list));
+								.map(list -> HttpResponse.ok200().withJson(JsonUtils.toJson(SET_STRING_CODEC, list)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

@@ -16,6 +16,7 @@
 
 package io.global.launchers.discovery;
 
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -101,7 +102,7 @@ public class DiscoveryServiceLauncher extends Launcher {
 						.map(GET, "/*", StaticServlet.create(StaticLoader.ofClassPath(executor, "/"), "discovery-debug.html"))
 						.map(GET, "/api/", request -> discoveryService.findAll()
 								.map(pks -> HttpResponse.ok200()
-										.withJson(PUB_KEYS_MAP_HEX, pks)))
+										.withJson(JsonUtils.toJson(PUB_KEYS_MAP_HEX, pks))))
 						.then(BasicAuth.decorator("discovery debug", (l, p) -> Promise.of(BASIC_AUTH_LOGIN.equals(l) && BASIC_AUTH_PASSWORD.equals(p))))
 				);
 	}
