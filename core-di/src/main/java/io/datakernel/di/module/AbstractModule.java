@@ -263,7 +263,6 @@ public abstract class AbstractModule implements Module {
 	}
 
 	// region forbid overriding default module methods
-
 	@Override
 	public Module combineWith(Module another) {
 		return Module.super.combineWith(another);
@@ -333,7 +332,6 @@ public abstract class AbstractModule implements Module {
 	public Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
 		return Module.super.rebindImports(rebinder);
 	}
-
 	// endregion
 
 	private String getName() {

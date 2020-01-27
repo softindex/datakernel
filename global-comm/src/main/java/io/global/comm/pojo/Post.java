@@ -22,11 +22,11 @@ public final class Post {
 	private final Map<String, AttachmentType> attachments = new HashMap<>();
 
 	@Nullable
-	private Post parent;
-	private final List<Post> children = new ArrayList<>();
+	private UserId deletedBy;
 
 	@Nullable
-	private UserId deletedBy;
+	private Post parent;
+	private final List<Post> children = new ArrayList<>();
 
 	private Post(String id, @NotNull UserId author, long initialTimestamp) {
 		this.id = id;
@@ -192,15 +192,16 @@ public final class Post {
 	@Override
 	public String toString() {
 		return "Post{" +
-				"children=" + children +
+				"id=" + id +
 				", author=" + author +
-				", initialTimestamp=" + initialTimestamp +
-				", ratings=" + ratings +
-				", parent=" + parent +
 				", content='" + limit(content, 20) + '\'' +
+				", initialTimestamp=" + initialTimestamp +
+				", lastEditTimestamp=" + lastEditTimestamp +
+				", ratings=" + ratings +
 				", attachments=" + attachments +
 				", deletedBy=" + deletedBy +
-				", lastEditTimestamp=" + lastEditTimestamp +
+				", parent=" + (parent != null ? parent.id : "null") +
+				", children.size()=" + children.size() +
 				'}';
 	}
 }

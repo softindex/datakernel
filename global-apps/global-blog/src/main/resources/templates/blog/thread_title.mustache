@@ -1,0 +1,75 @@
+<div class="row align-items-center justify-items-between">
+    <div class="col">
+        <div id="thread-title"
+             class="form-control font-weight-bold text-dark p-0 my-2 px-2 text-truncate unselectable"
+             style="height: initial; border: 1px solid transparent; background: transparent;">
+            {{thread.title}}
+        </div>
+        <form class="validate" action="#" novalidate>
+            <input id="thread-title-input"
+                   class="form-control font-weight-bold p-0 my-2 pl-2 pr-5 d-none"
+                   style="height: initial"
+                   type="text"
+                   required pattern="\s*(?=\S).{1,120}\s*">
+        </form>
+    </div>
+
+    {{#thread.root.editable}}
+        <div class="col-auto mx-auto pr-4">
+            <div class="row">
+                <div class="col-auto px-1">
+                    <div id="edit-thread"
+                            class="link-like text-secondary small unselectable">
+                        rename
+                    </div>
+                    <div id="edit-thread-cancel"
+                            class="btn btn-sm btn-outline-secondary small unselectable d-none mt-0">
+                        cancel
+                    </div>
+                </div>
+                <div class="col-auto px-1">
+                    <div id="delete-thread"
+                            class="link-like text-danger small unselectable"
+                            data-toggle="modal"
+                            data-target="#delete-modal">
+                        delete
+                    </div>
+                    <div id="edit-thread-save"
+                            class="btn btn-sm btn-secondary small d-none mt-0"
+                            data-thread-id="{{thread.threadId}}">
+                        save
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="delete-modal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirmation</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        Are you sure you want to delete this post?
+                        <br>
+                        This action cannot be undone.
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button"
+                                class="btn btn-outline-primary"
+                                data-dismiss="modal">
+                            Cancel
+                        </button>
+                        <button id="delete-thread-confirm"
+                                class="btn btn-danger"
+                                data-thread-id="{{thread.threadId}}">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/thread.root.editable}}
+</div>

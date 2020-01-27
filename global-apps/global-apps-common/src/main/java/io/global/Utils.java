@@ -23,6 +23,7 @@ import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -165,15 +166,19 @@ public final class Utils {
 
 	public static boolean isGzipAccepted(HttpRequest request) {
 		String header = request.getHeader(ACCEPT_ENCODING);
-		if (header == null) {
-			return false;
-		}
-		for (String part : header.split(",")) {
-			String encoding = part.split(";")[0].trim();
-			if (encoding.equals("gzip") || encoding.equals("*")) {
-				return true;
-			}
-		}
-		return false;
+		return header != null &&
+				Arrays.stream(header.split(","))
+						.map(part -> part.split(";")[0].trim())
+						.anyMatch(encoding -> encoding.equals("gzip") || encoding.equals("*"));
+	}
+
+	public static AsyncServletDecorator gzip() {
+		return servlet -> request ->
+				servlet.serveAsync(request)
+						.whenResult(response -> {
+							if (isGzipAccepted(request) && response.getHeader(CONTENT_LENGTH) == null) {
+								response.setBodyGzipCompression();
+							}
+						});
 	}
 }

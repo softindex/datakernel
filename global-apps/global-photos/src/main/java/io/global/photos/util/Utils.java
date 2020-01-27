@@ -102,14 +102,14 @@ public final class Utils {
 								.thenEx((response, e) -> {
 									if (e != null) {
 										int code = e instanceof HttpException ? ((HttpException) e).getCode() : 500;
-										return templater.render(code, "error", map("code", code, "message", e.getMessage()), isGzipAccepted(request));
+										return templater.render(code, "error", map("code", code, "message", e.getMessage()));
 									}
 									int code = response.getCode();
 									if (code < 400) {
 										return Promise.of(response);
 									}
 									String message = response.isBodyLoaded() ? response.getBody().getString(UTF_8) : "";
-									return templater.render(code, "error", map("code", code, "message", message.isEmpty() ? null : message), isGzipAccepted(request));
+									return templater.render(code, "error", map("code", code, "message", message.isEmpty() ? null : message));
 								});
 	}
 

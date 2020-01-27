@@ -125,7 +125,10 @@ public final class ObjectDisplayRegistryUtils {
 		return "<span class=\"special\" title=\"" + hashId + "\">" + (hashId.length() <= 7 ? hashId : hashId.substring(0, 7)) + "</span>";
 	}
 
-	public static String shortText(String text) {
+	public static String shortText(@Nullable String text) {
+		if (text == null) {
+			return special(null);
+		}
 		return (text.length() <= 20 ? text : text.substring(0, 17) + "...").replaceAll("\n", "\\n");
 	}
 

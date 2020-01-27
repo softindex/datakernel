@@ -67,7 +67,7 @@ public final class PublicServlet {
 					String origin = request.getQueryParameter("origin");
 					return request.getAttachment(UserId.class) != null ?
 							Promise.of(redirectToReferer(request, "/")) :
-							templater.render("login", map("origin", origin), isGzipAccepted(request));
+							templater.render("login", map("origin", origin));
 				})
 				.map(GET, "/authorize", request -> {
 					String token = request.getQueryParameter("token");
@@ -132,8 +132,7 @@ public final class PublicServlet {
 												"amountItems", amount,
 												"allAlbums", getAllAlbums(mainDao),
 												"rootAlbum", true,
-												"photos", true),
-										isGzipAccepted(request)));
+												"photos", true)));
 					});
 				}))
 				.map(GET, "/albums/", request -> {
@@ -149,13 +148,11 @@ public final class PublicServlet {
 										.then(albumViews -> templater.render("albumList",
 												map("albumList", albumViews.entrySet(),
 														"amountItems", amount,
-														"albums", true),
-												isGzipAccepted(request)));
+														"albums", true)));
 							});
 				})
 				.map(GET, "/new/:albumId", request -> templater.render("uploadPhotos",
-						map("albumId", request.getPathParameter("albumId")),
-						isGzipAccepted(request)))
+						map("albumId", request.getPathParameter("albumId"))))
 				.map(POST, "/update/:albumId", loadBody(BODY_LIMIT)
 						.serve(request -> {
 							try {
@@ -191,8 +188,7 @@ public final class PublicServlet {
 								return albumDao.getAlbum()
 										.map(album -> albumViewFrom(albumId, album, params.getValue1() - 1, params.getValue2(), mainDao::getBase64))
 										.then(albumView -> templater.render("photoList",
-												map("album", albumView, "amountItems", amount, "showBar", true),
-												isGzipAccepted(request)));
+												map("album", albumView, "amountItems", amount, "showBar", true)));
 							});
 				})
 				.map(POST, "/delete/:albumId", request -> {

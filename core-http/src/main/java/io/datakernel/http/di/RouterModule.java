@@ -36,7 +36,10 @@ public class RouterModule extends AbstractModule {
 				.to(injector -> {
 					RoutingServlet router = RoutingServlet.create();
 					for (Key<? extends AsyncServlet> key : mappedKeys) {
-						AsyncServlet servlet = injector.getInstance(key);
+						AsyncServlet servlet = injector.getInstanceOrNull(key);
+						if (servlet == null) {
+							continue;
+						}
 						Mapped mapped = (Mapped) key.getAnnotation();
 						assert mapped != null;
 						router.map(mapped.method().getHttpMethod(), mapped.value(), servlet);
@@ -68,7 +71,7 @@ public class RouterModule extends AbstractModule {
 
 		@Nullable
 		HttpMethod getHttpMethod() {
-			return this == ALL? null : HttpMethod.values()[ordinal()];
+			return this == ALL ? null : HttpMethod.values()[ordinal()];
 		}
 	}
 }

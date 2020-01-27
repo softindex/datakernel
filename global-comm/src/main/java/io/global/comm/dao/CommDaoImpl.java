@@ -1,10 +1,12 @@
 package io.global.comm.dao;
 
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
 import io.global.comm.container.CommState;
+import io.global.comm.ot.AppMetadata;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
@@ -16,6 +18,8 @@ import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOTStateListenerProxy;
 import io.global.ot.map.MapOperation;
 import io.global.ot.session.UserId;
+import io.global.ot.value.ChangeValue;
+import io.global.ot.value.ChangeValueContainer;
 import io.global.session.KvSessionStore;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,6 +35,9 @@ public final class CommDaoImpl implements CommDao {
 	private final PagedAsyncMap<String, ThreadMetadata> threads;
 	private final Map<String, ThreadMetadata> threadsView;
 
+	private final OTStateManager<CommitId, ChangeValue<AppMetadata>> metadataStateManager;
+	private final ChangeValueContainer<AppMetadata> metadataView;
+
 	@Inject
 	private KeyPair keys;
 
@@ -44,13 +51,20 @@ public final class CommDaoImpl implements CommDao {
 	@Inject
 	private KvSessionStore<UserId> sessionStore;
 
-	@Inject
-	public CommDaoImpl(CommState container, OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadStateManager) {
-		this.container = container;
+	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) threadStateManager.getState()).getMap();
+	@Inject
+	public CommDaoImpl(CommState container, OTStateManager<CommitId, ChangeValue<AppMetadata>> metadataStateManager, OTStateManager<CommitId, MapOperation<String, ThreadMetadata>> threadStateManager) {
+		this.container = container;
+		this.metadataStateManager = metadataStateManager;
+
+		metadataView = (ChangeValueContainer<AppMetadata>) metadataStateManager.getState();
+
 		threads = new OTPagedAsyncMap<>(threadStateManager, comparingByValue(comparingLong(ThreadMetadata::getLastUpdate).reversed()));
+		threadsView = ((MapOTStateListenerProxy<String, ThreadMetadata>) threadStateManager.getState()).getMap();
 	}
+
+
 
 	@Override
 	public Promise<@Nullable ThreadDao> getThreadDao(String id) {
@@ -94,5 +108,20 @@ public final class CommDaoImpl implements CommDao {
 			postId = Utils.generateId();
 		} while (threadsView.containsKey(postId));
 		return Promise.of(postId);
+	}
+
+	@Override
+	public Promise<AppMetadata> getAppMetadata() {
+		return Promise.of(metadataView.getValue());
+	}
+
+	@Override
+	public Promise<Void> setAppMetadata(AppMetadata metadata) {
+		return applyAndSync(metadataStateManager, ChangeValue.of(metadataView.getValue(), metadata, now.currentTimeMillis()));
+	}
+
+	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {
+		stateManager.add(op);
+		return stateManager.sync();
 	}
 }

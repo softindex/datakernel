@@ -1,0 +1,160 @@
+/* make display width unaffected by scrollbar presence */
+body {
+  width: 100vw;
+  overflow-x: hidden;
+}
+
+.like, .dislike, .rating {
+  padding: 0 5px;
+  color: black;
+  font-size: 0.8em;
+  font-family: monospace;
+
+  transition: color .15s ease-in-out, background-color .15s ease-in-out;
+
+  user-select: none;
+}
+
+.rating {
+  width: 2.5em;
+  text-align: center;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.like.active, .dislike.active {
+  cursor: pointer;
+}
+
+.like.active:hover, .liked > .like {
+  color: red;
+}
+
+.dislike.active:hover, .disliked > .dislike {
+  color: blue;
+}
+
+i.fa {
+  pointer-events: none;
+}
+
+.multiline {
+  white-space: pre-wrap;
+}
+
+@keyframes yellowfade {
+  from {
+    background: rgb(255, 255, 200);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.target-fade {
+  animation: yellowfade 0.7s;
+}
+
+.link-like:hover {
+  text-decoration: underline;
+  color: blue;
+  cursor: pointer;
+}
+
+.unselectable {
+  user-select: none;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.clickthrough {
+  pointer-events: none;
+}
+
+.monospace {
+  font-family: monospace;
+}
+
+input[type="checkbox"].cross {
+  position: relative;
+  appearance: initial;
+  min-width: 20px;
+  min-height: 20px;
+  border: 1px solid gray;
+  background: lightgray;
+  border-radius: 5px;
+}
+
+input[type="checkbox"].cross:checked:after {
+  content: "×";
+  font-weight: bold;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.btn-sm {
+  line-height: 1;
+}
+
+.deleted, .deleted * {
+  color: #89939b;
+  transition: color .3s ease-in-out;
+}
+
+.deleted:hover {
+  color: black;
+}
+
+.threadline {
+  width: 0.9em;
+}
+
+.threadline:hover .threadline-line, .threadline.collapsed .threadline-line {
+  background: black;
+  width: 2px;
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.threadline-line {
+  width: 1px;
+  height: 100%;
+  background: #89939b;
+  transition: background .15s ease-in-out;
+}
+
+.list-group-item {
+  line-height: 1;
+}
+
+.custom-file, .custom-file-input, .custom-file-label, .custom-file-label::after {
+  line-height: 1;
+  height: initial;
+}
+
+.attachment-list-item {
+  padding: 0;
+}
+
+.attachment-action {
+  padding: 0.7rem;
+  color: #495057;
+  transition: color .15s ease-in-out;
+}
+
+.attachment-action:hover {
+  color: #80bdff;
+}
+
+.attachment-action.trash.active {
+  color: red;
+}
+
+.post-controls {
+  z-index: 1;
+}

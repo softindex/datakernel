@@ -4,7 +4,6 @@ import io.datakernel.async.service.EventloopService;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.comm.dao.ThreadDao;
@@ -83,9 +82,5 @@ public final class CommState implements EventloopService {
 	public Promise<@Nullable ThreadDao> getThreadDao(String threadId) {
 		Promise<ThreadDao> promise = root.getThreadDaos().get(threadId);
 		return promise != null ? promise : Promise.of(null);
-	}
-
-	public SessionStore<UserId> getSessionStore() {
-		return sessionStore;
 	}
 }

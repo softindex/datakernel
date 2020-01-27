@@ -7,6 +7,7 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Dependency;
@@ -16,6 +17,8 @@ import io.datakernel.di.core.Multibinder;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.Types;
 import io.datakernel.http.*;
+import io.datakernel.http.di.RouterModule;
+import io.datakernel.http.di.RouterModule.Mapped;
 import io.datakernel.ot.OTLoadedGraph;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
@@ -127,6 +130,14 @@ public final class DebugViewerModule extends AbstractModule {
 		bind(ObjectDisplayRegistry.class).in(ContainerScope.class).export();
 		multibind(Key.of(ObjectDisplayRegistry.class), Multibinder.ofBinaryOperator(ObjectDisplayRegistry::merge));
 	}
+
+	@Provides
+	@Export
+	@Mapped("/debug/*")
+	AsyncServlet mapped(@Named("debug") AsyncServlet servlet) {
+		return servlet;
+	}
+
 
 	private final class OtViewer {
 		private Map<RepoID, SoftReference<OTLoadedGraph<CommitId, Object>>> loadedGraphs = new HashMap<>();

@@ -95,7 +95,7 @@ public class GlobalPhotosApp extends Launcher {
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
 				new GlobalNodesModule()
 						.overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new MustacheModule(),
+				MustacheModule.create(),
 				new DebugViewerModule(),
 				OTGeneratorsModule.create(),
 				new KvSessionModule(),

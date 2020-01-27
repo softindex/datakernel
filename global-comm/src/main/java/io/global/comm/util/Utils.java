@@ -8,13 +8,24 @@ import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.TypeT;
 import io.datakernel.common.tuple.Tuple2;
+import io.datakernel.http.AsyncServletDecorator;
+import io.datakernel.http.HttpException;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.promise.Promise;
+import io.global.comm.http.IpBanRequest;
+import io.global.comm.ot.AppMetadata;
 import io.global.comm.ot.post.operation.*;
 import io.global.comm.pojo.*;
+import io.global.mustache.MustacheTemplater;
 import io.global.ot.session.UserId;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -22,11 +33,16 @@ import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.StructuredEncoder.ofObject;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.global.ot.OTUtils.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
 
 public final class Utils {
+	public static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss/dd.MM.yyyy");
+	private static final String WHITESPACE = "^(?:\\p{Z}|\\p{C})*$";
+
 	private Utils() {
 		throw new AssertionError();
 	}
@@ -97,7 +113,14 @@ public final class Utils {
 						PostChangesOperation::getChangeLastEditTimestamps, ofList(registry.get(ChangeLastEditTimestamp.class))))
 				.with(ThreadOperation.class, registry -> CodecSubtype.<ThreadOperation>create()
 						.with(AddPost.class, registry.get(AddPost.class))
-						.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)));
+						.with(PostChangesOperation.class, registry.get(PostChangesOperation.class)))
+				.with(AppMetadata.class, registry -> tuple(AppMetadata::new,
+						AppMetadata::getTitle, STRING_CODEC.nullable(),
+						AppMetadata::getDescription, STRING_CODEC.nullable()))
+				.with(IpBanRequest.class, registry -> tuple(IpBanRequest::new,
+						IpBanRequest::getRange, registry.get(IpRange.class),
+						IpBanRequest::getUntil, registry.get(Instant.class),
+						IpBanRequest::getDescription, STRING_CODEC));
 	}
 
 	public static final CodecFactory REGISTRY = createCommRegistry();
@@ -167,5 +190,108 @@ public final class Utils {
 			sb.append(CHAR_POOL[RANDOM.nextInt(CHAR_POOL.length)]);
 		}
 		return sb.toString();
+	}
+
+	public static AsyncServletDecorator renderErrors(MustacheTemplater templater) {
+		return servlet ->
+				request ->
+						servlet.serve(request).get()
+								.thenEx((response, e) -> {
+									if (e != null) {
+										int code;
+										if (e instanceof HttpException) {
+											code = ((HttpException) e).getCode();
+										} else if (e instanceof ParseException) {
+											code = 400;
+										} else {
+											code = 500;
+										}
+										return templater.render(code, "error", map("code", code, "message", e.getMessage()));
+									}
+									int code = response.getCode();
+									if (code < 400) {
+										return Promise.of(response);
+									}
+									String message = response.isBodyLoaded() ? response.getBody().asString(UTF_8) : "";
+									return templater.render(code, "error", map("code", code, "message", message.isEmpty() ? null : message));
+								});
+	}
+
+	public static int getUnsignedInt(HttpRequest request, String queryParameter, int defaultValue) {
+		try {
+			String parameter = request.getQueryParameter(queryParameter);
+			if (parameter == null) {
+				return defaultValue;
+			}
+			return Integer.parseUnsignedInt(parameter);
+		} catch (NumberFormatException ignored) {
+			return defaultValue;
+		}
+	}
+
+	@Contract("_, _, _, true -> !null")
+	@Nullable
+	private static String getPostParameterImpl(Map<String, String> postParameters, String name, int maxLength, boolean required) throws ParseException {
+		String parameter = postParameters.get(name);
+		if (parameter == null || parameter.matches(WHITESPACE)) {
+			if (required) {
+				throw new ParseException(Utils.class, "'" + name + "' POST parameter is required");
+			}
+			return null;
+		}
+		String trimmed = parameter.trim();
+		if (trimmed.length() > maxLength) {
+			throw new ParseException(Utils.class, "'" + name + "' POST parameter is too long (" + trimmed.length() + ">" + maxLength + ")");
+		}
+		return trimmed;
+	}
+
+	public static String getPostParameter(Map<String, String> postParameters, String name, int maxLength) throws ParseException {
+		return getPostParameterImpl(postParameters, name, maxLength, true);
+	}
+
+	public static String getOptionalPostParameter(Map<String, String> postParameters, String name, int maxLength) throws ParseException {
+		return getPostParameterImpl(postParameters, name, maxLength, false);
+	}
+
+	public static String getRequiredPostParameter(HttpRequest request, String name) throws ParseException {
+		String parameter = request.getPostParameter(name);
+		if (parameter == null) {
+			throw new ParseException(Utils.class, "'" + name + "' POST parameter is required");
+		}
+		return parameter;
+	}
+
+	private static byte parseByte(HttpRequest request, String name) throws ParseException {
+		String parameter = request.getPostParameter(name);
+		if (parameter == null) {
+			throw new ParseException("'" + name + "' POST parameter is required");
+		}
+		try {
+			short s = Short.parseShort(parameter);
+			if (s < 0 || s > 255) {
+				throw new ParseException("POST parameter '" + name + "' parsing error: byte not in range 0-255");
+			}
+			return (byte) (s & 0xFF);
+		} catch (NumberFormatException e) {
+			throw new ParseException(e.getMessage());
+		}
+	}
+
+	public static byte[] parse4Bytes(HttpRequest request, String prefix) throws ParseException {
+		return new byte[]{
+				parseByte(request, prefix + "_0"),
+				parseByte(request, prefix + "_1"),
+				parseByte(request, prefix + "_2"),
+				parseByte(request, prefix + "_3")
+		};
+	}
+
+	public static String formatInstant(@Nullable Instant timestamp) {
+		return timestamp == null ? "" : timestamp.atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMAT);
+	}
+
+	public static String formatInstant(long timestamp) {
+		return timestamp == -1 ? "" : Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).format(DATE_TIME_FORMAT);
 	}
 }

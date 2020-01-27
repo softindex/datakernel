@@ -1,0 +1,28 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row flex-md-nowrap">
+                {{#forum.description}}
+                    <div class="col-md-3 order-md-2">
+                        <div class="card mb-3">
+                            <div class="card-body multiline">{{.}}</div>
+                        </div>
+                    </div>
+                {{/forum.description}}
+                <div class="col">
+                    {{#thread.root}}
+                        {{>root_post}}
+                    {{/thread.root}}
+                    <div class="ml-3 post-children">
+                        {{#thread.root.children}}
+                            {{>render_post}}
+                        {{/thread.root.children}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div style="height: 50vh"></div>
+        {{>image_modal}}
+        {{>video_modal}}
+    {{/content}}
+{{/base}}

@@ -2,6 +2,7 @@ package io.global.comm.dao;
 
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
+import io.global.comm.ot.AppMetadata;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
@@ -28,4 +29,8 @@ public interface CommDao {
 	PagedAsyncMap<String, ThreadMetadata> getThreads(String category);
 
 	Promise<String> generateThreadId();
+
+	Promise<AppMetadata> getAppMetadata();
+
+	Promise<Void> setAppMetadata(AppMetadata metadata);
 }

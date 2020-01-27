@@ -63,7 +63,8 @@ public final class AttachmentDataHandler {
 
 		String result = sb.toString();
 		while (existing.contains(result)) {
-			sb.replace(index, index + (int) (Math.log10(counter) + 1), Integer.toString(++counter));
+			String counterStr = Integer.toString(++counter);
+			sb.replace(index, index + counterStr.length(), counterStr);
 			result = sb.toString();
 		}
 		return result;

@@ -2,33 +2,52 @@ package io.global.forum;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.IAsyncHttpClient;
+import io.datakernel.http.StaticServlet;
+import io.datakernel.http.di.RouterModule.Mapped;
+import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
+import io.global.api.AppDir;
+import io.global.appstore.AppStore;
+import io.global.appstore.HttpAppStore;
+import io.global.comm.container.CommModule;
+import io.global.comm.container.CommUserContainer;
+import io.global.comm.ot.AppMetadata;
 import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
+import io.global.common.KeyPair;
+import io.global.common.SimKey;
 import io.global.debug.DebugViewerModule;
-import io.global.forum.container.ForumUserContainer;
-import io.global.forum.ot.ForumMetadata;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
-import io.global.mustache.DebugMustacheModule;
+import io.global.mustache.MustacheModule;
+import io.global.mustache.MustacheTemplater;
 import io.global.ot.TypedRepoNames;
+import io.global.ot.api.GlobalOTNode;
+import io.global.ot.client.OTDriver;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerModule;
+import io.global.ot.service.ContainerScope;
+import io.global.ot.service.ContainerServlet;
 import io.global.ot.session.UserId;
 import io.global.ot.value.ChangeValue;
 import io.global.session.KvSessionModule;
@@ -38,11 +57,16 @@ import java.net.InetAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
+import static io.global.comm.util.Utils.renderErrors;
+import static io.global.launchers.GlobalConfigConverters.ofSimKey;
+import static io.global.launchers.Initializers.sslServerInitializer;
 
 public final class GlobalForumApp extends Launcher {
 	public static final String PROPERTIES_FILE = "forum.properties";
@@ -54,7 +78,7 @@ public final class GlobalForumApp extends Launcher {
 	public static final Path DEFAULT_CONTAINERS_DIR = Paths.get("containers");
 
 	public static final TypedRepoNames DEFAULT_FORUM_REPO_NAMES = TypedRepoNames.create("global-forum")
-			.withRepoName(new Key<ChangeValue<ForumMetadata>>() {}, "metadata")
+			.withRepoName(new Key<ChangeValue<AppMetadata>>() {}, "metadata")
 			.withRepoName(new Key<MapOperation<UserId, UserData>>() {}, "users")
 			.withRepoName(new Key<MapOperation<UserId, InetAddress>>() {}, "userIps")
 			.withRepoName(new Key<MapOperation<String, IpBanState>>() {}, "bans")
@@ -64,6 +88,8 @@ public final class GlobalForumApp extends Launcher {
 			.withRepoPrefix(Key.of(ThreadOperation.class), "thread")
 
 			.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
+
+	private static final SimKey DEFAULT_SIM_KEY = SimKey.of(new byte[]{2, 51, -116, -111, 107, 2, -50, -11, -16, -66, -38, 127, 63, -109, -90, -51});
 
 	@Inject
 	AsyncHttpServer server;
@@ -88,6 +114,45 @@ public final class GlobalForumApp extends Launcher {
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
+	@Provides
+	@ContainerScope
+	FsClient fsClient(KeyPair keyPair, GlobalFsDriver fsDriver, @AppDir String appDir) {
+		return fsDriver.adapt(keyPair).subfolder(appDir);
+	}
+
+	@Provides
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, Executor executor, Config config, MustacheTemplater templater, ContainerServlet servlet) {
+		return AsyncHttpServer.create(eventloop, servlet.then(renderErrors(templater)))
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
+	}
+
+	@Provides
+	@Mapped("/static/*")
+	AsyncServlet staticServlet(StaticLoader staticLoader) {
+		return StaticServlet.create(staticLoader).withHttpCacheMaxAge(31536000);
+	}
+
+	@Provides
+	AppStore appStore(Config config, IAsyncHttpClient httpClient) {
+		return HttpAppStore.create(config.get("appStoreUrl"), httpClient);
+	}
+
+	@Provides
+	StaticLoader staticLoader(Executor executor, Config config) {
+		return StaticLoader.ofClassPath(executor, "static");
+	}
+
+	@Provides
+	@Eager
+	OTDriver otDriver(GlobalOTNode node, Config config) {
+		return new OTDriver(node, config.get(ofSimKey(), "credentials.simKey", DEFAULT_SIM_KEY));
+	}
+
+	@Provides
+	Executor executor(Config config) {
+		return getExecutor(config);
+	}
+
 	@Override
 	protected Module getModule() {
 		return combine(
@@ -96,11 +161,9 @@ public final class GlobalForumApp extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new ContainerModule<ForumUserContainer>() {}
+				new ContainerModule<CommUserContainer>() {}
 						.rebindImport(Path.class, Binding.to(config -> config.get(ofPath(), "containers.dir", DEFAULT_CONTAINERS_DIR), Config.class)),
-				new GlobalForumModule(DEFAULT_FORUM_REPO_NAMES),
 				new GlobalNodesModule().overrideWith(new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
-				new DebugMustacheModule(),
 				new DebugViewerModule(),
 				new KvSessionModule(),
 				KvSyncModule.create()
@@ -108,7 +171,15 @@ public final class GlobalForumApp extends Launcher {
 						.withFetch("global-forum/session"),
 				FsSyncModule.create()
 						.withPush()
-						.withFetch(DEFAULT_FORUM_FS_DIR + "/**")
+						.withFetch(DEFAULT_FORUM_FS_DIR + "/**"),
+
+				MustacheModule.createDebug("forum/"),
+				ForumServlet.create(),
+				CommModule.create(),
+
+				Module.create()
+						.bind(TypedRepoNames.class).toInstance(DEFAULT_FORUM_REPO_NAMES)
+						.bind(Key.of(String.class).named(AppDir.class)).toInstance(DEFAULT_FORUM_FS_DIR)
 		);
 	}
 

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="/static/main.css">
+    <title>{{forum.title}}{{^forum.title}}Global Forum{{/forum.title}}</title>
+    {{$head}}{{/head}}
+</head>
+<body>
+<div class="container">
+    <nav class="navbar navbar-expand-md navbar-light bg-light my-3">
+        <a class="navbar-brand" href="/">{{forum.title}}{{^forum.title}}Global Forum{{/forum.title}}</a>
+
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                {{#user}}
+                    {{#user.role.known}}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/new">New thread</a>
+                        </li>
+                    {{/user.role.known}}
+                    {{#user.role.privileged}}
+                        <li class="nav-item">
+                            <a class="nav-link text-success" href="/admin">Administration</a>
+                        </li>
+                    {{/user.role.privileged}}
+                {{/user}}
+            </ul>
+            <div class="row ml-auto mr-0">
+                {{^user}}
+                    {{^loginScreen}}
+                        <a class="btn btn-outline-success"
+                           href="{{appStoreUrl}}/oauth"
+                           id="login_button">
+                            Log In
+                        </a>
+                    {{/loginScreen}}
+                {{/user}}
+                {{#user}}
+                    <span class="navbar-text mr-2" style="position: relative;">
+                        Hello, <a class="stretched-link" href="/profile">{{user.name}}</a>
+                    </span>
+                    <form action="/logout" method="post">
+                        <button class="btn btn-outline-success mx-2" type="submit">Log Out</button>
+                    </form>
+                {{/user}}
+            </div>
+        </div>
+    </nav>
+</div>
+{{$content}}{{/content}}
+<script src="/static/main.js"></script>
+</body>
+</html>

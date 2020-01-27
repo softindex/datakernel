@@ -1,0 +1,14 @@
+{
+  "name": "global-comm-frontend",
+  "version": "0.1.0",
+  "description": "The common code for the frontend of the Global Comm apps",
+  "private": true,
+  "dependencies": {
+    "@popperjs/core": "^2.0.3",
+    "jquery": "^3.4.1",
+    "bootstrap": "^4.4.1",
+    "moment": "^2.24.0",
+    "tempusdominus-bootstrap-4": "^5.1.2",
+    "tempusdominus-core": "^5.0.3"
+  }
+}

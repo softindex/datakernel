@@ -50,7 +50,7 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <configuration>
-          <mainClass>io.global.forum.GlobalForumApp</mainClass>
+          <mainClass>io.global.GlobalForumApp</mainClass>
         </configuration>
       </plugin>
       <plugin>

@@ -1,34 +1,62 @@
 package io.global.mustache;
 
 import com.github.mustachejava.DefaultMustacheFactory;
-import com.github.mustachejava.Mustache;
-import com.github.mustachejava.MustacheFactory;
-import io.datakernel.config.Config;
-import io.datakernel.di.annotation.Export;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.module.AbstractModule;
+import com.github.mustachejava.MustacheResolver;
+import com.github.mustachejava.resolver.ClasspathResolver;
+import io.datakernel.di.module.Module;
+import org.jetbrains.annotations.Nullable;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.Reader;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.config.ConfigConverters.ofPath;
+public final class MustacheModule {
+	private static final String TEMPLATE_CLASSPATH_FOLDER = "templates";
 
-public final class MustacheModule extends AbstractModule {
-	public static final Path DEFAULT_TEMPLATE_PATH = Paths.get("static/templates");
-
-	@Provides
-	MustacheFactory mustacheFactory(Config config) {
-		Path templatesDir = config.get(ofPath(), "static.templates", DEFAULT_TEMPLATE_PATH);
-		return new DefaultMustacheFactory(templatesDir.toFile());
+	private MustacheModule() {
 	}
 
-	@Export
-	@Provides
-	MustacheTemplater mustacheTemplater(MustacheFactory mustacheFactory, Executor executor) {
-		Map<String, Mustache> templateCache = new HashMap<>();
-		return new MustacheTemplater(executor, filename -> templateCache.computeIfAbsent(filename, mustacheFactory::compile));
+	public static Module create(@Nullable String prefix) {
+		return Module.create()
+				.bind(MustacheTemplater.class)
+				.to(executor ->
+						new MustacheTemplater(executor, new DefaultMustacheFactory(PrefixedResolver.create(TEMPLATE_CLASSPATH_FOLDER, prefix))::compile), Executor.class);
+	}
+
+	public static Module create() {
+		return create(null);
+	}
+
+	public static Module createDebug(@Nullable String prefix) {
+		return Module.create()
+				.bind(MustacheTemplater.class)
+				.to(executor ->
+						new MustacheTemplater(executor, filename ->
+								new DefaultMustacheFactory(PrefixedResolver.create(TEMPLATE_CLASSPATH_FOLDER, prefix)).compile(filename)), Executor.class);
+	}
+
+	public static Module createDebug() {
+		return createDebug(null);
+	}
+
+	private static class PrefixedResolver implements MustacheResolver {
+		private final MustacheResolver peer;
+		private final String prefix;
+
+		private PrefixedResolver(String classpathFolder, String prefix) {
+			this.peer = new ClasspathResolver(classpathFolder);
+			this.prefix = prefix;
+		}
+
+		public static MustacheResolver create(String classpathFolder, String prefix) {
+			return prefix != null ?
+					new PrefixedResolver(classpathFolder, prefix) :
+					new ClasspathResolver(classpathFolder);
+		}
+
+		@Override
+		public Reader getReader(String resourceName) {
+			Reader reader = peer.getReader(resourceName);
+			return reader != null ? reader : peer.getReader(prefix + resourceName);
+		}
 	}
 }
