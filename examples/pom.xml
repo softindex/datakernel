@@ -14,9 +14,32 @@
   <name>Examples</name>
 
   <modules>
-    <module>core</module>
-    <module>cloud</module>
-    <module>tutorials</module>
+    <module>tutorials/getting-started</module>
+    <module>tutorials/template-engine</module>
+    <module>tutorials/decoder</module>
+    <module>tutorials/auth</module>
+    <module>tutorials/react-integration</module>
+    <module>tutorials/react-integration-2</module>
+    <module>tutorials/uikernel-integration</module>
+    <module>tutorials/rpc-kv-storage</module>
+
+    <module>core/codegen</module>
+    <module>core/bytebuf</module>
+    <module>core/codec</module>
+    <module>core/csp</module>
+    <module>core/boot</module>
+    <module>core/serializer</module>
+    <module>core/net</module>
+    <module>core/datastream</module>
+    <module>core/promise</module>
+    <module>core/http</module>
+    <module>core/eventloop</module>
+    <module>core/di</module>
+    <module>core/di-2</module>
+
+    <module>cloud/fs</module>
+    <module>cloud/rpc</module>
+    <module>cloud/crdt</module>
   </modules>
 
   <dependencies>

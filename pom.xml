@@ -24,6 +24,13 @@
 
   <modules>
     <module>archetypes</module>
+    <module>boot</module>
+    <module>boot-servicegraph</module>
+    <module>boot-workers</module>
+    <module>boot-config</module>
+    <module>boot-triggers</module>
+    <module>boot-jmx</module>
+    <module>boot-jmx-api</module>
     <module>core-eventloop</module>
     <module>core-bytebuf</module>
     <module>core-codegen</module>
@@ -46,17 +53,10 @@
     <module>cloud-etl</module>
     <module>cloud-dataflow</module>
     <module>launcher</module>
-    <module>boot</module>
-    <module>boot-servicegraph</module>
-    <module>boot-workers</module>
-    <module>boot-config</module>
-    <module>boot-triggers</module>
-    <module>boot-jmx</module>
-    <module>boot-jmx-api</module>
-    <module>uikernel</module>
     <module>launchers</module>
     <module>util-codec</module>
     <module>util-common</module>
+    <module>uikernel</module>
     <module>test</module>
   </modules>
 
