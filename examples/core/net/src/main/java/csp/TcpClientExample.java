@@ -4,7 +4,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.net.AsyncTcpSocketNio;
@@ -49,7 +49,7 @@ public final class TcpClientExample {
 				AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(getCurrentEventloop(), socketChannel, null);
 
 				BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
-						.parseStream(ByteBufsParser.ofCrlfTerminatedBytes())
+						.parseStream(ByteBufsDecoder.ofCrlfTerminatedBytes())
 						.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
 
 				startCommandLineInterface(socket);

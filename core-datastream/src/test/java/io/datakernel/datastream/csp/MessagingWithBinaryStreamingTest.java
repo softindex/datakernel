@@ -16,8 +16,10 @@
 
 package io.datakernel.datastream.csp;
 
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.MemSize;
-import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.datastream.StreamSupplier;
@@ -35,12 +37,12 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.LongStream;
 
-import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
+import static io.datakernel.csp.binary.ByteBufsDecoder.ofNullTerminatedBytes;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.serializer.BinarySerializers.LONG_SERIALIZER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
@@ -48,8 +50,18 @@ public final class MessagingWithBinaryStreamingTest {
 	private static final int LISTEN_PORT = getFreePort();
 	public static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", LISTEN_PORT);
 
-	private static ByteBufSerializer<Integer, Integer> INTEGER_SERIALIZER = ByteBufSerializer.ofJsonCodec(INT_CODEC, INT_CODEC);
-	private static ByteBufSerializer<String, String> STRING_SERIALIZER = ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
+	private static ByteBufsCodec<String, String> STRING_SERIALIZER = ByteBufsCodec
+			.ofDelimiter(
+					ofNullTerminatedBytes(),
+					buf -> {
+						ByteBuf buf1 = ByteBufPool.ensureWriteRemaining(buf, 1);
+						buf1.put((byte) 0);
+						return buf1;
+					})
+			.andThen(
+					buf -> buf.asString(UTF_8),
+					str -> ByteBuf.wrapForReading(str.getBytes(UTF_8)));
+	private static ByteBufsCodec<Integer, Integer> INTEGER_SERIALIZER = STRING_SERIALIZER.andThen(Integer::parseInt, n -> Integer.toString(n));
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -140,8 +152,7 @@ public final class MessagingWithBinaryStreamingTest {
 	public void testBinaryMessagingUpload() throws Exception {
 		List<Long> source = LongStream.range(0, 100).boxed().collect(toList());
 
-		ByteBufSerializer<String, String> serializer =
-				ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
+		ByteBufsCodec<String, String> serializer = STRING_SERIALIZER;
 
 		SimpleServer.create(
 				socket -> {
@@ -180,8 +191,7 @@ public final class MessagingWithBinaryStreamingTest {
 	public void testBinaryMessagingUploadAck() throws Exception {
 		List<Long> source = LongStream.range(0, 100).boxed().collect(toList());
 
-		ByteBufSerializer<String, String> serializer =
-				ByteBufSerializer.ofJsonCodec(STRING_CODEC, STRING_CODEC);
+		ByteBufsCodec<String, String> serializer = STRING_SERIALIZER;
 
 		SimpleServer.create(
 				socket -> {
@@ -255,4 +265,5 @@ public final class MessagingWithBinaryStreamingTest {
 							.streamTo(messaging.sendBinaryStream());
 				}));
 	}
+
 }

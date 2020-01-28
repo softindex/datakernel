@@ -25,7 +25,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
 
-public final class ByteBufsParserTest {
+public final class ByteBufsDecoderTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 	public final ByteBufQueue queue = new ByteBufQueue();
@@ -33,16 +33,16 @@ public final class ByteBufsParserTest {
 	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void testOfNullTerminatedBytes() throws ParseException {
-		ByteBufsParser<ByteBuf> parser = ByteBufsParser.ofNullTerminatedBytes();
+		ByteBufsDecoder<ByteBuf> decoder = ByteBufsDecoder.ofNullTerminatedBytes();
 		queue.add(ByteBuf.wrapForReading(new byte[]{1, 2, 3, 0, 4, 5, 6}));
-		ByteBuf beforeNull = parser.tryParse(queue);
+		ByteBuf beforeNull = decoder.tryDecoder(queue);
 		ByteBuf afterNull = queue.takeRemaining();
 
 		assertArrayEquals(new byte[]{1, 2, 3}, beforeNull.asArray());
 		assertArrayEquals(new byte[]{4, 5, 6}, afterNull.asArray());
 
 		queue.add(ByteBuf.wrapForReading(new byte[]{0, 1, 2, 3}));
-		beforeNull = parser.tryParse(queue);
+		beforeNull = decoder.tryDecoder(queue);
 		afterNull = queue.takeRemaining();
 
 		assertArrayEquals(new byte[]{}, beforeNull.asArray());

@@ -44,7 +44,7 @@ import java.util.function.Function;
 import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.crdt.CrdtMessaging.CrdtMessages.PING;
 import static io.datakernel.crdt.CrdtMessaging.CrdtResponses.*;
-import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
+import static io.datakernel.crdt.Utils.nullTerminatedJson;
 
 public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
@@ -194,7 +194,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 
 	private Promise<MessagingWithBinaryStreaming<CrdtResponse, CrdtMessage>> connect() {
 		return AsyncTcpSocketNio.connect(address, null, socketSettings)
-				.map(socket -> MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
+				.map(socket -> MessagingWithBinaryStreaming.create(socket, nullTerminatedJson(RESPONSE_CODEC, MESSAGE_CODEC)));
 	}
 
 	// region JMX

@@ -18,7 +18,7 @@ package io.datakernel.csp.eventloop;
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.net.SimpleServer;
 import io.datakernel.test.rules.ActivePromisesRule;
@@ -46,7 +46,7 @@ public final class PingPongSocketConnectionTest {
 
 	private static final InetSocketAddress ADDRESS = new InetSocketAddress("localhost", 9022);
 
-	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
+	private static final ByteBufsDecoder<String> DECODER = ByteBufsDecoder.ofFixedSize(4)
 			.andThen(buf -> buf.asString(UTF_8));
 
 	@ClassRule
@@ -65,7 +65,7 @@ public final class PingPongSocketConnectionTest {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					loop(ITERATIONS,
 							i -> i != 0,
-							i -> bufsSupplier.parse(PARSER)
+							i -> bufsSupplier.parse(DECODER)
 									.whenResult(res -> assertEquals(REQUEST_MSG, res))
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG)))
 									.map($ -> i - 1))
@@ -82,7 +82,7 @@ public final class PingPongSocketConnectionTest {
 					return loop(ITERATIONS,
 							i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
-									.then($ -> bufsSupplier.parse(PARSER))
+									.then($ -> bufsSupplier.parse(DECODER))
 									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
 									.map($ -> i - 1))
 							.whenResult($ -> socket.close());

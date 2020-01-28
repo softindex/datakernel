@@ -27,7 +27,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.http.MultipartParser.MultipartFrame;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -50,7 +50,7 @@ import static java.util.stream.Collectors.toMap;
 /**
  * Util class that allows to parse some binary channel (mainly, the request body stream) into a channel of multipart frames.
  */
-public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
+public final class MultipartParser implements ByteBufsDecoder<MultipartFrame> {
 	private static final int MAX_META_SIZE = ApplicationSettings.getMemSize(MultipartParser.class, "maxMetaBuffer", kilobytes(4)).toInt();
 
 	@Nullable
@@ -71,9 +71,9 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 	/**
 	 * Converts resulting channel of frames into a binary channel, ignoring any multipart headers.
 	 */
-	public ByteBufsParser<ByteBuf> ignoreHeaders() {
+	public ByteBufsDecoder<ByteBuf> ignoreHeaders() {
 		return bufs -> {
-			MultipartFrame frame = tryParse(bufs);
+			MultipartFrame frame = tryDecoder(bufs);
 			if (frame == null || frame.isHeaders()) {
 				return null;
 			}
@@ -153,7 +153,7 @@ public final class MultipartParser implements ByteBufsParser<MultipartFrame> {
 
 	@Nullable
 	@Override
-	public MultipartFrame tryParse(ByteBufQueue bufs) {
+	public MultipartFrame tryDecoder(ByteBufQueue bufs) {
 		if (finished) {
 			return null;
 		}

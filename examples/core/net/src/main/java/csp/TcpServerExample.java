@@ -6,7 +6,7 @@ import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SimpleServer;
 
@@ -28,7 +28,7 @@ public final class TcpServerExample {
 
 		SimpleServer server = SimpleServer.create(socket ->
 				BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
-						.parseStream(ByteBufsParser.ofCrlfTerminatedBytes())
+						.parseStream(ByteBufsDecoder.ofCrlfTerminatedBytes())
 						.peek(buf -> System.out.println("client:" + buf.getString(UTF_8)))
 						.map(buf -> {
 							ByteBuf serverBuf = ByteBufStrings.wrapUtf8("Server> ");

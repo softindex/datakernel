@@ -1,6 +1,12 @@
 package io.datakernel.remotefs;
 
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +18,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import static io.datakernel.remotefs.FsClient.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class RemoteFsUtils {
 	private static final Pattern ANY_GLOB_METACHARS = Pattern.compile("[*?{}\\[\\]\\\\]");
@@ -158,4 +165,19 @@ public final class RemoteFsUtils {
 							.then(supplier -> supplier.streamTo(to.upload(name, sourceMeta.getSize(), sourceRevision)));
 				});
 	}
+
+	static <I, O> ByteBufsCodec<I, O> nullTerminatedJson(StructuredCodec<I> in, StructuredCodec<O> out) {
+		return ByteBufsCodec
+				.ofDelimiter(
+						ByteBufsDecoder.ofNullTerminatedBytes(),
+						buf -> {
+							ByteBuf buf1 = ByteBufPool.ensureWriteRemaining(buf, 1);
+							buf1.put((byte) 0);
+							return buf1;
+						})
+				.andThen(
+						buf -> JsonUtils.fromJson(in, buf.asString(UTF_8)),
+						item -> JsonUtils.toJsonBuf(out, item));
+	}
+
 }

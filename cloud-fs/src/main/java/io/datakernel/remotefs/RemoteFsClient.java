@@ -23,7 +23,7 @@ import io.datakernel.common.ref.RefLong;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
@@ -45,8 +45,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.async.util.LogUtils.toLogger;
-import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.RemoteFsUtils.KNOWN_ERRORS;
+import static io.datakernel.remotefs.RemoteFsUtils.nullTerminatedJson;
 
 /**
  * An implementation of {@link FsClient} which connects to a single {@link RemoteFsServer} and communicates with it.
@@ -59,8 +59,8 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 	public static final StacklessException UNEXPECTED_END_OF_STREAM = new StacklessException(RemoteFsClient.class, "Unexpected end of stream");
 	public static final StacklessException UNKNOWN_SERVER_ERROR = new StacklessException(RemoteFsClient.class, "Unknown server error occured");
 
-	private static final ByteBufSerializer<FsResponse, FsCommand> SERIALIZER =
-			ofJsonCodec(RemoteFsResponses.CODEC, RemoteFsCommands.CODEC);
+	private static final ByteBufsCodec<FsResponse, FsCommand> SERIALIZER =
+			nullTerminatedJson(RemoteFsResponses.CODEC, RemoteFsCommands.CODEC);
 
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;

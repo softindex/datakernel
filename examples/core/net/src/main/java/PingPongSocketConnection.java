@@ -16,7 +16,7 @@
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.net.SimpleServer;
@@ -35,7 +35,7 @@ public final class PingPongSocketConnection {
 	private static final String REQUEST_MSG = "PING";
 	private static final String RESPONSE_MSG = "PONG";
 
-	private static final ByteBufsParser<String> PARSER = ByteBufsParser.ofFixedSize(4)
+	private static final ByteBufsDecoder<String> DECODER = ByteBufsDecoder.ofFixedSize(4)
 			.andThen(buf -> buf.asString(UTF_8));
 
 	//[START REGION_1]
@@ -46,7 +46,7 @@ public final class PingPongSocketConnection {
 				socket -> {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					repeat(() ->
-							bufsSupplier.parse(PARSER)
+							bufsSupplier.parse(DECODER)
 									.whenResult(System.out::println)
 									.then($ -> socket.write(wrapAscii(RESPONSE_MSG))))
 							.whenComplete(socket::close);
@@ -62,7 +62,7 @@ public final class PingPongSocketConnection {
 					loop(0,
 							i -> i < ITERATIONS,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
-									.then($ -> bufsSupplier.parse(PARSER)
+									.then($ -> bufsSupplier.parse(DECODER)
 											.whenResult(System.out::println)
 											.map($2 -> i + 1)))
 							.whenComplete(socket::close);

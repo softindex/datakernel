@@ -120,11 +120,11 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 		};
 	}
 
-	public final <T> Promise<T> parse(ByteBufsParser<T> parser) {
+	public final <T> Promise<T> parse(ByteBufsDecoder<T> decoder) {
 		if (!bufs.isEmpty()) {
 			T result;
 			try {
-				result = parser.tryParse(bufs);
+				result = decoder.tryDecoder(bufs);
 			} catch (Exception e) {
 				return Promise.ofException(e);
 			}
@@ -132,23 +132,23 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 				return Promise.of(result);
 			}
 		}
-		return Promise.ofCallback(cb -> doParse(parser, cb));
+		return Promise.ofCallback(cb -> doParse(decoder, cb));
 	}
 
-	private <T> void doParse(ByteBufsParser<T> parser, SettablePromise<T> cb) {
+	private <T> void doParse(ByteBufsDecoder<T> decoder, SettablePromise<T> cb) {
 		needMoreData()
 				.whenComplete(($, e) -> {
 					if (e == null) {
 						T result;
 						try {
-							result = parser.tryParse(bufs);
+							result = decoder.tryDecoder(bufs);
 						} catch (Exception e2) {
 							close(e2);
 							cb.setException(e2);
 							return;
 						}
 						if (result == null) {
-							doParse(parser, cb);
+							doParse(decoder, cb);
 							return;
 						}
 						cb.set(result);
@@ -158,8 +158,8 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 				});
 	}
 
-	public final <T> Promise<T> parseRemaining(ByteBufsParser<T> parser) {
-		return parse(parser)
+	public final <T> Promise<T> parseRemaining(ByteBufsDecoder<T> decoder) {
+		return parse(decoder)
 				.then(result -> {
 					if (!bufs.isEmpty()) {
 						close(UNEXPECTED_DATA_EXCEPTION);
@@ -169,9 +169,9 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 				});
 	}
 
-	public final <T> ChannelSupplier<T> parseStream(ByteBufsParser<T> parser) {
+	public final <T> ChannelSupplier<T> parseStream(ByteBufsDecoder<T> decoder) {
 		return ChannelSupplier.of(
-				() -> parse(parser)
+				() -> parse(decoder)
 						.thenEx((value, e) -> {
 							if (e == null) return Promise.of(value);
 							if (e == UNEXPECTED_END_OF_STREAM_EXCEPTION && bufs.isEmpty()) return Promise.of(null);

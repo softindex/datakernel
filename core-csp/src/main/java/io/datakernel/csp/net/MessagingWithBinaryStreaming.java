@@ -22,7 +22,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -35,7 +35,7 @@ import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_S
 public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O> {
 	private final AsyncTcpSocket socket;
 
-	private final ByteBufSerializer<I, O> serializer;
+	private final ByteBufsCodec<I, O> codec;
 
 	private final ByteBufQueue bufs = new ByteBufQueue();
 	private final BinaryChannelSupplier bufsSupplier;
@@ -46,9 +46,9 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	private boolean writeDone;
 
 	// region creators
-	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, ByteBufSerializer<I, O> serializer) {
+	private MessagingWithBinaryStreaming(AsyncTcpSocket socket, ByteBufsCodec<I, O> codec) {
 		this.socket = socket;
-		this.serializer = serializer;
+		this.codec = codec;
 		this.bufsSupplier = BinaryChannelSupplier.ofProvidedQueue(bufs,
 				() -> this.socket.read()
 						.then(buf -> {
@@ -65,7 +65,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket,
-			ByteBufSerializer<I, O> serializer) {
+			ByteBufsCodec<I, O> serializer) {
 		MessagingWithBinaryStreaming<I, O> messaging = new MessagingWithBinaryStreaming<>(socket, serializer);
 		messaging.prefetch();
 		return messaging;
@@ -89,14 +89,14 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	@Override
 	public Promise<I> receive() {
-		return bufsSupplier.parse(serializer)
+		return bufsSupplier.parse(codec::tryDecode)
 				.whenResult($ -> prefetch())
 				.whenException(this::close);
 	}
 
 	@Override
 	public Promise<Void> send(O msg) {
-		return socket.write(serializer.serialize(msg));
+		return socket.write(codec.encode(msg));
 	}
 
 	@Override

@@ -27,7 +27,7 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.binary.BinaryChannelInput;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
-import io.datakernel.csp.binary.ByteBufsParser;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.promise.Promise;
@@ -39,7 +39,7 @@ import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.csp.binary.ByteBufsParser.ofFixedSize;
+import static io.datakernel.csp.binary.ByteBufsDecoder.ofFixedSize;
 import static java.lang.Integer.reverseBytes;
 import static java.lang.Math.max;
 import static java.lang.Short.reverseBytes;
@@ -241,7 +241,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 	}
 
 	private void skipTerminatorByte(int flag, int part) {
-		input.parse(ByteBufsParser.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
+		input.parse(ByteBufsDecoder.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
 				.whenException(e -> close(FNAME_FCOMMENT_TOO_LARGE))
 				.whenResult(ByteBuf::recycle)
 				.whenResult($ -> runNext(flag - part).run());

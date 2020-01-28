@@ -20,6 +20,8 @@ import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.util.ByteBufWriter;
 import io.datakernel.codec.*;
 import io.datakernel.common.parse.ParseException;
 
@@ -56,6 +58,12 @@ public class JsonUtils {
 		StringWriter writer = new StringWriter();
 		toJson(encoder, value, writer);
 		return writer.toString();
+	}
+
+	public static <T> ByteBuf toJsonBuf(StructuredEncoder<? super T> encoder, T value) {
+		ByteBufWriter writer = new ByteBufWriter();
+		toJson(encoder, value, writer);
+		return writer.getBuf();
 	}
 
 	public static <T> void toJson(StructuredEncoder<? super T> encoder, T value, Appendable appendable) {

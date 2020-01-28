@@ -32,8 +32,8 @@ import io.datakernel.promise.Promise;
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.csp.binary.ByteBufsParser.assertBytes;
-import static io.datakernel.csp.binary.ByteBufsParser.ofCrlfTerminatedBytes;
+import static io.datakernel.csp.binary.ByteBufsDecoder.assertBytes;
+import static io.datakernel.csp.binary.ByteBufsDecoder.ofCrlfTerminatedBytes;
 import static java.lang.Math.min;
 
 /**
@@ -158,7 +158,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	private void consumeCRLF(int chunkLength) {
 		input.parse(
 				bufs -> {
-					ByteBuf maybeResult = ofCrlfTerminatedBytes().tryParse(bufs);
+					ByteBuf maybeResult = ofCrlfTerminatedBytes().tryDecoder(bufs);
 					if (maybeResult == null) {
 						bufs.skip(bufs.remainingBytes() - 1);
 					}

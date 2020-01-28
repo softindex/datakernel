@@ -16,7 +16,7 @@
 
 package io.datakernel.dataflow.server;
 
-import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.Node;
@@ -34,6 +34,8 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
+
 /**
  * Client for datagraph server.
  * Sends JSON commands for performing certain actions on server.
@@ -41,7 +43,7 @@ import java.util.Collection;
 public final class DatagraphClient {
 
 	private final DatagraphSerialization serialization;
-	private final ByteBufSerializer<DatagraphResponse, DatagraphCommand> serializer;
+	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
 
 	private final SocketSettings socketSettings = SocketSettings.createDefault();
 
@@ -52,13 +54,13 @@ public final class DatagraphClient {
 	 */
 	public DatagraphClient(DatagraphSerialization serialization) {
 		this.serialization = serialization;
-		this.serializer = ByteBufSerializer.ofJsonCodec(serialization.getResponseCodec(), serialization.getCommandCodec());
+		this.codec = nullTerminatedJson(serialization.getResponseCodec(), serialization.getCommandCodec());
 	}
 
 	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.then(socket -> {
-					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
+					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 					DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
 					return messaging.send(commandDownload)
@@ -73,7 +75,7 @@ public final class DatagraphClient {
 	public Promise<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.then(socket -> {
-					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
+					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 
 					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 					return messaging.send(commandExecute)

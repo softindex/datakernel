@@ -19,7 +19,7 @@ package io.datakernel.remotefs;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.RecyclingChannelConsumer;
-import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.Eventloop;
@@ -41,18 +41,16 @@ import java.util.function.Function;
 
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
-import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.remotefs.RemoteFsUtils.checkRange;
-import static io.datakernel.remotefs.RemoteFsUtils.getErrorCode;
+import static io.datakernel.remotefs.RemoteFsUtils.*;
 
 /**
  * An implementation of {@link AbstractServer} for RemoteFs.
  * It exposes some given {@link FsClient} to the Internet in pair with {@link RemoteFsClient}
  */
 public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
-	private static final ByteBufSerializer<FsCommand, FsResponse> SERIALIZER =
-			ofJsonCodec(RemoteFsCommands.CODEC, RemoteFsResponses.CODEC);
+	private static final ByteBufsCodec<FsCommand, FsResponse> SERIALIZER =
+			nullTerminatedJson(RemoteFsCommands.CODEC, RemoteFsResponses.CODEC);
 
 	public static final StacklessException NO_HANDLER_FOR_MESSAGE = new StacklessException(RemoteFsServer.class, "No handler for received message type");
 

@@ -30,73 +30,73 @@ import io.datakernel.serializer.BinarySerializer;
 import java.net.InetAddress;
 
 import static io.datakernel.crdt.CrdtMessaging.*;
-import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
+import static io.datakernel.crdt.Utils.nullTerminatedJson;
 
 public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer<CrdtServer<K, S>> {
-	private final CrdtStorage<K, S> client;
-	private final CrdtDataSerializer<K, S> serializer;
-	private final BinarySerializer<K> keySerializer;
+    private final CrdtStorage<K, S> client;
+    private final CrdtDataSerializer<K, S> serializer;
+    private final BinarySerializer<K> keySerializer;
 
-	private CrdtServer(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
-		super(eventloop);
-		this.client = client;
-		this.serializer = serializer;
+    private CrdtServer(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
+        super(eventloop);
+        this.client = client;
+        this.serializer = serializer;
 
-		keySerializer = serializer.getKeySerializer();
-	}
+        keySerializer = serializer.getKeySerializer();
+    }
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
-		return new CrdtServer<>(eventloop, client, serializer);
-	}
+    public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
+        return new CrdtServer<>(eventloop, client, serializer);
+    }
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
-		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
-	}
+    public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+        return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
+    }
 
-	@Override
-	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
-		MessagingWithBinaryStreaming<CrdtMessage, CrdtResponse> messaging =
-				MessagingWithBinaryStreaming.create(socket, ofJsonCodec(MESSAGE_CODEC, RESPONSE_CODEC));
-		messaging.receive()
-				.then(msg -> {
-					if (msg == null) {
-						return Promise.ofException(new StacklessException(CrdtServer.class, "Unexpected end of stream"));
-					}
-					if (msg == CrdtMessages.UPLOAD) {
-						return messaging.receiveBinaryStream()
-								.transformWith(ChannelDeserializer.create(serializer))
-								.streamTo(StreamConsumer.ofPromise(client.upload()))
-								.then($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
-								.then($ -> messaging.sendEndOfStream())
-								.whenResult($ -> messaging.close());
+    @Override
+    protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
+        MessagingWithBinaryStreaming<CrdtMessage, CrdtResponse> messaging =
+                MessagingWithBinaryStreaming.create(socket, nullTerminatedJson(MESSAGE_CODEC, RESPONSE_CODEC));
+        messaging.receive()
+                .then(msg -> {
+                    if (msg == null) {
+                        return Promise.ofException(new StacklessException(CrdtServer.class, "Unexpected end of stream"));
+                    }
+                    if (msg == CrdtMessages.UPLOAD) {
+                        return messaging.receiveBinaryStream()
+                                .transformWith(ChannelDeserializer.create(serializer))
+                                .streamTo(StreamConsumer.ofPromise(client.upload()))
+                                .then($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
+                                .then($ -> messaging.sendEndOfStream())
+                                .whenResult($ -> messaging.close());
 
-					}
-					if (msg == CrdtMessages.REMOVE) {
-						return messaging.receiveBinaryStream()
-								.transformWith(ChannelDeserializer.create(keySerializer))
-								.streamTo(StreamConsumer.ofPromise(client.remove()))
-								.then($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
-								.then($ -> messaging.sendEndOfStream())
-								.whenResult($ -> messaging.close());
-					}
-					if (msg instanceof Download) {
-						return client.download(((Download) msg).getToken())
-								.whenResult($ -> messaging.send(new DownloadStarted()))
-								.then(supplier -> supplier
-										.transformWith(ChannelSerializer.create(serializer))
-										.streamTo(messaging.sendBinaryStream()));
-					}
-					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
-				})
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						return;
-					}
-					logger.warn("got an error while handling message (" + e + ") : " + this);
-					String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
-					messaging.send(new ServerError(prefix + e.getMessage()))
-							.then($1 -> messaging.sendEndOfStream())
-							.whenResult($1 -> messaging.close());
-				});
-	}
+                    }
+                    if (msg == CrdtMessages.REMOVE) {
+                        return messaging.receiveBinaryStream()
+                                .transformWith(ChannelDeserializer.create(keySerializer))
+                                .streamTo(StreamConsumer.ofPromise(client.remove()))
+                                .then($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
+                                .then($ -> messaging.sendEndOfStream())
+                                .whenResult($ -> messaging.close());
+                    }
+                    if (msg instanceof Download) {
+                        return client.download(((Download) msg).getToken())
+                                .whenResult($ -> messaging.send(new DownloadStarted()))
+                                .then(supplier -> supplier
+                                        .transformWith(ChannelSerializer.create(serializer))
+                                        .streamTo(messaging.sendBinaryStream()));
+                    }
+                    return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
+                })
+                .whenComplete(($, e) -> {
+                    if (e == null) {
+                        return;
+                    }
+                    logger.warn("got an error while handling message (" + e + ") : " + this);
+                    String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
+                    messaging.send(new ServerError(prefix + e.getMessage()))
+                            .then($1 -> messaging.sendEndOfStream())
+                            .whenResult($1 -> messaging.close());
+                });
+    }
 }

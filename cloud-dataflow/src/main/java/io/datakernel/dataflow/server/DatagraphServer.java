@@ -19,7 +19,7 @@ package io.datakernel.dataflow.server;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.binary.ByteBufSerializer;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
@@ -42,6 +42,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
+
 /**
  * Server for processing JSON commands.
  */
@@ -49,7 +51,7 @@ import java.util.Map;
 public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private final DatagraphEnvironment environment;
 	private final Map<StreamId, ChannelQueue<ByteBuf>> pendingStreams = new HashMap<>();
-	private final ByteBufSerializer<DatagraphCommand, DatagraphResponse> serializer;
+	private final ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
 	{
@@ -72,7 +74,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		this.environment = DatagraphEnvironment.extend(environment)
 				.with(DatagraphServer.class, this);
 		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
-		this.serializer = ByteBufSerializer.ofJsonCodec(serialization.getCommandCodec(), serialization.getResponseCodec());
+		this.codec = nullTerminatedJson(serialization.getCommandCodec(), serialization.getResponseCodec());
 	}
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
@@ -133,7 +135,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
-		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, serializer);
+		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 		messaging.receive()
 				.whenResult(msg -> {
 					if (msg != null) {

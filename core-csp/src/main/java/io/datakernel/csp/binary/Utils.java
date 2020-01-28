@@ -5,7 +5,7 @@ import io.datakernel.common.parse.ParseException;
 
 class Utils {
 
-	static ByteBufsParser<ByteBuf> parseUntilTerminatorByte(byte terminator, int maxSize) {
+	static ByteBufsDecoder<ByteBuf> parseUntilTerminatorByte(byte terminator, int maxSize) {
 		return bufs -> {
 			for (int i = 0; i < Math.min(bufs.remainingBytes(), maxSize); i++) {
 				if (bufs.peekByte(i) == terminator) {
@@ -15,7 +15,7 @@ class Utils {
 				}
 			}
 			if (bufs.remainingBytes() >= maxSize) {
-				throw new ParseException(ByteBufsParser.class, "No terminator byte is found in " + maxSize + " bytes");
+				throw new ParseException(ByteBufsDecoder.class, "No terminator byte is found in " + maxSize + " bytes");
 			}
 			return null;
 		};
