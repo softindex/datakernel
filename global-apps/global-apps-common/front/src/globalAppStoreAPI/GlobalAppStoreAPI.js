@@ -99,7 +99,7 @@ export class GlobalAppStoreAPI {
   }
 
   generateAuthToken(){
-    return this._request(path.join(this._url, `/api/auth/generateToken`), {method: 'POST'})
+    return this._request(url.resolve(this._url, `/api/auth/generateToken`), {method: 'POST'})
       .then(response => response.text());
   }
 
@@ -142,6 +142,14 @@ export class GlobalAppStoreAPI {
 
   getProfile() {
     return this._request(url.resolve(this._url, 'api/users/myProfile'))
+      .then(response => response.json());
+  }
+
+  getAppsURLs(ids = []) {
+    return this._request(url.resolve(
+      this._url,
+      `/api/appRegistry/getDefaultUrls?appIds=${encodeURIComponent(JSON.stringify(ids))}`
+    ))
       .then(response => response.json());
   }
 }
