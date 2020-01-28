@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>serializer</artifactId>
+  <artifactId>examples-serializer</artifactId>
   <name>Examples : Core : Serializer</name>
 
   <dependencies>

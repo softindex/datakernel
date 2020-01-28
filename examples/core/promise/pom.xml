@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>promise</artifactId>
+  <artifactId>examples-promise</artifactId>
   <name>Examples : Core : Promise</name>
 
   <dependencies>

@@ -3,10 +3,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.datakernel</groupId>
-  <artifactId>rpc-kv-storage</artifactId>
+  <artifactId>tutorial-rpc-kv-storage</artifactId>
   <version>3.2-SNAPSHOT</version>
 
-  <name>Examples : Tutorials : Rpc-KV-Storage</name>
+  <name>Tutorials : Rpc-KV-Storage</name>
 
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>

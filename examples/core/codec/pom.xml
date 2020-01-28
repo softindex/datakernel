@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>codec</artifactId>
+  <artifactId>examples-codec</artifactId>
 
   <name>Examples : Core : Codec</name>
 

@@ -1,4 +1,4 @@
-package io.datakernel;
+package io.datakernel.di;
 
 import io.datakernel.di.annotation.ScopeAnnotation;
 

@@ -9,9 +9,8 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>datastream</artifactId>
+  <artifactId>examples-datastream</artifactId>
   <name>Examples : Core : Datastream</name>
-
 
   <dependencies>
     <dependency>

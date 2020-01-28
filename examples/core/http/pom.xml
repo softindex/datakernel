@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>http</artifactId>
+  <artifactId>examples-http</artifactId>
   <name>Examples : Core : Http</name>
 
   <dependencies>

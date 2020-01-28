@@ -9,8 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>fs</artifactId>
-
+  <artifactId>examples-fs</artifactId>
   <name>Examples : Cloud : FS</name>
 
   <dependencies>

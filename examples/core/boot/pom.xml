@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>boot</artifactId>
+  <artifactId>examples-boot</artifactId>
 
   <name>Examples : Core : Boot</name>
 

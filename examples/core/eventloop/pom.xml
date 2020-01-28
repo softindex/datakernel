@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>eventloop</artifactId>
+  <artifactId>examples-eventloop</artifactId>
   <name>Examples : Core : Eventloop</name>
 
   <dependencies>

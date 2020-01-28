@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>csp</artifactId>
+  <artifactId>examples-csp</artifactId>
   <name>Examples : Core : CSP</name>
 
   <dependencies>

@@ -9,8 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>crdt</artifactId>
-
+  <artifactId>examples-crdt</artifactId>
   <name>Examples : Cloud : CRDT</name>
 
   <dependencies>

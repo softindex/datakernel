@@ -9,8 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>rpc</artifactId>
-
+  <artifactId>examples-rpc</artifactId>
   <name>Examples : Cloud : RPC</name>
 
   <dependencies>

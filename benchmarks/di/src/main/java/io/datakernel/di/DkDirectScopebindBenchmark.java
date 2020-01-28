@@ -1,6 +1,5 @@
 package io.datakernel.di;
 
-import io.datakernel.OrderScope;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;

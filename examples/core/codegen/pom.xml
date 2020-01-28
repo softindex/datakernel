@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>codegen</artifactId>
+  <artifactId>examples-codegen</artifactId>
   <name>Examples : Core : Codegen</name>
 
   <dependencies>

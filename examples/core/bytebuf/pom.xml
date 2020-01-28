@@ -9,7 +9,7 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>bytebuf</artifactId>
+  <artifactId>examples-bytebuf</artifactId>
 
   <name>Examples : Core : ByteBuf</name>
 

@@ -3,10 +3,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>io.datakernel</groupId>
-  <artifactId>auth</artifactId>
+  <artifactId>tutorial-auth</artifactId>
   <version>3.2-SNAPSHOT</version>
 
-  <name>Examples : Tutorials : Auth</name>
+  <name>Tutorials : Auth</name>
 
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>

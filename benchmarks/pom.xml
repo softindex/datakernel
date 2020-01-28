@@ -10,19 +10,29 @@
   </parent>
   <packaging>pom</packaging>
 
-  <artifactId>examples</artifactId>
-  <name>Examples</name>
+  <artifactId>benchmarks</artifactId>
+  <name>Benchmarks</name>
 
   <modules>
-    <module>core</module>
-    <module>cloud</module>
-    <module>tutorials</module>
+    <module>di</module>
+    <module>promise</module>
+    <module>serializer</module>
+    <module>specializer</module>
   </modules>
 
   <dependencies>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>
