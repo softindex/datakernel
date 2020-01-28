@@ -145,10 +145,10 @@ export class GlobalAppStoreAPI {
       .then(response => response.json());
   }
 
-  getAppsURLs(ids = []) {
+  getAppsURLs(appIds = []) {
     return this._request(url.resolve(
       this._url,
-      `/api/appRegistry/getDefaultUrls?appIds=${encodeURIComponent(JSON.stringify(ids))}`
+      `/api/appRegistry/getDefaultUrls?appIds=${encodeURIComponent(JSON.stringify(appIds))}`
     ))
       .then(response => response.json());
   }
