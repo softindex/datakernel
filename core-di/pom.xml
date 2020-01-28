@@ -19,12 +19,6 @@
   </description>
 
   <dependencies>
-    <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-specializer</artifactId>
-      <version>${project.version}</version>
-      <optional>true</optional>
-    </dependency>
   </dependencies>
 
   <build>

@@ -7,15 +7,14 @@ import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
-import io.datakernel.specializer.Specializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.di.core.BindingGenerator.REFUSING;
 import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
@@ -80,42 +79,11 @@ public final class Injector {
 
 	final AtomicReferenceArray[] scopeCaches;
 
-	static {
-		String s = System.getProperty(Injector.class.getName() + "." + "specializer");
-		useSpecializer(s != null && (s.trim().isEmpty() || Boolean.parseBoolean(s)));
-		//		useSpecializer(true);
-	}
-
 	@Nullable
-	public static Consumer<Specializer> specializerSettings;
+	private static Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory = Function::identity;
 
-	public static void useSpecializer() {
-		useSpecializer(true);
-	}
-
-	public static void useSpecializer(boolean useSpecializer) {
-		//passing direct lambda will generate synthetic method with Specializer as an argument
-		//which will lead to NoClassDefFoundError as specializer module is an optional dependency
-
-		//noinspection RedundantCast,unchecked
-		useSpecializer(useSpecializer ? (Consumer<Specializer>) (Consumer) s -> {} : null);
-	}
-
-	public static void useSpecializer(@Nullable Consumer<Specializer> specializerSettings) {
-		Injector.specializerSettings = specializerSettings;
-	}
-
-	private static Function<CompiledBinding<?>, CompiledBinding<?>> createSpecializer() {
-		if (specializerSettings == null) return Function.identity();
-		try {
-			Specializer specializer = Specializer.create()
-					.withPredicate(cls -> CompiledBinding.class.isAssignableFrom(cls) &&
-							!cls.getName().startsWith("io.datakernel.di.core.Multibinder$"));
-			specializerSettings.accept(specializer);
-			return specializer::specialize;
-		} catch (NoClassDefFoundError ignored) {
-		}
-		return Function.identity();
+	public static void setBytecodePostprocessor(@Nullable Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory) {
+		Injector.bytecodePostprocessorFactory = bytecodePostprocessorFactory;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -238,12 +206,12 @@ public final class Injector {
 			Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent
 	) {
-		@Nullable Function<CompiledBinding<?>, CompiledBinding<?>> specializer = createSpecializer();
+		@Nullable Function<CompiledBinding<?>, CompiledBinding<?>> postprocessor = bytecodePostprocessorFactory.get();
 
 		boolean threadsafe = path.length == 0 || path[path.length - 1].isThreadsafe();
 
 		Map<Key<?>, CompiledBinding<?>> compiledBindings = new HashMap<>();
-		compiledBindings.put(Key.of(Injector.class), specializer.apply(scope == 0 ?
+		compiledBindings.put(Key.of(Injector.class), postprocessor.apply(scope == 0 ?
 				new CompiledBinding<Object>() {
 					volatile Object instance;
 
@@ -273,7 +241,7 @@ public final class Injector {
 			Key<?> key = entry.getKey();
 			MarkedBinding<?> binding = entry.getValue();
 			CompiledBinding<?> compiledBinding = compileBinding(
-					specializer,
+					postprocessor,
 					scope, path, threadsafe,
 					key, bindings,
 					compiledBindings, compiledBindingsOfParent,
@@ -300,7 +268,7 @@ public final class Injector {
 	}
 
 	private static CompiledBinding<?> compileBinding(
-			Function<CompiledBinding<?>, CompiledBinding<?>> specializer,
+			Function<CompiledBinding<?>, CompiledBinding<?>> postprocessor,
 			int scope, Scope[] path, boolean threadsafe,
 			Key<?> key, Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindings, Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent,
@@ -335,13 +303,13 @@ public final class Injector {
 			index = null;
 		}
 
-		CompiledBinding<?> compiled = specializer.apply(compiler.compile(
+		CompiledBinding<?> compiled = postprocessor.apply(compiler.compile(
 				new CompiledBindingLocator() {
 					@SuppressWarnings("unchecked")
 					@Override
 					public @NotNull <Q> CompiledBinding<Q> get(Key<Q> key) {
 						return (CompiledBinding<Q>) compileBinding(
-								specializer,
+								postprocessor,
 								scope,
 								path,
 								threadsafe,
