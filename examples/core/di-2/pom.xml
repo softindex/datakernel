@@ -11,8 +11,8 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>advanced-di</artifactId>
-  <name>Examples : Core : Dependency-Injection</name>
+  <artifactId>di-2</artifactId>
+  <name>Examples : Core : Dependency-Injection #2</name>
 
   <dependencies>
     <dependency>

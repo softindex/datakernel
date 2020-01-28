@@ -17,7 +17,7 @@
     <module>getting-started</module>
     <module>auth</module>
     <module>react-integration</module>
-    <module>advanced-react-integration</module>
+    <module>react-integration-2</module>
     <module>template-engine</module>
     <module>uikernel-integration</module>
     <module>rpc-kv-storage</module>
