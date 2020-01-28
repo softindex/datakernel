@@ -29,7 +29,6 @@
     <module>core-codegen</module>
     <module>core-serializer</module>
     <module>core-specializer</module>
-    <module>core-codec</module>
     <module>core-promise</module>
     <module>core-csp</module>
     <module>core-net</module>
@@ -46,7 +45,6 @@
     <module>cloud-lsmt-cube</module>
     <module>cloud-etl</module>
     <module>cloud-dataflow</module>
-    <module>common</module>
     <module>launcher</module>
     <module>boot</module>
     <module>boot-servicegraph</module>
@@ -57,6 +55,8 @@
     <module>boot-jmx-api</module>
     <module>uikernel</module>
     <module>launchers</module>
+    <module>util-codec</module>
+    <module>util-common</module>
     <module>test</module>
   </modules>
 
