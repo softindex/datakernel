@@ -26,6 +26,10 @@ export function initService(service, errorHandler, needInitialize = true) {
   }, []);
 
   useEffect(() => {
+    state.initialized = false;
+  }, [service]);
+
+  useEffect(() => {
     if (needInitialize && typeof service.init === 'function') {
       state.initialized = true;
       service.init().catch(errorHandler);
