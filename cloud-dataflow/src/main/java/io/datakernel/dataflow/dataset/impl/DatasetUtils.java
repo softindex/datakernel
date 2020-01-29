@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeDownload;
@@ -34,7 +34,7 @@ import java.util.function.Function;
 public class DatasetUtils {
 
 	@SuppressWarnings("unchecked")
-	public static <K, I, O> List<StreamId> repartitionAndReduce(DataGraph graph, LocallySortedDataset<K, I> input,
+	public static <K, I, O> List<StreamId> repartitionAndReduce(DataflowGraph graph, LocallySortedDataset<K, I> input,
 			Reducer<K, I, O, ?> reducer,
 			List<Partition> partitions) {
 		Function<I, K> keyFunction = input.keyFunction();
@@ -65,18 +65,18 @@ public class DatasetUtils {
 		return outputStreamIds;
 	}
 
-	public static <K, T> List<StreamId> repartitionAndSort(DataGraph graph, LocallySortedDataset<K, T> input,
+	public static <K, T> List<StreamId> repartitionAndSort(DataflowGraph graph, LocallySortedDataset<K, T> input,
 			List<Partition> partitions) {
 		return repartitionAndReduce(graph, input, StreamReducers.mergeSortReducer(), partitions);
 	}
 
-	public static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,
+	public static <T> StreamId forwardChannel(DataflowGraph graph, Class<T> type,
 			StreamId sourceStreamId, Partition targetPartition) {
 		Partition sourcePartition = graph.getPartition(sourceStreamId);
 		return forwardChannel(graph, type, sourcePartition, targetPartition, sourceStreamId);
 	}
 
-	private static <T> StreamId forwardChannel(DataGraph graph, Class<T> type,
+	private static <T> StreamId forwardChannel(DataflowGraph graph, Class<T> type,
 			Partition sourcePartition, Partition targetPartition,
 			StreamId sourceStreamId) {
 		NodeUpload<T> nodeUpload = new NodeUpload<>(type, sourceStreamId);

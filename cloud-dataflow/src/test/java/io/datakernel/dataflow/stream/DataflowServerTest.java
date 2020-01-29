@@ -20,7 +20,7 @@ import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.helper.StreamMergeSorterStorageStub;
 import io.datakernel.dataflow.server.*;
@@ -50,10 +50,10 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public final class DatagraphServerTest {
+public final class DataflowServerTest {
 
-	private static DatagraphServer server1;
-	private static DatagraphServer server2;
+	private static DataflowServer server1;
+	private static DataflowServer server2;
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -63,7 +63,7 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testForward() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create()
+		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
@@ -72,30 +72,30 @@ public final class DatagraphServerTest {
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization);
-		DatagraphEnvironment environment1 = environment.extend()
+		DataflowEnvironment environment = DataflowEnvironment.create()
+				.setInstance(DataflowSerialization.class, serialization);
+		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
 						new TestItem(3),
 						new TestItem(5)))
 				.with("result", result1);
-		DatagraphEnvironment environment2 = environment.extend()
+		DataflowEnvironment environment2 = environment.extend()
 				.with("items", asList(
 						new TestItem(2),
 						new TestItem(4),
 						new TestItem(6)))
 				.with("result", result2);
 
-		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
-		DatagraphClient client = new DatagraphClient(serialization);
+		DataflowClient client = new DataflowClient(serialization);
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
 
@@ -117,7 +117,7 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testRepartitionAndSort() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create()
+		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
@@ -126,12 +126,12 @@ public final class DatagraphServerTest {
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DatagraphClient client = new DatagraphClient(serialization);
+		DataflowClient client = new DataflowClient(serialization);
 
-		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client);
-		DatagraphEnvironment environment1 = environment.extend()
+		DataflowEnvironment environment = DataflowEnvironment.create()
+				.setInstance(DataflowSerialization.class, serialization)
+				.setInstance(DataflowClient.class, client);
+		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
 						new TestItem(2),
@@ -140,19 +140,19 @@ public final class DatagraphServerTest {
 						new TestItem(5),
 						new TestItem(6)))
 				.with("result", result1);
-		DatagraphEnvironment environment2 = environment.extend()
+		DataflowEnvironment environment2 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
 						new TestItem(6)))
 				.with("result", result2);
-		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		DataGraph graph = new DataGraph(serialization,
+		DataflowGraph graph = new DataflowGraph(serialization,
 				asList(partition1, partition2));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
@@ -176,22 +176,22 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testFilter() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create()
+		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
-		DatagraphClient client = new DatagraphClient(serialization);
+		DataflowClient client = new DataflowClient(serialization);
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client)
+		DataflowEnvironment environment = DataflowEnvironment.create()
+				.setInstance(DataflowSerialization.class, serialization)
+				.setInstance(DataflowClient.class, client)
 				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
-		DatagraphEnvironment environment1 = environment.extend()
+		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(6),
 						new TestItem(4),
@@ -199,7 +199,7 @@ public final class DatagraphServerTest {
 						new TestItem(3),
 						new TestItem(1)))
 				.with("result", result1);
-		DatagraphEnvironment environment2 = environment.extend()
+		DataflowEnvironment environment2 = environment.extend()
 				.with("items", asList(
 						new TestItem(7),
 						new TestItem(7),
@@ -208,14 +208,14 @@ public final class DatagraphServerTest {
 						new TestItem(5)))
 				.with("result", result2);
 
-		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 
@@ -241,28 +241,28 @@ public final class DatagraphServerTest {
 
 	@Test
 	public void testCollector() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create()
+		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
-		DatagraphClient client = new DatagraphClient(serialization);
+		DataflowClient client = new DataflowClient(serialization);
 		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
-		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client)
+		DataflowEnvironment environment = DataflowEnvironment.create()
+				.setInstance(DataflowSerialization.class, serialization)
+				.setInstance(DataflowClient.class, client)
 				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
-		DatagraphEnvironment environment1 = environment.extend()
+		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(4),
 						new TestItem(5)));
-		DatagraphEnvironment environment2 = environment.extend()
+		DataflowEnvironment environment2 = environment.extend()
 				.with("items", asList(
 						new TestItem(6),
 						new TestItem(7),
@@ -271,14 +271,14 @@ public final class DatagraphServerTest {
 						new TestItem(10)
 				));
 
-		server1 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment1)
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
 				.withListenAddress(address1);
-		server2 = new DatagraphServer(Eventloop.getCurrentEventloop(), environment2)
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
-		DataGraph graph = new DataGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 

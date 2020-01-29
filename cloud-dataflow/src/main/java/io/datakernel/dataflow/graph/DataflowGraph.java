@@ -18,26 +18,30 @@ package io.datakernel.dataflow.graph;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.dataflow.node.Node;
-import io.datakernel.dataflow.server.DatagraphSerialization;
+import io.datakernel.dataflow.server.DataflowSerialization;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.codec.json.JsonUtils.indent;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static java.util.stream.Collectors.*;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
  */
-public class DataGraph {
-	private final DatagraphSerialization serialization;
+public class DataflowGraph {
+	private final DataflowSerialization serialization;
 	private final List<Partition> availablePartitions;
 	private final Map<Node, Partition> nodePartitions = new LinkedHashMap<>();
 	private final Map<StreamId, Node> streams = new LinkedHashMap<>();
 
 	private final StructuredCodec<List<Node>> listNodeCodecs;
 
-	public DataGraph(DatagraphSerialization serialization, List<Partition> availablePartitions) {
+	public DataflowGraph(DataflowSerialization serialization, List<Partition> availablePartitions) {
 		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
 		this.listNodeCodecs = indent(ofList(serialization.getNodeCodec()), "  ");
@@ -56,11 +60,8 @@ public class DataGraph {
 	}
 
 	private Map<Partition, List<Node>> getNodesByPartition() {
-		Map<Partition, List<Node>> listMultimap = new HashMap<>();
-		for (Map.Entry<Node, Partition> entry : nodePartitions.entrySet()) {
-			listMultimap.computeIfAbsent(entry.getValue(), partition -> new ArrayList<>()).add(entry.getKey());
-		}
-		return listMultimap;
+		return nodePartitions.entrySet().stream()
+				.collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, toList())));
 	}
 
 	/**
@@ -72,19 +73,6 @@ public class DataGraph {
 			List<Node> nodes = map.get(partition);
 			partition.execute(nodes);
 		}
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		Map<Partition, List<Node>> map = getNodesByPartition();
-		for (Partition partition : map.keySet()) {
-			List<Node> nodes = map.get(partition);
-			sb.append("--- ").append(partition).append("\n\n");
-			sb.append(toJson(listNodeCodecs, nodes));
-			sb.append("\n\n");
-		}
-		return sb.toString();
 	}
 
 	public void addNode(Partition partition, Node node) {
@@ -107,7 +95,21 @@ public class DataGraph {
 		return partitions;
 	}
 
-	public DatagraphSerialization getSerialization() {
+	public DataflowSerialization getSerialization() {
 		return serialization;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		Map<Partition, List<Node>> map = getNodesByPartition();
+		for (Partition partition : map.keySet()) {
+			List<Node> nodes = map.get(partition);
+			sb.append("--- ").append(partition).append("\n\n");
+			sb.append(toJson(listNodeCodecs, nodes));
+			sb.append("\n\n");
+		}
+		return sb.toString();
+	}
+
 }

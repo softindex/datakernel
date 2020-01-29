@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeJoin;
 import io.datakernel.datastream.processor.StreamJoin.Joiner;
@@ -42,7 +42,7 @@ public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 	}
 
 	@Override
-	public List<StreamId> channels(DataGraph graph) {
+	public List<StreamId> channels(DataflowGraph graph) {
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<StreamId> leftStreamIds = left.channels(graph);
 

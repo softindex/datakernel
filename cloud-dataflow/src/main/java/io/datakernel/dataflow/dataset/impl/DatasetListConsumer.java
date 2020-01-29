@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.Dataset;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeConsumerToList;
@@ -34,7 +34,7 @@ public final class DatasetListConsumer<T> {
 		this.input = input;
 	}
 
-	public void compileInto(DataGraph graph) {
+	public void compileInto(DataflowGraph graph) {
 		List<StreamId> streamIds = input.channels(graph);
 		for (StreamId streamId : streamIds) {
 			Partition partition = graph.getPartition(streamId);

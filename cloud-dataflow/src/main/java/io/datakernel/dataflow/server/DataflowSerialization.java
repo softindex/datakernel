@@ -60,8 +60,8 @@ import static java.lang.ClassLoader.getSystemClassLoader;
  * Maintains the cache of BufferSerializer's.
  */
 @SuppressWarnings({"rawtypes", "unchecked", "WeakerAccess"})
-public final class DatagraphSerialization implements Initializable<DatagraphSerialization> {
-	static final Logger logger = LoggerFactory.getLogger(DatagraphSerialization.class);
+public final class DataflowSerialization implements Initializable<DataflowSerialization> {
+	static final Logger logger = LoggerFactory.getLogger(DataflowSerialization.class);
 
 	static final class CodecProvider<T> {
 		private StructuredCodec<T> ref;
@@ -114,7 +114,7 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 				try {
 					return new InetSocketAddress(InetAddress.getByName(split[0]), Integer.parseInt(split[1]));
 				} catch (UnknownHostException e) {
-					throw new ParseException(DatagraphSerialization.class, "Failed to create InetSocketAdress", e);
+					throw new ParseException(DataflowSerialization.class, "Failed to create InetSocketAdress", e);
 				}
 			},
 			(out, addr) -> out.writeString(addr.getAddress().getHostAddress() + ':' + addr.getPort())
@@ -383,19 +383,19 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 	private final Map<Class<?>, StructuredCodec<?>> userDefinedTypes = new HashMap<>();
 	private final Map<Class<?>, BinarySerializer<?>> serializers = new HashMap<>();
 
-	private DatagraphSerialization() {
+	private DataflowSerialization() {
 	}
 
-	public static DatagraphSerialization create() {
-		return new DatagraphSerialization();
+	public static DataflowSerialization create() {
+		return new DataflowSerialization();
 	}
 
-	public <T> DatagraphSerialization withCodec(Class<T> type, StructuredCodec<T> codec) {
+	public <T> DataflowSerialization withCodec(Class<T> type, StructuredCodec<T> codec) {
 		this.userDefinedTypes.put(type, codec);
 		return this;
 	}
 
-	public <T> DatagraphSerialization withBufferSerializer(Class<T> type, BinarySerializer<T> serializer) {
+	public <T> DataflowSerialization withBufferSerializer(Class<T> type, BinarySerializer<T> serializer) {
 		this.serializers.put(type, serializer);
 		return this;
 	}
@@ -413,7 +413,7 @@ public final class DatagraphSerialization implements Initializable<DatagraphSeri
 	}
 
 	@SuppressWarnings("unchecked")
-	public synchronized <T> BinarySerializer<T> getSerializer(Class<T> type) {
+	public synchronized <T> BinarySerializer<T> getBinarySerializer(Class<T> type) {
 		BinarySerializer<T> serializer = (BinarySerializer<T>) serializers.get(type);
 		if (serializer == null) {
 			logger.info("Creating serializer for {}", type);

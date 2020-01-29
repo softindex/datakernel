@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.server;
 
 import io.datakernel.dataflow.dataset.Dataset;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeUpload;
@@ -29,22 +29,22 @@ import java.util.List;
 public final class Collector<T> {
 	private final Dataset<T> input;
 	private final Class<T> type;
-	private final DatagraphClient client;
+	private final DataflowClient client;
 
-	public Collector(Dataset<T> input, Class<T> type, DatagraphClient client) {
+	public Collector(Dataset<T> input, Class<T> type, DataflowClient client) {
 		this.input = input;
 		this.type = type;
 		this.client = client;
 	}
 
-	public StreamSupplier<T> compile(DataGraph dataGraph) {
-		List<StreamId> inputStreamIds = input.channels(dataGraph);
+	public StreamSupplier<T> compile(DataflowGraph graph) {
+		List<StreamId> inputStreamIds = input.channels(graph);
 		List<StreamSupplier<T>> suppliers = new ArrayList<>();
 
 		for (StreamId streamId : inputStreamIds) {
 			NodeUpload<T> nodeUpload = new NodeUpload<>(type, streamId);
-			Partition partition = dataGraph.getPartition(streamId);
-			dataGraph.addNode(partition, nodeUpload);
+			Partition partition = graph.getPartition(streamId);
+			graph.addNode(partition, nodeUpload);
 			StreamSupplier<T> supplier = StreamSupplier.ofPromise(client.download(partition.getAddress(), streamId, type));
 			suppliers.add(supplier);
 		}

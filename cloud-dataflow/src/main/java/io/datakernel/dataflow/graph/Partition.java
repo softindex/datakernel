@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.graph;
 
 import io.datakernel.dataflow.node.Node;
-import io.datakernel.dataflow.server.DatagraphClient;
+import io.datakernel.dataflow.server.DataflowClient;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;
@@ -26,7 +26,7 @@ import java.util.Collection;
  * Defines a remote partition, which is represented by a datagraph client and a server address.
  */
 public final class Partition {
-	private final DatagraphClient client;
+	private final DataflowClient client;
 	private final InetSocketAddress address;
 
 	/**
@@ -35,7 +35,7 @@ public final class Partition {
 	 * @param client  datagraph client
 	 * @param address server address
 	 */
-	public Partition(DatagraphClient client, InetSocketAddress address) {
+	public Partition(DataflowClient client, InetSocketAddress address) {
 		this.client = client;
 		this.address = address;
 	}

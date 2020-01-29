@@ -16,7 +16,7 @@
 
 package io.datakernel.dataflow.graph;
 
-import io.datakernel.dataflow.server.DatagraphEnvironment;
+import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
@@ -32,19 +32,19 @@ import static io.datakernel.common.Preconditions.checkState;
  * Provides functionality to alter context and wire components.
  */
 public final class TaskContext {
-	private final DatagraphEnvironment environment;
+	private final DataflowEnvironment environment;
 
 	private final Eventloop eventloop;
 
 	private final Map<StreamId, StreamSupplier<?>> suppliers = new LinkedHashMap<>();
 	private final Map<StreamId, StreamConsumer<?>> consumers = new LinkedHashMap<>();
 
-	public TaskContext(Eventloop eventloop, DatagraphEnvironment environment) {
+	public TaskContext(Eventloop eventloop, DataflowEnvironment environment) {
 		this.environment = environment;
 		this.eventloop = eventloop;
 	}
 
-	public DatagraphEnvironment environment() {
+	public DataflowEnvironment environment() {
 		return environment;
 	}
 

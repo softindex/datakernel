@@ -16,7 +16,7 @@
 
 package io.datakernel.dataflow.dataset;
 
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.StreamId;
 
 import java.util.List;
@@ -44,5 +44,5 @@ public abstract class Dataset<T> {
 		return valueType;
 	}
 
-	public abstract List<StreamId> channels(DataGraph graph);
+	public abstract List<StreamId> channels(DataflowGraph graph);
 }

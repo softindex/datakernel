@@ -19,13 +19,13 @@ package io.datakernel.dataflow.stream;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.helper.StreamMergeSorterStorageStub;
-import io.datakernel.dataflow.server.DatagraphClient;
-import io.datakernel.dataflow.server.DatagraphEnvironment;
-import io.datakernel.dataflow.server.DatagraphSerialization;
-import io.datakernel.dataflow.server.DatagraphServer;
+import io.datakernel.dataflow.server.DataflowClient;
+import io.datakernel.dataflow.server.DataflowEnvironment;
+import io.datakernel.dataflow.server.DataflowSerialization;
+import io.datakernel.dataflow.server.DataflowServer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.processor.StreamJoin.InnerJoiner;
@@ -201,7 +201,7 @@ public class PageRankTest {
 	@Ignore("TODO") // TODO(vmykhalko)
 	@Test
 	public void test2() throws Exception {
-		DatagraphSerialization serialization = DatagraphSerialization.create();
+		DataflowSerialization serialization = DataflowSerialization.create();
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
 
@@ -209,28 +209,28 @@ public class PageRankTest {
 		StreamConsumerToList<Rank> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
 
-		DatagraphClient client = new DatagraphClient(serialization);
-		DatagraphEnvironment environment = DatagraphEnvironment.create()
-				.setInstance(DatagraphSerialization.class, serialization)
-				.setInstance(DatagraphClient.class, client)
+		DataflowClient client = new DataflowClient(serialization);
+		DataflowEnvironment environment = DataflowEnvironment.create()
+				.setInstance(DataflowSerialization.class, serialization)
+				.setInstance(DataflowClient.class, client)
 				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(eventloop));
-		DatagraphEnvironment environment1 = environment.extend()
+		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new Page(1, new long[]{1, 2, 3}),
 						new Page(3, new long[]{1})))
 				.with("result", result1);
-		DatagraphEnvironment environment2 = environment.extend()
+		DataflowEnvironment environment2 = environment.extend()
 				.with("items", asList(
 						new Page(2, new long[]{1})))
 				.with("result", result2);
 
-		DatagraphServer server1 = new DatagraphServer(eventloop, environment1).withListenAddress(address1);
-		DatagraphServer server2 = new DatagraphServer(eventloop, environment2).withListenAddress(address2);
+		DataflowServer server1 = new DataflowServer(eventloop, environment1).withListenAddress(address1);
+		DataflowServer server2 = new DataflowServer(eventloop, environment2).withListenAddress(address2);
 
 		Partition partition1 = new Partition(client, address1);
 		Partition partition2 = new Partition(client, address2);
 
-		DataGraph graph = new DataGraph(serialization,
+		DataflowGraph graph = new DataflowGraph(serialization,
 				asList(partition1, partition2));
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",

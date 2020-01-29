@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
@@ -48,8 +49,8 @@ import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
  * Server for processing JSON commands.
  */
 @SuppressWarnings("rawtypes")
-public final class DatagraphServer extends AbstractServer<DatagraphServer> {
-	private final DatagraphEnvironment environment;
+public final class DataflowServer extends AbstractServer<DataflowServer> {
+	private final DataflowEnvironment environment;
 	private final Map<StreamId, ChannelQueue<ByteBuf>> pendingStreams = new HashMap<>();
 	private final ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
@@ -60,7 +61,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	protected interface CommandHandler<I, O> {
-		void onCommand(MessagingWithBinaryStreaming<I, O> messaging, I command);
+		void onCommand(Messaging<I, O> messaging, I command);
 	}
 
 	/**
@@ -69,17 +70,17 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	 * @param eventloop   event loop which runs the server
 	 * @param environment datagraph environment to use
 	 */
-	public DatagraphServer(Eventloop eventloop, DatagraphEnvironment environment) {
+	public DataflowServer(Eventloop eventloop, DataflowEnvironment environment) {
 		super(eventloop);
-		this.environment = DatagraphEnvironment.extend(environment)
-				.with(DatagraphServer.class, this);
-		DatagraphSerialization serialization = environment.getInstance(DatagraphSerialization.class);
+		this.environment = DataflowEnvironment.extend(environment)
+				.with(DataflowServer.class, this);
+		DataflowSerialization serialization = environment.getInstance(DataflowSerialization.class);
 		this.codec = nullTerminatedJson(serialization.getCommandCodec(), serialization.getResponseCodec());
 	}
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
-		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
+		public void onCommand(Messaging<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.getStreamId();
 			ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
@@ -103,9 +104,9 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
-		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
+		public void onCommand(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
 			messaging.close();
-			TaskContext taskContext = new TaskContext(eventloop, DatagraphEnvironment.extend(environment));
+			TaskContext taskContext = new TaskContext(eventloop, DataflowEnvironment.extend(environment));
 			for (Node node : command.getNodes()) {
 				node.createAndBind(taskContext);
 			}
@@ -114,7 +115,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	public <T> StreamConsumer<T> upload(StreamId streamId, Class<T> type) {
-		BinarySerializer<T> serializer = environment.getInstance(DatagraphSerialization.class).getSerializer(type);
+		BinarySerializer<T> serializer = environment.getInstance(DataflowSerialization.class).getBinarySerializer(type);
 
 		ChannelSerializer<T> streamSerializer = ChannelSerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))
@@ -135,7 +136,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
-		MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, codec);
+		Messaging<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 		messaging.receive()
 				.whenResult(msg -> {
 					if (msg != null) {
@@ -152,7 +153,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	@SuppressWarnings("unchecked")
-	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
+	private void doRead(Messaging<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {
 			messaging.close();

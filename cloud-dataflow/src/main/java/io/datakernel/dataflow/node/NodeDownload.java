@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.dataflow.server.DatagraphClient;
+import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.datastream.StreamSupplier;
 
 import java.net.InetSocketAddress;
@@ -58,7 +58,7 @@ public final class NodeDownload<T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		DatagraphClient client = taskContext.environment().getInstance(DatagraphClient.class);
+		DataflowClient client = taskContext.environment().getInstance(DataflowClient.class);
 		StreamSupplier<T> stream = StreamSupplier.ofPromise(client.download(address, streamId, type));
 		taskContext.export(output, stream);
 	}

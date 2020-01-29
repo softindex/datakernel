@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.dataflow.server.DatagraphServer;
+import io.datakernel.dataflow.server.DataflowServer;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -47,7 +47,7 @@ public final class NodeUpload<T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		DatagraphServer server = taskContext.environment().getInstance(DatagraphServer.class);
+		DataflowServer server = taskContext.environment().getInstance(DataflowServer.class);
 		taskContext.bindChannel(streamId, server.upload(streamId, type));
 	}
 

@@ -18,7 +18,7 @@ package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
 import org.jetbrains.annotations.Nullable;
@@ -43,7 +43,7 @@ public final class DatasetRepartitionAndSort<K, T> extends SortedDataset<K, T> {
 	}
 
 	@Override
-	public List<StreamId> channels(DataGraph graph) {
+	public List<StreamId> channels(DataflowGraph graph) {
 		return repartitionAndSort(graph, input,
 				partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
 	}

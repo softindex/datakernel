@@ -24,12 +24,12 @@ import java.util.Map;
 /**
  * Environment for datagraph, which holds the instances of classes, required to perform certain datagraph operations.
  */
-public final class DatagraphEnvironment {
+public final class DataflowEnvironment {
 	@Nullable
-	private final DatagraphEnvironment parent;
+	private final DataflowEnvironment parent;
 	private final Map<?, ?> instances = new HashMap<>();
 
-	private DatagraphEnvironment(@Nullable DatagraphEnvironment parent) {
+	private DataflowEnvironment(@Nullable DataflowEnvironment parent) {
 		this.parent = parent;
 	}
 
@@ -38,8 +38,8 @@ public final class DatagraphEnvironment {
 	 *
 	 * @return new datagraph environment
 	 */
-	public static DatagraphEnvironment create() {
-		return new DatagraphEnvironment(null);
+	public static DataflowEnvironment create() {
+		return new DataflowEnvironment(null);
 	}
 
 	/**
@@ -48,11 +48,11 @@ public final class DatagraphEnvironment {
 	 * @param parent parent environment to extend
 	 * @return new datagraph environment with the specified parent environment
 	 */
-	public static DatagraphEnvironment extend(DatagraphEnvironment parent) {
-		return new DatagraphEnvironment(parent);
+	public static DataflowEnvironment extend(DataflowEnvironment parent) {
+		return new DataflowEnvironment(parent);
 	}
 
-	public DatagraphEnvironment extend() {
+	public DataflowEnvironment extend() {
 		return extend(this);
 	}
 
@@ -64,7 +64,7 @@ public final class DatagraphEnvironment {
 	 * @return this environment
 	 */
 	@SuppressWarnings("unchecked")
-	public DatagraphEnvironment with(Object key, Object value) {
+	public DataflowEnvironment with(Object key, Object value) {
 		((Map<Object, Object>) instances).put(key, value);
 		return this;
 	}
@@ -78,7 +78,7 @@ public final class DatagraphEnvironment {
 	 * @return this environment
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> DatagraphEnvironment setInstance(Class<T> type, T value) {
+	public <T> DataflowEnvironment setInstance(Class<T> type, T value) {
 		((Map<Class<T>, T>) instances).put(type, value);
 		return this;
 	}

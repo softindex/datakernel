@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.Dataset;
-import io.datakernel.dataflow.graph.DataGraph;
+import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeMap;
 
@@ -36,7 +36,7 @@ public final class DatasetMap<I, O> extends Dataset<O> {
 	}
 
 	@Override
-	public List<StreamId> channels(DataGraph graph) {
+	public List<StreamId> channels(DataflowGraph graph) {
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<StreamId> streamIds = input.channels(graph);
 		for (StreamId streamId : streamIds) {

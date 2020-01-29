@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.server;
 
 import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.Node;
@@ -40,9 +41,9 @@ import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
  * Client for datagraph server.
  * Sends JSON commands for performing certain actions on server.
  */
-public final class DatagraphClient {
+public final class DataflowClient {
 
-	private final DatagraphSerialization serialization;
+	private final DataflowSerialization serialization;
 	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
 
 	private final SocketSettings socketSettings = SocketSettings.createDefault();
@@ -52,7 +53,7 @@ public final class DatagraphClient {
 	 *
 	 * @param serialization DatagraphSerialization object used for serialization
 	 */
-	public DatagraphClient(DatagraphSerialization serialization) {
+	public DataflowClient(DataflowSerialization serialization) {
 		this.serialization = serialization;
 		this.codec = nullTerminatedJson(serialization.getResponseCodec(), serialization.getCommandCodec());
 	}
@@ -60,12 +61,12 @@ public final class DatagraphClient {
 	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
 		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.then(socket -> {
-					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
+					Messaging<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 					DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
 					return messaging.send(commandDownload)
 							.map($ -> messaging.receiveBinaryStream()
-									.transformWith(ChannelDeserializer.create(serialization.getSerializer(type)))
+									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type)))
 									.withEndOfStream(eos -> eos
 											.whenComplete(messaging::close))
 									.withLateBinding());
@@ -75,7 +76,7 @@ public final class DatagraphClient {
 	public Promise<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
 		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.then(socket -> {
-					MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
+					Messaging<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 
 					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 					return messaging.send(commandExecute)

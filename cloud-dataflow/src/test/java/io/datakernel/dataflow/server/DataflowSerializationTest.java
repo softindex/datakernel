@@ -36,7 +36,7 @@ import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 
-public class DatagraphSerializationTest {
+public class DataflowSerializationTest {
 
 	public static class TestComparator implements Comparator<Integer> {
 		@Override
@@ -76,7 +76,7 @@ public class DatagraphSerializationTest {
 
 	@Test
 	public void test2() throws UnknownHostException, ParseException {
-		DatagraphSerialization serialization = DatagraphSerialization.create()
+		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestReducer.class, ofObject(TestReducer::new))
 				.withCodec(TestFunction.class, ofObject(TestFunction::new))
