@@ -1,4 +1,4 @@
-import {useEffect, useState, useRef} from 'react';
+import {useEffect, useState, useRef, useMemo} from 'react';
 
 export function useService(service) {
   const prevService = useRef(service);
@@ -20,14 +20,23 @@ export function useService(service) {
   return state;
 }
 
-export function initService(service, errorHandler) {
+export function initService(service, errorHandler, needInitialize = true) {
+  const state = useMemo(() => {
+    return {initialized: false}
+  }, []);
+
   useEffect(() => {
-    if (typeof service.init === 'function') {
+    if (needInitialize && typeof service.init === 'function') {
+      state.initialized = true;
       service.init().catch(errorHandler);
     }
 
     if (typeof service.stop === 'function') {
-      return () => service.stop();
+      return () => {
+        if (state.initialized) {
+          service.stop();
+        }
+      };
     }
-  }, [service]);
+  }, [service, needInitialize]);
 }
