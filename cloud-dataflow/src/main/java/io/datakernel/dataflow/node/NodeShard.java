@@ -100,4 +100,11 @@ public final class NodeShard<K, T> implements Node {
 			taskContext.export(streamId, supplier);
 		}
 	}
+
+	@Override
+	public String toString() {
+		return "NodeShard{keyFunction=" + keyFunction.getClass().getSimpleName() +
+				", input=" + input +
+				", outputs=" + outputs + '}';
+	}
 }

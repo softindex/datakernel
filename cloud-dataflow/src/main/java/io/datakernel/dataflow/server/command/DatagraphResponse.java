@@ -16,5 +16,17 @@
 
 package io.datakernel.dataflow.server.command;
 
-public abstract class DatagraphResponse {
+import org.jetbrains.annotations.Nullable;
+
+public class DatagraphResponse {
+	private final String error;
+
+	public DatagraphResponse(@Nullable String error) {
+		this.error = error;
+	}
+
+	@Nullable
+	public String getError() {
+		return error;
+	}
 }

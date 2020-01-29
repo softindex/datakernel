@@ -25,7 +25,10 @@ import io.datakernel.common.Initializable;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.*;
-import io.datakernel.dataflow.server.command.*;
+import io.datakernel.dataflow.server.command.DatagraphCommand;
+import io.datakernel.dataflow.server.command.DatagraphCommandDownload;
+import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
+import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.processor.StreamJoin.Joiner;
 import io.datakernel.datastream.processor.StreamReducers.MergeDistinctReducer;
 import io.datakernel.datastream.processor.StreamReducers.MergeSortReducer;
@@ -370,15 +373,9 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 							"nodes", DatagraphCommandExecute::getNodes, ofList(node.get()))));
 
 	final CodecProvider<DatagraphResponse> response = providerOf(() -> createCodec(DatagraphResponse.class)
-			.with(DatagraphResponseAck.class, "Ack",
-					object(DatagraphResponseAck::new))
-
-			.with(DatagraphResponseDisconnect.class, "Disconnect",
-					object(DatagraphResponseDisconnect::new))
-
-			.with(DatagraphResponseExecute.class, "Execute",
-					object(DatagraphResponseExecute::new,
-							"nodeIds", DatagraphResponseExecute::getNodeIds, ofList(INT_CODEC))));
+			.with(DatagraphResponse.class, "Response",
+					object(DatagraphResponse::new,
+							"error", DatagraphResponse::getError, STRING_CODEC.nullable())));
 
 	private final Map<Class<?>, StructuredCodec<?>> userDefinedTypes = new HashMap<>();
 	private final Map<Class<?>, BinarySerializer<?>> serializers = new HashMap<>();

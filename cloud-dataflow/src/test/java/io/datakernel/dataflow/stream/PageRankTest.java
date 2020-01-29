@@ -255,10 +255,7 @@ public class PageRankTest {
 		DataflowServer server1 = new DataflowServer(eventloop, environment1).withListenAddress(address1);
 		DataflowServer server2 = new DataflowServer(eventloop, environment2).withListenAddress(address2);
 
-		Partition partition1 = new Partition(client, address1);
-		Partition partition2 = new Partition(client, address2);
-
-		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
 				Page.class, Long.class, new PageKeyFunction(), new LongComparator()));

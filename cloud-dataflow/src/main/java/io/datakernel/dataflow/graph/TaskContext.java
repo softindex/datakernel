@@ -19,13 +19,13 @@ package io.datakernel.dataflow.graph;
 import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.common.Preconditions.checkNotNull;
-import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.*;
 
 /**
  * Represents a context of a datagraph system: environment, suppliers and consumers.
@@ -33,23 +33,16 @@ import static io.datakernel.common.Preconditions.checkState;
  */
 public final class TaskContext {
 	private final DataflowEnvironment environment;
-
-	private final Eventloop eventloop;
-
 	private final Map<StreamId, StreamSupplier<?>> suppliers = new LinkedHashMap<>();
 	private final Map<StreamId, StreamConsumer<?>> consumers = new LinkedHashMap<>();
+	private boolean executed;
 
-	public TaskContext(Eventloop eventloop, DataflowEnvironment environment) {
+	public TaskContext(DataflowEnvironment environment) {
 		this.environment = environment;
-		this.eventloop = eventloop;
 	}
 
 	public DataflowEnvironment environment() {
 		return environment;
-	}
-
-	public Eventloop getEventloop() {
-		return eventloop;
 	}
 
 	public <T> void bindChannel(StreamId streamId, StreamConsumer<T> consumer) {
@@ -63,13 +56,26 @@ public final class TaskContext {
 	}
 
 	@SuppressWarnings("unchecked")
-	public void wireAll() {
-		for (StreamId streamId : suppliers.keySet()) {
-			StreamSupplier<Object> supplier = (StreamSupplier<Object>) suppliers.get(streamId);
-			StreamConsumer<Object> consumer = (StreamConsumer<Object>) consumers.get(streamId);
-			checkNotNull(supplier, "Supplier not found for %s , consumer %s", streamId, consumer);
-			checkNotNull(consumer, "Consumer not found for %s , supplier %s", streamId, supplier);
-			supplier.streamTo(consumer);
-		}
+	public Promise<Void> execute() {
+		return Promises.all(suppliers.keySet().stream().map(streamId -> {
+			try {
+				StreamSupplier<Object> supplier = (StreamSupplier<Object>) suppliers.get(streamId);
+				StreamConsumer<Object> consumer = (StreamConsumer<Object>) consumers.get(streamId);
+				checkNotNull(supplier, "Supplier not found for %s , consumer %s", streamId, consumer);
+				checkNotNull(consumer, "Consumer not found for %s , supplier %s", streamId, supplier);
+				return supplier.streamTo(consumer);
+			} catch (Exception e) {
+				return Promise.ofException(e);
+			}
+		})).whenComplete(() -> executed = true);
+	}
+
+	public void cancel() {
+		suppliers.values().forEach(StreamSupplier::cancel);
+		consumers.values().forEach(StreamConsumer::cancel);
+	}
+
+	public boolean isExecuted() {
+		return executed;
 	}
 }

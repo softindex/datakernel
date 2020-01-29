@@ -72,6 +72,6 @@ public final class NodeMap<I, O> implements Node {
 
 	@Override
 	public String toString() {
-		return "NodeMap{mapper=" + function + ", input=" + input + ", output=" + output + '}';
+		return "NodeMap{mapper=" + function.getClass().getSimpleName() + ", input=" + input + ", output=" + output + '}';
 	}
 }

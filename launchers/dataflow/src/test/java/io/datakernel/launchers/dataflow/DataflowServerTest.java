@@ -2,6 +2,7 @@ package io.datakernel.launchers.dataflow;
 
 import io.datakernel.config.Config;
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.server.Collector;
@@ -36,7 +37,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 @Ignore("manual")
-public class DataflowMapReduceTest {
+public class DataflowServerTest {
 
 	public static class StringCount {
 		@Serialize(order = 0)
@@ -108,6 +109,13 @@ public class DataflowMapReduceTest {
 		}
 	}
 
+	public static class StringFunction implements Function<String, String> {
+		@Override
+		public String apply(String string) {
+			return string;
+		}
+	}
+
 	public static class DatagraphSerializationModule extends AbstractModule {
 		@Provides
 		private DataflowSerialization serialization() {
@@ -115,9 +123,13 @@ public class DataflowMapReduceTest {
 					.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 					.withCodec(TestMapFunction.class, ofObject(TestMapFunction::new))
 					.withCodec(TestComparator.class, ofObject(TestComparator::new))
-					.withCodec(TestReducer.class, ofObject(TestReducer::new));
+					.withCodec(TestReducer.class, ofObject(TestReducer::new))
+					.withCodec(StringFunction.class, ofObject(StringFunction::new));
 		}
 	}
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	private static final int PORT_1 = 9001;
 	private static final int PORT_2 = 9002;
@@ -154,17 +166,14 @@ public class DataflowMapReduceTest {
 		}.launch(new String[0]);
 	}
 
-	@ClassRule
-	public static final EventloopRule eventloopRule = new EventloopRule();
-
 	@Test
-	public void test() throws Exception {
+	public void testMapReduce() throws Exception {
 		Injector injector = Injector.of(new DatagraphSerializationModule());
 		DataflowSerialization serialization = injector.getInstance(DataflowSerialization.class);
 		DataflowClient client = new DataflowClient(serialization);
-		Partition partition1 = new Partition(client, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_1));
-		Partition partition2 = new Partition(client, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2));
-		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
+		Partition partition1 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_1));
+		Partition partition2 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(partition1, partition2));
 
 		Dataset<String> items = datasetOfList("items", String.class);
 		Dataset<StringCount> mappedItems = map(items, new TestMapFunction(), StringCount.class);
@@ -173,10 +182,29 @@ public class DataflowMapReduceTest {
 		Collector<StringCount> collector = new Collector<>(reducedItems, StringCount.class, client);
 		StreamSupplier<StringCount> resultSupplier = collector.compile(graph);
 		StreamConsumerToList<StringCount> resultConsumer = StreamConsumerToList.create();
+		resultSupplier.streamTo(resultConsumer);
 
-		graph.execute();
+		System.out.println(graph);
+		await(graph.execute());
 
-		await(resultSupplier.streamTo(resultConsumer));
 		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), resultConsumer.getList());
+	}
+
+	@Test
+	public void testRepartitionAndSort() throws Exception {
+		Injector injector = Injector.of(new DatagraphSerializationModule());
+		DataflowSerialization serialization = injector.getInstance(DataflowSerialization.class);
+		DataflowClient client = new DataflowClient(serialization);
+		Partition partition1 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_1));
+		Partition partition2 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(partition1, partition2));
+
+		Dataset<String> items = datasetOfList("items", String.class);
+		Dataset<String> sorted = repartition_Sort(localSort(items, String.class, new StringFunction(), new TestComparator()));
+		DatasetListConsumer<?> consumerNode = listConsumer(sorted, "result");
+		consumerNode.compileInto(graph);
+
+		System.out.println(graph);
+		await(graph.execute());
 	}
 }

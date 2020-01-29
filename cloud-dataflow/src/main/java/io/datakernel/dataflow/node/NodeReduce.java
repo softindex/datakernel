@@ -54,6 +54,12 @@ public final class NodeReduce<K, O, A> implements Node {
 		public Function<?, K> getKeyFunction() {
 			return keyFunction;
 		}
+
+		@Override
+		public String toString() {
+			return "Input{reducer=" + reducer.getClass().getSimpleName() +
+					", keyFunction=" + keyFunction.getClass().getSimpleName() + '}';
+		}
 	}
 
 	private final Comparator<K> keyComparator;
@@ -105,6 +111,13 @@ public final class NodeReduce<K, O, A> implements Node {
 
 	public StreamId getOutput() {
 		return output;
+	}
+
+	@Override
+	public String toString() {
+		return "NodeReduce{keyComparator=" + keyComparator.getClass().getSimpleName() +
+				", inputs=" + inputs +
+				", output=" + output + '}';
 	}
 }
 

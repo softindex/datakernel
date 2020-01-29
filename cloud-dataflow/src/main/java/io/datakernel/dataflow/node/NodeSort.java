@@ -30,7 +30,7 @@ import static java.util.Collections.singletonList;
 /**
  * Represents a node, which performs sorting of a data stream, based on key function and key comparator.
  *
- * @param <K> keyz type
+ * @param <K> keys type
  * @param <T> data items type
  */
 public final class NodeSort<K, T> implements Node {
@@ -92,5 +92,15 @@ public final class NodeSort<K, T> implements Node {
 
 	public StreamId getOutput() {
 		return output;
+	}
+
+	@Override
+	public String toString() {
+		return "NodeSort{keyFunction=" + keyFunction.getClass().getSimpleName() +
+				", keyComparator=" + keyComparator.getClass().getSimpleName() +
+				", deduplicate=" + deduplicate +
+				", itemsInMemorySize=" + itemsInMemorySize +
+				", input=" + input +
+				", output=" + output + '}';
 	}
 }

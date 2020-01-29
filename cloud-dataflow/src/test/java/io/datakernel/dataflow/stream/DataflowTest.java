@@ -39,7 +39,6 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Comparator;
-import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -50,7 +49,7 @@ import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public final class DataflowServerTest {
+public final class DataflowTest {
 
 	private static DataflowServer server1;
 	private static DataflowServer server2;
@@ -93,9 +92,7 @@ public final class DataflowServerTest {
 				.withListenAddress(address2);
 
 		DataflowClient client = new DataflowClient(serialization);
-		Partition partition1 = new Partition(client, address1);
-		Partition partition2 = new Partition(client, address2);
-		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
 
@@ -106,13 +103,10 @@ public final class DataflowServerTest {
 
 		server1.listen();
 		server2.listen();
-		graph.execute();
+		await(cleanUp(graph.execute()));
 
-		List<TestItem> list1 = await(cleanUp(result1.getResult()));
-		List<TestItem> list2 = await(result2.getResult());
-
-		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), list1);
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list2);
+		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), result1.getList());
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result2.getList());
 	}
 
 	@Test
@@ -150,10 +144,7 @@ public final class DataflowServerTest {
 		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
-		Partition partition1 = new Partition(client, address1);
-		Partition partition2 = new Partition(client, address2);
-		DataflowGraph graph = new DataflowGraph(serialization,
-				asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
 				TestItem.class, Long.class, new TestKeyFunction(), new TestComparator()));
@@ -165,13 +156,10 @@ public final class DataflowServerTest {
 
 		server1.listen();
 		server2.listen();
-		graph.execute();
+		await(cleanUp(graph.execute()));
 
-		List<TestItem> list1 = await(cleanUp(result1.getResult()));
-		List<TestItem> list2 = await(result2.getResult());
-
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), list1);
-		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), list2);
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
+		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), result2.getList());
 	}
 
 	@Test
@@ -213,9 +201,7 @@ public final class DataflowServerTest {
 		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
-		Partition partition1 = new Partition(client, address1);
-		Partition partition2 = new Partition(client, address2);
-		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 
@@ -230,13 +216,10 @@ public final class DataflowServerTest {
 
 		server1.listen();
 		server2.listen();
-		graph.execute();
+		await(cleanUp(graph.execute()));
 
-		List<TestItem> list1 = await(cleanUp(result1.getResult()));
-		List<TestItem> list2 = await(result2.getResult());
-
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), list1);
-		assertEquals(asList(new TestItem(2), new TestItem(8)), list2);
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
+		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
 	}
 
 	@Test
@@ -276,9 +259,7 @@ public final class DataflowServerTest {
 		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
 				.withListenAddress(address2);
 
-		Partition partition1 = new Partition(client, address1);
-		Partition partition2 = new Partition(client, address2);
-		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 
@@ -290,14 +271,13 @@ public final class DataflowServerTest {
 
 		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
+		resultSupplier.streamTo(resultConsumer);
 
 		System.out.println("Graph: ");
 		System.out.println(graph);
-		graph.execute();
+		await(cleanUp(graph.execute()));
 
-		await(cleanUp(resultSupplier.streamTo(resultConsumer)));
-		List<TestItem> list = await(resultConsumer.getResult());
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), list);
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), resultConsumer.getList());
 	}
 
 	public static final class TestItem {

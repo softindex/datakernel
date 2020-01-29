@@ -78,4 +78,8 @@ public final class NodeConsumerToList<T> implements Node {
 		return input;
 	}
 
+	@Override
+	public String toString() {
+		return "NodeConsumerToList{listId=" + listId + ", input=" + input + '}';
+	}
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.dataflow.server;
 
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
@@ -30,6 +31,7 @@ import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -74,14 +76,36 @@ public final class DataflowClient {
 				});
 	}
 
-	public Promise<Void> execute(InetSocketAddress address, Collection<Node> nodes) {
-		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
-				.then(socket -> {
-					Messaging<DatagraphResponse, DatagraphCommand> messaging = MessagingWithBinaryStreaming.create(socket, codec);
+	public class Session implements Cancellable {
+		private final InetSocketAddress address;
+		private final Messaging<DatagraphResponse, DatagraphCommand> messaging;
 
-					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
-					return messaging.send(commandExecute)
-							.then(messaging::sendEndOfStream);
-				});
+		private Session(InetSocketAddress address, AsyncTcpSocketNio socket) {
+			this.address = address;
+			this.messaging = MessagingWithBinaryStreaming.create(socket, codec);
+		}
+
+		public Promise<Void> execute(Collection<Node> nodes) {
+			return messaging.send(new DatagraphCommandExecute(new ArrayList<>(nodes)))
+					.then($ -> messaging.receive())
+					.then(response -> {
+						messaging.close();
+						String error = response.getError();
+						if (error != null) {
+							return Promise.ofException(new Exception("Error on remote server " + address + ": " + error));
+						}
+						return Promise.complete();
+					});
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			messaging.close(e);
+		}
+	}
+
+	public Promise<Session> connect(InetSocketAddress address) {
+		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
+				.map(socket -> new Session(address, socket));
 	}
 }

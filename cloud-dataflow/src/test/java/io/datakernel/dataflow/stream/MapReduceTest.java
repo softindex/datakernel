@@ -104,9 +104,7 @@ public class MapReduceTest {
 		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
 		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
 
-		Partition partition1 = new Partition(client, address1);
-		Partition partition2 = new Partition(client, address2);
-		DataflowGraph graph = new DataflowGraph(serialization, asList(partition1, partition2));
+		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<String> items = datasetOfList("items", String.class);
 		Dataset<StringCount> mappedItems = map(items, new TestMapFunction(), StringCount.class);

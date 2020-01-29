@@ -62,9 +62,6 @@ public final class NodeUnion<T> implements Node {
 
 	@Override
 	public String toString() {
-		return "NodeUnion{" +
-				"inputs=" + inputs +
-				", output=" + output +
-				'}';
+		return "NodeUnion{inputs=" + inputs + ", output=" + output + '}';
 	}
 }

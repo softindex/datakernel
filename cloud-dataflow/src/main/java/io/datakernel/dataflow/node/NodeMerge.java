@@ -91,4 +91,12 @@ public final class NodeMerge<K, T> implements Node {
 		return output;
 	}
 
+	@Override
+	public String toString() {
+		return "NodeMerge{keyFunction=" + keyFunction.getClass().getSimpleName() +
+				", keyComparator=" + keyComparator.getClass().getSimpleName() +
+				", deduplicate=" + deduplicate +
+				", inputs=" + inputs +
+				", output=" + output + '}';
+	}
 }

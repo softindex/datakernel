@@ -16,24 +16,28 @@
 
 package io.datakernel.dataflow.graph;
 
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.collection.Try;
 import io.datakernel.dataflow.node.Node;
+import io.datakernel.dataflow.server.DataflowClient;
+import io.datakernel.dataflow.server.DataflowClient.Session;
 import io.datakernel.dataflow.server.DataflowSerialization;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
-import static io.datakernel.codec.json.JsonUtils.indent;
-import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.codec.json.JsonUtils.*;
 import static java.util.stream.Collectors.*;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
  */
 public class DataflowGraph {
+	private final DataflowClient client;
 	private final DataflowSerialization serialization;
 	private final List<Partition> availablePartitions;
 	private final Map<Node, Partition> nodePartitions = new LinkedHashMap<>();
@@ -41,7 +45,8 @@ public class DataflowGraph {
 
 	private final StructuredCodec<List<Node>> listNodeCodecs;
 
-	public DataflowGraph(DataflowSerialization serialization, List<Partition> availablePartitions) {
+	public DataflowGraph(DataflowClient client, DataflowSerialization serialization, List<Partition> availablePartitions) {
+		this.client = client;
 		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
 		this.listNodeCodecs = indent(ofList(serialization.getNodeCodec()), "  ");
@@ -64,15 +69,54 @@ public class DataflowGraph {
 				.collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, toList())));
 	}
 
+	private static class PartitionSession implements Cancellable {
+		private final Partition partition;
+		private final Session session;
+
+		private PartitionSession(Partition partition, Session session) {
+			this.partition = partition;
+			this.session = session;
+		}
+
+		public Promise<Void> execute(List<Node> nodes) {
+			return session.execute(nodes);
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			session.close(e);
+		}
+	}
+
 	/**
 	 * Executes the defined operations on all partitions.
 	 */
-	public void execute() {
-		Map<Partition, List<Node>> map = getNodesByPartition();
-		for (Partition partition : map.keySet()) {
-			List<Node> nodes = map.get(partition);
-			partition.execute(nodes);
-		}
+	public Promise<Void> execute() {
+		Map<Partition, List<Node>> nodesByPartition = getNodesByPartition();
+
+		return connect(nodesByPartition.keySet()).then(sessions ->
+				Promises.all(sessions.stream().map(session -> {
+					List<Node> nodes = nodesByPartition.get(session.partition);
+					return session.execute(nodes);
+				})).whenException($ -> sessions.forEach(Cancellable::close))
+		);
+	}
+
+	private Promise<List<PartitionSession>> connect(Set<Partition> partitions) {
+		return Promises.toList(partitions.stream()
+				.map(partition -> client.connect(partition.getAddress()).map(session -> new PartitionSession(partition, session)).toTry()))
+				.then(tries -> {
+					List<PartitionSession> sessions = tries.stream()
+							.filter(Try::isSuccess)
+							.map(Try::get)
+							.collect(toList());
+
+					if (sessions.size() != partitions.size()) {
+						sessions.forEach(Cancellable::close);
+						return Promise.ofException(new Exception("Can't connect to all partitions"));
+					}
+					return Promise.of(sessions);
+				});
 	}
 
 	public void addNode(Partition partition, Node node) {
