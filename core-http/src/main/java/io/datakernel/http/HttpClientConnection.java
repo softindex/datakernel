@@ -285,18 +285,29 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 		request.recycle();
 		if (!isClosed()) {
-			try {
-				/*
-					as per RFC 7230, section 3.3.3,
-					if no Content-Length header is set, client should read body until a server closes the connection
-				 */
-				contentLength = UNSET_CONTENT_LENGTH;
-				readHttpMessage();
-			} catch (ParseException e) {
-				closeWithError(e);
+			/*
+				as per RFC 7230, section 3.3.3,
+				if no Content-Length header is set, client should read body until a server closes the connection
+			*/
+			contentLength = UNSET_CONTENT_LENGTH;
+			if (readQueue.isEmpty()) {
+				tryReadHttpMessage();
+			} else {
+				eventloop.post(() -> {
+					if (isClosed()) return;
+					tryReadHttpMessage();
+				});
 			}
 		}
 		return promise;
+	}
+
+	private void tryReadHttpMessage() {
+		try {
+			readHttpMessage();
+		} catch (ParseException e) {
+			closeWithError(e);
+		}
 	}
 
 	/**
