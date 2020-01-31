@@ -42,6 +42,15 @@ public final class KvSyncModule implements Module {
 		return this;
 	}
 
+	public KvSyncModule withFetch(String table) {
+		builder.bind(Key.of(EventloopTaskScheduler.class).named("KV fetch"))
+				.to((eventloop, node, config) -> EventloopTaskScheduler.create(eventloop, () -> node.fetch(table))
+								.initialize(ofEventloopTaskScheduler(config.getChild("kv.fetch"))),
+						Eventloop.class, GlobalKvNodeImpl.class, Config.class)
+				.asEager();
+		return this;
+	}
+
 	@Override
 	public Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings() {
 		return builder.getBindings();

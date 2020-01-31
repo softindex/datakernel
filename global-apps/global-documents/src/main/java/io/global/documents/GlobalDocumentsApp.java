@@ -17,6 +17,7 @@ import io.global.debug.DebugViewerModule;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.PmSyncModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.OTGeneratorsModule;
 import io.global.ot.SharedRepoModule;
@@ -60,6 +61,8 @@ public final class GlobalDocumentsApp extends Launcher {
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("pm.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("pm.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
@@ -93,8 +96,11 @@ public final class GlobalDocumentsApp extends Launcher {
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				KvSyncModule.create()
-						.withCatchUp()
+						.withFetch("global-documents/session")
+						.withPush(),
+				PmSyncModule.create()
 						.withPush()
+						.withCatchUp()
 		);
 	}
 

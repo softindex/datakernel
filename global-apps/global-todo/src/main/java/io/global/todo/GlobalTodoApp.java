@@ -88,7 +88,7 @@ public final class GlobalTodoApp extends Launcher {
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				KvSyncModule.create()
-						.withCatchUp()
+						.withFetch("global-todo/session")
 						.withPush()
 		);
 	}

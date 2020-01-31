@@ -22,6 +22,7 @@ import io.datakernel.promise.Promise;
 import io.global.common.SignedData;
 import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -38,6 +39,14 @@ public final class RuntimeKvStorageStub implements KvStorage {
 				storage.put(wrap(item.getValue().getKey()), item);
 			}
 		}));
+	}
+
+	@Override
+	public Promise<@Nullable ChannelSupplier<SignedData<RawKvItem>>> download() {
+		if (storage.values().isEmpty()) {
+			return Promise.of(null);
+		}
+		return Promise.of(ChannelSupplier.ofIterable(storage.values()));
 	}
 
 	@Override

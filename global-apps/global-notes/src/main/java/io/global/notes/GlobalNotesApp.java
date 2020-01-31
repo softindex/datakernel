@@ -90,7 +90,7 @@ public final class GlobalNotesApp extends Launcher {
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				KvSyncModule.create()
-						.withCatchUp()
+						.withFetch("global-notes/session")
 						.withPush()
 		);
 	}

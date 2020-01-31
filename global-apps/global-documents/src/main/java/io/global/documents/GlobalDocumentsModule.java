@@ -24,6 +24,7 @@ import io.global.ot.edit.EditOperation;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.SharedUserContainer;
+import io.global.ot.service.messaging.CreateSharedRepo;
 import io.global.ot.shared.SharedReposOperation;
 
 import java.time.Duration;
@@ -33,6 +34,7 @@ import static io.global.Utils.cachedContent;
 import static io.global.debug.ObjectDisplayRegistryUtils.forEditOperation;
 import static io.global.debug.ObjectDisplayRegistryUtils.forSharedRepo;
 import static io.global.ot.OTUtils.EDIT_OPERATION_CODEC;
+import static io.global.ot.OTUtils.SHARED_REPO_MESSAGE_CODEC;
 import static io.global.ot.client.RepoSynchronizer.DEFAULT_INITIAL_DELAY;
 
 public final class GlobalDocumentsModule extends AbstractModule {
@@ -46,7 +48,8 @@ public final class GlobalDocumentsModule extends AbstractModule {
 	@Provides
 	CodecFactory codecFactory() {
 		return OTUtils.createOTRegistry()
-				.with(EditOperation.class, EDIT_OPERATION_CODEC);
+				.with(EditOperation.class, EDIT_OPERATION_CODEC)
+				.with(CreateSharedRepo.class, SHARED_REPO_MESSAGE_CODEC);
 	}
 
 	@Provides

@@ -17,7 +17,6 @@ import io.global.chat.chatroom.CallInfo;
 import io.global.chat.chatroom.operation.*;
 import io.global.debug.ObjectDisplayRegistry;
 import io.global.debug.ObjectDisplayRegistryUtils;
-import io.global.kv.api.GlobalKvNode;
 import io.global.ot.DynamicOTUplinkServlet;
 import io.global.ot.OTUtils;
 import io.global.ot.TypedRepoNames;
@@ -27,20 +26,17 @@ import io.global.ot.map.SetValue;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.service.SharedUserContainer;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.Messenger;
-import io.global.pm.MessengerServlet;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.http.GlobalPmDriverServlet;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.global.Utils.cachedContent;
 import static io.global.chat.Utils.CHAT_ROOM_OPERATION_CODEC;
 import static io.global.chat.Utils.CHAT_ROOM_OT_SYSTEM;
-import static io.global.common.CryptoUtils.randomBytes;
-import static io.global.common.CryptoUtils.toHexString;
 import static io.global.debug.ObjectDisplayRegistryUtils.*;
 import static io.global.ot.client.RepoSynchronizer.DEFAULT_INITIAL_DELAY;
 import static java.lang.Boolean.FALSE;
@@ -70,7 +66,7 @@ public final class GlobalChatModule extends AbstractModule {
 			DynamicOTUplinkServlet<MapOperation<String, String>> profileServlet,
 			@Named("authorization") RoutingServlet authorizationServlet,
 			@Named("session") AsyncServletDecorator sessionDecorator,
-			Messenger<String, String> notificationsMessenger,
+			GlobalPmDriver<String> pmDriver,
 			StaticServlet staticServlet,
 			@Optional @Named("debug") AsyncServlet debugServlet
 	) {
@@ -81,7 +77,7 @@ public final class GlobalChatModule extends AbstractModule {
 						.map("/room/:suffix/*", roomServlet)
 						.map("/profile/:key/*", profileServlet)
 						.map("/myProfile/*", profileServlet)))
-				.map("/notifications/*", sessionDecorator.serve(MessengerServlet.create(notificationsMessenger)))
+				.map("/notifications/*", sessionDecorator.serve(GlobalPmDriverServlet.create(pmDriver)))
 				.map("/static/*", cachedContent().serve(staticServlet))
 				.map("/*", staticServlet)
 				.merge(authorizationServlet);
@@ -89,11 +85,6 @@ public final class GlobalChatModule extends AbstractModule {
 			routingServlet.map("/debug/*", debugServlet);
 		}
 		return routingServlet;
-	}
-
-	@Provides
-	Messenger<String, String> notificationsMessenger(GlobalKvNode node) {
-		return Messenger.create(node, STRING_CODEC, STRING_CODEC, () -> toHexString(randomBytes(8)));
 	}
 
 	@Provides

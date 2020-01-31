@@ -76,6 +76,7 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 								.appendPathPart(DOWNLOAD)
 								.appendPathPart(space.asString())
 								.appendPathPart(table)
+								.appendQuery("timestamp", timestamp)
 								.build()))
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))

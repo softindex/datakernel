@@ -173,7 +173,7 @@ public final class GlobalCdnApp extends Launcher {
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				KvSyncModule.create()
 						.withPush()
-						.withCatchUp(),
+						.withFetch("global-cdn/session"),
 				FsSyncModule.create()
 						.withPush()
 						.withFetch(DEFAULT_CDN_FS_DIR + "/**")

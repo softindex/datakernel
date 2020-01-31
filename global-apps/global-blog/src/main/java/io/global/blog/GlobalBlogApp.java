@@ -103,7 +103,7 @@ public final class GlobalBlogApp extends Launcher {
 				new MustacheModule(),
 				new KvSessionModule(),
 				KvSyncModule.create()
-						.withCatchUp()
+						.withFetch("global-blog/session")
 						.withPush(),
 				FsSyncModule.create()
 						.withPush()

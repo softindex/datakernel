@@ -153,6 +153,15 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 				.then($ -> forEachRepo(Repo::fetch));
 	}
 
+	public Promise<Void> fetch(String table) {
+		return Promises.all(namespaces.keySet().stream()
+				.map(space -> fetch(space, table)));
+	}
+
+	public Promise<Void> fetch(PubKey space, String table) {
+		return ensureNamespace(space).ensureRepository(table).then(Repo::fetch);
+	}
+
 	public Promise<Void> push() {
 		return forEachRepo(Repo::push);
 	}

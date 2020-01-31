@@ -101,7 +101,7 @@ public class GlobalPhotosApp extends Launcher {
 				new KvSessionModule(),
 				KvSyncModule.create()
 						.withPush()
-						.withCatchUp(),
+						.withFetch("global-photos/session"),
 				FsSyncModule.create()
 						.withPush()
 						.withFetch(DEFAULT_PHOTOS_FS_DIR + "/**")

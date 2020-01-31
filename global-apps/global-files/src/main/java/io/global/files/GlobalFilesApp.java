@@ -163,7 +163,7 @@ public final class GlobalFilesApp extends Launcher {
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				KvSyncModule.create()
 						.withPush()
-						.withCatchUp(),
+						.withFetch("global-files/session"),
 				FsSyncModule.create()
 						.withPush()
 						.withCatchUp()

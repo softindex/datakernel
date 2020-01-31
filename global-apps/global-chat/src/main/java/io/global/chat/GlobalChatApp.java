@@ -18,6 +18,7 @@ import io.global.debug.DebugViewerModule;
 import io.global.kv.api.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.PmSyncModule;
 import io.global.ot.OTAppCommonModule;
 import io.global.ot.OTGeneratorsModule;
 import io.global.ot.SharedRepoModule;
@@ -29,16 +30,22 @@ import io.global.ot.service.SharedUserContainer;
 import io.global.ot.session.AuthModule;
 import io.global.ot.session.UserId;
 import io.global.ot.shared.SharedReposOperation;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
 import io.global.session.KvSessionModule;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ThreadLocalRandom;
 
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.override;
 import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
+import static io.global.chat.Utils.JS_MAX_SAFE_INTEGER;
+import static io.global.chat.Utils.JS_MIN_SAFE_INTEGER;
 import static io.global.debug.DebugViewerModule.DebugView.KV;
 import static java.util.Arrays.asList;
 
@@ -60,6 +67,8 @@ public final class GlobalChatApp extends Launcher {
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("kv.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.with("kv.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("pm.push.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
+				.with("pm.catchUp.schedule", DEFAULT_SYNC_SCHEDULE_CONFIG)
 				.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
@@ -72,6 +81,12 @@ public final class GlobalChatApp extends Launcher {
 				.withGlobalRepoName(Key.of(ContactsOperation.class), "contacts")
 				.withRepoPrefix(Key.of(ChatRoomOperation.class), "room")
 				.withRepoName(new Key<KvClient<String, UserId>>() {}, "session");
+	}
+
+	@Provides
+	GlobalPmDriver<String> notificationsPmDriver(GlobalPmNode node) {
+		return GlobalPmDriver.create(node, STRING_CODEC)
+				.withIdGenerator(() -> ThreadLocalRandom.current().nextLong(JS_MIN_SAFE_INTEGER, JS_MAX_SAFE_INTEGER));
 	}
 
 	@Override
@@ -93,8 +108,11 @@ public final class GlobalChatApp extends Launcher {
 				override(new GlobalNodesModule(),
 						new LocalNodeCommonModule(DEFAULT_SERVER_ID)),
 				KvSyncModule.create()
-						.withCatchUp()
+						.withFetch("global-chat/session")
+						.withPush(),
+				PmSyncModule.create()
 						.withPush()
+						.withCatchUp()
 		);
 	}
 

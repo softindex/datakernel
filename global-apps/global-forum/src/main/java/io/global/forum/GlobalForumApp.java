@@ -105,7 +105,7 @@ public final class GlobalForumApp extends Launcher {
 				new KvSessionModule(),
 				KvSyncModule.create()
 						.withPush()
-						.withCatchUp(),
+						.withFetch("global-forum/session"),
 				FsSyncModule.create()
 						.withPush()
 						.withFetch(DEFAULT_FORUM_FS_DIR + "/**")

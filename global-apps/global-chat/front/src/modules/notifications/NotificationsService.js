@@ -69,8 +69,7 @@ class NotificationsService {
           ...data,
           order: this._order++
         }))
-      })
-        .then(res => res.json());
+      });
     }, RETRY_TIMEOUT);
   }
 
@@ -181,9 +180,8 @@ class NotificationsService {
   _delete(id, mailbox) {
     this._deleteRetry[mailbox] = this._deleteRetry[mailbox] || {};
     this._deleteRetry[mailbox][id] = retry(async () => {
-      await fetch(`${this._url}/drop/${encodeURIComponent(mailbox)}`, {
-        method: 'DELETE',
-        body: `"${id}"`
+      await fetch(`${this._url}/drop/${encodeURIComponent(mailbox)}/${id}`, {
+        method: 'DELETE'
       });
     }, RETRY_TIMEOUT).then(() => {
       delete this._deleteRetry[mailbox][id];

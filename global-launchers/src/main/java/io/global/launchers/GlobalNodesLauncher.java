@@ -31,6 +31,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.OTSyncModule;
+import io.global.launchers.sync.PmSyncModule;
 
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
@@ -75,7 +76,10 @@ public class GlobalNodesLauncher extends Launcher {
 				OTSyncModule.create(),
 				FsSyncModule.create()
 						.withPush()
+						.withCatchUp(),
+				PmSyncModule.create()
 						.withCatchUp()
+						.withPush()
 		);
 	}
 

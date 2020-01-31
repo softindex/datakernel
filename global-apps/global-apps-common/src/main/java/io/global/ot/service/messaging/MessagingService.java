@@ -18,8 +18,8 @@ import io.global.ot.shared.CreateOrDropRepo;
 import io.global.ot.shared.SharedRepo;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.Message;
-import io.global.pm.Messenger;
+import io.global.pm.api.Message;
+import io.global.pm.api.PmClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,7 +39,7 @@ public final class MessagingService implements EventloopService {
 	@Inject
 	private Eventloop eventloop;
 	@Inject
-	private Messenger<Long, CreateSharedRepo> messenger;
+	private PmClient<CreateSharedRepo> pmClient;
 	@Inject
 	private KeyPair keys;
 	@Inject
@@ -53,7 +53,7 @@ public final class MessagingService implements EventloopService {
 	@Inject
 	OTStateManager<CommitId, SharedReposOperation> stateManager;
 
-	private final SettablePromise<Message<Long, CreateSharedRepo>> stopPromise = new SettablePromise<>();
+	private final SettablePromise<Message<CreateSharedRepo>> stopPromise = new SettablePromise<>();
 
 	@NotNull
 	@Override
@@ -77,12 +77,12 @@ public final class MessagingService implements EventloopService {
 
 	public Promise<Void> sendCreateMessage(PubKey receiver, String id, String name, Set<PubKey> participants) {
 		CreateSharedRepo payload = new CreateSharedRepo(new SharedRepo(id, name, participants));
-		return messenger.send(keys, receiver, mailBox, payload).toVoid();
+		return pmClient.send(receiver, mailBox, payload);
 	}
 
 	private void pollMessages() {
 		SharedReposOTState state = (SharedReposOTState) stateManager.getState();
-		AsyncSupplier<@Nullable Message<Long, CreateSharedRepo>> messagesSupplier = AsyncSupplier.cast(() -> messenger.poll(keys, mailBox))
+		AsyncSupplier<@Nullable Message<CreateSharedRepo>> messagesSupplier = AsyncSupplier.cast(() -> pmClient.poll(mailBox))
 				.withExecutor(retry(POLL_RETRY_POLICY));
 
 		repeat(() -> eitherComplete(stopPromise, messagesSupplier.get())
@@ -101,7 +101,7 @@ public final class MessagingService implements EventloopService {
 										return Promise.complete();
 									}
 								})
-								.then($ -> messenger.drop(keys, mailBox, message.getId()))
+								.then($ -> pmClient.drop(mailBox, message.getId()))
 								.toTry()
 								.toVoid();
 					}

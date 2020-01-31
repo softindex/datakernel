@@ -131,7 +131,7 @@ public final class GlobalVlogApp extends Launcher {
 				new MustacheModule(),
 				KvSyncModule.create()
 						.withPush()
-						.withCatchUp(),
+						.withFetch("global-vlog/session"),
 				FsSyncModule.create()
 						.withPush()
 						.withFetch(DEFAULT_VLOG_FS_DIR + "/**")

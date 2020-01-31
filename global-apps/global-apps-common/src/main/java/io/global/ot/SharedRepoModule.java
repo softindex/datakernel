@@ -14,7 +14,6 @@ import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.debug.ObjectDisplayRegistry;
 import io.global.debug.ObjectDisplayRegistryUtils.*;
-import io.global.kv.api.GlobalKvNode;
 import io.global.ot.client.MyRepositoryId;
 import io.global.ot.client.OTDriver;
 import io.global.ot.client.RepoSynchronizer;
@@ -27,13 +26,13 @@ import io.global.ot.service.messaging.MessagingService;
 import io.global.ot.shared.SharedReposOTState;
 import io.global.ot.shared.SharedReposOTSystem;
 import io.global.ot.shared.SharedReposOperation;
-import io.global.pm.Messenger;
+import io.global.pm.GlobalPmDriver;
+import io.global.pm.api.GlobalPmNode;
+import io.global.pm.api.PmClient;
 
 import java.time.Duration;
-import java.util.Random;
 import java.util.function.Function;
 
-import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.global.debug.ObjectDisplayRegistry.merge;
 import static io.global.debug.ObjectDisplayRegistryUtils.*;
@@ -75,9 +74,9 @@ public abstract class SharedRepoModule<D> extends AbstractModule {
 	}
 
 	@Provides
-	Messenger<Long, CreateSharedRepo> messenger(GlobalKvNode node) {
-		Random random = new Random();
-		return Messenger.create(node, LONG_CODEC, SHARED_REPO_MESSAGE_CODEC, random::nextLong);
+	@ContainerScope
+	PmClient<CreateSharedRepo> providePmDriver(GlobalPmNode node, KeyPair keys) {
+		return GlobalPmDriver.create(node, SHARED_REPO_MESSAGE_CODEC).adapt(keys);
 	}
 
 	@Provides
@@ -88,7 +87,7 @@ public abstract class SharedRepoModule<D> extends AbstractModule {
 
 	@Provides
 	@ContainerScope
-	ObjectDisplayNameProvider objectDisplayNameProvider(KeyPair keys, ContactsOTState contactsState){
+	ObjectDisplayNameProvider objectDisplayNameProvider(KeyPair keys, ContactsOTState contactsState) {
 		return new ObjectDisplayNameProvider() {
 			@Override
 			public String getShortName(PubKey pubKey) {

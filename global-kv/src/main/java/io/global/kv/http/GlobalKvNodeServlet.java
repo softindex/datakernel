@@ -58,7 +58,7 @@ public final class GlobalKvNodeServlet {
 						PubKey space = PubKey.fromString(parameterSpace);
 						ChannelSupplier<ByteBuf> bodyStream = request.getBodyStream();
 						return node.upload(space, table)
-								.map(consumer ->
+								.then(consumer ->
 										BinaryChannelSupplier.of(bodyStream)
 												.parseStream(KV_ITEM_PARSER)
 												.streamTo(consumer))
