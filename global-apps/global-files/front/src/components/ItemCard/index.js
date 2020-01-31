@@ -34,46 +34,45 @@ function ItemCard({classes, filePath, isDirectory, name, ...otherProps}) {
     }
   };
 
-  return (
-    <>
-      {isDirectory && (
-        <Card className={classes.root} {...otherProps}>
-          <Link
-            to={path.join('/folders', filePath, name)}
-            className={classes.foldersLink}
-          >
-            <div className={classes.folderGroup}>
-              <FolderIcon className={classes.folderIcon}/>
-              <Typography noWrap variant="subtitle2">
-                {name}
-              </Typography>
-            </div>
-          </Link>
-        </Card>
-      )}
-      {!isDirectory && (
-        <Card
-          className={classes.root}
-          {...otherProps}
+  if (isDirectory) {
+    return (
+      <Card className={classes.root} {...otherProps}>
+        <Link
+          to={path.join('/folders', filePath, name)}
+          className={classes.foldersLink}
         >
-          <CardActionArea>
-            <div className={classes.headerItem}>
-              {getIconByType()}
-            </div>
-            <CardContent>
-              <Typography
-                noWrap
-                gutterBottom
-                variant="subtitle2"
-              >
-                {name}
-              </Typography>
-            </CardContent>
-          </CardActionArea>
-        </Card>
-      )}
-    </>
-  );
+          <div className={classes.folderGroup}>
+            <FolderIcon className={classes.folderIcon}/>
+            <Typography noWrap variant="subtitle2">
+              {name}
+            </Typography>
+          </div>
+        </Link>
+      </Card>
+    )
+  }
+
+  return (
+    <Card
+      className={classes.root}
+      {...otherProps}
+    >
+      <CardActionArea>
+        <div className={classes.headerItem}>
+          {getIconByType()}
+        </div>
+        <CardContent>
+          <Typography
+            noWrap
+            gutterBottom
+            variant="subtitle2"
+          >
+            {name}
+          </Typography>
+        </CardContent>
+      </CardActionArea>
+    </Card>
+  )
 }
 
 export default withStyles(itemCardStyles)(ItemCard);

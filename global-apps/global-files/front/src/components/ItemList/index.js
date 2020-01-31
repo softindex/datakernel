@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import {withRouter} from 'react-router-dom';
+import {useRouteMatch} from 'react-router-dom';
 import {getInstance, useService} from 'global-apps-common';
 import DeleteMenu from '../DeleteMenu';
 import {withStyles} from "@material-ui/core";
-import CircularProgress from '@material-ui/core/CircularProgress';
+import CircularProgress from '../CircularProgress';
 import Typography from '@material-ui/core/Typography';
 import Divider from '@material-ui/core/Divider';
 import Breadcrumbs from '../Breadcrumbs';
@@ -68,12 +68,13 @@ function ItemListView({
   );
 }
 
-function ItemList({classes, enqueueSnackbar, match}) {
+function ItemList({classes, enqueueSnackbar}) {
   const fsService = getInstance(FSService);
   const {directories, files, path, loading} = useService(fsService);
   const [contextStyles, setContextStyles] = useState({});
   const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const match = useRouteMatch();
 
   useEffect(() => {
     fsService.fetch(getCurrentPath())
@@ -147,7 +148,5 @@ function ItemList({classes, enqueueSnackbar, match}) {
 }
 
 export default withSnackbar(
-  withStyles(itemListStyles)(
-    withRouter(ItemList)
-  )
+  withStyles(itemListStyles)(ItemList)
 );

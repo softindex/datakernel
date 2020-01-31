@@ -57,7 +57,7 @@ function Uploading({classes}) {
     classes,
     uploads: [...uploads.values()],
     files,
-    onClose: () => fsService.clearUploads()
+    onClose: () => setTimeout(() => fsService.clearUploads(), 4000)
   };
 
   return <UploadingView {...props}/>

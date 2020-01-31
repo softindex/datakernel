@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {withRouter} from 'react-router-dom';
+import {useHistory} from 'react-router-dom';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
@@ -18,28 +18,7 @@ import FileSaver from 'file-saver';
 import {connectService, AuthContext} from 'global-apps-common';
 import headerStyles from "./headerStyles";
 
-function Header({classes, history, onLogout, openDrawer, onCreateKeysFile}) {
-  const [menuAnchor, setMenuAnchor] = useState(false);
-
-  const onOpenMenu = event => {
-    setMenuAnchor(event.currentTarget);
-  };
-
-  const onCloseMenu = () => {
-    setMenuAnchor(null);
-  };
-
-  const onDownloadKey = () => {
-    FileSaver.saveAs(onCreateKeysFile());
-    onCloseMenu();
-  };
-
-  const onClickLogout = () => {
-    onLogout();
-    onCloseMenu();
-    history.push('/');
-  };
-
+function HeaderView({classes, menuAnchor, onOpenMenu, onCloseMenu, onLogout, openDrawer, onDownloadKey}) {
   return (
     <AppBar
       position="static"
@@ -64,7 +43,7 @@ function Header({classes, history, onLogout, openDrawer, onCreateKeysFile}) {
           Global Files
         </Typography>
         <div className={classes.grow}/>
-        <IconButton onClick={onOpenMenu} color="inherit">
+        <IconButton onClick={e => onOpenMenu(e)} color="inherit">
           <AccountCircleIcon/>
         </IconButton>
       </Toolbar>
@@ -84,7 +63,7 @@ function Header({classes, history, onLogout, openDrawer, onCreateKeysFile}) {
               primary="Download key"
             />
           </MenuItem>
-          <MenuItem onClick={onClickLogout}>
+          <MenuItem onClick={onLogout}>
             <ListItemIcon className={classes.listItemIcon}>
               <ExitIcon/>
             </ListItemIcon>
@@ -99,17 +78,46 @@ function Header({classes, history, onLogout, openDrawer, onCreateKeysFile}) {
   );
 }
 
-export default withRouter(
-  withStyles(headerStyles)(
-    connectService(AuthContext, (store, authService) => ({
-        authService,
-        onLogout() {
-          authService.logout();
-        },
-        onCreateKeysFile() {
-          return authService.createKeysFile();
-        }
-      })
-    )(Header)
-  )
+function Header({classes, onLogout, openDrawer, privateKey}) {
+  const [menuAnchor, setMenuAnchor] = useState(false);
+  const history = useHistory();
+
+  const props = {
+    classes,
+    menuAnchor,
+    openDrawer,
+
+    onOpenMenu(event) {
+      setMenuAnchor(event.currentTarget);
+    },
+
+    onCloseMenu() {
+      setMenuAnchor(null);
+    },
+
+    onDownloadKey() {
+      FileSaver.saveAs(new File([privateKey], 'key.dat', {
+        type: 'text/plain;charset=utf-8'
+      }));
+      props.onCloseMenu();
+    },
+
+    onLogout() {
+      onLogout();
+      props.onCloseMenu();
+      history.push('/');
+    }
+  };
+
+  return <HeaderView {...props}/>
+}
+
+export default withStyles(headerStyles)(
+  connectService(AuthContext, ({privateKey}, authService) => ({
+      privateKey,
+      onLogout() {
+        authService.logout();
+      }
+    })
+  )(Header)
 );

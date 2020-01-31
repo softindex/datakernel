@@ -53,7 +53,7 @@ function BreadcrumbsView({
             {breadcrumbs.length > 1 && (
               <BreadcrumbsMenu
                 anchorElement={anchorElement}
-                onDelete={() => console.log('Hello!!!!!!!!!!!!!!!!!!!!!!!')}
+                onDelete={onRemoveDir.bind(null, breadcrumbs[index - 1])}
                 onClose={onContextMenuClose}
               />
             )}

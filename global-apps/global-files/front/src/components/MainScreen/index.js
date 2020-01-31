@@ -23,7 +23,7 @@ function MainScreen({classes, publicKey}) {
       storeName: 'OperationsStore'
     });
     const offlineGlobalFS = new OfflineGlobalFS(globalFS, localforage, window.navigator);
-    offlineGlobalFS.init(); //can't use initService
+    offlineGlobalFS.init();
     const fsService = new FSService(offlineGlobalFS);
 
     return {fsService};

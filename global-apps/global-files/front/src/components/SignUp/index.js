@@ -8,6 +8,7 @@ import Grid from '@material-ui/core/Grid';
 import Button from '@material-ui/core/Button';
 import Snackbar from '../Snackbar';
 import signUpStyles from './signUpStyles';
+import {withSnackbar} from "notistack";
 
 class SignUp extends React.Component {
   constructor(props) {
@@ -18,7 +19,7 @@ class SignUp extends React.Component {
   }
 
   onAuthByAppStore = () => {
-    this.props.authService.authWithAppStore();
+    this.props.authService.authByAppStore();
   };
 
   componentDidMount() {
@@ -32,9 +33,15 @@ class SignUp extends React.Component {
   }
 
   onUploadFile = () => {
-    this.props.authService.authByFile(this.input.files[0]).then(() => {
-      this.props.history.push('/');
-    });
+    this.props.authService.authByFile(this.input.files[0])
+      .then(() => {
+        this.props.history.push('/');
+      })
+      .catch((err) => {
+        this.props.enqueueSnackbar(err.message, {
+          variant: 'error'
+        });
+      });
   };
 
   render() {
@@ -123,6 +130,8 @@ class SignUp extends React.Component {
   }
 }
 
-export default withStyles(signUpStyles)(
-  connectService(AuthContext, (auth, authService) => ({auth, authService}))(SignUp)
+export default withSnackbar(
+  withStyles(signUpStyles)(
+    connectService(AuthContext, (auth, authService) => ({auth, authService}))(SignUp)
+  )
 );

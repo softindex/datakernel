@@ -6,7 +6,7 @@ class Snackbar extends React.Component {
     error: this.props.error,
     isOpen: false
   };
-  // not optimised to use useEffect because of additional functional for prevState and prevProps
+
   componentDidUpdate(prevProps, prevState) {
     if (prevProps.error !== this.props.error && Boolean(this.props.error)) {
       this.setState({

@@ -12,7 +12,7 @@ class GlobalFS extends EventEmitter {
     const response = await fetch(path.join(this._url, `list/${this._publicKey}`));
     const parsedResponse = await response.json();
     return parsedResponse
-      .filter(item => !!item[3])
+      .filter(item => !Boolean(item[3]))
       .map(item => ({
         name: item[0],
         size: item[1],
@@ -59,7 +59,6 @@ class GlobalFS extends EventEmitter {
   }
 
   async removeDir(fileName) {
-    console.log(fileName);
   }
 
   async removeFile(fileName) {

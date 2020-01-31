@@ -1,6 +1,5 @@
 import React, {Component} from 'react';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
-import cookies from 'js-cookie';
 import MainScreen from './MainScreen';
 import SignUp from './SignUp';
 import {AuthService, AuthContext, OAuthCallback} from 'global-apps-common';
@@ -9,7 +8,10 @@ import {MuiThemeProvider} from '@material-ui/core/styles';
 import theme from '../components/theme/themeConfig';
 import {SnackbarProvider} from "notistack";
 
-const authService = new AuthService(process.env.REACT_APP_AUTH_LINK, cookies, window.localStorage);
+const authService = AuthService.create({
+  appStoreURL: process.env.REACT_APP_GLOBAL_OAUTH_LINK,
+  sessionIdField: process.env.REACT_APP_SESSION_ID_FIELD
+});
 authService.init();
 
 class App extends Component {
