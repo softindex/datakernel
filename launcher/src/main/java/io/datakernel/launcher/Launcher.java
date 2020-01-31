@@ -310,30 +310,40 @@ public abstract class Launcher implements ConcurrentJmxMBean {
 	protected void onStop() throws Exception {
 	}
 
+	private final Thread shutdownHook = new Thread(() -> {
+		try {
+			// release anything blocked at `awaitShutdown` call
+			shutdownLatch.countDown();
+			// then wait for the `launch` call to finish
+			completeLatch.await();
+			// and wait a bit for things after the `launch` call, such as JUnit finishing or whatever
+			Thread.sleep(10);
+		} catch (InterruptedException e) {
+			logger.error("Shutdown thread got interrupted", e);
+		}
+	}, "shutdownNotification");
+
 	/**
-	 * Blocks current thread until shutdown notification releases it.
+	 * Blocks the current thread until shutdown notification releases it.
 	 * <br>
 	 * Shutdown notification is released on JVM shutdown or by calling {@link Launcher#shutdown()}
 	 */
 	protected final void awaitShutdown() throws InterruptedException {
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			try {
-				shutdown();
-				completeLatch.await();
-				Thread.sleep(10); // wait a bit for things outside `launch` call, such as JUnit finishing or whatever
-			} catch (InterruptedException e) {
-				logger.error("Shutdown thread was interrupted", e);
-			}
-		}, "shutdownNotification"));
+		// check if shutdown is not in process already
+		if (shutdownLatch.getCount() != 1) {
+			return;
+		}
+		Runtime.getRuntime().addShutdownHook(shutdownHook);
 		shutdownLatch.await();
 	}
 
 	/**
-	 * Releases all threads waiting for shutdown.
+	 * Manually releases all threads waiting for shutdown.
 	 *
 	 * @see Launcher#awaitShutdown()
 	 */
 	public final void shutdown() {
+		Runtime.getRuntime().removeShutdownHook(shutdownHook);
 		shutdownLatch.countDown();
 	}
 
