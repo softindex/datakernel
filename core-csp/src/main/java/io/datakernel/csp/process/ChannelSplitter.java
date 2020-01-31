@@ -16,24 +16,25 @@
 
 package io.datakernel.csp.process;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.common.exception.Exceptions;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.RefBoolean;
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelInput;
 import io.datakernel.csp.dsl.WithChannelOutputs;
-import io.datakernel.exception.Exceptions;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.util.ref.RefBoolean;
-import io.datakernel.util.ref.RefInt;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.Sliceable.trySlice;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.Recyclable.tryRecycle;
-import static io.datakernel.util.Sliceable.trySlice;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		implements WithChannelInput<ChannelSplitter<T>, T>, WithChannelOutputs<ChannelSplitter<T>, T> {
@@ -41,7 +42,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 	private final List<ChannelConsumer<T>> outputs = new ArrayList<>();
 
 	private boolean lenient = false;
-	private List<Throwable> lenientExceptions = new ArrayList<>();
+	private final List<Throwable> lenientExceptions = new ArrayList<>();
 
 	private ChannelSplitter() {
 	}
@@ -97,7 +98,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 
 	private void tryStart() {
 		if (input != null && outputs.stream().allMatch(Objects::nonNull)) {
-			getCurrentEventloop().post(this::startProcess);
+			getCurrentEventloop().post(wrapContext(this, this::startProcess));
 		}
 	}
 

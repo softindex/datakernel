@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.test.rules.ByteBufRule;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.util.Map;
@@ -28,8 +28,8 @@ import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static org.junit.Assert.assertEquals;
 
 public final class TestPostParseParams {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void testParameters() {

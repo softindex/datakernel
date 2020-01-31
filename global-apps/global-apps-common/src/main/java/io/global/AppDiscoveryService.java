@@ -1,7 +1,7 @@
 package io.global;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.AnnouncementStorage;
@@ -14,9 +14,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.common.collection.CollectionUtils.union;
 import static io.global.Utils.ANNOUNCE_DATA_CODEC;
 import static java.util.Collections.emptySet;
 
@@ -38,7 +39,6 @@ public final class AppDiscoveryService implements DiscoveryService {
 	public static AppDiscoveryService createStub() {
 		AnnouncementStorage announcementStorage = new InMemoryAnnouncementStorage();
 		SharedKeyStorage sharedKeyStorage = new InMemorySharedKeyStorage();
-		//noinspection ConstantConditions
 		return new AppDiscoveryService(LocalDiscoveryService.create(null, announcementStorage, sharedKeyStorage));
 	}
 
@@ -69,6 +69,11 @@ public final class AppDiscoveryService implements DiscoveryService {
 					AnnounceData custom = new AnnounceData(actual.getTimestamp(), union(actual.getServerIds(), customMasterServers));
 					return SignedData.sign(ANNOUNCE_DATA_CODEC, custom, STUB_PK);
 				});
+	}
+
+	@Override
+	public Promise<Map<PubKey, Set<RawServerId>>> findAll() {
+		return discoveryService.findAll();
 	}
 
 	@Override

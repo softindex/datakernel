@@ -17,15 +17,15 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodePositiveInt;
 import static io.datakernel.bytebuf.ByteBufStrings.equalsLowerCaseAscii;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
  * This is a value class for the Accept header value.
@@ -34,8 +34,8 @@ public final class AcceptMediaType {
 	public static final int DEFAULT_Q = 100;
 	private static final byte[] Q_KEY = {'q'};
 
-	private MediaType mime;
-	private int q;
+	private final MediaType mime;
+	private final int q;
 
 	private AcceptMediaType(MediaType mime, int q) {
 		this.mime = mime;

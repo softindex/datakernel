@@ -16,16 +16,16 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelDeserializer;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.stream.StreamConsumer;
 
 import java.net.InetAddress;
 
@@ -45,13 +45,11 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
-																	   CrdtDataSerializer<K, S> serializer) {
+	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
 		return new CrdtServer<>(eventloop, client, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client,
-																	   BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
 		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 

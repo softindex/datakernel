@@ -53,7 +53,6 @@ public final class ByteBufQueueExample {
 		System.out.println();
 	}
 
-
 	public static void main(String[] args) {
 		addingBufsToQueue();
 		takingBufOutOfQueue();

@@ -16,12 +16,12 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.eventloop.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
 public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxMBean, EventloopInspector {

@@ -26,14 +26,14 @@ import io.datakernel.dataflow.server.DatagraphClient;
 import io.datakernel.dataflow.server.DatagraphEnvironment;
 import io.datakernel.dataflow.server.DatagraphSerialization;
 import io.datakernel.dataflow.server.DatagraphServer;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.processor.StreamJoin.InnerJoiner;
+import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
+import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.StreamJoin.InnerJoiner;
-import io.datakernel.stream.processor.StreamReducers.ReducerToResult;
-import io.datakernel.stream.processor.StreamSorterStorage;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -46,9 +46,9 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.dataflow.dataset.Datasets.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -246,7 +246,7 @@ public class PageRankTest {
 		graph.execute();
 
 		await(result1.getResult()
-				.whenComplete(($, e) -> {
+				.whenComplete(() -> {
 					server1.close();
 					server2.close();
 				}));

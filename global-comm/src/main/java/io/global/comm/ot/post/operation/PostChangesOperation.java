@@ -2,7 +2,8 @@ package io.global.comm.ot.post.operation;
 
 import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
-import io.global.comm.pojo.UserId;
+import io.global.comm.pojo.Rating;
+import io.global.ot.session.UserId;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -36,7 +37,7 @@ public final class PostChangesOperation implements ThreadOperation {
 		return new PostChangesOperation(singletonList(changeContent), attachmentsOps, emptyList(), emptyList(), emptyList());
 	}
 
-	public static PostChangesOperation rating(String postId, UserId userId, @Nullable Boolean prev, @Nullable Boolean next) {
+	public static PostChangesOperation rating(String postId, UserId userId, @Nullable Rating prev, @Nullable Rating next) {
 		ChangeRating changeRating = new ChangeRating(postId, userId, set(prev, next));
 		return new PostChangesOperation(emptyList(), emptyList(), singletonList(changeRating), emptyList(), emptyList());
 	}
@@ -96,12 +97,42 @@ public final class PostChangesOperation implements ThreadOperation {
 
 	@Override
 	public String toString() {
-		return "PostChangesOperation{" +
-				"contentOps=" + changeContentOps +
-				", attachmentsOps=" + changeAttachmentsOps +
-				", ratingOps=" + changeRatingOps +
-				", deleteOps=" + deletePostOps +
-				", lastEditTimestamps=" + changeLastEditTimestamps +
-				'}';
+		StringBuilder sb = new StringBuilder("PostChangesOperation{");
+		boolean was = false;
+		if (!changeContentOps.isEmpty()) {
+			was = true;
+			sb.append("contentOps=").append(changeContentOps);
+		}
+		if (!changeAttachmentsOps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			} else {
+				was = true;
+			}
+			sb.append("attachmentsOps=").append(changeAttachmentsOps);
+		}
+		if (!changeRatingOps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			} else {
+				was = true;
+			}
+			sb.append("ratingOps=").append(changeRatingOps);
+		}
+		if (!deletePostOps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			} else {
+				was = true;
+			}
+			sb.append("deleteOps=").append(deletePostOps);
+		}
+		if (!changeLastEditTimestamps.isEmpty()) {
+			if (was) {
+				sb.append(", ");
+			}
+			sb.append("lastEditTimestamps=").append(changeLastEditTimestamps);
+		}
+		return sb.append('}').toString();
 	}
 }

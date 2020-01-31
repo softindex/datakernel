@@ -16,13 +16,13 @@
 
 package io.datakernel.crdt;
 
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.ref.RefInt;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -30,7 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.IntStream;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 
 public final class RepartitionTest {
 

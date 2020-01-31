@@ -92,7 +92,7 @@ class FSService extends Service {
     path = path === '/' ? '' : path;
 
     const fileToDelete = path + fileName;
-    await this._globalFSGateway.removeFile(escapeSpecialChars(fileToDelete));
+    await this._globalFSGateway.remove(escapeSpecialChars(fileToDelete));
     this.setState({files: this.state.files.filter(file => file.name !== fileName)});
   }
 

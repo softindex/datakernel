@@ -16,17 +16,17 @@
 
 package io.global.ot.server;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Initializable;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.Initializable;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.RetryPolicy;
 import io.global.common.*;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
@@ -37,24 +37,24 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.async.Promises.firstSuccessful;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.global.util.Utils.nSuccessesOrLess;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.promise.Promises.firstSuccessful;
 import static io.global.util.Utils.tolerantCollectVoid;
+import static io.global.util.Utils.untilTrue;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
-	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
+	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.fixedDelay(Duration.ofSeconds(1)); //.immediateRetry().withMaxTotalRetryCount(10);
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
 
 	private final Eventloop eventloop;
@@ -63,11 +63,9 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	boolean pollMasterRepositories = DEFAULT_POLL_MASTER_REPOSITORIES;
 	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
-	private int propagations = 1;
-
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
 			DiscoveryService discoveryService,
-			@Nullable CommitStorage commitStorage,
+			CommitStorage commitStorage,
 			Function<RawServerId, GlobalOTNode> nodeFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.eventloop = checkNotNull(eventloop);
@@ -145,16 +143,11 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@Override
 	public Promise<Set<String>> list(PubKey pubKey) {
 		GlobalOTNamespace ns = ensureNamespace(pubKey);
-		return ns.ensureMasterNodes()
-				.then($ -> isMasterFor(pubKey) ?
-						Promise.complete() :
-						ns.updateRepositories())
-				.map($ -> ns.getRepositories()
-						.keySet()
-						.stream()
-						.map(RepoID::getName)
-						.collect(toSet()))
-				.whenComplete(toLogger(logger, "list", pubKey, this));
+		return Promise.of(ns.getRepositories()
+				.keySet()
+				.stream()
+				.map(RepoID::getName)
+				.collect(toSet()));
 	}
 
 	@Override
@@ -187,15 +180,15 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 				.then(maybeCommit -> maybeCommit.isPresent() ?
 						Promise.of(maybeCommit) :
 						fromMaster(repositoryId, node -> node.loadCommit(repositoryId, commitId)
-										.then(rawCommit -> commitStorage.saveCommit(commitId, rawCommit)
-												.map($ -> Optional.of(rawCommit))),
+										.whenResult(rawCommit -> commitStorage.saveCommit(commitId, rawCommit))
+										.map(Optional::of),
 								Promise.of(maybeCommit)));
 	}
 
 	@Override
 	public Promise<ChannelSupplier<CommitEntry>> download(RepoID repositoryId, Set<CommitId> nodes) {
 		PriorityQueue<CommitEntry> queue = new PriorityQueue<>();
-		ensureRepository(repositoryId); //ensuring repository to fetch from later
+		ensureRepository(repositoryId);
 		return Promises.all(
 				nodes.stream()
 						.map(commitId -> tryGetCommit(repositoryId, commitId)
@@ -220,6 +213,7 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	@Override
 	public Promise<ChannelConsumer<CommitEntry>> upload(RepoID repositoryId, Set<SignedData<RawCommitHead>> heads) {
 		Set<CommitId> incomplete = new HashSet<>();
+		ensureRepository(repositoryId);
 		return getIncompleteCommits(heads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet()))
 				.whenResult(incomplete::addAll)
 				.map($ -> new AbstractChannelConsumer<CommitEntry>() {
@@ -255,40 +249,37 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<Void> saveSnapshot(RepoID repositoryId, SignedData<RawSnapshot> encryptedSnapshot) {
+		RepositoryEntry repositoryEntry = ensureRepository(repositoryId);
 		return commitStorage.saveSnapshot(encryptedSnapshot)
-				.then(saved -> saved ?
-						toMaster(repositoryId, node -> node.saveSnapshot(repositoryId, encryptedSnapshot)) :
-						Promise.complete())
+				.map(saved -> {
+					if (saved) {
+						repositoryEntry.pushSnapshots();
+					}
+					return (Void) null;
+				})
 				.whenComplete(toLogger(logger, "saveSnapshot", repositoryId, encryptedSnapshot, this));
 	}
 
 	@Override
 	public Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId commitId) {
+		ensureRepository(repositoryId);
 		return commitStorage.loadSnapshot(repositoryId, commitId)
-				.then(maybeSnapshot -> maybeSnapshot.isPresent() ?
-						Promise.of(maybeSnapshot) :
-						fromMaster(repositoryId,
-								node -> node.loadSnapshot(repositoryId, commitId)
-										.then(Promise::ofOptional),
-								Promise.ofOptional(maybeSnapshot))
-								.then(snapshot -> commitStorage.saveSnapshot(snapshot)
-										.map($ -> snapshot))
-								.mapEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.<SignedData<RawSnapshot>>empty()))
+				// .then(maybeSnapshot -> maybeSnapshot.isPresent() ?
+				// 		Promise.of(maybeSnapshot) :
+				// 		fromMaster(repositoryId,
+				// 				node -> node.loadSnapshot(repositoryId, commitId)
+				// 						.then(Promise::ofOptional),
+				// 				Promise.ofOptional(maybeSnapshot))
+				// 				.whenResult(commitStorage::saveSnapshot)
+				// 				.mapEx((snapshot, e) -> e == null ? Optional.of(snapshot) : Optional.<SignedData<RawSnapshot>>empty()))
 				.whenComplete(toLogger(logger, "loadSnapshot", repositoryId, commitId));
 	}
 
 	@Override
-	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshotIds) {
-		return ensureRepository(repositoryId).ensureUpdated()
-				.thenEx(($, e) -> commitStorage.listSnapshotIds(repositoryId)
-						.then(localSnapshotIds -> {
-							if (e == null || !localSnapshotIds.isEmpty()) {
-								return Promise.of(difference(localSnapshotIds, remoteSnapshotIds));
-							} else {
-								return Promise.ofException(e);
-							}
-						}))
-				.whenComplete(toLogger(logger, "listSnapshots", repositoryId, remoteSnapshotIds, this));
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId) {
+		ensureRepository(repositoryId);
+		return commitStorage.listSnapshotIds(repositoryId)
+				.whenComplete(toLogger(logger, "listSnapshots", repositoryId, this));
 	}
 
 	@Override
@@ -298,16 +289,9 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<Set<SignedData<RawCommitHead>>> getHeads(RepoID repositoryId) {
-		return ensureRepository(repositoryId).ensureUpdated()
-				.thenEx(($, e) -> commitStorage.getHeads(repositoryId)
-						.then(heads -> {
-							if (e == null || !heads.isEmpty()) {
-								return Promise.of(heads);
-							} else {
-								return Promise.ofException(e);
-							}
-						}))
-				.map(map -> (Set<SignedData<RawCommitHead>>) new HashSet<>(map.values()))
+		ensureRepository(repositoryId);
+		return commitStorage.getHeads(repositoryId)
+				.map(map -> (Set<SignedData<RawCommitHead>>)new HashSet<>(map.values()))
 				.whenComplete(toLogger(logger, "getHeads", repositoryId));
 	}
 
@@ -331,25 +315,21 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 
 	@Override
 	public Promise<Void> sendPullRequest(SignedData<RawPullRequest> pullRequest) {
-		RepoID repository = pullRequest.getValue().getRepository();
+		RepositoryEntry repo = ensureRepository(pullRequest.getValue().getRepository());
 		return commitStorage.savePullRequest(pullRequest)
-				.then(saveStatus -> saveStatus ?
-						toMaster(repository, node -> node.sendPullRequest(pullRequest)) :
-						Promise.complete())
+				.map(saved -> {
+					if (saved) {
+						repo.pushPullRequests();
+					}
+					return (Void) null;
+				})
 				.whenComplete(toLogger(logger, "sendPullRequest", pullRequest, this));
 	}
 
 	@Override
 	public Promise<Set<SignedData<RawPullRequest>>> getPullRequests(RepoID repositoryId) {
-		return ensureRepository(repositoryId).ensureUpdated()
-				.thenEx(($, e) -> commitStorage.getPullRequests(repositoryId)
-						.then(pullRequests -> {
-							if (e == null || !pullRequests.isEmpty()) {
-								return Promise.of(pullRequests);
-							} else {
-								return Promise.ofException(e);
-							}
-						}))
+		ensureRepository(repositoryId);
+		return commitStorage.getPullRequests(repositoryId)
 				.whenComplete(toLogger(logger, "getPullRequests", repositoryId, this));
 	}
 
@@ -361,21 +341,21 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	}
 
 	private Promise<Void> doCatchUp() {
-		return Promises.until(
-				$1 -> {
-					long timestampBegin = now.currentTimeMillis();
-					return tolerantCollectVoid(Stream.<AsyncSupplier>of(this::fetch, this::update), AsyncSupplier::get)
-							.map($2 -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
-				});
+		return untilTrue(() -> {
+			long timestampBegin = now.currentTimeMillis();
+			return tolerantCollectVoid(Stream.<AsyncSupplier>of(this::fetch, this::update), AsyncSupplier::get)
+					.map($ -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
+		});
 	}
 
 	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
 		return tolerantCollectVoid(namespaces.values().stream().flatMap(entry -> entry.getRepositories().values().stream()), fn);
 	}
 
-	private Promise<Void> update() {
+	public Promise<Void> update() {
 		return tolerantCollectVoid(namespaces.values(), GlobalOTNamespace::updateRepositories)
-				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update));
+				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update))
+				.whenComplete(toLogger(logger, TRACE, "update", this));
 	}
 
 	public Promise<Void> fetch() {
@@ -383,8 +363,18 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
+	public Promise<Void> fetch(RepoID repoID) {
+		return ensureRepository(repoID).fetch()
+				.whenComplete(toLogger(logger, TRACE, "fetch", this));
+	}
+
 	public Promise<Void> push() {
 		return forEachRepository(RepositoryEntry::push)
+				.whenComplete(toLogger(logger, "push", this));
+	}
+
+	public Promise<Void> push(RepoID repoID) {
+		return ensureRepository(repoID).push()
 				.whenComplete(toLogger(logger, "push", this));
 	}
 
@@ -408,18 +398,6 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 							.map(master -> AsyncSupplier.cast(() ->
 									fn.apply(master))))
 							.thenEx((v, e) -> e == null ? Promise.of(v) : defaultPromise);
-				});
-	}
-
-	private Promise<Void> toMaster(RepoID repositoryId, Function<GlobalOTNode, Promise<Void>> fn) {
-		return ensureMasterNodes(repositoryId)
-				.then(masters -> {
-					if (isMasterFor(repositoryId.getOwner())) {
-						return Promise.complete();
-					}
-					return nSuccessesOrLess(propagations, masters.stream()
-							.map(master -> AsyncSupplier.cast(() -> fn.apply(master))))
-							.toVoid();
 				});
 	}
 

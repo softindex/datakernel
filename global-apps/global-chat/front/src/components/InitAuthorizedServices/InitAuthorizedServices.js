@@ -1,5 +1,5 @@
 import React, {useMemo} from 'react';
-import {checkAuth, AuthContext, connectService, RegisterDependency, initService} from 'global-apps-common';
+import {checkAuth, AuthContext, connectService, RegisterDependency, initService, useService} from 'global-apps-common';
 import {withSnackbar} from "notistack";
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
@@ -11,11 +11,15 @@ import NamesService from "../../modules/names/NamesService";
 import contactsSerializer from "../../modules/contacts/ot/serializer";
 import contactsOTSystem from "../../modules/contacts/ot/ContactsOTSystem";
 import {withRouter} from "react-router-dom";
+import CallsService from '../../modules/calls/CallsService';
+import NotificationsService from '../../modules/notifications/NotificationsService';
+import Audio from '../Audio/Audio';
 
 function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
   const {
     contactsOTStateManager,
     profileService,
+    callsService,
     roomsService,
     contactsService,
     namesService
@@ -32,6 +36,8 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
     const contactsOTStateManager = new OTStateManager(() => new Map(), contactsOTNode, contactsOTSystem);
     const roomsOTStateManager = new OTStateManager(() => new Map(), roomsOTNode, roomsOTSystem);
     const profileService = MyProfileService.create();
+    const notificationsService = NotificationsService.createFrom();
+    const callsService = CallsService.createFrom(publicKey, notificationsService);
     const roomsService = RoomsService.createFrom(roomsOTStateManager, publicKey);
     const contactsService = ContactsService.createFrom(
       contactsOTStateManager,
@@ -47,6 +53,7 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
     return {
       contactsOTStateManager,
       profileService,
+      callsService,
       roomsService,
       contactsService,
       namesService
@@ -60,17 +67,27 @@ function InitAuthorizedServices({publicKey, enqueueSnackbar, children}) {
   }
 
   initService(contactsService, errorHandler);
+  initService(callsService, errorHandler);
   initService(roomsService, errorHandler);
   initService(profileService, errorHandler);
   initService(namesService, errorHandler);
 
+  const {peerId: ownPeerId, streams} = useService(callsService);
+
   return (
     <RegisterDependency name="contactsOTStateManager" value={contactsOTStateManager}>
       <RegisterDependency name={ContactsService} value={contactsService}>
-        <RegisterDependency name={RoomsService} value={roomsService}>
-          <RegisterDependency name={NamesService} value={namesService}>
-            <RegisterDependency name={MyProfileService} value={profileService}>
-              {children}
+        <RegisterDependency name={CallsService} value={callsService}>
+          <RegisterDependency name={RoomsService} value={roomsService}>
+            <RegisterDependency name={NamesService} value={namesService}>
+              <RegisterDependency name={MyProfileService} value={profileService}>
+                {children}
+                {streams.size > 0 && [...streams.entries()].map(([peerId, streamsByPeerId]) => {
+                  return peerId !== ownPeerId && streamsByPeerId.map(stream => (
+                    <Audio key={stream.id} src={stream}/>
+                  ));
+                })}
+              </RegisterDependency>
             </RegisterDependency>
           </RegisterDependency>
         </RegisterDependency>

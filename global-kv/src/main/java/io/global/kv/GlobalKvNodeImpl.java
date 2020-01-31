@@ -16,41 +16,41 @@
 
 package io.global.kv;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Callback;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.Initializable;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.ref.RefBoolean;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.RetryPolicy;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
+import io.global.kv.GlobalKvNamespace.Repo;
 import io.global.kv.api.GlobalKvNode;
 import io.global.kv.api.RawKvItem;
 import io.global.kv.api.StorageFactory;
 import org.jetbrains.annotations.Nullable;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.global.util.Utils.nSuccessesOrLess;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.global.util.Utils.tolerantCollectVoid;
+import static io.global.util.Utils.untilTrue;
 
 public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl, GlobalKvNamespace, GlobalKvNode> implements GlobalKvNode, Initializable<GlobalKvNodeImpl> {
-	private int uploadCallNumber = 1;
-	private int uploadSuccessNumber = 0;
+	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
+	public static final Duration DEFAULT_SYNC_MARGIN = Duration.ofMinutes(5);
 
-	private boolean doesDownloadCaching = true;
-	private boolean doesUploadCaching = false;
-
+	private Duration syncMargin = DEFAULT_SYNC_MARGIN;
 	private final StorageFactory storageFactory;
+	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
 	// region creators
 	private GlobalKvNodeImpl(RawServerId id, DiscoveryService discoveryService,
@@ -65,11 +65,26 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 			StorageFactory storageFactory) {
 		return new GlobalKvNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
+
+	public GlobalKvNodeImpl withSyncMargin(Duration syncMargin) {
+		this.syncMargin = syncMargin;
+		return this;
+	}
+
+	public GlobalKvNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
+		this.retryPolicy = retryPolicy;
+		return this;
+	}
+
 	// endregion
 
 	@Override
 	protected GlobalKvNamespace createNamespace(PubKey space) {
 		return new GlobalKvNamespace(this, space);
+	}
+
+	public Duration getSyncMargin() {
+		return syncMargin;
 	}
 
 	public StorageFactory getStorageFactory() {
@@ -79,113 +94,66 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	@Override
 	public Promise<ChannelConsumer<SignedData<RawKvItem>>> upload(PubKey space, String table) {
 		GlobalKvNamespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.then(masters -> ns.ensureRepository(table)
-						.then(repo -> {
-							if (isMasterFor(space)) {
-								return repo.upload();
-							}
-							return nSuccessesOrLess(uploadCallNumber, masters.stream()
-									.map(master -> AsyncSupplier.cast(() -> master.upload(space, table))))
-									.map(consumers -> {
-										ChannelZeroBuffer<SignedData<RawKvItem>> buffer = new ChannelZeroBuffer<>();
-
-										ChannelSplitter<SignedData<RawKvItem>> splitter = ChannelSplitter.create(buffer.getSupplier())
-												.lenient();
-
-										RefBoolean localCompleted = new RefBoolean(false);
-										if (doesUploadCaching || consumers.isEmpty()) {
-											splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload())
-													.withAcknowledgement(ack ->
-															ack.whenComplete((Callback<? super Void>) ($, e) -> {
-																if (e == null) {
-																	localCompleted.set(true);
-																} else {
-																	splitter.close(e);
-																}
-															})));
-										} else {
-											localCompleted.set(true);
-										}
-
-										Promise<Void> process = splitter.splitInto(consumers, uploadSuccessNumber, localCompleted);
-										return buffer.getConsumer().withAcknowledgement(ack -> ack.both(process));
-									});
-						}));
+		return ns.ensureRepository(table)
+				.then(repo -> repo.upload()
+						.map(consumer -> consumer
+								.withAcknowledgement(ack -> ack
+										.whenComplete(() -> {
+											if (!isMasterFor(space)) {
+												repo.push();
+											}
+										}))));
 	}
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(PubKey space, String table, long timestamp) {
 		GlobalKvNamespace ns = ensureNamespace(space);
 		return ns.ensureRepository(table)
-				.then(repo -> repo.download(timestamp)
+				.then(repo -> repo.storage.download(timestamp)
 						.then(supplier -> {
 							if (supplier != null) {
 								return Promise.of(supplier);
 							}
-							return ns.ensureMasterNodes()
-									.then(masters -> {
-										if (isMasterFor(space) || masters.isEmpty()) {
-											return repo.storage.download(timestamp);
-										}
-										if (!doesDownloadCaching) {
-											return Promises.firstSuccessful(masters.stream()
-													.map(node -> AsyncSupplier.cast(() ->
-															node.download(space, table, timestamp))));
-										}
-										return Promises.firstSuccessful(masters.stream()
-												.map(node -> AsyncSupplier.cast(() ->
-														Promises.toTuple(node.download(space, table, timestamp), repo.upload())
-																.map(t -> {
-																	ChannelSplitter<SignedData<RawKvItem>> splitter = ChannelSplitter.create();
-																	ChannelOutput<SignedData<RawKvItem>> output = splitter.addOutput();
-																	splitter.addOutput().set(t.getValue2());
-																	splitter.getInput().set(t.getValue1());
-																	return output.getSupplier();
-																}))));
-									});
+							return simpleMethod(space,
+									master -> master.download(space, table, timestamp)
+											.map(itemSupplier -> {
+												ChannelSplitter<SignedData<RawKvItem>> splitter = ChannelSplitter.create();
+												ChannelOutput<SignedData<RawKvItem>> output = splitter.addOutput();
+												splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload()));
+												splitter.getInput().set(itemSupplier);
+												return output.getSupplier();
+											}),
+									$ -> Promise.of(ChannelSupplier.of()));
 						}));
 	}
 
 	@Override
 	public Promise<@Nullable SignedData<RawKvItem>> get(PubKey space, String table, byte[] key) {
 		GlobalKvNamespace ns = ensureNamespace(space);
-		return ns.ensureMasterNodes()
-				.then(masters -> ns.ensureRepository(table)
-						.then(repo -> {
-							if (isMasterFor(space)) {
-								return repo.storage.get(key);
+		return ns.ensureRepository(table)
+				.then(repo -> repo.storage.get(key)
+						.then(signedData -> {
+							if (signedData != null) {
+								return Promise.of(signedData);
 							}
-							return Promises.firstSuccessful(masters.stream()
-									.map(node -> AsyncSupplier.cast(
-											doesDownloadCaching ?
-													() -> node.get(space, table, key)
-															.then(item ->
-																	repo.storage.put(item)
-																			.map($ -> item)) :
-													() -> node.get(space, table, key))));
+							return simpleMethod(space,
+									master -> master.get(space, table, key),
+									$ -> Promise.of(signedData));
 						}));
 	}
 
 	@Override
 	public Promise<Set<String>> list(PubKey space) {
-		return simpleMethod(space, node -> node.list(space), ns -> Promise.of(ns.getRepoNames()));
+		return Promise.of(ensureNamespace(space).getRepos().keySet());
 	}
 
 	public Promise<Void> fetch() {
-		return Promises.all(getManagedPublicKeys().stream().map(this::fetch));
+		return Promises.all(namespaces.values().stream().map(GlobalKvNamespace::updateRepositories))
+				.then($ -> forEachRepo(Repo::fetch));
 	}
 
 	public Promise<Void> push() {
-		return Promises.all(namespaces.keySet().stream().map(this::push));
-	}
-
-	public Promise<Void> fetch(PubKey space) {
-		return ensureNamespace(space).fetch();
-	}
-
-	public Promise<Void> push(PubKey space) {
-		return ensureNamespace(space).push();
+		return forEachRepo(Repo::push);
 	}
 
 	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
@@ -195,16 +163,19 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	}
 
 	private Promise<Void> doCatchUp() {
-		return Promises.until($ -> {
+		return untilTrue(() -> {
 			long timestampBegin = now.currentTimeMillis();
 			return fetch()
 					.map($2 -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
-
 		});
+	}
+
+	private Promise<Void> forEachRepo(Function<Repo, Promise<Void>> fn) {
+		return tolerantCollectVoid(namespaces.values().stream().flatMap(entry -> entry.getRepos().values().stream()), fn);
 	}
 
 	@Override
 	public String toString() {
-		return "GlobalDbNodeImpl{id=" + id + '}';
+		return "GlobalKvNodeImpl{id=" + id + '}';
 	}
 }

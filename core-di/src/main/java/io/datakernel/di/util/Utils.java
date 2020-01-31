@@ -1,31 +1,29 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.core.*;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Type;
-import java.lang.reflect.WildcardType;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
 
+import static io.datakernel.di.core.BindingType.EAGER;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 
 public final class Utils {
-	private Utils() {}
 
-	private static final BiConsumer<Map<Object, Set<Object>>, Map<Object, Set<Object>>> MULTIMAP_MERGER =
-			(into, from) -> from.forEach((k, v) -> into.computeIfAbsent(k, $ -> new HashSet<>()).addAll(v));
+	private static final BiConsumer<Map<Key<?>, BindingSet<?>>, Map<Key<?>, BindingSet<?>>> BINDING_MULTIMAP_MERGER =
+			(into, from) -> from.forEach((k, v) -> into.merge(k, v, (first, second) -> BindingSet.merge(k, first, second)));
 
-	@SuppressWarnings("unchecked")
-	public static <K, V> BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>> multimapMerger() {
-		return (BiConsumer<Map<K, Set<V>>, Map<K, Set<V>>>) (BiConsumer) MULTIMAP_MERGER;
+	public static BiConsumer<Map<Key<?>, BindingSet<?>>, Map<Key<?>, BindingSet<?>>> bindingMultimapMerger() {
+		return BINDING_MULTIMAP_MERGER;
 	}
 
 	public static <T> T[] next(T[] items, T item) {
@@ -35,7 +33,7 @@ public final class Utils {
 	}
 
 	public static String getScopeDisplayString(Scope[] scope) {
-		return scope.length != 0 ? Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", "")) : "()";
+		return Arrays.stream(scope).map(Scope::getDisplayString).collect(joining("->", "()->", ""));
 	}
 
 	public static void mergeMultibinders(Map<Key<?>, Multibinder<?>> into, Map<Key<?>, Multibinder<?>> from) {
@@ -70,10 +68,6 @@ public final class Utils {
 		return toMap(keyMapper, t -> singleton(valueMapper.apply(t)), Utils::union);
 	}
 
-	public static <K, V> Map<K, Set<V>> toMultimap(Map<K, V> map) {
-		return map.entrySet().stream().collect(toMap(Map.Entry::getKey, entry -> singleton(entry.getValue())));
-	}
-
 	public static <K, V, V1> Map<K, Set<V1>> transformMultimapValues(Map<K, Set<V>> multimap, BiFunction<? super K, ? super V, ? extends V1> fn) {
 		return transformMultimap(multimap, Function.identity(), fn);
 	}
@@ -87,6 +81,28 @@ public final class Utils {
 								.stream()
 								.map(v -> fnValue.apply(entry.getKey(), v))
 								.collect(toSet())));
+	}
+
+	public static Map<Key<?>, BindingSet<?>> transformBindingMultimapValues(Map<Key<?>, BindingSet<?>> multimap, BiFunction<Key<?>, Binding<?>, Binding<?>> fn) {
+		return transformBindingMultimap(multimap, UnaryOperator.identity(), fn);
+	}
+
+	@SuppressWarnings("unchecked")
+	public static Map<Key<?>, BindingSet<?>> transformBindingMultimap(Map<Key<?>, BindingSet<?>> multimap, UnaryOperator<Key<?>> fnKey, BiFunction<Key<?>, Binding<?>, Binding<?>> fnValue) {
+		return multimap.entrySet()
+				.stream()
+				.collect(toMap(
+						entry -> fnKey.apply(entry.getKey()),
+						entry -> {
+							BindingSet<?> bindingSet = entry.getValue();
+							return new BindingSet(
+									bindingSet
+											.getBindings()
+											.stream()
+											.map(v -> fnValue.apply(entry.getKey(), v))
+											.collect(toSet()),
+									bindingSet.getType());
+						}));
 	}
 
 	public static <K, V> Map<K, V> squash(Map<K, Set<V>> multimap, BiFunction<K, Set<V>, V> squasher) {
@@ -106,32 +122,6 @@ public final class Utils {
 		}
 	}
 
-	public static boolean isKeySet(Key<?> key) {
-		if (Types.getRawType(key.getType()) != Set.class) {
-			return false;
-		}
-		Name name = key.getName();
-		if (name == null || !name.isMarkedBy(KeySetAnnotation.class)) {
-			return false;
-		}
-		Key<?> param = key.getTypeParameter(0);
-		if (Types.getRawType(param.getType()) != Key.class) {
-			return false;
-		}
-		Type subparam = param.getTypeParameter(0).getType();
-		if (!(subparam instanceof WildcardType)) {
-			return false;
-		}
-		WildcardType wildcard = (WildcardType) subparam;
-		if (wildcard.getLowerBounds().length != 0) {
-			return false;
-		}
-		if (wildcard.getUpperBounds().length != 1) {
-			return false;
-		}
-		return wildcard.getUpperBounds()[0] == Object.class;
-	}
-
 	public static String getLocation(@Nullable Binding<?> binding) {
 		LocationInfo location = binding != null ? binding.getLocation() : null;
 		return "at " + (location != null ? location.toString() : "<unknown binding location>");
@@ -140,7 +130,7 @@ public final class Utils {
 	/**
 	 * A shortcut for printing the result of {@link #makeGraphVizGraph} into the standard output.
 	 */
-	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+	public static void printGraphVizGraph(Trie<Scope, Map<Key<?>, BindingInfo>> trie) {
 //		System.out.println("https://somegraphvizurl/#" + URLEncoder.encode(makeGraphVizGraph(trie), "utf-8").replaceAll("\\+", "%20"));
 		System.out.println(makeGraphVizGraph(trie));
 	}
@@ -149,7 +139,7 @@ public final class Utils {
 	 * Makes a GraphViz graph representation of the binding graph.
 	 * Scopes are grouped nicely into subgraph boxes and dependencies are properly drawn from lower to upper scopes.
 	 */
-	public static String makeGraphVizGraph(Trie<Scope, Map<Key<?>, Binding<?>>> trie) {
+	public static String makeGraphVizGraph(Trie<Scope, Map<Key<?>, BindingInfo>> trie) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("digraph {\n	rankdir=BT;\n");
 		Set<ScopedValue<Key<?>>> known = new HashSet<>();
@@ -159,29 +149,34 @@ public final class Utils {
 		return sb.toString();
 	}
 
-	private static void writeNodes(Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> trie, Set<ScopedValue<Key<?>>> known, String indent, int[] scopeCount, StringBuilder sb) {
+	private static void writeNodes(Scope[] scope, Trie<Scope, Map<Key<?>, BindingInfo>> trie, Set<ScopedValue<Key<?>>> known, String indent, int[] scopeCount, StringBuilder sb) {
 		if (scope != UNSCOPED) {
 			sb.append('\n').append(indent)
 					.append("subgraph cluster_").append(scopeCount[0]++).append(" {\n")
 					.append(indent).append("\tlabel=\"").append(scope[scope.length - 1].getDisplayString().replace("\"", "\\\"")).append("\"\n");
 		}
 
-		for (Entry<Scope, Trie<Scope, Map<Key<?>, Binding<?>>>> entry : trie.getChildren().entrySet()) {
+		for (Entry<Scope, Trie<Scope, Map<Key<?>, BindingInfo>>> entry : trie.getChildren().entrySet()) {
 			writeNodes(next(scope, entry.getKey()), entry.getValue(), known, indent + '\t', scopeCount, sb);
 		}
 
 		Set<Key<?>> leafs = new HashSet<>();
 
-		for (Entry<Key<?>, Binding<?>> entry : trie.get().entrySet()) {
+		for (Entry<Key<?>, BindingInfo> entry : trie.get().entrySet()) {
 			Key<?> key = entry.getKey();
-			if (entry.getValue().getDependencies().size() == 0) {
+			BindingInfo bindingInfo = entry.getValue();
+
+			if (bindingInfo.getDependencies().size() == 0) {
 				leafs.add(key);
 			}
 			known.add(ScopedValue.of(scope, key));
 			sb.append(indent)
 					.append('\t')
 					.append('"').append(getScopeId(scope)).append(key.toString().replace("\"", "\\\"")).append('"')
-					.append(" [label=\"").append(key.getDisplayString().replace("\"", "\\\"")).append("\"];\n");
+					.append(" [label=\"").append(key.getDisplayString().replace("\"", "\\\""))
+					.append("\"")
+					.append(bindingInfo.getType() == TRANSIENT ? " style=dotted" : bindingInfo.getType() == EAGER ? " style=bold" : "")
+					.append("];\n");
 		}
 
 		if (!leafs.isEmpty()) {
@@ -198,28 +193,28 @@ public final class Utils {
 		}
 	}
 
-	private static void writeEdges(Scope[] scope, Trie<Scope, Map<Key<?>, Binding<?>>> trie, Set<ScopedValue<Key<?>>> known, StringBuilder sb) {
+	private static void writeEdges(Scope[] scope, Trie<Scope, Map<Key<?>, BindingInfo>> trie, Set<ScopedValue<Key<?>>> known, StringBuilder sb) {
 		String scopePath = getScopeId(scope);
 
-		for (Entry<Key<?>, Binding<?>> entry : trie.get().entrySet()) {
+		for (Entry<Key<?>, BindingInfo> entry : trie.get().entrySet()) {
 			String key = "\"" + scopePath + entry.getKey().toString().replace("\"", "\\\"") + "\"";
 			for (Dependency dependency : entry.getValue().getDependencies()) {
 				Key<?> depKey = dependency.getKey();
 
 				Scope[] depScope = scope;
-				while (!known.contains(ScopedValue.of(depScope, depKey)) & depScope.length != 0) {
+				while (!known.contains(ScopedValue.of(depScope, depKey)) && depScope.length != 0) {
 					depScope = Arrays.copyOfRange(depScope, 0, depScope.length - 1);
 				}
 
 				if (depScope.length == 0) {
-					String dep = "\"" + scopePath + depKey.toString().replace("\"", "\\\"") + '"';
+					String dep = "\"" + getScopeId(depScope) + depKey.toString().replace("\"", "\\\"") + '"';
 
-					if (known.add(ScopedValue.of(scope, depKey))) {
+					if (known.add(ScopedValue.of(depScope, depKey))) {
 						sb.append('\t')
 								.append(dep)
 								.append(" [label=\"")
 								.append(depKey.getDisplayString().replace("\"", "\\\""))
-								.append("\", style=dashed, color=")
+								.append("\" style=dashed, color=")
 								.append(dependency.isRequired() ? "red" : "orange")
 								.append("];\n");
 					}
@@ -227,13 +222,17 @@ public final class Utils {
 				} else {
 					sb.append('\t').append(key).append(" -> \"").append(getScopeId(depScope)).append(depKey.toString().replace("\"", "\\\"")).append('"');
 				}
+				sb.append(" [");
 				if (!dependency.isRequired()) {
-					sb.append(" [style=dashed]");
+					sb.append("style=dashed,");
 				}
-				sb.append(";\n");
+				if (dependency.isImplicit()) {
+					sb.append("color=gray");
+				}
+				sb.append("];\n");
 			}
 		}
-		for (Entry<Scope, Trie<Scope, Map<Key<?>, Binding<?>>>> entry : trie.getChildren().entrySet()) {
+		for (Entry<Scope, Trie<Scope, Map<Key<?>, BindingInfo>>> entry : trie.getChildren().entrySet()) {
 			writeEdges(next(scope, entry.getKey()), entry.getValue(), known, sb);
 		}
 	}

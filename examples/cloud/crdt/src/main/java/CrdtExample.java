@@ -4,19 +4,20 @@ import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.primitives.LWWSet;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 public final class CrdtExample {
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
@@ -31,11 +32,11 @@ public final class CrdtExample {
 		Map<Integer, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
 
 		for (int i = 0; i < 8; i++) {
-			clients.put(i, createClient(eventloop, i));
+			clients.put(i, createClient(eventloop, executor, i));
 		}
 
-		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, 8);
-		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, 9);
+		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
+		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
 
 		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients)
 				.withPartition(8, one)
@@ -76,8 +77,8 @@ public final class CrdtExample {
 		eventloop.run();
 	}
 
-	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, int n) {
-		FsClient storage = LocalFsClient.create(eventloop, Paths.get("/tmp/TESTS/crdt_" + n));
+	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, Executor executor, int n) {
+		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS/crdt_" + n));
 		return CrdtStorageFs.create(eventloop, storage, SERIALIZER);
 	}
 }

@@ -25,8 +25,6 @@ import javax.management.ObjectName;
 
 public final class CustomMatchers {
 
-	private CustomMatchers() {}
-
 	public static Matcher<ObjectName> objectname(String name) {
 		return new BaseMatcher<ObjectName>() {
 			@Override

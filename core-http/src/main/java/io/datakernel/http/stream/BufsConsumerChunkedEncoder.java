@@ -23,7 +23,7 @@ import io.datakernel.csp.dsl.WithChannelTransformer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}

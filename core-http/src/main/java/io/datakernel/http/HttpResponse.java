@@ -15,13 +15,12 @@
  */
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.codec.StructuredEncoder;
-import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.common.Initializable;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
-import io.datakernel.util.Initializable;
+import io.datakernel.promise.Async;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,7 +40,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Represents HTTP response for {@link HttpRequest}. After handling {@code HttpResponse} will be recycled so you cannot
  * usi it afterwards.
  */
-public final class HttpResponse extends HttpMessage implements Initializable<HttpResponse> {
+public final class HttpResponse extends HttpMessage implements Async<HttpResponse>, Initializable<HttpResponse> {
 	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
@@ -111,6 +110,11 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 	@NotNull
 	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader) {
+		return file(downloader, name, size, rangeHeader, false);
+	}
+
+	@NotNull
+	public static Promise<HttpResponse> file(FileSliceSupplier downloader, String name, long size, @Nullable String rangeHeader, boolean inline) {
 		HttpResponse response = new HttpResponse(rangeHeader == null ? 200 : 206);
 
 		String localName = name.substring(name.lastIndexOf('/') + 1);
@@ -121,7 +125,7 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 
 		response.addHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(mediaType)));
 		response.addHeader(ACCEPT_RANGES, "bytes");
-		response.addHeader(CONTENT_DISPOSITION, "attachment; filename=\"" + localName + "\"");
+		response.addHeader(CONTENT_DISPOSITION, inline ? "inline" : "attachment; filename=\"" + localName + "\"");
 
 		long contentLength, offset;
 		if (rangeHeader != null) {
@@ -255,9 +259,14 @@ public final class HttpResponse extends HttpMessage implements Initializable<Htt
 	}
 
 	@NotNull
-	public <T> HttpResponse withJson(StructuredEncoder<T> encoder, T object) {
+	public HttpResponse withJson(@NotNull String text) {
 		return withHeader(CONTENT_TYPE, ofContentType(JSON_UTF_8))
-				.withBody(JsonUtils.toJson(encoder, object).getBytes(UTF_8));
+				.withBody(text.getBytes(UTF_8));
+	}
+
+	@Override
+	public Promise<HttpResponse> get() {
+		return Promise.of(this);
 	}
 
 	@FunctionalInterface

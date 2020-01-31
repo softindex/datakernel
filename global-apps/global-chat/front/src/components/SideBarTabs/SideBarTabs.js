@@ -132,6 +132,8 @@ function SideBarTabs({
           if (roomName !== null) {
             return roomName.toLowerCase().includes(search.toLowerCase());
           }
+
+          return true;
         })
         .sort(([, leftRoom], [, rightRoom]) => {
           return getRoomName(leftRoom.participants, names, publicKey)

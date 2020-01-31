@@ -16,10 +16,10 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.EventloopTaskScheduler;
-import io.datakernel.async.Promises;
-import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.*;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -33,7 +33,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static org.slf4j.event.Level.TRACE;

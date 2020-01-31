@@ -1,6 +1,6 @@
 package io.datakernel.http.session;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -15,5 +15,8 @@ public interface SessionStore<T> {
 
 	Promise<Void> remove(String sessionId);
 
-	Duration getSessionLifetime();
+	@Nullable
+	default Duration getSessionLifetimeHint() {
+		return null;
+	}
 }

@@ -1,0 +1,17 @@
+{{#deletedBy}}
+    {{#deletedVisible}}
+        {{>render_post_body_impl}}
+    {{/deletedVisible}}
+    {{^deletedVisible}}
+        {{^children.isEmpty}}
+            <div class="card no-gutters post">
+                <div class="card-body py-1 text-secondary">
+                    &lt;deleted post&gt;
+                </div>
+            </div>
+        {{/children.isEmpty}}
+    {{/deletedVisible}}
+{{/deletedBy}}
+{{^deletedBy}}
+    {{>render_post_body_impl}}
+{{/deletedBy}}

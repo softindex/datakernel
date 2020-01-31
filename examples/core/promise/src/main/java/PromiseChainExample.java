@@ -1,15 +1,16 @@
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 
 //[START EXAMPLE]
 public class PromiseChainExample {
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
+
 	public static void main(String[] args) {
 		//[START REGION_1]
 		doSomeProcess()
 				.whenResult(result -> System.out.println(String.format("Result of some process is '%s'", result)))
-				.whenException(e -> System.out.println(String.format("Exception after some process is '%s'",e.getMessage())))
+				.whenException(e -> System.out.println(String.format("Exception after some process is '%s'", e.getMessage())))
 				.map(String::toLowerCase)
 				.mapEx((result, e) -> e == null ? String.format("The mapped result is '%s'", result) : e.getMessage())
 				.whenResult(System.out::println);

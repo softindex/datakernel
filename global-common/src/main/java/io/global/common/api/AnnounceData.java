@@ -16,7 +16,7 @@
 
 package io.global.common.api;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.global.common.RawServerId;
 
 import java.util.Set;

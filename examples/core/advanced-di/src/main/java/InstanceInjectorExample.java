@@ -28,7 +28,7 @@ public final class InstanceInjectorExample extends Launcher {
 
 	// internal job of post-creation objects inject.
 	//[START REGION_2]
-	private void postInjectInstances(String [] args) {
+	private void postInjectInstances(String[] args) {
 		Injector injector = this.createInjector(args);
 		InstanceInjector<Launcher> instanceInjector = injector.getInstanceInjector(Launcher.class);
 		instanceInjector.injectInto(this);

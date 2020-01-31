@@ -16,10 +16,10 @@
 
 package io.global.ot.api;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.SharedKeyManager;
@@ -52,7 +52,7 @@ public interface GlobalOTNode extends SharedKeyManager {
 
 	Promise<Optional<SignedData<RawSnapshot>>> loadSnapshot(RepoID repositoryId, CommitId id);
 
-	Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots);
+	Promise<Set<CommitId>> listSnapshots(RepoID repositoryId);
 
 	default AsyncSupplier<Set<SignedData<RawCommitHead>>> pollHeads(RepoID repositoryId) {
 		return () -> getHeads(repositoryId);

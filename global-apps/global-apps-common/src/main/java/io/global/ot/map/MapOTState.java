@@ -6,7 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class MapOTState<K, V> implements OTState<MapOperation<K, V>> {
+public class MapOTState<K, V> implements OTState<MapOperation<K, V>> {
 	private final Map<K, V> map;
 
 	public MapOTState() {

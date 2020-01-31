@@ -16,14 +16,14 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.Initializable;
 import io.global.common.*;
 import io.global.fs.api.GlobalFsCheckpoint;
 import org.jetbrains.annotations.Nullable;
@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsAdapter implements FsClient, Initializable<GlobalFsAdapter> {

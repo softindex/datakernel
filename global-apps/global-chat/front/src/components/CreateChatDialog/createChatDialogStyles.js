@@ -10,7 +10,7 @@ const createChatDialogStyles = theme => ({
     display: 'contents'
   },
   actionButton: {
-    margin: theme.spacing,
+    margin: theme.spacing(1),
     position: 'relative',
     right: theme.spacing(2)
   },

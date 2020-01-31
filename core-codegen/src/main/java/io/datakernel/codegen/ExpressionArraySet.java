@@ -16,10 +16,10 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArraySet implements Expression {
@@ -27,49 +27,20 @@ final class ExpressionArraySet implements Expression {
 	private final Expression position;
 	private final Expression newElement;
 
-	ExpressionArraySet(Expression array, Expression position, Expression newElement) {
-		this.array = checkNotNull(array);
-		this.position = checkNotNull(position);
-		this.newElement = checkNotNull(newElement);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return Type.VOID_TYPE;
+	ExpressionArraySet(@NotNull Expression array, @NotNull Expression position, @NotNull Expression newElement) {
+		this.array = array;
+		this.position = position;
+		this.newElement = newElement;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		array.load(ctx);
+		Type arrayType = array.load(ctx);
 		position.load(ctx);
 		newElement.load(ctx);
-		g.arrayStore(getType(array.type(ctx).getDescriptor().substring(1)));
+		g.arrayStore(getType(arrayType.getDescriptor().substring(1)));
 		return Type.VOID_TYPE;
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionArraySet that = (ExpressionArraySet) o;
-
-		if (!array.equals(that.array)) return false;
-		if (!position.equals(that.position)) return false;
-		if (!newElement.equals(that.newElement)) return false;
-
-		return true;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = array.hashCode();
-		result = 31 * result + position.hashCode();
-		result = 31 * result + newElement.hashCode();
-		return result;
 	}
 }

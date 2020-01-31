@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation.measure;
 
-import io.datakernel.util.HashUtils;
+import io.datakernel.common.HashUtils;
 
 import static java.lang.Math.exp;
 import static java.lang.Math.log;

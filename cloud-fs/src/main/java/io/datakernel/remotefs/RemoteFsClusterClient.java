@@ -16,22 +16,22 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.collection.Try;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.functional.Try;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.PromiseStats;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Tuple2;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -41,10 +41,11 @@ import java.time.Duration;
 import java.util.*;
 import java.util.function.BiFunction;
 
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.*;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -112,9 +113,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	/**
 	 * Sets the server selection strategy based on file name, alive partitions, and replication count.
 	 */
-	public RemoteFsClusterClient withServerSelector(ServerSelector serverSelector) {
-		checkNotNull(serverSelector, "serverSelector");
-
+	public RemoteFsClusterClient withServerSelector(@NotNull ServerSelector serverSelector) {
 		this.serverSelector = serverSelector;
 		return this;
 	}
@@ -218,7 +217,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 
 	private void markIfDead(Object partitionId, Throwable e) {
 		// marking as dead only on lower level connection and other I/O exceptions,
-		// remotefs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
+		// remote fs exceptions are the ones actually received with an ServerError response (so the node is obviously not dead)
 		if (e.getClass() != StacklessException.class) {
 			markDead(partitionId, e);
 		}
@@ -244,9 +243,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 		return Promise.ofException(exception);
 	}
 
-	private Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset, @Nullable Long revision) {
-		checkNotNull(filename, "fileName");
-
+	private Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String filename, long offset, @Nullable Long revision) {
 		List<Object> selected = serverSelector.selectFrom(filename, aliveClients.keySet(), replicationCount);
 
 		checkState(!selected.isEmpty(), "Selected no servers to upload file " + filename);
@@ -320,19 +317,17 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset) {
 		return upload(name, offset, null);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String name, long offset, long revision) {
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String name, long offset, long revision) {
 		return upload(name, offset, (Long) revision);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
-		checkNotNull(name, "fileName");
-
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		if (deadClients.size() >= replicationCount) {
 			return ofFailure("There are more dead partitions than replication count(" +
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
@@ -342,13 +337,13 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				aliveClients.entrySet().stream()
 						.map(entry -> {
 							Object partitionId = entry.getKey();
-							return entry.getValue().getMetadata(name) //   ↓ use null's as file non-existense indicators
+							return entry.getValue().getMetadata(name) //   ↓ use null's as file non-existence indicators
 									.map(res -> res != null ? new Tuple2<>(partitionId, res) : null)
 									.thenEx(wrapDeath(partitionId))
 									.toTry();
 						}))
 				.then(tries -> {
-					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter succesfull connections
+					List<Tuple2<Object, FileMetadata>> successes = tries.stream() // filter successful connections
 							.filter(Try::isSuccess)
 							.map(Try::get)
 							.collect(toList());
@@ -392,10 +387,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
-		checkNotNull(name, "name");
-		checkNotNull(target, "target");
-
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		if (deadClients.size() >= replicationCount) {
 			return ofFailure("There are more dead partitions than replication count(" +
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
@@ -406,10 +398,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
-		checkNotNull(name, "name");
-		checkNotNull(target, "target");
-
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		if (deadClients.size() >= replicationCount) {
 			return ofFailure("There are more dead partitions than replication count(" +
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
@@ -420,9 +409,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
-		checkNotNull(name, "name");
-
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(entry -> entry.getValue().delete(name)
@@ -437,9 +424,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 				.whenComplete(deletePromise.recordStats());
 	}
 
-	private Promise<List<FileMetadata>> doList(String glob, BiFunction<FsClient, String, Promise<List<FileMetadata>>> list) {
-		checkNotNull(glob, "glob");
-
+	private Promise<List<FileMetadata>> doList(@NotNull String glob, BiFunction<FsClient, String, Promise<List<FileMetadata>>> list) {
 		if (deadClients.size() >= replicationCount) {
 			return ofFailure("There are more dead partitions than replication count(" +
 					deadClients.size() + " dead, replication count is " + replicationCount + "), aborting", emptyList());
@@ -463,12 +448,12 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return doList(glob, FsClient::listEntities);
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return doList(glob, FsClient::list);
 	}
 

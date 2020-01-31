@@ -16,14 +16,18 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.ParseException;
-import io.datakernel.jmx.*;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.protocol.RpcControlMessage;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.RpcStream;
-import io.datakernel.stream.StreamDataAcceptor;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +50,8 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	private final InetAddress remoteAddress;
 	private final ExceptionStats lastRequestHandlingException = ExceptionStats.create();
 	private final ValueStats requestHandlingTime = ValueStats.create(RpcServer.SMOOTHING_WINDOW).withUnit("milliseconds");
-	private EventStats successfulRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
-	private EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
+	private final EventStats successfulRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
+	private final EventStats failedRequests = EventStats.create(RpcServer.SMOOTHING_WINDOW);
 	private boolean monitoring = false;
 
 	RpcServerConnection(RpcServer rpcServer, InetAddress remoteAddress,
@@ -150,7 +154,9 @@ public final class RpcServerConnection implements RpcStream.Listener, JmxRefresh
 	}
 
 	public void shutdown() {
-		downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.CLOSE));
+		if (downstreamDataAcceptor != null) {
+			downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.CLOSE));
+		}
 	}
 
 	// jmx

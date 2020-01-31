@@ -16,11 +16,11 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.jmx.ConcurrentJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.Initializable;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -29,8 +29,8 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
-import static io.datakernel.util.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -72,12 +72,12 @@ public final class Triggers implements ConcurrentJmxMBean, Initializable<Trigger
 		}
 	}
 
-	Map<Trigger, TriggerResult> suppressedResults = new LinkedHashMap<>();
-	private Map<Trigger, TriggerResult> cachedResults = new LinkedHashMap<>();
+	private final Map<Trigger, TriggerResult> suppressedResults = new LinkedHashMap<>();
+	private final Map<Trigger, TriggerResult> cachedResults = new LinkedHashMap<>();
 	private Map<Trigger, TriggerWithResult> maxSeverityResults = new LinkedHashMap<>();
 	private long cachedTimestamp;
 
-	private Predicate<TriggerWithResult> isNotSuppressed = triggerWithResult -> {
+	private final Predicate<TriggerWithResult> isNotSuppressed = triggerWithResult -> {
 		Trigger trigger = triggerWithResult.trigger;
 		if (suppressedResults.containsKey(trigger)) {
 			TriggerResult suppressedTriggerResult = suppressedResults.get(trigger);

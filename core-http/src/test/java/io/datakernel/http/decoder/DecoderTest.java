@@ -1,13 +1,18 @@
 package io.datakernel.http.decoder;
 
-import io.datakernel.functional.Either;
+import io.datakernel.common.collection.Either;
 import io.datakernel.http.HttpCookie;
 import io.datakernel.http.HttpRequest;
+import io.datakernel.test.rules.ByteBufRule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 public class DecoderTest {
+	@ClassRule
+	public static final ByteBufRule rule = new ByteBufRule();
+
 	@Test
 	public void test() throws DecodeException {
 		Decoder<String> parser = Decoders.ofCookie("tmp");

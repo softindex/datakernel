@@ -44,7 +44,6 @@ public class CubeDiff {
 		return new CubeDiff(map);
 	}
 
-
 	public Set<String> keySet() {
 		return diffs.keySet();
 	}

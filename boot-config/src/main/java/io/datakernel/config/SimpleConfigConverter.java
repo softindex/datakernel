@@ -19,15 +19,13 @@ package io.datakernel.config;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public abstract class SimpleConfigConverter<T> implements ConfigConverter<T> {
 	@NotNull
 	@Override
 	public final T get(Config config) {
-		String string = config.getValue();
-		checkNotNull(string);
-		return fromString(string);
+		return fromString(checkNotNull(config.getValue()));
 	}
 
 	@Override

@@ -1,12 +1,12 @@
 package io.global.fs.local;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -25,10 +25,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.async.Promises.asPromises;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.function.AsyncSuppliers.coalesce;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.process.AsyncExecutors.retry;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.promise.Promises.asPromises;
 import static io.global.util.Utils.tolerantCollectBoolean;
+import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.stream.Collectors.toList;
 
 public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNamespace, GlobalFsNodeImpl, GlobalFsNode> {
@@ -36,11 +40,21 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 
 	private final FsClient storage;
 	private final CheckpointStorage checkpointStorage;
+	private final AsyncSupplier<Boolean> fetch = reuse(this::doFetch);
+	private final AsyncSupplier<Boolean> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
 
 	public GlobalFsNamespace(GlobalFsNodeImpl node, PubKey space) {
 		super(node, space);
 		storage = node.getStorageFactory().apply(space);
 		checkpointStorage = node.getCheckpointStorageFactory().apply(space);
+	}
+
+	public Promise<Boolean> push() {
+		return push.get();
+	}
+
+	public Promise<Boolean> fetch() {
+		return fetch.get();
 	}
 
 	public Promise<Void> streamDataFrames(GlobalFsNode from, GlobalFsNode to, String filename, long position, long revision) {
@@ -141,6 +155,11 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 		return checkpointStorage.loadMetaCheckpoint(fileName);
 	}
 
+	public Promise<Void> push(String glob) {
+		return ensureMasterNodes()
+				.then(masters -> tolerantCollectVoid(masters.stream(), master -> push(master, glob).toVoid()));
+	}
+
 	public Promise<Boolean> push(GlobalFsNode into, String glob) {
 		return list(glob)
 				.then(files -> tolerantCollectBoolean(files, signedLocalMeta -> {
@@ -159,14 +178,14 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 										logger.trace("push, both local and remote files {} are tombstones", remoteMeta.getFilename());
 										return Promise.of(false);
 									}
-									logger.info("push, removing remote file since local file {} is a tombstone", localMeta.getFilename());
+									logger.info("push, removing remote file since a local file {} is a tombstone", localMeta.getFilename());
 									return into.delete(space, signedLocalMeta)
 											.map($ -> true);
 								}
 								long position = 0;
 								if (remoteMeta != null) {
 									if (remoteMeta.isTombstone()) {
-										logger.info("push, removing local file since remote file {} is a tombstone", remoteMeta.getFilename());
+										logger.info("push, removing local file since a remote file {} is a tombstone", remoteMeta.getFilename());
 										return delete(signedLocalMeta)
 												.map($ -> true);
 									}
@@ -182,9 +201,19 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 				.whenComplete(toLogger(logger, TRACE, "push", space, into, node));
 	}
 
+	private Promise<Boolean> doFetch() {
+		return ensureMasterNodes()
+				.then(masters -> tolerantCollectBoolean(masters.stream(), master -> fetch(master, "**")));
+	}
+
+	private Promise<Boolean> doPush() {
+		return ensureMasterNodes()
+				.then(masters -> tolerantCollectBoolean(masters.stream(), master -> push(master, "**")));
+	}
+
 	public Promise<Boolean> fetch(GlobalFsNode from, String glob) {
 		// our file is better
-		// other file is encrypted with different key
+		// the other file is encrypted with different key
 		return from.listEntities(space, glob)
 				.then(files -> tolerantCollectBoolean(files, signedRemoteMeta -> {
 							GlobalFsCheckpoint remoteMeta = signedRemoteMeta.getValue();
@@ -198,14 +227,14 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 												logger.trace("fetch, local file {} is better or same as remote", localMeta.getFilename());
 												return Promise.of(false);
 											}
-											// other file is encrypted with different key
+											// the other file is encrypted with different key
 											if (!Objects.equals(localMeta.getSimKeyHash(), remoteMeta.getSimKeyHash())) {
 												logger.trace("fetch, remote file {} is encrypted with different key, ignoring", remoteMeta.getFilename());
 												return Promise.of(false);
 											}
 										}
 										if (remoteMeta.isTombstone()) {
-											logger.info("fetch, removing local file since remote file {} is a tombstone", remoteMeta.getFilename());
+											logger.info("fetch, removing local file since a remote file {} is a tombstone", remoteMeta.getFilename());
 											return delete(signedRemoteMeta)
 													.map($ -> true);
 										}
@@ -214,7 +243,7 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 												remoteMeta.getRevision() == localMeta.getRevision() ?
 														localMeta.getPosition() : 0 : 0;
 
-										logger.info("fetching remote file {} from node {}", remoteMeta.getFilename(), from);
+										logger.info("fetching remote file {} from a node {}", remoteMeta.getFilename(), from);
 										return streamDataFrames(from, node, filename, ourSize, remoteMeta.getRevision())
 												.map($ -> true);
 									});

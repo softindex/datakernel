@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
 public class DynamicMBeanRegistrationTest {
@@ -50,7 +51,7 @@ public class DynamicMBeanRegistrationTest {
 		}});
 
 		Key<?> key = Key.of(CustomKeyClass.class, createCustomAnnotation("Global"));
-		jmxRegistry.registerSingleton(key, service, null);
+		jmxRegistry.registerSingleton(key, service, defaultSettings());
 	}
 
 	// region helper classes

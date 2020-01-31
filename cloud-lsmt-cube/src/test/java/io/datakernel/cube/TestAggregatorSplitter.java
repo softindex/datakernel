@@ -19,14 +19,14 @@ package io.datakernel.cube;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.etl.LogDataConsumerSplitter;
-import io.datakernel.stream.StreamDataAcceptor;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.CollectionUtils.keysToMap;
+import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static java.util.Collections.singleton;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toSet;

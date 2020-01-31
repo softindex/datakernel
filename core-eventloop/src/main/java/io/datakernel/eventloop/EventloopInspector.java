@@ -1,7 +1,7 @@
 package io.datakernel.eventloop;
 
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.inspector.BaseInspector;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +28,7 @@ public interface EventloopInspector extends BaseInspector<EventloopInspector> {
 
 	void onUpdateScheduledTasksStats(int newScheduledTasks, long loopTime, boolean background);
 
-	void onFatalError(@NotNull Throwable e, Object causedObject);
+	void onFatalError(@NotNull Throwable e, @Nullable Object causedObject);
 
 	void onScheduledTaskOverdue(int overdue, boolean background);
 }

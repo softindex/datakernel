@@ -20,7 +20,7 @@ import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeJoin;
-import io.datakernel.stream.processor.StreamJoin.Joiner;
+import io.datakernel.datastream.processor.StreamJoin.Joiner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 	private final Joiner<K, L, R, V> joiner;
 
 	public DatasetJoin(SortedDataset<K, L> left, SortedDataset<K, R> right, Joiner<K, L, R, V> joiner,
-	                   Class<V> resultType, Function<V, K> keyFunction) {
+			Class<V> resultType, Function<V, K> keyFunction) {
 		super(resultType, left.keyComparator(), left.keyType(), keyFunction);
 		this.left = left;
 		this.right = right;

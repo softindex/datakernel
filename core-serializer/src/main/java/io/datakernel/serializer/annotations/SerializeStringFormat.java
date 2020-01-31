@@ -18,15 +18,13 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.StringFormat;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({
 		ElementType.FIELD,
 		ElementType.METHOD})
+@Repeatable(SerializeStringFormatEx.class)
 public @interface SerializeStringFormat {
 	StringFormat value();
 

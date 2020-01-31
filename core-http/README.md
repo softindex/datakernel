@@ -6,8 +6,8 @@ You can add this module to your project by inserting the following dependency to
 ```xml
 <dependency>
     <groupId>io.datakernel</groupId>
-    <artifactId>datakernel-net</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <artifactId>datakernel-http</artifactId>
+    <version>3.2-SNAPSHOT</version>
 </dependency>
 ```
 

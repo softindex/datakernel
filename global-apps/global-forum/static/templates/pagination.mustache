@@ -1,0 +1,42 @@
+{{#pages}}
+    <div class="row justify-content-center">
+        <ul class="pagination pagination-sm mb-0 mt-4">
+            <li class="page-item{{#pages.firstSelected}} disabled{{/pages.firstSelected}}">
+                <a class="page-link"
+                   href="?p=0"
+                   aria-label="First">
+                    <span aria-hidden="true">&laquo;</span>
+                    <span class="sr-only">First</span>
+                </a>
+            </li>
+            <li class="page-item{{#pages.firstSelected}} disabled{{/pages.firstSelected}}">
+                <a class="page-link"
+                   href="?p={{pages.prev}}">
+                <span>Prev</span>
+                </a>
+            </li>
+            {{#pages.numbers}}
+                <li class="page-item{{#current}} active{{/current}}">
+                    <a class="page-link"
+                       href="?p={{real}}">
+                    {{shown}}
+                    </a>
+                </li>
+            {{/pages.numbers}}
+            <li class="page-item{{#pages.lastSelected}} disabled{{/pages.lastSelected}}">
+                <a class="page-link"
+                   href="?p={{pages.next}}">
+                <span>Next</span>
+                </a>
+            </li>
+            <li class="page-item{{#pages.lastSelected}} disabled{{/pages.lastSelected}}">
+                <a class="page-link"
+                   href="?p={{pages.last}}"
+                    aria-label="Last">
+                <span aria-hidden="true">&raquo;</span>
+                <span class="sr-only">Last</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+{{/pages}}

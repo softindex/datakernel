@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.concurrent.ThreadLocalCharArray;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.exception.UnknownFormatException;
 import io.datakernel.http.AsyncHttpServer.Inspector;
-import io.datakernel.util.ThreadLocalCharArray;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,6 +33,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMessage.MUST_LOAD_BODY;
 import static io.datakernel.http.HttpMethod.*;
@@ -65,6 +66,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private final InetAddress remoteAddress;
 
+	@Nullable
 	private HttpRequest request;
 	private final AsyncHttpServer server;
 	@Nullable
@@ -85,7 +87,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
-						 AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
+			AsyncHttpServer server, AsyncServlet servlet, char[] charBuffer) {
 		super(eventloop, asyncTcpSocket);
 		this.server = server;
 		this.servlet = servlet;
@@ -159,6 +161,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeaderBuf(ByteBuf buf) {
+		//noinspection ConstantConditions
 		request.addHeaderBuf(buf);
 	}
 
@@ -208,6 +211,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				socket.write(ByteBuf.wrapForReading(EXPECT_RESPONSE_CONTINUE));
 			}
 		}
+		//noinspection ConstantConditions
 		if (request.headers.size() >= MAX_HEADERS) {
 			throw TOO_MANY_HEADERS;
 		}
@@ -225,7 +229,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		ByteBuf buf = renderHttpMessage(httpResponse);
 		if (buf != null) {
 			if ((flags & KEEP_ALIVE) != 0) {
-				eventloop.post(() -> writeBuf(buf));
+				eventloop.post(wrapContext(this, () -> writeBuf(buf)));
 			} else {
 				writeBuf(buf);
 			}
@@ -237,6 +241,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onHeadersReceived(@Nullable ByteBuf body, @Nullable ChannelSupplier<ByteBuf> bodySupplier) {
+		assert !isClosed();
+
+		//noinspection ConstantConditions
 		request.flags |= MUST_LOAD_BODY;
 		request.body = body;
 		request.bodyStream = bodySupplier;
@@ -251,11 +258,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		HttpRequest request = this.request;
 		Promise<HttpResponse> servletResult;
 		try {
-			servletResult = servlet.serve(request);
+			servletResult = servlet.serveAsync(request);
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
 		}
 		servletResult.whenComplete((response, e) -> {
+			assert eventloop.inEventloopThread();
 			if (isClosed()) {
 				request.recycle();
 				if (response != null) {
@@ -286,16 +294,25 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	protected void onBodyReceived() {
-		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+		assert !isClosed();
+		flags |= BODY_RECEIVED;
+		if ((flags & BODY_SENT) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
 		}
 	}
 
 	@Override
 	protected void onBodySent() {
-		if ((flags & (BODY_SENT | BODY_RECEIVED)) == (BODY_SENT | BODY_RECEIVED) && pool != server.poolServing) {
+		assert !isClosed();
+		flags |= BODY_SENT;
+		if ((flags & BODY_RECEIVED) != 0 && pool != server.poolServing) {
 			onHttpMessageComplete();
 		}
+	}
+
+	@Override
+	protected void onNoContentLength() {
+		throw new AssertionError("This method should not be called on a server");
 	}
 
 	private void onHttpMessageComplete() {
@@ -310,6 +327,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			switchPool(server.poolKeepAlive);
 			flags = 0;
 			try {
+				/*
+					as per RFC 7230, section 3.3.3,
+					if no Content-Length header is set, server can assume that a length of a message is 0
+				 */
+				contentLength = 0;
 				readHttpMessage();
 			} catch (ParseException e) {
 				closeWithError(e);
@@ -329,7 +351,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			request.recycle();
 			request = null;
 		}
+		//noinspection ConstantConditions
 		pool.removeNode(this);
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (pool = null) == null;
 		server.onConnectionClosed();
 	}
 

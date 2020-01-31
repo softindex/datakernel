@@ -3,152 +3,134 @@
         <div class="row">
             <div class="col">
                 <div data-value="{{content}}" id="content_{{postId}}"
-                     class="row mr-2{{#deletedBy}} text-secondary{{/deletedBy}}">
-                    <div class="m-4" style="overflow: hidden">
+                     class="row {{#deletedBy}}text-secondary{{/deletedBy}}">
+                    <div class="px-2 text-wrap text-break" style="overflow: hidden;">
                         {{{renderedContent}}}
                     </div>
                 </div>
             </div>
         </div>
-        <div class="row">
-            <div class="col"></div>
-            <div class="col-auto mx-2 mb-2">
-                <div class="row">
-                    {{#deletedBy}}
-                        {{#editable}}
-                            <form action="/{{threadId}}/{{postId}}/restore" method="post">
-                                <button class="btn btn-outline-primary btn-sm">restore</button>
-                            </form>
-                        {{/editable}}
-                    {{/deletedBy}}
+        <div class="row justify-content-end">
+            {{#deletedBy}}
+                    {{#editable}}
+                    <form action="/{{threadId}}/{{postId}}/restore" method="post">
+                        <button class="btn btn-link text-primary btn-sm">restore</button>
+                    </form>
+                {{/editable}}
+            {{/deletedBy}}
 
-                    {{^deletedBy}}
-                        {{#user}}
-                            {{#editable}}
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle mx-1"
-                                            type="button"
-                                            id="change_menu_{{postId}}"
-                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                        change
-                                    </button>
-                                    <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
-                                          action="/{{threadId}}/{{postId}}/delete" method="post">
+            {{^deletedBy}}
+                {{#user}}
+                    {{#editable}}
+                        <div class="dropdown">
+                            <button class="col-2 btn btn-sm btn-link text-secondary dropdown-toggle"
+                                    type="button"
+                                    id="change_menu_{{postId}}"
+                                    data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                change
+                            </button>
+                            <form class="dropdown-menu" aria-labelledby="change_menu_{{postId}}"
+                                  action="/{{threadId}}/{{postId}}/delete" method="post">
 
-                                        <button class="edit-button dropdown-item" type="button"
-                                                data-maxLength="65256"
-                                                data-root-edit="#content_{{postId}}"
-                                                data-edit-action="/owner/{{threadId}}/{{postId}}/edit">
-                                            edit
-                                        </button>
-                                        <button class="edit-button dropdown-item" type="button"
-                                                data-maxLength="120"
-                                                data-edit="#title"
-                                                data-edit-action="/owner/{{threadId}}/edit">
-                                            edit title
-                                        </button>
-                                        <button class="dropdown-item" type="submit">delete</button>
-                                    </form>
-                                </div>
-                            {{/editable}}
-                            {{#user.role.known}}
-                                <button class="btn btn-outline-primary btn-sm" data-toggle="collapse"
-                                        data-target="#reply_{{postId}}">
-                                    reply
+                                <button class="edit-button dropdown-item" type="button"
+                                        data-maxLength="65256"
+                                        data-root-edit="#content_{{postId}}"
+                                        data-edit-action="/owner/{{threadId}}/{{postId}}/edit">
+                                    edit
                                 </button>
-                            {{/user.role.known}}
-                        {{/user}}
-                    {{/deletedBy}}
-                </div>
-            </div>
+                                <button class="dropdown-item" type="submit">delete</button>
+                            </form>
+                        </div>
+                    {{/editable}}
+                    {{#user.role.known}}
+                        <button class="btn btn-link text-primary btn-sm" data-toggle="collapse"
+                                data-target="#reply_{{postId}}">
+                            reply
+                        </button>
+                    {{/user.role.known}}
+                {{/user}}
+            {{/deletedBy}}
         </div>
     </div>
 </div>
-
-<div class="text-center" style="display: none" id="attachments">
+<div style="display: none" id="attachments">
     {{^deletedBy}}
         {{#attachments}}
-            <div class="card">
+            <div class="row p-2">
                 {{#image}}
-                    <div class="card-header" title="{{.}}">
+                    <div class="col-lg-3 col-md-4 col-sm-6 col-12 m-0 pl-0   text-center align-self-center" title="{{.}}" style="position: relative;">
                         <a href="/{{threadId}}/{{postId}}/download/{{.}}">
-                            <img src="/{{threadId}}/{{postId}}/download/{{.}}"
-                                 class="img-thumbnail m-2"/>
+                            <img src="/{{threadId}}/{{postId}}/download/{{.}}" style="border-radius: 0.5rem"
+                                 class="m-2 align-content-center" alt="image"/>
                         </a>
-                    </div>
-                    <div class="card-body">
-                        <div class="btn-group-toggle text-center" data-toggle="buttons">
-                            <label class="btn btn-outline-danger">
-                                <input id="attachment_{{.}}" data-value="{{.}}" type="checkbox"
-                                       autocomplete="off"> Delete
-                            </label>
-                        </div>
+                        <label class="customCheckbox" style="position: absolute; top: 50%; left: 50%;
+                                    transform: translate(-50%, -50%)">
+                            <input id="attachment_{{.}}" data-value="{{.}}" autocomplete="off" type="checkbox"
+                                   name="test"/>
+                            <i class="fa fa-times fa-5x text-white trash-icon" style="text-shadow: 1px 1px 2px black;" aria-hidden="true"></i>
+                        </label>
                     </div>
                 {{/image}}
                 {{#video}}
-                    <div class="card-header" title="{{.}}">
-                        <div class="embed-responsive embed-responsive-16by9 m-2">
+                    <div class="col-12 p-0" title="{{.}}" style="position: relative">
+                        <div class="embed-responsive embed-responsive-16by9 m-2" style="opacity: 0.9;">
                             <video controls>
                                 <source src="/{{threadId}}/{{postId}}/download/{{.}}">
                             </video>
                         </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="btn-group-toggle text-center" data-toggle="buttons">
-                            <label class="btn btn-outline-danger">
-                                <input id="attachment_{{.}}" data-value="{{.}}" type="checkbox"
-                                       autocomplete="off"> Delete
-                            </label>
-                        </div>
+                        <label class="customCheckbox" style="position: absolute; top: 50%; left: 50%;
+                                    transform: translate(-50%, -50%)">
+                            <input id="attachment_{{.}}" data-value="{{.}}" autocomplete="off" type="checkbox"
+                                   name="test"/>
+                            <i class="fa fa-times fa-10x text-white trash-icon" aria-hidden="true"></i>
+                        </label>
                     </div>
                 {{/video}}
                 {{#document}}
-                    <div class="card-header" title="{{.}}">
-                        <ul class="list-group">
-                            <li class="list-group-item text-truncate">
-                                <a href="/{{threadId}}/{{postId}}/download/{{.}}"
-                                   class="stretched-link"><i class="far fa-file"></i></a>
-                                {{.}}
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="card-body">
-                        <div class="btn-group-toggle text-center" data-toggle="buttons">
-                            <label class="btn btn-outline-danger">
-                                <input id="attachment_{{.}}" data-value="{{.}}" type="checkbox"
-                                       autocomplete="off"> Delete
-                            </label>
-                        </div>
+                    <div class="col-12 m-1 p-1 row" title="{{.}}"
+                         style="border-bottom: 1px solid rgba(0,0,0,.125); border-radius: 0.4rem; background: rgba(0,0,0,.03)">
+                        <label class="mt-2 customCheckbox col-1">
+                            <input id="attachment_{{.}}" data-value="{{.}}" autocomplete="off" type="checkbox"
+                                   name="test"/>
+                            <i class="fa fa-times fa-2x text-white trash-icon" style="text-shadow: 0 0 3px #000;"
+                               aria-hidden="true"></i>
+                        </label>
+
+                        <p class="mt-2 col-10"
+                           style="display: inline; color: gray; white-space: nowrap; font-size: 1.1rem; overflow: hidden">{{.}}</p>
+
+                        <a class="mt-2 col-1" href="/{{threadId}}/{{postId}}/download/{{.}}">
+                            <i class="fas fa-file fa-2x" style="overflow: hidden;"> </i>
+                        </a>
                     </div>
                 {{/document}}
             </div>
         {{/attachments}}
     {{/deletedBy}}
 
-    <div class="col text-center">
-        <div id="attachments">
-            <div class="m-3">
-                <div class="custom-file col-3">
-                    <input type="file" accept="image/*" class="custom-file-input" id="image_attachment"
-                           multiple
-                           name="image_attachment">
-                    <label class="custom-file-label text-truncate text-left" for="image_attachment">Attach
-                        images</label>
-                </div>
-                <div class="custom-file col-3">
-                    <input type="file" accept="video/mp4" class="custom-file-input" id="video_attachment"
-                           multiple
-                           name="video_attachment">
-                    <label class="custom-file-label text-truncate text-left" for="video_attachment">Attach
-                        videos</label>
-                </div>
-                <div class="custom-file col-3">
-                    <input type="file" class="custom-file-input" id="document_attachment" multiple
-                           name="document_attachment">
-                    <label class="custom-file-label text-truncate text-left" for="document_attachment">Attach
-                        documents</label>
-                </div>
-            </div>
+    <div class="row text-center px-3" id="attachments">
+        <div class="custom-file p-2 col-lg-4 col-12">
+            <input type="file" accept="image/*" class="custom-file-input" id="image_attachment"
+                   multiple
+                   name="image_attachment">
+            <label class="custom-file-label text-truncate text-left" for="image_attachment">
+                <small>Attach images</small>
+            </label>
+        </div>
+        <div class="custom-file p-2 col-lg-4 col-12">
+            <input type="file" class="custom-file-input" id="document_attachment" multiple
+                   name="document_attachment">
+            <label class="custom-file-label text-truncate text-left" for="document_attachment">
+                <small>Attach documents</small>
+            </label>
+        </div>
+        <div class="custom-file p-2 col-lg-4 col-12">
+            <input type="file" accept="video/mp4" class="custom-file-input" id="video_attachment"
+                   multiple
+                   name="video_attachment">
+            <label class="custom-file-label text-truncate text-left" for="video_attachment">
+                <small>Attach videos</small>
+            </label>
         </div>
     </div>
 </div>
@@ -157,18 +139,24 @@
     <div class="progress-bar" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
 </div>
 
-<div class="ml-3">
+<div class="ml-3 mt-2 justify-content-end">
     {{^deletedBy}}
         {{#user}}
             <div class="collapse" id="reply_{{postId}}">
-                <form class="pt-3" action="/{{threadId}}/{{postId}}"
+                <form action="/{{threadId}}/{{postId}}"
                       method="post">
-                    <div class="mx-3">
-                        <textarea maxlength="1024" class="form-control" placeholder="Post your reply" name="content"
-                                  data-post-button="#post_button_{{postId}}"></textarea>
-                    </div>
-                    <div class="p-3">
-                        <button type="submit" class="btn btn-sm btn-primary" id="post_button_{{postId}}">post</button>
+                    <textarea maxlength="1024" class="form-control childPost w-100"
+                              placeholder="Post your reply" name="content"
+                              data-post-button="#post_button_{{postId}}" required></textarea>
+                    <div style="max-width: max-content">
+                        <button type="submit" class="btn btn-sm btn-link text-primary" id="post_button_{{postId}}">
+                            post
+                        </button>
+                        <button type="button"
+                                data-toggle="collapse"
+                                data-target="#reply_{{postId}}"
+                                class="btn btn-sm btn-link text-secondary" id="post_button_{{postId}}">cancel
+                        </button>
                     </div>
                 </form>
             </div>

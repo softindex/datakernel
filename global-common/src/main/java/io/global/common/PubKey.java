@@ -16,7 +16,7 @@
 
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 import org.spongycastle.math.ec.ECPoint;
 
@@ -89,6 +89,6 @@ public final class PubKey {
 
 	@Override
 	public String toString() {
-		return "PubKey@" + Integer.toHexString(hashCode());
+		return "PubKey@" + ecPublicKey.getQ().getXCoord().toString().substring(0, 7);
 	}
 }

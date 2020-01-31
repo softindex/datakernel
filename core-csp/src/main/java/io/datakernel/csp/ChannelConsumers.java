@@ -16,12 +16,12 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.Recyclable;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,15 +32,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.util.Recyclable.deepRecycle;
+import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Provides additional functionality for managing {@link ChannelConsumer}s.
  */
 @SuppressWarnings("WeakerAccess")
 public final class ChannelConsumers {
-	private ChannelConsumers() {
-	}
 
 	/**
 	 * Passes iterator's values to the {@code output} until it {@code hasNext()},
@@ -132,7 +131,7 @@ public final class ChannelConsumers {
 				try {
 					future.get();
 				} catch (InterruptedException e) {
-					eventloop.execute(channelConsumer::cancel);
+					eventloop.execute(wrapContext(channelConsumer, channelConsumer::cancel));
 					throw new IOException(e);
 				} catch (ExecutionException e) {
 					Throwable cause = e.getCause();

@@ -16,14 +16,15 @@
 
 package io.datakernel.multilog;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.time.CurrentTimeProvider;
+import org.jetbrains.annotations.Nullable;
 
 final class LogStreamChunker extends AbstractCommunicatingProcess implements ChannelInput<ByteBuf> {
 	private final CurrentTimeProvider currentTimeProvider;
@@ -32,6 +33,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 	private final String logPartition;
 
 	private ChannelSupplier<ByteBuf> input;
+	@Nullable
 	private ChannelConsumer<ByteBuf> currentConsumer;
 
 	private LogFile currentChunk;
@@ -55,6 +57,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 		input.get()
 				.whenResult(buf -> {
 					if (buf != null) {
+						//noinspection ConstantConditions
 						ensureConsumer()
 								.then($ -> currentConsumer.accept(buf))
 								.whenResult($ -> doProcess());

@@ -1,8 +1,8 @@
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.promise.Promise;
 import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;

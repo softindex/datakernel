@@ -16,15 +16,16 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class RpcStrategyRoundRobin implements RpcStrategy {
 	private final RpcStrategyList list;
@@ -63,16 +64,16 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 
 	static final class Sender implements RpcSender {
 		private int nextSender;
-		private RpcSender[] subSenders;
+		private final RpcSender[] subSenders;
 
-		Sender(List<RpcSender> senders) {
-			checkArgument(senders != null && senders.size() > 0, "List of senders should not be null and should contain at least one sender");
+		Sender(@NotNull List<RpcSender> senders) {
+			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.nextSender = 0;
 		}
 
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			RpcSender sender = subSenders[nextSender];
 			nextSender = (nextSender + 1) % subSenders.length;
 			sender.sendRequest(request, timeout, cb);

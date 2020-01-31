@@ -16,12 +16,12 @@
 
 package io.datakernel.dataflow.helper;
 
-import io.datakernel.async.Promise;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerToList;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.StreamSorterStorage;
+import io.datakernel.promise.Promise;
 
 import java.util.ArrayList;
 import java.util.HashMap;

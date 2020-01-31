@@ -7,30 +7,28 @@ import org.junit.runners.model.InitializationError;
 import org.junit.runners.model.Statement;
 
 public class DatakernelServiceRunner extends DatakernelRunner {
-	private ServiceGraph currentServiceGraph;
-
 	public DatakernelServiceRunner(Class<?> clazz) throws InitializationError {
 		super(clazz);
 	}
 
 	@Override
-	protected Statement withBefores(FrameworkMethod method, Object target, Statement test) {
-		return super.withBefores(method, target, new LambdaStatement(() -> {
-			currentServiceGraph = currentInjector.getInstanceOrNull(ServiceGraph.class);
-			if (currentServiceGraph != null) {
-				currentServiceGraph.startFuture().get();
-			}
-			test.evaluate();
-		}));
-	}
+	protected Statement methodInvoker(FrameworkMethod method, Object test) {
+		return new LambdaStatement(() -> {
+			// create args before running the service graph so that those args that are services are found by service graph
+			Object[] args = getArgs(method);
 
-	@Override
-	protected Statement withAfters(FrameworkMethod method, Object target, Statement test) {
-		return super.withAfters(method, target, new LambdaStatement(() -> {
-			test.evaluate();
-			if (currentServiceGraph != null) {
-				currentServiceGraph.stopFuture().get();
+			ServiceGraph serviceGraph = currentInjector.getInstanceOrNull(ServiceGraph.class);
+
+			if (serviceGraph == null) {
+				method.invokeExplosively(test, args);
+				return;
 			}
-		}));
+
+			serviceGraph.startFuture().get();
+
+			method.invokeExplosively(test, args);
+
+			serviceGraph.stopFuture().get();
+		});
 	}
 }

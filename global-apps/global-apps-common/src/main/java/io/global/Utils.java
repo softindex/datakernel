@@ -1,13 +1,16 @@
 package io.global;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.tuple.Tuple2;
+import io.datakernel.config.Config;
+import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.util.Tuple2;
+import io.datakernel.ot.TransformResult;
+import io.datakernel.promise.Promise;
 import io.global.appstore.pojo.AppInfo;
 import io.global.appstore.pojo.HostingInfo;
 import io.global.appstore.pojo.Profile;
@@ -19,12 +22,17 @@ import io.global.common.api.AnnounceData;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
+import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.http.HttpHeaders.REFERER;
+import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.datakernel.http.AsyncServletDecorator.mapResponse;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.global.common.CryptoUtils.randomBytes;
 import static io.global.common.CryptoUtils.toHexString;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
@@ -36,13 +44,17 @@ public final class Utils {
 		throw new AssertionError();
 	}
 
+	public static final Config DEFAULT_SYNC_SCHEDULE_CONFIG = Config.create()
+			.with("type", "interval")
+			.with("value", Config.ofValue(ofDuration(), Duration.ofSeconds(30)));
 	public static final StructuredCodec<PubKey> PUB_KEY_HEX_CODEC = STRING_CODEC.transform(PubKey::fromString, PubKey::asString);
 	public static final StructuredCodec<PrivKey> PRIV_KEY_HEX_CODEC = STRING_CODEC.transform(PrivKey::fromString, PrivKey::asString);
 	public static final StructuredCodec<AnnounceData> ANNOUNCE_DATA_CODEC = REGISTRY.get(AnnounceData.class);
 	public static final StructuredCodec<AppInfo> APP_INFO_CODEC = object(AppInfo::new,
 			"id", AppInfo::getId, INT_CODEC,
 			"name", AppInfo::getName, STRING_CODEC,
-			"description", AppInfo::getDescription, STRING_CODEC);
+			"description", AppInfo::getDescription, STRING_CODEC,
+			"logoUrl", AppInfo::getLogoUrl, STRING_CODEC);
 	public static final StructuredCodec<HostingInfo> HOSTING_INFO_CODEC = object(HostingInfo::new,
 			"id", HostingInfo::getId, INT_CODEC,
 			"name", HostingInfo::getName, STRING_CODEC,
@@ -51,8 +63,8 @@ public final class Utils {
 			"terms", HostingInfo::getTerms, STRING_CODEC.nullable());
 	public static final StructuredCodec<User> USER_CODEC = object(User::new,
 			"username", User::getUsername, STRING_CODEC,
-			"firstName", User::getFirstName, STRING_CODEC,
-			"lastName", User::getLastName, STRING_CODEC);
+			"firstName", User::getFirstName, STRING_CODEC.nullable(),
+			"lastName", User::getLastName, STRING_CODEC.nullable());
 	public static final StructuredCodec<Profile> PROFILE_CODEC = object(Profile::new,
 			"pubKey", Profile::getPubKey, PUB_KEY_HEX_CODEC,
 			"user", Profile::getUser, USER_CODEC,
@@ -128,5 +140,40 @@ public final class Utils {
 		} catch (NumberFormatException e) {
 			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
 		}
+	}
+
+	public static <O, S> TransformResult<O> collect(TransformResult<S> subResult, Function<S, O> constructor) {
+		return TransformResult.of(doCollect(subResult.left, constructor), doCollect(subResult.right, constructor));
+	}
+
+	public static <O, S> List<O> doCollect(List<S> ops, Function<S, O> constructor) {
+		return ops.stream()
+				.map(constructor)
+				.collect(toList());
+	}
+
+	public static AsyncServletDecorator cachedContent(int maxAgeSeconds) {
+		return mapResponse((r, response) -> response.getCode() == 200 ?
+				response.withHeader(CACHE_CONTROL, "public, immutable, max-age=" + maxAgeSeconds) :
+				response);
+	}
+
+	// 1 year
+	public static AsyncServletDecorator cachedContent() {
+		return cachedContent(31536000);
+	}
+
+	public static boolean isGzipAccepted(HttpRequest request) {
+		String header = request.getHeader(ACCEPT_ENCODING);
+		if (header == null) {
+			return false;
+		}
+		for (String part : header.split(",")) {
+			String encoding = part.split(";")[0].trim();
+			if (encoding.equals("gzip") || encoding.equals("*")) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

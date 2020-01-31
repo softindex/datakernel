@@ -44,7 +44,7 @@ class NamesService extends Service {
 
       this._reconnectDelay = delay(RETRY_TIMEOUT);
       try {
-        await this._reconnectDelay.promise;
+        await this._reconnectDelay;
       } catch (err) {
         return;
       }
@@ -66,8 +66,8 @@ class NamesService extends Service {
     if (this._resyncDelay) {
       this._resyncDelay.cancel();
     }
-    this._contactsCheckoutPromise.stop();
-    this._roomsCheckoutPromise.stop();
+    this._contactsCheckoutPromise.cancel();
+    this._roomsCheckoutPromise.cancel();
     this._contactsOTStateManager.removeChangeListener(this._onStateChange);
   }
 
@@ -135,6 +135,7 @@ class NamesService extends Service {
         names.set(publicKey, toEmoji(publicKey, 3));
       }
     }
+
     return names;
   }
 
@@ -146,7 +147,7 @@ class NamesService extends Service {
       console.log(err);
       this._resyncDelay = delay(RETRY_TIMEOUT);
       try {
-        await this._resyncDelay.promise;
+        await this._resyncDelay;
       } catch (err) {
         return;
       }

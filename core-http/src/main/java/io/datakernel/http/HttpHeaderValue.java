@@ -19,7 +19,7 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Instant;
@@ -139,7 +139,7 @@ public abstract class HttpHeaderValue {
 
 	static final class HttpHeaderValueOfContentType extends HttpHeaderValue {
 		@NotNull
-		private ContentType type;
+		private final ContentType type;
 
 		HttpHeaderValueOfContentType(@NotNull ContentType type) {
 			this.type = type;

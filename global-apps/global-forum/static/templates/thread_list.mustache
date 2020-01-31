@@ -1,0 +1,27 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            {{#forum.description}}
+                <div class="card mb-3">
+                    <div class="card-body multiline">{{.}}</div>
+                </div>
+            {{/forum.description}}
+            <div class="card">
+                <div class="card-header text-center font-weight-bold">Threads</div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {{#threads}}
+                            {{>thread_list_entry}}
+                        {{/threads}}
+                        {{#pages.tail}}
+                            {{#threads.any}}
+                                {{<thread_list_entry}}{{$classes}}invisible{{/classes}}{{/thread_list_entry}}
+                            {{/threads.any}}
+                        {{/pages.tail}}
+                    </div>
+                    {{>pagination}}
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

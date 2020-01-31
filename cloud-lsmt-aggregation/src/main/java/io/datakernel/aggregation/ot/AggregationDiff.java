@@ -17,14 +17,14 @@
 package io.datakernel.aggregation.ot;
 
 import io.datakernel.aggregation.AggregationChunk;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.common.collection.CollectionUtils.union;
 import static java.util.Collections.emptySet;
-import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class AggregationDiff {
 	private final Set<AggregationChunk> addedChunks;
@@ -35,9 +35,7 @@ public final class AggregationDiff {
 		this.removedChunks = removedChunks;
 	}
 
-	public static AggregationDiff of(Set<AggregationChunk> addedChunks, Set<AggregationChunk> removedChunks) {
-		checkArgument(addedChunks != null, "Cannot create AggregationDiff with addedChunks that is null");
-		checkArgument(removedChunks != null, "Cannot create AggregationDiff with removedChunks that is null");
+	public static AggregationDiff of(@NotNull Set<AggregationChunk> addedChunks, @NotNull Set<AggregationChunk> removedChunks) {
 		return new AggregationDiff(addedChunks, removedChunks);
 	}
 

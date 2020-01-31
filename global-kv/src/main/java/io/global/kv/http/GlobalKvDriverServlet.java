@@ -16,13 +16,14 @@
 
 package io.global.kv.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
+import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
@@ -63,7 +64,7 @@ public final class GlobalKvDriverServlet {
 					try {
 						SimKey simKey = simKeyString != null ? SimKey.fromString(simKeyString) : null;
 						KeyPair keys = PrivKey.fromString(key).computeKeys();
-						List<KvItem<K, V>> items = fromJson(listCodec, request.getBody().asString(UTF_8));
+						List<KvItem<K, V>> items = fromJson(listCodec, request.getBody().getString(UTF_8));
 						return driver.upload(keys, table, simKey)
 								.map(consumer -> consumer.acceptAll(items))
 								.map($ -> HttpResponse.ok200());
@@ -87,7 +88,7 @@ public final class GlobalKvDriverServlet {
 						}
 						return driver.download(space, table, offset, simKey)
 								.then(ChannelSupplier::toList)
-								.map(items -> HttpResponse.ok200().withJson(listCodec, items));
+								.map(items -> HttpResponse.ok200().withJson(JsonUtils.toJson(listCodec, items)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}
@@ -105,7 +106,7 @@ public final class GlobalKvDriverServlet {
 								SimKey simKey = simKeyString != null ? SimKey.fromString(simKeyString) : null;
 								PubKey space = PubKey.fromString(parameterSpace);
 								return driver.get(space, table, fromJson(keyCodec, key), simKey)
-										.map(item -> HttpResponse.ok200().withJson(codec, item));
+										.map(item -> HttpResponse.ok200().withJson(JsonUtils.toJson(codec, item)));
 							} catch (ParseException e) {
 								return Promise.ofException(e);
 							}
@@ -121,7 +122,7 @@ public final class GlobalKvDriverServlet {
 							try {
 								SimKey simKey = simKeyString != null ? SimKey.fromString(simKeyString) : null;
 								KeyPair keys = PrivKey.fromString(key).computeKeys();
-								return driver.put(keys, table, fromJson(codec, request.getBody().asString(UTF_8)), simKey)
+								return driver.put(keys, table, fromJson(codec, request.getBody().getString(UTF_8)), simKey)
 										.map($ -> HttpResponse.ok200());
 							} catch (ParseException e) {
 								return Promise.ofException(e);
@@ -131,7 +132,7 @@ public final class GlobalKvDriverServlet {
 					String parameterSpace = request.getPathParameter("space");
 					try {
 						return driver.list(PubKey.fromString(parameterSpace))
-								.map(list -> HttpResponse.ok200().withJson(SET_STRING_CODEC, list));
+								.map(list -> HttpResponse.ok200().withJson(JsonUtils.toJson(SET_STRING_CODEC, list)));
 					} catch (ParseException e) {
 						return Promise.ofException(e);
 					}

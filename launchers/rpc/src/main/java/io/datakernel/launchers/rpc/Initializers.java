@@ -16,9 +16,9 @@
 
 package io.datakernel.launchers.rpc;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.util.Initializer;
 
 import java.time.Duration;
 
@@ -28,7 +28,6 @@ import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;
 
 public final class Initializers {
-	private Initializers() {}
 
 	public static Initializer<RpcServer> ofRpcServer(Config config) {
 		return server -> server

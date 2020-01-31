@@ -24,11 +24,10 @@ import org.objectweb.asm.commons.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.codegen.ExpressionCast.THIS_TYPE;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 
@@ -36,6 +35,8 @@ import static org.objectweb.asm.commons.GeneratorAdapter.NE;
  * Defines methods to compare some fields
  */
 public final class ExpressionComparator implements Expression {
+	private final List<ComparablePair> pairs = new ArrayList<>();
+
 	private static final class ComparablePair {
 		private final Expression left;
 		private final Expression right;
@@ -69,8 +70,6 @@ public final class ExpressionComparator implements Expression {
 		}
 	}
 
-	private final List<ComparablePair> pairs = new ArrayList<>();
-
 	private ExpressionComparator() {
 	}
 
@@ -92,7 +91,7 @@ public final class ExpressionComparator implements Expression {
 	}
 
 	public static Expression thatProperty(String property) {
-		return property(cast(arg(0), THIS_TYPE), property);
+		return property(castIntoSelf(arg(0)), property);
 	}
 
 	public static Expression leftProperty(Class<?> type, String property) {
@@ -101,11 +100,6 @@ public final class ExpressionComparator implements Expression {
 
 	public static Expression rightProperty(Class<?> type, String property) {
 		return property(cast(arg(1), type), property);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return INT_TYPE;
 	}
 
 	@Override
@@ -118,7 +112,7 @@ public final class ExpressionComparator implements Expression {
 			Type leftPropertyType = pair.left.load(ctx);
 			Type rightPropertyType = pair.right.load(ctx);
 
-			check(leftPropertyType.equals(rightPropertyType), "Types of compared values should match");
+			checkArgument(leftPropertyType.equals(rightPropertyType), "Types of compared values should match");
 			if (isPrimitiveType(leftPropertyType)) {
 				g.invokeStatic(wrap(leftPropertyType), new Method("compare", INT_TYPE, new Type[]{leftPropertyType, leftPropertyType}));
 				g.dup();
@@ -130,10 +124,10 @@ public final class ExpressionComparator implements Expression {
 				g.ifZCmp(NE, labelReturn);
 				g.pop();
 			} else {
-				VarLocal varRight = newLocal(ctx, rightPropertyType);
+				VarLocal varRight = ctx.newLocal(rightPropertyType);
 				varRight.store(ctx);
 
-				VarLocal varLeft = newLocal(ctx, leftPropertyType);
+				VarLocal varLeft = ctx.newLocal(leftPropertyType);
 				varLeft.store(ctx);
 
 				Label continueLabel = new Label();
@@ -174,19 +168,5 @@ public final class ExpressionComparator implements Expression {
 		g.mark(labelReturn);
 
 		return INT_TYPE;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionComparator that = (ExpressionComparator) o;
-		return pairs.equals(that.pairs);
-	}
-
-	@Override
-	public int hashCode() {
-		return pairs.hashCode();
 	}
 }

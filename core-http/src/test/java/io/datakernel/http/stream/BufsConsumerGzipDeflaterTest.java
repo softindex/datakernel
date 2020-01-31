@@ -33,8 +33,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.zip.GZIPOutputStream;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
+import static io.datakernel.promise.TestUtils.await;
 
 public final class BufsConsumerGzipDeflaterTest {
 

@@ -1,68 +1,89 @@
-<p align="center">
-  <a href="https://datakernel.io" target="_blank">
-    <img alt="DataKernel Logo" src="http://datakernel.io/static/images/logo-icon.svg" width="409">
-  </a>
-</p>
+[![Maven Central](https://img.shields.io/maven-central/v/io.datakernel/datakernel)](https://mvnrepository.com/artifact/io.datakernel)
+[![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
+[![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
 
 ## Introduction
 
-DataKernel is a full-featured alternative Java framework, created from ground up for **efficient** and **scalable** solutions.
+DataKernel is a full-featured alternative web and big data Java framework built from the ground up. It does not use Netty, Jetty, Spring/Guice DI, RxJava etc. Instead, it features a full application stack: Event Loop, Promises, HTTP, DI and others, including decentralized big-data technologies and map-reduce algorithms.
 
-## Features
-
-- 💕 Fully **asynchronous** modular framework
-- 🧩 Exceptionally fast, powerful and simple **Dependency Injection**
-- ⏱ Magnificently **fast build** and **start-up times** of your applications with **extremely small** JAR sizes
-- 🚀 A wide selection of application launchers and **embedded servers**
-- ⚙️ **Elegant** data structures and components with outstanding **performance**
-- 🌎 Supports **HTTP, TCP, UDP** protocols and data streaming with modern reactive API 
-- 🏎 Scalable and fault-tolerant **microservice** architecture with ultra-fast binary messaging 
-- 📖 Low entry barrier; archetypes for HTTP and RPC applications scaffolding with **minimal configuration**
+No overhead of intermediate abstractions, legacy standards and third-party libraries makes the framework minimalistic, streamlined and lightning-fast!
 
 ## Getting started
 
 Just insert this snippet to your terminal...
 
 ```
-mvn archetype:generate \
-        -DarchetypeGroupId=io.datakernel                  \
-        -DarchetypeArtifactId=datakernel-http-archetype   \
-        -DarchetypeVersion=3.0.0-beta1                    \
-        -DgroupId=org.example                             \
-        -DartifactId=dkapp                                \
-        -DmainClassName=MyFirstDkApp 
+mvn archetype:generate -DarchetypeGroupId=io.datakernel -DarchetypeArtifactId=archetype-http -DarchetypeVersion=3.1.0
 ```
 
 ... and open project in your favourite IDE. Then, build the application and run it. Open your browser on [localhost:8080](http://localhost:8080) to see the "Hello World" message. 
 
-To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
+To learn more about DataKernel, visit [**datakernel.io**](https://datakernel.io) or follow our 5-minute getting-started [guide](https://datakernel.io/docs/core/tutorials/getting-started). 
 
-## Why DataKernel?
+## Examples
 
-**Best technologies**  
-DataKernel is legacy-free. Build application-specific embedded databases and high-performance HTTP/RPC servers using high-level abstractions, LSM-Tree, Operational Transformations, CRDT, Go-inspired CSP and other modern algorithms and technologies.
+### Basic HTTP server in less than 15 lines of code:
+```java
+public final class HelloWorldExample { 
+    public static void main(String[] args) throws IOException {
+        Eventloop eventloop = Eventloop.create();
+        AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+                request -> Promise.of(
+                        HttpResponse.ok200()
+                                .withPlainText("Hello, World!")))
+                .withListenPort(8080);
+        server.listen();
+        eventloop.run();
+    }
+}
+```
+`AsyncHttpServer` is a built-in implementation of an HTTP server which asynchronously runs in a Node.js-inspired Event Loop.
 
-**Explicit design**  
-There are no under-the-hood magic, endless XML configurations and dependency hell of third-party components glued together via layers of abstractions. DataKernel gives a full control over your applications.
+- *`AsyncHttpServer` is up to 20% faster than [multithreaded Vert.x server](https://github.com/networknt/microservices-framework-benchmark/tree/master/vertx), with 1/2 of CPU usage, on a single core!*
 
-**Born to be async**  
-DataKernel allows you to create async web applications in a Node.js manner while preserving all of the Java advantages. We also use Node.js-inspired features, such as single-threaded async Promises and pool of event loops as the building blocks of our framework.
+### Full-featured embedded web application server, with Dependency Injection:
+```java
+public final class HttpHelloWorldExample extends HttpServerLauncher { 
+    @Provides
+    AsyncServlet servlet() { 
+        return request -> HttpResponse.ok200().withPlainText("Hello, World!");
+    }
 
-**No overweight**  
-To achieve the lowest GC footprint possible, we’ve designed thoroughly optimized core modules - improved Java ByteBuffer ByteBuf, minimalistic Datastreams, stateless single-threaded Promises and also one of the fastest Serializers available nowadays.
+    public static void main(String[] args) throws Exception {
+        Launcher launcher = new HttpHelloWorldExample();
+        launcher.launch(args); 
+    }
+}
+```
+`HttpServerLauncher` - a predefined DataKernel [Launcher](https://datakernel.io/docs/core/launcher.html) which takes care of the application lifecycle and provides needed components for our server
 
-**Easy-to-use and flexible**  
-DataKernel has everything you need to create applications of different scales - from standalone high-performance async network solutions and HTTP web applications up to big-data cloud solutions and decentralized internet-wide applications.
+`@Provides` - one of the [DataKernel DI](https://datakernel.io/docs/core/di.html) annotations
 
-**Modern approach**  
-DataKernel has simple yet powerful set of abstractions with clean OOP design favoring Java 8+ functional programming style. It also radically downplays Dependency Injection role, giving way to your business logic instead.
+`AsyncServlet` - asynchronous servlet interface
 
-## DataKernel structure
+`Promise` - Node.js-inspired async single-threaded Promises, an alternative to `CompletableFuture`
 
-DataKernel consists of three modules:
- * [Core](https://datakernel.io/docs/core/) - building blocks of the framework and everything you need to create **asynchronous web applications**.
- * [Cloud](https://datakernel.io/docs/cloud/) - components for **decentralized cloud solutions** of different complexity.
- * [Global Cloud](https://datakernel.io/docs/global-cloud/) (coming soon) - components for **ultimately scalable**, decentralized, yet practical and high-performance **cloud solutions**.
+- *The JAR file size of this example is only 723KB, with no extra dependencies*
+- *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
+- *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 5.5 times faster than Guice and 100s times faster than Spring.*
+- *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
 
-## License
-Apache License 2.0
+### Lightning-fast RPC server:
+```java
+public RpcServer rpcServer(Eventloop eventloop) {
+    return RpcServer.create(eventloop)
+            .withStreamProtocol(...)
+            .withMessageTypes(Integer.class)
+            .withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
+}
+```
+- *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on a single core*.
+
+## Documentation
+See the docs, examples and tutorials on [our website](https://datakernel.io).
+
+## Need help or found a bug?
+Feel free to open a [GitHub issue](https://github.com/softindex/datakernel/issues).
+
+## Communication
+* Twitter: [@datakernel_io](https://twitter.com/datakernel_io)

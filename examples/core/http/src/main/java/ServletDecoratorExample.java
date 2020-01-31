@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -29,11 +28,9 @@ public final class ServletDecoratorExample extends HttpServerLauncher {
 						.map(POST, "/", request -> {
 							String text = request.getPostParameter("text");
 							if (text == null) {
-								return Promise.of(
-										HttpResponse.redirect302("/"));
+								return HttpResponse.redirect302("/");
 							}
-							return Promise.of(
-									HttpResponse.ok200().withPlainText("Message: " + text));
+							return HttpResponse.ok200().withPlainText("Message: " + text);
 						})
 						.map(GET, "/failPage", request -> {
 							throw new RuntimeException("fail");

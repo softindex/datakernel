@@ -1,6 +1,5 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.annotation.KeySetAnnotation;
 import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.module.UniqueName;
@@ -36,8 +35,8 @@ public final class Name extends AbstractAnnotation {
 	 */
 	public static Name of(Class<? extends Annotation> annotationType) {
 		checkArgument(isMarker(annotationType), "Name by annotation type only accepts marker annotations with no arguments");
-		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class) || annotationType.isAnnotationPresent(KeySetAnnotation.class),
-				"Only annotations annotated with @NameAnnotation or @KeySetAnnotation meta-annotations are allowed");
+		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class),
+				"Only annotations annotated with @NameAnnotation meta-annotation are allowed");
 		return new Name(annotationType, null);
 	}
 
@@ -46,8 +45,8 @@ public final class Name extends AbstractAnnotation {
 	 */
 	public static Name of(Annotation annotation) {
 		Class<? extends Annotation> annotationType = annotation.annotationType();
-		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class) || annotationType.isAnnotationPresent(KeySetAnnotation.class),
-				"Only annotations annotated with @NameAnnotation or @KeySetAnnotation meta-annotations are allowed");
+		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class),
+				"Only annotations annotated with @NameAnnotation meta-annotation are allowed");
 		return isMarker(annotationType) ?
 				new Name(annotationType, null) :
 				new Name(annotationType, annotation);

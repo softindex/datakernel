@@ -4,14 +4,18 @@ import io.datakernel.aggregation.Aggregation;
 import io.datakernel.aggregation.AggregationChunk;
 import io.datakernel.aggregation.AggregationChunkStorage;
 import io.datakernel.aggregation.ot.AggregationDiff;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.*;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +25,9 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.datakernel.async.AsyncSuppliers.reuse;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
 public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {

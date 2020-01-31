@@ -3,14 +3,14 @@ package io.datakernel.memcache.server;
 import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.LongLongHashMap;
 import com.carrotsearch.hppc.ObjectLongHashMap;
-import io.datakernel.jmx.EventStats;
+import io.datakernel.eventloop.jmx.EventStats;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 
 import java.time.Duration;
 import java.util.Arrays;
 
-import static io.datakernel.jmx.MBeanFormat.formatTimestamp;
-import static io.datakernel.util.StringFormatUtils.formatDuration;
+import static io.datakernel.common.StringFormatUtils.formatDuration;
+import static io.datakernel.eventloop.jmx.MBeanFormat.formatTimestamp;
 import static java.lang.System.currentTimeMillis;
 
 /**

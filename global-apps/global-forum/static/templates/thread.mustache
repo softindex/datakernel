@@ -1,14 +1,19 @@
 {{<base}}
     {{$content}}
         <div class="container">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item active" aria-current="page">{{thread.title}}</li>
-                </ol>
-            </nav>
-            {{#post}}
-                {{>render_post}}
-            {{/post}}
+            <div class="card">
+                <div class="card-header py-1">
+                    {{>thread_title}}
+                </div>
+                <div class="card-body">
+                    {{#thread.root}}
+                        {{>render_post}}
+                    {{/thread.root}}
+                </div>
+            </div>
         </div>
+        <div style="height: 50vh"></div>
+        {{>image_modal}}
+        {{>video_modal}}
     {{/content}}
 {{/base}}

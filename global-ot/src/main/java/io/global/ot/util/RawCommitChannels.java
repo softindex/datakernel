@@ -1,14 +1,14 @@
 package io.global.ot.util;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.util.Tuple2;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.SignedData;
 import io.global.ot.api.CommitEntry;
 import io.global.ot.api.CommitId;
@@ -53,7 +53,8 @@ public class RawCommitChannels {
 							@Override
 							protected @NotNull Promise<CommitEntry> doGet() {
 								return Promises.until(
-										() -> {
+										(CommitEntry) null,
+										$ -> {
 											Tuple2<CommitEntry, ChannelSupplier<CommitEntry>> tuple = queue.peek();
 											if (tuple == null) {
 												return Promise.of(null);
@@ -67,9 +68,9 @@ public class RawCommitChannels {
 															queue.add(new Tuple2<>(rawCommitEntry, tuple.getValue2()));
 														}
 													})
-													.map($ -> tuple.getValue1());
+													.map($2 -> tuple.getValue1());
 										},
-										AsyncPredicate.of(result -> result == null || !Objects.equals(lastCommitId, result.getCommitId())))
+										result -> result == null || !Objects.equals(lastCommitId, result.getCommitId()))
 										.whenResult(result -> this.lastCommitId = result.getCommitId());
 							}
 
@@ -83,16 +84,17 @@ public class RawCommitChannels {
 
 	public static BiFunction<Integer, CommitId, Promise<RawCommit>> commitLoader(ChannelSupplier<CommitEntry> commitChannel) {
 		return (level, commitId) -> Promises.until(
-				commitChannel::get,
+				(CommitEntry) null,
+				$ -> commitChannel.get(),
 				rawCommitEntry -> {
 					if (rawCommitEntry == null) {
-						return Promise.ofException(new StacklessException("Incorrect commit stream"));
+						throw new UncheckedException(new StacklessException("Incorrect commit stream"));
 					}
 					int compare = commitId.compareTo(rawCommitEntry.getCommitId());
 					if (compare < 0) {
-						return Promise.ofException(new StacklessException("Incorrect commit stream"));
+						throw new UncheckedException(new StacklessException("Incorrect commit stream"));
 					}
-					return Promise.of(compare == 0);
+					return compare == 0;
 				})
 				.map(CommitEntry::getCommit);
 	}

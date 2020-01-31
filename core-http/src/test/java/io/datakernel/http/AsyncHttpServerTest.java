@@ -16,12 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;
+import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -45,13 +46,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public final class AsyncHttpServerTest {
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop, int port) {
 		return AsyncHttpServer.create(primaryEventloop,
-				request -> Promise.of(
-						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery()))))
+				request ->
+						HttpResponse.ok200().withBody(encodeAscii(request.getUrl().getPathAndQuery())))
 				.withListenPort(port);
 	}
 
@@ -332,8 +333,8 @@ public final class AsyncHttpServerTest {
 		buf.put(body);
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
-				req -> Promise.of(
-						HttpResponse.ok200().withBody(encodeAscii(req.getUrl().getPathAndQuery()))))
+				req -> HttpResponse.ok200()
+						.withBody(encodeAscii(req.getUrl().getPathAndQuery())))
 				.withListenPort(port);
 		server.listen();
 		Thread thread = new Thread(eventloop);

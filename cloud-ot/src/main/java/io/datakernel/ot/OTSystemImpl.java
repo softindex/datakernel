@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import static io.datakernel.util.CollectionUtils.concat;
+import static io.datakernel.common.collection.CollectionUtils.concat;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Stream.concat;
@@ -111,7 +111,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		return this;
 	}
 
-	@SuppressWarnings({"SuspiciousMethodCalls", "SimplifiableIfStatement", "unchecked"})
+	@SuppressWarnings({"SimplifiableIfStatement", "unchecked"})
 	@Override
 	public boolean isEmpty(D op) {
 		if (emptyPredicates.isEmpty())
@@ -202,7 +202,7 @@ public final class OTSystemImpl<D> implements OTSystem<D> {
 		return result;
 	}
 
-	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls"})
+	@SuppressWarnings({"unchecked"})
 	@Override
 	public <O extends D> List<D> invert(List<O> ops) {
 		int size = ops.size();

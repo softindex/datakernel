@@ -16,10 +16,12 @@
 
 package io.datakernel.http.stream;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
@@ -28,25 +30,23 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.binary.ByteBufsParser.ofFixedSize;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
 import static java.lang.Integer.reverseBytes;
 import static java.lang.Math.max;
 import static java.lang.Short.reverseBytes;
 
 /**
  * This is a channel transformer, that converts channels of {@link ByteBuf ByteBufs}
- * decompressing the data using the DEFALTE algorithm with standard implementation from the java.util.zip package.
+ * decompressing the data using the DEFLATE algorithm with standard implementation from the java.util.zip package.
  * <p>
  * It is used in HTTP when {@link io.datakernel.http.HttpMessage#setBodyGzipCompression HttpMessage#setBodyGzipCompression}
  * method is used.
@@ -88,8 +88,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		return new BufsConsumerGzipInflater();
 	}
 
-	public BufsConsumerGzipInflater withInflater(Inflater inflater) {
-		checkArgument(inflater != null, "Cannot use null Inflater");
+	public BufsConsumerGzipInflater withInflater(@NotNull Inflater inflater) {
 		this.inflater = inflater;
 		return this;
 	}

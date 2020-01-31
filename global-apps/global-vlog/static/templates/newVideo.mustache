@@ -1,0 +1,48 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <h3 class="text-center">Upload new video</h3>
+
+            <div class="progress mb-2" style="display: none;">
+                <div class="progress-bar" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+
+            <form class="needs-validation" novalidate>
+                <div id="attachments">
+                    <div class="row">
+                        <div class="col-6">
+                            <video class="p-0 boxShadow-sm" style="background: #ccc; border-radius: 5px; width: 100%"
+                                   id="videoPreview"/>
+                        </div>
+                        <div class="col align-self-center">
+                            <div class="form-group">
+                                <input maxlength="32" id="upload_title" class="form-control form-control-lg"
+                                       name="title" type="text"
+                                       placeholder="Title" required>
+                            </div>
+                            <div class="form-group">
+                            <textarea class="form-control" id="upload_content" name="content" maxlength="1024"
+                                      placeholder="Description" rows="6"
+                                      data-post-button="#upload_video" required></textarea>
+                            </div>
+                            <div class="custom-file col-16 mb-4">
+                                <input type="file" accept="video/mp4,video/mkv" class="custom-file-input"
+                                       id="video_attachment"
+                                       name="video_attachment" required>
+                                <label class="custom-file-label text-truncate text-left" for="video_attachment">Attach
+                                    video</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3 justify-content-center" style="position: relative">
+                        <div class="col-6">
+                            <button class="btn btn-lg btn-primary btn-block" data-url="/private/new" type="submit"
+                                    id="upload_video">Upload
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    {{/content}}
+{{/base}}

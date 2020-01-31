@@ -16,9 +16,9 @@
 
 package io.global.fs.cli;
 
+import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.Tuple3;
 import io.global.fs.api.CheckpointPosStrategy;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;

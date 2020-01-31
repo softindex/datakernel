@@ -16,7 +16,6 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.test.rules.ByteBufRule;
@@ -34,9 +33,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaderValue.*;
 import static io.datakernel.http.HttpHeaders.*;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.time.ZoneOffset.UTC;
 import static java.util.stream.Collectors.toList;
@@ -79,7 +78,7 @@ public final class HttpApiTest {
 		server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
 				request -> {
 					testRequest(request);
-					return Promise.of(createResponse());
+					return createResponse();
 				})
 				.withListenPort(PORT);
 
@@ -154,7 +153,7 @@ public final class HttpApiTest {
 		assertEquals(requestAcceptContentTypes, request.getHeader(ACCEPT, HttpHeaderValue::toAcceptContentTypes));
 		assertEquals(requestAcceptCharsets, request.getHeader(ACCEPT_CHARSET, HttpHeaderValue::toAcceptCharsets));
 		assertEquals(requestDate, request.getHeader(DATE, HttpHeaderValue::toInstant));
-		assertEquals(dateIMS,request.getHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
+		assertEquals(dateIMS, request.getHeader(IF_MODIFIED_SINCE, HttpHeaderValue::toInstant));
 		assertEquals(dateIUMS, request.getHeader(IF_UNMODIFIED_SINCE, HttpHeaderValue::toInstant));
 		assertEquals(requestContentType, request.getHeader(CONTENT_TYPE, HttpHeaderValue::toContentType));
 		assertEquals(requestCookies.stream().map(HttpCookie::getValue).collect(toList()), new ArrayList<>(request.getCookies().values()));

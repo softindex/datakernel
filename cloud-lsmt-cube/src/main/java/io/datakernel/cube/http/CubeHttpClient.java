@@ -17,14 +17,14 @@
 package io.datakernel.cube.http;
 
 import io.datakernel.aggregation.AggregationPredicate;
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,10 +33,10 @@ import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static io.datakernel.cube.http.Utils.*;
-import static io.datakernel.util.LogUtils.toLogger;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class CubeHttpClient implements ICube {

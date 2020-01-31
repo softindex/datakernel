@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.processor.StreamFilter;
+import io.datakernel.datastream.processor.StreamFilter;
 
 import java.util.Collection;
 import java.util.function.Predicate;

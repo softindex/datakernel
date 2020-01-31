@@ -16,9 +16,9 @@
 
 package io.datakernel.aggregation;
 
-import io.datakernel.aggregation.util.IdGeneratorSql;
-import io.datakernel.aggregation.util.SqlAtomicSequence;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.ot.util.IdGeneratorSql;
+import io.datakernel.ot.util.SqlAtomicSequence;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -30,9 +30,9 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.sql.SqlUtils.executeScript;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
-import static io.datakernel.util.SqlUtils.executeScript;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 

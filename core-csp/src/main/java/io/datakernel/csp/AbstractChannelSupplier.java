@@ -16,9 +16,9 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.AbstractCancellable;
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
+import io.datakernel.async.process.AbstractCancellable;
+import io.datakernel.async.process.Cancellable;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

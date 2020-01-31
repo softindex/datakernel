@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect} from 'react';
 import {getInstance, useService} from 'global-apps-common';
 import {withStyles} from "@material-ui/core";
 import ListItem from '@material-ui/core/ListItem';
@@ -53,11 +53,17 @@ function Uploading({classes}) {
   const fsService = getInstance(FSService);
   const {files, uploads} = useService(fsService);
 
+  useEffect(() => {
+    if (uploads.length !== 0) {
+      setTimeout(() => fsService.clearUploads(), 4000);
+    }
+  }, [uploads]);
+
   const props = {
     classes,
     uploads: [...uploads.values()],
     files,
-    onClose: () => setTimeout(() => fsService.clearUploads(), 4000)
+    onClose: () => fsService.clearUploads()
   };
 
   return <UploadingView {...props}/>

@@ -16,16 +16,16 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.TypeT;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -40,13 +40,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
-import static io.datakernel.async.Promises.asPromises;
-import static io.datakernel.async.Promises.reduce;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
+import static io.datakernel.promise.Promises.asPromises;
+import static io.datakernel.promise.Promises.reduce;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.stream.Collectors.toList;
 

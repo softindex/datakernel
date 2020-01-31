@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -25,8 +24,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.http.HttpHeaders.ALLOW;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static org.junit.Assert.assertEquals;
 
@@ -45,7 +44,7 @@ public final class TestClientMultilineHeaders {
 				request -> {
 					HttpResponse response = HttpResponse.ok200();
 					response.addHeader(ALLOW, "GET,\r\n HEAD");
-					return Promise.of(response);
+					return response;
 				})
 				.withListenPort(PORT)
 				.withAcceptOnce()

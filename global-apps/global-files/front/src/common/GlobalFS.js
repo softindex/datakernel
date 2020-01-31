@@ -2,17 +2,16 @@ import path from 'path';
 import EventEmitter from 'events';
 
 class GlobalFS extends EventEmitter {
-  constructor(publicKey, url = '/') {
+  constructor(url = '/fs/') {
     super();
-    this._publicKey = publicKey;
     this._url = url;
   }
 
   async list() {
-    const response = await fetch(path.join(this._url, `list/${this._publicKey}`));
+    const response = await fetch(path.join(this._url, 'list'));
     const parsedResponse = await response.json();
     return parsedResponse
-      .filter(item => !Boolean(item[3]))
+      .filter(item => Boolean(item[3]))
       .map(item => ({
         name: item[0],
         size: item[1],
@@ -58,15 +57,15 @@ class GlobalFS extends EventEmitter {
     });
   }
 
-  async removeDir(fileName) {
+  async removeDir(nestedFiles) {
   }
 
-  async removeFile(fileName) {
+  async remove(fileName) {
     await fetch(path.join(this._url, 'delete/' + fileName + '?revision=' + GlobalFS.getRevision()), {method: 'POST'});
   }
 
   _getDownloadLink(filepath) {
-    return path.join(this._url, 'download', this._publicKey, filepath);
+    return path.join(this._url, 'download', filepath);
   }
 
   static getRevision() {

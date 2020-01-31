@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
@@ -17,6 +18,7 @@ import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
 import static io.datakernel.di.core.Multibinder.combinedMultibinder;
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 /**
@@ -26,7 +28,7 @@ import static java.util.stream.Collectors.toSet;
  * @see AbstractModule
  */
 public interface Module {
-	Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings();
+	Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings();
 
 	Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers();
 
@@ -107,13 +109,18 @@ public interface Module {
 	}
 
 	/**
-	 * A shortcut that reduces bindings multimap trie from this module using multibinders, transformers and generators from this module
+	 * A shortcut that reduces bindings multimap trie from this module using multibinders, transformers and generators from this module.
+	 * <p>
+	 * Note that this method expensive to call repeatedly
 	 */
-	default Trie<Scope, Map<Key<?>, Binding<?>>> getReducedBindings() {
-		return Preprocessor.reduce(getBindings(),
+	default Trie<Scope, Map<Key<?>, BindingInfo>> getReducedBindingInfo() {
+		return Preprocessor.reduce(
+				getBindings(),
 				combinedMultibinder(getMultibinders()),
 				combinedTransformer(getBindingTransformers()),
-				combinedGenerator(getBindingGenerators()));
+				combinedGenerator(getBindingGenerators())
+		)
+				.map(map -> map.entrySet().stream().collect(toMap(Entry::getKey, e -> BindingInfo.from(e.getValue()))));
 	}
 
 	/**
@@ -130,14 +137,14 @@ public interface Module {
 	/**
 	 * Creates a {@link Module module} out of given binding graph trie
 	 */
-	static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings) {
+	static Module of(Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings) {
 		return new SimpleModule(bindings, emptyMap(), emptyMap(), emptyMap());
 	}
 
 	/**
 	 * Creates a {@link Module module} out of given binding graph trie, transformers, generators and multibinders
 	 */
-	static Module of(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+	static Module of(Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings,
 			Map<Integer, Set<BindingTransformer<?>>> transformers,
 			Map<Class<?>, Set<BindingGenerator<?>>> generators,
 			Map<Key<?>, Multibinder<?>> multibinders) {

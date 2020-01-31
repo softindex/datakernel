@@ -20,9 +20,6 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.fieldtype.FieldTypes;
 
 public class Measures {
-	private Measures() {
-	}
-
 	public static Measure sum(FieldType<?> ofType) {
 		return new MeasureSum(ofType);
 	}

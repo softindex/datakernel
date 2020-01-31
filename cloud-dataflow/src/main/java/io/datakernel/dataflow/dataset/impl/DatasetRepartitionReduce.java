@@ -21,7 +21,7 @@ import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 
 import java.util.List;
 
@@ -33,12 +33,12 @@ public final class DatasetRepartitionReduce<K, I, O> extends Dataset<O> {
 	private final List<Partition> partitions;
 
 	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
-	                                Class<O> resultType) {
+			Class<O> resultType) {
 		this(input, reducer, resultType, null);
 	}
 
 	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
-	                                Class<O> resultType, List<Partition> partitions) {
+			Class<O> resultType, List<Partition> partitions) {
 		super(resultType);
 		this.input = input;
 		this.reducer = reducer;

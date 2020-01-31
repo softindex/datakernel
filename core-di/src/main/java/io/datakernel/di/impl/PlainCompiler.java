@@ -1,36 +1,29 @@
 package io.datakernel.di.impl;
 
+import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.atomic.AtomicReferenceArray;
+/**
+ * Only reason for this not to be an anonymous class as any other in {@link Binding}
+ * is that Injector does not allocate a slot for this binding
+ * despite the binding being cached (so that wrappers such as mapInstance are not non-cached
+ * as it would've been if the plain binding was make non-cached)
+ */
+public final class PlainCompiler<T> implements BindingCompiler<T> {
+	private final Key<? extends T> key;
 
-public final class PlainCompiler<R> implements BindingCompiler<R> {
-	private final Key<? extends R> to;
-
-	public PlainCompiler(Key<? extends R> to) {
-		this.to = to;
+	public PlainCompiler(Key<? extends T> key) {
+		this.key = key;
 	}
 
-	public Key<? extends R> getDestination() {
-		return to;
+	public Key<? extends T> getKey() {
+		return key;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public CompiledBinding<R> compile(CompiledBindingLocator compiledBindings, boolean threadsafe, int scope, int index) {
-		return new CompiledBinding<R>() {
-			final CompiledBinding<? extends R> compiledBinding = compiledBindings.get(to);
-
-			@Override
-			public R getInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-				R instance = compiledBinding.getInstance(scopedInstances, synchronizedScope);
-				scopedInstances[scope].lazySet(index, instance);
-				return instance;
-			}
-
-			@Override
-			public R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-				return compiledBinding.createInstance(scopedInstances, synchronizedScope);
-			}
-		};
+	public CompiledBinding<T> compile(CompiledBindingLocator compiledBindings, boolean threadsafe, int scope, @Nullable Integer slot) {
+		return (CompiledBinding<T>) compiledBindings.get(key);
 	}
 }

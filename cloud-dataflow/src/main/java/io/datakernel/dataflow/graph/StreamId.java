@@ -42,8 +42,8 @@ public final class StreamId {
 
 	@Override
 	public boolean equals(Object o) {
-		if(this == o) return true;
-		if(o == null || getClass() != o.getClass()) return false;
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
 
 		StreamId streamId = (StreamId) o;
 

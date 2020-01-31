@@ -16,13 +16,12 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -38,21 +37,11 @@ import static io.global.fs.api.FsCommand.*;
 import static io.global.fs.util.HttpDataFormats.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class RemoteFsServlet implements AsyncServlet {
+public final class RemoteFsServlet {
 	static final StructuredCodec<List<FileMetadata>> FILE_META_LIST = ofList(FILE_META_CODEC);
 	static final StructuredCodec<@Nullable FileMetadata> NULLABLE_FILE_META_CODEC = FILE_META_CODEC.nullable();
 
-	private final RoutingServlet servlet;
-
-	private RemoteFsServlet(FsClient client) {
-		servlet = servlet(client);
-	}
-
-	public static RemoteFsServlet create(FsClient client) {
-		return new RemoteFsServlet(client);
-	}
-
-	private RoutingServlet servlet(FsClient client) {
+	public static RoutingServlet create(FsClient client) {
 		return RoutingServlet.create()
 				.map(GET, "/" + LIST, request -> {
 					String glob = request.getQueryParameter("glob");
@@ -63,15 +52,23 @@ public final class RemoteFsServlet implements AsyncServlet {
 											.withBody(toJson(FILE_META_LIST, list).getBytes(UTF_8))
 											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
 				})
-				.map(GET, "/" + GET_METADATA + "/*", request ->
-						client.getMetadata(request.getRelativePath())
-								.mapEx(errorHandler(meta ->
-										HttpResponse.ok200()
-												.withBody(toJson(NULLABLE_FILE_META_CODEC, meta).getBytes(UTF_8))
-												.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8)))))
+				.map(GET, "/" + GET_METADATA + "/*", request -> {
+					String path = UrlParser.urlDecode(request.getRelativePath());
+					if (path == null) {
+						return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+					}
+					return client.getMetadata(path)
+							.mapEx(errorHandler(meta ->
+									HttpResponse.ok200()
+											.withBody(toJson(NULLABLE_FILE_META_CODEC, meta).getBytes(UTF_8))
+											.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentTypes.JSON_UTF_8))));
+				})
 				.map(POST, "/" + UPLOAD, request -> httpUpload(request, client::upload))
 				.map(GET, "/" + DOWNLOAD + "/*", request -> {
-					String name = request.getRelativePath();
+					String name = UrlParser.urlDecode(request.getRelativePath());
+					if (name == null) {
+						return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+					}
 					return client.getMetadata(name)
 							.then(meta -> {
 								if (meta == null) {
@@ -86,7 +83,11 @@ public final class RemoteFsServlet implements AsyncServlet {
 				})
 				.map(POST, "/" + DELETE + "/*", request -> {
 					try {
-						return client.delete(request.getRelativePath(), parseRevision(request))
+						String name = UrlParser.urlDecode(request.getRelativePath());
+						if (name == null) {
+							return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+						}
+						return client.delete(name, parseRevision(request))
 								.mapEx(errorHandler());
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
@@ -126,9 +127,4 @@ public final class RemoteFsServlet implements AsyncServlet {
 				});
 	}
 
-	@NotNull
-	@Override
-	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
-		return servlet.serve(request);
-	}
 }

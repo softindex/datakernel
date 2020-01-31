@@ -27,8 +27,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class CipherTransformerTest {
@@ -51,7 +52,7 @@ public class CipherTransformerTest {
 		byte[] nonce = CryptoUtils.nonceFromString("test.txt");
 		long pos = ThreadLocalRandom.current().nextLong(Long.MAX_VALUE >>> 1);
 
-		List<ByteBuf> encList = await(ChannelSupplier.ofIterable(data)
+		List<ByteBuf> encList = await(ChannelSupplier.ofStream(data.stream().map(ByteBuf::slice))
 				.transformWith(CipherTransformer.create(key, nonce, pos))
 				.toList());
 
@@ -59,6 +60,11 @@ public class CipherTransformerTest {
 				.transformWith(CipherTransformer.create(key, nonce, pos))
 				.toList());
 
-		assertEquals(data, decList);
+		assertEquals(data.size(), decList.size());
+		for (int i = 0; i < data.size(); i++) {
+			ByteBuf expected = data.get(i);
+			ByteBuf actual = decList.get(i);
+			assertArrayEquals(expected.asArray(), actual.asArray());
+		}
 	}
 }

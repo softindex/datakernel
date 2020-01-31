@@ -5,7 +5,7 @@ import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.TransformResult.ConflictResolution;
 
-import static io.datakernel.util.CollectionUtils.hasIntersection;
+import static io.datakernel.common.collection.CollectionUtils.hasIntersection;
 import static java.util.Collections.singletonList;
 
 public class AggregationOT {

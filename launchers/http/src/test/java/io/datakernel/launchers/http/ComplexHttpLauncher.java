@@ -1,21 +1,17 @@
 package io.datakernel.launchers.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.annotation.Named;
-import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.annotation.ScopeAnnotation;
+import io.datakernel.di.annotation.*;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.net.PrimaryServer;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.TriggerResult;
@@ -34,18 +30,6 @@ public final class ComplexHttpLauncher extends Launcher {
 	public static final int SERVER_TWO_PORT = 8082;
 	public static final int SERVER_THREE_PORT = 8083;
 
-	@Inject
-	@Named("First")
-	PrimaryServer primaryServer1;
-
-	@Inject
-	@Named("Second")
-	PrimaryServer primaryServer2;
-
-	@Inject
-	@Named("Third")
-	PrimaryServer primaryServer3;
-
 	@ScopeAnnotation
 	@Target(METHOD)
 	@Retention(RUNTIME)
@@ -54,17 +38,20 @@ public final class ComplexHttpLauncher extends Launcher {
 
 	// region primary eventloops
 	@Provides
+	@Eager
 	Eventloop eventloop1() {
 		return Eventloop.create();
 	}
 
 	@Provides
+	@Eager
 	@Named("Second")
 	Eventloop eventloop2() {
 		return Eventloop.create();
 	}
 
 	@Provides
+	@Eager
 	@Named("Third")
 	Eventloop eventloop3() {
 		return Eventloop.create();
@@ -130,7 +117,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Provides
 	@Worker
 	AsyncServlet workerServlet(@WorkerId int workerId) {
-		return $ -> Promise.of(HttpResponse.ok200().withPlainText("Hello from worker #" + workerId));
+		return $ -> HttpResponse.ok200().withPlainText("Hello from worker #" + workerId);
 	}
 	// endregion
 
@@ -150,7 +137,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Provides
 	@MyWorker
 	AsyncServlet myWorkerServlet(@WorkerId int workerId) {
-		return $ -> Promise.of(HttpResponse.ok200().withPlainText("Hello from my worker #" + workerId));
+		return $ -> HttpResponse.ok200().withPlainText("Hello from my worker #" + workerId);
 	}
 	// endregion
 

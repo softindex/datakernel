@@ -16,12 +16,13 @@
 
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.http.*;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -37,16 +38,19 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpResponse.ok200;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static io.global.common.api.DiscoveryCommand.*;
+import static io.global.util.Utils.PUB_KEYS_MAP;
 
 public final class DiscoveryServlet implements AsyncServlet {
-	private final RoutingServlet servlet;
-
 	static final StructuredCodec<SignedData<AnnounceData>> SIGNED_ANNOUNCE = REGISTRY.get(new TypeT<SignedData<AnnounceData>>() {});
 	static final StructuredCodec<SignedData<SharedSimKey>> SIGNED_SHARED_SIM_KEY = REGISTRY.get(new TypeT<SignedData<SharedSimKey>>() {});
 	static final StructuredCodec<@Nullable SignedData<SharedSimKey>> NULLABLE_SIGNED_SHARED_SIM_KEY = SIGNED_SHARED_SIM_KEY.nullable();
 	static final StructuredCodec<List<SignedData<SharedSimKey>>> LIST_OF_SIGNED_SHARED_SIM_KEYS = REGISTRY.get(new TypeT<List<SignedData<SharedSimKey>>>() {});
+	private static final String BASIC_AUTH_LOGIN = ApplicationSettings.getString(DiscoveryServlet.class, "basic.login", "admin");
+	private static final String BASIC_AUTH_PASSWORD = ApplicationSettings.getString(DiscoveryServlet.class, "basic.passoword", "admin");
+	private final RoutingServlet servlet;
 
 	private DiscoveryServlet(DiscoveryService discoveryService) {
 		servlet = servlet(discoveryService);
@@ -125,7 +129,13 @@ public final class DiscoveryServlet implements AsyncServlet {
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}
-				});
+				})
+				.map(GET, "/" + FIND_ALL + "/", BasicAuth.decorator("list pub keys",
+						(l, p) -> Promise.of(BASIC_AUTH_LOGIN.equals(l) && BASIC_AUTH_PASSWORD.equals(p)))
+						.serve(request -> discoveryService.findAll()
+								.map(pubKeys -> ok200()
+										.withBody(encode(PUB_KEYS_MAP, pubKeys))))
+				);
 	}
 
 	@NotNull

@@ -16,15 +16,15 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.remotefs.FileMetadata;
 import io.datakernel.remotefs.FsClient;
 
@@ -58,7 +58,7 @@ public final class HttpFsClient implements FsClient {
 								return Promise.of(response);
 							case 500:
 								try {
-									int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.asString(UTF_8)).getValue1();
+									int code = JsonUtils.fromJson(ERROR_CODE_CODEC, body.getString(UTF_8)).getValue1();
 									return Promise.ofException(code >= 1 && code <= KNOWN_ERRORS.length ?
 											KNOWN_ERRORS[code - 1] :
 											HttpException.ofCode(500));

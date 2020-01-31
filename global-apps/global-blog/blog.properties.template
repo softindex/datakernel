@@ -1,5 +1,6 @@
-app.http.staticPath=
-app.http.listenAddresses=
+http.staticPath=
+http.listenAddresses=
 discovery.address=
 fs.storage=
 appStoreUrl=
+privateKey=

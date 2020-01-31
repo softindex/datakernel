@@ -150,8 +150,7 @@ public class ConsolidationChunkSelectionTest {
 		return createTestChunk(id, min, max, id);
 	}
 
-	private static AggregationChunk createTestChunk(int id, int d1Min, int d1Max, int d2Min, int d2Max, int d3Min,
-	                                                int d3Max) {
+	private static AggregationChunk createTestChunk(int id, int d1Min, int d1Max, int d2Min, int d2Max, int d3Min, int d3Max) {
 		return AggregationChunk.create(id, new ArrayList<>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
 				PrimaryKey.ofArray(d1Max, d2Max, d3Max), 10);
 	}

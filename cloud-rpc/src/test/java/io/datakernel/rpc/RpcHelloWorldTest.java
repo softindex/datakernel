@@ -16,8 +16,9 @@
 
 package io.datakernel.rpc;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.Stopwatch;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -27,7 +28,6 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import io.datakernel.util.Stopwatch;
 import org.junit.*;
 
 import java.net.InetAddress;
@@ -97,7 +97,7 @@ public final class RpcHelloWorldTest {
 					}
 					return "Hello, " + name + "!";
 				}))
-				.withListenPort(PORT);
+				.withListenPort(port);
 	}
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {
@@ -108,7 +108,7 @@ public final class RpcHelloWorldTest {
 			this.eventloop = eventloop;
 			this.rpcClient = RpcClient.create(eventloop)
 					.withMessageTypes(HelloRequest.class, HelloResponse.class)
-					.withStrategy(server(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT)));
+					.withStrategy(server(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port)));
 
 			rpcClient.startFuture().get();
 		}
@@ -133,12 +133,14 @@ public final class RpcHelloWorldTest {
 		}
 	}
 
-	private static final int PORT = getFreePort(), TIMEOUT = 1500;
+	private static final int TIMEOUT = 1500;
+	private static int port;
 	private RpcServer server;
 
 	@Before
 	public void setUp() throws Exception {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
+		port = getFreePort();
 		server = createServer(eventloop);
 		server.listen();
 		new Thread(eventloop).start();
@@ -164,7 +166,7 @@ public final class RpcHelloWorldTest {
 			for (int i = 0; i < requestCount; i++) {
 				String name = "World" + i;
 				client.eventloop.execute(() -> client.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-						.whenComplete(($, e) -> latch.countDown())
+						.whenComplete(latch::countDown)
 						.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();
@@ -208,11 +210,11 @@ public final class RpcHelloWorldTest {
 				String name = "world" + i;
 				client1.eventloop.execute(() ->
 						client1.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(($1, e1) -> latch.countDown())
+								.whenComplete(latch::countDown)
 								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 				client2.eventloop.execute(() ->
 						client2.rpcClient.<HelloRequest, HelloResponse>sendRequest(new HelloRequest(name), TIMEOUT)
-								.whenComplete(($, e) -> latch.countDown())
+								.whenComplete(latch::countDown)
 								.whenComplete(assertComplete(response -> assertEquals("Hello, " + name + "!", response.message))));
 			}
 			latch.await();

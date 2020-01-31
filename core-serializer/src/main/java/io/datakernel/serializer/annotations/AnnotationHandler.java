@@ -18,12 +18,12 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
 
 import java.lang.annotation.Annotation;
 
 public interface AnnotationHandler<A extends Annotation, P extends Annotation> {
-	SerializerGenBuilder createBuilder(Helper serializerBuilder, A annotation, CompatibilityLevel compatibilityLevel);
+	SerializerDefBuilder createBuilder(Helper serializerBuilder, A annotation, CompatibilityLevel compatibilityLevel);
 
 	int[] extractPath(A annotation);
 

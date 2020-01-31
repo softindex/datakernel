@@ -22,10 +22,11 @@ import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.RecursiveType;
+import io.datakernel.serializer.SerializerDef;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.serializer.asm.*;
-import io.datakernel.util.RecursiveType;
+import io.datakernel.serializer.impl.*;
 
 import java.lang.reflect.Type;
 import java.time.DateTimeException;
@@ -37,35 +38,37 @@ import static io.datakernel.codegen.Expressions.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {
-	private FieldTypes() {
-	}
 
 	public static FieldType<Byte> ofByte() {
-		return new FieldType<>(byte.class, new SerializerGenByte(), BYTE_CODEC);
+		return new FieldType<>(byte.class, new SerializerDefByte(false), BYTE_CODEC);
 	}
 
 	public static FieldType<Short> ofShort() {
-		return new FieldType<>(short.class, new SerializerGenShort(), SHORT_CODEC);
+		return new FieldType<>(short.class, new SerializerDefShort(false), SHORT_CODEC);
 	}
 
 	public static FieldType<Integer> ofInt() {
-		return new FieldType<>(int.class, new SerializerGenInt(true), INT_CODEC);
+		return new FieldType<>(int.class, new SerializerDefInt(false, true), INT_CODEC);
 	}
 
 	public static FieldType<Long> ofLong() {
-		return new FieldType<>(long.class, new SerializerGenLong(true), LONG_CODEC);
+		return new FieldType<>(long.class, new SerializerDefLong(false, true), LONG_CODEC);
 	}
 
 	public static FieldType<Float> ofFloat() {
-		return new FieldType<>(float.class, new SerializerGenFloat(), FLOAT_CODEC);
+		return new FieldType<>(float.class, new SerializerDefFloat(false), FLOAT_CODEC);
 	}
 
 	public static FieldType<Double> ofDouble() {
-		return new FieldType<>(double.class, new SerializerGenDouble(), DOUBLE_CODEC);
+		return new FieldType<>(double.class, new SerializerDefDouble(false), DOUBLE_CODEC);
 	}
 
 	public static <T> FieldType<Set<T>> ofSet(FieldType<T> fieldType) {
-		SerializerGenSet serializer = new SerializerGenSet(fieldType.getSerializer());
+		SerializerDef itemSerializer = fieldType.getSerializer();
+		if (itemSerializer instanceof SerializerDefPrimitive) {
+			itemSerializer = ((SerializerDefPrimitive) itemSerializer).ensureWrapped();
+		}
+		SerializerDefSet serializer = new SerializerDefSet(itemSerializer);
 		Type wrappedNestedType = fieldType.getDataType() instanceof Class ?
 				Primitives.wrap((Class<?>) fieldType.getDataType()) :
 				fieldType.getDataType();
@@ -75,15 +78,15 @@ public final class FieldTypes {
 	}
 
 	public static <E extends Enum<E>> FieldType<E> ofEnum(Class<E> enumClass) {
-		return new FieldType<>(enumClass, new SerializerGenEnum(enumClass), StructuredCodecs.ofEnum(enumClass));
+		return new FieldType<>(enumClass, new SerializerDefEnum(enumClass), StructuredCodecs.ofEnum(enumClass));
 	}
 
 	public static FieldType<String> ofString() {
-		return new FieldType<>(String.class, new SerializerGenString(), STRING_CODEC);
+		return new FieldType<>(String.class, new SerializerDefString(), STRING_CODEC);
 	}
 
 	public static FieldType<String> ofString(StringFormat format) {
-		return new FieldType<>(String.class, new SerializerGenString(format), STRING_CODEC);
+		return new FieldType<>(String.class, new SerializerDefString(format), STRING_CODEC);
 	}
 
 	public static FieldType<LocalDate> ofLocalDate() {
@@ -102,7 +105,7 @@ public final class FieldTypes {
 		}
 
 		FieldTypeDate(LocalDate startDate) {
-			super(int.class, LocalDate.class, new SerializerGenInt(true), LOCAL_DATE_CODEC, INT_CODEC);
+			super(int.class, LocalDate.class, new SerializerDefInt(false, true), LOCAL_DATE_CODEC, INT_CODEC);
 			this.startDate = startDate;
 		}
 

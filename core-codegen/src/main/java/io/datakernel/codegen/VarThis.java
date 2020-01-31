@@ -23,24 +23,8 @@ import org.objectweb.asm.Type;
  */
 final class VarThis implements Expression {
 	@Override
-	public Type type(Context ctx) {
-		return ctx.getThisType();
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		ctx.getGeneratorAdapter().loadThis();
-		return type(ctx);
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		return o != null && getClass() == o.getClass();
-	}
-
-	@Override
-	public int hashCode() {
-		return 0;
+		return ctx.getSelfType();
 	}
 }

@@ -16,15 +16,15 @@
 
 package io.global.kv.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.kv.api.GlobalKvNode;
@@ -96,7 +96,7 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 				.then(response -> response.loadBody()
 						.map(body -> {
 							try {
-								return decode(KV_ITEM_CODEC, body.slice());
+								return decode(KV_ITEM_CODEC.nullable(), body.slice());
 							} catch (ParseException e) {
 								throw new UncheckedException(e);
 							}
@@ -140,6 +140,6 @@ public final class HttpGlobalKvNode implements GlobalKvNode {
 
 	@Override
 	public String toString() {
-		return "HttpGlobalKvNode{url='" + url + "'}";
+		return "HttpGlobalKvNode{" + url + "}";
 	}
 }

@@ -5,3 +5,4 @@ build
 npm-debug.log
 target
 global-files.properties
+containers

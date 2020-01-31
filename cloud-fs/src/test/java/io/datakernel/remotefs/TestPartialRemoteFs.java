@@ -37,8 +37,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.LENGTH_TOO_BIG;
 import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
 import static io.datakernel.test.TestUtils.getFreePort;
@@ -86,7 +86,7 @@ public final class TestPartialRemoteFs {
 	public void justDownload() throws IOException {
 		await(ChannelSupplier.ofPromise(client.download(FILE))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals(CONTENT, Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
@@ -100,7 +100,7 @@ public final class TestPartialRemoteFs {
 		ChannelConsumer<ByteBuf> consumer = ChannelConsumer.ofPromise(client.upload("test_big_file.bin"));
 
 		await(supplier.streamTo(consumer)
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals(data, Files.readAllBytes(serverStorage.resolve("test_big_file.bin")));
 	}
@@ -109,7 +109,7 @@ public final class TestPartialRemoteFs {
 	public void downloadPrefix() throws IOException {
 		await(ChannelSupplier.ofPromise(client.download(FILE, 0, 12))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals("test content".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
@@ -118,7 +118,7 @@ public final class TestPartialRemoteFs {
 	public void downloadSuffix() throws IOException {
 		await(ChannelSupplier.ofPromise(client.download(FILE, 13))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals("of the file".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
@@ -127,25 +127,25 @@ public final class TestPartialRemoteFs {
 	public void downloadPart() throws IOException {
 		await(ChannelSupplier.ofPromise(client.download(FILE, 5, 10))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals("content of".getBytes(UTF_8), Files.readAllBytes(clientStorage.resolve(FILE)));
 	}
 
 	@Test
-	public void downloadOverSuffix() throws IOException {
+	public void downloadOverSuffix() {
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(FILE, 13, 123))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertSame(LENGTH_TOO_BIG, exception);
 	}
 
 	@Test
-	public void downloadOver() throws IOException {
+	public void downloadOver() {
 		Throwable exception = awaitException(ChannelSupplier.ofPromise(client.download(FILE, 123, 123))
 				.streamTo(ChannelFileWriter.open(newCachedThreadPool(), clientStorage.resolve(FILE)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertSame(OFFSET_TOO_BIG, exception);
 	}
@@ -161,7 +161,7 @@ public final class TestPartialRemoteFs {
 
 		await(ChannelSupplier.of(ByteBuf.wrapForReading(override.getBytes(UTF_8)))
 				.streamTo(ChannelConsumer.ofPromise(client.upload(path.getFileName().toString(), 35)))
-				.whenComplete(($, e) -> server.close()));
+				.whenComplete(server::close));
 
 		assertArrayEquals(updated.getBytes(UTF_8), Files.readAllBytes(path));
 	}

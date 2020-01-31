@@ -1,12 +1,13 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.async.function.AsyncPredicate;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
-import io.datakernel.util.ref.Ref;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,13 +16,14 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static io.datakernel.async.Promises.toList;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.CollectorsEx.throwingMerger;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.nullToEmpty;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.GraphReducer.Result.*;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.CollectorsEx.throwingMerger;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.promise.Promises.toList;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingLong;
 import static java.util.stream.Collectors.toMap;
@@ -31,10 +33,6 @@ public final class OTAlgorithms {
 	private static final Logger logger = LoggerFactory.getLogger(OTAlgorithms.class);
 
 	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
-
-	private OTAlgorithms() {
-		throw new AssertionError();
-	}
 
 	public static <K, D, R> Promise<R> reduce(OTRepository<K, D> repository, OTSystem<D> system,
 			Set<K> heads, GraphReducer<K, D, R> reducer) {
@@ -164,9 +162,17 @@ public final class OTAlgorithms {
 				});
 	}
 
-	public static <K, D> Promise<K> merge(OTRepository<K, D> repository, OTSystem<D> system) {
+	public static <K, D> Promise<K> mergeAndPush(OTRepository<K, D> repository, OTSystem<D> system) {
 		return repository.getHeads()
-				.then(heads -> merge(repository, system, heads))
+				.then(heads -> mergeAndPush(repository, system, heads))
+				.whenComplete(toLogger(logger, thisMethod()));
+	}
+
+	public static <K, D> Promise<K> mergeAndPush(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
+		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
+		return merge(repository, system, heads)
+				.then(mergeCommit -> repository.push(mergeCommit)
+						.map($ -> mergeCommit.getId()))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
@@ -176,26 +182,14 @@ public final class OTAlgorithms {
 	}
 
 	public static <K, D> Promise<K> mergeAndUpdateHeads(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads) {
-		return merge(repository, system, heads)
+		return mergeAndPush(repository, system, heads)
 				.then(mergeId -> repository.updateHeads(difference(singleton(mergeId), heads), difference(heads, singleton(mergeId)))
 						.map($ -> mergeId))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
-	static class Tuple<K, D> {
-		final Map<K, List<D>> mergeDiffs;
-		final long parentsMaxLevel;
-
-		Tuple(Map<K, List<D>> mergeDiffs, long parentsMaxLevel) {
-			this.mergeDiffs = mergeDiffs;
-			this.parentsMaxLevel = parentsMaxLevel;
-		}
-	}
-
 	@NotNull
-	public static <K, D> Promise<K> merge(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
-		if (heads.size() == 1) return Promise.of(first(heads)); // nothing to merge
-
+	public static <K, D> Promise<OTCommit<K, D>> merge(OTRepository<K, D> repository, OTSystem<D> system, @NotNull Set<K> heads) {
 		checkArgument(heads.size() >= 2, "Cannot merge less than 2 heads");
 		return repository.getLevels(heads)
 				.then(levels ->
@@ -220,9 +214,7 @@ public final class OTAlgorithms {
 														head -> head,
 														head -> new DiffsWithLevel<>(levels.get(head), mergeResult.get(head)),
 														throwingMerger(),
-														LinkedHashMap::new))))
-								.then(mergeCommit -> repository.push(mergeCommit)
-										.map($ -> mergeCommit.getId())));
+														LinkedHashMap::new)))));
 	}
 
 	public static <K, D> Promise<Set<K>> findCut(OTRepository<K, D> repository, OTSystem<D> system, Set<K> startNodes,
@@ -275,7 +267,7 @@ public final class OTAlgorithms {
 		return reduce(repository, system, startNodes,
 				new GraphReducer<K, D, Set<K>>() {
 					long minLevel;
-					Set<K> nodes = new HashSet<>(startNodes);
+					final Set<K> nodes = new HashSet<>(startNodes);
 
 					@Override
 					public void onStart(@NotNull Collection<OTCommit<K, D>> queue) {
@@ -348,25 +340,25 @@ public final class OTAlgorithms {
 	}
 
 	public static <K, D> Promise<List<D>> checkout(OTRepository<K, D> repository, OTSystem<D> system) {
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(repository, system, heads, DiffsReducer.toVoid(),
 								commit -> repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
-								.then(findResult -> Promise.of(cachedSnapshot.value)))
+										.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null))
+								.then(findResult -> Promise.of(cachedSnapshotRef.value)))
 				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public static <K, D> Promise<List<D>> checkout(OTRepository<K, D> repository, OTSystem<D> system, K commitId) {
-		Ref<List<D>> cachedSnapshot = new Ref<>();
+		Ref<List<D>> cachedSnapshotRef = new Ref<>();
 		return repository.getHeads()
 				.then(heads ->
 						findParent(repository, system, union(heads, singleton(commitId)), DiffsReducer.toVoid(),
 								commit -> repository.loadSnapshot(commit.getId())
-										.map(maybeSnapshot -> (cachedSnapshot.value = maybeSnapshot.orElse(null)) != null))
+										.map(maybeSnapshot -> (cachedSnapshotRef.value = maybeSnapshot.orElse(null)) != null))
 								.then(findResult -> diff(repository, system, findResult.commit, commitId)
-										.map(diff -> concat(cachedSnapshot.value, diff))))
+										.map(diff -> concat(cachedSnapshotRef.value, diff))))
 				.whenComplete(toLogger(logger, thisMethod(), commitId));
 	}
 
@@ -376,11 +368,13 @@ public final class OTAlgorithms {
 	}
 
 	private static class LoadGraphReducer<K, D> implements GraphReducer<K, D, OTLoadedGraph<K, D>> {
+		private final OTSystem<D> system;
 		private final OTLoadedGraph<K, D> graph;
 		private final Map<K, Set<K>> head2roots = new HashMap<>();
 		private final Map<K, Set<K>> root2heads = new HashMap<>();
 
 		private LoadGraphReducer(OTSystem<D> system) {
+			this.system = system;
 			this.graph = new OTLoadedGraph<>(system);
 		}
 
@@ -412,7 +406,18 @@ public final class OTAlgorithms {
 				}
 			}
 
-			graph.addNode(commit);
+			graph.addNode(node, commit.getLevel(), parents);
+			for (Map.Entry<K, List<? extends D>> entry : new HashMap<>(nullToEmpty(graph.getChildren(node))).entrySet()) {
+				K child = entry.getKey();
+				List<? extends D> childDiffs = entry.getValue();
+				Map<K, List<? extends D>> grandChildren = nullToEmpty(graph.getChildren(child));
+				Map<K, List<? extends D>> coParents = nullToEmpty(graph.getParents(child));
+				if (grandChildren.size() != 1 || coParents.size() != 1) continue;
+				K grandChild = first(grandChildren.keySet());
+				List<? extends D> grandChildDiffs = first(grandChildren.values());
+				graph.addEdge(node, grandChild, system.squash(concat(childDiffs, grandChildDiffs)));
+				graph.removeNode(child);
+			}
 
 			if (head2roots.keySet()
 					.stream()
@@ -431,10 +436,10 @@ public final class OTAlgorithms {
 	public static <K, D> Promise<OTLoadedGraph<K, D>> loadGraph(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads, OTLoadedGraph<K, D> graph) {
 		return reduce(repository, system, heads,
 				commit -> {
-					if (graph.hasVisited(commit.getId())) {
+					if (graph.hasChild(commit.getId())) {
 						return skipPromise();
 					}
-					graph.addNode(commit);
+					graph.addNode(commit.getId(), commit.getLevel(), commit.getParents());
 					return resumePromise();
 				})
 				.thenEx((v, e) -> {
@@ -451,6 +456,32 @@ public final class OTAlgorithms {
 
 	public static <K, D> Promise<OTLoadedGraph<K, D>> loadGraph(OTRepository<K, D> repository, OTSystem<D> system, Set<K> heads, Function<K, String> idToString, Function<D, String> diffToString) {
 		return loadGraph(repository, system, heads, new OTLoadedGraph<>(system, idToString, diffToString));
+	}
+
+	public static <K, D> Promise<Void> copy(OTRepository<K, D> from, OTRepository<K, D> to) {
+		return from.getHeads()
+				.then(heads -> toList(heads.stream().map(from::loadCommit))
+						.then(commits -> {
+							PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(comparingLong(OTCommit::getLevel)));
+							queue.addAll(commits);
+							return Promises.loop(queue.poll(), Objects::nonNull,
+									commit -> to.hasCommit(commit.getId())
+											.then(b -> {
+												if (b) return Promise.of(queue.poll());
+												return Promises.all(
+														commit.getParents().keySet().stream()
+																.map(parentId -> from.loadCommit(parentId)
+																		.whenResult(parent -> {
+																			if (!queue.contains(parent)) {
+																				queue.add(parent);
+																			}
+																		})))
+														.then($ -> to.push(commit))
+														.map($ -> queue.poll());
+											}));
+
+						})
+						.then($ -> to.updateHeads(heads, emptySet())));
 	}
 
 }

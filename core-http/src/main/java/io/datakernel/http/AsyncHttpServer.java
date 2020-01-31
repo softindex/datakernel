@@ -16,31 +16,31 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static java.util.stream.Collectors.toList;
 
 /**
  * This is an implementation of the asynchronous HTTP server on top of {@link Eventloop}.
@@ -48,8 +48,9 @@ import static java.util.stream.Collectors.toList;
  */
 @SuppressWarnings({"UnusedReturnValue", "WeakerAccess", "unused"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
-	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ofSeconds(30));
+	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout", Duration.ZERO);
 	public static final Duration READ_WRITE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpServer.class, "readWriteTimeout_Shutdown", Duration.ofSeconds(3));
+	public static final Duration SERVE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpServer.class, "serveTimeout_Shutdown", Duration.ofSeconds(0));
 	public static final Duration KEEP_ALIVE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpServer.class, "keepAliveTimeout", Duration.ofSeconds(30));
 	public static final MemSize MAX_BODY_SIZE = ApplicationSettings.getMemSize(AsyncHttpServer.class, "maxBodySize", MemSize.ZERO);
 	public static final int MAX_KEEP_ALIVE_REQUESTS = ApplicationSettings.getInt(AsyncHttpServer.class, "maxKeepAliveRequests", 0);
@@ -62,6 +63,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	int readWriteTimeoutMillis = (int) READ_WRITE_TIMEOUT.toMillis();
 	int readWriteTimeoutMillisShutdown = (int) READ_WRITE_TIMEOUT_SHUTDOWN.toMillis();
+	int serveTimeoutMillisShutdown = (int) SERVE_TIMEOUT_SHUTDOWN.toMillis();
 	int keepAliveTimeoutMillis = (int) KEEP_ALIVE_TIMEOUT.toMillis();
 	int maxBodySize = MAX_BODY_SIZE.toInt();
 	int maxKeepAliveRequests = MAX_KEEP_ALIVE_REQUESTS;
@@ -186,6 +188,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
+	public AsyncHttpServer withServeTimeoutShutdown(@NotNull Duration serveTimeoutShutdown) {
+		this.serveTimeoutMillisShutdown = (int) serveTimeoutShutdown.toMillis();
+		return this;
+	}
+
 	public AsyncHttpServer withMaxBodySize(MemSize maxBodySize) {
 		return withMaxBodySize(maxBodySize.toInt());
 	}
@@ -221,7 +228,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
+		expiredConnectionsCheck = eventloop.delayBackground(1000L, wrapContext(this, () -> {
 			expiredConnectionsCheck = null;
 			boolean isClosing = closeCallback != null;
 			if (readWriteTimeoutMillis != 0 || isClosing) {
@@ -237,7 +244,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 					logger.info("...Waiting for " + this);
 				}
 			}
-		});
+		}));
 	}
 
 	@Override
@@ -252,6 +259,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private final SettablePromise<@Nullable Void> closeNotification = new SettablePromise<>();
 
+	@Nullable
 	private SettablePromise<Void> closeCallback;
 
 	void onConnectionClosed() {
@@ -269,6 +277,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		if (getConnectionsCount() == 0) {
 			cb.set(null);
 		} else {
+			if (!poolServing.isEmpty() && serveTimeoutMillisShutdown != 0) {
+				eventloop.delayBackground(serveTimeoutMillisShutdown, wrapContext(this, poolServing::closeAllConnections));
+			}
 			closeCallback = cb;
 			logger.info("Waiting for " + this);
 		}
@@ -284,11 +295,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 						: "") + "/";
 	}
 
-	public List<String> getHttpAddresses() {
-		return Stream.concat(
+	@Override
+	protected void onListen() {
+		logger.info("HTTP Server is now available at " + Stream.concat(
 				listenAddresses.stream().map(address -> format(address, false)),
 				sslListenAddresses.stream().map(address -> format(address, true))
-		).collect(toList());
+		).collect(Collectors.joining(", ")));
 	}
 
 	@JmxAttribute(description = "current number of connections", reducer = JmxReducerSum.class)

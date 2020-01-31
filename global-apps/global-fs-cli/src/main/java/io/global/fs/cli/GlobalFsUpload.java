@@ -16,15 +16,15 @@
 
 package io.global.fs.cli;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.Tuple3;
 import io.global.fs.api.CheckpointPosStrategy;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Mixin;
@@ -37,7 +37,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.Promise.of;
 import static io.global.fs.cli.GlobalFs.err;
 import static io.global.fs.cli.GlobalFs.info;
 import static picocli.CommandLine.Help.Visibility.ALWAYS;
@@ -89,7 +88,7 @@ public final class GlobalFsUpload implements Callable<Void> {
 			}
 			name = remoteName;
 
-			reader = of(ChannelSupplier.of(() ->
+			reader = Promise.of(ChannelSupplier.of(() ->
 					Promise.ofBlockingCallable(this.executor, () -> {
 						ByteBuf buffer = ByteBufPool.allocate(4096);
 						int bytes = System.in.read(buffer.array());
@@ -113,16 +112,14 @@ public final class GlobalFsUpload implements Callable<Void> {
 			}
 		}
 
-		reader.whenResult(channel -> {
-			channel.streamTo(gateway.upload(name, offset, revision))
-					.whenComplete(($, e) -> {
-						if (e == null) {
-							info(name + " upload finished");
-							return;
-						}
-						err("Upload '" + name + "' finished with exception " + e);
-					});
-		});
+		reader.whenResult(channel -> channel.streamTo(gateway.upload(name, offset, revision))
+				.whenComplete(($, e) -> {
+					if (e == null) {
+						info(name + " upload finished");
+						return;
+					}
+					err("Upload '" + name + "' finished with exception " + e);
+				}));
 
 		eventloop.run();
 		executor.shutdown();

@@ -16,7 +16,6 @@
 
 package io.global.launchers;
 
-import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.config.Config;
@@ -58,17 +57,22 @@ import io.global.ot.server.CommitStorageRocksDb;
 import io.global.ot.server.GlobalOTNodeImpl;
 import io.global.ot.server.ValidatingGlobalOTNode;
 
+import javax.net.ssl.SSLContext;
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.dns.RemoteAsyncDnsClient.DEFAULT_TIMEOUT;
 import static io.datakernel.dns.RemoteAsyncDnsClient.GOOGLE_PUBLIC_DNS;
+import static io.datakernel.http.AsyncHttpClient.*;
 import static io.datakernel.launchers.initializers.ConfigConverters.ofDnsCache;
-import static io.datakernel.launchers.initializers.Initializers.*;
+import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static io.global.launchers.Initializers.ofAbstractGlobalNode;
-import static io.global.launchers.fs.Initializers.ofLocalGlobalFsNode;
+import static io.global.launchers.Initializers.sslServerInitializer;
+import static io.global.launchers.fs.Initializers.ofGlobalFsNodeImpl;
+import static io.global.launchers.kv.Initializers.ofGlobalKvNodeImpl;
 import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
 
 public class GlobalNodesModule extends AbstractModule {
@@ -76,6 +80,7 @@ public class GlobalNodesModule extends AbstractModule {
 	protected void configure() {
 		bind(GlobalFsNode.class).to(GlobalFsNodeImpl.class);
 		bind(GlobalKvNode.class).to(GlobalKvNodeImpl.class);
+		bind(GlobalOTNode.class).to(GlobalOTNodeImpl.class);
 	}
 
 	@Provides
@@ -86,7 +91,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalOTNode globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
+	GlobalOTNodeImpl globalOTNode(Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalOTNode> factory, CommitStorage commitStorage, Config config) {
 		return GlobalOTNodeImpl.create(eventloop, serverId, discoveryService, commitStorage, factory)
 				.initialize(ofAbstractGlobalNode(config.getChild("ot")))
 				.initialize(ofGlobalOTNodeImpl(config.getChild("ot")));
@@ -97,14 +102,15 @@ public class GlobalNodesModule extends AbstractModule {
 			@Named("FS") FsClient fsClient) {
 		return GlobalFsNodeImpl.create(serverId, discoveryService, factory, fsClient)
 				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
-				.initialize(ofLocalGlobalFsNode(config.getChild("fs")));
+				.initialize(ofGlobalFsNodeImpl(config.getChild("fs")));
 	}
 
 	@Provides
 	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory,
 			StorageFactory storageFactory) {
 		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, storageFactory)
-				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
+				.initialize(ofAbstractGlobalNode(config.getChild("kv")))
+				.initialize(ofGlobalKvNodeImpl(config.getChild("kv")));
 	}
 
 	@Provides
@@ -129,13 +135,21 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	DiscoveryService discoveryService(Config config, IAsyncHttpClient client) {
-		return HttpDiscoveryService.create(config.get(ofInetSocketAddress(), "discovery.address"), client);
+		return HttpDiscoveryService.create(config.get("discovery.address"), client);
 	}
 
 	@Provides
-	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient) {
+	IAsyncHttpClient asyncHttpClient(Eventloop eventloop, AsyncDnsClient dnsClient, Executor executor, Config config) throws NoSuchAlgorithmException {
+		Config httpClientConfig = config.getChild("httpClient");
 		return AsyncHttpClient.create(eventloop)
-				.withDnsClient(dnsClient);
+				.withDnsClient(dnsClient)
+				.withSslEnabled(SSLContext.getDefault(), executor)
+				.withSocketSettings(httpClientConfig.get(ofSocketSettings(), "socketSettings", DEFAULT_SOCKET_SETTINGS))
+				.withConnectTimeout(httpClientConfig.get(ofDuration(), "connectTimeout", CONNECT_TIMEOUT))
+				.withKeepAliveTimeout(httpClientConfig.get(ofDuration(), "keepAliveTimeout", KEEP_ALIVE_TIMEOUT))
+				.withReadWriteTimeout(httpClientConfig.get(ofDuration(), "readWriteTimeout", READ_WRITE_TIMEOUT))
+				.withMaxBodySize(httpClientConfig.get(ofMemSize(), "maxBodySize", MAX_BODY_SIZE))
+				.withMaxKeepAliveRequests(httpClientConfig.get(ofInteger(), "maxKeepAliveRequests", MAX_KEEP_ALIVE_REQUESTS));
 	}
 
 	@Provides
@@ -148,9 +162,9 @@ public class GlobalNodesModule extends AbstractModule {
 
 	@Provides
 	@Named("Nodes")
-	AsyncHttpServer asyncHttpServer(Eventloop eventloop, @Named("Nodes") AsyncServlet servlet, RawServerServlet rawServerServlet, Config config) {
+	AsyncHttpServer asyncHttpServer(Eventloop eventloop, @Named("Nodes") AsyncServlet servlet, RawServerServlet rawServerServlet, Executor executor, Config config) {
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet)
-				.initialize(ofHttpServer(config.getChild("http")));
+				.initialize(sslServerInitializer(executor, config.getChild("http")));
 
 		rawServerServlet.setCloseNotification(server.getCloseNotification());
 
@@ -215,34 +229,4 @@ public class GlobalNodesModule extends AbstractModule {
 	Function<RawServerId, GlobalKvNode> kvNodeFactory(IAsyncHttpClient client) {
 		return id -> HttpGlobalKvNode.create(id.getServerIdString(), client);
 	}
-
-	// region schedulers
-	@Provides
-	@Named("FS push")
-	EventloopTaskScheduler fsPushScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("fs.push")));
-	}
-
-	@Provides
-	@Named("FS catch up")
-	EventloopTaskScheduler fsCatchUpScheduler(Eventloop eventloop, GlobalFsNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("fs.catchUp")));
-	}
-
-	@Provides
-	@Named("KV push")
-	EventloopTaskScheduler kvPushScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::push)
-				.initialize(ofEventloopTaskScheduler(config.getChild("kv.push")));
-	}
-
-	@Provides
-	@Named("KV catch up")
-	EventloopTaskScheduler kvCatchUpScheduler(Eventloop eventloop, GlobalKvNodeImpl node, Config config) {
-		return EventloopTaskScheduler.create(eventloop, node::catchUp)
-				.initialize(ofEventloopTaskScheduler(config.getChild("kv.catchUp")));
-	}
-	//endregion
 }

@@ -16,7 +16,7 @@ function MainScreen({classes, publicKey}) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const {fsService} = useMemo(() => {
-    const globalFS = new GlobalFS(publicKey);
+    const globalFS = new GlobalFS();
     localforage.config({
       driver: localforage.INDEXEDDB,
       name: 'OperationsStore',

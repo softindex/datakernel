@@ -16,56 +16,29 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 
-import static io.datakernel.codegen.Utils.loadAndCast;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
  * Defines method in order to cast a function to a type
  */
 final class ExpressionCast implements Expression {
-	public static final Type THIS_TYPE = getType(Object.class);
+	static final Type SELF_TYPE = getType(Object.class);
 
 	private final Expression expression;
 	private final Type targetType;
 
-	ExpressionCast(Expression expression, Type type) {
-		this.expression = checkNotNull(expression);
-		this.targetType = checkNotNull(type);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return targetType == THIS_TYPE ? ctx.getThisType() : targetType;
+	ExpressionCast(@NotNull Expression expression, @NotNull Type type) {
+		this.expression = expression;
+		this.targetType = type;
 	}
 
 	@Override
 	public Type load(Context ctx) {
-		Type targetType = type(ctx);
-		loadAndCast(ctx, expression, targetType);
+		Type targetType = this.targetType == SELF_TYPE ? ctx.getSelfType() : this.targetType;
+		ctx.cast(expression.load(ctx), targetType);
 		return targetType;
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionCast that = (ExpressionCast) o;
-
-		if (!expression.equals(that.expression)) return false;
-		if (!targetType.equals(that.targetType)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = expression.hashCode();
-		result = 31 * result + targetType.hashCode();
-		return result;
 	}
 }

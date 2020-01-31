@@ -1,12 +1,12 @@
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.MemSize;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -37,7 +37,7 @@ public final class ChannelFileExample {
 	private static Promise<Void> writeToFile() {
 		return ChannelSupplier.of(
 				ByteBufStrings.wrapAscii("Hello, this is example file\n"),
-				ByteBufStrings.wrapAscii("This is the second line of file"))
+				ByteBufStrings.wrapAscii("This is the second line of file\n"))
 				.streamTo(ChannelFileWriter.open(executor, PATH, WRITE));
 	}
 
@@ -45,7 +45,7 @@ public final class ChannelFileExample {
 	private static Promise<Void> readFile() {
 		return ChannelFileReader.open(executor, PATH)
 				.map(cfr -> cfr.withBufferSize(MemSize.bytes(10)))
-				.then(cfr -> cfr.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8)))));
+				.then(cfr -> cfr.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.print(buf.asString(UTF_8)))));
 
 	}
 	//[END REGION_1]

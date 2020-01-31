@@ -23,7 +23,7 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.*;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
@@ -32,8 +32,8 @@ import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
 public final class WorkerNameTest {
 	public static final int WORKERS = 4;
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	public static class Element1 {}
 

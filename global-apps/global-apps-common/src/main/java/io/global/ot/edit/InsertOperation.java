@@ -4,8 +4,8 @@ import io.datakernel.codec.StructuredCodec;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.util.StringFormatUtils.limit;
 import static io.global.ot.edit.DeleteOperation.delete;
+import static io.global.util.Utils.limit;
 
 public class InsertOperation implements EditOperation {
 	public static final StructuredCodec<InsertOperation> INSERT_CODEC = object(InsertOperation::new,

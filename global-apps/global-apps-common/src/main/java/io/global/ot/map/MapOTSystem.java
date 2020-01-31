@@ -1,9 +1,9 @@
 package io.global.ot.map;
 
+import io.datakernel.common.CollectorsEx;
 import io.datakernel.ot.OTSystem;
 import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
-import io.datakernel.util.CollectorsEx;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
@@ -12,8 +12,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.CollectionUtils.intersection;
-import static io.datakernel.util.CollectionUtils.transformMapValues;
+import static io.datakernel.common.collection.CollectionUtils.intersection;
+import static io.datakernel.common.collection.CollectionUtils.transformMapValues;
 import static io.global.ot.map.SetValue.set;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toMap;

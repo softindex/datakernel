@@ -1,10 +1,10 @@
 package io.datakernel.http.session;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
@@ -48,16 +48,16 @@ public final class SessionServlet<T> implements AsyncServlet {
 		String id = sessionIdExtractor.apply(request);
 
 		if (id == null) {
-			return publicServlet.serve(request);
+			return publicServlet.serveAsync(request);
 		}
 
 		return store.get(id)
 				.then(sessionObject -> {
 					if (sessionObject != null) {
 						request.attach(sessionObject);
-						return privateServlet.serve(request);
+						return privateServlet.serveAsync(request);
 					} else {
-						return publicServlet.serve(request);
+						return publicServlet.serveAsync(request);
 					}
 				});
 	}

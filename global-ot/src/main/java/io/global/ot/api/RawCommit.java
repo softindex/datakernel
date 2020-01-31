@@ -16,13 +16,13 @@
 
 package io.global.ot.api;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.global.common.Hash;
 import io.global.common.api.EncryptedData;
 
 import java.util.Set;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 
 public final class RawCommit {
 	private final int epoch;

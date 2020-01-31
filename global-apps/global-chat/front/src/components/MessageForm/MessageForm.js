@@ -1,15 +1,17 @@
 import React, {useState} from 'react';
+import {withSnackbar} from 'notistack';
 import Paper from '@material-ui/core/Paper';
 import SendIcon from '@material-ui/icons/Send';
+import PhoneIcon from '@material-ui/icons/Phone';
 import messageFormStyles from './messageFormStyles';
 import {withStyles} from '@material-ui/core';
 import InputBase from '@material-ui/core/InputBase';
 import Divider from '@material-ui/core/Divider';
 import IconButton from '@material-ui/core/IconButton';
-import {getInstance} from "global-apps-common";
-import ChatRoomService from "../../modules/chatroom/ChatRoomService";
+import {getInstance, useService} from 'global-apps-common';
+import ChatRoomService from '../../modules/chatroom/ChatRoomService';
 
-function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
+function MessageFormView({classes, message, onChangeMessage, onSubmit, inCall, onCall}) {
   return (
     <form className={classes.form} onSubmit={onSubmit}>
       <Paper className={classes.root} elevation={2}>
@@ -27,18 +29,24 @@ function MessageFormView({classes, message, onChangeMessage, onSubmit}) {
         <IconButton color="primary" type="submit">
           <SendIcon/>
         </IconButton>
+        <IconButton color="primary" onClick={onCall} disabled={inCall}>
+          <PhoneIcon/>
+        </IconButton>
       </Paper>
     </form>
   );
 }
 
-function MessageForm({classes, enqueueSnackbar}) {
+function MessageForm({classes, publicKey, enqueueSnackbar}) {
   const chatRoomService = getInstance(ChatRoomService);
+  const {call, isHostValid} = useService(chatRoomService);
+  const inCall = isHostValid && (call.callerInfo.publicKey === publicKey || call.handled.has(publicKey));
   const [message, setMessage] = useState('');
 
   const props = {
     classes,
     message,
+    inCall,
     onChangeMessage(event) {
       setMessage(event.target.value);
     },
@@ -53,11 +61,19 @@ function MessageForm({classes, enqueueSnackbar}) {
           enqueueSnackbar(err.message, {
             variant: 'error'
           });
-        })
+        });
+    },
+    onCall() {
+      chatRoomService.startCall()
+        .catch(err => {
+          enqueueSnackbar(err.message, {
+            variant: 'error'
+          });
+        });
     }
   };
 
   return <MessageFormView {...props}/>
 }
 
-export default withStyles(messageFormStyles)(MessageForm);
+export default withSnackbar(withStyles(messageFormStyles)(MessageForm));

@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 /**
- * An interface for an asyncronous HTTP client.
+ * An interface for an asynchronous HTTP client.
  * <p>
- * It is as simple as an asyncronous function that accepts {@link HttpRequest}
+ * It is as simple as an asynchronous function that accepts {@link HttpRequest}
  * and returns an {@link HttpResponse} for it,
  * so it is basically a reciprocal of the {@link AsyncServlet}.
  */

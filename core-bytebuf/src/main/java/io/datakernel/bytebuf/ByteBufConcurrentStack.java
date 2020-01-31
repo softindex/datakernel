@@ -6,44 +6,52 @@ import java.util.concurrent.atomic.AtomicReference;
  * Simple lock-free concurrent stack implementation for the {@link ByteBuf ByteBufs} that is used in {@link ByteBufPool}
  */
 final class ByteBufConcurrentStack {
-	private final AtomicReference<ByteBuf> head = new AtomicReference<>();
+	private static final class ByteBufRef {
+		ByteBuf buf;
+	}
+
+	private final AtomicReference<ByteBufRef> head = new AtomicReference<>(new ByteBufRef());
 
 	public void push(ByteBuf newHead) {
-		ByteBuf oldHead;
+		ByteBufRef oldHeadRef;
+		ByteBufRef newHeadRef = new ByteBufRef();
+		newHeadRef.buf = newHead;
 		do {
-			oldHead = head.get();
-			newHead.next = oldHead;
-		} while (!head.compareAndSet(oldHead, newHead));
+			oldHeadRef = head.get();
+			newHead.next = oldHeadRef.buf;
+		} while (!head.compareAndSet(oldHeadRef, newHeadRef));
 	}
 
 	public ByteBuf pop() {
+		ByteBufRef oldHeadRef;
+		ByteBufRef newHeadRef = new ByteBufRef();
 		ByteBuf oldHead;
-		ByteBuf newHead;
 		do {
-			oldHead = head.get();
+			oldHeadRef = head.get();
+			oldHead = oldHeadRef.buf;
 			if (oldHead == null) {
 				return null;
 			}
-			newHead = oldHead.next;
-		} while (!head.compareAndSet(oldHead, newHead));
+			newHeadRef.buf = oldHead.next;
+		} while (!head.compareAndSet(oldHeadRef, newHeadRef));
 		return oldHead;
 	}
 
 	public ByteBuf peek() {
-		return head.get();
+		return head.get().buf;
 	}
 
 	public void clear() {
-		head.set(null);
+		head.set(new ByteBufRef());
 	}
 
 	public boolean isEmpty() {
-		return head.get() == null;
+		return head.get().buf == null;
 	}
 
 	public int size() {
 		int result = 0;
-		ByteBuf node = head.get();
+		ByteBuf node = head.get().buf;
 		while (node != null) {
 			node = node.next;
 			result++;

@@ -1,6 +1,6 @@
 package io.global.forum.dao;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.global.comm.dao.CommDao;
 import io.global.common.KeyPair;
 import io.global.forum.ot.ForumMetadata;

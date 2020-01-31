@@ -1,7 +1,7 @@
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Base64;
@@ -35,9 +35,9 @@ public final class BasicAuth implements AsyncServlet {
 	private final BiFunction<String, String, Promise<Boolean>> credentialsLookup;
 
 	private Function<HttpResponse, HttpResponse> failureResponse =
-			request -> request
+			response -> response
 					.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(PLAIN_TEXT_UTF_8))
-					.withBody("Authentification is required".getBytes(UTF_8));
+					.withBody("Authentication is required".getBytes(UTF_8));
 
 	public BasicAuth(AsyncServlet next, String realm, BiFunction<String, String, Promise<Boolean>> credentialsLookup) {
 		this.next = next;
@@ -74,7 +74,7 @@ public final class BasicAuth implements AsyncServlet {
 			raw = DECODER.decode(header.substring(PREFIX.length()));
 		} catch (IllegalArgumentException e) {
 			// all the messages in decode method's illegal argument exception are informative enough
-			return Promise.ofException(HttpException.ofCode(400,"Base64: " + e.getMessage()));
+			return Promise.ofException(HttpException.ofCode(400, "Base64: " + e.getMessage()));
 		}
 		String[] authData = new String(raw, UTF_8).split(":", 2);
 		if (authData.length != 2) {
@@ -84,15 +84,15 @@ public final class BasicAuth implements AsyncServlet {
 				.then(result -> {
 					if (result) {
 						request.attach(new BasicAuthCredentials(authData[0], authData[1]));
-						return next.serve(request);
+						return next.serveAsync(request);
 					}
 					return Promise.of(failureResponse.apply(HttpResponse.unauthorized401(challenge)));
 				});
 	}
 
 	public static final class BasicAuthCredentials {
-		private String username;
-		private String password;
+		private final String username;
+		private final String password;
 
 		public BasicAuthCredentials(String username, String password) {
 			this.username = username;

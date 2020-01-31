@@ -16,9 +16,11 @@
 
 package io.datakernel.codegen;
 
+import java.util.function.Function;
+
 final class ExpressionIteratorForEach extends AbstractExpressionIteratorForEach {
 
-	ExpressionIteratorForEach(Expression collection, Class<?> type, Expression forEach) {
+	ExpressionIteratorForEach(Expression collection, Class<?> type, Function<Expression, Expression> forEach) {
 		super(collection, type, forEach);
 	}
 

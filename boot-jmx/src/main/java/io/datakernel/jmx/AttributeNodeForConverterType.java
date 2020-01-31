@@ -1,5 +1,7 @@
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,10 +20,10 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 	private static final Logger logger = LoggerFactory.getLogger(AttributeNodeForConverterType.class);
 
 	@Nullable
-	private Method setter;
-	private Function<T, String> to;
+	private final Method setter;
+	private final Function<T, String> to;
 	@Nullable
-	private Function<String, T> from;
+	private final Function<String, T> from;
 
 	public AttributeNodeForConverterType(String name, @Nullable String description, ValueFetcher fetcher,
 			boolean visible, @Nullable Method setter,
@@ -69,17 +71,17 @@ public class AttributeNodeForConverterType<T> extends AttributeNodeForLeafAbstra
 	}
 
 	@Override
-	public List<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(@NotNull Object source) {
 		return Collections.emptyList();
 	}
 
 	@Override
-	public boolean isSettable(String attrName) {
+	public boolean isSettable(@NotNull String attrName) {
 		return setter != null && from != null;
 	}
 
 	@Override
-	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
+	public void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) throws SetterException {
 		if (!isSettable("")) {
 			throw new SetterException(new IllegalAccessException("Cannot set non writable attribute " + name));
 		}

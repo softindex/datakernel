@@ -16,48 +16,27 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.call;
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 final class ExpressionLength implements Expression {
-	private final Expression field;
+	private final Expression value;
 
-	ExpressionLength(Expression field) {
-		this.field = checkNotNull(field);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return Type.INT_TYPE;
+	ExpressionLength(@NotNull Expression value) {
+		this.value = value;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		if (field.type(ctx).getSort() == Type.ARRAY) {
-			field.load(ctx);
+		Type valueType = value.load(ctx);
+		if (valueType.getSort() == Type.ARRAY) {
 			g.arrayLength();
-		} else if (field.type(ctx).getSort() == Type.OBJECT) {
-			call(field, "size").load(ctx);
+		} else if (valueType.getSort() == Type.OBJECT) {
+			ctx.invoke(valueType, "size");
 		}
 		return Type.INT_TYPE;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionLength that = (ExpressionLength) o;
-		return field.equals(that.field);
-	}
-
-	@Override
-	public int hashCode() {
-		return field.hashCode();
 	}
 }

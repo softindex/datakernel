@@ -6,10 +6,11 @@ import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelInput;
 
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.Sliceable.trySlice;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.Recyclable.tryRecycle;
-import static io.datakernel.util.Sliceable.trySlice;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Communicating process which distributes
@@ -59,7 +60,7 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 	//[START REGION_6]
 	private void tryStart() {
 		if (input != null && first != null && second != null) {
-			getCurrentEventloop().post(this::startProcess);
+			getCurrentEventloop().post(wrapContext(this, this::startProcess));
 		}
 	}
 	//[END REGION_6]

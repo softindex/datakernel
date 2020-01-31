@@ -16,12 +16,12 @@
 
 package io.datakernel.dataflow.server;
 
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.*;
 import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
-import io.datakernel.exception.ParseException;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import org.junit.Test;
 
 import java.net.InetAddress;

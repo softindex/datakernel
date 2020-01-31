@@ -16,17 +16,17 @@
 
 package io.global.ot.http;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.common.time.SteppingCurrentTimeProvider;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.datakernel.test.rules.LoggerConfig;
 import io.datakernel.test.rules.LoggingRule;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.time.SteppingCurrentTimeProvider;
 import io.global.common.*;
 import io.global.common.api.EncryptedData;
 import io.global.ot.api.*;
@@ -38,9 +38,9 @@ import org.junit.Test;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.binary.BinaryUtils.encode;
-import static io.datakernel.util.CollectionUtils.*;
+import static io.datakernel.common.collection.CollectionUtils.*;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.ot.util.TestUtils.getCommitEntries;
 import static java.util.Arrays.asList;
@@ -180,7 +180,7 @@ public class GlobalOTNodeHttpClientTest {
 
 	@Test
 	public void listSnapshots() {
-		doTest(client.listSnapshots(repository, emptySet()), repository, emptySet());
+		doTest(client.listSnapshots(repository), repository);
 	}
 
 	// region helpers
@@ -233,13 +233,13 @@ public class GlobalOTNodeHttpClientTest {
 			}
 
 			@Override
-			public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> snapshotIds) {
+			public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId) {
 				Set<CommitId> commitIds = set(
 						CommitId.of(1, new byte[]{1, 2, 3}),
 						CommitId.of(2, new byte[]{4, 5, 6}),
 						CommitId.of(3, new byte[]{7, 8, 9})
 				);
-				return resultOf(commitIds, repositoryId, snapshotIds);
+				return resultOf(commitIds, repositoryId);
 			}
 
 			@Override

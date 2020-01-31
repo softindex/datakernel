@@ -20,10 +20,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredEncoder;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 public final class BinaryUtils {
-	private BinaryUtils() {}
 
 	public static <T> T decode(StructuredDecoder<T> decoder, byte[] bytes) throws ParseException {
 		return decode(decoder, ByteBuf.wrapForReading(bytes));

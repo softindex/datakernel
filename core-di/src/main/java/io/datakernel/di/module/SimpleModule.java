@@ -7,12 +7,12 @@ import java.util.Map;
 import java.util.Set;
 
 final class SimpleModule implements Module {
-	private final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
+	private final Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings;
 	private final Map<Integer, Set<BindingTransformer<?>>> transformers;
 	private final Map<Class<?>, Set<BindingGenerator<?>>> generators;
 	private final Map<Key<?>, Multibinder<?>> multibinders;
 
-	public SimpleModule(Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings,
+	public SimpleModule(Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings,
 			Map<Integer, Set<BindingTransformer<?>>> transformers,
 			Map<Class<?>, Set<BindingGenerator<?>>> generators,
 			Map<Key<?>, Multibinder<?>> multibinders) {
@@ -23,7 +23,7 @@ final class SimpleModule implements Module {
 	}
 
 	@Override
-	public Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
+	public Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings() {
 		return bindings;
 	}
 

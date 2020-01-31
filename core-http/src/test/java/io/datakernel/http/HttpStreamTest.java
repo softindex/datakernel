@@ -16,15 +16,15 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -39,12 +39,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CRLF;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
-import static io.datakernel.util.Recyclable.deepRecycle;
 import static java.lang.Math.min;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
@@ -95,10 +95,10 @@ public final class HttpStreamTest {
 
 	@Test
 	public void testStreamDownload() throws IOException {
-		startTestServer(request -> Promise.of(
+		startTestServer(request ->
 				HttpResponse.ok200()
 						.withBodyStream(ChannelSupplier.ofIterable(expectedList)
-								.mapAsync(item -> Promises.delay(1L, item)))));
+								.mapAsync(item -> Promises.delay(1L, item))));
 
 		ByteBuf body = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
 				.request(HttpRequest.post("http://127.0.0.1:" + PORT))
@@ -141,7 +141,7 @@ public final class HttpStreamTest {
 						.withBodyStream(supplier))
 				.then(response -> response.getBodyStream().toCollector(ByteBufQueue.collector())));
 
-		assertEquals(exceptionMessage, body.asString(UTF_8));
+		assertTrue(body.asString(UTF_8).contains(exceptionMessage));
 	}
 
 	@Test
@@ -162,10 +162,11 @@ public final class HttpStreamTest {
 						"Connection: keep-alive" + crlf + crlf +
 						"Test";
 
-		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.then($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+						.then($ -> socket.write(null))
+						.then($ -> ChannelSupplier.ofSocket(socket).toCollector(ByteBufQueue.collector()))
+						.whenComplete(socket::close)));
 
 		assertEquals(responseMessage, body.asString(UTF_8));
 
@@ -184,10 +185,10 @@ public final class HttpStreamTest {
 						"Transfer-Encoding: chunked" + crlf + crlf +
 						"ffffffffff";
 
-		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+						.whenComplete(socket::close)));
 
 		assertNull(body);
 
@@ -212,11 +213,11 @@ public final class HttpStreamTest {
 						"Transfer-Encoding: chunked" + crlf + crlf +
 						"3";
 
-		ByteBuf body = await(AsyncTcpSocketImpl.connect(new InetSocketAddress(PORT))
+		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
 						.then($ -> socket.write(null))
 						.then($ -> socket.read())
-						.whenComplete(($, e) -> socket.close())));
+						.whenComplete(socket::close)));
 
 		assertNull(body);
 

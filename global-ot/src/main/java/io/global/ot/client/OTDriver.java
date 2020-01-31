@@ -16,18 +16,18 @@
 
 package io.global.ot.client;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
@@ -41,11 +41,12 @@ import java.util.*;
 
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.ot.OTAlgorithms.excludeParents;
 import static io.datakernel.ot.OTAlgorithms.merge;
-import static io.datakernel.util.CollectionUtils.*;
 import static io.global.common.CryptoUtils.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
+import static java.lang.Boolean.TRUE;
 import static java.util.Collections.*;
 import static java.util.Comparator.naturalOrder;
 import static java.util.stream.Collectors.toList;
@@ -289,11 +290,31 @@ public final class OTDriver {
 		simKeys.put(Hash.sha1(currentSimKey.getBytes()), currentSimKey);
 	}
 
-	public static <D> Promise<Void> sync(OTRepository<CommitId, D> repository, OTSystem<D> system, Set<CommitId> otherHeads) {
+	/**
+	 * Synchronizes OT repository by merging local heads with some other heads from origin repository
+	 *
+	 * @param repository a local repository to be synchronized
+	 * @param system     OT system that defines how operations should be transformed, squashed, etc
+	 * @param otherHeads heads from the other repository that should be merged with local heads
+	 * @param <D>        type of OT operation
+	 * @return promise of <code>false</code> if two or more heads were merged into a merge commit that is empty,
+	 * promise of <code>true</code> otherwise
+	 */
+	public static <D> Promise<Boolean> sync(OTRepository<CommitId, D> repository, OTSystem<D> system, Set<CommitId> otherHeads) {
 		return repository.getHeads()
 				.then(ourHeads -> excludeParents(repository, system, union(otherHeads, ourHeads))
-						.then(filtered -> merge(repository, system, filtered))
-						.then(mergeId -> repository.updateHeads(difference(singleton(mergeId), ourHeads), emptySet())));
+						.then(filtered -> {
+							if (filtered.size() == 1) {
+								return repository.updateHeads(difference(filtered, ourHeads), emptySet())
+										.map($ -> TRUE);
+							}
+							return merge(repository, system, filtered)
+									.then(mergeCommit -> repository.push(mergeCommit)
+											.then($ -> repository.updateHeads(difference(singleton(mergeCommit.getId()), ourHeads), emptySet()))
+											.map($ -> !mergeCommit.getParents().values().stream()
+													.flatMap(Collection::stream)
+													.allMatch(system::isEmpty)));
+						}));
 	}
 
 }

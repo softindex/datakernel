@@ -16,10 +16,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.http.loader.StaticLoader;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,8 +32,10 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
+import static io.datakernel.http.HttpHeaders.CACHE_CONTROL;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 
 /**
@@ -43,13 +45,17 @@ public final class StaticServlet implements AsyncServlet {
 	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 
 	private final StaticLoader resourceLoader;
-	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
-	private Function<HttpRequest, @Nullable String> mapper = HttpRequest::getRelativePath;
+	private final Set<String> indexResources = new LinkedHashSet<>();
+
 	private Supplier<HttpResponse> responseSupplier = HttpResponse::ok200;
-	private Set<String> indexResources = new LinkedHashSet<>();
+	private Function<String, ContentType> contentTypeResolver = StaticServlet::getContentType;
+	private Function<HttpRequest, @Nullable String> pathMapper = HttpRequest::getRelativePath;
+	private UnaryOperator<ByteBuf> responseBodyMapper = UnaryOperator.identity();
 
 	@Nullable
 	private String defaultResource;
+
+	private int httpCacheMaxAge = 0;
 
 	private StaticServlet(StaticLoader resourceLoader) {
 		this.resourceLoader = resourceLoader;
@@ -71,6 +77,11 @@ public final class StaticServlet implements AsyncServlet {
 		return new StaticServlet(StaticLoader.ofPath(executor, path));
 	}
 
+	public StaticServlet withHttpCacheMaxAge(int httpCacheMaxAge) {
+		this.httpCacheMaxAge = httpCacheMaxAge;
+		return this;
+	}
+
 	public StaticServlet withContentType(ContentType contentType) {
 		return withContentTypeResolver($ -> contentType);
 	}
@@ -81,7 +92,7 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	public StaticServlet withMapping(Function<HttpRequest, String> fn) {
-		mapper = fn;
+		pathMapper = fn;
 		return this;
 	}
 
@@ -113,6 +124,11 @@ public final class StaticServlet implements AsyncServlet {
 		return this;
 	}
 
+	public StaticServlet withResponseBodyMapper(UnaryOperator<ByteBuf> responseBodyMapper) {
+	    this.responseBodyMapper = responseBodyMapper;
+	    return this;
+	}
+
 	public static ContentType getContentType(String path) {
 		int pos = path.lastIndexOf(".");
 		if (pos == -1) {
@@ -137,15 +153,18 @@ public final class StaticServlet implements AsyncServlet {
 	}
 
 	private HttpResponse createHttpResponse(ByteBuf buf, ContentType contentType) {
-		return responseSupplier.get()
-				.withBody(buf)
+		HttpResponse response = responseSupplier.get()
+				.withBody(responseBodyMapper.apply(buf))
 				.withHeader(CONTENT_TYPE, ofContentType(contentType));
+		return httpCacheMaxAge > 0 ?
+				response.withHeader(CACHE_CONTROL, "public, max-age=" + httpCacheMaxAge) :
+				response;
 	}
 
 	@NotNull
 	@Override
 	public final Promise<HttpResponse> serve(@NotNull HttpRequest request) {
-		String mappedPath = mapper.apply(request);
+		String mappedPath = pathMapper.apply(request);
 		if (mappedPath == null) return Promise.ofException(HttpException.notFound404());
 		ContentType contentType = contentTypeResolver.apply(mappedPath);
 		return Promise.complete()

@@ -16,24 +16,24 @@
 
 package io.global.ot.http;
 
-import io.datakernel.async.AsyncPredicate;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.ParserFunction;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.process.ChannelByteChunker;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import io.datakernel.util.MemSize;
-import io.datakernel.util.ParserFunction;
+import io.datakernel.promise.Async;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import io.global.ot.util.HttpDataFormats;
+import io.global.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,15 +41,15 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.async.Cancellable.CANCEL_EXCEPTION;
+import static io.datakernel.async.process.Cancellable.CANCEL_EXCEPTION;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.codec.binary.BinaryUtils.*;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
+import static io.datakernel.common.parse.ParserFunction.asFunction;
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
-import static io.datakernel.util.ParserFunction.asFunction;
 import static io.global.ot.api.OTCommand.*;
 import static io.global.ot.util.HttpDataFormats.*;
 import static io.global.util.Utils.eitherComplete;
@@ -173,15 +173,11 @@ public final class RawServerServlet implements AsyncServlet {
 					}
 				})
 				.map(GET, "/" + LIST_SNAPSHOTS + "/:pubKey/:name", req -> {
-					String snapshotsQuery = req.getQueryParameter("snapshots");
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
-					if (snapshotsQuery == null) {
-						return Promise.ofException(HttpException.ofCode(400, "No 'snapshots' query parameter"));
-					}
 
 					try {
-						return node.listSnapshots(urlDecodeRepositoryId(pubKey, name), COMMIT_IDS_PARSER.parse(snapshotsQuery))
+						return node.listSnapshots(urlDecodeRepositoryId(pubKey, name))
 								.map(snapshots -> HttpResponse.ok200()
 										.withBody(toJson(ofSet(COMMIT_ID_JSON), snapshots).getBytes(UTF_8)));
 					} catch (ParseException e) {
@@ -206,16 +202,16 @@ public final class RawServerServlet implements AsyncServlet {
 					String pubKey = req.getPathParameter("pubKey");
 					String name = req.getPathParameter("name");
 					if (lastHeadsQuery == null) {
-						 return Promise.ofException(HttpException.ofCode(400, "No 'lastHeads' query parameter"));
+						return Promise.ofException(HttpException.ofCode(400, "No 'lastHeads' query parameter"));
 					}
 
 					try {
 						Set<CommitId> lastHeads = COMMIT_IDS_PARSER.parse(lastHeadsQuery);
 						return eitherComplete(
-								Promises.until(node.pollHeads(urlDecodeRepositoryId(pubKey, name)),
-										AsyncPredicate.of(polledHeads ->
+								Utils.until(node.pollHeads(urlDecodeRepositoryId(pubKey, name)),
+										polledHeads ->
 												!polledHeads.stream().map(SignedData::getValue).map(RawCommitHead::getCommitId).collect(toSet())
-														.equals(lastHeads)))
+														.equals(lastHeads))
 										.map(heads -> HttpResponse.ok200()
 												.withBody(toJson(ofSet(SIGNED_COMMIT_HEAD_JSON), heads).getBytes(UTF_8))),
 								closeNotification
@@ -346,7 +342,7 @@ public final class RawServerServlet implements AsyncServlet {
 
 	@NotNull
 	@Override
-	public Promise<HttpResponse> serve(@NotNull HttpRequest request) {
+	public Async<HttpResponse> serve(@NotNull HttpRequest request) {
 		return servlet.serve(request);
 	}
 }

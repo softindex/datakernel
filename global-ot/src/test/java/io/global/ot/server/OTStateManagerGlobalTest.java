@@ -1,10 +1,10 @@
 package io.global.ot.server;
 
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.*;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.global.common.KeyPair;
@@ -33,10 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.first;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.ot.utils.Utils.*;
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.ot.util.TestUtils.TEST_OP_CODEC;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptySet;
@@ -78,8 +78,8 @@ public class OTStateManagerGlobalTest {
 		MyRepositoryId<TestOp> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), TEST_OP_CODEC);
 		state = new TestOpState();
 		repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-		OTNodeImpl<CommitId, TestOp, OTCommit<CommitId, TestOp>> node = OTNodeImpl.create(repository, OT_SYSTEM);
-		stateManager = OTStateManager.create(eventloop, OT_SYSTEM, node, state);
+		OTUplink<CommitId, TestOp, OTCommit<CommitId, TestOp>> uplink = OTUplinkImpl.create(repository, OT_SYSTEM);
+		stateManager = OTStateManager.create(eventloop, OT_SYSTEM, uplink, state);
 	}
 
 	@Test

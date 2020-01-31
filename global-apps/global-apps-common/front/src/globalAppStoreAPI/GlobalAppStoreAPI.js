@@ -32,18 +32,32 @@ export class GlobalAppStoreAPI {
     });
   }
 
+  async signupByGoogle(newUser) {
+    await this._request(url.resolve(this._url, '/api/users/register/google'), {
+      method: 'POST',
+      body: JSON.stringify({
+        username: newUser.username,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        accessToken: newUser.accessToken
+      })
+    });
+  }
+
   async logout() {
     await this._request(url.resolve(this._url, '/api/auth/logout'), {
       method: 'POST'
     });
   }
 
-  async sendGoogleProfileCode(tokenCode) {
-    await this._request(url.resolve(this._url, '/api/auth/googleTokenLogin'), {
+  sendGoogleProfileCode(tokenCode) {
+    return this._request(url.resolve(this._url, '/api/auth/googleTokenLogin'), {
       method: 'POST',
-      body: "code=" + tokenCode,
+      body: 'code=' + tokenCode,
       headers: { 'Content-type': 'application/x-www-form-urlencoded' }
     })
+      .then(response => response.json());
   }
 
   getApplications() {
@@ -84,20 +98,9 @@ export class GlobalAppStoreAPI {
       .then(response => response.json());
   }
 
-  getKeys() {
-    return this._request(url.resolve(this._url, '/api/users/keys/pairs'), {method: 'GET'})
-      .then(response => response.json())
-      .then(([firstPair]) => firstPair);
-  }
-
-  getPublicKey() {
-    return this.getKeys()
-      .then((keys) => keys[1]);
-  }
-
-  getPrivateKey() {
-    return this.getKeys()
-      .then((keys) => keys[0]);
+  generateAuthToken(){
+    return this._request(url.resolve(this._url, `/api/auth/generateToken`), {method: 'POST'})
+      .then(response => response.text());
   }
 
   updateProfile(profileChanges) {
@@ -128,11 +131,25 @@ export class GlobalAppStoreAPI {
   getUserByPublicKey(publicKey) {
     return this._request(url.resolve(this._url, `/api/users/${publicKey}`))
       .then(response => response.json())
+      .catch(error => {
+        if (error.statusCode === 404) {
+          return null;
+        }
+
+        throw error;
+      });
   }
 
   getProfile() {
     return this._request(url.resolve(this._url, 'api/users/myProfile'))
       .then(response => response.json());
   }
-}
 
+  getAppsURLs(appIds = []) {
+    return this._request(url.resolve(
+      this._url,
+      `/api/appRegistry/getDefaultUrls?appIds=${encodeURIComponent(JSON.stringify(appIds))}`
+    ))
+      .then(response => response.json());
+  }
+}

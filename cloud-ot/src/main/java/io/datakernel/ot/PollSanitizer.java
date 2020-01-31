@@ -1,12 +1,14 @@
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
+
+import static io.datakernel.promise.RetryPolicy.exponentialBackoff;
 
 public final class PollSanitizer<T> implements AsyncSupplier<T> {
 	public static final Duration DEFAULT_YIELD_INTERVAL = Duration.ofMillis(1000L);
@@ -33,14 +35,16 @@ public final class PollSanitizer<T> implements AsyncSupplier<T> {
 
 	@Override
 	public Promise<T> get() {
-		return Promises.until(poll,
-				value -> {
-					if (!Objects.equals(value, lastValue)) {
-						this.lastValue = value;
-						return Promise.of(true);
+		return Promises.retry(poll,
+				(value, e) -> {
+					if (e != null) return true;
+					if (Objects.equals(value, lastValue)) {
+						return false;
 					} else {
-						return Promises.delay(yieldInterval, false);
+						this.lastValue = value;
+						return true;
 					}
-				});
+				},
+				exponentialBackoff(Duration.ofMillis(1), yieldInterval));
 	}
 }

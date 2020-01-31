@@ -17,17 +17,16 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.*;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.remotefs.RemoteFsServer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -47,11 +46,11 @@ import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofLong;
 import static io.datakernel.aggregation.measure.Measures.sum;
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codegen.DefiningClassLoader.create;
+import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
-import static io.datakernel.util.CollectionUtils.keysToMap;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -74,7 +73,6 @@ public final class CubeTest {
 
 	private final DefiningClassLoader classLoader = create();
 	private final Executor executor = newSingleThreadExecutor();
-
 
 	private AggregationChunkStorage<Long> chunkStorage;
 	private Cube cube;
@@ -111,10 +109,8 @@ public final class CubeTest {
 
 	@SuppressWarnings("unchecked")
 	private static <T> Promise<Void> consume(Cube cube, AggregationChunkStorage<Long> chunkStorage, T item, T... items) {
-		StreamConsumerWithResult<T, CubeDiff> consumer = (StreamConsumerWithResult<T, CubeDiff>) cube.consume(item.getClass());
 		return StreamSupplier.concat(StreamSupplier.of(item), StreamSupplier.of(items))
-				.streamTo(consumer.getConsumer())
-				.then($ -> consumer.getResult())
+				.streamTo(cube.consume(((Class<T>) item.getClass())))
 				.then(cubeDiff -> chunkStorage.finish(cubeDiff.<Long>addedChunks().collect(toSet()))
 						.whenResult($ -> cube.apply(cubeDiff)));
 	}
@@ -158,7 +154,7 @@ public final class CubeTest {
 		await(
 				Promises.all(consume(cube, chunkStorage, new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)),
 						consume(cube, chunkStorage, new DataItem2(1, 3, 10, 20), new DataItem2(1, 4, 10, 20)))
-						.whenComplete(($, e) -> remoteFsServer1.close())
+						.whenComplete(remoteFsServer1::close)
 		);
 		RemoteFsServer remoteFsServer2 = startServer(executor, serverStorage);
 
@@ -167,7 +163,7 @@ public final class CubeTest {
 				and(eq("key1", 1), eq("key2", 3)),
 				DataItemResult.class, classLoader)
 				.toList()
-				.whenComplete(($2, e) -> remoteFsServer2.close()));
+				.whenComplete(remoteFsServer2::close));
 
 		assertEquals(expected, list);
 	}

@@ -16,11 +16,11 @@
 
 package io.global.kv;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.test.rules.ByteBufRule;
@@ -53,9 +53,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
 import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
@@ -156,14 +156,13 @@ public final class GlobalKvTest {
 
 		Set<KvItem<String, String>> content = createContent();
 
-		// upload to the caching node, it'll cache and also forward to one of the masters
+		// upload to the caching node, it'll cache and also forward to all masters (on background)
 		await(ChannelSupplier.ofIterable(content).streamTo(await(cachingAliceGateway.upload("test"))));
 
 		List<KvItem<String, String>> firstList = await(await(firstAliceAdapter.download("test")).toList());
 		List<KvItem<String, String>> secondList = await(await(secondAliceAdapter.download("test")).toList());
 
-		// on first or on second but not on both (with default 0-1 setting)
-		assertTrue(firstList.isEmpty() ^ secondList.isEmpty());
+		assertTrue(!firstList.isEmpty() && !secondList.isEmpty());
 	}
 
 	@Test
@@ -217,9 +216,6 @@ public final class GlobalKvTest {
 		announce(alice, set(FIRST_ID, SECOND_ID));
 
 		await(ChannelSupplier.ofIterable(content).streamTo(await(firstAliceAdapter.upload("test"))));
-
-		// ping second node so that if would find out that it is master for alice
-		await(secondAliceAdapter.list());
 
 		await(rawSecondClient.fetch());
 

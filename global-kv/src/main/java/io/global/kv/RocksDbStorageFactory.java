@@ -1,12 +1,12 @@
 package io.global.kv;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.util.Tuple2;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
 import io.global.kv.api.KvStorage;
 import io.global.kv.api.StorageFactory;
@@ -15,17 +15,20 @@ import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.async.util.LogUtils.Level.*;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.LogUtils.Level.*;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 
 public final class RocksDbStorageFactory implements EventloopService, StorageFactory {
@@ -73,6 +76,7 @@ public final class RocksDbStorageFactory implements EventloopService, StorageFac
 
 					ArrayList<ColumnFamilyHandle> handles = new ArrayList<>();
 					try (DBOptions dbOptions = new DBOptions().setCreateIfMissing(true)) {
+						Files.createDirectories(Paths.get(rocksDbPath).getParent());
 						db = RocksDB.open(dbOptions, rocksDbPath, descriptors, handles);
 					}
 

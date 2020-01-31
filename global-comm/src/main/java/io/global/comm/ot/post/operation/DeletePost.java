@@ -1,11 +1,11 @@
 package io.global.comm.ot.post.operation;
 
 import io.global.comm.pojo.Post;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
 
 import java.util.Map;
 
-import static io.global.comm.pojo.AuthService.DK_APP_STORE;
+import static io.global.ot.session.AuthService.DK_APP_STORE;
 
 public final class DeletePost implements ThreadOperation {
 	public static final DeletePost EMPTY = new DeletePost("", new UserId(DK_APP_STORE, ""), -1, true);

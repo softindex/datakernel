@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 /**
  * Implementations of this interface specifies the behavior according to
@@ -25,8 +25,8 @@ import io.datakernel.async.Promise;
  * An example of concrete {@code RpcRequestHandler} can be found in
  * {@link RpcServer} documentation.
  *
- * @param <I>	class of request
- * @param <O>	class of response
+ * @param <I> class of request
+ * @param <O> class of response
  */
 @FunctionalInterface
 public interface RpcRequestHandler<I, O> {

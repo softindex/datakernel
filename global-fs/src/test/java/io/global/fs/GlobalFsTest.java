@@ -51,12 +51,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.FILE_NOT_FOUND;
 import static io.datakernel.test.rules.ByteBufRule.IgnoreLeaks;
-import static io.datakernel.util.CollectionUtils.set;
 import static io.global.fs.util.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;
@@ -216,15 +216,15 @@ public final class GlobalFsTest {
 	public void announcedUpload() throws IOException {
 		announce(alice, set(FIRST_ID, SECOND_ID));
 
-		// upload to the caching node, it'll cache and also forward to one of the masters
-		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(aliceGateway.upload(FILENAME))));
+		// upload to the caching node, it'll cache and also push to all masters on the background
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(aliceGateway.upload(FILENAME)));
 
 		Path first = dir.resolve(folderFor(FIRST_ID)).resolve("data").resolve(alice.getPubKey().asString());
 		Path second = dir.resolve(folderFor(SECOND_ID)).resolve("data").resolve(alice.getPubKey().asString());
 		Files.createDirectories(first);
 		Files.createDirectories(second);
 
-		assertEquals(1, Stream.concat(Files.list(first), Files.list(second)).count());
+		assertEquals(2, Stream.concat(Files.list(first), Files.list(second)).count());
 	}
 
 	@Test
@@ -233,7 +233,7 @@ public final class GlobalFsTest {
 		announce(alice, set(FIRST_ID));
 
 		// upload to master through second node
-		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(secondAliceAdapter.upload(FILENAME))));
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(secondAliceAdapter.upload(FILENAME)));
 
 		System.out.println(await(secondAliceAdapter.listEntities("**")));
 		System.out.println(await(firstAliceAdapter.listEntities("**")));
@@ -309,7 +309,7 @@ public final class GlobalFsTest {
 		announce(alice, set(FIRST_ID));
 
 		// upload to the node
-		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(await(firstAliceAdapter.upload(FILENAME))));
+		await(ChannelSupplier.of(wrapUtf8(SIMPLE_CONTENT)).streamTo(firstAliceAdapter.upload(FILENAME)));
 
 		// delete through the second node
 		await(secondAliceAdapter.delete(FILENAME));
@@ -333,7 +333,11 @@ public final class GlobalFsTest {
 		// delete on first
 		await(firstAliceAdapter.delete(FILENAME));
 
-		// second should check the actual metadata when trying to download
+		byte[] resAfterDelete = await(await(secondAliceAdapter.download(FILENAME)).toCollector(ByteBufQueue.collector())).asArray();
+		assertArrayEquals(SIMPLE_CONTENT.getBytes(UTF_8), res);
+
+		await(rawSecondClient.fetch());
+
 		assertSame(FILE_NOT_FOUND, awaitException(secondAliceAdapter.download(FILENAME)));
 	}
 

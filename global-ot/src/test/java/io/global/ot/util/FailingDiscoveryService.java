@@ -1,16 +1,15 @@
 package io.global.ot.util;
 
-import io.datakernel.async.Promise;
-import io.global.common.Hash;
-import io.global.common.PubKey;
-import io.global.common.SharedSimKey;
-import io.global.common.SignedData;
+import io.datakernel.promise.Promise;
+import io.global.common.*;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.ConnectException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class FailingDiscoveryService implements DiscoveryService {
 	public static final Exception ERROR = new ConnectException("Connection failed");
@@ -22,6 +21,11 @@ public class FailingDiscoveryService implements DiscoveryService {
 
 	@Override
 	public Promise<@Nullable SignedData<AnnounceData>> find(PubKey space) {
+		return Promise.ofException(ERROR);
+	}
+
+	@Override
+	public Promise<Map<PubKey, Set<RawServerId>>> findAll() {
 		return Promise.ofException(ERROR);
 	}
 

@@ -19,49 +19,22 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 final class ExpressionArrayGet implements Expression {
 	private final Expression array;
 	private final Expression index;
 
 	ExpressionArrayGet(Expression array, Expression index) {
-		this.array = checkNotNull(array);
-		this.index = checkNotNull(index);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return Type.getType(array.type(ctx).getDescriptor().substring(1));
+		this.array = array;
+		this.index = index;
 	}
 
 	@Override
 	public Type load(Context ctx) {
-		Type type = Type.getType(array.type(ctx).getDescriptor().substring(1));
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		array.load(ctx);
+		Type arrayType = array.load(ctx);
+		Type type = Type.getType(arrayType.getDescriptor().substring(1));
 		index.load(ctx);
 		g.arrayLoad(type);
 		return type;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionArrayGet that = (ExpressionArrayGet) o;
-
-		if (!array.equals(that.array)) return false;
-		if (!index.equals(that.index)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		int result = array.hashCode();
-		result = 31 * result + index.hashCode();
-		return result;
 	}
 }

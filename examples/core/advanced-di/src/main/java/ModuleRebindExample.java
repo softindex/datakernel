@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Inject;
@@ -31,8 +30,7 @@ public class ModuleRebindExample extends Launcher {
 		@Provides
 		AsyncServlet servlet(Config config) {
 			String message = config.get("message");
-			return request -> Promise.of(
-					HttpResponse.ok200().withPlainText(message));
+			return request -> HttpResponse.ok200().withPlainText(message);
 		}
 
 		@Provides

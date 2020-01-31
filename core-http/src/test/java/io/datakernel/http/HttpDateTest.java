@@ -16,17 +16,17 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.junit.Test;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Arrays;
 
 import static java.nio.charset.StandardCharsets.ISO_8859_1;
 import static java.time.Month.JANUARY;
 import static java.time.ZoneOffset.UTC;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class HttpDateTest {
 

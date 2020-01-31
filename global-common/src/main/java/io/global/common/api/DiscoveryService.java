@@ -16,11 +16,15 @@
 
 package io.global.common.api;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
+import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
+import java.util.Set;
 
 public interface DiscoveryService extends SharedKeyManager {
 	StacklessException REJECTED_OUTDATED_ANNOUNCE_DATA = new StacklessException(DiscoveryService.class, "Rejected announce data as outdated");
@@ -28,4 +32,6 @@ public interface DiscoveryService extends SharedKeyManager {
 	Promise<Void> announce(PubKey space, SignedData<AnnounceData> announceData);
 
 	Promise<@Nullable SignedData<AnnounceData>> find(PubKey space);
+
+	Promise<Map<PubKey, Set<RawServerId>>> findAll();
 }

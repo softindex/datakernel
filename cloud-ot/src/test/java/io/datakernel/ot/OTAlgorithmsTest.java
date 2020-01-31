@@ -11,12 +11,12 @@ import org.junit.Test;
 
 import java.util.*;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
+import static io.datakernel.common.collection.CollectionUtils.getLast;
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.ot.OTAlgorithms.*;
 import static io.datakernel.ot.utils.Utils.add;
-import static io.datakernel.util.CollectionUtils.getLast;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 import static org.junit.Assert.assertEquals;

@@ -18,20 +18,19 @@ package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class DeleteResponse {
 	private static final DeleteResponse OK = new DeleteResponse(Collections.emptyList());
 
 	private final List<String> errors;
 
-	private DeleteResponse(List<String> errors) {
-		this.errors = checkNotNull(errors, "Errors in DeleteResponse cannot be null;");
+	private DeleteResponse(@NotNull List<String> errors) {
+		this.errors = errors;
 	}
 
 	public static DeleteResponse ok() {

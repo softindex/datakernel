@@ -16,7 +16,6 @@
 
 package io.global.launchers;
 
-import io.datakernel.async.EventloopTaskScheduler;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -29,14 +28,17 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
+import io.global.launchers.sync.FsSyncModule;
+import io.global.launchers.sync.KvSyncModule;
+import io.global.launchers.sync.OTSyncModule;
 
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.di.module.Modules.combine;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class GlobalNodesLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "global-nodes.properties";
@@ -45,31 +47,17 @@ public class GlobalNodesLauncher extends Launcher {
 	@Named("Nodes")
 	AsyncHttpServer server;
 
-	@Inject
-	@Named("FS push")
-	EventloopTaskScheduler fsPushScheduler;
-
-	@Inject
-	@Named("FS catch up")
-	EventloopTaskScheduler fsCatchUpScheduler;
-
-	@Inject
-	@Named("KV push")
-	EventloopTaskScheduler kvPushScheduler;
-
-	@Inject
-	@Named("KV catch up")
-	EventloopTaskScheduler kvCatchUpScheduler;
-
 	@Provides
 	Config config() {
-		return ofClassPathProperties(PROPERTIES_FILE)
+		return Config.create()
+				.with("corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
+				.overrideWith(ofClassPathProperties(PROPERTIES_FILE))
 				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
 	}
 
 	@Provides
-	Executor executor() {
-		return newSingleThreadExecutor();
+	Executor executor(Config config) {
+		return getExecutor(config);
 	}
 
 	@Override
@@ -80,7 +68,15 @@ public class GlobalNodesLauncher extends Launcher {
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
-				new GlobalNodesModule());
+				new GlobalNodesModule(),
+				KvSyncModule.create()
+						.withCatchUp()
+						.withPush(),
+				OTSyncModule.create(),
+				FsSyncModule.create()
+						.withPush()
+						.withCatchUp()
+		);
 	}
 
 	@Override

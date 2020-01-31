@@ -21,16 +21,17 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.zip.CRC32;
 import java.util.zip.Deflater;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * This is a binary channel transformer, that converts channels of {@link ByteBuf ByteBufs}
- * compressing the data using the DEFALTE algorithm with standard implementation from the java.util.zip package.
+ * compressing the data using the DEFLATE algorithm with standard implementation from the java.util.zip package.
  * <p>
  * It is used in HTTP when {@link io.datakernel.http.HttpMessage#setBodyGzipCompression HttpMessage#setBodyGzipCompression}
  * method is used.
@@ -57,8 +58,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		return new BufsConsumerGzipDeflater();
 	}
 
-	public BufsConsumerGzipDeflater withDeflater(Deflater deflater) {
-		checkArgument(deflater != null, "Cannot use null Deflater");
+	public BufsConsumerGzipDeflater withDeflater(@NotNull Deflater deflater) {
 		this.deflater = deflater;
 		return this;
 	}
@@ -114,8 +114,8 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 						if (buf.canRead()) {
 							crc32.update(buf.array(), buf.head(), buf.readRemaining());
 							deflater.setInput(buf.array(), buf.head(), buf.readRemaining());
-							buf.recycle();
 							ByteBufQueue queue = deflate();
+							buf.recycle();
 							output.acceptAll(queue.asIterator())
 									.whenResult($ -> writeBody());
 						} else {

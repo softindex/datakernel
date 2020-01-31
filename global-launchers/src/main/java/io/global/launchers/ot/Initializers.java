@@ -16,8 +16,8 @@
 
 package io.global.launchers.ot;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
-import io.datakernel.util.Initializer;
 import io.global.ot.server.GlobalOTNodeImpl;
 
 import static io.datakernel.config.ConfigConverters.ofBoolean;

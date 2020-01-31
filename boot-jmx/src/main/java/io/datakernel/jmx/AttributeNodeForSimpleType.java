@@ -16,6 +16,9 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.jmx.api.JmxReducer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.openmbean.OpenType;
@@ -26,26 +29,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings("rawtypes")
 final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
+	@Nullable
 	private final Method setter;
 	private final Class<?> type;
 	private final JmxReducer reducer;
 
 	public AttributeNodeForSimpleType(String name, @Nullable String description, boolean visible,
 			ValueFetcher fetcher, @Nullable Method setter,
-			Class<?> attributeType, JmxReducer reducer) {
+			Class<?> attributeType, @NotNull JmxReducer reducer) {
 		super(name, description, fetcher, visible);
 		this.setter = setter;
 		this.type = attributeType;
-		this.reducer = checkNotNull(reducer);
+		this.reducer = reducer;
 	}
 
 	@Override
@@ -66,26 +69,22 @@ final class AttributeNodeForSimpleType extends AttributeNodeForLeafAbstract {
 	}
 
 	@Override
-	public List<JmxRefreshable> getAllRefreshables(Object source) {
+	public List<JmxRefreshable> getAllRefreshables(@NotNull Object source) {
 		return emptyList();
 	}
 
 	@Override
-	public boolean isSettable(String attrName) {
+	public boolean isSettable(@NotNull String attrName) {
 		checkArgument(attrName.equals(name), "Attribute names do not match");
 		return setter != null;
 	}
 
 	@Override
-	public void setAttribute(String attrName, Object value, List<?> targets) throws SetterException {
+	public void setAttribute(@NotNull String attrName, @NotNull Object value, @NotNull List<?> targets) throws SetterException {
 		checkArgument(attrName.equals(name), "Attribute names do not match");
-		checkNotNull(targets);
-		List<?> notNullTargets = targets.stream().filter(Objects::nonNull).collect(Collectors.toList());
-		if (notNullTargets.size() == 0) {
-			return;
-		}
+		if (setter == null) return;
 
-		for (Object target : notNullTargets) {
+		for (Object target : targets.stream().filter(Objects::nonNull).collect(toList())) {
 			try {
 				setter.invoke(target, value);
 			} catch (IllegalAccessException | InvocationTargetException e) {

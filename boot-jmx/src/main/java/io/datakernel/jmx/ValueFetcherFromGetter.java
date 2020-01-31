@@ -16,16 +16,16 @@
 
 package io.datakernel.jmx;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class ValueFetcherFromGetter implements ValueFetcher {
 	private final Method getter;
 
-	public ValueFetcherFromGetter(Method getter) {
-		this.getter = checkNotNull(getter);
+	public ValueFetcherFromGetter(@NotNull Method getter) {
+		this.getter = getter;
 	}
 
 	@Override

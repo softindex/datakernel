@@ -3,7 +3,17 @@ package io.datakernel.codegen;
 import static org.objectweb.asm.Opcodes.*;
 
 public enum ArithmeticOperation {
-	ADD(IADD, "+"), SUB(ISUB, "-"), MUL(IMUL, "*"), DIV(IDIV, "/"), REM(IREM, "%");
+	ADD(IADD, "+"),
+	SUB(ISUB, "-"),
+	MUL(IMUL, "*"),
+	DIV(IDIV, "/"),
+	REM(IREM, "%"),
+	AND(IAND, "&"),
+	OR(IOR, "|"),
+	XOR(IXOR, "^"),
+	SHL(ISHL, "<<"),
+	SHR(ISHR, ">>"),
+	USHR(IUSHR, ">>>");
 
 	public final int opCode;
 	public final String symbol;

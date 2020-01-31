@@ -16,9 +16,10 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
+import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -34,8 +35,8 @@ public final class RoutingServletTest {
 	private static final String TEMPLATE = "http://www.site.org";
 	private static final String DELIM = "*****************************************************************************";
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
@@ -58,7 +59,7 @@ public final class RoutingServletTest {
 	public void testBase() {
 		RoutingServlet servlet1 = RoutingServlet.create();
 
-		AsyncServlet subservlet = request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8)));
+		AsyncServlet subservlet = request -> HttpResponse.ofCode(200).withBody("".getBytes(UTF_8));
 
 		servlet1.map(GET, "/a/b/c", subservlet);
 
@@ -78,7 +79,7 @@ public final class RoutingServletTest {
 	@Test
 	public void testProcessWildCardRequest() {
 		RoutingServlet servlet = RoutingServlet.create();
-		servlet.map("/a/b/c/d", request -> Promise.of(HttpResponse.ofCode(200).withBody("".getBytes(UTF_8))));
+		servlet.map("/a/b/c/d", request -> HttpResponse.ofCode(200).withBody("".getBytes(UTF_8)));
 
 		check(servlet.serve(HttpRequest.get("http://some-test.com/a/b/c/d")), "", 200);
 		check(servlet.serve(HttpRequest.post("http://some-test.com/a/b/c/d")), "", 200);
@@ -98,7 +99,7 @@ public final class RoutingServletTest {
 
 		AsyncServlet action = request -> {
 			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
-			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
+			return HttpResponse.ofCode(200).withBody(msg);
 		};
 
 		RoutingServlet a = RoutingServlet.create()
@@ -143,7 +144,7 @@ public final class RoutingServletTest {
 
 		AsyncServlet action = request -> {
 			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
-			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
+			return HttpResponse.ofCode(200).withBody(msg);
 		};
 
 		RoutingServlet main = RoutingServlet.create()
@@ -181,7 +182,7 @@ public final class RoutingServletTest {
 
 		AsyncServlet action = request -> {
 			ByteBuf msg = wrapUtf8("Executed: " + request.getPath());
-			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
+			return HttpResponse.ofCode(200).withBody(msg);
 		};
 
 		RoutingServlet main = RoutingServlet.create()
@@ -211,12 +212,12 @@ public final class RoutingServletTest {
 
 		AsyncServlet action = req -> {
 			ByteBuf msg = wrapUtf8("Executed: " + req.getPath());
-			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
+			return HttpResponse.ofCode(200).withBody(msg);
 		};
 
 		AsyncServlet anotherAction = req -> {
 			ByteBuf msg = wrapUtf8("Shall not be executed: " + req.getPath());
-			return Promise.of(HttpResponse.ofCode(200).withBody(msg));
+			return HttpResponse.ofCode(200).withBody(msg);
 		};
 
 		RoutingServlet main;
@@ -241,7 +242,7 @@ public final class RoutingServletTest {
 			String body = request.getPathParameter("id")
 					+ " " + request.getPathParameter("uid");
 			ByteBuf bodyByteBuf = wrapUtf8(body);
-			return Promise.of(HttpResponse.ofCode(200).withBody(bodyByteBuf));
+			return HttpResponse.ofCode(200).withBody(bodyByteBuf);
 		};
 
 		RoutingServlet main = RoutingServlet.create()
@@ -260,11 +261,11 @@ public final class RoutingServletTest {
 		RoutingServlet ms = RoutingServlet.create()
 				.map(GET, "/serve/:cid/wash", request -> {
 					ByteBuf body = wrapUtf8("served car: " + request.getPathParameter("cid"));
-					return Promise.of(HttpResponse.ofCode(200).withBody(body));
+					return HttpResponse.ofCode(200).withBody(body);
 				})
 				.map(GET, "/serve/:mid/feed", request -> {
 					ByteBuf body = wrapUtf8("served man: " + request.getPathParameter("mid"));
-					return Promise.of(HttpResponse.ofCode(200).withBody(body));
+					return HttpResponse.ofCode(200).withBody(body);
 				});
 
 		System.out.println("Multi parameters " + DELIM);
@@ -280,12 +281,12 @@ public final class RoutingServletTest {
 		HttpRequest request3 = HttpRequest.of(CONNECT, TEMPLATE + "/a/b/c/action");
 
 		RoutingServlet servlet = RoutingServlet.create()
-				.map("/a/b/c/action", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD"))))
-				.map(POST, "/a/b/c/action", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("POST"))))
-				.map(GET, "/a/b/c/action", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("GET"))));
+				.map("/a/b/c/action", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("WILDCARD")))
+				.map(POST, "/a/b/c/action", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("POST")))
+				.map(GET, "/a/b/c/action", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("GET")));
 
 		System.out.println("Different methods " + DELIM);
 		check(servlet.serve(request1), "GET", 200);
@@ -300,10 +301,10 @@ public final class RoutingServletTest {
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
 
 		RoutingServlet main = RoutingServlet.create()
-				.map(GET, "/html/admin/action", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed"))))
-				.map("/html/admin/*", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath()))));
+				.map(GET, "/html/admin/action", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Action executed")))
+				.map("/html/admin/*", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 
 		System.out.println("Default stop " + DELIM);
 		check(main.serve(request1), "Action executed", 200);
@@ -314,8 +315,8 @@ public final class RoutingServletTest {
 	@Test
 	public void test404() {
 		RoutingServlet main = RoutingServlet.create()
-				.map("/a/:id/b/d", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("All OK"))));
+				.map("/a/:id/b/d", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("All OK")));
 
 		System.out.println("404 " + DELIM);
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/123/b/c");
@@ -326,8 +327,8 @@ public final class RoutingServletTest {
 	@Test
 	public void test405() {
 		RoutingServlet main = RoutingServlet.create()
-				.map(GET, "/a/:id/b/d", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))));
+				.map(GET, "/a/:id/b/d", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")));
 
 		HttpRequest request = HttpRequest.post(TEMPLATE + "/a/123/b/d");
 		check(main.serve(request), "", 404);
@@ -336,10 +337,10 @@ public final class RoutingServletTest {
 	@Test
 	public void test405WithFallback() {
 		RoutingServlet main = RoutingServlet.create()
-				.map(GET, "/a/:id/b/d", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute"))))
-				.map("/a/:id/b/d", request -> Promise.of(
-						HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed"))));
+				.map(GET, "/a/:id/b/d", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Should not execute")))
+				.map("/a/:id/b/d", request ->
+						HttpResponse.ofCode(200).withBody(wrapUtf8("Fallback executed")));
 		check(main.serve(HttpRequest.post(TEMPLATE + "/a/123/b/d")), "Fallback executed", 200);
 	}
 
@@ -348,7 +349,7 @@ public final class RoutingServletTest {
 		RoutingServlet main = RoutingServlet.create()
 				.map(GET, "/method/:var/*", request -> {
 					ByteBuf body = wrapUtf8("Success: " + request.getRelativePath());
-					return Promise.of(HttpResponse.ofCode(200).withBody(body));
+					return HttpResponse.ofCode(200).withBody(body);
 				});
 
 		check(main.serve(HttpRequest.get(TEMPLATE + "/method/dfbdb/oneArg")), "Success: oneArg", 200);

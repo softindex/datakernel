@@ -16,10 +16,10 @@
 
 package io.global.fs.cli;
 
+import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.remotefs.FsClient;
-import io.datakernel.util.Tuple3;
 import io.global.common.PrivKey;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;

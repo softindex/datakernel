@@ -1,6 +1,5 @@
 package io.datakernel.launchers.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -22,8 +21,6 @@ import io.datakernel.service.ServiceGraphModule;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.bytebuf.ByteBuf.wrapForReading;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
@@ -85,7 +82,6 @@ public abstract class HttpServerLauncher extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		logger.info("HTTP Server is now available at " + String.join(", ", httpServer.getHttpAddresses()));
 		awaitShutdown();
 	}
 
@@ -98,8 +94,7 @@ public abstract class HttpServerLauncher extends Launcher {
 					@Provides
 					public AsyncServlet servlet(Config config) {
 						String message = config.get("message", "Hello, world!");
-						return req -> Promise.of(
-								HttpResponse.ok200().withBody(wrapForReading(encodeAscii(message))));
+						return request -> HttpResponse.ok200().withPlainText(message);
 					}
 				};
 

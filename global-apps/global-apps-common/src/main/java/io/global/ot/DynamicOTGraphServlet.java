@@ -1,13 +1,15 @@
 package io.global.ot;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.http.*;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.ot.OTLoadedGraph;
 import io.datakernel.ot.OTRepository;
 import io.datakernel.ot.OTSystem;
+import io.datakernel.promise.Promise;
 import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.ot.api.CommitId;
@@ -19,11 +21,9 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
-import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
-import static io.datakernel.util.StringFormatUtils.limit;
-import static io.global.ot.DynamicOTNodeServlet.KEYS_REQUIRED;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.global.ot.DynamicOTUplinkServlet.KEYS_REQUIRED;
+import static io.global.util.Utils.limit;
 import static java.util.Collections.emptySet;
 
 public final class DynamicOTGraphServlet<D> implements AsyncServlet {
@@ -52,23 +52,16 @@ public final class DynamicOTGraphServlet<D> implements AsyncServlet {
 	@NotNull
 	@Override
 	public Promise<HttpResponse> serve(@NotNull HttpRequest request) throws UncheckedException {
-		try {
-			String suffix = request.getPathParameters().get("suffix");
-			String repositoryName = repoPrefix + (suffix == null ? "" : ('/' + suffix));
-			String key = request.getCookie("Key");
-			if (key == null) return Promise.ofException(HttpException.ofCode(400, "Cookie 'Key' is required"));
-			KeyPair keys = PrivKey.fromString(key).computeKeys();
-			RepoID repoID = RepoID.of(keys, repositoryName);
-			MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
-			OTRepository<CommitId, D> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
-			return repository.getHeads()
-					.then(heads -> loadGraph(repository, otSystem, heads, new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)))
-					.map(graph -> HttpResponse.ok200()
-							.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(MediaTypes.PLAIN_TEXT)))
-							.withBody(graph.toGraphViz().getBytes(UTF_8)));
-		} catch (ParseException e) {
-			return Promise.ofException(e);
-		}
+		String suffix = request.getPathParameters().get("suffix");
+		String repositoryName = repoPrefix + (suffix == null ? "" : ('/' + suffix));
+		KeyPair keys = request.getAttachment(KeyPair.class);
+		assert keys != null : "Key pair should be attached to request";
+		RepoID repoID = RepoID.of(keys, repositoryName);
+		MyRepositoryId<D> myRepositoryId = new MyRepositoryId<>(repoID, keys.getPrivKey(), diffCodec);
+		OTRepository<CommitId, D> repository = new OTRepositoryAdapter<>(driver, myRepositoryId, emptySet());
+		return repository.getHeads()
+				.then(heads -> loadGraph(repository, otSystem, heads, new OTLoadedGraph<>(otSystem, COMMIT_ID_TO_STRING, diffToString)))
+				.map(graph -> HttpResponse.ok200().withPlainText(graph.toGraphViz()));
 	}
 
 	private OTRepository<CommitId, D> getRepo(HttpRequest request) throws ParseException {

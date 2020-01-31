@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodePositiveInt;
@@ -63,8 +63,6 @@ final class HttpDate {
 		MONTHS_IN_YEAR[10] = encodeAscii("Nov");
 		MONTHS_IN_YEAR[11] = encodeAscii("Dec");
 	}
-
-	private HttpDate() {}
 
 	static long parse(byte[] bytes, int start) throws ParseException {
 		try {

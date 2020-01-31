@@ -16,12 +16,12 @@
 
 package io.global.ot.client;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.binary.BinaryUtils;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepository;
+import io.datakernel.promise.Promise;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.RawCommit;
 import io.global.ot.api.RepoID;
@@ -76,6 +76,11 @@ public final class OTRepositoryAdapter<D> implements OTRepository<CommitId, D> {
 	@Override
 	public AsyncSupplier<Set<CommitId>> pollHeads() {
 		return driver.pollHeads(myRepositoryId.getRepositoryId());
+	}
+
+	@Override
+	public @NotNull Promise<Boolean> hasCommit(@NotNull CommitId revisionId) {
+		throw new UnsupportedOperationException("OTRepositoryAdapter#hasCommit is not implemented yet");
 	}
 
 	@NotNull

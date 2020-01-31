@@ -15,5 +15,5 @@ export * from './DI';
 export * from './auth/AuthContext';
 export * from './auth/AuthService';
 export * from './components/SignUpAbstractionImage/SignUpAbstractionImage';
-export {SignUp, OAuthCallback, Avatar, ContactChip}
-
+export {SignUp, OAuthCallback, Avatar, ContactChip};
+export * from './CancelablePromise';

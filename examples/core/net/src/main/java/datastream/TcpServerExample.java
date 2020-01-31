@@ -2,18 +2,19 @@ package datastream;
 
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelDeserializer;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.stream.processor.StreamMapper;
+import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketNio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 /**
  * Demonstrates server ("Server #2" from the picture) which receives some data from clients,
@@ -26,7 +27,7 @@ public final class TcpServerExample {
 		Eventloop eventloop = Eventloop.create();
 
 		eventloop.listen(new InetSocketAddress("localhost", TcpClientExample.PORT), ServerSocketSettings.create(100), channel -> {
-			AsyncTcpSocketImpl socket = AsyncTcpSocketImpl.wrapChannel(eventloop, channel, null);
+			AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(eventloop, channel, null);
 
 			try {
 				System.out.println("Client connected: " + channel.getRemoteAddress());

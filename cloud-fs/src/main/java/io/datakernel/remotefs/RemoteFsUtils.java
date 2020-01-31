@@ -1,6 +1,9 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
@@ -24,8 +27,6 @@ public final class RemoteFsUtils {
 			MOVING_DIRS,
 			UNSUPPORTED_REVISION
 	};
-
-	private RemoteFsUtils() {}
 
 	/**
 	 * Escapes any glob metacharacters so that given path string can ever only match one file.
@@ -106,5 +107,55 @@ public final class RemoteFsUtils {
 		if (length != -1 && offset + length > size) {
 			throw new UncheckedException(LENGTH_TOO_BIG);
 		}
+	}
+
+	public static Promise<Void> copyFile(FsClient source, FsClient target, String name) {
+		return copyFile(source, target, name, null);
+	}
+
+	public static Promise<Void> copyFile(FsClient from, FsClient to, String name, @Nullable Long newRevision) {
+		return Promises.toTuple(from.getMetadata(name), to.getMetadata(name))
+				.then(t -> {
+					FileMetadata sourceMeta = t.getValue1();
+					FileMetadata targetMeta = t.getValue2();
+
+					if (sourceMeta == null) {
+						// no such original file, do nothing
+						return Promise.complete();
+					}
+
+					long sourceRevision = newRevision != null ? newRevision : sourceMeta.getRevision();
+
+					if (sourceMeta.isTombstone()) {
+						if (targetMeta != null && sourceRevision < targetMeta.getRevision()) {
+							// target meta is better than our tombstone, do nothing
+							return Promise.complete();
+						}
+						// else create the same tombstone on target
+						return to.delete(name, sourceRevision);
+					}
+
+					if (targetMeta == null || sourceRevision > targetMeta.getRevision()) {
+						// simply copy over when target has no such file or when source file is better
+						return from.download(name)
+								.then(supplier -> supplier.streamTo(to.upload(name, 0, sourceRevision)));
+					}
+
+					if (sourceRevision < targetMeta.getRevision()) {
+						// do nothing when target file is better
+						return Promise.complete();
+					}
+
+					// * the revisions are equal here
+
+					if (sourceMeta.getSize() <= targetMeta.getSize()) {
+						// if target is the same or bigger then it is better, do nothing
+						return Promise.complete();
+					}
+
+					// else we copy over only the part that is missing on target
+					return from.download(name, sourceMeta.getSize())
+							.then(supplier -> supplier.streamTo(to.upload(name, sourceMeta.getSize(), sourceRevision)));
+				});
 	}
 }

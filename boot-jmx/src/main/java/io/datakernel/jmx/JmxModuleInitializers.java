@@ -1,8 +1,8 @@
 package io.datakernel.jmx;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.util.Initializer;
 
 public class JmxModuleInitializers {
 	private JmxModuleInitializers() {}
@@ -10,7 +10,7 @@ public class JmxModuleInitializers {
 	public static final String GLOBAL_EVENTLOOP_NAME = "GlobalEventloopStats";
 	public static final Key<Eventloop> GLOBAL_EVENTLOOP_KEY = Key.of(Eventloop.class, GLOBAL_EVENTLOOP_NAME);
 
-	public static Initializer<JmxModule> ofGlobalEventloopStats() {
+	public static Initializer<JmxModuleSettings> ofGlobalEventloopStats() {
 		return jmxModule -> jmxModule
 				.withGlobalMBean(Eventloop.class, GLOBAL_EVENTLOOP_KEY)
 				.withOptional(GLOBAL_EVENTLOOP_KEY, "fatalErrors_total")

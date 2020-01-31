@@ -71,8 +71,8 @@ final class HttpHeadersMultimap<K, V> {
 			public Iterator<Map.Entry<K, V>> iterator() {
 				return new Iterator<Map.Entry<K, V>>() {
 					int i = 0;
-					K k;
-					V v;
+					@Nullable K k;
+					@Nullable V v;
 
 					{ advance();}
 

@@ -24,6 +24,7 @@ import org.junit.Test;
 
 import javax.management.MBeanServer;
 
+import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
 public class StandardMBeansRegistrationTest {
@@ -44,7 +45,7 @@ public class StandardMBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.of(ServiceStub.class);
-		jmxRegistry.registerSingleton(key, service, null);
+		jmxRegistry.registerSingleton(key, service, defaultSettings());
 	}
 
 	@Test
@@ -57,7 +58,7 @@ public class StandardMBeansRegistrationTest {
 		}});
 
 		Key<?> key = Key.of(NonMBeanServiceImpl.class);
-		jmxRegistry.registerSingleton(key, nonMBean, null);
+		jmxRegistry.registerSingleton(key, nonMBean, defaultSettings());
 	}
 
 	public interface ServiceStubMBean {

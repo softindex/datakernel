@@ -16,20 +16,28 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.dns.AsyncDnsClient;
 import io.datakernel.dns.DnsQueryException;
 import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
-import io.datakernel.eventloop.*;
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.*;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.MemSize;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ExceptionStats;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -45,11 +53,12 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
-import static io.datakernel.jmx.MBeanFormat.formatListAsMultilineString;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.net.AsyncTcpSocketSsl.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -63,7 +72,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(getClass());
 
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.create();
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.createDefault();
 	public static final Duration CONNECT_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpClient.class, "connectTimeout", Duration.ZERO);
 	public static final Duration READ_WRITE_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpClient.class, "readWriteTimeout", Duration.ZERO);
 	public static final Duration READ_WRITE_TIMEOUT_SHUTDOWN = ApplicationSettings.getDuration(AsyncHttpClient.class, "readWriteTimeout_Shutdown", Duration.ofSeconds(3));
@@ -100,9 +109,9 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	private Executor sslExecutor;
 
 	@Nullable
-	private AsyncTcpSocketImpl.Inspector socketInspector;
+	private AsyncTcpSocketNio.Inspector socketInspector;
 	@Nullable
-	private AsyncTcpSocketImpl.Inspector socketSslInspector;
+	private AsyncTcpSocketNio.Inspector socketSslInspector;
 	@Nullable
 	Inspector inspector;
 
@@ -297,21 +306,20 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		return this;
 	}
 
-	public AsyncHttpClient withSocketInspector(AsyncTcpSocketImpl.Inspector socketInspector) {
+	public AsyncHttpClient withSocketInspector(AsyncTcpSocketNio.Inspector socketInspector) {
 		this.socketInspector = socketInspector;
 		return this;
 	}
 
-	public AsyncHttpClient withSocketSslInspector(AsyncTcpSocketImpl.Inspector socketSslInspector) {
+	public AsyncHttpClient withSocketSslInspector(AsyncTcpSocketNio.Inspector socketSslInspector) {
 		this.socketSslInspector = socketSslInspector;
 		return this;
 	}
 	// endregion
 
-	@SuppressWarnings("Duplicates")
 	private void scheduleExpiredConnectionsCheck() {
 		assert expiredConnectionsCheck == null;
-		expiredConnectionsCheck = eventloop.delayBackground(1000L, () -> {
+		expiredConnectionsCheck = eventloop.delayBackground(1000L, wrapContext(this, () -> {
 			expiredConnectionsCheck = null;
 			poolKeepAliveExpired += poolKeepAlive.closeExpiredConnections(eventloop.currentTimeMillis() - keepAliveTimeoutMillis);
 			boolean isClosing = closePromise != null;
@@ -325,7 +333,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 					logger.info("...Waiting for " + this);
 				}
 			}
-		});
+		}));
 	}
 
 	@Nullable
@@ -338,7 +346,8 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert connection.pool == poolKeepAlive;
 		assert connection.remoteAddress.equals(address);
 		connection.pool.removeNode(connection); // moving from keep-alive state to taken(null) state
-		connection.pool = null;
+		//noinspection AssertWithSideEffects,ConstantConditions
+		assert (connection.pool = null) == null;
 		if (addresses.isEmpty()) {
 			this.addresses.remove(address);
 		}
@@ -395,7 +404,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			return keepAliveConnection.send(request);
 		}
 
-		return AsyncTcpSocketImpl.connect(address, connectTimeoutMillis, socketSettings)
+		return AsyncTcpSocketNio.connect(address, connectTimeoutMillis, socketSettings)
 				.thenEx((asyncTcpSocketImpl, e) -> {
 					if (e == null) {
 						boolean https = request.isHttps();
@@ -459,7 +468,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	public Promise<Void> stop() {
 		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
-		SettablePromise<@Nullable Void> promise = new SettablePromise<>();
+		SettablePromise<Void> promise = new SettablePromise<>();
 
 		poolKeepAlive.closeAllConnections();
 		assert addresses.isEmpty();
@@ -516,14 +525,14 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStats() {
-		return BaseInspector.lookup(socketInspector, AsyncTcpSocketImpl.JmxInspector.class);
+	public AsyncTcpSocketNio.JmxInspector getSocketStats() {
+		return BaseInspector.lookup(socketInspector, AsyncTcpSocketNio.JmxInspector.class);
 	}
 
 	@JmxAttribute
 	@Nullable
-	public AsyncTcpSocketImpl.JmxInspector getSocketStatsSsl() {
-		return BaseInspector.lookup(socketSslInspector, AsyncTcpSocketImpl.JmxInspector.class);
+	public AsyncTcpSocketNio.JmxInspector getSocketStatsSsl() {
+		return BaseInspector.lookup(socketSslInspector, AsyncTcpSocketNio.JmxInspector.class);
 	}
 
 	@JmxAttribute(name = "")

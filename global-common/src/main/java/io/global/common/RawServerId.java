@@ -1,20 +1,30 @@
 package io.global.common;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 public final class RawServerId {
 	private final String serverIdString;
+	private final int priority;
 
-	public RawServerId(String serverIdString) {
+	public RawServerId(String serverIdString, int priority) {
 		this.serverIdString = serverIdString;
+		this.priority = priority;
 	}
 
-	public static RawServerId parse(String serverIdString) throws ParseException {
-		return new RawServerId(serverIdString); // TODO
+	public RawServerId(String serverIdString) {
+		this(serverIdString, 0);
+	}
+
+	public static RawServerId parse(String serverIdString, int priority) throws ParseException {
+		return new RawServerId(serverIdString, priority); // TODO
 	}
 
 	public String getServerIdString() {
 		return serverIdString;
+	}
+
+	public int getPriority() {
+		return priority;
 	}
 
 	@Override

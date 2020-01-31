@@ -1,10 +1,10 @@
-import io.datakernel.async.Promise;
-import io.datakernel.di.annotation.Inject;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.NotNull;
@@ -13,25 +13,23 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-
 @SuppressWarnings("unused")
 //[START EXAMPLE]
 public class AdvancedServiceExample extends Launcher {
-	@Inject DBService dbService;
-	@Inject AuthService authService;
-	@Inject EmailService emailService;
-
 	@Provides
+	@Eager
 	DBService dbService() {
 		return new DBService();
 	}
 
 	@Provides
+	@Eager
 	EmailService emailService(DBService dbService, AuthService authService) {
 		return new EmailService(dbService, authService);
 	}
 
 	@Provides
+	@Eager
 	AuthService authService(Eventloop eventloop, Executor executor, DBService dbService) {
 		return new AuthService(eventloop, executor, dbService);
 	}
@@ -72,13 +70,13 @@ public class AdvancedServiceExample extends Launcher {
 		public @NotNull Promise<?> start() {
 			System.out.println("AuthService starting");
 			return Promise.ofBlockingRunnable(executor,
-						() -> System.out.println("AuthService started"));
+					() -> System.out.println("AuthService started"));
 		}
 
 		@Override
 		public @NotNull Promise<?> stop() {
 			return Promise.ofBlockingRunnable(executor,
-						() -> System.out.println("AuthService stopped"));
+					() -> System.out.println("AuthService stopped"));
 		}
 	}
 
@@ -136,9 +134,7 @@ public class AdvancedServiceExample extends Launcher {
 		@Override
 		public CompletableFuture<?> stop() {
 			System.out.println("EmailService is stopping");
-			return CompletableFuture.runAsync(() -> {
-				System.out.println("EmailService is stopped");
-			});
+			return CompletableFuture.runAsync(() -> System.out.println("EmailService is stopped"));
 		}
 	}
 

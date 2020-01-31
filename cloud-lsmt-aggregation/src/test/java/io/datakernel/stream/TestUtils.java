@@ -16,6 +16,9 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+
 import java.util.List;
 
 import static org.junit.Assert.assertTrue;

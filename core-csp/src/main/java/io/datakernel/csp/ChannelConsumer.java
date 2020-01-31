@@ -16,13 +16,17 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.*;
+import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.async.process.AsyncExecutor;
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,9 +36,9 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static io.datakernel.util.CollectionUtils.asIterator;
-import static io.datakernel.util.Recyclable.deepRecycle;
-import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.collection.CollectionUtils.asIterator;
 
 /**
  * This interface represents consumer of data items that should be used serially

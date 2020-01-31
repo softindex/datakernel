@@ -16,19 +16,19 @@
 
 package io.global.kv.stub;
 
-import io.datakernel.async.Promise;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.global.common.SignedData;
-import io.global.kv.api.RawKvItem;
 import io.global.kv.api.KvStorage;
+import io.global.kv.api.RawKvItem;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class RuntimeKvStorageStub implements KvStorage {
-	private final Map<ByteArrayWrapper, SignedData<RawKvItem>> storage = new HashMap<>();
+	private final Map<ByteArrayWrapper, SignedData<RawKvItem>> storage = new ConcurrentHashMap<>();
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<RawKvItem>>> upload() {
@@ -42,6 +42,9 @@ public final class RuntimeKvStorageStub implements KvStorage {
 
 	@Override
 	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(long timestamp) {
+		if (storage.values().isEmpty()){
+			return Promise.of(null);
+		}
 		return Promise.of(ChannelSupplier.ofStream(storage.values()
 				.stream()
 				.filter(item -> item.getValue().getTimestamp() >= timestamp)));

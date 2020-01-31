@@ -18,12 +18,12 @@ package io.datakernel.csp.process;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.inspector.AbstractInspector;
+import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
-import io.datakernel.inspector.AbstractInspector;
-import io.datakernel.inspector.BaseInspector;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.jmx.api.JmxAttribute;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
@@ -31,6 +31,9 @@ import net.jpountz.xxhash.XXHashFactory;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
+
+import static io.datakernel.common.Preconditions.checkArgument;
+import static java.lang.Math.max;
 
 public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		implements WithChannelTransformer<ChannelLZ4Compressor, ByteBuf, ByteBuf> {
@@ -166,10 +169,10 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 
 	private static int compressionLevel(int blockSize) {
 		int compressionLevel = 32 - Integer.numberOfLeadingZeros(blockSize - 1); // ceil of log2
-		assert (1 << compressionLevel) >= blockSize;
-		assert blockSize * 2 > (1 << compressionLevel);
-		compressionLevel = Math.max(0, compressionLevel - COMPRESSION_LEVEL_BASE);
-		assert compressionLevel <= 0x0F;
+		checkArgument((1 << compressionLevel) >= blockSize);
+		checkArgument(blockSize * 2 > (1 << compressionLevel));
+		compressionLevel = max(0, compressionLevel - COMPRESSION_LEVEL_BASE);
+		checkArgument(compressionLevel <= 0x0F);
 		return compressionLevel;
 	}
 
@@ -181,9 +184,9 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 	}
 
 	private static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum, byte[] bytes, int off, int len) {
-		assert len != 0;
+		checkArgument(len != 0);
 
-		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
+		int compressionLevel = compressionLevel(max(len, MIN_BLOCK_SIZE));
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
 		ByteBuf outputBuf = ByteBufPool.allocate(outputBufMaxSize);
@@ -213,7 +216,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		writeIntLE(compressedLength, outputBytes, MAGIC_LENGTH + 1);
 		writeIntLE(len, outputBytes, MAGIC_LENGTH + 5);
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
-		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
+		checkArgument(MAGIC_LENGTH + 13 == HEADER_LENGTH);
 
 		outputBuf.tail(HEADER_LENGTH + compressedLength);
 

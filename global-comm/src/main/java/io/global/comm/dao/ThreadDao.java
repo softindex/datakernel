@@ -1,15 +1,16 @@
 package io.global.comm.dao;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.comm.pojo.AttachmentType;
 import io.global.comm.pojo.Post;
 import io.global.comm.pojo.ThreadMetadata;
-import io.global.comm.pojo.UserId;
+import io.global.ot.session.UserId;
+import io.global.comm.pojo.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -28,6 +29,10 @@ public interface ThreadDao {
 		return addPost(author, null, "root", content, attachments);
 	}
 
+	default Promise<Void> addRootPost(UserId author, String content, String postId, Map<String, AttachmentType> attachments) {
+		return addPost(author, null, postId, content, attachments);
+	}
+
 	Promise<Void> addPost(UserId author, @Nullable String parentId, String postId, @Nullable String content, Map<String, AttachmentType> attachments);
 
 	Promise<Post> getPost(String postId);
@@ -38,11 +43,7 @@ public interface ThreadDao {
 
 	Promise<Void> updatePost(String postId, @Nullable String newContent, Map<String, AttachmentType> newAttachments, Set<String> toBeRemoved);
 
-	Promise<Void> like(UserId user, String postId);
-
-	Promise<Void> dislike(UserId user, String postId);
-
-	Promise<Void> removeLikeOrDislike(UserId user, String postId);
+	Promise<Void> updateRating(UserId user, String postId, @Nullable Rating rating);
 
 	Promise<Map<String, Post>> listPosts();
 

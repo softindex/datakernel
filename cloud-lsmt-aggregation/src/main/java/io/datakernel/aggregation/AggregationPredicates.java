@@ -19,23 +19,20 @@ package io.datakernel.aggregation;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
-import io.datakernel.codegen.PredicateDef;
-import io.datakernel.codegen.Property;
+import io.datakernel.codegen.Variable;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.regex.Pattern;
 
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.CollectionUtils.first;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AggregationPredicates {
-	private AggregationPredicates() {
-	}
+	private static final class E extends Expressions {}
 
 	private static class PredicateSimplifierKey<L extends AggregationPredicate, R extends AggregationPredicate> {
 		private final Class<L> leftType;
@@ -79,7 +76,7 @@ public class AggregationPredicates {
 		simplifiers.put(keyLeftRight, operation);
 		if (!rightType.equals(leftType)) {
 			PredicateSimplifierKey keyRightLeft = new PredicateSimplifierKey<>(rightType, leftType);
-			checkState(!simplifiers.containsKey(keyRightLeft), "Key '%s has already been registered",keyRightLeft);
+			checkState(!simplifiers.containsKey(keyRightLeft), "Key '%s has already been registered", keyRightLeft);
 			simplifiers.put(keyRightLeft, (PredicateSimplifier<R, L>) (right, left) -> operation.simplifyAnd(left, right));
 		}
 	}
@@ -482,8 +479,8 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return Expressions.alwaysFalse();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return E.alwaysFalse();
 		}
 
 		@Override
@@ -514,8 +511,8 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return Expressions.alwaysTrue();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return E.alwaysTrue();
 		}
 
 		@Override
@@ -560,8 +557,8 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return Expressions.not(predicate.createPredicateDef(record, fields));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return E.not(predicate.createPredicate(record, fields));
 		}
 
 		@Override
@@ -619,11 +616,12 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return (fields.get(key) == null)
-					? Expressions.isNull(property(record, key.replace('.', '$')))
-					: Expressions.and(isNotNull(property(record, key.replace('.', '$')), fields.get(key)),
-					cmpEq(property(record, key.replace('.', '$')), value(toInternalValue(fields, key, value))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return fields.get(key) == null ?
+					E.isNull(E.property(record, key.replace('.', '$'))) :
+					E.and(
+							isNotNull(E.property(record, key.replace('.', '$')), fields.get(key)),
+							E.cmpEq(E.property(record, key.replace('.', '$')), E.value(toInternalValue(fields, key, value))));
 		}
 
 		@Override
@@ -683,11 +681,15 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return (fields.get(key) == null)
-					? Expressions.isNotNull(property(record, key.replace('.', '$')))
-					: Expressions.or(isNull(property(record, key.replace('.', '$')), fields.get(key)),
-					cmpNe(property(record, key.replace('.', '$')), value(toInternalValue(fields, key, value))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return fields.get(key) == null ?
+					E.isNotNull(
+							E.property(record, key.replace('.', '$'))) :
+					E.or(
+							isNull(E.property(record, key.replace('.', '$')), fields.get(key)),
+							E.cmpNe(
+									E.property(record, key.replace('.', '$')),
+									E.value(toInternalValue(fields, key, value))));
 		}
 
 		@Override
@@ -747,10 +749,11 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			Property property = property(record, key.replace('.', '$'));
-			return Expressions.and(isNotNull(property, fields.get(key)),
-					cmpLe(property, value(toInternalValue(fields, key, value))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			Variable property = E.property(record, key.replace('.', '$'));
+			return E.and(
+					isNotNull(property, fields.get(key)),
+					E.cmpLe(property, E.value(toInternalValue(fields, key, value))));
 		}
 
 		@Override
@@ -810,10 +813,10 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			Property field = property(record, key.replace('.', '$'));
-			return Expressions.and(isNotNull(field, fields.get(key)),
-					cmpLt(field, value(toInternalValue(fields, key, value))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			Variable property = E.property(record, key.replace('.', '$'));
+			return E.and(isNotNull(property, fields.get(key)),
+					E.cmpLt(property, E.value(toInternalValue(fields, key, value))));
 		}
 
 		@Override
@@ -873,10 +876,10 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			Property property = property(record, key.replace('.', '$'));
-			return Expressions.and(isNotNull(property, fields.get(key)),
-					cmpGe(property, value(toInternalValue(fields, key, value))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			Variable property = E.property(record, key.replace('.', '$'));
+			return E.and(isNotNull(property, fields.get(key)),
+					E.cmpGe(property, E.value(toInternalValue(fields, key, value))));
 		}
 
 		@Override
@@ -936,10 +939,10 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			Property property = property(record, key.replace('.', '$'));
-			return Expressions.and(isNotNull(property, fields.get(key)),
-					cmpGt(property, value(toInternalValue(fields, key, value))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			Variable property = E.property(record, key.replace('.', '$'));
+			return E.and(isNotNull(property, fields.get(key)),
+					E.cmpGt(property, E.value(toInternalValue(fields, key, value))));
 		}
 
 		@Override
@@ -993,8 +996,8 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return fields.containsKey(key) ? Expressions.alwaysTrue() : Expressions.alwaysFalse();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return fields.containsKey(key) ? E.alwaysTrue() : E.alwaysFalse();
 		}
 
 		@Override
@@ -1053,11 +1056,12 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			Pattern pattern = Pattern.compile(regexp);
-			return Expressions.and(cmpNe(value(false), call(call(value(pattern), "matcher",
-					cast(callStatic(String.class, "valueOf", cast(property(record, key.replace('.', '$')), Object.class)),
-							CharSequence.class)), "matches")));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return E.cmpNe(
+					E.value(false),
+					E.call(E.call(E.value(Pattern.compile(regexp)), "matcher",
+							E.staticCall(String.class, "valueOf",
+									E.property(record, key.replace('.', '$')))), "matches"));
 		}
 
 		@Override
@@ -1118,9 +1122,11 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			return Expressions.and(cmpNe(value(false), call(value(values), "contains",
-					cast(property(record, key.replace('.', '$')), Object.class))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			return E.cmpNe(
+					E.value(false),
+					E.call(E.value(values), "contains",
+							E.cast(E.property(record, key.replace('.', '$')), Object.class)));
 		}
 
 		@Override
@@ -1190,11 +1196,11 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			Property property = property(record, key.replace('.', '$'));
-			return Expressions.and(isNotNull(property, fields.get(key)),
-					cmpGe(property, value(toInternalValue(fields, key, from))),
-					cmpLe(property, value(toInternalValue(fields, key, to))));
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			Variable property = E.property(record, key.replace('.', '$'));
+			return E.and(isNotNull(property, fields.get(key)),
+					E.cmpGe(property, E.value(toInternalValue(fields, key, from))),
+					E.cmpLe(property, E.value(toInternalValue(fields, key, to))));
 		}
 
 		@Override
@@ -1292,12 +1298,12 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			List<PredicateDef> predicateDefs = new ArrayList<>();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			List<Expression> predicateDefs = new ArrayList<>();
 			for (AggregationPredicate predicate : predicates) {
-				predicateDefs.add(predicate.createPredicateDef(record, fields));
+				predicateDefs.add(predicate.createPredicate(record, fields));
 			}
-			return Expressions.and(predicateDefs);
+			return E.and(predicateDefs);
 		}
 
 		@Override
@@ -1319,7 +1325,8 @@ public class AggregationPredicates {
 		@Override
 		public String toString() {
 			StringJoiner joiner = new StringJoiner(" AND ");
-			for (AggregationPredicate predicate : predicates) joiner.add(predicate != null ? predicate.toString() : null);
+			for (AggregationPredicate predicate : predicates)
+				joiner.add(predicate != null ? predicate.toString() : null);
 
 			return "(" + joiner.toString() + ")";
 		}
@@ -1369,12 +1376,12 @@ public class AggregationPredicates {
 		}
 
 		@Override
-		public PredicateDef createPredicateDef(Expression record, Map<String, FieldType> fields) {
-			List<PredicateDef> predicateDefs = new ArrayList<>();
+		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
+			List<Expression> predicateDefs = new ArrayList<>();
 			for (AggregationPredicate predicate : predicates) {
-				predicateDefs.add(predicate.createPredicateDef(record, fields));
+				predicateDefs.add(predicate.createPredicate(record, fields));
 			}
-			return Expressions.or(predicateDefs);
+			return E.or(predicateDefs);
 		}
 
 		@Override
@@ -1396,7 +1403,8 @@ public class AggregationPredicates {
 		@Override
 		public String toString() {
 			StringJoiner joiner = new StringJoiner(" OR ");
-			for (AggregationPredicate predicate : predicates) joiner.add(predicate != null ? predicate.toString() : null);
+			for (AggregationPredicate predicate : predicates)
+				joiner.add(predicate != null ? predicate.toString() : null);
 			return "(" + joiner.toString() + ")";
 		}
 	}
@@ -1496,6 +1504,7 @@ public class AggregationPredicates {
 			return new RangeScan(from, to);
 		}
 
+		@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 		public boolean isNoScan() {
 			return from == null;
 		}
@@ -1519,16 +1528,12 @@ public class AggregationPredicates {
 		}
 	}
 
-	private static PredicateDef isNotNull(Expression field, FieldType fieldType) {
-		return (fieldType != null && fieldType.getInternalDataType().isPrimitive())
-				? Expressions.alwaysTrue()
-				: Expressions.isNotNull(field);
+	private static Expression isNotNull(Expression field, FieldType fieldType) {
+		return fieldType != null && fieldType.getInternalDataType().isPrimitive() ? E.alwaysTrue() : E.isNotNull(field);
 	}
 
-	private static PredicateDef isNull(Expression field, FieldType fieldType) {
-		return (fieldType != null && fieldType.getInternalDataType().isPrimitive())
-				? Expressions.alwaysFalse()
-				: Expressions.isNull(field);
+	private static Expression isNull(Expression field, FieldType fieldType) {
+		return fieldType != null && fieldType.getInternalDataType().isPrimitive() ? E.alwaysFalse() : E.isNull(field);
 	}
 
 	@SuppressWarnings("unchecked")

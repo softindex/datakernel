@@ -17,25 +17,26 @@
 package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
-import io.datakernel.serializer.asm.SerializerGenNullable;
-import io.datakernel.serializer.asm.SerializerGenString;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefNullable;
+import io.datakernel.serializer.impl.SerializerDefString;
+import io.datakernel.serializer.impl.SerializerDefWithNullable;
 
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
-		return (type, generics, fallback) -> {
-			check(!type.isPrimitive(), "Type must not represent a primitive type");
-			if (fallback instanceof SerializerGenString)
-				return ((SerializerGenString) fallback).nullable(true);
-			if (compatibilityLevel == CompatibilityLevel.LEVEL_3 && fallback instanceof NullableOptimization) {
-				return ((NullableOptimization) fallback).asNullable();
+	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeNullable annotation, CompatibilityLevel compatibilityLevel) {
+		return (type, generics, target) -> {
+			checkArgument(!type.isPrimitive(), "Type must not represent a primitive type");
+			if (target instanceof SerializerDefString)
+				return ((SerializerDefString) target).ensureNullable();
+			if (compatibilityLevel.compareTo(LEVEL_3) >= 0 && target instanceof SerializerDefWithNullable) {
+				return ((SerializerDefWithNullable) target).ensureNullable();
 			}
-			return new SerializerGenNullable(fallback);
+			return new SerializerDefNullable(target);
 		};
 	}
 

@@ -16,30 +16,28 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.AsyncTimeoutException;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers.JmxReducerSum;
-import io.datakernel.jmx.JmxRefreshable;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.JmxRefreshable;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.util.ApplicationSettings;
-import io.datakernel.util.Stopwatch;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -48,10 +46,11 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private static final Logger logger = getLogger(RpcClientConnection.class);
 	private static final int BUCKET_CAPACITY = ApplicationSettings.getInt(RpcClientConnection.class, "bucketCapacity", 16);
 
-	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor;
+	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor = this::addIntoInitialBuffer;
 	private boolean overloaded = false;
 
-	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed.");
+	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed");
+	public static final RpcException CONNECTION_UNRESPONSIVE = new RpcException(RpcClientConnection.class, "Unresponsive connection");
 
 	private final Eventloop eventloop;
 	private final RpcClient rpcClient;
@@ -59,6 +58,8 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final InetSocketAddress address;
 	private final Map<Integer, Callback<?>> activeRequests = new HashMap<>();
 	private final Map<Long, ExpirationList> expirationLists = new HashMap<>();
+
+	private ArrayList<RpcMessage> initialBuffer = new ArrayList<>();
 
 	private static final class ExpirationList {
 		private int size;
@@ -78,13 +79,17 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private final EventStats totalRequests;
 	private final EventStats connectionRequests;
 
-	RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
-			InetSocketAddress address,
-			RpcStream stream) {
+	// keep-alive pings
+	private final long keepAliveMillis;
+	private boolean pongReceived;
+
+	RpcClientConnection(Eventloop eventloop, RpcClient rpcClient, InetSocketAddress address, RpcStream stream,
+			long keepAliveMillis) {
 		this.eventloop = eventloop;
 		this.rpcClient = rpcClient;
 		this.stream = stream;
 		this.address = address;
+		this.keepAliveMillis = keepAliveMillis;
 
 		// JMX
 		this.monitoring = false;
@@ -112,7 +117,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			if (timeout != Integer.MAX_VALUE) {
 				ExpirationList list = expirationLists.computeIfAbsent(eventloop.currentTimeMillis() + timeout, t -> {
 					ExpirationList l = new ExpirationList(new int[BUCKET_CAPACITY]);
-					eventloop.scheduleBackground(t, () -> {
+					eventloop.scheduleBackground(t, wrapContext(this, () -> {
 						expirationLists.remove(t);
 
 						for (int i = 0; i < l.size; i++) {
@@ -129,7 +134,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 						if (serverClosing && activeRequests.size() == 0) {
 							shutdown();
 						}
-					});
+					}));
 					return l;
 				});
 
@@ -225,13 +230,31 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			if (activeRequests.size() == 0) {
 				shutdown();
 			}
+		} else if (controlMessage == RpcControlMessage.PONG) {
+			pongReceived = true;
 		} else {
 			throw new RuntimeException("Received unknown RpcControlMessage");
 		}
 	}
 
+	private void ping() {
+		if (isClosed()) return;
+		if (keepAliveMillis == 0) return;
+		pongReceived = false;
+		downstreamDataAcceptor.accept(RpcMessage.of(-1, RpcControlMessage.PING));
+		eventloop.delayBackground(keepAliveMillis, () -> {
+			if (isClosed()) return;
+			if (!pongReceived) {
+				onReceiverError(CONNECTION_UNRESPONSIVE);
+			} else {
+				ping();
+			}
+		});
+	}
+
 	@Override
 	public void onReceiverEndOfStream() {
+		if (isClosed()) return;
 		logger.info("Receiver EOS: " + address);
 		stream.close();
 		doClose();
@@ -239,6 +262,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public void onReceiverError(@NotNull Throwable e) {
+		if (isClosed()) return;
 		logger.error("Receiver error: " + address, e);
 		rpcClient.getLastProtocolError().recordException(e, address);
 		stream.close();
@@ -247,16 +271,29 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public void onSenderError(@NotNull Throwable e) {
+		if (isClosed()) return;
 		logger.error("Sender error: " + address, e);
 		rpcClient.getLastProtocolError().recordException(e, address);
 		stream.close();
 		doClose();
 	}
 
+	private void addIntoInitialBuffer(RpcMessage msg) {
+		initialBuffer.add(msg);
+	}
+
 	@Override
 	public void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor) {
+		if (isClosed()) return;
 		downstreamDataAcceptor = acceptor;
 		overloaded = false;
+		if (initialBuffer != null) {
+			for (RpcMessage message : initialBuffer) {
+				acceptor.accept(message);
+			}
+			initialBuffer = null;
+			ping();
+		}
 	}
 
 	@Override
@@ -265,17 +302,26 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	private void doClose() {
+		if (isClosed()) return;
+		downstreamDataAcceptor = null;
 		rpcClient.removeConnection(address);
 
 		while (!activeRequests.isEmpty()) {
 			for (Integer cookie : new HashSet<>(activeRequests.keySet())) {
 				Callback<?> cb = activeRequests.remove(cookie);
-				cb.accept(null, CONNECTION_CLOSED);
+				if (cb != null) {
+					cb.accept(null, CONNECTION_CLOSED);
+				}
 			}
 		}
 	}
 
+	public boolean isClosed() {
+		return downstreamDataAcceptor == null;
+	}
+
 	public void shutdown() {
+		if (isClosed()) return;
 		stream.sendEndOfStream();
 	}
 

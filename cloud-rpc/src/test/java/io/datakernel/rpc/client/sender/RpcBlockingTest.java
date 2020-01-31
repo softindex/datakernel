@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.ShardingFunction;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -51,8 +51,8 @@ public final class RpcBlockingTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Before
 	public void setUp() throws Exception {

@@ -4,7 +4,6 @@ package io.datakernel.di.util;
  * These are just set of functional interfaces to be used by the DSL
  */
 public final class Constructors {
-	private Constructors() {}
 
 	@FunctionalInterface
 	public interface Constructor0<R> {

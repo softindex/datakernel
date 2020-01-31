@@ -1,0 +1,89 @@
+{{<base}}
+    {{$content}}
+        <div class="gallery mt-2" id="gallery">
+            {{#album}}
+                {{#photos}}
+                    <div style="position: relative; width: 100%; padding-bottom: {{value.ratio}}% ; display: inline-flex">
+                        <label class="image-checkbox" id="image_checkbox_{{key}}" data-id="{{key}}"
+                               style="position: absolute; width: 100%; height: auto; padding: .25rem; background-color: #fff; border: 1px solid #dee2e6;">
+                            <svg id="svg_{{key}}"
+                                 xmlns="http://www.w3.org/2000/svg"
+                                 xmlns:xlink="http://www.w3.org/1999/xlink"
+                                 width="{{value.width}}" height="{{value.height}}"
+                                 style="max-width: 100%; height: auto;">
+                                <filter id="blur_{{key}}" filterUnits="userSpaceOnUse"
+                                        color-interpolation-filters="sRGB">
+                                    <feGaussianBlur stdDeviation="20 20"/>
+                                    <feComponentTransfer>
+                                        <feFuncA type="discrete" tableValues="1 1"/>
+                                    </feComponentTransfer>
+                                </filter>
+                                <image filter="url(#blur_{{key}})"
+                                       style="position: absolute"
+                                       xlink:href="data:image/jpeg;base64,{{value.base64}}"
+                                       height="100%" width="100%"/>
+                            </svg>
+
+                            <img id="{{key}}"
+                                 width="{{value.width}}"
+                                 height="{{value.height}}"
+                                 style="max-width: 100%; height: auto; display:none;"
+                                 data-lazy-src="/download/base/{{id}}/{{key}}"
+                                 data-url="/update/{{id}}/{{key}}"
+                                 data-full-img="/download/full/{{id}}/{{key}}"
+                                 data-thumbnail-img="/download/base/{{id}}/{{key}}"
+                                 data-description="{{value.photoDescription}}">
+                            <input type="checkbox" name="image" value=""/>
+                        </label>
+                    </div>
+                {{/photos}}
+            {{/album}}
+        </div>
+
+        <div id="modal" class="modal">
+            <span class="close"
+                  style="position: absolute; top: 15px; right: 35px; color: #f1f1f1; font-size: 40px;font-weight: bold; transition: 0.3s;"
+                  id="close">&times;</span>
+
+            <div>
+                <div style="width: max-content; max-width: 100%;
+                      height: 90%; margin: 1em auto; background: rgba(0,0,0,0.7);
+                      border-radius: 1rem; border: solid 15px rgba(0,0,0,0.4); z-index: 100;">
+                    <img class="modal-content" id="modalImg" src="" alt="photo"
+                         style="width:auto; max-height:80%; max-width: 100%; border-radius: 1rem">
+                    <p class="mt-2 mb-2 modal-content p-1"
+                       id="photo_description_static"
+                       style="width: 100%; background: rgba(52,58,64,0.4); border-radius: 0.5rem; color: rgba(255,255,255,0.51); white-space: pre-line">
+                    </p>
+                    <textarea readonly class="mt-2 mb-2 modal-content p-1" maxlength="1024" id="photo_description"
+                              rows="1"
+                              placeholder="Comment your photo..."
+                              style="width: 100%; background: rgba(255,255,255,0.25);
+                              border: 2px solid; border-radius: 0.8rem; color: rgba(255,255,255,0.51); display: none"></textarea>
+
+                    <div class="row justify-content-end animation-fade" style="margin: auto;">
+                        <button class="btn btn-lg btn-link" style="color: rgba(255,255,255,0.51);" type="submit"
+                                id="editPhotoDescription">Edit
+                        </button>
+
+                        <a id="downloadButton" href="">
+                            <div class="card-header" style="border-radius: 0.25rem; color: rgba(255,255,255,0.51);">
+                                <i class="fa fa-download"></i>
+                            </div>
+                        </a>
+
+                        <div id="editDescriptionButtonGroup" class="row" style="display: none">
+                            <button class="col btn btn-lg btn-link m-1" style="color: rgba(206,255,160,0.51);"
+                                    type="submit" id="savePhotoDescription">Save
+                            </button>
+                            <button class="col btn btn-lg btn-link m-1" style="color: rgba(255,157,171,0.51);"
+                                    type="submit" id="cancelEditingPhotoDescription">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

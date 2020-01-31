@@ -1,75 +1,133 @@
 import {Service} from '../service/Service';
-
-let EC = require('elliptic').ec;
+import {ValueStorage} from './ValueStorage';
 
 export class AuthService extends Service {
-  constructor(appStoreUrl, cookies) {
+  constructor(
+    appStoreURL,
+    oAuthURL,
+    authByKeyURL,
+    sessionValueStorage,
+    publicKeyValueStorage,
+    goToURL,
+    createFileReader,
+    fetch
+  ) {
     super({
       error: null,
       authorized: false,
-      privateKey: null,
       publicKey: null,
       loading: false,
       wasAuthorized: false
     });
-    this._appStoreUrl = appStoreUrl;
-    this._cookies = cookies;
+    this._appStoreURL = appStoreURL;
+    this._oAuthURL = oAuthURL;
+    this._authByKeyURL = authByKeyURL;
+    this._sessionValueStorage = sessionValueStorage;
+    this._publicKeyValueStorage = publicKeyValueStorage;
+    this._goToURL = goToURL;
+    this._createFileReader = createFileReader;
+    this._fetch = fetch;
+  }
+
+  static create({appStoreURL, sessionIdField = 'sid', publicKeyField = 'publicKey'}) {
+    return new AuthService(
+      appStoreURL,
+      window.location.origin + '/sign-up/auth',
+      '/authByKey',
+      ValueStorage.createCookie(sessionIdField),
+      ValueStorage.createLocalStorage(publicKeyField),
+      url =>  location.href = url,
+      () => new FileReader(),
+      fetch.bind(window)
+    );
   }
 
   init() {
-    const privateKey = this._cookies.get('Key');
-    if (privateKey) {
-      const publicKey = this.getPublicKey(privateKey);
+    const sessionString = this._sessionValueStorage.get();
+    if (!sessionString) {
+      this._publicKeyValueStorage.remove();
+      return
+    }
+
+    const publicKey = this._publicKeyValueStorage.get();
+    if (publicKey) {
       this.setState({
         authorized: true,
-        privateKey,
         publicKey
       });
+    } else {
+      this._sessionValueStorage.remove();
     }
   }
 
-  authByPrivateKey = privateKey => {
-    this._cookies.set('Key', privateKey);
-    const publicKey = this.getPublicKey(privateKey);
-    this.setState({
-      authorized: true,
-      privateKey,
-      publicKey
-    });
-  };
-
-  authByFile = file => {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.onload = () => {
-        this.authByPrivateKey(fileReader.result);
-        resolve();
-      };
-      fileReader.onerror = reject;
-      fileReader.readAsText(file);
-    });
-  };
-
-  authWithAppStore() {
-    window.location.href = this._appStoreUrl + '/oauth?redirectURI=' + window.location.href + '/auth';
+  authByAppStore() {
+    this._goToURL(this._appStoreURL + '/oauth?redirectURI=' + encodeURIComponent(this._oAuthURL));
   }
 
-  logout() {
-    this._cookies.remove('Key');
+  authByFile(file) {
+    return new Promise((resolve, reject) => {
+      const fileReader = this._createFileReader();
+      fileReader.readAsText(file);
+      fileReader.onload = () => {
+        this._doAuth(fetch(this._authByKeyURL, {
+          method: 'POST',
+          body: fileReader.result.trim()
+        }))
+          .then(resolve)
+          .catch(reject);
+      };
+      fileReader.onerror = () => {
+        this.setState({
+          error: fileReader.error
+        });
+        reject(fileReader.error);
+      };
+    });
+  };
+
+  authByToken(token) {
+    return this._doAuth(fetch(`/auth?token=${token}`));
+  }
+
+  async logout() {
+    try {
+      await this._fetch('/logout', {method: 'POST'});
+    } catch (error) {
+      console.warn('Log out call to server failed', error);
+    }
+
+    this._sessionValueStorage.remove();
+    this._publicKeyValueStorage.remove();
+
     this.setState({
       authorized: false,
       error: null,
       loading: false,
-      privateKey: null,
       publicKey: null,
       wasAuthorized: true
     });
   }
 
-  getPublicKey(privateKey) {
-    const curve = new EC('secp256k1');
-    const keys = curve.keyFromPrivate(privateKey, 'hex');
-    return `${keys.getPublic().getX().toString('hex')}:${keys.getPublic().getY().toString('hex')}`;
+  _doAuth(fetchPromise) {
+    this.setState({loading: true});
+    return fetchPromise
+      .then(response => {
+        if (response.status !== 200) {
+          throw new Error("Authorization failed: " + response.statusText);
+        }
+
+        return response.text();
+      })
+      .then(publicKey => {
+        this._publicKeyValueStorage.set(publicKey);
+        this.setState({
+          authorized: true,
+          publicKey,
+          error: null
+        });
+      })
+      .catch(error => this.setState({error}))
+      .finally(() => this.setState({loading: false}));
   }
 }
 

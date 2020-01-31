@@ -1,2 +1,4 @@
 http.listenAddresses=
 discovery.address=
+appStoreUrl=
+privateKey=

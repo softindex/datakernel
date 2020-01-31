@@ -16,6 +16,10 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.Initializer;
+import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.core.*;
@@ -23,12 +27,9 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.ScopedValue;
 import io.datakernel.di.util.Trie;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopServer;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.net.BlockingSocketServer;
 import io.datakernel.launcher.LauncherService;
-import io.datakernel.net.BlockingSocketServer;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Initializer;
+import io.datakernel.net.EventloopServer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
@@ -43,13 +44,14 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.common.collection.CollectionUtils.intersection;
+import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.service.util.Utils.combineAll;
 import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
-import static io.datakernel.util.CollectionUtils.difference;
-import static io.datakernel.util.CollectionUtils.intersection;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static java.lang.Thread.currentThread;
 import static java.util.Collections.*;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static java.util.stream.Collectors.*;
@@ -83,8 +85,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * <p>
  * An application terminates if a circular dependency found.
  */
-@SuppressWarnings("WeakerAccess")
-public final class ServiceGraphModule extends AbstractModule implements Initializable<ServiceGraphModule> {
+public final class ServiceGraphModule extends AbstractModule implements ServiceGraphModuleSettings, Initializable<ServiceGraphModule> {
 	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
 	private final Map<Class<?>, ServiceAdapter<?>> registeredServiceAdapters = new LinkedHashMap<>();
@@ -95,8 +96,6 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	private final Map<Key<?>, Set<Key<?>>> removedDependencies = new HashMap<>();
 
 	private final Executor executor;
-
-	private Initializer<ServiceGraph> initializer = Initializer.empty();
 
 	public ServiceGraphModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -120,7 +119,13 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				.register(Closeable.class, forCloseable())
 				.register(ExecutorService.class, forExecutorService())
 				.register(Timer.class, forTimer())
-				.register(DataSource.class, forDataSource())
+				.initialize(module -> {
+					try {
+						currentThread().getContextClassLoader().loadClass("javax.sql.DataSource");
+						module.register(DataSource.class, forDataSource());
+					} catch (ClassNotFoundException ignored) {
+					}
+				})
 				.register(EventloopService.class, forEventloopService())
 				.register(EventloopServer.class, forEventloopServer())
 				.register(Eventloop.class, forEventloop());
@@ -134,6 +139,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param factory value to be associated with the specified type
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public <T> ServiceGraphModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
 		registeredServiceAdapters.put(type, factory);
 		return this;
@@ -147,11 +153,13 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param <T>     type of service
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
 		keys.put(key, factory);
 		return this;
 	}
 
+	@Override
 	public <T> ServiceGraphModule excludeSpecificKey(Key<T> key) {
 		excludedKeys.add(key);
 		return this;
@@ -164,6 +172,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param keyDependency key of dependency
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public ServiceGraphModule addDependency(Key<?> key, Key<?> keyDependency) {
 		addedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
 		return this;
@@ -176,13 +185,9 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 	 * @param keyDependency key of dependency
 	 * @return ServiceGraphModule with change
 	 */
+	@Override
 	public ServiceGraphModule removeDependency(Key<?> key, Key<?> keyDependency) {
 		removedDependencies.computeIfAbsent(key, key1 -> new HashSet<>()).add(keyDependency);
-		return this;
-	}
-
-	public ServiceGraphModule withInitializer(Initializer<ServiceGraph> initializer) {
-		this.initializer = initializer;
 		return this;
 	}
 
@@ -253,8 +258,20 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		}
 	}
 
+	@Provides
+	ServiceGraph serviceGraph(Injector injector) {
+		ServiceGraph serviceGraph = ServiceGraph.create();
+		serviceGraph.setStartCallback(() -> doStart(serviceGraph, injector));
+		return serviceGraph;
+	}
+
 	@ProvidesIntoSet
-	LauncherService service(ServiceGraph serviceGraph) {
+	LauncherService service(Injector injector, ServiceGraph serviceGraph, @Optional Set<Initializer<ServiceGraphModuleSettings>> initializers) {
+		if (initializers != null) {
+			for (Initializer<ServiceGraphModuleSettings> initializer : initializers) {
+				initializer.accept(this);
+			}
+		}
 		return new LauncherService() {
 			@Override
 			public CompletableFuture<?> start() {
@@ -292,14 +309,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 		};
 	}
 
-	@Provides
-	ServiceGraph serviceGraph(Injector injector) {
-		return ServiceGraph.create()
-				.initialize(initializer)
-				.initialize(serviceGraph -> serviceGraph.withStartCallback(() -> initializeServiceGraph(serviceGraph, injector)));
-	}
-
-	private void initializeServiceGraph(ServiceGraph serviceGraph, Injector injector) {
+	private void doStart(ServiceGraph serviceGraph, Injector injector) {
 		logger.trace("Initializing ServiceGraph ...");
 
 		WorkerPools workerPools = injector.peekInstance(WorkerPools.class);
@@ -314,17 +324,23 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : pool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
 					WorkerPool.Instances<?> workerInstances = entry.getValue();
-					if (!scopeDependencies.containsKey(key)) continue;
+					if (!scopeDependencies.containsKey(key)) {
+						continue;
+					}
 					ServiceKey serviceKey = new ServiceKey(key, pool);
 					instances.put(serviceKey, workerInstances.getList());
 					workerInstanceToKey.put(workerInstances.get(0), serviceKey);
 					instanceDependencies.put(serviceKey,
 							scopeDependencies.get(key)
 									.stream()
-									.filter(scopedDependency -> scopedDependency.get().isRequired() ||
-											(scopedDependency.isScoped() ?
-													pool.getScopeInjectors()[0].hasInstance(scopedDependency.get().getKey()) :
-													injector.hasInstance(scopedDependency.get().getKey())))
+									.filter(scopedDependency -> {
+										if (scopedDependency.get().isRequired()) {
+											return true;
+										}
+										Injector container = scopedDependency.isScoped() ? pool.getScopeInjectors()[0] : injector;
+										Key<?> k = scopedDependency.get().getKey();
+										return container.hasInstance(k);
+									})
 									.map(scopedDependency -> scopedDependency.isScoped() ?
 											new ServiceKey(scopedDependency.get().getKey(), pool) :
 											new ServiceKey(scopedDependency.get().getKey()))
@@ -337,14 +353,16 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 			Key<?> key = entry.getKey();
 			Object instance = entry.getValue();
 			if (instance == null) continue;
-			Binding<?> binding = injector.getBinding(key);
-			if (binding == null) continue;
+
+			BindingInfo bindingInfo = injector.getBinding(key);
+
+			if (bindingInfo == null || bindingInfo.getType() == TRANSIENT) continue;
+
 			ServiceKey serviceKey = new ServiceKey(key);
 			instances.put(serviceKey, singletonList(instance));
 			instanceDependencies.put(serviceKey,
-					binding.getDependencies().stream()
-							.filter(dependency -> dependency.isRequired() ||
-									injector.hasInstance(dependency.getKey()))
+					bindingInfo.getDependencies().stream()
+							.filter(dependency -> dependency.isRequired() || injector.hasInstance(dependency.getKey()))
 							.map(dependency -> {
 								Class<?> dependencyRawType = dependency.getKey().getRawType();
 								boolean rawTypeMatches = dependencyRawType == WorkerPool.class || dependencyRawType == WorkerPools.class;
@@ -356,22 +374,22 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								}
 
 								if (rawTypeMatches && !(instance instanceof WorkerPool)) {
-									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : worker instances is expected");
+									logger.warn("Unsupported service " + key + " at " + bindingInfo.getLocation() + " : worker instances is expected");
 								}
 
 								if (instanceMatches) {
-									logger.warn("Unsupported service " + key + " at " + binding.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
+									logger.warn("Unsupported service " + key + " at " + bindingInfo.getLocation() + " : dependency to WorkerPool or WorkerPools is expected");
 								}
 								return new ServiceKey(dependency.getKey());
 							})
 							.collect(toSet()));
 		}
 
-		initializeServiceGraph(serviceGraph, instances, instanceDependencies);
+		doStart(serviceGraph, instances, instanceDependencies);
 	}
 
 	private Map<Key<?>, Set<ScopedValue<Dependency>>> getScopeDependencies(Injector injector, Scope scope) {
-		Trie<Scope, Map<Key<?>, Binding<?>>> scopeBindings = injector.getBindingsTrie().getOrDefault(scope, emptyMap());
+		Trie<Scope, Map<Key<?>, BindingInfo>> scopeBindings = injector.getBindingsTrie().getOrDefault(scope, emptyMap());
 		return scopeBindings.get()
 				.entrySet()
 				.stream()
@@ -384,7 +402,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 								.collect(toSet())));
 	}
 
-	private void initializeServiceGraph(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies) {
+	private void doStart(ServiceGraph serviceGraph, Map<ServiceKey, List<?>> instances, Map<ServiceKey, Set<ServiceKey>> instanceDependencies) {
 		IdentityHashMap<Object, CachedService> cache = new IdentityHashMap<>();
 
 		Set<Key<?>> unusedKeys = difference(keys.keySet(), instances.keySet().stream().map(ServiceKey::getKey).collect(toSet()));
@@ -488,8 +506,7 @@ public final class ServiceGraphModule extends AbstractModule implements Initiali
 
 	@Nullable
 	@SuppressWarnings("unchecked")
-	private <T> Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, Key<T> key, T instance) {
-		checkNotNull(instance);
+	private <T> Service getServiceOrNull(IdentityHashMap<Object, CachedService> cache, Key<T> key, @NotNull T instance) {
 		CachedService service = cache.get(instance);
 		if (service != null) {
 			return service;

@@ -1,6 +1,6 @@
 package io.global.ot.stub;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.global.common.Hash;
@@ -24,9 +24,9 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.promise.TestUtils.await;
 import static io.global.ot.util.TestUtils.getCommitId;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.emptyMap;

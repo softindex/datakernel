@@ -17,18 +17,15 @@
 package io.global.ot.util;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.http.HttpUtils;
-import io.datakernel.util.TypeT;
-import io.global.common.CryptoUtils;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import org.jetbrains.annotations.Nullable;
-import org.spongycastle.math.ec.ECPoint;
 
-import java.math.BigInteger;
 import java.util.Base64;
 
 import static io.datakernel.codec.StructuredCodecs.BYTES_CODEC;
@@ -73,32 +70,18 @@ public class HttpDataFormats {
 	}
 
 	public static String urlEncodeRepositoryId(RepoID repositoryId) {
-		return urlEncodePubKey(repositoryId.getOwner()) + '/' + urlEncode(repositoryId.getName(), "UTF-8");
+		return repositoryId.getOwner().asString() + '/' + urlEncode(repositoryId.getName(), "UTF-8");
 	}
 
 	public static RepoID urlDecodeRepositoryId(@Nullable String pubKey, @Nullable String name) throws ParseException {
 		return RepoID.of(urlDecodePubKey(pubKey), HttpUtils.urlDecode(name, "UTF-8"));
 	}
 
-	public static String urlEncodePubKey(PubKey pubKey) {
-		ECPoint q = pubKey.getEcPublicKey().getQ();
-		return "" +
-				Base64.getUrlEncoder().encodeToString(q.getXCoord().toBigInteger().toByteArray()) + ':' +
-				Base64.getUrlEncoder().encodeToString(q.getYCoord().toBigInteger().toByteArray());
-	}
-
 	public static PubKey urlDecodePubKey(@Nullable String str) throws ParseException {
 		if (str == null) {
 			throw new ParseException(HttpDataFormats.class, "No pubkey parameter string");
 		}
-		try {
-			int pos = str.indexOf(':');
-			BigInteger x = new BigInteger(Base64.getUrlDecoder().decode(str.substring(0, pos)));
-			BigInteger y = new BigInteger(Base64.getUrlDecoder().decode(str.substring(pos + 1)));
-			return PubKey.of(CryptoUtils.CURVE.getCurve().validatePoint(x, y));
-		} catch (IllegalArgumentException | ArithmeticException e) {
-			throw new ParseException(HttpDataFormats.class, "Failed to decode public key from string: " + str, e);
-		}
+		return PubKey.fromString(str);
 	}
 
 }

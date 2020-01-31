@@ -21,23 +21,22 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
+import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 public abstract class AbstractExpressionMapForEach implements Expression {
 	protected final Expression collection;
-	protected final Expression forKey;
-	protected final Expression forValue;
-	protected final Class<?> entryType;
+	protected final Function<Expression, Expression> forKey;
+	protected final Function<Expression, Expression> forValue;
+	protected final Class<?> entryClazz;
 
-	protected AbstractExpressionMapForEach(Expression collection, Expression forKey, Expression forValue, Class<?> entryType) {
-		this.collection = checkNotNull(collection);
-		this.forKey = checkNotNull(forKey);
-		this.forValue = checkNotNull(forValue);
-		this.entryType = checkNotNull(entryType);
+	protected AbstractExpressionMapForEach(Expression collection, Function<Expression, Expression> forKey, Function<Expression, Expression> forValue, Class<?> entryClazz) {
+		this.collection = collection;
+		this.forKey = forKey;
+		this.forValue = forValue;
+		this.entryClazz = entryClazz;
 	}
 
 	protected abstract Expression getEntries();
@@ -47,62 +46,41 @@ public abstract class AbstractExpressionMapForEach implements Expression {
 	protected abstract Expression getValue(VarLocal entry);
 
 	@Override
-	public final Type type(Context ctx) {
-		return Type.VOID_TYPE;
-	}
-
-	@Override
 	public final Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		Expression it = call(getEntries(), "iterator");
-		it.load(ctx);
-		VarLocal iterator = newLocal(ctx, getType(Iterator.class));
+		ctx.invoke(getEntries(), "iterator");
+		VarLocal iterator = ctx.newLocal(getType(Iterator.class));
 		iterator.store(ctx);
 
 		g.mark(labelLoop);
 
-		call(iterator, "hasNext").load(ctx);
+		ctx.invoke(iterator, "hasNext");
 		g.push(false);
 		g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelExit);
 
-		Expression varEntry = cast(call(iterator, "next"), entryType);
-		varEntry.load(ctx);
+		Type entryType = getType(entryClazz);
+		ctx.cast(ctx.invoke(iterator, "next"), entryType);
 
-		VarLocal local = newLocal(ctx, varEntry.type(ctx));
-		local.store(ctx);
+		VarLocal entry = ctx.newLocal(entryType);
+		entry.store(ctx);
 
-		ctx.addParameter("key", getKey(local));
-		forKey.load(ctx);
-		ctx.addParameter("value", getValue(local));
-		forValue.load(ctx);
+		Type forKeyType = forKey.apply(getKey(entry)).load(ctx);
+		if (forKeyType.getSize() == 1)
+			g.pop();
+		if (forKeyType.getSize() == 2)
+			g.pop2();
+
+		Type forValueType = forValue.apply(getValue(entry)).load(ctx);
+		if (forValueType.getSize() == 1)
+			g.pop();
+		if (forValueType.getSize() == 2)
+			g.pop2();
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
 		return Type.VOID_TYPE;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		AbstractExpressionMapForEach that = (AbstractExpressionMapForEach) o;
-
-		if (!collection.equals(that.collection)) return false;
-		if (!forKey.equals(that.forKey)) return false;
-		if (!forValue.equals(that.forValue)) return false;
-		return entryType.equals(that.entryType);
-	}
-
-	@Override
-	public int hashCode() {
-		int result = collection.hashCode();
-		result = 31 * result + forKey.hashCode();
-		result = 31 * result + forValue.hashCode();
-		result = 31 * result + entryType.hashCode();
-		return result;
 	}
 }

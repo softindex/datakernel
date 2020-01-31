@@ -16,24 +16,24 @@
 
 package io.datakernel.crdt.local;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Initializable;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtFilter;
 import io.datakernel.crdt.CrdtFunction;
 import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.primitives.CrdtType;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.stats.StreamStats;
+import io.datakernel.datastream.stats.StreamStatsBasic;
+import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.stream.stats.StreamStatsBasic;
-import io.datakernel.stream.stats.StreamStatsDetailed;
-import io.datakernel.util.Initializable;
+import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

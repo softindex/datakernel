@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +28,7 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.Utils.arraysEquals;
+import static io.datakernel.common.Utils.arraysEquals;
 import static java.nio.charset.Charset.forName;
 
 /**
@@ -41,7 +41,6 @@ public final class HttpCharset extends Token {
 	public static final HttpCharset UTF_8 = charsets.register("utf-8").addCharset(StandardCharsets.UTF_8);
 	public static final HttpCharset US_ASCII = charsets.register("us-ascii").addCharset(StandardCharsets.US_ASCII);
 	public static final HttpCharset LATIN_1 = charsets.register("iso-8859-1").addCharset(StandardCharsets.ISO_8859_1);
-
 
 	// maximum of 40 characters, us-ascii, see rfc2978,
 	// http://www.iana.org/assignments/character-sets/character-sets.txt

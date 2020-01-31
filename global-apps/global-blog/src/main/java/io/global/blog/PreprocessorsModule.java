@@ -13,15 +13,14 @@ import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.global.blog.http.view.PostView;
-import io.global.blog.preprocessor.CommentsPreprocessor;
-import io.global.blog.preprocessor.Preprocessor;
+import io.global.blog.interceptors.Preprocessor;
 
 import static com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension.ANCHORLINKS_WRAP_TEXT;
 import static com.vladsch.flexmark.html.HtmlRenderer.RENDER_HEADER_ID;
 import static com.vladsch.flexmark.parser.Parser.EXTENSIONS;
 import static com.vladsch.flexmark.parser.Parser.PARSER_EMULATION_PROFILE;
 import static com.vladsch.flexmark.parser.ParserEmulationProfile.GITHUB_DOC;
-import static io.global.blog.preprocessor.PostViewPreprocessors.*;
+import static io.global.blog.interceptors.PostViewInterceptors.*;
 import static java.util.Arrays.asList;
 
 public final class PreprocessorsModule extends AbstractModule {
@@ -31,13 +30,6 @@ public final class PreprocessorsModule extends AbstractModule {
 	Preprocessor<PostView> postViewPreprocessor(HtmlRenderer renderer, Parser parser) {
 		return replaceAttachmentLinks()
 				.then(renderedContent(renderer, parser));
-	}
-
-	@Provides
-	@Export
-	@Named("comments")
-	Preprocessor<PostView> commentsPreprocessor() {
-		return new CommentsPreprocessor();
 	}
 
 	@Provides

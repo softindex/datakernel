@@ -1,5 +1,10 @@
-app.http.staticPath=
-app.http.listenAddresses=
-discovery.address=
-fs.storage=
 appStoreUrl=
+fs.storage=
+ot.storage=
+http.listenAddresses=
+containers.dir=
+
+# http.staticPath=
+# node.serverId=
+# discovery.address=
+# privateKey=

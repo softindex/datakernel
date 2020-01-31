@@ -6,7 +6,7 @@ public final class RecordImplDAO implements RecordDAO {
 	private Map<Integer, Record> recordMap = new HashMap<>();
 	private int counter;
 
- 	public void add(Record record) {
+	public void add(Record record) {
 		recordMap.put(counter++, record);
 	}
 

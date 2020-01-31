@@ -16,14 +16,14 @@
 
 package io.datakernel.csp.binary;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;

@@ -19,7 +19,7 @@ package io.datakernel.dataflow.node;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.dataflow.server.DatagraphClient;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
 
 import java.net.InetSocketAddress;
 import java.util.Collection;

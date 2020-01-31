@@ -21,7 +21,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -36,6 +35,7 @@ public class ByteBufTest {
 		System.setProperty("ByteBufPool.registry", "true");
 		System.setProperty("ByteBufPool.minSize", "0");
 		System.setProperty("ByteBufPool.maxSize", "0");
+		System.setProperty("ByteBufPool.clearOnRecycle", "true");
 	}
 
 	private static final byte[] BYTES = {'T', 'e', 's', 't', ' ', 'm', 'e', 's', 's', 'a', 'g', 'e'};
@@ -141,13 +141,10 @@ public class ByteBufTest {
 			assertEquals(AssertionError.class, e.getClass());
 		}
 
-		buf = ByteBufPool.allocate(300);
-		buf.tail(BYTES.length);
-		byte[] bytes = new byte[BYTES.length];
-		buf.drainTo(bytes, 0, bytes.length);
-		assertArrayEquals(bytes, BYTES);
+		ByteBuf buf2 = ByteBufPool.allocate(300);
+		assertNotEquals(buf, buf2);
 
-		buf.recycle();
+		ByteBufPool.clear();
 	}
 
 	@Test
@@ -274,6 +271,20 @@ public class ByteBufTest {
 		ByteBufPool.getStats().clear();
 		assertEquals(cleared, ByteBufPool.getStats().getPoolSlabs());
 	}
+
+	@Test
+	public void testClearOnRecycle() {
+		ByteBuf byteBuf = ByteBufPool.allocate(4);
+		byteBuf.writeByte((byte) 1);
+		byteBuf.writeByte((byte) 2);
+		byteBuf.writeByte((byte) 3);
+		byteBuf.writeByte((byte) 4);
+		byte[] array = byteBuf.array();
+		assertArrayEquals(new byte[]{1, 2, 3, 4}, array);
+		byteBuf.recycle();
+		assertArrayEquals(new byte[]{0, 0, 0, 0}, array);
+	}
+
 
 	private ByteBuf createEmptyByteBufOfSize(int size) {
 		return ByteBuf.wrapForWriting(new byte[size]);

@@ -16,10 +16,10 @@
 
 package io.datakernel.remotefs.stress;
 
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.util.ref.RefInt;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

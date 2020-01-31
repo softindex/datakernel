@@ -22,34 +22,34 @@ import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.AsyncCollector;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.process.AsyncCollector;
 import io.datakernel.codegen.*;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.cube.asm.MeasuresFunction;
 import io.datakernel.cube.asm.RecordFunction;
 import io.datakernel.cube.asm.TotalsFunction;
 import io.datakernel.cube.attributes.AttributeResolver;
 import io.datakernel.cube.ot.CubeDiff;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerWithResult;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamFilter;
+import io.datakernel.datastream.processor.StreamMapper;
+import io.datakernel.datastream.processor.StreamReducer;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamSplitter;
 import io.datakernel.etl.LogDataConsumer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.ValueStats;
+import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.ot.OTState;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerWithResult;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.StreamFilter;
-import io.datakernel.stream.processor.StreamMapper;
-import io.datakernel.stream.processor.StreamReducer;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
-import io.datakernel.stream.processor.StreamSplitter;
-import io.datakernel.util.Initializable;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,21 +65,25 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.aggregation.Utils.*;
 import static io.datakernel.codegen.ExpressionComparator.leftProperty;
 import static io.datakernel.codegen.ExpressionComparator.rightProperty;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Primitives.isWrapperType;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Utils.of;
+import static io.datakernel.common.collection.CollectionUtils.entriesToMap;
+import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static io.datakernel.cube.Utils.createResultClass;
-import static io.datakernel.util.CollectionUtils.entriesToMap;
-import static io.datakernel.util.CollectionUtils.keysToMap;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
+import static java.lang.Math.min;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.sort;
+import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Represents an OLAP cube. Provides methods for loading and querying data.
@@ -147,7 +151,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 	}
 
 	// state
-	private Map<String, AggregationContainer> aggregations = new LinkedHashMap<>();
+	private final Map<String, AggregationContainer> aggregations = new LinkedHashMap<>();
 
 	private CubeClassLoaderCache classLoaderCache;
 
@@ -165,12 +169,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		this.aggregationChunkStorage = aggregationChunkStorage;
 	}
 
-	public static Cube create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
-			AggregationChunkStorage aggregationChunkStorage) {
-		checkArgument(eventloop != null, "Cannot create Cube with Eventloop that is null");
-		checkArgument(executor != null, "Cannot create Cube with Executor that is null");
-		checkArgument(classLoader != null, "Cannot create Cube with ClassLoader that is null");
-		checkArgument(aggregationChunkStorage != null, "Cannot create Cube with AggregationChunkStorage that is null");
+	public static Cube create(@NotNull Eventloop eventloop, @NotNull Executor executor, @NotNull DefiningClassLoader classLoader,
+			@NotNull AggregationChunkStorage aggregationChunkStorage) {
 		return new Cube(eventloop, executor, classLoader, aggregationChunkStorage);
 	}
 
@@ -238,10 +238,10 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 	public static final class AggregationConfig implements Initializable<AggregationConfig> {
 		private final String id;
-		private List<String> dimensions = new ArrayList<>();
-		private List<String> measures = new ArrayList<>();
+		private final List<String> dimensions = new ArrayList<>();
+		private final List<String> measures = new ArrayList<>();
 		private AggregationPredicate predicate = AggregationPredicates.alwaysTrue();
-		private List<String> partitioningKey = new ArrayList<>();
+		private final List<String> partitioningKey = new ArrayList<>();
 		private int chunkSize;
 		private int reducerBufferSize;
 		private int sorterItemsInMemory;
@@ -372,40 +372,40 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		return this;
 	}
 
-	@Nullable
+	@NotNull
 	public Class<?> getAttributeInternalType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getInternalDataType();
 		if (attributeTypes.containsKey(attribute))
 			return attributeTypes.get(attribute);
-		return null;
+		throw new IllegalArgumentException("No attribute: " + attribute);
 	}
 
-	@Nullable
+	@NotNull
 	public Class<?> getMeasureInternalType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getInternalDataType();
 		if (computedMeasures.containsKey(field))
 			return computedMeasures.get(field).getType(measures);
-		return null;
+		throw new IllegalArgumentException("No measure: " + field);
 	}
 
-	@Nullable
+	@NotNull
 	public Type getAttributeType(String attribute) {
 		if (dimensionTypes.containsKey(attribute))
 			return dimensionTypes.get(attribute).getDataType();
 		if (attributeTypes.containsKey(attribute))
 			return attributeTypes.get(attribute);
-		return null;
+		throw new IllegalArgumentException("No attribute: " + attribute);
 	}
 
-	@Nullable
+	@NotNull
 	public Type getMeasureType(String field) {
 		if (measures.containsKey(field))
 			return measures.get(field).getFieldType().getDataType();
 		if (computedMeasures.containsKey(field))
 			return computedMeasures.get(field).getType(measures);
-		return null;
+		throw new IllegalArgumentException("No measure: " + field);
 	}
 
 	@Override
@@ -519,7 +519,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				output = output
 						.transformWith(StreamFilter.create(filterPredicate));
 			}
-			Promise<AggregationDiff> consume = aggregation.consume(output, inputClass, aggregationKeyFields, aggregationMeasureFields);
+			Promise<AggregationDiff> consume = output.streamTo(aggregation.consume(inputClass, aggregationKeyFields, aggregationMeasureFields));
 			diffsCollector.addPromise(consume, (accumulator, diff) -> accumulator.put(aggregationId, diff));
 		}
 		return StreamConsumerWithResult.of(streamSplitter.getInput(), diffsCollector.run().get().map(CubeDiff::of));
@@ -560,8 +560,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			DefiningClassLoader classLoader,
 			Map<String, FieldType> keyTypes) {
 		return ClassBuilder.create(classLoader, Predicate.class)
+				.withClassKey(inputClass, predicate)
 				.withMethod("test", boolean.class, singletonList(Object.class),
-						predicate.createPredicateDef(cast(arg(0), inputClass), keyTypes))
+						predicate.createPredicate(cast(arg(0), inputClass), keyTypes))
 				.buildClassAndCreateNewInstance();
 	}
 
@@ -632,7 +633,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				break;
 			}
 
-			Function<S, K> keyFunction = AggregationUtils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
+			Function<S, K> keyFunction = io.datakernel.aggregation.Utils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
 			Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);
@@ -798,22 +799,22 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		List<AggregationContainer> compatibleAggregations = new ArrayList<>();
 		Map<String, Object> fullySpecifiedDimensions;
 
-		Set<String> resultDimensions = new LinkedHashSet<>();
-		Set<String> resultAttributes = new LinkedHashSet<>();
+		final Set<String> resultDimensions = new LinkedHashSet<>();
+		final Set<String> resultAttributes = new LinkedHashSet<>();
 
-		Set<String> resultMeasures = new LinkedHashSet<>();
-		Set<String> resultStoredMeasures = new LinkedHashSet<>();
-		Set<String> resultComputedMeasures = new LinkedHashSet<>();
+		final Set<String> resultMeasures = new LinkedHashSet<>();
+		final Set<String> resultStoredMeasures = new LinkedHashSet<>();
+		final Set<String> resultComputedMeasures = new LinkedHashSet<>();
 
 		Class<R> resultClass;
 		Predicate<R> havingPredicate;
-		List<String> resultOrderings = new ArrayList<>();
+		final List<String> resultOrderings = new ArrayList<>();
 		Comparator<R> comparator;
 		MeasuresFunction<R> measuresFunction;
 		TotalsFunction<R, R> totalsFunction;
 
-		List<String> recordAttributes = new ArrayList<>();
-		List<String> recordMeasures = new ArrayList<>();
+		final List<String> recordAttributes = new ArrayList<>();
+		final List<String> recordMeasures = new ArrayList<>();
 		RecordScheme recordScheme;
 		RecordFunction recordFunction;
 
@@ -917,43 +918,51 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		RecordFunction createRecordFunction() {
-			ExpressionSequence copyAttributes = ExpressionSequence.create();
-			ExpressionSequence copyMeasures = ExpressionSequence.create();
-
-			for (String field : recordScheme.getFields()) {
-				int fieldIndex = recordScheme.getFieldIndex(field);
-				if (dimensionTypes.containsKey(field)) {
-					copyAttributes.add(call(arg(1), "put", value(fieldIndex),
-							cast(dimensionTypes.get(field).toValue(
-									property(cast(arg(0), resultClass), field)), Object.class)));
-				} else if (measures.containsKey(field)) {
-					Property fieldValue = property(cast(arg(0), resultClass), field);
-					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
-							cast(measures.get(field).getFieldType().toValue(
-									measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
-				} else {
-					copyMeasures.add(call(arg(1), "put", value(fieldIndex),
-							cast(property(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
-				}
-			}
-
 			return ClassBuilder.create(queryClassLoader, RecordFunction.class)
-					.withMethod("copyAttributes", copyAttributes)
-					.withMethod("copyMeasures", copyMeasures)
+					.withClassKey(resultClass)
+					.withMethod("copyAttributes",
+							sequence(expressions -> {
+								for (String field : recordScheme.getFields()) {
+									int fieldIndex = recordScheme.getFieldIndex(field);
+									if (dimensionTypes.containsKey(field)) {
+										expressions.add(call(arg(1), "put", value(fieldIndex),
+												cast(dimensionTypes.get(field).toValue(
+														property(cast(arg(0), resultClass), field)), Object.class)));
+									}
+								}
+							}))
+					.withMethod("copyMeasures",
+							sequence(expressions -> {
+								for (String field : recordScheme.getFields()) {
+									int fieldIndex = recordScheme.getFieldIndex(field);
+									if (!dimensionTypes.containsKey(field)) {
+										if (measures.containsKey(field)) {
+											Variable fieldValue = property(cast(arg(0), resultClass), field);
+											expressions.add(call(arg(1), "put", value(fieldIndex),
+													cast(measures.get(field).getFieldType().toValue(
+															measures.get(field).valueOfAccumulator(fieldValue)), Object.class)));
+										} else {
+											expressions.add(call(arg(1), "put", value(fieldIndex),
+													cast(property(cast(arg(0), resultClass), field.replace('.', '$')), Object.class)));
+										}
+									}
+								}
+							}))
 					.buildClassAndCreateNewInstance();
 		}
 
 		MeasuresFunction<R> createMeasuresFunction() {
-			ClassBuilder<MeasuresFunction> builder = ClassBuilder.create(queryClassLoader, MeasuresFunction.class);
-			List<Expression> computeSequence = new ArrayList<>();
+			return ClassBuilder.create(queryClassLoader, MeasuresFunction.class)
+					.withClassKey(resultClass, resultComputedMeasures)
+					.withFields(resultComputedMeasures.stream().collect(toMap(identity(), computedMeasure -> computedMeasures.get(computedMeasure).getType(measures))))
+					.withMethod("computeMeasures", sequence(list -> {
+						for (String computedMeasure : resultComputedMeasures) {
+							Expression record = cast(arg(0), resultClass);
+							list.add(set(property(record, computedMeasure),
+									computedMeasures.get(computedMeasure).getExpression(record, measures)));
+						}
 
-			for (String computedMeasure : resultComputedMeasures) {
-				builder.withField(computedMeasure, computedMeasures.get(computedMeasure).getType(measures));
-				Expression record = cast(arg(0), resultClass);
-				computeSequence.add(set(property(record, computedMeasure),
-						computedMeasures.get(computedMeasure).getExpression(record, measures)));
-			}
-			return builder.withMethod("computeMeasures", sequence(computeSequence))
+					}))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -962,8 +971,9 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (queryHaving == AggregationPredicates.alwaysFalse()) return o -> false;
 
 			return ClassBuilder.create(queryClassLoader, Predicate.class)
-					.withMethod("test", boolean.class, singletonList(Object.class),
-							queryHaving.createPredicateDef(cast(arg(0), resultClass), fieldTypes))
+					.withClassKey(resultClass, queryHaving)
+					.withMethod("test",
+							queryHaving.createPredicate(cast(arg(0), resultClass), fieldTypes))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -972,23 +982,26 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (query.getOrderings().isEmpty())
 				return (o1, o2) -> 0;
 
-			ExpressionComparator comparator = ExpressionComparator.create();
-
-			for (Ordering ordering : query.getOrderings()) {
-				String field = ordering.getField();
-
-				if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
-					String property = field.replace('.', '$');
-					comparator.with(
-							ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
-							ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
-							true);
-					resultOrderings.add(field);
-				}
-			}
-
 			return ClassBuilder.create(queryClassLoader, Comparator.class)
-					.withMethod("compare", comparator)
+					.withClassKey(resultClass, query.getOrderings())
+					.withMethod("compare", of(() -> {
+						ExpressionComparator comparator = ExpressionComparator.create();
+
+						for (Ordering ordering : query.getOrderings()) {
+							String field = ordering.getField();
+
+							if (resultMeasures.contains(field) || resultAttributes.contains(field)) {
+								String property = field.replace('.', '$');
+								comparator.with(
+										ordering.isAsc() ? leftProperty(resultClass, property) : rightProperty(resultClass, property),
+										ordering.isAsc() ? rightProperty(resultClass, property) : leftProperty(resultClass, property),
+										true);
+								resultOrderings.add(field);
+							}
+						}
+
+						return comparator;
+					}))
 					.buildClassAndCreateNewInstance();
 		}
 
@@ -1024,7 +1037,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				List<String> attributes = new ArrayList<>(resolverContainer.attributes);
 				attributes.retainAll(resultAttributes);
 				if (!attributes.isEmpty()) {
-					tasks.add(Utils.resolveAttributes(results, resolverContainer.resolver,
+					tasks.add(io.datakernel.cube.Utils.resolveAttributes(results, resolverContainer.resolver,
 							resolverContainer.dimensions, attributes,
 							fullySpecifiedDimensions, (Class) resultClass, queryClassLoader));
 				}
@@ -1086,15 +1099,15 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				String dimension = resolverContainer.dimensions.get(i);
 				key[i] = fullySpecifiedDimensions.get(dimension);
 			}
-			Object[] attributesPlaceholder = new Object[1];
 
+			Ref<Object> attributesRef = new Ref<>();
 			return resolverContainer.resolver.resolveAttributes(singletonList(key),
 					result1 -> (Object[]) result1,
-					(result12, attributes) -> attributesPlaceholder[0] = attributes)
+					(result12, attributes) -> attributesRef.value = attributes)
 					.whenResult($ -> {
 						for (int i = 0; i < resolverContainer.attributes.size(); i++) {
 							String attribute = resolverContainer.attributes.get(i);
-							result.put(attribute, attributesPlaceholder[0] != null ? ((Object[]) attributesPlaceholder[0])[i] : null);
+							result.put(attribute, attributesRef.value != null ? ((Object[]) attributesRef.value)[i] : null);
 						}
 					});
 		}
@@ -1117,10 +1130,8 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			if (limit == null) {
 				end = results.size();
 				limit = results.size();
-			} else if (start + limit > results.size()) {
-				end = results.size();
 			} else {
-				end = start + limit;
+				end = min(start + limit, results.size());
 			}
 
 			if (comparator != null) {
@@ -1135,32 +1146,42 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 		}
 
 		TotalsFunction<R, R> createTotalsFunction() {
-			ExpressionSequence zeroSequence = ExpressionSequence.create();
-			ExpressionSequence initSequence = ExpressionSequence.create();
-			ExpressionSequence accumulateSequence = ExpressionSequence.create();
-			for (String field : resultStoredMeasures) {
-				Measure measure = measures.get(field);
-				zeroSequence.add(measure.zeroAccumulator(
-						property(cast(arg(0), resultClass), field)));
-				initSequence.add(measure.initAccumulatorWithAccumulator(
-						property(cast(arg(0), resultClass), field),
-						property(cast(arg(1), resultClass), field)));
-				accumulateSequence.add(measure.reduce(
-						property(cast(arg(0), resultClass), field),
-						property(cast(arg(1), resultClass), field)));
-			}
-
-			ExpressionSequence computeSequence = ExpressionSequence.create();
-			for (String computedMeasure : resultComputedMeasures) {
-				Expression result = cast(arg(0), resultClass);
-				computeSequence.add(set(property(result, computedMeasure),
-						computedMeasures.get(computedMeasure).getExpression(result, measures)));
-			}
 			return ClassBuilder.create(queryClassLoader, TotalsFunction.class)
-					.withMethod("zero", zeroSequence)
-					.withMethod("init", initSequence)
-					.withMethod("accumulate", accumulateSequence)
-					.withMethod("computeMeasures", computeSequence)
+					.withClassKey(resultClass, resultStoredMeasures, resultComputedMeasures)
+					.withMethod("zero",
+							sequence(expressions -> {
+								for (String field : resultStoredMeasures) {
+									Measure measure = measures.get(field);
+									expressions.add(measure.zeroAccumulator(
+											property(cast(arg(0), resultClass), field)));
+								}
+							}))
+					.withMethod("init",
+							sequence(expressions -> {
+								for (String field : resultStoredMeasures) {
+									Measure measure = measures.get(field);
+									expressions.add(measure.initAccumulatorWithAccumulator(
+											property(cast(arg(0), resultClass), field),
+											property(cast(arg(1), resultClass), field)));
+								}
+							}))
+					.withMethod("accumulate",
+							sequence(expressions -> {
+								for (String field : resultStoredMeasures) {
+									Measure measure = measures.get(field);
+									expressions.add(measure.reduce(
+											property(cast(arg(0), resultClass), field),
+											property(cast(arg(1), resultClass), field)));
+								}
+							}))
+					.withMethod("computeMeasures",
+							sequence(expressions -> {
+								for (String computedMeasure : resultComputedMeasures) {
+									Expression result = cast(arg(0), resultClass);
+									expressions.add(set(property(result, computedMeasure),
+											computedMeasures.get(computedMeasure).getExpression(result, measures)));
+								}
+							}))
 					.buildClassAndCreateNewInstance();
 		}
 

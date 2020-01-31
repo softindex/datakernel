@@ -1,12 +1,13 @@
 package io.global.fs.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
 import io.global.common.*;
 import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.local.GlobalFsDriver;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongycastle.crypto.digests.SHA256Digest;
 
@@ -54,77 +55,48 @@ public final class GlobalFsDriverServlet {
 
 	public static RoutingServlet create(GlobalFsDriver driver) {
 		return RoutingServlet.create()
-				.map(GET, "/download/:space/*", request -> {
-					try {
-						PubKey space = PubKey.fromString(request.getPathParameter("space"));
-						SimKey simKey = getSimKey(request);
-						String name = UrlParser.urlDecode(request.getRelativePath());
-						if (name == null) { // name is not utf so such file wont exist too, huh
-							return Promise.ofException(FILE_NOT_FOUND);
-						}
-						return driver.getMetadata(space, name)
-								.then(meta -> {
-									if (meta == null) {
-										return Promise.<HttpResponse>ofException(FILE_NOT_FOUND);
-									}
-									return HttpResponse.file(
-											(offset, limit) -> driver.download(space, name, offset, limit)
-													.map(supplier -> supplier
-															.transformWith(CipherTransformer.create(simKey,
-																	CryptoUtils.nonceFromString(name), offset))),
-											name,
-											meta.getPosition(),
-											request.getHeader(HttpHeaders.RANGE));
-								});
-					} catch (ParseException e) {
-						return Promise.ofException(HttpException.ofCode(400, e));
-					}
+				.map(GET, "/download/*", request -> {
+					PubKey space = request.getAttachment(PubKey.class);
+					return doDownload(driver, request, space);
 				})
 				.map(POST, "/upload", request -> {
-					String key = request.getCookie("Key");
-					if (key == null) {
-						return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
-					}
-
 					try {
-						KeyPair keys = PrivKey.fromString(key).computeKeys();
+						KeyPair keys = request.getAttachment(KeyPair.class);
+						assert keys != null : "Key pair should be attached to request";
 						SimKey simKey = getSimKey(request);
 						return httpUpload(request, (name, offset, revision) -> driver.upload(keys, name, offset, revision, simKey));
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}
 				})
-				.map("/list/:space", request -> {
-					String space = request.getPathParameter("space");
-					try {
-						String glob = request.getQueryParameter("glob");
-						return driver.listEntities(PubKey.fromString(space), glob != null ? glob : "**")
-								.map(list -> HttpResponse.ok200()
-										.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
-					} catch (ParseException e) {
-						return Promise.ofException(HttpException.ofCode(400, e));
-					}
+				.map("/list", request -> {
+					PubKey space = request.getAttachment(PubKey.class);
+					String glob = request.getQueryParameter("glob");
+					return driver.listEntities(space, glob != null ? glob : "**")
+							.map(list -> HttpResponse.ok200()
+									.withBody(toJson(LIST_CODEC, list).getBytes(UTF_8))
+									.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
 				})
-				.map("/getMetadata/:space/*", request -> {
-					String space = request.getPathParameter("space");
-					try {
-						return driver.getMetadata(PubKey.fromString(space), request.getRelativePath())
-								.map(list -> HttpResponse.ok200()
-										.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
-										.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
-					} catch (ParseException e) {
-						return Promise.ofException(HttpException.ofCode(400, e));
+				.map("/getMetadata/*", request -> {
+					PubKey space = request.getAttachment(PubKey.class);
+					String name = UrlParser.urlDecode(request.getRelativePath());
+					if (name == null) {
+						return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
 					}
+					return driver.getMetadata(space, name)
+							.map(list -> HttpResponse.ok200()
+									.withBody(toJson(NULLABLE_CHECKPOINT_CODEC, list).getBytes(UTF_8))
+									.withHeader(CONTENT_TYPE, HttpHeaderValue.ofContentType(ContentType.of(JSON))));
+
 				})
 				.map(POST, "/delete/*", request -> {
-					String key = request.getCookie("Key");
-					if (key == null) {
-						return Promise.ofException(HttpException.ofCode(400, "No 'Key' cookie"));
-					}
 					try {
-						KeyPair keys = PrivKey.fromString(key).computeKeys();
-						String name = request.getRelativePath();
+						KeyPair keys = request.getAttachment(KeyPair.class);
+						assert keys != null : "Key pair should be attached to request";
+						String name = UrlParser.urlDecode(request.getRelativePath());
+						if (name == null) {
+							return Promise.ofException(HttpException.ofCode(400, "Invalid UTF"));
+						}
 						return driver.delete(keys, name, parseRevision(request))
 								.map($ -> HttpResponse.ok200());
 					} catch (ParseException e) {
@@ -132,4 +104,32 @@ public final class GlobalFsDriverServlet {
 					}
 				});
 	}
+
+	@NotNull
+	private static Promise<HttpResponse> doDownload(GlobalFsDriver driver, @NotNull HttpRequest request, PubKey space) {
+		try {
+			SimKey simKey = getSimKey(request);
+			String name = UrlParser.urlDecode(request.getRelativePath());
+			if (name == null) { // name is not utf so such file wont exist too, huh
+				return Promise.ofException(FILE_NOT_FOUND);
+			}
+			return driver.getMetadata(space, name)
+					.then(meta -> {
+						if (meta == null) {
+							return Promise.ofException(FILE_NOT_FOUND);
+						}
+						return HttpResponse.file(
+								(offset, limit) -> driver.download(space, name, offset, limit)
+										.map(supplier -> supplier
+												.transformWith(CipherTransformer.create(simKey,
+														CryptoUtils.nonceFromString(name), offset))),
+								name,
+								meta.getPosition(),
+								request.getHeader(HttpHeaders.RANGE));
+					});
+		} catch (ParseException e) {
+			return Promise.ofException(HttpException.ofCode(400, e));
+		}
+	}
+
 }

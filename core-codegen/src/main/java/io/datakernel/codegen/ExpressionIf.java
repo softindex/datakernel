@@ -16,26 +16,20 @@
 
 package io.datakernel.codegen;
 
+import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
 final class ExpressionIf implements Expression {
-	private final PredicateDef condition;
+	private final Expression condition;
 	private final Expression left;
 	private final Expression right;
 
-	ExpressionIf(PredicateDef condition, Expression left, Expression right) {
-		this.condition = checkNotNull(condition);
-		this.left = checkNotNull(left);
-		this.right = checkNotNull(right);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return left.type(ctx);
+	ExpressionIf(@NotNull Expression condition, @NotNull Expression left, @NotNull Expression right) {
+		this.condition = condition;
+		this.left = left;
+		this.right = right;
 	}
 
 	@Override
@@ -44,45 +38,19 @@ final class ExpressionIf implements Expression {
 		Label labelExit = new Label();
 
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		condition.load(ctx);
+		Type conditionType = condition.load(ctx);
 		g.push(true);
 
-		g.ifCmp(condition.type(ctx), GeneratorAdapter.EQ, labelTrue);
+		g.ifCmp(conditionType, GeneratorAdapter.EQ, labelTrue);
 
-		if (right != null) {
-			right.load(ctx);
-		}
+		right.load(ctx);
 
 		g.goTo(labelExit);
 
 		g.mark(labelTrue);
-		left.load(ctx);
+		Type leftType = left.load(ctx);
 
 		g.mark(labelExit);
-		return left.type(ctx);
-	}
-
-	@SuppressWarnings("RedundantIfStatement")
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionIf that = (ExpressionIf) o;
-
-		if (!condition.equals(that.condition)) return false;
-		if (!left.equals(that.left)) return false;
-		if (!right.equals(that.right)) return false;
-
-		return true;
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = condition.hashCode();
-		result = 31 * result + left.hashCode();
-		result = 31 * result + right.hashCode();
-		return result;
+		return leftType;
 	}
 }

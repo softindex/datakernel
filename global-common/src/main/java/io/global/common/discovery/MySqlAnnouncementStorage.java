@@ -1,8 +1,8 @@
 package io.global.common.discovery;
 
-import io.datakernel.async.Promise;
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.util.TypeT;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.common.api.AnnounceData;
@@ -13,14 +13,16 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.sql.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.json.JsonUtils.fromJson;
 import static io.datakernel.codec.json.JsonUtils.toJson;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.SqlUtils.execute;
-import static io.datakernel.util.Utils.loadResource;
+import static io.datakernel.common.Utils.loadResource;
+import static io.datakernel.common.sql.SqlUtils.execute;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -91,6 +93,27 @@ public class MySqlAnnouncementStorage implements AnnouncementStorage {
 					}
 				})
 				.whenComplete(toLogger(logger, thisMethod(), space));
+	}
+
+	@Override
+	public Promise<Map<PubKey, SignedData<AnnounceData>>> loadAll() {
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					try (Connection connection = dataSource.getConnection()) {
+						try (PreparedStatement stmt = connection.prepareStatement(
+								sql("SELECT 'pubKey', `announcement` FROM {announcements} "))) {
+							ResultSet resultSet = stmt.executeQuery();
+							Map<PubKey, SignedData<AnnounceData>> result = new HashMap<>();
+							while (resultSet.next()) {
+								PubKey pubKey = PubKey.fromString(resultSet.getString(1));
+								SignedData<AnnounceData> data = fromJson(ANNOUNCEMENT_CODEC, resultSet.getString(2));
+								result.put(pubKey, data);
+							}
+							return result;
+						}
+					}
+				})
+				.whenComplete(toLogger(logger, thisMethod()));
 	}
 
 	public void initialize() throws IOException, SQLException {

@@ -1,5 +1,4 @@
-import io.datakernel.async.Promise;
-import io.datakernel.di.annotation.Inject;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -13,9 +12,6 @@ import io.datakernel.service.ServiceGraphModule;
 public final class CustomHttpServerExample extends Launcher {
 	private static final int PORT = 8080;
 
-	@Inject
-	private AsyncHttpServer server;
-
 	@Provides
 	Eventloop eventloop() {
 		return Eventloop.create();
@@ -23,12 +19,12 @@ public final class CustomHttpServerExample extends Launcher {
 
 	@Provides
 	AsyncServlet servlet() {
-		return request -> Promise.of(
-				HttpResponse.ok200()
-						.withPlainText("Hello from HTTP server"));
+		return request -> HttpResponse.ok200()
+				.withPlainText("Hello from HTTP server");
 	}
 
 	@Provides
+	@Eager
 	AsyncHttpServer server(Eventloop eventloop, AsyncServlet servlet) {
 		return AsyncHttpServer.create(eventloop, servlet).withListenPort(PORT);
 	}

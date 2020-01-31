@@ -16,8 +16,8 @@
 
 package io.global.fs.local;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.RemoteFsUtils;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;

@@ -1,10 +1,10 @@
 package io.global.comm.http;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumers;
-import io.datakernel.exception.StacklessException;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
+import io.datakernel.promise.Promise;
 import io.global.comm.dao.ThreadDao;
 import io.global.comm.pojo.AttachmentType;
 
@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static io.datakernel.util.CollectionUtils.union;
+import static io.datakernel.common.collection.CollectionUtils.union;
 import static java.util.Collections.emptySet;
 
 public final class AttachmentDataHandler {

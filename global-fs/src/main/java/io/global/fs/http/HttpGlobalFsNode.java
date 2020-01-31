@@ -16,16 +16,16 @@
 
 package io.global.fs.http;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.DataFrame;
@@ -134,7 +134,7 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 				.then(response -> response.loadBody()
 						.then(body -> {
 							try {
-								return Promise.of(decode(NULLABLE_SIGNED_CHECKPOINT_CODEC, body));
+								return Promise.of(decode(NULLABLE_SIGNED_CHECKPOINT_CODEC, body.slice()));
 							} catch (ParseException e) {
 								return Promise.ofException(HttpException.ofCode(400, e));
 							}
@@ -152,5 +152,10 @@ public final class HttpGlobalFsNode implements GlobalFsNode {
 				.then(response -> response.getCode() != 200 ?
 						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
 				.toVoid();
+	}
+
+	@Override
+	public String toString() {
+		return "HttpGlobalFsNode{" + url + '}';
 	}
 }

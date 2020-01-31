@@ -17,12 +17,12 @@
 package io.datakernel.crdt;
 
 import io.datakernel.crdt.local.CrdtStorageMap;
-import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.AbstractServer;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinarySerializers;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.serializer.BinarySerializers;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -32,9 +32,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.serializer.util.BinarySerializers.INT_SERIALIZER;
-import static io.datakernel.serializer.util.BinarySerializers.UTF8_SERIALIZER;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.Collections.singleton;
 
 public final class TestCrdtCluster {
@@ -73,7 +73,7 @@ public final class TestCrdtCluster {
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(cluster.upload()))
-				.whenComplete(($, e) -> servers.forEach(AbstractServer::close)));
+				.whenComplete(() -> servers.forEach(AbstractServer::close)));
 		remoteStorages.forEach((name, storage) -> {
 			System.out.println("Data at '" + name + "' storage:");
 			storage.iterator().forEachRemaining(System.out::println);
@@ -116,7 +116,7 @@ public final class TestCrdtCluster {
 		await(cluster.download()
 				.then(supplier -> supplier
 						.streamTo(StreamConsumer.of(localStorage::put))
-						.whenComplete(($, e) -> {
+						.whenComplete(() -> {
 							System.out.println("!finish");
 							servers.forEach(AbstractServer::close);
 						})));

@@ -14,7 +14,7 @@ function InviteButton({classes, publicKey}) {
   }
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(document.getElementById('inviteInputId').value);
+    navigator.clipboard && navigator.clipboard.writeText(document.getElementById('inviteInputId').value);
   };
 
   const onDoubleClick = event => {
@@ -50,7 +50,7 @@ function InviteButton({classes, publicKey}) {
           variant="outlined"
           InputProps={{
             readOnly: true,
-            endAdornment: (
+            endAdornment: navigator.clipboard && (
               <IconButton
                 className={classes.iconButton}
                 onClick={copyToClipboard}

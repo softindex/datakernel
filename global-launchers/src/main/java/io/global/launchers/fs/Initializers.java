@@ -16,20 +16,20 @@
 
 package io.global.launchers.fs;
 
+import io.datakernel.common.Initializer;
 import io.datakernel.config.Config;
-import io.datakernel.util.Initializer;
 import io.global.fs.local.GlobalFsNodeImpl;
 
-import static io.datakernel.config.ConfigConverters.ofBoolean;
+import static io.datakernel.config.ConfigConverters.ofRetryPolicy;
+import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_RETRY_POLICY;
 
 public class Initializers {
 	private Initializers() {
 		throw new AssertionError();
 	}
 
-	public static Initializer<GlobalFsNodeImpl> ofLocalGlobalFsNode(Config config) {
+	public static Initializer<GlobalFsNodeImpl> ofGlobalFsNodeImpl(Config config) {
 		return node -> node
-				.withDownloadCaching(config.get(ofBoolean(), "enableDownloadCaching", false))
-				.withUploadCaching(config.get(ofBoolean(), "enableUploadCaching", false));
+				.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy", DEFAULT_RETRY_POLICY));
 	}
 }

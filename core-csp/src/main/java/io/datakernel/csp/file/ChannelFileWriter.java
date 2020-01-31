@@ -16,11 +16,11 @@
 
 package io.datakernel.csp.file;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.file.AsyncFileService;
+import io.datakernel.async.file.ExecutorAsyncFileService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.AbstractChannelConsumer;
-import io.datakernel.file.AsyncFileService;
-import io.datakernel.file.ExecutorAsyncFileService;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.net;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelConsumer;
@@ -24,14 +23,14 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufSerializer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 
 /**
- * Represent the TCP connection which  processes received items with {@link ChannelSupplier} and {@link ChannelConsumer},
- * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
+ * Represents a simple binary protocol over for communication a TCP connection.
  */
 public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O> {
 	private final AsyncTcpSocket socket;

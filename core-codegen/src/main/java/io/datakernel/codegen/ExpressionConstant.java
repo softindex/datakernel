@@ -17,24 +17,38 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.util.Utils;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import java.util.Objects;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
  * Defines methods to create a constant value
  */
 final class ExpressionConstant implements Expression {
+	@NotNull
 	private final Object value;
+	@Nullable
+	private final Type type;
+
 	private String staticConstantField;
 
 	ExpressionConstant(Object value) {
 		this.value = checkNotNull(value);
+		this.type = null;
+	}
+
+	ExpressionConstant(Object value, Type type) {
+		this.value = checkNotNull(value);
+		this.type = type;
+	}
+
+	ExpressionConstant(Object value, Class<?> type) {
+		this.value = checkNotNull(value);
+		this.type = getType(type);
 	}
 
 	public Object getValue() {
@@ -42,20 +56,18 @@ final class ExpressionConstant implements Expression {
 	}
 
 	@Override
-	public Type type(Context ctx) {
-		if (value instanceof String) {
-			return getType(String.class);
-		}
-		if (value instanceof Type) {
-			return (Type) value;
-		}
-		return getType(Primitives.unwrap(value.getClass()));
-	}
-
-	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Type type = type(ctx);
+		Type type = this.type;
+		if (type == null) {
+			if (value instanceof String) {
+				type = getType(String.class);
+			} else if (value instanceof Type) {
+				type = (Type) value;
+			} else {
+				type = getType(Primitives.unwrap(value.getClass()));
+			}
+		}
 		if (value instanceof Byte) {
 			g.push((Byte) value);
 		} else if (value instanceof Short) {
@@ -83,22 +95,8 @@ final class ExpressionConstant implements Expression {
 				staticConstantField = "$STATIC_CONSTANT_" + (ctx.getStaticConstants().size() + 1);
 				ctx.addStaticConstant(staticConstantField, value);
 			}
-			g.getStatic(ctx.getThisType(), staticConstantField, getType(value.getClass()));
+			g.getStatic(ctx.getSelfType(), staticConstantField, getType(value.getClass()));
 		}
 		return type;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionConstant that = (ExpressionConstant) o;
-		return Objects.deepEquals(value, that.value);
-	}
-
-	@Override
-	public int hashCode() {
-		return Utils.deepHashCode(value);
 	}
 }

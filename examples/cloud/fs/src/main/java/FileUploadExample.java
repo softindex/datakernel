@@ -1,3 +1,4 @@
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -7,12 +8,12 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsClient;
 import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.util.MemSize;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
@@ -20,6 +21,7 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
  * This example demonstrates uploading file to server using RemoteFS
  * To run this example you should first launch ServerSetupExample
  */
+@SuppressWarnings("unused")
 public final class FileUploadExample extends Launcher {
 	private static final int SERVER_PORT = 6732;
 	private static final String FILE_NAME = "example.txt";
@@ -55,13 +57,15 @@ public final class FileUploadExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		ExecutorService executor = newSingleThreadExecutor();
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				// consumer result here is a marker of it being successfully uploaded
-				ChannelFileReader.open(newSingleThreadExecutor(), clientFile)
+				ChannelFileReader.open(executor, clientFile)
 						.map(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)))
 						.then(cfr -> cfr.streamTo(client.upload(FILE_NAME)))
 		);
 		future.get();
+		executor.shutdown();
 	}
 
 	public static void main(String[] args) throws Exception {

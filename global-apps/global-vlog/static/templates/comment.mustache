@@ -1,0 +1,20 @@
+<div class="row full-post">
+    <div class="col-auto ml-2 pl-1 pr-1 threadline collapse show">
+        <div class="threadline-line clickthrough"></div>
+    </div>
+    <div class="col pl-0">
+        <div class="collapse link-like text-secondary small posts-hidden">
+            <div class="my-1 clickthrough">
+                ({{numberOfAllChildren}} hidden)
+            </div>
+        </div>
+        <div class="collapse show">
+            {{>comment_body}}
+            <div class="ml-2 post-children">
+                {{#children}}
+                    {{>comment}}
+                {{/children}}
+            </div>
+        </div>
+    </div>
+</div>

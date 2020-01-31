@@ -16,7 +16,7 @@
 
 package io.datakernel.config;
 
-import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.eventloop.net.ServerSocketSettings;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

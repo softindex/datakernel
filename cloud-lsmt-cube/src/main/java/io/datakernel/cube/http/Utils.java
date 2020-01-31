@@ -18,8 +18,8 @@ package io.datakernel.cube.http;
 
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.cube.CubeQuery.Ordering;
-import io.datakernel.exception.ParseException;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -78,6 +78,6 @@ class Utils {
 		return result;
 	}
 
-	public static CodecFactory CUBE_TYPES = CodecRegistry.createDefault()
+	public static final CodecFactory CUBE_TYPES = CodecRegistry.createDefault()
 			.with(LocalDate.class, LOCAL_DATE_CODEC);
 }

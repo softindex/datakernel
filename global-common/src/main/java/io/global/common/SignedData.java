@@ -18,7 +18,7 @@ package io.global.common;
 
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredEncoder;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import org.spongycastle.crypto.params.ECPublicKeyParameters;
 
 import static io.datakernel.codec.binary.BinaryUtils.*;

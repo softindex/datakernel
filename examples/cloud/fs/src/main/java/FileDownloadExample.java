@@ -13,6 +13,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
@@ -20,6 +21,7 @@ import static java.util.concurrent.Executors.newSingleThreadExecutor;
  * This example demonstrates downloading file from RemoteFS server.
  * To run this example you should first launch ServerSetupExample and then FileUploadExample
  */
+@SuppressWarnings("unused")
 public final class FileDownloadExample extends Launcher {
 	private static final int SERVER_PORT = 6732;
 	private static final String REQUIRED_FILE = "example.txt";
@@ -55,11 +57,13 @@ public final class FileDownloadExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		ExecutorService executor = newSingleThreadExecutor();
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
-						.streamTo(ChannelFileWriter.open(newSingleThreadExecutor(), clientStorage.resolve(DOWNLOADED_FILE)))
+						.streamTo(ChannelFileWriter.open(executor, clientStorage.resolve(DOWNLOADED_FILE)))
 		);
 		future.get();
+		executor.shutdown();
 	}
 
 	public static void main(String[] args) throws Exception {

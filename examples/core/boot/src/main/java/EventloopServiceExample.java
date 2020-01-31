@@ -1,20 +1,18 @@
-import io.datakernel.async.Promise;
-import io.datakernel.di.annotation.Inject;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-@SuppressWarnings("unused")
 //[START EXAMPLE]
 public class EventloopServiceExample extends Launcher {
-	@Inject CustomEventloopService testService;
 
 	@Provides
 	Eventloop eventloop() {
@@ -27,6 +25,7 @@ public class EventloopServiceExample extends Launcher {
 	}
 
 	@Provides
+	@Eager
 	CustomEventloopService customEventloopService(Eventloop eventloop, Executor executor) {
 		return new CustomEventloopService(eventloop, executor);
 	}
@@ -39,7 +38,7 @@ public class EventloopServiceExample extends Launcher {
 	@Override
 	protected void run() { }
 
-	private class CustomEventloopService implements EventloopService {
+	private static final class CustomEventloopService implements EventloopService {
 		private final Executor executor;
 		private final Eventloop eventloop;
 
@@ -57,16 +56,14 @@ public class EventloopServiceExample extends Launcher {
 		public @NotNull Promise<?> start() {
 			System.out.println(String.format("|%s|", "Eventloop-Service starting".toUpperCase()));
 			return Promise.ofBlockingRunnable(executor,
-						() -> System.out.println(String.format("|%s|", "Eventloop-Service started".toUpperCase())));
+					() -> System.out.println(String.format("|%s|", "Eventloop-Service started".toUpperCase())));
 		}
 
 		@Override
 		public @NotNull Promise<?> stop() {
 			System.out.println(String.format("|%s|", "Eventloop-Service stopping".toUpperCase()));
 			return Promise.ofBlockingRunnable(executor,
-						() -> {
-							System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase()));
-						});
+					() -> System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase())));
 		}
 	}
 

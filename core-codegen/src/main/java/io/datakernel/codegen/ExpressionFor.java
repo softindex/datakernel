@@ -20,23 +20,20 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static io.datakernel.codegen.Expressions.newLocal;
-import static io.datakernel.util.Preconditions.checkNotNull;
+import java.util.function.Function;
+
+import static org.objectweb.asm.Type.INT_TYPE;
+import static org.objectweb.asm.Type.VOID_TYPE;
 
 final class ExpressionFor implements Expression {
 	private final Expression from;
 	private final Expression to;
-	private final Expression forVar;
+	private final Function<Expression, Expression> forVar;
 
-	ExpressionFor(Expression from, Expression to, Expression forVar) {
-		this.from = checkNotNull(from);
-		this.to = checkNotNull(to);
-		this.forVar = checkNotNull(forVar);
-	}
-
-	@Override
-	public Type type(Context ctx) {
-		return Type.VOID_TYPE;
+	ExpressionFor(Expression from, Expression to, Function<Expression, Expression> forVar) {
+		this.from = from;
+		this.to = to;
+		this.forVar = forVar;
 	}
 
 	@Override
@@ -45,53 +42,35 @@ final class ExpressionFor implements Expression {
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
 
-		VarLocal to = newLocal(ctx, Type.INT_TYPE);
+		VarLocal to = ctx.newLocal(INT_TYPE);
 		this.to.load(ctx);
 		to.store(ctx);
 
 		from.load(ctx);
-		VarLocal varIt = newLocal(ctx, Type.INT_TYPE);
-		varIt.store(ctx);
+		VarLocal it = ctx.newLocal(INT_TYPE);
+		it.store(ctx);
 
 		g.mark(labelLoop);
 
-		varIt.load(ctx);
+		it.load(ctx);
 		to.load(ctx);
 
-		g.ifCmp(Type.INT_TYPE, GeneratorAdapter.GE, labelExit);
+		g.ifCmp(INT_TYPE, GeneratorAdapter.GE, labelExit);
 
-		ctx.addParameter("it", varIt);
-		forVar.load(ctx);
+		Type forType = forVar.apply(it).load(ctx);
+		if (forType.getSize() == 1)
+			g.pop();
+		if (forType.getSize() == 2)
+			g.pop2();
 
-		varIt.load(ctx);
+		it.load(ctx);
 		g.push(1);
-		g.math(GeneratorAdapter.ADD, Type.INT_TYPE);
-		varIt.store(ctx);
+		g.math(GeneratorAdapter.ADD, INT_TYPE);
+		it.store(ctx);
 
 		g.goTo(labelLoop);
 		g.mark(labelExit);
 
-		return Type.VOID_TYPE;
-	}
-
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		ExpressionFor that = (ExpressionFor) o;
-
-		if (!to.equals(that.to)) return false;
-		if (!from.equals(that.from)) return false;
-		return forVar.equals(that.forVar);
-
-	}
-
-	@Override
-	public int hashCode() {
-		int result = to.hashCode();
-		result = 31 * result + from.hashCode();
-		result = 31 * result + forVar.hashCode();
-		return result;
+		return VOID_TYPE;
 	}
 }

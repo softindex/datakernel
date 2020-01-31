@@ -16,27 +16,27 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.collection.Try;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.crdt.primitives.CrdtType;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.MultiSharder;
+import io.datakernel.datastream.processor.ShardingStreamSplitter;
+import io.datakernel.datastream.processor.StreamReducerSimple;
+import io.datakernel.datastream.processor.StreamReducers.BinaryAccumulatorReducer;
+import io.datakernel.datastream.processor.StreamSplitter;
+import io.datakernel.datastream.stats.StreamStats;
+import io.datakernel.datastream.stats.StreamStatsBasic;
+import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.functional.Try;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.MultiSharder;
-import io.datakernel.stream.processor.ShardingStreamSplitter;
-import io.datakernel.stream.processor.StreamReducerSimple;
-import io.datakernel.stream.processor.StreamReducers.BinaryAccumulatorReducer;
-import io.datakernel.stream.processor.StreamSplitter;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.stream.stats.StreamStatsBasic;
-import io.datakernel.stream.stats.StreamStatsDetailed;
-import io.datakernel.util.Initializable;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.function.Function;
 
-import static io.datakernel.util.LogUtils.toLogger;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {

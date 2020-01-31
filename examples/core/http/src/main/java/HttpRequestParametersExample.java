@@ -1,13 +1,16 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncServlet;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.RoutingServlet;
+import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launchers.http.HttpServerLauncher;
 
 import java.util.concurrent.Executor;
 
 import static io.datakernel.http.AsyncServletDecorator.loadBody;
-import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class HttpRequestParametersExample extends HttpServerLauncher {
@@ -25,15 +28,13 @@ public final class HttpRequestParametersExample extends HttpServerLauncher {
 				.map(POST, "/hello", loadBody()
 						.serve(request -> {
 							String name = request.getPostParameters().get("name");
-							return Promise.of(
-									HttpResponse.ok200()
-											.withHtml("<h1><center>Hello from POST, " + name + "!</center></h1>"));
+							return HttpResponse.ok200()
+									.withHtml("<h1><center>Hello from POST, " + name + "!</center></h1>");
 						}))
 				.map(GET, "/hello", request -> {
 					String name = request.getQueryParameter("name");
-					return Promise.of(
-							HttpResponse.ok200()
-									.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>"));
+					return HttpResponse.ok200()
+							.withHtml("<h1><center>Hello from GET, " + name + "!</center></h1>");
 				})
 				.map("/*", StaticServlet.ofClassPath(executor, RESOURCE_DIR)
 						.withIndexHtml());

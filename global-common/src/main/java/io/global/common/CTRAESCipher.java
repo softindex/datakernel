@@ -17,6 +17,7 @@
 package io.global.common;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import org.spongycastle.crypto.CipherParameters;
 
 import java.util.Arrays;
@@ -83,10 +84,12 @@ public final class CTRAESCipher {
 	}
 
 	public ByteBuf apply(ByteBuf byteBuf) {
-		// we assume that this we've 'consumed'
-		// the buffer and 'created' a new one in return
-		apply(byteBuf.array(), byteBuf.head(), byteBuf.readRemaining());
-		return byteBuf;
+		// this is needed because there might be multiple slices of the same backing array
+		ByteBuf newBuf = ByteBufPool.allocate(byteBuf.readRemaining());
+		byteBuf.drainTo(newBuf, byteBuf.readRemaining());
+		byteBuf.recycle();
+		apply(newBuf.array(), newBuf.head(), newBuf.readRemaining());
+		return newBuf;
 	}
 
 	public void reset() {

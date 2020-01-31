@@ -1,8 +1,8 @@
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.serializer.BinaryInput;
+import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutput;
 import org.jetbrains.annotations.Nullable;
 
 public class LWWObject<T> implements CrdtType<LWWObject<T>> {

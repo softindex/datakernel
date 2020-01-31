@@ -16,7 +16,6 @@
 
 package io.datakernel;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 
@@ -34,12 +33,10 @@ public final class GzipCompressingBehaviourExample {
 		RoutingServlet servlet = RoutingServlet.create()
 				// always responds in gzip
 				.map(GET, "/gzip/",
-						request -> Promise.of(
-								HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!"))))
+						request -> HttpResponse.ok200().withBodyGzipCompression().withBody(encodeAscii("Hello!")))
 				// never responds in gzip
 				.map(GET, "/nogzip/",
-						request -> Promise.of(
-								HttpResponse.ok200().withBody(encodeAscii("Hello!"))));
+						request -> HttpResponse.ok200().withBody(encodeAscii("Hello!")));
 
 		AsyncHttpServer server = AsyncHttpServer.create(eventloop, servlet).withListenPort(getFreePort());
 

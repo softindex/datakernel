@@ -6,8 +6,9 @@ import Paper from '@material-ui/core/Paper';
 import classNames from 'classnames';
 import DoneIcon from '@material-ui/icons/Done';
 import DoneAllIcon from '@material-ui/icons/DoneAll';
+import * as types from '../../modules/chatroom/MESSAGE_TYPES';
 
-function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
+function MessageItem({text, author, time, drawSide, loaded, type, shape, classes}) {
   return (
     <div
       className={classNames(classes.messageRow, {
@@ -32,7 +33,9 @@ function MessageItem({text, author, time, drawSide, loaded, shape, classes}) {
           variant="h6"
           gutterBottom
         >
-          {text}
+          {type === types.MESSAGE_REGULAR && text}
+          {type === types.MESSAGE_CALL && 'Starts the call'}
+          {type === types.MESSAGE_DROP && 'Finishes the call'}
         </Typography>
         <Typography
           color="textSecondary"

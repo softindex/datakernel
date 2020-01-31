@@ -134,7 +134,7 @@ function CreateDocumentDialog({classes, history, onClose, publicKey, enqueueSnac
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
-    [contactsOTStateManager]
+    [contactsOTStateManager, publicKey]
   );
   const contactsService = getInstance(ContactsService);
   const documentsService = getInstance(DocumentsService);

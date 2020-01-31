@@ -16,16 +16,15 @@
 
 package io.datakernel.ot;
 
-import io.datakernel.async.AsyncExecutors;
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
-import io.datakernel.async.Promise;
-import io.datakernel.async.RetryPolicy;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.process.AsyncExecutors;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.ot.OTNode.FetchData;
+import io.datakernel.ot.OTUplink.FetchData;
 import io.datakernel.ot.exceptions.OTTransformException;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -35,14 +34,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.async.AsyncSuppliers.coalesce;
-import static io.datakernel.async.Promises.sequence;
-import static io.datakernel.util.CollectionUtils.concat;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
-import static java.util.Collections.emptyList;
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Utils.nullToEmpty;
+import static io.datakernel.common.collection.CollectionUtils.concat;
+import static io.datakernel.promise.Promises.sequence;
 import static java.util.Collections.singletonList;
 
 public final class OTStateManager<K, D> implements EventloopService {
@@ -50,7 +49,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	private final Eventloop eventloop;
 	private final OTSystem<D> otSystem;
-	private final OTNode<K, D, Object> repository;
+	private final OTUplink<K, D, Object> uplink;
 
 	private OTState<D> state;
 
@@ -61,24 +60,27 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private List<D> workingDiffs = new ArrayList<>();
 
 	@Nullable
-	private Object pendingCommit;
-	private List<D> pendingCommitDiffs;
+	private Object pendingProtoCommit;
+	@Nullable
+	private List<D> pendingProtoCommitDiffs;
 
-	private final AsyncSupplierWithStatus<Void> sync = new AsyncSupplierWithStatus<>(coalesce(this::doSync));
+	private final AsyncSupplier<Void> sync = reuse(this::doSync);
+	private boolean isSyncing;
 
 	@Nullable
-	private AsyncSupplierWithStatus<Void> poll;
+	private AsyncSupplier<Void> poll;
+	private boolean isPolling;
 
 	@SuppressWarnings("unchecked")
-	private OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTNode<K, D, ?> repository, OTState<D> state) {
+	private OTStateManager(Eventloop eventloop, OTSystem<D> otSystem, OTUplink<K, D, ?> uplink, OTState<D> state) {
 		this.eventloop = eventloop;
 		this.otSystem = otSystem;
-		this.repository = (OTNode<K, D, Object>) repository;
+		this.uplink = (OTUplink<K, D, Object>) uplink;
 		this.state = state;
 	}
 
 	@NotNull
-	public static <K, D> OTStateManager<K, D> create(@NotNull Eventloop eventloop, @NotNull OTSystem<D> otSystem, @NotNull OTNode<K, D, ?> repository,
+	public static <K, D> OTStateManager<K, D> create(@NotNull Eventloop eventloop, @NotNull OTSystem<D> otSystem, @NotNull OTUplink<K, D, ?> repository,
 			@NotNull OTState<D> state) {
 		return new OTStateManager<>(eventloop, otSystem, repository, state);
 	}
@@ -95,7 +97,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	public OTStateManager<K, D> withPoll(@NotNull Function<AsyncSupplier<Void>, AsyncSupplier<Void>> pollPolicy) {
-		this.poll = new AsyncSupplierWithStatus<>(pollPolicy.apply(this::doPoll));
+		this.poll = pollPolicy.apply(this::doPoll);
 		return this;
 	}
 
@@ -117,14 +119,14 @@ public final class OTStateManager<K, D> implements EventloopService {
 	public Promise<Void> stop() {
 		poll = null;
 		return isValid() ?
-				sync().whenComplete(($, e) -> invalidateInternalState()) :
+				sync().whenComplete(this::invalidateInternalState) :
 				Promise.complete();
 	}
 
 	@NotNull
 	public Promise<Void> checkout() {
 		checkState(commitId == null);
-		return repository.checkout()
+		return uplink.checkout()
 				.whenResult(checkoutData -> {
 					state.init();
 					apply(checkoutData.getDiffs());
@@ -138,12 +140,13 @@ public final class OTStateManager<K, D> implements EventloopService {
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	private boolean isSyncing() {
-		return sync.isRunning();
+		return isSyncing;
 	}
 
 	private boolean isPolling() {
-		return poll != null;
+		return isPolling;
 	}
 
 	@NotNull
@@ -154,21 +157,25 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	private Promise<Void> doSync() {
 		checkState(isValid());
+		isSyncing = true;
 		return sequence(
 				this::push,
 				poll == null ? this::fetch : Promise::complete,
 				this::commit,
 				this::push)
-				.whenComplete(($, e) -> poll())
+				.whenComplete(() -> isSyncing = false)
+				.whenComplete(this::poll)
 				.whenComplete(toLogger(logger, thisMethod(), this));
 	}
 
 	private void poll() {
-		if (poll != null && !poll.isRunning()) {
+		if (poll != null && !isPolling()) {
+			isPolling = true;
 			poll.get()
 					.async()
+					.whenComplete(() -> isPolling = false)
 					.whenComplete(($, e) -> {
-						if (!sync.isRunning()) {
+						if (!isSyncing()) {
 							poll();
 						}
 					});
@@ -178,7 +185,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@NotNull
 	private Promise<Void> fetch() {
 		K fetchCommitId = this.commitId;
-		return repository.fetch(fetchCommitId)
+		return uplink.fetch(fetchCommitId)
 				.whenResult(fetchData -> rebase(fetchCommitId, fetchData))
 				.toVoid()
 				.whenComplete(toLogger(logger, thisMethod(), this));
@@ -188,9 +195,9 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private Promise<Void> doPoll() {
 		if (!isValid()) return Promise.complete();
 		K pollCommitId = this.commitId;
-		return repository.poll(pollCommitId)
+		return uplink.poll(pollCommitId)
 				.whenResult(fetchData -> {
-					if (!sync.isRunning()) {
+					if (!isSyncing()) {
 						rebase(pollCommitId, fetchData);
 					}
 				})
@@ -201,7 +208,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	private void rebase(K originalCommitId, FetchData<K, D> fetchData) {
 		logger.info("Rebasing - {} {}", originalCommitId, fetchData);
 		if (commitId != originalCommitId) return;
-		if (pendingCommit != null) return;
+		if (pendingProtoCommit != null) return;
 
 		List<D> fetchedDiffs = fetchData.getDiffs();
 
@@ -224,15 +231,15 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> commit() {
-		assert pendingCommit == null;
+		assert pendingProtoCommit == null;
 		if (workingDiffs.isEmpty()) return Promise.complete();
 		int originalSize = workingDiffs.size();
 		List<D> diffs = new ArrayList<>(otSystem.squash(workingDiffs));
-		return repository.createCommit(this.commitId, diffs, level)
-				.whenResult(commit -> {
-					assert pendingCommit == null;
-					pendingCommit = commit;
-					pendingCommitDiffs = diffs;
+		return uplink.createProtoCommit(this.commitId, diffs, level)
+				.whenResult(protoCommit -> {
+					assert pendingProtoCommit == null;
+					pendingProtoCommit = protoCommit;
+					pendingProtoCommitDiffs = diffs;
 					workingDiffs = new ArrayList<>(workingDiffs.subList(originalSize, workingDiffs.size()));
 				})
 				.toVoid()
@@ -241,12 +248,12 @@ public final class OTStateManager<K, D> implements EventloopService {
 
 	@NotNull
 	private Promise<Void> push() {
-		if (pendingCommit == null) return Promise.complete();
+		if (pendingProtoCommit == null) return Promise.complete();
 		K currentCommitId = this.commitId;
-		return repository.push(pendingCommit)
+		return uplink.push(pendingProtoCommit)
 				.whenResult(fetchData -> {
-					pendingCommit = null;
-					pendingCommitDiffs = null;
+					pendingProtoCommit = null;
+					pendingProtoCommitDiffs = null;
 					rebase(currentCommitId, fetchData);
 				})
 				.toVoid()
@@ -254,12 +261,12 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	public void reset() {
-		checkState(!sync.isRunning());
+		checkState(!isSyncing());
 		apply(otSystem.invert(
-				concat(pendingCommitDiffs != null ? pendingCommitDiffs : emptyList(), workingDiffs)));
+				concat(nullToEmpty(pendingProtoCommitDiffs), workingDiffs)));
 		workingDiffs.clear();
-		pendingCommit = null;
-		pendingCommitDiffs = null;
+		pendingProtoCommit = null;
+		pendingProtoCommitDiffs = null;
 	}
 
 	public void add(@NotNull D diff) {
@@ -294,15 +301,15 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	@SuppressWarnings("AssignmentToNull") // state is invalid, no further calls should be made
-	private void invalidateInternalState() {
+	public void invalidateInternalState() {
 		state = null;
 
 		commitId = null;
 		level = 0;
 		workingDiffs = null;
 
-		pendingCommit = null;
-		pendingCommitDiffs = null;
+		pendingProtoCommit = null;
+		pendingProtoCommitDiffs = null;
 
 		poll = null;
 	}
@@ -324,7 +331,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	public boolean hasPendingCommits() {
-		return pendingCommit != null;
+		return pendingProtoCommit != null;
 	}
 
 	@Override
@@ -332,7 +339,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 		return "{" +
 				"revision=" + commitId +
 				" workingDiffs:" + (workingDiffs != null ? workingDiffs.size() : null) +
-				" pendingCommits:" + (pendingCommit != null) +
+				" pendingCommits:" + (pendingProtoCommit != null) +
 				"}";
 	}
 }

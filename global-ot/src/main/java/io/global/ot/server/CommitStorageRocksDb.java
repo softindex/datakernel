@@ -1,13 +1,13 @@
 package io.global.ot.server;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.util.Tuple2;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.SignedData;
 import io.global.ot.api.*;
 import org.jetbrains.annotations.NotNull;
@@ -24,15 +24,15 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.function.Function;
 
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.thisMethod;
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.codec.StructuredCodecs.BYTE_CODEC;
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
 import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.thisMethod;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Utils.arrayStartsWith;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
+import static io.global.util.Utils.arrayStartsWith;
 import static java.util.Arrays.asList;
 
 public final class CommitStorageRocksDb implements CommitStorage, EventloopService {
@@ -403,7 +403,7 @@ public final class CommitStorageRocksDb implements CommitStorage, EventloopServi
 		return result;
 	}
 
-	private class Column<K, V> {
+	private static class Column<K, V> {
 		private final ColumnFamilyHandle handle;
 		private final StructuredCodec<K> keyCodec;
 		private final StructuredCodec<V> valueCodec;

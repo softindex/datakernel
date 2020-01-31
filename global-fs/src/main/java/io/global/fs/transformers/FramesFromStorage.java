@@ -16,8 +16,8 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Promise;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.promise.Promise;
 import io.global.fs.api.CheckpointStorage;
 import io.global.fs.api.DataFrame;
 

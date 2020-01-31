@@ -16,20 +16,20 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.collection.CollectionUtils;
+import io.datakernel.common.collection.Try;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.queue.ChannelBuffer;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.exception.UncheckedException;
-import io.datakernel.functional.Try;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.MemSize;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,13 +39,18 @@ import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
-import static io.datakernel.util.Recyclable.deepRecycle;
-import static io.datakernel.util.Recyclable.tryRecycle;
-import static io.datakernel.util.Utils.nullify;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.Utils.nullify;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.lang.Math.min;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -53,8 +58,6 @@ import static io.datakernel.util.Utils.nullify;
  * ChannelSupplierOfValue, ChannelSupplierEmpty.
  */
 public final class ChannelSuppliers {
-	private ChannelSuppliers() {
-	}
 
 	/**
 	 * @see #concat(Iterator)
@@ -359,8 +362,13 @@ public final class ChannelSuppliers {
 	}
 
 	public static InputStream channelSupplierAsInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier) {
+		return channelSupplierAsInputStream(eventloop, channelSupplier, Long.MAX_VALUE);
+	}
+
+	public static InputStream channelSupplierAsInputStream(Eventloop eventloop, ChannelSupplier<ByteBuf> channelSupplier, long miliseconds) {
 		return new InputStream() {
 			@Nullable ByteBuf current = null;
+			private boolean isClosed;
 
 			@Override
 			public int read() throws IOException {
@@ -369,28 +377,35 @@ public final class ChannelSuppliers {
 
 			@Override
 			public int read(@NotNull byte[] b, int off, int len) throws IOException {
-				return doRead(buf -> buf.read(b, off, len));
+				return doRead(buf -> buf.read(b, off, min(len, buf.readRemaining())));
+			}
+
+			@Override
+			public int available() {
+				return current != null && !isClosed ? current.readRemaining() : 0;
 			}
 
 			private int doRead(ToIntFunction<ByteBuf> reader) throws IOException {
+				checkState(!eventloop.inEventloopThread(), "In eventloop thread");
+				if (isClosed) return -1;
 				ByteBuf peeked = current;
 				if (peeked == null) {
-					ByteBuf buf;
+					ByteBuf buf = null;
 					do {
 						CompletableFuture<ByteBuf> future = eventloop.submit(channelSupplier::get);
 						try {
-							buf = future.get();
+							buf = future.get(miliseconds, MILLISECONDS);
 						} catch (InterruptedException e) {
-							eventloop.execute(channelSupplier::cancel);
+							isClosed = true;
+							eventloop.submit(() -> channelSupplier.close(e));
 							throw new IOException(e);
 						} catch (ExecutionException e) {
-							Throwable cause = e.getCause();
-							if (cause instanceof IOException) throw (IOException) cause;
-							if (cause instanceof RuntimeException) throw (RuntimeException) cause;
-							if (cause instanceof Exception) throw new IOException(cause);
-							throw (Error) cause;
+							handleException(e);
+						} catch (TimeoutException e) {
+							return -1; // cannot fetch more data
 						}
 						if (buf == null) {
+							isClosed = true;
 							return -1;
 						}
 					} while (!buf.canRead());
@@ -407,9 +422,35 @@ public final class ChannelSuppliers {
 			}
 
 			@Override
-			public void close() {
+			public void close() throws IOException {
+				checkState(!eventloop.inEventloopThread(), "In eventloop thread");
+				if (!isClosed) {
+					isClosed = true;
+					CompletableFuture<Void> close = eventloop.submit(() -> channelSupplier.streamTo(ChannelConsumers.recycling()));
+					try {
+						close.get();
+					} catch (InterruptedException e) {
+						throw new IOException(e);
+					} catch (ExecutionException e) {
+						handleException(e);
+					}
+				} else {
+					doClose();
+				}
+			}
+
+			private void handleException(Throwable e) throws IOException {
+				isClosed = true;
+				Throwable cause = e.getCause();
+				if (cause instanceof IOException) throw (IOException) cause;
+				if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+				if (cause instanceof Exception) throw new IOException(cause);
+				throw (Error) cause;
+			}
+
+			private void doClose() {
 				current = nullify(current, ByteBuf::recycle);
-				eventloop.execute(channelSupplier::close);
+				eventloop.submit((Runnable) channelSupplier::close);
 			}
 		};
 	}
@@ -432,6 +473,10 @@ public final class ChannelSuppliers {
 	public static final class ChannelSupplierOfValue<T> extends AbstractChannelSupplier<T> {
 		private T item;
 
+		public ChannelSupplierOfValue(@NotNull T item) {
+			this.item = item;
+		}
+
 		public T getValue() {
 			return item;
 		}
@@ -440,10 +485,6 @@ public final class ChannelSuppliers {
 			T item = this.item;
 			this.item = null;
 			return item;
-		}
-
-		public ChannelSupplierOfValue(@NotNull T item) {
-			this.item = item;
 		}
 
 		@Override

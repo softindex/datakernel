@@ -46,6 +46,7 @@ function CreateChatDialogView({
           <div className={`${classes.chipsContainer} scroller`}>
             {[...participants].map(([publicKey, name]) => (
               <ContactChip
+                key={publicKey}
                 color="primary"
                 label={name}
                 onDelete={onContactToggle.bind(this, publicKey)}
@@ -98,7 +99,7 @@ function CreateChatDialog({classes, history, onClose, publicKey, enqueueSnackbar
   const contactsOTStateManager = getInstance('contactsOTStateManager');
   const searchContactsService = useMemo(
     () => SearchContactsService.createFrom(contactsOTStateManager, publicKey),
-    [contactsOTStateManager]
+    [contactsOTStateManager, publicKey]
   );
   const contactsService = getInstance(ContactsService);
   const roomsService = getInstance(RoomsService);

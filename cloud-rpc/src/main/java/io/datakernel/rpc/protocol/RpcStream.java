@@ -16,25 +16,26 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.MemSize;
+import io.datakernel.common.exception.CloseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.process.ChannelDeserializer;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
-import io.datakernel.csp.process.ChannelSerializer;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.exception.CloseException;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.AbstractStreamSupplier;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.csp.ChannelDeserializer;
+import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.AbstractStreamSupplier;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.util.MemSize;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 public final class RpcStream {
 	private static final CloseException RPC_CLOSE_EXCEPTION = new CloseException(RpcStream.class, "RPC Channel Closed");
@@ -51,6 +52,7 @@ public final class RpcStream {
 		void onSenderSuspended();
 	}
 
+	@SuppressWarnings("FieldCanBeLocal")
 	private final boolean server;
 	private final AsyncTcpSocket socket;
 	private Listener listener;
@@ -66,7 +68,7 @@ public final class RpcStream {
 		if (this.server) {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
-				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
+				protected void onProduce(@NotNull StreamDataAcceptor<RpcMessage> dataAcceptor) {
 					receiver.getSupplier().resume(listener);
 					listener.onSenderReady(dataAcceptor);
 				}
@@ -85,7 +87,7 @@ public final class RpcStream {
 		} else {
 			sender = new AbstractStreamSupplier<RpcMessage>() {
 				@Override
-				protected void onProduce(StreamDataAcceptor<RpcMessage> dataAcceptor) {
+				protected void onProduce(@NotNull StreamDataAcceptor<RpcMessage> dataAcceptor) {
 					listener.onSenderReady(dataAcceptor);
 				}
 
@@ -153,6 +155,6 @@ public final class RpcStream {
 	}
 
 	public void close() {
-		getCurrentEventloop().post(() -> socket.close(RPC_CLOSE_EXCEPTION));
+		getCurrentEventloop().post(wrapContext(socket, () -> socket.close(RPC_CLOSE_EXCEPTION)));
 	}
 }

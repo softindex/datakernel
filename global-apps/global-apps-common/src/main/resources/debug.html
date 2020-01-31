@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Hosting debug</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="stylesheet" href="/debug/static/style.css">
+</head>
+<body>
+
+<div class="header row">
+  <div id="title" class="col-auto"></div>
+  <div class="col"></div>
+  <div class="col-auto">
+    <label class="btn btn-secondary non-default mb-0" id="polling">
+      <input type="checkbox" class="align-middle"> polling
+    </label>
+  </div>
+  <div class="col-auto btn-group">
+    <a href="/debug/ot" class="btn btn-secondary links d-none" id="ot-link">OT</a>
+    <a href="/debug/fs" class="btn btn-secondary links d-none" id="fs-link">FS</a>
+    <a href="/debug/kv" class="btn btn-secondary links d-none" id="kv-link">KV</a>
+  </div>
+</div>
+<div id="body"></div>
+
+<script type="application/javascript">
+  const enabledTypes = {enabled_types};
+  const pk = '{pk}';
+  const type = '{type}';
+</script>
+<script src="/debug/static/common.js"></script>
+<script src="/debug/static/{type}.js"></script>
+
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-dateFormat/1.0/jquery.dateFormat.min.js"
+        integrity="sha384-UOogAra4FheWB3/IBMJzelgdyE2qjnxxbeOjCF5c6IRvwKwGuAk0dZm9J8tw40wR"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"
+        integrity="sha384-jx+EoRqSnwNqHsZoMJl/OMDriDdzqdPXunQMsJOq6eUISEJxQkBgcR88EFkA2iHw"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"
+        integrity="sha384-f4dIboC5mwQKuVsNplQrKp19L8ttwIgw0LJNV0PsuIJYHTjIljdJ9cZdTqIVtk8y"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/lite.render.js"
+        integrity="sha384-c9XiWoJGmI7xy4ePo8MePqWol8l3tvIe2swNeEyYu67oLVLtZXi6C5QKAUg021v7"
+        crossorigin="anonymous"></script>
+</body>
+</html>

@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;
@@ -28,12 +28,14 @@ import java.net.UnknownHostException;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.http.HttpHeaders.HOST;
 
 /**
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
 	public static final ParseException INVALID_Q_VALUE = new ParseException("Value of 'q' should start either from 0 or 1");
+	private static final int URI_DEFAULT_CAPACITY = 1 << 5;
 
 	public static InetAddress inetAddress(String host) {
 		try {
@@ -78,8 +80,7 @@ public final class HttpUtils {
 	}
 
 	/*
-	 *  Checks only dot decimal format(192.168.0.208 for example)
-	 *  more -> https://en.wikipedia.org/wiki/IPv4
+	 * Checks only for a dot decimal format (192.168.0.208 for example) more -> https://en.wikipedia.org/wiki/IPv4
 	 */
 	private static boolean checkIpv4(byte[] bytes, int pos, int length) {
 		int start = pos;
@@ -255,5 +256,86 @@ public final class HttpUtils {
 			}
 		}
 		return 0;
+	}
+
+	/**
+	 * (RFC3986) scheme://authority/path/?query#fragment
+	 */
+	@Nullable
+	public static String getFullUri(HttpRequest request, int builderCapacity) {
+		String host = request.getHeader(HOST);
+		if (host == null) {
+			return null;
+		}
+		String query = request.getQuery();
+		String fragment = request.getFragment();
+		StringBuilder fullUriBuilder = new StringBuilder(builderCapacity)
+				.append(request.isHttps() ? "https://" : "http://")
+				.append(host)
+				.append(request.getPath());
+		if (!query.isEmpty()) {
+			fullUriBuilder.append("?").append(query);
+		}
+		if (!fragment.isEmpty()) {
+			fullUriBuilder.append("#").append(fragment);
+		}
+		return fullUriBuilder.toString();
+	}
+
+	@Nullable
+	public static String getFullUri(HttpRequest request) {
+		return getFullUri(request, URI_DEFAULT_CAPACITY);
+	}
+
+	/**
+	 * RFC-7231, sections 6.5 and 6.6
+	 */
+	public static String getHttpErrorTitle(int code) {
+		switch (code) {
+			case 400:
+				return "400. Bad Request";
+			case 402:
+				return "402. Payment Required";
+			case 403:
+				return "403. Forbidden";
+			case 404:
+				return "404. Not Found";
+			case 405:
+				return "405. Method Not Allowed";
+			case 406:
+				return "406. Not Acceptable";
+			case 408:
+				return "408. Request Timeout";
+			case 409:
+				return "409. Conflict";
+			case 410:
+				return "410. Gone";
+			case 411:
+				return "411. Length Required";
+			case 413:
+				return "413. Payload Too Large";
+			case 414:
+				return "414. URI Too Long";
+			case 415:
+				return "415. Unsupported Media Type";
+			case 417:
+				return "417. Expectation Failed";
+			case 426:
+				return "426. Upgrade Required";
+			case 500:
+				return "500. Internal Server Error";
+			case 501:
+				return "501. Not Implemented";
+			case 502:
+				return "502. Bad Gateway";
+			case 503:
+				return "503. Service Unavailable";
+			case 504:
+				return "504. Gateway Timeout";
+			case 505:
+				return "505. HTTP Version Not Supported";
+			default:
+				return code + ". Unknown HTTP code, returned from an error";
+		}
 	}
 }

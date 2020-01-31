@@ -1,0 +1,108 @@
+{{<base}}
+    {{$content}}
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-sm-5">
+                    <div class="card">
+                        <div class="card-header text-center font-weight-bold">IP ban for {{ban.ip}}</div>
+                        <div class="card-body">
+                            <div class="row px-4">
+                                <form class="validate" action="/admin/ip-bans/{{ban.banId}}" method="post"
+                                      novalidate>
+                                    <div class="form-row mb-2">
+                                        <div class="col-sm-2 col-form-label">IP:</div>
+                                        <div class="col-sm-10">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control text-center" name="ip_0"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.ipParts.value1}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="ip_1"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.ipParts.value2}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="ip_2"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.ipParts.value3}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="ip_3"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.ipParts.value4}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <div class="col-sm-2 col-form-label">Mask:</div>
+                                        <div class="col-sm-10">
+                                            <div class="input-group">
+                                                <input type="text" class="form-control text-center" name="mask_0"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.maskParts.value1}}{{^ban.maskParts.value1}}255{{/ban.maskParts.value1}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="mask_1"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.maskParts.value2}}{{^ban.maskParts.value2}}255{{/ban.maskParts.value2}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="mask_2"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.maskParts.value3}}{{^ban.maskParts.value3}}255{{/ban.maskParts.value3}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                                <span class="mt-auto">.</span>
+                                                <input type="text" class="form-control text-center" name="mask_3"
+                                                       data-post-button="#save"
+                                                       placeholder="xxx" value="{{ban.maskParts.value4}}{{^ban.maskParts.value4}}255{{/ban.maskParts.value4}}"
+                                                       required pattern="^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <div class="col-sm-2 col-form-label">Until:</div>
+                                        <div class="col-sm-10">
+                                            <div class="form-group">
+                                                <div class="input-group date" id="datetimepicker"
+                                                     data-target-input="nearest">
+                                                    <input type="text"
+                                                           class="form-control text-center datetimepicker-input"
+                                                           data-target="#datetimepicker" name="until"
+                                                           value="{{ban.ban.until}}"
+                                                           required/>
+                                                    <div class="input-group-append" data-target="#datetimepicker"
+                                                         data-toggle="datetimepicker">
+                                                        <div class="input-group-text"><i class="fa fa-calendar"></i>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <textarea class="form-control" name="reason" placeholder="Reason" required
+                                                  data-post-button="#save">{{ban.ban.reason}}</textarea>
+                                    </div>
+                                    <div class="row justify-content-center">
+                                        <button class="btn btn-primary mx-2" type="submit" name="action" value="save"
+                                                id="save">
+                                            save
+                                        </button>
+                                        {{#ban}}
+                                            <button class="btn btn-outline-primary mx-2" type="submit" name="action"
+                                                    value="unban">
+                                                unban
+                                            </button>
+                                        {{/ban}}
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{/content}}
+{{/base}}

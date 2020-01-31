@@ -62,7 +62,7 @@ public abstract class Key<T> {
 	}
 
 	/**
-	 * A default sublass to be used by {@link #of Key.of*} and {@link #ofType Key.ofType*} constructors
+	 * A default subclass to be used by {@link #of Key.of*} and {@link #ofType Key.ofType*} constructors
 	 */
 	private static final class KeyImpl<T> extends Key<T> {
 		private KeyImpl(Type type, Name name) {
@@ -151,7 +151,10 @@ public abstract class Key<T> {
 	@NotNull
 	private Type getTypeParameter() {
 		// this cannot possibly fail so not even a check here
-		return ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+		Type typeArgument = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments()[0];
+		Object outerInstance = ReflectionUtils.getOuterClassInstance(this);
+		// the outer instance is null in static context
+		return outerInstance != null ? Types.resolveTypeVariables(typeArgument, outerInstance.getClass(), outerInstance) : typeArgument;
 	}
 
 	@NotNull
@@ -171,7 +174,8 @@ public abstract class Key<T> {
 
 	/**
 	 * Returns a type parameter of the underlying type wrapped as a key with no name.
-	 * @throws IllegalStateException when undelying type is not a parameterized one.
+	 *
+	 * @throws IllegalStateException when underlying type is not a parameterized one.
 	 */
 	public <U> Key<U> getTypeParameter(int index) {
 		if (type instanceof ParameterizedType) {
@@ -206,7 +210,7 @@ public abstract class Key<T> {
 	 * and prepended name display string if this key has a name.
 	 */
 	public String getDisplayString() {
-		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getShortName(type);
+		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getDisplayName(type);
 	}
 
 	@Override

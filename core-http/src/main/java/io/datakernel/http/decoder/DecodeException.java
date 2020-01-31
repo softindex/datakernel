@@ -1,6 +1,6 @@
 package io.datakernel.http.decoder;
 
-import io.datakernel.exception.StacklessException;
+import io.datakernel.common.exception.StacklessException;
 import org.jetbrains.annotations.NotNull;
 
 /**

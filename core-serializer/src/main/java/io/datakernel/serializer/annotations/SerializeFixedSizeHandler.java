@@ -18,21 +18,17 @@ package io.datakernel.serializer.annotations;
 
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
-import io.datakernel.serializer.asm.SerializerGenArray;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
-import io.datakernel.serializer.asm.SerializerGenList;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefWithFixedSize;
 
 public final class SerializeFixedSizeHandler implements AnnotationHandler<SerializeFixedSize, SerializeFixedSizeEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
-		return (type, generics, fallback) -> {
-			if (fallback instanceof SerializerGenArray) {
-				return ((SerializerGenArray) fallback).fixedSize(annotation.value(), type);
+	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeFixedSize annotation, CompatibilityLevel compatibilityLevel) {
+		return (type, generics, target) -> {
+			if (target instanceof SerializerDefWithFixedSize) {
+				return ((SerializerDefWithFixedSize) target).ensureFixedSize(annotation.value());
 			}
-			if (fallback instanceof SerializerGenList) {
-				throw new UnsupportedOperationException();
-			}
-			throw new IllegalArgumentException("Unsupported serializer " + fallback);
+			throw new IllegalArgumentException("Unsupported serializer " + target);
 		};
 	}
 

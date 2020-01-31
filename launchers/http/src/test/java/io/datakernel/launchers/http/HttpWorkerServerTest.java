@@ -16,21 +16,20 @@
 
 package io.datakernel.launchers.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
-import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.net.PrimaryServer;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -49,8 +48,8 @@ import static org.junit.Assert.assertEquals;
 public final class HttpWorkerServerTest {
 	public static final int PORT = getFreePort();
 
-	@Rule
-	public ByteBufRule byteBufRule = new ByteBufRule();
+	@ClassRule
+	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
 	@Test
 	public void test() throws Exception {
@@ -58,8 +57,9 @@ public final class HttpWorkerServerTest {
 			@Provides
 			@Worker
 			AsyncServlet servlet(@WorkerId int worker) {
-				return request -> Promise.of(
-						HttpResponse.ok200().withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker))));
+				return request ->
+						HttpResponse.ok200()
+								.withBody(ByteBuf.wrapForReading(encodeAscii("Hello, world! #" + worker)));
 			}
 
 			@Override

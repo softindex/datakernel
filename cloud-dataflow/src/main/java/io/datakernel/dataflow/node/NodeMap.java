@@ -18,7 +18,7 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.processor.StreamMapper;
+import io.datakernel.datastream.processor.StreamMapper;
 
 import java.util.Collection;
 import java.util.function.Function;

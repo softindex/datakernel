@@ -27,6 +27,9 @@ import io.datakernel.cube.attributes.AbstractAttributeResolver;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.cube.ot.CubeDiffCodec;
 import io.datakernel.cube.ot.CubeOT;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.etl.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
@@ -37,14 +40,9 @@ import io.datakernel.ot.*;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.test.rules.EventloopRule;
 import org.jetbrains.annotations.Nullable;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 import javax.sql.DataSource;
@@ -62,7 +60,7 @@ import java.util.stream.Stream;
 import static io.datakernel.aggregation.AggregationPredicates.*;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.*;
 import static io.datakernel.aggregation.measure.Measures.*;
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.*;
 import static io.datakernel.cube.ComputedMeasures.*;
 import static io.datakernel.cube.Cube.AggregationConfig.id;
 import static io.datakernel.cube.CubeQuery.Ordering.asc;
@@ -71,9 +69,9 @@ import static io.datakernel.cube.ReportType.DATA_WITH_TOTALS;
 import static io.datakernel.cube.TestUtils.initializeRepository;
 import static io.datakernel.cube.http.ReportingTest.LogItem.*;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.datakernel.test.TestUtils.getFreePort;
-import static io.datakernel.util.CollectionUtils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Collections.singletonMap;
@@ -88,6 +86,9 @@ public final class ReportingTest {
 	private AsyncHttpServer cubeHttpServer;
 	private CubeHttpClient cubeHttpClient;
 	private Cube cube;
+
+	@ClassRule
+	public static final EventloopRule eventloopRule = new EventloopRule();
 
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -308,11 +309,12 @@ public final class ReportingTest {
 
 		DataSource dataSource = dataSource("test.properties");
 		OTSystem<LogDiff<CubeDiff>> otSystem = LogOT.createLogOT(CubeOT.createCubeOT());
-		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
+		OTRepositoryMySql<LogDiff<CubeDiff>> repository = OTRepositoryMySql.create(eventloop, executor, dataSource, new IdGeneratorStub(),
+				otSystem, LogDiffCodec.create(CubeDiffCodec.create(cube)));
 		initializeRepository(repository);
 
 		LogOTState<CubeDiff> cubeDiffLogOTState = LogOTState.create(cube);
-		OTNodeImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTNodeImpl.create(repository, otSystem);
+		OTUplinkImpl<Long, LogDiff<CubeDiff>, OTCommit<Long, LogDiff<CubeDiff>>> node = OTUplinkImpl.create(repository, otSystem);
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,

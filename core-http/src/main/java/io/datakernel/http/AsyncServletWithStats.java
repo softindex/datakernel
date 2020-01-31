@@ -1,10 +1,10 @@
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.PromiseStats;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;

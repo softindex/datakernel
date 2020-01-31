@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.QueryException;
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 
 import java.lang.reflect.Type;
 import java.util.Map;

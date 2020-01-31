@@ -16,9 +16,11 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.UncheckedException;
+import io.datakernel.promise.Promise;
+
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * A stub client which forwards requests straight to the underlying servlet without any real I/O operations.
@@ -35,19 +37,19 @@ public final class StubHttpClient implements IAsyncHttpClient {
 		return new StubHttpClient(servlet);
 	}
 
-	@SuppressWarnings("Duplicates") // this piece of error formatting is stolen directly from HttpServerConnection
+	// this piece of error formatting is stolen directly from HttpServerConnection
 	@Override
 	public Promise<HttpResponse> request(HttpRequest request) {
 		Promise<HttpResponse> servletResult;
 		try {
-			servletResult = servlet.serve(request);
+			servletResult = servlet.serveAsync(request);
 		} catch (UncheckedException u) {
 			servletResult = Promise.ofException(u.getCause());
 		}
 		return servletResult.thenEx((res, e) -> {
 			request.recycle();
 			if (e == null) {
-				Eventloop.getCurrentEventloop().post(res::recycle);
+				Eventloop.getCurrentEventloop().post(wrapContext(res, res::recycle));
 				return Promise.of(res);
 			} else {
 				return Promise.ofException(e);

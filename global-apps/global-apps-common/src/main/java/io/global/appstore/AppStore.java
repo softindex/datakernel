@@ -1,6 +1,6 @@
 package io.global.appstore;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.global.appstore.pojo.AppInfo;
 import io.global.appstore.pojo.HostingInfo;
 import io.global.appstore.pojo.Profile;

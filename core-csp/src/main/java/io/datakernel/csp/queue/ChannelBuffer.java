@@ -16,12 +16,12 @@
 
 package io.datakernel.csp.queue;
 
-import io.datakernel.async.Promise;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
 
 /**
  * Represents a queue of elements which you can {@code put} and {@code take}.
@@ -214,7 +214,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * @return element of this buffer at {@code head}
 	 * index if the buffer is not empty, otherwise {@code null}
 	 * @throws Exception if current {@code exception}
-	 * is not {@code null}
+	 *                   is not {@code null}
 	 */
 	@Nullable
 	public T poll() throws Exception {

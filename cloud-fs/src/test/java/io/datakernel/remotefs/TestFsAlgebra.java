@@ -29,9 +29,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.regex.Pattern;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.stream.Collectors.toSet;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public final class TestFsAlgebra {
 
@@ -75,9 +75,15 @@ public final class TestFsAlgebra {
 
 		upload(prefixed, "prefix/test.txt");
 		upload(prefixed, "prefix/deeper/test.txt");
-		upload(prefixed, "nonPrefix/test.txt");
 
 		expect("test.txt", "deeper/test.txt");
+
+		try {
+			upload(prefixed, "nonPrefix/test.txt");
+			fail("should've failed");
+		} catch (AssertionError e) {
+			assertSame(FsClient.BAD_PATH, e.getCause());
+		}
 	}
 
 	@Test

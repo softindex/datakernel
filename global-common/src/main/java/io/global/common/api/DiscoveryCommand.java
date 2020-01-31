@@ -21,6 +21,7 @@ import io.datakernel.http.HttpPathPart;
 public enum DiscoveryCommand implements HttpPathPart {
 	ANNOUNCE("announce"),
 	FIND("find"),
+	FIND_ALL("findAll"),
 	SHARE_KEY("shareKey"),
 	GET_SHARED_KEY("getSharedKey"),
 	GET_SHARED_KEYS("getSharedKeys");

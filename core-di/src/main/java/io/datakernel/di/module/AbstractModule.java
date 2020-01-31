@@ -22,12 +22,12 @@ import static io.datakernel.di.util.Utils.checkState;
  */
 @SuppressWarnings({"SameParameterValue", "UnusedReturnValue"})
 public abstract class AbstractModule implements Module {
-	private Trie<Scope, Map<Key<?>, Set<Binding<?>>>> bindings;
+	private Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings;
 	private Map<Integer, Set<BindingTransformer<?>>> bindingTransformers;
 	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators;
 	private Map<Key<?>, Multibinder<?>> multibinders;
 
-	private AtomicBoolean configured = new AtomicBoolean();
+	private final AtomicBoolean configured = new AtomicBoolean();
 
 	@Nullable
 	private ModuleBuilder builder = null;
@@ -66,7 +66,7 @@ public abstract class AbstractModule implements Module {
 	 */
 	protected final <T> ModuleBuilderBinder<T> bind(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bind(Key.ofType(Types.resolveTypeVariables(key.getType(), getClass()), key.getName()));
+		return builder.bind(key);
 	}
 
 	/**
@@ -109,16 +109,6 @@ public abstract class AbstractModule implements Module {
 	protected final <T> ModuleBuilder bindInstanceProvider(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bindInstanceProvider(key);
-	}
-
-	protected final <T> ModuleBuilder bindInstanceFactory(@NotNull Class<T> key) {
-		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bindInstanceFactory(key);
-	}
-
-	protected final <T> ModuleBuilder bindInstanceFactory(@NotNull Key<T> key) {
-		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bindInstanceFactory(key);
 	}
 
 	protected final <T> ModuleBuilder bindInstanceInjector(@NotNull Class<T> key) {
@@ -220,21 +210,6 @@ public abstract class AbstractModule implements Module {
 		bindIntoSet(setOf, Binding.toInstance(element));
 	}
 
-	/**
-	 * @see ModuleBuilder#postInjectInto(Key)
-	 */
-	protected final <T> void postInjectInto(Key<T> key) {
-		checkState(builder != null, "Cannot post inject into something before or after configure() call");
-		builder.postInjectInto(key);
-	}
-
-	/**
-	 * @see ModuleBuilder#postInjectInto(Key)
-	 */
-	protected final <T> void postInjectInto(Class<T> type) {
-		postInjectInto(Key.of(type));
-	}
-
 	protected final void scan(Object object) {
 		checkState(builder != null, "Cannot add declarative bindings before or after configure() call");
 		builder.scan(object);
@@ -250,7 +225,7 @@ public abstract class AbstractModule implements Module {
 			return;
 		}
 
-		ModuleBuilder b = Module.create().scan(getClass().getSuperclass(), this);
+		ModuleBuilder b = new ModuleBuilderImpl<>(getName(), location).scan(getClass().getSuperclass(), this);
 		ReflectionUtils.scanClassInto(getClass(), this, b); // so that provider methods and dsl bindings are in one 'export area'
 
 		builder = b;
@@ -264,7 +239,7 @@ public abstract class AbstractModule implements Module {
 	}
 
 	@Override
-	public final Trie<Scope, Map<Key<?>, Set<Binding<?>>>> getBindings() {
+	public final Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings() {
 		finish();
 		return bindings;
 	}
@@ -359,17 +334,15 @@ public abstract class AbstractModule implements Module {
 		return Module.super.rebindImports(rebinder);
 	}
 
-	@Override
-	public Trie<Scope, Map<Key<?>, Binding<?>>> getReducedBindings() {
-		return Module.super.getReducedBindings();
-	}
-
 	// endregion
+
+	private String getName() {
+		Class<?> cls = getClass();
+		return ReflectionUtils.getDisplayName(cls.isAnonymousClass() ? cls.getGenericSuperclass() : cls);
+	}
 
 	@Override
 	public String toString() {
-		Class<?> cls = getClass();
-		return ReflectionUtils.getShortName(cls.isAnonymousClass() ? cls.getGenericSuperclass() : cls) +
-				"(at " + (location != null ? location : "<unknown module location>") + ')';
+		return getName() + "(at " + (location != null ? location : "<unknown module location>") + ')';
 	}
 }

@@ -17,10 +17,10 @@
 package io.datakernel.dataflow.server;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.process.ChannelSerializer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.dataflow.graph.StreamId;
@@ -30,12 +30,12 @@ import io.datakernel.dataflow.server.command.DatagraphCommand;
 import io.datakernel.dataflow.server.command.DatagraphCommandDownload;
 import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
-import io.datakernel.eventloop.AbstractServer;
-import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.util.MemSize;
 
 import java.net.InetAddress;
 import java.time.Duration;

@@ -42,9 +42,9 @@ class OfflineGlobalFS extends EventEmitter {
     this._registerSync();
   }
 
-  async removeFile(fileName) {
+  async remove(fileName) {
     if (this._navigator.onLine) {
-      return await this._globalFS.removeFile(fileName);
+      return await this._globalFS.remove(fileName);
     }
 
     const fileOperation = await this._localforage.getItem(fileName);
@@ -61,12 +61,12 @@ class OfflineGlobalFS extends EventEmitter {
     this._registerSync();
   }
 
-  async removeDir(dirName) {
+  async removeDir(nestedData) {
     if (this._navigator.onLine) {
-      return await this._globalFS.removeDir(dirName);
+      return await this._globalFS.removeDir(nestedData);
     }
 
-    const dirOperation = await this._localforage.getItem(dirName);
+    const dirOperation = await this._localforage.getItem(nestedData[0]);
 
     if (dirOperation) {
       if (dirOperation.type === 'DELETE_FOLDER') {
@@ -74,8 +74,8 @@ class OfflineGlobalFS extends EventEmitter {
       }
       await this._localforage.removeItem(dirOperation);
     } else {
-      await this._removeNestedFromDB(dirName);
-      await this._localforage.setItem(dirName, {type: 'DELETE_FOLDER'});
+      await this._removeNestedFromDB(nestedData[0]);
+      await this._localforage.setItem(nestedData[0], {type: 'DELETE_FOLDER'});
     }
 
     this._registerSync();

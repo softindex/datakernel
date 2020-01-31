@@ -1,0 +1,284 @@
+.gallery {
+  -webkit-column-count: 3;
+  -moz-column-count: 3;
+  column-count: 3;
+}
+
+@media only screen and (max-width: 768px) {
+  .gallery {
+    -webkit-column-count: 1;
+    -moz-column-count: 1;
+    column-count: 1;
+  }
+}
+
+.boxShadow-sm {
+  -moz-box-shadow: 1px 1px 1px 2px #ccc;
+  -webkit-box-shadow: 1px 1px 2px 3px #ccc;
+  box-shadow: 1px 1px 2px 3px #ccc;
+}
+
+.boxShadow {
+  -moz-box-shadow: 3px 3px 5px 6px #ccc;
+  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+  box-shadow: 3px 3px 5px 6px #ccc;
+}
+
+.innerShadow {
+  -moz-box-shadow: inset 0 0 10px #000000;
+  -webkit-box-shadow: inset 0 0 10px #000000;
+  box-shadow: inset 0 0 10px #000000;
+}
+
+.videoBox {
+  background-color: whitesmoke;
+  border-radius: 5px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  -webkit-transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+  transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.videoBox::after {
+  z-index: -1;
+  top: 0;
+  left: 0;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  -webkit-transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+  transition: all 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.videoBox:hover {
+  -webkit-transform: scale(1.25, 1.25);
+  transform: scale(1.05, 1.05);
+}
+
+.videoBox:hover::after {
+  opacity: 1;
+}
+
+@media only screen and (max-width: 700px) {
+  .modal-content {
+    width: 100%;
+  }
+}
+
+
+@keyframes greyfade {
+  from {
+    background: lightgray;
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.target-fade {
+  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+  box-shadow:         3px 3px 5px 6px #ccc;
+}
+
+.pure-material-progress-circular {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 50%;
+  padding: 0.25em;
+  width: 3em;
+  height: 3em;
+  /*noinspection CssInvalidFunction*/
+  color: rgb(var(--pure-material-primary-rgb, 0, 0, 0));
+  background-color: transparent;
+  font-size: 16px;
+  overflow: hidden;
+}
+
+.pure-material-progress-circular::-webkit-progress-bar {
+  background-color: transparent;
+}
+
+/* Indeterminate */
+/*noinspection CssInvalidPropertyValue*/
+.pure-material-progress-circular:indeterminate {
+  -webkit-mask-image: linear-gradient(transparent 50%, black 50%), linear-gradient(to right, transparent 50%, black 50%);
+  mask-image: linear-gradient(transparent 50%, black 50%), linear-gradient(to right, transparent 50%, black 50%);
+  animation: pure-material-progress-circular 6s infinite cubic-bezier(0.3, 0.6, 1, 1);
+}
+
+/*noinspection ALL*/
+:-ms-lang(x), .pure-material-progress-circular:indeterminate {
+  animation: none;
+}
+
+.pure-material-progress-circular:indeterminate::before,
+.pure-material-progress-circular:indeterminate::-webkit-progress-value {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  margin-bottom: 0.25em;
+  border: solid 0.25em transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  width: 100% !important;
+  height: 100%;
+  background-color: transparent;
+  animation: pure-material-progress-circular-pseudo 0.75s infinite linear alternate;
+}
+
+.pure-material-progress-circular:indeterminate::-moz-progress-bar {
+  box-sizing: border-box;
+  border: solid 0.25em transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  animation: pure-material-progress-circular-pseudo 0.75s infinite linear alternate;
+}
+
+.pure-material-progress-circular:indeterminate::-ms-fill {
+  animation-name: -ms-ring;
+}
+
+@keyframes pure-material-progress-circular {
+  0% {
+    transform: rotate(0deg);
+  }
+  12.5% {
+    transform: rotate(180deg);
+    animation-timing-function: linear;
+  }
+  25% {
+    transform: rotate(630deg);
+  }
+  37.5% {
+    transform: rotate(810deg);
+    animation-timing-function: linear;
+  }
+  50% {
+    transform: rotate(1260deg);
+  }
+  62.5% {
+    transform: rotate(1440deg);
+    animation-timing-function: linear;
+  }
+  75% {
+    transform: rotate(1890deg);
+  }
+  87.5% {
+    transform: rotate(2070deg);
+    animation-timing-function: linear;
+  }
+  100% {
+    transform: rotate(2520deg);
+  }
+}
+
+@keyframes pure-material-progress-circular-pseudo {
+  0% {
+    transform: rotate(-30deg);
+  }
+  29.4% {
+    border-left-color: transparent;
+  }
+  29.41% {
+    border-left-color: currentColor;
+  }
+  64.7% {
+    border-bottom-color: transparent;
+  }
+  64.71% {
+    border-bottom-color: currentColor;
+  }
+  100% {
+    border-left-color: currentColor;
+    border-bottom-color: currentColor;
+    transform: rotate(225deg);
+  }
+}
+
+.hover-button {
+  -webkit-transition: all 0.3s;
+  transition: all 0.3s;
+  opacity: 0;
+}
+
+.hover-effect img {
+  -webkit-transition: all 0.3s;
+  transition: all 0.3s;
+}
+
+.hover-effect:hover img {
+  opacity: 0.8;
+}
+
+.hover-effect:hover .hover-button {
+  opacity: 100;
+}
+
+.video-selector {
+  opacity: 0;
+  transition-delay: 10ms;
+  transition-property: opacity;
+  position: absolute;
+  width: 100px;
+  color: white;
+  top: 0;
+  right: 0;
+  background-color: rgba(0,0,0,0.5)
+}
+
+.video-parent:hover .video-selector {
+  opacity: 1;
+}
+
+.img-view {
+  overflow: hidden;
+  border: solid rgba(0,0,0,0.2) 1px;
+  max-height: 130px;
+}
+
+@media only screen and (max-width: 1200px) and (min-width: 769px){
+  .img-view {
+    overflow: hidden;
+    border: solid rgba(0,0,0,0.2) 1px;
+    max-height: 120px;
+  }
+}
+
+.disabled-comments > * {
+  opacity: 0.4;
+}
+
+.disabled-comments button {
+  display: none;
+}
+
+.target-fade {
+  z-index: 100;
+  -moz-box-shadow:    3px 3px 5px 6px #ccc;
+  -webkit-box-shadow: 3px 3px 5px 6px #ccc;
+  box-shadow:         3px 3px 5px 3px #ccc;
+}
+
+.threadline {
+  width: 0.9em;
+}
+
+.threadline:hover .threadline-line, .threadline.collapsed .threadline-line {
+  background: black;
+  width: 2px;
+  border-top-right-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+.threadline-line {
+  width: 1px;
+  height: 100%;
+  background: #89939b;
+  transition: background .15s ease-in-out;
+}
+

@@ -16,9 +16,9 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.Promise;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 
 /**
  * Interface for various CRDT client implementations.

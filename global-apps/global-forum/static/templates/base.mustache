@@ -4,8 +4,19 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+
+    <link rel="stylesheet"
+          href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
           integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/css/tempusdominus-bootstrap-4.min.css"
+          integrity="sha384-Re/I8sla3AIFEoz6DrgkHWaLDSWKXaLOYm5yn3Gwmf/QhWS3/ajG7O2qr1zBmF3d" crossorigin="anonymous">
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.css"
+          integrity="sha384-fJH2gz4kcHl6LNRYI7TauVxjt5r/u+NfM+XpXDSSyHTCS7PMUXXW0Qo677Xr+bok" crossorigin="anonymous">
+
     <link rel="stylesheet" href="/static/style.css">
 
     <title>Global Forum</title>
@@ -14,7 +25,7 @@
 <body>
 <div class="container">
     <nav class="navbar navbar-expand-md navbar-light bg-light my-3">
-        <a class="navbar-brand" href="/">{{forum.name}}{{^forum.name}}Global Forum{{/forum.name}}</a>
+        <a class="navbar-brand" href="/">{{forum.title}}{{^forum.title}}Global Forum{{/forum.title}}</a>
 
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -24,20 +35,23 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav">
                 {{#user}}
-                    {{^creatingNewThread}}
-                        {{#user.role.known}}
-                            <li class="nav-item">
-                                <a class="nav-link" href="/new">New thread</a>
-                            </li>
-                        {{/user.role.known}}
-                    {{/creatingNewThread}}
+                    {{#user.role.known}}
+                        <li class="nav-item">
+                            <a class="nav-link" href="/new">New thread</a>
+                        </li>
+                    {{/user.role.known}}
+                    {{#user.role.privileged}}
+                        <li class="nav-item">
+                            <a class="nav-link text-success" href="/admin">Administration</a>
+                        </li>
+                    {{/user.role.privileged}}
                 {{/user}}
             </ul>
             <div class="row ml-auto mr-0">
                 {{^user}}
                     {{^loginScreen}}
                         <a class="btn btn-outline-success"
-                           href="{{appStoreUrl}}/oauth?redirectURI=http%3A//{{url.host}}/authorize%3Forigin=http%3A//{{url}}"
+                           href="{{appStoreUrl}}/oauth"
                            id="login_button">
                             Log In
                         </a>
@@ -45,7 +59,7 @@
                 {{/user}}
                 {{#user}}
                     <span class="navbar-text mr-2" style="position: relative;">
-                        Hello, <a class="stretched-link" href="/profile">{{username}}</a>
+                        Hello, <a class="stretched-link" href="/profile">{{user.name}}</a>
                     </span>
                     <form action="/logout" method="post">
                         <button class="btn btn-outline-success mx-2" type="submit">Log Out</button>
@@ -57,14 +71,20 @@
 </div>
 {{$content}}{{/content}}
 <script src="/static/main.js"></script>
-<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
-        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha384-tsQFqpEReu7ZLhBV2VZlAu7zcOV+rXbYlF2cqB8txI/8aZajjp4Bqd+V6D5IgvKT"
         crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
         integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
         crossorigin="anonymous"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
         integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"
+        integrity="sha384-fYxN7HsDOBRo1wT/NSZ0LkoNlcXvpDpFy6WzB42LxuKAX7sBwgo7vuins+E1HCaw"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tempusdominus-bootstrap-4/5.0.0-alpha14/js/tempusdominus-bootstrap-4.min.js"
+        integrity="sha384-97pmbvZb0qdIXSwrjd4JuG6+4TJhp4eL0totTka0FF1Bf2E42dPiSXsqq09yQxjD"
         crossorigin="anonymous"></script>
 </body>
 </html>

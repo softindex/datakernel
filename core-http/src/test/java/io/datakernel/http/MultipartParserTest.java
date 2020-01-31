@@ -17,8 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -28,8 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.common.collection.CollectionUtils.map;
+import static io.datakernel.promise.TestUtils.await;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
@@ -100,5 +103,24 @@ public final class MultipartParserTest {
 						"test-extra-header", "one",
 						"test-extra-header-2", "two")
 		), headers);
+	}
+
+	@Test
+	public void testSplitOnlyLastPart() {
+		// last boundary
+		ByteBuf buf = ByteBufStrings.wrapUtf8(BOUNDARY + "--" + CRLF);
+		MultipartParser parser = MultipartParser.create(BOUNDARY.substring(2));
+
+		await(parser.split(ChannelSupplier.of(buf), new MultipartParser.MultipartDataHandler() {
+			@Override
+			public Promise<? extends ChannelConsumer<ByteBuf>> handleField(String fieldName) {
+				return Promise.ofException(new AssertionError());
+			}
+
+			@Override
+			public Promise<? extends ChannelConsumer<ByteBuf>> handleFile(String fieldName, String fileName) {
+				return Promise.ofException(new AssertionError());
+			}
+		}));
 	}
 }

@@ -1,9 +1,9 @@
 package io.datakernel.ot.utils;
 
-import io.datakernel.async.Promise;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTCommitFactory;
 import io.datakernel.ot.OTRepository;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
@@ -11,7 +11,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toSet;
 
@@ -101,6 +101,11 @@ public final class OTRepositoryStub<K, D> implements OTRepository<K, D> {
 
 	public K doCreateCommitId() {
 		return revisionIdSupplier.get();
+	}
+
+	@Override
+	public @NotNull Promise<Boolean> hasCommit(@NotNull K revisionId) {
+		return Promise.of(commits.containsKey(revisionId));
 	}
 
 	@NotNull

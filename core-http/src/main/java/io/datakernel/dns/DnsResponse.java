@@ -16,7 +16,6 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.dns.DnsProtocol.ResponseErrorCode;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
@@ -28,20 +27,20 @@ public final class DnsResponse {
 	private final DnsTransaction transaction;
 	@Nullable
 	private final DnsResourceRecord record;
-	private final ResponseErrorCode errorCode;
+	private final DnsProtocol.ResponseErrorCode errorCode;
 
-	private DnsResponse(DnsTransaction transaction, @Nullable DnsResourceRecord record, ResponseErrorCode errorCode) {
+	private DnsResponse(DnsTransaction transaction, @Nullable DnsResourceRecord record, DnsProtocol.ResponseErrorCode errorCode) {
 		this.transaction = transaction;
 		this.errorCode = errorCode;
 		this.record = record;
 	}
 
 	public static DnsResponse of(DnsTransaction transactionId, DnsResourceRecord record) {
-		return new DnsResponse(transactionId, record, ResponseErrorCode.NO_ERROR);
+		return new DnsResponse(transactionId, record, DnsProtocol.ResponseErrorCode.NO_ERROR);
 	}
 
-	public static DnsResponse ofFailure(DnsTransaction transactionId, ResponseErrorCode errorCode) {
-		assert errorCode != ResponseErrorCode.NO_ERROR : "Creating failure DNS query response with NO_ERROR error code";
+	public static DnsResponse ofFailure(DnsTransaction transactionId, DnsProtocol.ResponseErrorCode errorCode) {
+		assert errorCode != DnsProtocol.ResponseErrorCode.NO_ERROR : "Creating failure DNS query response with NO_ERROR error code";
 		return new DnsResponse(transactionId, null, errorCode);
 	}
 
@@ -53,7 +52,7 @@ public final class DnsResponse {
 		return transaction;
 	}
 
-	public ResponseErrorCode getErrorCode() {
+	public DnsProtocol.ResponseErrorCode getErrorCode() {
 		return errorCode;
 	}
 

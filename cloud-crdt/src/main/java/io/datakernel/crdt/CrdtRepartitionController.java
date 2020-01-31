@@ -16,16 +16,16 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
+import io.datakernel.async.process.Cancellable;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamMapSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataAcceptor;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.StreamMapSplitter;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 public final class CrdtRepartitionController<I extends Comparable<I>, K extends Comparable<K>, S> implements EventloopJmxMBeanEx {

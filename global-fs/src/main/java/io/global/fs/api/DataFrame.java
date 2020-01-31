@@ -17,13 +17,13 @@
 package io.global.fs.api;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.Recyclable;
-import io.datakernel.util.Sliceable;
+import io.datakernel.common.Recyclable;
+import io.datakernel.common.Sliceable;
 import io.global.common.SignedData;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.Utils.nullify;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.Utils.nullify;
 
 public final class DataFrame implements Recyclable, Sliceable<DataFrame> {
 	@Nullable

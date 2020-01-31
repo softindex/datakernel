@@ -72,11 +72,11 @@ class RoomItem extends React.Component {
             <ContactMenu onAddContact={this.onClickAddContact.bind(this)}/>
           )}
           {this.props.showDeleteButton && (
-            <IconButton className={classes.deleteIcon}>
-              <DeleteIcon
-                onClick={this.onRemoveContact.bind(this, room)}
-                fontSize="medium"
-              />
+            <IconButton
+              className={classes.deleteIcon}
+              onClick={this.onRemoveContact.bind(this, room)}
+            >
+              <DeleteIcon/>
             </IconButton>
           )}
         </ListItem>

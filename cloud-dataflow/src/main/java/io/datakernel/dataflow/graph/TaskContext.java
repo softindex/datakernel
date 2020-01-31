@@ -17,15 +17,15 @@
 package io.datakernel.dataflow.graph;
 
 import io.datakernel.dataflow.server.DatagraphEnvironment;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.common.Preconditions.checkNotNull;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * Represents a context of a datagraph system: environment, suppliers and consumers.

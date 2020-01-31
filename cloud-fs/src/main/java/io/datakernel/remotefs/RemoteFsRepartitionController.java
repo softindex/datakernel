@@ -16,23 +16,22 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.AsyncSuppliers;
-import io.datakernel.async.AsyncSuppliers.AsyncSupplierWithStatus;
-import io.datakernel.async.Promise;
-import io.datakernel.async.Promises;
-import io.datakernel.async.SettablePromise;
+import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Initializable;
+import io.datakernel.common.collection.Try;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.functional.Try;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.PromiseStats;
-import io.datakernel.util.Initializable;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
+import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -45,12 +44,12 @@ import java.time.Duration;
 import java.util.*;
 import java.util.stream.Stream;
 
+import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.datakernel.async.util.LogUtils.Level.TRACE;
+import static io.datakernel.async.util.LogUtils.toLogger;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
-import static io.datakernel.util.LogUtils.Level.TRACE;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
 
 public final class RemoteFsRepartitionController implements Initializable<RemoteFsRepartitionController>, EventloopJmxMBeanEx, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsRepartitionController.class);
@@ -77,8 +76,8 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	private final PromiseStats singleFileRepartitionPromiseStats = PromiseStats.create(Duration.ofMinutes(5));
 
 	private RemoteFsRepartitionController(Eventloop eventloop, Object localPartitionId, RemoteFsClusterClient cluster,
-										  LocalFsClient localStorage, ServerSelector serverSelector, Map<Object, FsClient> clients,
-										  int replicationCount) {
+			LocalFsClient localStorage, ServerSelector serverSelector, Map<Object, FsClient> clients,
+			int replicationCount) {
 		this.eventloop = eventloop;
 		this.localPartitionId = localPartitionId;
 		this.cluster = cluster;
@@ -97,13 +96,13 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 				cluster.getServerSelector(), cluster.getAliveClients(), cluster.getReplicationCount());
 	}
 
-	public RemoteFsRepartitionController withGlob(String glob) {
-		this.glob = checkNotNull(glob, "glob");
+	public RemoteFsRepartitionController withGlob(@NotNull String glob) {
+		this.glob = glob;
 		return this;
 	}
 
-	public RemoteFsRepartitionController withNegativeGlob(String negativeGlob) {
-		this.negativeGlob = checkNotNull(negativeGlob, "negativeGlob");
+	public RemoteFsRepartitionController withNegativeGlob(@NotNull String negativeGlob) {
+		this.negativeGlob = negativeGlob;
 		return this;
 	}
 
@@ -130,12 +129,14 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 		return repartition.get();
 	}
 
-	private final AsyncSupplierWithStatus<Void> repartition = new AsyncSupplierWithStatus<>(AsyncSuppliers.reuse(this::doRepartition));
+	private final AsyncSupplier<Void> repartition = reuse(this::doRepartition);
+	private boolean isRepartitioning;
 
 	@NotNull
 	private Promise<Void> doRepartition() {
 		checkState(eventloop.inEventloopThread(), "Should be called from eventloop thread");
 
+		isRepartitioning = true;
 		return localStorage.list(glob)
 				.then(list -> {
 					allFiles = list.size();
@@ -153,6 +154,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 														return Promise.complete();
 													})));
 				})
+				.whenComplete(() -> isRepartitioning = false)
 				.whenComplete(repartitionPromiseStats.recordStats())
 				.thenEx(($, e) -> {
 					if (e != null) {
@@ -291,7 +293,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		return repartition.isRunning() ?
+		return isRepartitioning() ?
 				Promise.ofCallback(cb -> this.closeCallback = cb) :
 				Promise.complete();
 	}
@@ -304,7 +306,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@JmxAttribute
 	public boolean isRepartitioning() {
-		return repartition.isRunning();
+		return isRepartitioning;
 	}
 
 	@JmxAttribute

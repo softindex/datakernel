@@ -16,12 +16,13 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.Callback;
-import io.datakernel.exception.StacklessException;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.common.exception.StacklessException;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.RpcStrategyFirstValidResult.ResultValidator;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
+import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -165,7 +166,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			cb.accept(null, null);
 		}
 	}
@@ -179,7 +180,7 @@ public class RpcStrategyFirstValidResultTest {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			cb.accept((O) data, null);
 		}
 	}

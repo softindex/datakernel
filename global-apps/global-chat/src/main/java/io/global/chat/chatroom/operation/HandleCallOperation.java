@@ -8,7 +8,7 @@ import io.global.ot.map.SetValue;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.datakernel.util.CollectionUtils.first;
+import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.global.chat.Utils.HANDLE_CALL_SUBSYSTEM;
 import static java.lang.Boolean.FALSE;
 import static java.lang.Boolean.TRUE;

@@ -16,21 +16,22 @@
 
 package io.datakernel.jmx;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 
 final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 	private final Method getter;
 
-	public ValueFetcherFromGetterArrayAdapter(Method getter) {
-		this.getter = checkNotNull(getter);
+	public ValueFetcherFromGetterArrayAdapter(@NotNull Method getter) {
+		this.getter = getter;
 	}
 
 	@Override
@@ -48,7 +49,7 @@ final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 
 	private List<Object> wrapPrimitives(Object arr) {
 		int length = Array.getLength(arr);
-		if(length == 0) {
+		if (length == 0) {
 			return emptyList();
 		}
 

@@ -5,16 +5,15 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.AsyncTcpSocketNio;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.Scanner;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -23,11 +22,10 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public final class TcpClientExample {
 	private final Eventloop eventloop = Eventloop.create();
-	private AsyncTcpSocket socket;
 
 	/* Thread, which sends characters and prints received responses to the console. */
-	private Thread getScannerThread() {
-		return new Thread(() -> {
+	private void startCommandLineInterface(AsyncTcpSocket socket) {
+		Thread thread = new Thread(() -> {
 			Scanner scanIn = new Scanner(System.in);
 			while (true) {
 				String line = scanIn.nextLine();
@@ -39,30 +37,26 @@ public final class TcpClientExample {
 			}
 			eventloop.execute(socket::close);
 		});
+		thread.start();
 	}
 
 	//[START REGION_1]
 	private void run() {
 		System.out.println("Connecting to server at localhost (port 9922)...");
-		eventloop.connect(new InetSocketAddress("localhost", 9922), new ConnectCallback() {
-			@Override
-			public void onConnect(@NotNull SocketChannel socketChannel) {
+		eventloop.connect(new InetSocketAddress("localhost", 9922), (socketChannel, e) -> {
+			if (e == null) {
 				System.out.println("Connected to server, enter some text and send it by pressing 'Enter'.");
-				socket = AsyncTcpSocket.ofSocketChannel(socketChannel);
+				AsyncTcpSocket socket = AsyncTcpSocketNio.wrapChannel(getCurrentEventloop(), socketChannel, null);
 
 				BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket))
 						.parseStream(ByteBufsParser.ofCrlfTerminatedBytes())
 						.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.println(buf.asString(UTF_8))));
 
-				getScannerThread().start();
-			}
-
-			@Override
-			public void onException(@NotNull Throwable e) {
+				startCommandLineInterface(socket);
+			} else {
 				System.out.printf("Could not connect to server, make sure it is started: %s\n", e);
 			}
 		});
-
 		eventloop.run();
 	}
 

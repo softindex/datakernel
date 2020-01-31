@@ -5,13 +5,13 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel-launchers</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>remotefs-launchers</artifactId>
+  <artifactId>datakernel-launchers-remotefs</artifactId>
 
-  <name>Datakernel Launchers: FS</name>
+  <name>Launchers : FS</name>
 
   <dependencies>
     <dependency>
@@ -21,9 +21,25 @@
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>common-launchers</artifactId>
+      <artifactId>datakernel-launchers-common</artifactId>
       <version>${project.version}</version>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>io.datakernel.launchers.remotefs</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

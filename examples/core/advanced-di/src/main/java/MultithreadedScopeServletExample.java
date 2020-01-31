@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
@@ -9,6 +8,7 @@ import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.di.RequestScope;
 import io.datakernel.http.di.ScopeServlet;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
+import io.datakernel.promise.Promise;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 
@@ -16,7 +16,6 @@ import java.util.function.Function;
 
 //[START EXAMPLE]
 public final class MultithreadedScopeServletExample extends MultithreadedHttpServerLauncher {
-
 	@Provides
 	String string() {
 		return "root string";
@@ -26,7 +25,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 	@Worker
 	AsyncServlet servlet(@Named("1") AsyncServlet servlet1, @Named("2") AsyncServlet servlet2) {
 		return RoutingServlet.create()
-				.map("/", $ -> Promise.of(HttpResponse.ok200().withHtml("<a href=\"/first\">first</a><br><a href=\"/second\">second</a>")))
+				.map("/", request -> HttpResponse.ok200().withHtml("<a href=\"/first\">first</a><br><a href=\"/second\">second</a>"))
 				.map("/first", servlet1)
 				.map("/second", servlet2);
 	}
@@ -46,6 +45,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 			String content(HttpRequest request, @WorkerId int workerId, Function<Object[], String> template) {
 				return template.apply(new Object[]{workerId, request});
 			}
+
 			//[START REGION_1]
 			@Provides
 			@RequestScope
@@ -71,6 +71,7 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 			String content(HttpRequest request, @WorkerId int workerId, Function<Object[], String> template) {
 				return template.apply(new Object[]{workerId, request});
 			}
+
 			//[START REGION_2]
 			@Provides
 			@RequestScope

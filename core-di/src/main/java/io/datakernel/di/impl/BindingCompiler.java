@@ -1,10 +1,9 @@
 package io.datakernel.di.impl;
 
+import org.jetbrains.annotations.Nullable;
+
 @FunctionalInterface
 public interface BindingCompiler<R> {
-	CompiledBinding<R> compile(CompiledBindingLocator compiledBindings, boolean threadsafe, int scope, int index);
 
-	default CompiledBinding<R> compileForCreateOnly(CompiledBindingLocator compiledBindings, boolean threadsafe, int scope, int index) {
-		return compile(compiledBindings, threadsafe, scope, -1);
-	}
+	CompiledBinding<R> compile(CompiledBindingLocator compiledBindings, boolean threadsafe, int scope, @Nullable Integer slot);
 }

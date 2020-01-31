@@ -19,20 +19,20 @@ package io.datakernel.serializer.annotations;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder.Helper;
 import io.datakernel.serializer.StringFormat;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
-import io.datakernel.serializer.asm.SerializerGenString;
+import io.datakernel.serializer.impl.SerializerDefBuilder;
+import io.datakernel.serializer.impl.SerializerDefString;
 
 public class SerializeStringFormatHandler implements AnnotationHandler<SerializeStringFormat, SerializeStringFormatEx> {
 	@SuppressWarnings("deprecation") // compatibility
 	@Override
-	public SerializerGenBuilder createBuilder(Helper serializerBuilder, SerializeStringFormat annotation, CompatibilityLevel compatibilityLevel) {
-		return (type, generics, fallback) -> {
+	public SerializerDefBuilder createBuilder(Helper serializerBuilder, SerializeStringFormat annotation, CompatibilityLevel compatibilityLevel) {
+		return (type, generics, target) -> {
 			if (compatibilityLevel == CompatibilityLevel.LEVEL_1) {
 				if (annotation.value() == StringFormat.ISO_8859_1 || annotation.value() == StringFormat.UTF8) {
-					return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_MB3);
+					return ((SerializerDefString) target).encoding(StringFormat.UTF8_MB3);
 				}
 			}
-			return ((SerializerGenString) fallback).encoding(annotation.value());
+			return ((SerializerDefString) target).encoding(annotation.value());
 		};
 	}
 

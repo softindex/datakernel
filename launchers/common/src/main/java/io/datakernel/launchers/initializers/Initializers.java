@@ -16,21 +16,20 @@
 
 package io.datakernel.launchers.initializers;
 
-import io.datakernel.async.EventloopTaskScheduler;
+import io.datakernel.async.service.EventloopTaskScheduler;
+import io.datakernel.common.Initializer;
+import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
-import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.util.Initializer;
-import io.datakernel.util.MemSize;
+import io.datakernel.net.AbstractServer;
+import io.datakernel.net.PrimaryServer;
 
 import java.time.Duration;
 
 import static io.datakernel.config.ConfigConverters.*;
 
 public class Initializers {
-	private Initializers() {}
 
 	public static <T extends AbstractServer<T>> Initializer<T> ofAbstractServer(Config config) {
 		return server -> server

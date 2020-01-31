@@ -20,7 +20,7 @@ import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.graph.DataGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeReduceSimple;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +31,7 @@ public final class DatasetLocalSortReduce<K, I, O> extends LocallySortedDataset<
 	private final Reducer<K, I, O, ?> reducer;
 
 	public DatasetLocalSortReduce(LocallySortedDataset<K, I> input, Reducer<K, I, O, ?> reducer,
-	                              Class<O> resultType, Function<O, K> resultKeyFunction) {
+			Class<O> resultType, Function<O, K> resultKeyFunction) {
 		super(resultType, input.keyComparator(), input.keyType(), resultKeyFunction);
 		this.input = input;
 		this.reducer = reducer;

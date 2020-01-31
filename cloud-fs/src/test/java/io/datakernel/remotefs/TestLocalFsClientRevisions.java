@@ -1,9 +1,9 @@
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.Before;
@@ -14,9 +14,9 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapUtf8;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.*;

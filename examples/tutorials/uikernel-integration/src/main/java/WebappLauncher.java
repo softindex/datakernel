@@ -10,9 +10,9 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StaticServlet;
+import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.launcher.OnStart;
-import io.datakernel.loader.StaticLoader;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.uikernel.UiKernelServlets;
 

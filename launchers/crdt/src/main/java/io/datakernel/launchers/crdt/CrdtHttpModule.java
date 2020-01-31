@@ -16,10 +16,10 @@
 
 package io.datakernel.launchers.crdt;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.local.CrdtStorageMap;
@@ -27,9 +27,9 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.*;
-import io.datakernel.loader.StaticLoader;
+import io.datakernel.http.loader.StaticLoader;
+import io.datakernel.promise.Promise;
 
 import java.util.concurrent.Executor;
 

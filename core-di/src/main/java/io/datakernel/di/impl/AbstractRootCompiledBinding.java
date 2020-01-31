@@ -26,11 +26,5 @@ public abstract class AbstractRootCompiledBinding<R> implements CompiledBinding<
 		return instance;
 	}
 
-	@Override
-	public final R createInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope) {
-		return doCreateInstance(scopedInstances, synchronizedScope);
-	}
-
 	protected abstract R doCreateInstance(AtomicReferenceArray[] scopedInstances, int synchronizedScope);
-
 }

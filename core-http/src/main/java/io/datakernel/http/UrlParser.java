@@ -18,9 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -143,6 +143,9 @@ public final class UrlParser {
 			host = index;
 
 			short hostPortEnd = findHostPortEnd(host);
+			if (host == hostPortEnd || raw.indexOf(":", host) == host) {
+				throw new ParseException("Domain name cannot be null or empty");
+			}
 
 			if (raw.indexOf(IPV6_OPENING_BRACKET, index) != -1) {                   // parse IPv6
 				int closingSection = raw.indexOf(IPV6_CLOSING_SECTION_WITH_PORT, index);
@@ -239,7 +242,7 @@ public final class UrlParser {
 		if (host == -1) {
 			return null;
 		}
-		int end = path != -1 ? path : query != -1 ? query - 1 : raw.length();
+		int end = path != -1 ? path : query != -1 ? query - 1 : fragment != -1 ? fragment - 1 : raw.length();
 		return raw.substring(host, end);
 	}
 

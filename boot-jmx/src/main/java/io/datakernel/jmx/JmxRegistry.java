@@ -20,8 +20,9 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Name;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.UniqueNameImpl;
-import io.datakernel.jmx.JmxMBeans.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 import io.datakernel.worker.WorkerPool;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,11 +32,11 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.*;
 
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.ReflectionUtils.getAnnotationString;
-import static io.datakernel.util.StringFormatUtils.formatDuration;
-import static io.datakernel.util.StringFormatUtils.parseDuration;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.StringFormatUtils.formatDuration;
+import static io.datakernel.common.StringFormatUtils.parseDuration;
+import static io.datakernel.eventloop.util.ReflectionUtils.getAnnotationString;
+import static io.datakernel.jmx.Utils.*;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
@@ -58,12 +59,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private int registeredPools;
 	private int totallyRegisteredMBeans;
 
-	private JmxRegistry(MBeanServer mbs,
+	private JmxRegistry(@NotNull MBeanServer mbs,
 			DynamicMBeanFactory mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
-		this.mbs = checkNotNull(mbs);
-		this.mbeanFactory = checkNotNull(mbeanFactory);
+		this.mbs = mbs;
+		this.mbeanFactory = mbeanFactory;
 		this.keyToObjectNames = keyToObjectNames;
 		this.customTypes = customTypes;
 	}
@@ -85,19 +86,16 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	public void addWorkerPoolKey(WorkerPool workerPool, Key<?> workerPoolKey) {
-		check(!workerPoolKeys.containsKey(workerPool), "Key already added");
+		checkArgument(!workerPoolKeys.containsKey(workerPool), "Key already added");
 		workerPoolKeys.put(workerPool, workerPoolKey);
 	}
 
-	public void registerSingleton(Key<?> key, Object singletonInstance, @Nullable MBeanSettings settings) {
-		checkNotNull(singletonInstance);
-		checkNotNull(key);
-
+	public void registerSingleton(@NotNull Key<?> key, @NotNull Object singletonInstance, @NotNull MBeanSettings settings) {
 		Class<?> instanceClass = singletonInstance.getClass();
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			// this will throw exception if something happens during initialization
-			mbean = mbeanFactory.createFor(singletonList(singletonInstance), settings, true);
+			mbean = mbeanFactory.createDynamicMBean(singletonList(singletonInstance), settings, true);
 		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
 			mbean = singletonInstance;
 		} else {
@@ -141,9 +139,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void unregisterSingleton(Key<?> key, Object singletonInstance) {
-		checkNotNull(key);
-
+	public void unregisterSingleton(@NotNull Key<?> key, Object singletonInstance) {
 		if (isMBean(singletonInstance.getClass())) {
 			try {
 				String name = createNameForKey(key);
@@ -157,10 +153,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void registerWorkers(WorkerPool pool, Key<?> key, List<?> poolInstances, MBeanSettings settings) {
-		checkNotNull(poolInstances);
-		checkNotNull(key);
-
+	public void registerWorkers(@NotNull WorkerPool pool, Key<?> key, @NotNull List<?> poolInstances, MBeanSettings settings) {
 		if (poolInstances.size() == 0) {
 			logger.info(format("Pool of instances with key %s is empty", key.toString()));
 			return;
@@ -197,7 +190,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, settings, true);
+			mbean = mbeanFactory.createDynamicMBean(poolInstances, settings, true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -230,9 +223,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void unregisterWorkers(WorkerPool pool, Key<?> key, List<?> poolInstances) {
-		checkNotNull(key);
-
+	public void unregisterWorkers(WorkerPool pool, @NotNull Key<?> key, List<?> poolInstances) {
 		if (poolInstances.size() == 0) {
 			return;
 		}
@@ -277,23 +268,13 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	private boolean allInstancesAreOfSameType(List<?> instances) {
-		int last = instances.size() - 1;
-		for (int i = 0; i < last; i++) {
-			if (!instances.get(i).getClass().equals(instances.get(i + 1).getClass())) {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	private void registerMBeanForWorker(Object worker, int workerId, String commonName,
 			Key<?> key, MBeanSettings settings) {
 		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(singletonList(worker), settings, false);
+			mbean = mbeanFactory.createDynamicMBean(singletonList(worker), settings, false);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());
@@ -397,69 +378,6 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 						.collect(joining(";", "<", ">"));
 	}
 
-	private static boolean isStandardMBean(Class<?> clazz) {
-		return classImplementsInterfaceWithNameEndingWith(clazz, "MBean");
-	}
-
-	private static boolean isMXBean(Class<?> clazz) {
-		return classFollowsMXBeanConvention(clazz);
-	}
-
-	private static boolean classImplementsInterfaceWithNameEndingWith(Class<?> clazz, String ending) {
-		String clazzName = clazz.getSimpleName();
-		Class<?>[] interfaces = clazz.getInterfaces();
-		for (Class<?> anInterface : interfaces) {
-			String interfaceName = anInterface.getSimpleName();
-			if (interfaceName.equals(clazzName + ending)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static boolean classFollowsMXBeanConvention(Class<?> clazz) {
-		Class<?>[] interfazes = clazz.getInterfaces();
-		for (Class<?> interfaze : interfazes) {
-			if (interfaceFollowsMXBeanConvention(interfaze)) {
-				return true;
-			}
-		}
-
-		Class<?> superClazz = clazz.getSuperclass();
-		if (superClazz != null) {
-			return classFollowsMXBeanConvention(superClazz);
-		}
-
-		return false;
-	}
-
-	private static boolean interfaceFollowsMXBeanConvention(Class<?> interfaze) {
-		if (interfaze.getSimpleName().endsWith("MXBean") || interfaze.isAnnotationPresent(MXBean.class)) {
-			return true;
-		}
-
-		Class<?>[] subInterfazes = interfaze.getInterfaces();
-		for (Class<?> subInterfaze : subInterfazes) {
-			if (interfaceFollowsMXBeanConvention(subInterfaze)) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	private static boolean isJmxMBean(Class<?> clazz) {
-		return ConcurrentJmxMBean.class.isAssignableFrom(clazz) || EventloopJmxMBean.class.isAssignableFrom(clazz);
-	}
-
-	private static boolean isDynamicMBean(Class<?> clazz) {
-		return DynamicMBean.class.isAssignableFrom(clazz);
-	}
-
-	private static boolean isMBean(Class<?> clazz) {
-		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz) || isDynamicMBean(clazz);
-	}
-
 	// region jmx
 	@Override
 	public int getRegisteredSingletons() {
@@ -478,28 +396,28 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public String getRefreshPeriod() {
-		return formatDuration(((JmxMBeans) mbeanFactory).getSpecifiedRefreshPeriod());
+		return formatDuration(((DynamicMBeanFactoryImpl) mbeanFactory).getSpecifiedRefreshPeriod());
 	}
 
 	@Override
 	public void setRefreshPeriod(String refreshPeriod) {
-		((JmxMBeans) mbeanFactory).setRefreshPeriod(parseDuration(refreshPeriod));
+		((DynamicMBeanFactoryImpl) mbeanFactory).setRefreshPeriod(parseDuration(refreshPeriod));
 	}
 
 	@Override
 	public int getMaxRefreshesPerOneCycle() {
-		return ((JmxMBeans) mbeanFactory).getMaxJmxRefreshesPerOneCycle();
+		return ((DynamicMBeanFactoryImpl) mbeanFactory).getMaxJmxRefreshesPerOneCycle();
 	}
 
 	@Override
 	public void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle) {
-		((JmxMBeans) mbeanFactory).setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
+		((DynamicMBeanFactoryImpl) mbeanFactory).setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
 	}
 
 	@Override
 	public double[] getEffectiveRefreshPeriods() {
 		List<Integer> effectivePeriods =
-				new ArrayList<>(((JmxMBeans) mbeanFactory).getEffectiveRefreshPeriods().values());
+				new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getEffectiveRefreshPeriods().values());
 		double[] effectivePeriodsSeconds = new double[effectivePeriods.size()];
 		for (int i = 0; i < effectivePeriods.size(); i++) {
 			int periodMillis = effectivePeriods.get(i);
@@ -511,7 +429,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public int[] getRefreshableStatsCount() {
-		List<Integer> counts = new ArrayList<>(((JmxMBeans) mbeanFactory).getRefreshableStatsCounts().values());
+		List<Integer> counts = new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getRefreshableStatsCounts().values());
 		int[] refreshableStatsCountsArr = new int[counts.size()];
 		for (int i = 0; i < counts.size(); i++) {
 			Integer count = counts.get(i);

@@ -5,15 +5,15 @@
   <parent>
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <artifactId>datakernel-test</artifactId>
 
-  <name>DataKernel: Test utils</name>
+  <name>DataKernel : Test utils</name>
   <description>
-    Utils for test purposes, custom DatakernelRunner and custom JUnit rules.
+    Utils for test purposes, custom DataKernelRunner and custom JUnit rules.
   </description>
 
   <dependencies>

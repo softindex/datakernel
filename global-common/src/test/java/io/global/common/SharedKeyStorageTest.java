@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Function;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.dataSource;
 import static io.global.common.BinaryDataFormats.REGISTRY;
 import static java.util.concurrent.Executors.newCachedThreadPool;

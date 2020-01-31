@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css"
+          integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ"
+          crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon" />
+
+    <title>Global Photos</title>
+    {{$head}}{{/head}}
+</head>
+<body class="container" style="position: relative;">
+<div class="mt-3">
+    <div class="row {{^privileged}}d-flex justify-content-center{{/privileged}} mb-1">
+        <h3 class="col-sm-3 col-8"><a href="/" style="text-decoration: none;">Global Photos</a></h3>
+        {{#privileged}}
+            <div class="col-sm-2 col-4">
+                <form action="/{{pubKey}}/auth/logout" method="post">
+                    <button class="btn btn-sm btn-outline-success" type="submit">Log Out</button>
+                </form>
+            </div>
+        {{/privileged}}
+    </div>
+</div>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <h1>{{code}}</h1>
+    </div>
+    <hr class="col-1 my-1 bg-dark">
+    <div class="row justify-content-center text-secondary">
+        {{message}}{{^message}}Sorry, an error has occured!{{/message}}
+    </div>
+</div>
+
+<script src="/{{pubKey}}/static/main.js"></script>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+        integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"
+        crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"
+        integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"
+        crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+        integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+        crossorigin="anonymous"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.CollectionUtils.map;
+import static io.datakernel.common.collection.CollectionUtils.map;
 import static io.global.ot.map.SetValue.set;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;

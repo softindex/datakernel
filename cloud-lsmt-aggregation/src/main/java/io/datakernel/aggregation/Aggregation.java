@@ -20,19 +20,20 @@ import io.datakernel.aggregation.QueryPlan.Sequence;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
-import io.datakernel.async.Promise;
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.common.Initializable;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerWithResult;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.*;
+import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamSupplier;
-import io.datakernel.stream.processor.*;
-import io.datakernel.stream.processor.StreamReducers.Reducer;
-import io.datakernel.stream.stats.StreamStats;
-import io.datakernel.util.Initializable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -49,17 +50,19 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.datakernel.aggregation.AggregationUtils.*;
+import static io.datakernel.aggregation.Utils.*;
 import static io.datakernel.codegen.Expressions.arg;
 import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.stream.StreamSupplierTransformer.identity;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Utils.nullToSupplier;
+import static io.datakernel.common.collection.CollectionUtils.*;
+import static io.datakernel.datastream.StreamSupplierTransformer.identity;
 import static java.lang.Math.min;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.function.Predicate.isEqual;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
 
 /**
  * Represents an aggregation, which aggregates data using custom reducer and preaggregator.
@@ -125,8 +128,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @param aggregationChunkStorage storage for data chunks
 	 */
 	public static Aggregation create(Eventloop eventloop, Executor executor, DefiningClassLoader classLoader,
-			AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
-		checkArgument(structure != null, "Cannot create Aggregation with AggregationStructure that is null");
+			AggregationChunkStorage aggregationChunkStorage, @NotNull AggregationStructure structure) {
 		return new Aggregation(eventloop, executor, classLoader, aggregationChunkStorage, structure, new AggregationState(structure));
 	}
 
@@ -212,7 +214,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	public <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(Class<I> inputClass, Class<O> outputClass,
 			List<String> keys, List<String> measures,
 			DefiningClassLoader classLoader) {
-		return AggregationUtils.aggregationReducer(structure, inputClass, outputClass,
+		return Utils.aggregationReducer(structure, inputClass, outputClass,
 				keys, measures, classLoader);
 	}
 
@@ -224,7 +226,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	 * @return consumer for streaming data to aggregation
 	 */
 	@SuppressWarnings("unchecked")
-	public <T, C, K extends Comparable> Promise<AggregationDiff> consume(StreamSupplier<T> supplier,
+	public <T, C, K extends Comparable> StreamConsumerWithResult<T, AggregationDiff> consume(
 			Class<T> inputClass, Map<String, String> keyFields, Map<String, String> measureFields) {
 		checkArgument(new HashSet<>(getKeys()).equals(keyFields.keySet()), "Expected keys: %s, actual keyFields: %s", getKeys(), keyFields);
 		checkArgument(getMeasureTypes().keySet().containsAll(measureFields.keySet()), "Unknown measures: %s", difference(measureFields.keySet(),
@@ -252,13 +254,13 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 				keyFunction,
 				aggregate, chunkSize, classLoader);
 
-		return supplier.streamTo(groupReducer)
-				.then($ -> groupReducer.getResult())
-				.map(chunks -> AggregationDiff.of(new HashSet<>(chunks)));
+		return StreamConsumerWithResult.of(groupReducer,
+				groupReducer.getResult()
+						.map(chunks -> AggregationDiff.of(new HashSet<>(chunks))));
 	}
 
-	public <T> Promise<AggregationDiff> consume(StreamSupplier<T> supplier, Class<T> inputClass) {
-		return consume(supplier, inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
+	public <T> StreamConsumerWithResult<T, AggregationDiff> consume(Class<T> inputClass) {
+		return consume(inputClass, scanKeyFields(inputClass), scanMeasureFields(inputClass));
 	}
 
 	public double estimateCost(AggregationQuery query) {
@@ -294,32 +296,29 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		Comparator<T> keyComparator = createKeyComparator(resultClass, allKeys, classLoader);
 		BinarySerializer<T> binarySerializer = createBinarySerializer(structure, resultClass,
 				getKeys(), measures, classLoader);
-		Path sortDir = (temporarySortDir != null) ? temporarySortDir : createSortDir();
-		StreamSupplier<T> stream = unsortedStream
+		Path sortDir = nullToSupplier(temporarySortDir, this::createSortDir);
+		return unsortedStream
 				.transformWith(StreamSorter.create(
 						StreamSorterStorageImpl.create(executor, binarySerializer, sortDir),
-						Function.identity(), keyComparator, false, sorterItemsInMemory));
-
-		stream.getEndOfStream()
-				.whenComplete(($, e) -> {
-					if (temporarySortDir == null) {
-						deleteSortDirSilent(sortDir);
-					}
-				});
-		return stream;
+						Function.identity(), keyComparator, false, sorterItemsInMemory))
+				.withEndOfStream(p -> p
+						.whenComplete(() -> {
+							if (temporarySortDir == null) {
+								deleteSortDirSilent(sortDir);
+							}
+						}));
 	}
 
 	private Promise<List<AggregationChunk>> doConsolidation(List<AggregationChunk> chunksToConsolidate) {
 		Set<String> aggregationFields = new HashSet<>(getMeasures());
-		Set<String> chunkFields = new HashSet<>();
-		for (AggregationChunk chunk : chunksToConsolidate) {
-			for (String measure : chunk.getMeasures()) {
-				if (aggregationFields.contains(measure))
-					chunkFields.add(measure);
-			}
-		}
+		Set<String> chunkFields = chunksToConsolidate.stream()
+				.flatMap(chunk -> chunk.getMeasures().stream())
+				.filter(aggregationFields::contains)
+				.collect(toSet());
 
-		List<String> measures = getMeasures().stream().filter(chunkFields::contains).collect(toList());
+		List<String> measures = getMeasures().stream()
+				.filter(chunkFields::contains)
+				.collect(toList());
 		Class<Object> resultClass = createRecordClass(structure, getKeys(), measures, classLoader);
 
 		StreamSupplier<Object> consolidatedSupplier = consolidatedSupplier(getKeys(), measures, resultClass, AggregationPredicates.alwaysTrue(),
@@ -443,7 +442,7 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 		for (SequenceStream<S> sequence : sequences) {
 			Function<S, K> extractKeyFunction = createKeyFunction(sequence.type, keyClass, queryKeys, this.classLoader);
 
-			Reducer<K, S, R, Object> reducer = AggregationUtils.aggregationReducer(structure,
+			Reducer<K, S, R, Object> reducer = Utils.aggregationReducer(structure,
 					sequence.type, resultClass,
 					queryKeys, measures.stream().filter(sequence.fields::contains).collect(toList()),
 					classLoader);
@@ -488,8 +487,9 @@ public class Aggregation implements IAggregation, Initializable<Aggregation>, Ev
 	private <T> Predicate<T> createPredicate(Class<T> chunkRecordClass,
 			AggregationPredicate where, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Predicate.class)
+				.withClassKey(chunkRecordClass, where)
 				.withMethod("test", boolean.class, singletonList(Object.class),
-						where.createPredicateDef(cast(arg(0), chunkRecordClass), getKeyTypes()))
+						where.createPredicate(cast(arg(0), chunkRecordClass), getKeyTypes()))
 				.buildClassAndCreateNewInstance();
 	}
 

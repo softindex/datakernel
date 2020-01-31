@@ -39,6 +39,7 @@ function RoomsList({
           {[...rooms].map(([roomId, room]) =>
             (
               <RoomItem
+                key={roomId}
                 roomId={roomId}
                 room={room}
                 showDeleteButton={showDeleteButton}

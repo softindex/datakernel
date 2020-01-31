@@ -1,15 +1,17 @@
 package io.datakernel.service;
 
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.service.util.Utils.completedExceptionallyFuture;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
 public abstract class AbstractSupplierService<V> implements SupplierService<V> {
+	@Nullable
 	private V value;
 
 	private final Executor executor;

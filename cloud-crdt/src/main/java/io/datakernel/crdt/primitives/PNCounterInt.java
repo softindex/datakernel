@@ -16,9 +16,9 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.serializer.BinaryInput;
+import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
-import io.datakernel.serializer.util.BinaryInput;
-import io.datakernel.serializer.util.BinaryOutput;
 
 public final class PNCounterInt implements CrdtMergable<PNCounterInt> {
 	public static final BinarySerializer<PNCounterInt> SERIALIZER = new Serializer();

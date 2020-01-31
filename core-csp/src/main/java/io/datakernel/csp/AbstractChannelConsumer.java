@@ -16,13 +16,13 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.AbstractCancellable;
-import io.datakernel.async.Cancellable;
-import io.datakernel.async.Promise;
+import io.datakernel.async.process.AbstractCancellable;
+import io.datakernel.async.process.Cancellable;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.util.Recyclable.tryRecycle;
+import static io.datakernel.common.Recyclable.tryRecycle;
 
 public abstract class AbstractChannelConsumer<T> extends AbstractCancellable implements ChannelConsumer<T> {
 	// region creators

@@ -16,13 +16,13 @@
 
 package io.datakernel.service;
 
+import io.datakernel.common.Initializable;
+import io.datakernel.common.Stopwatch;
+import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.di.core.Name;
-import io.datakernel.jmx.ConcurrentJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.util.CollectionUtils;
-import io.datakernel.util.Initializable;
-import io.datakernel.util.Stopwatch;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -33,12 +33,14 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static io.datakernel.di.util.ReflectionUtils.getShortName;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.StringFormatUtils.formatDuration;
+import static io.datakernel.common.collection.CollectionUtils.concat;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.di.util.ReflectionUtils.getDisplayName;
+import static io.datakernel.di.util.Utils.union;
 import static io.datakernel.service.util.Utils.combineAll;
-import static io.datakernel.util.CollectionUtils.*;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkState;
-import static io.datakernel.util.StringFormatUtils.formatDuration;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;
@@ -189,9 +191,8 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return new ServiceGraph();
 	}
 
-	public ServiceGraph withStartCallback(Runnable startCallback) {
+	void setStartCallback(Runnable startCallback) {
 		this.startCallback = startCallback;
-		return this;
 	}
 
 	public ServiceGraph withGraphvizGraph(String graphvizGraph) {
@@ -251,26 +252,23 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		return "color=" + (colorOrAttribute.startsWith("#") ? "\"" + colorOrAttribute + "\"" : colorOrAttribute);
 	}
 
-	public ServiceGraph add(Key key, @Nullable Service service, Key... dependencies) {
+	public void add(Key key, @Nullable Service service, Key... dependencies) {
 		checkArgument(!services.containsKey(key), "Key has already been added");
 		if (service != null) {
 			services.put(key, service);
 		}
 		add(key, asList(dependencies));
-		return this;
 	}
 
-	public ServiceGraph add(Key key, Collection<Key> dependencies) {
+	public void add(Key key, Collection<Key> dependencies) {
 		for (Key dependency : dependencies) {
 			forwards.computeIfAbsent(key, o -> new HashSet<>()).add(dependency);
 			backwards.computeIfAbsent(dependency, o -> new HashSet<>()).add(key);
 		}
-		return this;
 	}
 
-	public ServiceGraph add(Key key, Key first, Key... rest) {
+	public void add(Key key, Key first, Key... rest) {
 		add(key, concat(singletonList(first), asList(rest)));
-		return this;
 	}
 
 	synchronized public boolean isStarted() {
@@ -528,7 +526,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		String keyIndex = key.getIndex();
 		NodeStatus status = nodeStatuses.get(key);
 		String label = (name != null ? name.getDisplayString() + "\\n" : "") +
-				getShortName(key.getType()) +
+				getDisplayName(key.getType()) +
 				(keySuffix == null ? "" :
 						"[" + keySuffix + "]") +
 				(keyIndex == null ? "" :

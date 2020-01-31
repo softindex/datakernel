@@ -2,7 +2,6 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
-import io.datakernel.serializer.annotations.SerializeNullableEx;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -66,17 +65,19 @@ public final class ComplexObjectExample {
 		public List<String> listOfNullableStrings;
 
 		@Serialize(order = 3)
-		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0})})
+		@SerializeNullable
+		@SerializeNullable(path = {0})
+		@SerializeNullable(path = {0, 0})
 		public String[][] nullableArrayOfNullableArrayOfNullableStrings;
 
 		@Serialize(order = 4)
-		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {1})})
+		@SerializeNullable(path = {0})
+		@SerializeNullable(path = {1})
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		BinarySerializer<T> serializer = SerializerBuilder
-				.create(getContextClassLoader())
+		BinarySerializer<T> serializer = SerializerBuilder.create(getContextClassLoader())
 				.build(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}

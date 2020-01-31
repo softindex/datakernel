@@ -1,5 +1,6 @@
 import java.util.HashMap;
 import java.util.Map;
+
 //[START EXAMPLE]
 public final class AuthServiceImpl implements AuthService {
 	private Map<String, String> credentials = new HashMap<>();

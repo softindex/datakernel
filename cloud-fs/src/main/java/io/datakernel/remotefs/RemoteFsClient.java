@@ -16,23 +16,24 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.Promise;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.RefLong;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelConsumers;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.ByteBufSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.exception.StacklessException;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.PromiseStats;
-import io.datakernel.net.SocketSettings;
+import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
 import io.datakernel.remotefs.RemoteFsResponses.*;
-import io.datakernel.util.ref.RefLong;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -43,15 +44,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
 
+import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 import static io.datakernel.remotefs.RemoteFsUtils.KNOWN_ERRORS;
-import static io.datakernel.util.LogUtils.toLogger;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * An implementation of {@link FsClient} which connects to a single {@link RemoteFsServer} and communicates with it.
  */
-public final class RemoteFsClient implements FsClient, EventloopService {
+public final class RemoteFsClient implements FsClient, EventloopService, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClient.class);
 
 	public static final StacklessException INVALID_MESSAGE = new StacklessException(RemoteFsClient.class, "Invalid or unexpected message received");
@@ -65,7 +65,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 
-	private SocketSettings socketSettings = SocketSettings.create();
+	private SocketSettings socketSettings = SocketSettings.createDefault();
 
 	//region JMX
 	private final PromiseStats connectPromise = PromiseStats.create(Duration.ofMinutes(5));
@@ -102,9 +102,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<ByteBuf>> upload(String filename, long offset, long revision) {
-		checkNotNull(filename, "fileName");
-
+	public Promise<ChannelConsumer<ByteBuf>> upload(@NotNull String filename, long offset, long revision) {
 		return connect(address)
 				.then(messaging ->
 						messaging.send(new Upload(filename, offset, revision))
@@ -140,9 +138,7 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<ChannelSupplier<ByteBuf>> download(String name, long offset, long length) {
-		checkNotNull(name, "fileName");
-
+	public Promise<ChannelSupplier<ByteBuf>> download(@NotNull String name, long offset, long length) {
 		return connect(address)
 				.then(messaging ->
 						messaging.send(new Download(name, offset, length))
@@ -182,46 +178,42 @@ public final class RemoteFsClient implements FsClient, EventloopService {
 	}
 
 	@Override
-	public Promise<Void> move(String name, String target, long targetRevision, long tombstoneRevision) {
+	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return simpleCommand(new Move(name, target, targetRevision, tombstoneRevision), MoveFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, "move", name, target, targetRevision, tombstoneRevision, this))
 				.whenComplete(movePromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> copy(String name, String target, long targetRevision) {
+	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return simpleCommand(new Copy(name, target, targetRevision), CopyFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, "copy", name, target, targetRevision, this))
 				.whenComplete(copyPromise.recordStats());
 	}
 
 	@Override
-	public Promise<Void> delete(String name, long revision) {
+	public Promise<Void> delete(@NotNull String name, long revision) {
 		return simpleCommand(new Delete(name, revision), DeleteFinished.class, $ -> (Void) null)
 				.whenComplete(toLogger(logger, "delete", name, revision, this))
 				.whenComplete(deletePromise.recordStats());
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> listEntities(String glob) {
-		checkNotNull(glob, "glob");
-
+	public Promise<List<FileMetadata>> listEntities(@NotNull String glob) {
 		return simpleCommand(new RemoteFsCommands.List(glob, true), ListFinished.class, ListFinished::getFiles)
 				.whenComplete(toLogger(logger, "listEntities", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	@Override
-	public Promise<List<FileMetadata>> list(String glob) {
-		checkNotNull(glob, "glob");
-
+	public Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return simpleCommand(new RemoteFsCommands.List(glob, false), ListFinished.class, ListFinished::getFiles)
 				.whenComplete(toLogger(logger, "list", glob, this))
 				.whenComplete(listPromise.recordStats());
 	}
 
 	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
-		return AsyncTcpSocketImpl.connect(address, 0, socketSettings)
+		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.map(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
 				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
 				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))

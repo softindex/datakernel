@@ -1,7 +1,7 @@
-import io.datakernel.async.Promise;
+import io.datakernel.datastream.*;
+import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
-import io.datakernel.stream.processor.StreamTransformer;
+import io.datakernel.promise.Promise;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 

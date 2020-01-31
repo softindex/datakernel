@@ -18,8 +18,8 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerToList;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamConsumerToList;
 
 import java.util.ArrayList;
 import java.util.Collection;

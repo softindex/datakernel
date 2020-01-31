@@ -1,6 +1,6 @@
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 import util.Person;
 import util.Registry;
 

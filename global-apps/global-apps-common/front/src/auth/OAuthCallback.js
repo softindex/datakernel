@@ -5,23 +5,32 @@ import {withRouter} from 'react-router-dom';
 import {AuthContext} from "./AuthContext";
 import AfterAuthRedirect from "./AfterAuthRedirect";
 
-function OAuthCallback({location, authByPrivateKey}) {
+function OAuthCallback({location, authByToken, authorized}) {
   const params = qs.parse(location.search);
 
   useEffect(() => {
-    if (params.privateKey) {
-      authByPrivateKey(params.privateKey);
+    if (params.token) {
+      authByToken(params.token);
     }
-  });
+  }, []);
 
-  return <AfterAuthRedirect/>;
+  if (authorized) {
+    return <AfterAuthRedirect/>;
+  }
+
+  if (!params.token) {
+    return 'No token received';
+  }
+
+  return null;
 }
 
 export default connectService(
-  AuthContext, (state, accountService) => ({
-    authByPrivateKey(privateKey) {
-      accountService.authByPrivateKey(privateKey);
-    }
+  AuthContext, ({authorized}, accountService) => ({
+    authByToken(token) {
+      accountService.authByToken(token);
+    },
+    authorized
   })
 )(
   withRouter(OAuthCallback)

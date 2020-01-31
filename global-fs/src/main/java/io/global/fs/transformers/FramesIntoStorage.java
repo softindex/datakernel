@@ -16,7 +16,7 @@
 
 package io.global.fs.transformers;
 
-import io.datakernel.async.Promise;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.fs.api.CheckpointStorage;

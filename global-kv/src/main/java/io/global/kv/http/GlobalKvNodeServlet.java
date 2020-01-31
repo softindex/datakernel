@@ -16,17 +16,18 @@
 
 package io.global.kv.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.json.JsonUtils;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.reflection.TypeT;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsParser;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpException;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
-import io.datakernel.util.TypeT;
+import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
 import io.global.common.SignedData;
 import io.global.kv.api.GlobalKvNode;
@@ -93,9 +94,9 @@ public final class GlobalKvNodeServlet {
 							String table = request.getPathParameter("table");
 							try {
 								PubKey space = PubKey.fromString(parameterSpace);
-								return node.get(space, table, body.asArray())
+								return node.get(space, table, body.getArray())
 										.map(item ->
-												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC, item)));
+												HttpResponse.ok200().withBody(encode(KV_ITEM_CODEC.nullable(), item)));
 							} catch (ParseException e) {
 								return Promise.ofException(HttpException.ofCode(400, e));
 							}
@@ -120,7 +121,7 @@ public final class GlobalKvNodeServlet {
 						return node.list(space)
 								.map(list ->
 										HttpResponse.ok200()
-												.withBody(encode(SET_STRING_CODEC, list)));
+												.withJson(JsonUtils.toJson(SET_STRING_CODEC, list)));
 					} catch (ParseException e) {
 						return Promise.ofException(HttpException.ofCode(400, e));
 					}

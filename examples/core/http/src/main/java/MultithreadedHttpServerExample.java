@@ -1,4 +1,3 @@
-import io.datakernel.async.Promise;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -15,9 +14,8 @@ public final class MultithreadedHttpServerExample extends MultithreadedHttpServe
 	@Provides
 	@Worker
 	AsyncServlet servlet(@WorkerId int workerId) {
-		return request -> Promise.of(
-				HttpResponse.ok200()
-						.withPlainText("Hello from worker server #" + workerId + "\n"));
+		return request -> HttpResponse.ok200()
+				.withPlainText("Hello from worker server #" + workerId + "\n");
 	}
 
 	public static void main(String[] args) throws Exception {

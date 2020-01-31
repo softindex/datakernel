@@ -16,10 +16,10 @@
 
 package io.global.ot.util;
 
-import io.datakernel.async.AsyncSupplier;
-import io.datakernel.async.Promise;
+import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.promise.Promise;
 import io.global.common.Hash;
 import io.global.common.PubKey;
 import io.global.common.SharedSimKey;
@@ -66,7 +66,7 @@ public class FailingGlobalOTNode implements GlobalOTNode {
 	}
 
 	@Override
-	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId, Set<CommitId> remoteSnapshots) {
+	public Promise<Set<CommitId>> listSnapshots(RepoID repositoryId) {
 		return Promise.ofException(ERROR);
 	}
 

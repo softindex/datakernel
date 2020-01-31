@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.http.HttpHeaders.*;
@@ -27,19 +28,28 @@ import static io.datakernel.http.HttpHeaders.*;
  */
 @FunctionalInterface
 public interface HttpExceptionFormatter {
-	String INTERNAL_SERVER_ERROR_HTML =
-			"<!doctype html>" +
-					"<html lang=\"en\">" +
-					"<head>" +
-					"<meta charset=\"UTF-8\">" +
-					"<title>Internal Server Error</title>" +
-					"<style>h1, p { font-family: sans-serif; }</style>" +
-					"</head>" +
-					"<body>" +
-					"<h1 style=\"text-align: center;\">Internal Server Error</h1>" +
-					"<hr><p style=\"text-align: center;\">DataKernel 3.0.0</p>" +
-					"</body>" +
-					"</html>";
+	String DATAKERNEL_VERSION = "3.2-SNAPSHOT";
+
+	@Language("HTML")
+	String HTTP_ERROR_HTML = "<!doctype html>" +
+			"<html lang=\"en\">" +
+			"<head>" +
+			"<meta charset=\"UTF-8\">" +
+			"<title>{title}</title>" +
+			"<style>h1, p { font-family: sans-serif; }</style>" +
+			"</head>" +
+			"<body>" +
+			"<h1 style=\"text-align: center;\">{title}</h1>" +
+			"<hr>" +
+			"<p style=\"text-align: center\">{message}</p>" +
+			"<hr>" +
+			"<p style=\"text-align: center;\">DataKernel " + DATAKERNEL_VERSION + "</p>" +
+			"</body>" +
+			"</html>";
+
+	String INTERNAL_SERVER_ERROR_HTML = HTTP_ERROR_HTML
+			.replace("{title}", "Internal Server Error")
+			.replace("<p style=\"text-align: center\">{message}</p><hr>", "");
 
 	@NotNull
 	HttpResponse formatException(@NotNull Throwable e);
@@ -51,12 +61,12 @@ public interface HttpExceptionFormatter {
 	HttpExceptionFormatter DEFAULT_FORMATTER = e -> {
 		HttpResponse response;
 		if (e instanceof HttpException) {
-			response = ((HttpException) e).createResponse();
+			int code = ((HttpException) e).getCode();
+			response = HttpResponse.ofCode(code).withHtml(HTTP_ERROR_HTML.replace("{title}", HttpUtils.getHttpErrorTitle(code)).replace("{message}", e.toString()));
 		} else {
-			// default formatter leaks no information about unknown exceptions
-			response = HttpResponse.ofCode(500)
-					.withHtml(INTERNAL_SERVER_ERROR_HTML);
+			response = HttpResponse.ofCode(500).withHtml(INTERNAL_SERVER_ERROR_HTML);
 		}
+		// default formatter leaks no information about unknown exceptions
 		return response
 				.withHeader(CACHE_CONTROL, "no-store")
 				.withHeader(PRAGMA, "no-cache")
@@ -66,22 +76,15 @@ public interface HttpExceptionFormatter {
 	/**
 	 * This formatter prints the stacktrace of the exception into the HTTP response.
 	 */
-	HttpExceptionFormatter DEBUG_FORMATTER = e -> {
-		HttpResponse response;
-		if (e instanceof HttpException) {
-			response = ((HttpException) e).createResponse();
-		} else {
-			response = DebugStacktraceRenderer.render(e);
-		}
-		return response
-				.withHeader(CACHE_CONTROL, "no-store")
-				.withHeader(PRAGMA, "no-cache")
-				.withHeader(AGE, "0");
-	};
+	HttpExceptionFormatter DEBUG_FORMATTER = e ->
+			DebugStacktraceRenderer.render(e, e instanceof HttpException ? ((HttpException) e).getCode() : 500)
+					.withHeader(CACHE_CONTROL, "no-store")
+					.withHeader(PRAGMA, "no-cache")
+					.withHeader(AGE, "0");
 
 	/**
-	 * This formatter if either one of {@link #DEFAULT_FORMATTER} or {@link #DEBUG_FORMATTER}, depending on whether
-	 * the application was started from the IntelliJ IDE or not.
+	 * This formatter if either one of {@link #DEFAULT_FORMATTER} or {@link #DEBUG_FORMATTER},
+	 * depending on whether you start the application from the IntelliJ IDE or not.
 	 */
 	HttpExceptionFormatter COMMON_FORMATTER =
 			System.getProperty("java.class.path", "").contains("idea_rt.jar") ?

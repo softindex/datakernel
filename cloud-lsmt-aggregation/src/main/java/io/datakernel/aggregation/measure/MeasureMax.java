@@ -18,7 +18,7 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Property;
+import io.datakernel.codegen.Variable;
 
 import static io.datakernel.codegen.Expressions.*;
 
@@ -34,31 +34,30 @@ public final class MeasureMax extends Measure {
 	}
 
 	@Override
-	public Expression zeroAccumulator(Property accumulator) {
+	public Expression zeroAccumulator(Variable accumulator) {
 		return voidExp();
 	}
 
 	@Override
-	public Expression initAccumulatorWithAccumulator(Property accumulator,
-	                                                 Expression firstAccumulator) {
+	public Expression initAccumulatorWithAccumulator(Variable accumulator, Expression firstAccumulator) {
 		return set(accumulator, firstAccumulator);
 	}
 
 	@Override
-	public Expression reduce(Property accumulator,
-			Property nextAccumulator) {
-		return set(accumulator, callStatic(Math.class, "max", accumulator, nextAccumulator));
+	public Expression reduce(Variable accumulator,
+			Variable nextAccumulator) {
+		return set(accumulator, staticCall(Math.class, "max", accumulator, nextAccumulator));
 	}
 
 	@Override
-	public Expression initAccumulatorWithValue(Property accumulator,
-			Property firstValue) {
+	public Expression initAccumulatorWithValue(Variable accumulator,
+			Variable firstValue) {
 		return set(accumulator, firstValue);
 	}
 
 	@Override
-	public Expression accumulate(Property accumulator,
-			Property nextValue) {
-		return set(accumulator, callStatic(Math.class, "max", accumulator, nextValue));
+	public Expression accumulate(Variable accumulator,
+			Variable nextValue) {
+		return set(accumulator, staticCall(Math.class, "max", accumulator, nextValue));
 	}
 }

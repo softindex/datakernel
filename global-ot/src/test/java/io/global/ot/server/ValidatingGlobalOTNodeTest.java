@@ -1,9 +1,9 @@
 package io.global.ot.server;
 
-import io.datakernel.async.RetryPolicy;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.RetryPolicy;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import io.global.common.*;
@@ -21,11 +21,11 @@ import org.junit.Test;
 import java.util.HashSet;
 import java.util.Set;
 
-import static io.datakernel.async.TestUtils.await;
-import static io.datakernel.async.TestUtils.awaitException;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
-import static io.datakernel.util.CollectionUtils.map;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.common.collection.CollectionUtils.map;
+import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.global.ot.server.ValidatingGlobalOTNode.*;
 import static io.global.ot.util.BinaryDataFormats.REGISTRY;
 import static io.global.ot.util.HttpDataFormats.COMMIT_CODEC;

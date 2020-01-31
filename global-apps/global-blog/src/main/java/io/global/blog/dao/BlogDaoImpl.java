@@ -1,11 +1,11 @@
 package io.global.blog.dao;
 
-import io.datakernel.async.Promise;
+import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.di.annotation.Inject;
 import io.datakernel.ot.OTStateManager;
-import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.promise.Promise;
 import io.global.comm.dao.CommDao;
 import io.global.common.KeyPair;
-import io.global.blog.container.BlogUserContainer;
 import io.global.blog.ot.BlogMetadata;
 import io.global.ot.api.CommitId;
 import io.global.ot.value.ChangeValue;
@@ -13,25 +13,27 @@ import io.global.ot.value.ChangeValueContainer;
 
 public final class BlogDaoImpl implements BlogDao {
 	private final OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager;
-	private final BlogUserContainer container;
 	private final ChangeValueContainer<BlogMetadata> metadataView;
+
+	@Inject private KeyPair keys;
+	@Inject private CommDao commDao;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public BlogDaoImpl(BlogUserContainer container) {
-		this.metadataStateManager = container.getMetadataStateManager();
-		this.container = container;
+	@Inject
+	public BlogDaoImpl(OTStateManager<CommitId, ChangeValue<BlogMetadata>> metadataStateManager) {
+		this.metadataStateManager = metadataStateManager;
 		metadataView = (ChangeValueContainer<BlogMetadata>) metadataStateManager.getState();
 	}
 
 	@Override
 	public KeyPair getKeys() {
-		return container.getKeys();
+		return keys;
 	}
 
 	@Override
 	public CommDao getCommDao() {
-		return container.getComm().getCommDao();
+		return commDao;
 	}
 
 	@Override
@@ -49,7 +51,7 @@ public final class BlogDaoImpl implements BlogDao {
 	public Promise<Void> setBlogDescription(String description) {
 		BlogMetadata prev = metadataView.getValue();
 		return applyAndSync(metadataStateManager,
-				ChangeValue.of(prev, new BlogMetadata(prev == null ? null : prev.getName(), description), now.currentTimeMillis()));
+				ChangeValue.of(prev, new BlogMetadata(prev == null ? null : prev.getTitle(), description), now.currentTimeMillis()));
 	}
 
 	private static <T> Promise<Void> applyAndSync(OTStateManager<CommitId, T> stateManager, T op) {

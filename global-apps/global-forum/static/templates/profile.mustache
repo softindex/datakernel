@@ -1,60 +1,117 @@
 {{<base}}
     {{$content}}
         <div class="container">
-            <h3 class="text-center">Profile:</h3>
 
-            <form class="m-2" action="/profile/{{userId}}" method="post">
-                <div class="form-group row">
-                    <div class="col-sm-2 col-form-label">Username</div>
-                    <div class="col-sm-10">
-                        <input type="text" class="form-control" id="username" name="username" placeholder="Username"
-                               value="{{shownUser.username}}">
+            <div class="card">
+                <div class="card-header text-center font-weight-bold">Profile:</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-auto mb-2 pr-0">
+                            <div class="p-1 border border-secondary" style="border-radius: 5px">
+                                {{#shownUser}}
+                                    {{<avatar}}{{$size}}80{{/size}}{{/avatar}}
+                                {{/shownUser}}
+                            </div>
+                        </div>
+                        <div class="col">
+                            <form class="validate" action="/profile/{{shownUser.userId}}" method="post"
+                                  novalidate>
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">Username</div>
+                                    <div class="col-sm">
+                                        <input type="text" class="form-control" name="username"
+                                               placeholder="Username"
+                                               data-post-button="#save"
+                                               value="{{shownUser.name}}"
+                                               pattern="\s*(?=\S).{1,60}\s*">
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">Email</div>
+                                    <div class="col-sm">
+                                        <input type="text" class="form-control" name="email" placeholder="Email"
+                                               value="{{shownUser.email}}"
+                                               data-post-button="#save"
+                                               pattern="\s*(?=\S).{1,60}\s*"
+                                               required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">Real name</div>
+                                    <div class="col col-sm-5">
+                                        <input class="form-control" type="text" name="first_name"
+                                               placeholder="First name"
+                                               data-post-button="#save"
+                                               value="{{shownUser.firstName}}"
+                                               pattern="\s*(?=\S).{1,60}\s*">
+                                    </div>
+                                    <div class="col col-sm-5">
+                                        <input class="form-control" type="text" name="last_name" placeholder="Last name"
+                                               data-post-button="#save"
+                                               value="{{shownUser.lastName}}"
+                                               pattern="\s*(?=\S).{1,60}\s*">
+                                    </div>
+                                </div>
+
+                                <div class="form-group row">
+                                    <div class="col-sm-2 col-form-label">User ID</div>
+                                    <div class="col-sm align-self-center">
+                                        <input type="text" readonly
+                                               class="form-control-plaintext small text-center autocopy"
+                                               value="{{shownUser.userId}}">
+                                    </div>
+                                </div>
+
+                                {{#shownUser.ip}}
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label">Last Used IP</div>
+                                        <div class="col-sm align-self-center">
+                                            <input type="text" readonly class="form-control-plaintext"
+                                                   value="{{.}}">
+                                        </div>
+                                    </div>
+                                {{/shownUser.ip}}
+
+                                {{#shownUser.ban}}
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label"><b>Banned until</b></div>
+                                        <div class="col-sm align-self-center">
+                                            {{until}}
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label"><b>Ban reason</b></div>
+                                        <div class="col-sm align-self-center multiline">{{reason}}</div>
+                                    </div>
+                                {{/shownUser.ban}}
+
+                                {{#user.role.privileged}}
+                                    <div class="form-group row">
+                                        <div class="col-sm-2 col-form-label"><b>Moderation</b></div>
+                                        <div class="col-1 px-1 align-self-center">
+                                            <a href="/admin/user-ban/{{shownUser.userId}}"
+                                               class="btn btn-block btn-sm btn-outline-success">{{#shownUser.ban}}
+                                                edit ban{{/shownUser.ban}}{{^shownUser.ban}}ban{{/shownUser.ban}}</a>
+                                        </div>
+                                        {{#shownUser.ip}}
+                                            <div class="col-1 px-1 align-self-center">
+                                                <a href="/admin/ip-bans/new?ip={{.}}"
+                                                class="btn btn-block btn-sm btn-outline-success">ban ip</a>
+                                            </div>
+                                        {{/shownUser.ip}}
+                                    </div>
+                                {{/user.role.privileged}}
+
+                                <div class="row">
+                                    <button class="btn btn-lg btn-primary mx-auto" type="submit" id="save">Save</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
-
-                <div class="form-group row">
-                    <div class="col-sm-2 col-form-label">Email</div>
-                    <div class="col-sm-10">
-                        <input type="text" class="form-control" id="email" name="email" placeholder="Email"
-                               value="{{shownUser.email}}">
-                    </div>
-                </div>
-
-                <div class="form-group row">
-                    <div class="col-sm-2 col-form-label">Real name</div>
-                    <div class="col col-sm-5">
-                        <input class="form-control" type="text" name="first_name" placeholder="First name"
-                               value="{{shownUser.firstName}}">
-                    </div>
-                    <div class="col col-sm-5">
-                        <input class="form-control" type="text" name="last_name" placeholder="Last name"
-                               value="{{shownUser.lastName}}">
-                    </div>
-                </div>
-
-                <div class="form-group row">
-                    <div class="col-sm-2 col-form-label">User ID</div>
-                    <div class="col-sm-10 align-self-center">
-                        <input type="text" readonly class="form-control-plaintext small text-center autocopy"
-                               value="{{userId}}">
-                    </div>
-                </div>
-
-                <div class="row">
-                    <button class="btn btn-lg btn-primary mx-auto" type="submit">Save</button>
-                </div>
-            </form>
-            {{#user.banState}}
-                <div class="row">
-                    Ban state:
-                </div>
-                <div class="row">
-                    until: {{until}}
-                </div>
-                <div class="row">
-                    reason: {{reason}}
-                </div>
-            {{/user.banState}}
+            </div>
         </div>
     {{/content}}
 {{/base}}

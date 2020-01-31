@@ -16,11 +16,11 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.Callback;
+import io.datakernel.async.callback.Callback;
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopServer;
-import io.datakernel.eventloop.EventloopService;
-import io.datakernel.net.BlockingSocketServer;
+import io.datakernel.eventloop.net.BlockingSocketServer;
+import io.datakernel.net.EventloopServer;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;
@@ -30,18 +30,12 @@ import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.*;
 
+import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static org.slf4j.LoggerFactory.getLogger;
 
-/**
- * Static utility methods pertaining to ConcurrentService. Creates
- * ConcurrentService from some other type of instances.
- */
 @SuppressWarnings("WeakerAccess")
 public final class ServiceAdapters {
 	private static final Logger logger = getLogger(ServiceAdapters.class);
-
-	private ServiceAdapters() {
-	}
 
 	public static abstract class SimpleServiceAdapter<S> implements ServiceAdapter<S> {
 		private final boolean startConcurrently;
@@ -108,14 +102,14 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<?> start(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.start().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(wrapContext(instance, () -> instance.start().whenComplete(completeFuture(future))));
 				return future;
 			}
 
 			@Override
 			public CompletableFuture<?> stop(EventloopService instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.stop().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(wrapContext(instance, () -> instance.stop().whenComplete(completeFuture(future))));
 				return future;
 			}
 		};
@@ -126,21 +120,21 @@ public final class ServiceAdapters {
 			@Override
 			public CompletableFuture<?> start(EventloopServer instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> {
+				instance.getEventloop().execute(wrapContext(instance, () -> {
 					try {
 						instance.listen();
 						future.complete(null);
 					} catch (IOException e) {
 						future.completeExceptionally(e);
 					}
-				});
+				}));
 				return future;
 			}
 
 			@Override
 			public CompletableFuture<?> stop(EventloopServer instance, Executor executor) {
 				CompletableFuture<?> future = new CompletableFuture<>();
-				instance.getEventloop().execute(() -> instance.close().whenComplete(completeFuture(future)));
+				instance.getEventloop().execute(wrapContext(instance, () -> instance.close().whenComplete(completeFuture(future))));
 				return future;
 			}
 		};
@@ -200,7 +194,7 @@ public final class ServiceAdapters {
 	}
 
 	/**
-	 * Returns factory which transforms blocking Service to asynchronous non-blocking ConcurrentService. It runs blocking operations from other thread from
+	 * Returns factory which transforms blocking Service to asynchronous non-blocking CompletableFuture. It runs blocking operations from other thread from
 	 * executor.
 	 */
 	public static ServiceAdapter<BlockingService> forBlockingService() {
@@ -232,7 +226,7 @@ public final class ServiceAdapters {
 	}
 
 	/**
-	 * Returns factory which transforms Timer to ConcurrentService. On starting it doing nothing, on stop it cancel timer.
+	 * Returns factory which transforms Timer to CompletableFuture. On starting it doing nothing, on stop it cancel timer.
 	 */
 	public static ServiceAdapter<Timer> forTimer() {
 		return new SimpleServiceAdapter<Timer>(false, false) {
@@ -248,7 +242,7 @@ public final class ServiceAdapters {
 	}
 
 	/**
-	 * Returns factory which transforms ExecutorService to ConcurrentService. On starting it doing nothing, on stopping it shuts down ExecutorService.
+	 * Returns factory which transforms ExecutorService to CompletableFuture. On starting it doing nothing, on stopping it shuts down ExecutorService.
 	 */
 	public static ServiceAdapter<ExecutorService> forExecutorService() {
 		return new SimpleServiceAdapter<ExecutorService>(false, true) {
@@ -271,7 +265,7 @@ public final class ServiceAdapters {
 	}
 
 	/**
-	 * Returns factory which transforms Closeable object to ConcurrentService. On starting it doing nothing, on stopping it close Closeable.
+	 * Returns factory which transforms Closeable object to CompletableFuture. On starting it doing nothing, on stopping it close Closeable.
 	 */
 	public static ServiceAdapter<Closeable> forCloseable() {
 		return new SimpleServiceAdapter<Closeable>(false, true) {
@@ -287,7 +281,7 @@ public final class ServiceAdapters {
 	}
 
 	/**
-	 * Returns factory which transforms DataSource object to ConcurrentService. On starting it checks connecting , on stopping it close DataSource.
+	 * Returns factory which transforms DataSource object to CompletableFuture. On starting it checks connecting , on stopping it close DataSource.
 	 */
 	public static ServiceAdapter<DataSource> forDataSource() {
 		return new SimpleServiceAdapter<DataSource>(true, false) {

@@ -1,12 +1,16 @@
+ARG APP_STORE_URL=http://127.0.0.1:8088
+
 FROM maven:3.6.0-jdk-8-alpine as build-java
 WORKDIR /build
 
 # tool layer
 RUN apk --update add --no-cache git
 
+ARG BRANCH=global-cloud
+
 # datakernel layer
-ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/global-cloud last-commit.json
-RUN git clone --depth 1 -b global-cloud https://github.com/softindex/datakernel \
+ADD https://api.github.com/repos/softindex/datakernel/git/refs/heads/${BRANCH} last-commit.json
+RUN git clone --depth 1 -b ${BRANCH} https://github.com/softindex/datakernel \
  && cd datakernel \
  && mvn install -P global -DskipTests \
  && cd ..
@@ -32,6 +36,9 @@ RUN npm i
 COPY front/*.* ./
 COPY front/public ./public
 COPY front/src ./src
+
+ARG APP_STORE_URL
+ENV REACT_APP_GLOBAL_OAUTH_LINK=$APP_STORE_URL
 RUN npm run build
 
 
@@ -47,4 +54,6 @@ COPY --from=build-js /build/build ./front/build
 
 EXPOSE 8080
 
-ENTRYPOINT java $SYS_PROPS -jar todo.jar
+ARG APP_STORE_URL
+ENV APP_STORE_URL=$APP_STORE_URL
+ENTRYPOINT java $SYS_PROPS -Dconfig.appStoreUrl=$APP_STORE_URL -jar todo.jar

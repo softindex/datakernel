@@ -16,13 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.Promise;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Initializable;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.exception.ParseException;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;
-import io.datakernel.util.Initializable;
+import io.datakernel.http.MultipartParser.MultipartDataHandler;
+import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
 import static java.util.Collections.emptyMap;
@@ -285,20 +286,20 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 						emptyMap();
 	}
 
-	private boolean containsPostParameters() {
-		ByteBuf buf = getHeaderBuf(CONTENT_TYPE);
-		if (buf == null) {
+	public boolean containsPostParameters() {
+		if (method != POST && method != PUT) {
 			return false;
 		}
-		try {
-			ContentType contentType = HttpHeaderValue.toContentType(buf);
-			if (method != POST || contentType.getMediaType() != MediaTypes.X_WWW_FORM_URLENCODED) {
-				return false;
-			}
-		} catch (ParseException e) {
+		String contentType = getHeader(CONTENT_TYPE);
+		return contentType != null && contentType.startsWith("application/x-www-form-urlencoded");
+	}
+
+	public boolean containsMultipartData() {
+		if (method != POST && method != PUT) {
 			return false;
 		}
-		return true;
+		String contentType = getHeader(CONTENT_TYPE);
+		return contentType != null && contentType.startsWith("multipart/form-data; boundary=");
 	}
 
 	@NotNull
@@ -384,7 +385,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	public String toString() {
 		if (url.isRelativePath()) {
 			String host = getHeader(HOST);
-			return (host != null ? host : "") + url.getPathAndQuery();
+			return nullToEmpty(host) + url.getPathAndQuery();
 		}
 		return url.toString();
 	}

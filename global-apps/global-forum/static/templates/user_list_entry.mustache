@@ -1,0 +1,17 @@
+<div class="list-group-item list-group-item-action col-9 align-self-center {{$classes}}{{/classes}}">
+    <div class="row">
+        <div class="col-auto px-1">
+            {{<avatar}}{{$size}}32{{/size}}{{/avatar}}
+        </div>
+        <span class="badge align-self-center">
+            {{#user.role.privileged}}
+                <a href="/profile/{{userId}}"
+                   class="text-dark stretched-link">{{name}}</a>
+            {{/user.role.privileged}}
+            {{^user.role.privileged}}{{name}}{{/user.role.privileged}}
+        </span>
+        {{#ban}}
+            <span class="badge badge-warning align-self-center">banned</span>
+        {{/ban}}
+    </div>
+</div>

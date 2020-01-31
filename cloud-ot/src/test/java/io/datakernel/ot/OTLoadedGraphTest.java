@@ -9,12 +9,12 @@ import org.junit.Test;
 
 import java.util.Set;
 
-import static io.datakernel.async.TestUtils.await;
+import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.ot.OTAlgorithms.loadGraph;
 import static io.datakernel.ot.OTCommit.ofRoot;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.createTestOp;
-import static io.datakernel.util.CollectionUtils.set;
+import static io.datakernel.promise.TestUtils.await;
 import static java.util.Collections.emptyList;
 import static org.junit.Assert.assertEquals;
 
@@ -49,11 +49,6 @@ public class OTLoadedGraphTest {
 
 		assertEquals(set(7), graph.getTips());
 		assertEquals(set(0), graph.getRoots());
-
-		graph.cleanUp(3);
-
-		assertEquals(set(7), graph.getTips());
-		assertEquals(set(5), graph.getRoots());
 	}
 
 	@Test
@@ -74,11 +69,6 @@ public class OTLoadedGraphTest {
 
 		assertEquals(set(4, 7), graph.getTips());
 		assertEquals(set(0), graph.getRoots());
-
-		graph.cleanUp(4);
-
-		assertEquals(set(4, 7), graph.getTips());
-		assertEquals(set(1, 5), graph.getRoots());
 	}
 
 	@Test

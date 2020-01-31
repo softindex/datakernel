@@ -18,9 +18,9 @@ package io.datakernel.dns;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.exception.InvalidSizeException;
-import io.datakernel.exception.ParseException;
-import io.datakernel.exception.UnknownFormatException;
+import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.parse.UnknownFormatException;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
@@ -37,9 +37,6 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
  */
 public final class DnsProtocol {
 	public static final ParseException QUESTION_COUNT_NOT_ONE = new ParseException(DnsProtocol.class, "Received DNS response has question count not equal to one");
-
-	/** This class is static */
-	private DnsProtocol() {}
 
 	private static final int MAX_SIZE = 512;
 
@@ -193,7 +190,19 @@ public final class DnsProtocol {
 			List<InetAddress> ips = new ArrayList<>();
 			int minTtl = Integer.MAX_VALUE;
 			for (int i = 0; i < answerCount; i++) {
-				payload.moveHead(2); // skip answer name (2 bytes)
+
+				// check for message compression (RFC 1035 section 4.1.4. Message compression, https://tools.ietf.org/rfc/rfc1035#section-4.1.4)
+				byte b = payload.readByte();
+				if ((b & 0xFF) >> 6 == 0b11) {
+					payload.moveHead(1); // skip domain pointer (second byte of 2 bytes)
+				} else {
+					// skip the fqdn
+					while (b != 0) {
+						payload.moveHead(b);
+						b = payload.readByte();
+					}
+				}
+
 				RecordType currentRecordType = RecordType.fromCode(payload.readShort());
 				payload.moveHead(2); // skip answer class (2 bytes)
 				if (currentRecordType != recordType) { // this is some other record

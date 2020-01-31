@@ -3,7 +3,7 @@ package io.datakernel.aggregation;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.exception.ParseException;
+import io.datakernel.common.parse.ParseException;
 
 public interface ChunkIdCodec<C> extends StructuredCodec<C> {
 	String toFileName(C chunkId);
