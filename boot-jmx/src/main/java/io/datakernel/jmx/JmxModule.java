@@ -213,6 +213,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 
 			@Override
 			public CompletableFuture<?> stop() {
+				jmxRegistry.unregisterAll();
 				return completedFuture(null);
 			}
 		};

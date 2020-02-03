@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.parse.InvalidSizeException;
 import io.datakernel.common.parse.UnknownFormatException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
@@ -177,26 +178,26 @@ public final class AsyncHttpClientTest {
 
 	@Test
 	public void testClientNoContentLength() throws Exception {
-		int port = getFreePort();
-
-		ServerSocket listener = new ServerSocket(port);
+		ServerSocket listener = new ServerSocket(PORT);
 		String text = "content";
 		Thread serverThread = new Thread(() -> {
-				try (Socket socket = listener.accept()) {
-					DataInputStream in = new DataInputStream(socket.getInputStream());
-					//noinspection StatementWithEmptyBody
-					while (in.read() != CR || in.read() != LF || in.read() != CR || in.read() != LF) ;
-					ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
-					socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
-				} catch (IOException ignored) {
-					throw new AssertionError();
+			try (Socket socket = listener.accept()) {
+				DataInputStream in = new DataInputStream(socket.getInputStream());
+				//noinspection StatementWithEmptyBody
+				while (in.read() != CR || in.read() != LF || in.read() != CR || in.read() != LF) {
+					;
 				}
+				ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+				socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
+			} catch (IOException ignored) {
+				throw new AssertionError();
+			}
 		});
 
 		serverThread.start();
 
 		String responseBody = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.get("http://127.0.0.1:" + port))
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.then(response -> response.loadBody()
 						.map(body -> body.getString(UTF_8))
 						.whenComplete(asserting(($, e) -> {
@@ -206,4 +207,49 @@ public final class AsyncHttpClientTest {
 		assertEquals(text, responseBody);
 	}
 
+	@Test
+	public void testAsyncPipelining() throws IOException {
+		ServerSocket listener = new ServerSocket(PORT);
+		Ref<Socket> socketRef = new Ref<>();
+		new Thread(() -> {
+			while (Thread.currentThread().isAlive()) {
+				try {
+					Socket socket = listener.accept();
+					socketRef.set(socket);
+					DataInputStream in = new DataInputStream(socket.getInputStream());
+					int b = 0;
+					//noinspection StatementWithEmptyBody
+					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF)) {
+					}
+					ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\nContent-Length:  4\n\ntest" +
+							"HTTP/1.1 200 OK\nContent-Length:  4\n\ntest"));
+					socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
+				} catch (IOException ignored) {
+				}
+			}
+		}).start();
+
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withKeepAliveTimeout(Duration.ofSeconds(30));
+
+		int code = await(client
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.then(response -> response.loadBody().async()
+						.then($ -> client.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
+						.then(res -> {
+							assertFalse(res.isRecycled());
+							return res.loadBody()
+									.map(body -> {
+										assertEquals("test", body.getString(UTF_8));
+										return res;
+									});
+						})
+						.map(HttpResponse::getCode)
+						.whenComplete(asserting(($, e) -> {
+							socketRef.get().close();
+							listener.close();
+						}))));
+
+		assertEquals(200, code);
+	}
 }
