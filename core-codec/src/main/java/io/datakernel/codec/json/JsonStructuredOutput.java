@@ -14,6 +14,12 @@ import java.util.Map;
 public class JsonStructuredOutput implements StructuredOutput {
 	final JsonWriter writer;
 
+	/**
+	 * Constructs a new {@link JsonStructuredOutput}
+	 * Passed {@link JsonWriter} should not perform any blocking I/O operations
+	 *
+	 * @param writer nonblocking {@link JsonWriter}
+	 */
 	public JsonStructuredOutput(JsonWriter writer) {
 		this.writer = writer;
 	}
