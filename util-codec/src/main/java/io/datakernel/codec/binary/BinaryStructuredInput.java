@@ -3,6 +3,7 @@ package io.datakernel.codec.binary;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
+import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.common.parse.ParseException;
 import org.jetbrains.annotations.Nullable;
 
@@ -40,7 +41,7 @@ public final class BinaryStructuredInput implements StructuredInput {
 	public int readInt() throws ParseException {
 		try {
 			return buf.readVarInt();
-		} catch (ArrayIndexOutOfBoundsException e) {
+		} catch (ArrayIndexOutOfBoundsException | IllegalStateException e) {
 			throw new ParseException(e);
 		}
 	}
@@ -49,7 +50,7 @@ public final class BinaryStructuredInput implements StructuredInput {
 	public long readLong() throws ParseException {
 		try {
 			return buf.readVarLong();
-		} catch (ArrayIndexOutOfBoundsException e) {
+		} catch (ArrayIndexOutOfBoundsException | IllegalStateException e) {
 			throw new ParseException(e);
 		}
 	}
@@ -92,7 +93,7 @@ public final class BinaryStructuredInput implements StructuredInput {
 
 	@Override
 	public byte[] readBytes() throws ParseException {
-		int length = buf.readVarInt();
+		int length = readInt();
 		if (length < 0 || length > buf.readRemaining()) {
 			throw new ParseException("Invalid length: " + length + ", remaining: " + buf.readRemaining() + ", buf: " + buf);
 		}
@@ -103,18 +104,14 @@ public final class BinaryStructuredInput implements StructuredInput {
 
 	@Override
 	public String readString() throws ParseException {
-		try {
-			int length = buf.readVarInt();
-			if (length == 0)
-				return "";
-			if (length > buf.readRemaining())
-				throw new IllegalArgumentException("Read string length is greater then the remaining data");
-			String result = new String(buf.array(), buf.head(), length, UTF_8);
-			buf.moveHead(length);
-			return result;
-		} catch (Exception e) {
-			throw new ParseException(e);
-		}
+		int length = readInt();
+		if (length == 0)
+			return "";
+		if (length > buf.readRemaining())
+			throw new ParseException("Read string length is greater than the remaining data");
+		String result = new String(buf.array(), buf.head(), length, UTF_8);
+		buf.moveHead(length);
+		return result;
 	}
 
 	@Override
@@ -127,15 +124,23 @@ public final class BinaryStructuredInput implements StructuredInput {
 	@Nullable
 	@Override
 	public <T> T readNullable(StructuredDecoder<T> decoder) throws ParseException {
-		return readBoolean() ? decoder.decode(this) : null;
+		try {
+			return readBoolean() ? decoder.decode(this) : null;
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
+		}
 	}
 
 	@Override
 	public <T> List<T> readList(StructuredDecoder<T> decoder) throws ParseException {
 		int size = readInt();
 		List<T> list = new ArrayList<>(size);
-		for (int i = 0; i < size; i++) {
-			list.add(decoder.decode(this));
+		try {
+			for (int i = 0; i < size; i++) {
+				list.add(decoder.decode(this));
+			}
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
 		}
 		return list;
 	}
@@ -144,20 +149,32 @@ public final class BinaryStructuredInput implements StructuredInput {
 	public <K, V> Map<K, V> readMap(StructuredDecoder<K> keyDecoder, StructuredDecoder<V> valueDecoder) throws ParseException {
 		int size = readInt();
 		Map<K, V> map = new LinkedHashMap<>();
-		for (int i = 0; i < size; i++) {
-			map.put(keyDecoder.decode(this), valueDecoder.decode(this));
+		try {
+			for (int i = 0; i < size; i++) {
+				map.put(keyDecoder.decode(this), valueDecoder.decode(this));
+			}
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
 		}
 		return map;
 	}
 
 	@Override
 	public <T> T readTuple(StructuredDecoder<T> decoder) throws ParseException {
-		return decoder.decode(this);
+		try {
+			return decoder.decode(this);
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
+		}
 	}
 
 	@Override
 	public <T> T readObject(StructuredDecoder<T> decoder) throws ParseException {
-		return decoder.decode(this);
+		try {
+			return decoder.decode(this);
+		} catch (UncheckedException e) {
+			throw e.propagate(ParseException.class);
+		}
 	}
 
 	@Override
