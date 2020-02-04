@@ -43,6 +43,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.Random;
@@ -223,6 +225,33 @@ public final class AsyncSslSocketTest {
 				}));
 
 		assertSame(CLOSE_EXCEPTION, e);
+	}
+
+	@Test
+	public void testPeerClosingDuringHandshake() throws IOException {
+		ServerSocket listener = new ServerSocket(ADDRESS.getPort());
+		Thread serverThread = new Thread(() -> {
+			try (Socket ignored = listener.accept()) {
+				listener.close();
+			} catch (IOException ignored) {
+				throw new AssertionError();
+			}
+		});
+
+		serverThread.start();
+
+		Throwable exception = awaitException(AsyncTcpSocketImpl.connect(ADDRESS)
+				.whenResult(asyncTcpSocket -> {
+					try {
+						// noinspection ConstantConditions - Imitating a suddenly closed channel
+						asyncTcpSocket.getSocketChannel().close();
+					} catch (IOException e) {
+						throw new AssertionError();
+					}
+				})
+				.map(tcpSocket -> AsyncSslSocket.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(socket -> socket.write(ByteBufStrings.wrapUtf8("hello"))));
+		assertEquals(CLOSE_EXCEPTION, exception);
 	}
 
 	static void startServer(SSLContext sslContext, Consumer<AsyncTcpSocket> logic) throws IOException {

@@ -255,7 +255,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	 */
 	private void doHandshake() throws SSLException {
 		SSLEngineResult result = null;
-		while (true) {
+		while (isOpen()) {
 			if (result != null && result.getStatus() == CLOSED) {
 				close();
 				return;
@@ -281,7 +281,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	}
 
 	private void executeTasks() {
-		while (true) {
+		while (isOpen()) {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
 			Promise.ofBlockingRunnable(executor, task::run)
