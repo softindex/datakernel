@@ -5,6 +5,7 @@ import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
+import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
 import io.datakernel.dataflow.server.Collector;
 import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowEnvironment;
@@ -32,6 +33,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.launchers.dataflow.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -161,6 +163,7 @@ public class DataflowServerTest {
 				return DataflowEnvironment.create()
 						.setInstance(DataflowSerialization.class, serialization)
 						.setInstance(DataflowClient.class, new DataflowClient(serialization))
+						.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB)
 						.with("items", words);
 			}
 		}.launch(new String[0]);
@@ -185,7 +188,7 @@ public class DataflowServerTest {
 		resultSupplier.streamTo(resultConsumer);
 
 		System.out.println(graph);
-		await(graph.execute());
+		await(graph.execute().whenException(resultConsumer::closeEx));
 
 		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), resultConsumer.getList());
 	}

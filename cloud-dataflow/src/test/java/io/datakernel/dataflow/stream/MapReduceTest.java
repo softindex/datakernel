@@ -3,12 +3,11 @@ package io.datakernel.dataflow.stream;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
-import io.datakernel.dataflow.helper.StreamMergeSorterStorageStub;
+import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
 import io.datakernel.dataflow.server.*;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToAccumulator;
-import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -18,22 +17,20 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
+import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class MapReduceTest {
-
 	private static DataflowServer server1;
 	private static DataflowServer server2;
 
@@ -86,7 +83,7 @@ public class MapReduceTest {
 		DataflowEnvironment environment = DataflowEnvironment.create()
 				.setInstance(DataflowSerialization.class, serialization)
 				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
+				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
 
 		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
@@ -99,10 +96,12 @@ public class MapReduceTest {
 						"dog",
 						"cat"));
 
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
 		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
 		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1.listen();
+		server2.listen();
 
 		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
@@ -113,15 +112,12 @@ public class MapReduceTest {
 		Collector<StringCount> collector = new Collector<>(reducedItems, StringCount.class, client);
 		StreamSupplier<StringCount> resultSupplier = collector.compile(graph);
 		StreamConsumerToList<StringCount> resultConsumer = StreamConsumerToList.create();
+		resultSupplier.streamTo(resultConsumer);
 
 		System.out.println(graph);
-		server1.listen();
-		server2.listen();
-		graph.execute();
+		await(cleanUp(graph.execute()));
 
-		await(cleanUp(resultSupplier.streamTo(resultConsumer)));
-		List<StringCount> list = await(resultConsumer.getResult());
-		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), list);
+		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), resultConsumer.getList());
 	}
 
 	public static class TestReducer extends ReducerToAccumulator<String, StringCount, StringCount> {

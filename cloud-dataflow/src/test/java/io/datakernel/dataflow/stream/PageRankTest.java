@@ -21,7 +21,7 @@ import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
-import io.datakernel.dataflow.helper.StreamMergeSorterStorageStub;
+import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
 import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.dataflow.server.DataflowSerialization;
@@ -30,8 +30,8 @@ import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.processor.StreamJoin.InnerJoiner;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
-import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
@@ -39,7 +39,6 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -47,13 +46,17 @@ import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
+import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 public class PageRankTest {
+	private static DataflowServer server1;
+	private static DataflowServer server2;
+
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
@@ -228,10 +231,6 @@ public class PageRankTest {
 				.withCodec(RankAccumulatorReducer.class, ofObject(RankAccumulatorReducer::new))
 				.withCodec(PageRankJoiner.class, ofObject(PageRankJoiner::new));
 
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571);
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1572);
-
-		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		StreamConsumerToList<Rank> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
 
@@ -240,7 +239,7 @@ public class PageRankTest {
 		DataflowEnvironment environment = DataflowEnvironment.create()
 				.setInstance(DataflowSerialization.class, serialization)
 				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(eventloop));
+				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
 
 		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
@@ -252,8 +251,12 @@ public class PageRankTest {
 						new Page(2, new long[]{1})))
 				.with("result", result2);
 
-		DataflowServer server1 = new DataflowServer(eventloop, environment1).withListenAddress(address1);
-		DataflowServer server2 = new DataflowServer(eventloop, environment2).withListenAddress(address2);
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1.listen();
+		server2.listen();
 
 		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
@@ -265,17 +268,16 @@ public class PageRankTest {
 		DatasetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
 		consumerNode.compileInto(graph);
 
-		server1.listen();
-		server2.listen();
-		graph.execute();
-
-		await(result1.getResult().whenComplete(() -> {
-			server1.close();
-			server2.close();
-		}));
-		await(result2.getResult());
+		await(cleanUp(graph.execute()));
 
 		assertEquals(singletonList(new Rank(2, 0.6069)), result1.getList());
 		assertEquals(asList(new Rank(1, 1.7861), new Rank(3, 0.6069)), result2.getList());
+	}
+
+	private static <T> Promise<T> cleanUp(Promise<T> promise) {
+		return promise.whenComplete(() -> {
+			server1.close();
+			server2.close();
+		});
 	}
 }

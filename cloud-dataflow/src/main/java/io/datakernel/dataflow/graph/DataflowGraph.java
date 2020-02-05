@@ -16,7 +16,7 @@
 
 package io.datakernel.dataflow.graph;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.common.collection.Try;
 import io.datakernel.dataflow.node.Node;
@@ -69,7 +69,7 @@ public class DataflowGraph {
 				.collect(groupingBy(Map.Entry::getValue, mapping(Map.Entry::getKey, toList())));
 	}
 
-	private static class PartitionSession implements Cancellable {
+	private static class PartitionSession implements AsyncCloseable {
 		private final Partition partition;
 		private final Session session;
 
@@ -83,8 +83,8 @@ public class DataflowGraph {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
-			session.close(e);
+		public void closeEx(@NotNull Throwable e) {
+			session.closeEx(e);
 		}
 	}
 
@@ -98,7 +98,7 @@ public class DataflowGraph {
 				Promises.all(sessions.stream().map(session -> {
 					List<Node> nodes = nodesByPartition.get(session.partition);
 					return session.execute(nodes);
-				})).whenException($ -> sessions.forEach(Cancellable::close))
+				})).whenException($ -> sessions.forEach(PartitionSession::close))
 		);
 	}
 
@@ -112,7 +112,7 @@ public class DataflowGraph {
 							.collect(toList());
 
 					if (sessions.size() != partitions.size()) {
-						sessions.forEach(Cancellable::close);
+						sessions.forEach(PartitionSession::close);
 						return Promise.ofException(new Exception("Can't connect to all partitions"));
 					}
 					return Promise.of(sessions);

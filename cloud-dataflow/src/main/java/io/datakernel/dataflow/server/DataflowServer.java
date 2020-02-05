@@ -177,7 +177,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 			ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
 			if (removed != null) {
 				logger.info("onUpload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
-				removed.cancel();
+				removed.close();
 			}
 		});
 		return streamSerializer;

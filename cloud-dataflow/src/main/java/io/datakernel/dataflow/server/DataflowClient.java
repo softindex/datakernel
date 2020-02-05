@@ -16,7 +16,7 @@
 
 package io.datakernel.dataflow.server;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
@@ -76,7 +76,7 @@ public final class DataflowClient {
 				});
 	}
 
-	public class Session implements Cancellable {
+	public class Session implements AsyncCloseable {
 		private final InetSocketAddress address;
 		private final Messaging<DatagraphResponse, DatagraphCommand> messaging;
 
@@ -99,8 +99,8 @@ public final class DataflowClient {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
-			messaging.close(e);
+		public void closeEx(@NotNull Throwable e) {
+			messaging.closeEx(e);
 		}
 	}
 

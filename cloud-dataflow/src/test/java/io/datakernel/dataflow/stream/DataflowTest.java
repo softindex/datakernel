@@ -22,11 +22,10 @@ import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
-import io.datakernel.dataflow.helper.StreamMergeSorterStorageStub;
+import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
 import io.datakernel.dataflow.server.*;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -38,19 +37,20 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.util.Comparator;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public final class DataflowTest {
-
 	private static DataflowServer server1;
 	private static DataflowServer server2;
 
@@ -65,11 +65,11 @@ public final class DataflowTest {
 		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
+
+		DataflowClient client = new DataflowClient(serialization);
 
 		DataflowEnvironment environment = DataflowEnvironment.create()
 				.setInstance(DataflowSerialization.class, serialization);
@@ -86,23 +86,20 @@ public final class DataflowTest {
 						new TestItem(6)))
 				.with("result", result2);
 
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
-				.withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
-				.withListenAddress(address2);
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1.listen();
+		server2.listen();
 
-		DataflowClient client = new DataflowClient(serialization);
 		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
-
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
 
 		System.out.println(graph);
-
-		server1.listen();
-		server2.listen();
 		await(cleanUp(graph.execute()));
 
 		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), result1.getList());
@@ -114,8 +111,6 @@ public final class DataflowTest {
 		DataflowSerialization serialization = DataflowSerialization.create()
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
@@ -139,23 +134,22 @@ public final class DataflowTest {
 						new TestItem(1),
 						new TestItem(6)))
 				.with("result", result2);
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
-				.withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
-				.withListenAddress(address2);
+
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1.listen();
+		server2.listen();
 
 		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
 				TestItem.class, Long.class, new TestKeyFunction(), new TestComparator()));
-
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
 
 		System.out.println(graph);
-
-		server1.listen();
-		server2.listen();
 		await(cleanUp(graph.execute()));
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
@@ -168,17 +162,16 @@ public final class DataflowTest {
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 
-		DataflowClient client = new DataflowClient(serialization);
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
+
+		DataflowClient client = new DataflowClient(serialization);
 
 		DataflowEnvironment environment = DataflowEnvironment.create()
 				.setInstance(DataflowSerialization.class, serialization)
 				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
+				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
 		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(6),
@@ -196,26 +189,21 @@ public final class DataflowTest {
 						new TestItem(5)))
 				.with("result", result2);
 
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
-				.withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
-				.withListenAddress(address2);
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1.listen();
+		server2.listen();
 
 		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
-
 		LocallySortedDataset<Long, TestItem> sortedDataset = localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
-
 		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
-
 		consumerNode.compileInto(graph);
 
-		System.out.println("Graph: ");
 		System.out.println(graph);
-
-		server1.listen();
-		server2.listen();
 		await(cleanUp(graph.execute()));
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
@@ -228,16 +216,15 @@ public final class DataflowTest {
 				.withCodec(TestComparator.class, ofObject(TestComparator::new))
 				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
 				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
-		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
-		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+
+		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
 		DataflowClient client = new DataflowClient(serialization);
-		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
 		DataflowEnvironment environment = DataflowEnvironment.create()
 				.setInstance(DataflowSerialization.class, serialization)
 				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorage.class, new StreamMergeSorterStorageStub<>(Eventloop.getCurrentEventloop()));
+				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
 		DataflowEnvironment environment1 = environment.extend()
 				.with("items", asList(
 						new TestItem(1),
@@ -254,26 +241,21 @@ public final class DataflowTest {
 						new TestItem(10)
 				));
 
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1)
-				.withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2)
-				.withListenAddress(address2);
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
+		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1.listen();
+		server2.listen();
 
 		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
-
-		LocallySortedDataset<Long, TestItem> sortedDataset =
-				localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
-
-		server1.listen();
-		server2.listen();
-
+		LocallySortedDataset<Long, TestItem> sortedDataset = localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
 		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 		resultSupplier.streamTo(resultConsumer);
 
-		System.out.println("Graph: ");
 		System.out.println(graph);
 		await(cleanUp(graph.execute()));
 
@@ -329,10 +311,13 @@ public final class DataflowTest {
 	}
 
 	private static <T> Promise<T> cleanUp(Promise<T> promise) {
-		return promise
-				.whenComplete(() -> {
-					server1.close();
-					server2.close();
-				});
+		return promise.whenComplete(() -> {
+			server1.close();
+			server2.close();
+		});
+	}
+
+	static InetSocketAddress getFreeListenAddress() throws UnknownHostException {
+		return new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
 	}
 }

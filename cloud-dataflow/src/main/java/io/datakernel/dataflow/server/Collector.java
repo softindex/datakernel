@@ -49,6 +49,7 @@ public final class Collector<T> {
 			suppliers.add(supplier);
 		}
 
-		return StreamSupplier.concat(suppliers);
+		return StreamSupplier.concat(suppliers)
+				.withEndOfStream(eos -> eos.whenException(e -> suppliers.forEach(supplier -> supplier.closeEx(e))));
 	}
 }

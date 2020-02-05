@@ -60,7 +60,7 @@ import static java.lang.ClassLoader.getSystemClassLoader;
 /**
  * Responsible for setting up serialization operations for datagraph.
  * Provides specific complex codecs for datagraph objects.
- * Maintains the cache of BufferSerializer's.
+ * Maintains the cache of BinarySerializer's.
  */
 @SuppressWarnings({"rawtypes", "unchecked", "WeakerAccess"})
 public final class DataflowSerialization implements Initializable<DataflowSerialization> {
@@ -99,7 +99,7 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 	/**
 	 * Store StreamIds as longs
 	 */
-	static final StructuredCodec<StreamId> STREAM_ID_CODEC = StructuredCodec.of(
+	public static final StructuredCodec<StreamId> STREAM_ID_CODEC = StructuredCodec.of(
 			in -> new StreamId(in.readLong()),
 			(out, item) -> out.writeLong(item.getId())
 	);
@@ -241,6 +241,7 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 			.with(NodeSort.class,
 					StructuredCodec.ofObject(
 							in -> new NodeSort(
+									in.readKey("type", CLASS_CODEC),
 									in.readKey("keyFunction", function.get()),
 									in.readKey("keyComparator", comparator.get()),
 									in.readKey("deduplicate", BOOLEAN_CODEC),
@@ -248,6 +249,7 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 									in.readKey("input", STREAM_ID_CODEC),
 									in.readKey("output", STREAM_ID_CODEC)),
 							(StructuredOutput out, NodeSort node) -> {
+								out.writeKey("type", CLASS_CODEC, (Class<Object>) node.getType());
 								out.writeKey("keyFunction", function.get(), node.getKeyFunction());
 								out.writeKey("keyComparator", comparator.get(), node.getKeyComparator());
 								out.writeKey("deduplicate", BOOLEAN_CODEC, node.isDeduplicate());
@@ -392,7 +394,7 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 		return this;
 	}
 
-	public <T> DataflowSerialization withBufferSerializer(Class<T> type, BinarySerializer<T> serializer) {
+	public <T> DataflowSerialization withBinarySerializer(Class<T> type, BinarySerializer<T> serializer) {
 		this.serializers.put(type, serializer);
 		return this;
 	}

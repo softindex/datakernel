@@ -21,11 +21,13 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static io.datakernel.common.Preconditions.*;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Represents a context of a datagraph system: environment, suppliers and consumers.
@@ -35,7 +37,7 @@ public final class TaskContext {
 	private final DataflowEnvironment environment;
 	private final Map<StreamId, StreamSupplier<?>> suppliers = new LinkedHashMap<>();
 	private final Map<StreamId, StreamConsumer<?>> consumers = new LinkedHashMap<>();
-	private boolean executed;
+	private final SettablePromise<Void> executionPromise = new SettablePromise<>();
 
 	public TaskContext(DataflowEnvironment environment) {
 		this.environment = environment;
@@ -67,15 +69,19 @@ public final class TaskContext {
 			} catch (Exception e) {
 				return Promise.ofException(e);
 			}
-		})).whenComplete(() -> executed = true);
+		}).collect(toList())).whenComplete(executionPromise);
 	}
 
 	public void cancel() {
-		suppliers.values().forEach(StreamSupplier::cancel);
-		consumers.values().forEach(StreamConsumer::cancel);
+		suppliers.values().forEach(StreamSupplier::close);
+		consumers.values().forEach(StreamConsumer::close);
+	}
+
+	public Promise<Void> getExecutionPromise() {
+		return executionPromise;
 	}
 
 	public boolean isExecuted() {
-		return executed;
+		return executionPromise.isComplete();
 	}
 }
