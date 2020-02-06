@@ -39,6 +39,7 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
 
@@ -176,17 +177,17 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 	}
 
 	public Promise<Boolean> push() {
-		return tolerantCollectBoolean(namespaces.values(), GlobalFsNamespace::push)
+		return tolerantCollectBoolean(new HashSet<>(namespaces.values()), GlobalFsNamespace::push)
 				.whenComplete(toLogger(logger, TRACE, "push", this));
 	}
 
 	public Promise<Boolean> fetch() {
-		return tolerantCollectBoolean(namespaces.values(), GlobalFsNamespace::fetch)
+		return tolerantCollectBoolean(new HashSet<>(namespaces.values()), GlobalFsNamespace::fetch)
 				.whenComplete(toLogger(logger, TRACE, "fetch", this));
 	}
 
 	public Promise<Boolean> fetch(String glob) {
-		return tolerantCollectBoolean(namespaces.values(), ns -> fetch(ns.getSpace(), glob));
+		return tolerantCollectBoolean(new HashSet<>(namespaces.values()), ns -> fetch(ns.getSpace(), glob));
 	}
 
 	public Promise<Boolean> fetch(PubKey space, String glob) {

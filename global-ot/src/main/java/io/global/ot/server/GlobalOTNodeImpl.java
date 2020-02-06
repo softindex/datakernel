@@ -343,17 +343,17 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 	private Promise<Void> doCatchUp() {
 		return untilTrue(() -> {
 			long timestampBegin = now.currentTimeMillis();
-			return tolerantCollectVoid(Stream.<AsyncSupplier>of(this::fetch, this::update), AsyncSupplier::get)
+			return tolerantCollectVoid(Stream.<AsyncSupplier<Void>>of(this::fetch, this::update), AsyncSupplier::get)
 					.map($ -> now.currentTimeMillis() <= timestampBegin + latencyMargin.toMillis());
 		});
 	}
 
 	private Promise<Void> forEachRepository(Function<RepositoryEntry, Promise<Void>> fn) {
-		return tolerantCollectVoid(namespaces.values().stream().flatMap(entry -> entry.getRepositories().values().stream()), fn);
+		return tolerantCollectVoid(new HashSet<>(namespaces.values()).stream().flatMap(entry -> entry.getRepositories().values().stream()), fn);
 	}
 
 	public Promise<Void> update() {
-		return tolerantCollectVoid(namespaces.values(), GlobalOTNamespace::updateRepositories)
+		return tolerantCollectVoid(new HashSet<>(namespaces.values()), GlobalOTNamespace::updateRepositories)
 				.thenEx(($, e) -> forEachRepository(RepositoryEntry::update))
 				.whenComplete(toLogger(logger, TRACE, "update", this));
 	}

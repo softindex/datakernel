@@ -37,6 +37,7 @@ import io.global.kv.api.StorageFactory;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -171,7 +172,7 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	}
 
 	private Promise<Void> forEachRepo(Function<Repo, Promise<Void>> fn) {
-		return tolerantCollectVoid(namespaces.values().stream().flatMap(entry -> entry.getRepos().values().stream()), fn);
+		return tolerantCollectVoid(new HashSet<>(namespaces.values()).stream().flatMap(entry -> entry.getRepos().values().stream()), fn);
 	}
 
 	@Override
