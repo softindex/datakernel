@@ -251,12 +251,14 @@ public final class ReportingTest {
 		@Override
 		protected StreamDataAcceptor<LogItem> createSplitter(Context ctx) {
 			return new StreamDataAcceptor<LogItem>() {
-				private final StreamDataAcceptor<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
-						LogItem.class,
-						and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
-				private final StreamDataAcceptor<LogItem> dateAggregator2 = addOutput(cube.logStreamConsumer(
-						LogItem.class,
-						and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
+				private final StreamDataAcceptor<LogItem> dateAggregator = addOutput(ctx,
+						cube.logStreamConsumer(
+								LogItem.class,
+								and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
+				private final StreamDataAcceptor<LogItem> dateAggregator2 = addOutput(ctx,
+						cube.logStreamConsumer(
+								LogItem.class,
+								and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
 
 				@Override
 				public void accept(LogItem item) {

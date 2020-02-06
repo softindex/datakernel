@@ -72,12 +72,12 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 		return new StreamDataAcceptor<TestPubRequest>() {
 			private final AggregationItem outputItem = new AggregationItem();
 
-			private final StreamDataAcceptor<AggregationItem> pubAggregator = addOutput(
+			private final StreamDataAcceptor<AggregationItem> pubAggregator = addOutput(ctx,
 					cube.logStreamConsumer(AggregationItem.class,
 							keysToMap(PUB_DIMENSIONS.stream(), identity()),
 							keysToMap(PUB_METRICS.stream(), identity())));
 
-			private final StreamDataAcceptor<AggregationItem> advAggregator = addOutput(
+			private final StreamDataAcceptor<AggregationItem> advAggregator = addOutput(ctx,
 					cube.logStreamConsumer(AggregationItem.class,
 							keysToMap(ADV_DIMENSIONS.stream(), identity()),
 							keysToMap(ADV_METRICS.stream(), identity())));

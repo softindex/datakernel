@@ -102,7 +102,7 @@ public class LogDataConsumerSplitterTest {
 
 		@Override
 		protected StreamDataAcceptor<T> createSplitter(Context ctx) {
-			return addOutput(logConsumer, ctx);
+			return addOutput(ctx, logConsumer);
 		}
 	}
 

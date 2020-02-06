@@ -65,7 +65,7 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 	protected abstract StreamDataAcceptor<T> createSplitter(Context ctx);
 
 	@Nullable
-	protected final <X> StreamDataAcceptor<X> addOutput(LogDataConsumer<X, D> logDataConsumer, Context ctx) {
+	protected final <X> StreamDataAcceptor<X> addOutput(Context ctx, LogDataConsumer<X, D> logDataConsumer) {
 		if (ctx == null) {
 			// initial run, recording scheme
 			logDataConsumers.add(logDataConsumer);
