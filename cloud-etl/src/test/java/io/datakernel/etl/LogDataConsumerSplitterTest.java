@@ -22,6 +22,7 @@ import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
+import org.jetbrains.annotations.NotNull;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -85,7 +86,7 @@ public class LogDataConsumerSplitterTest {
 	public void testIncorrectImplementation() {
 		LogDataConsumerSplitter<Integer, Integer> splitter = new LogDataConsumerSplitter<Integer, Integer>() {
 			@Override
-			protected StreamDataAcceptor<Integer> createSplitter(Context ctx) {
+			protected StreamDataAcceptor<Integer> createSplitter(@NotNull Context ctx) {
 				return item -> {};
 			}
 		};
@@ -101,8 +102,8 @@ public class LogDataConsumerSplitterTest {
 		}
 
 		@Override
-		protected StreamDataAcceptor<T> createSplitter(Context ctx) {
-			return addOutput(ctx, logConsumer);
+		protected StreamDataAcceptor<T> createSplitter(@NotNull Context ctx) {
+			return ctx.addOutput(logConsumer);
 		}
 	}
 

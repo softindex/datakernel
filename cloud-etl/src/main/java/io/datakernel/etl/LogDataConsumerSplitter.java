@@ -20,40 +20,46 @@ import io.datakernel.async.process.AsyncCollector;
 import io.datakernel.datastream.StreamConsumerWithResult;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.processor.StreamSplitter;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
-import static io.datakernel.common.Preconditions.checkState;
-import static java.util.Arrays.asList;
-
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
-	private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
 
-	protected static final class Context {
-		private final Iterator<? extends StreamDataAcceptor<?>> receivers;
+	protected final class Context {
+		private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
+		private Iterator<? extends StreamDataAcceptor<?>> acceptors;
 
-		public Context(List<StreamDataAcceptor<?>> receivers) {
-			this.receivers = receivers.iterator();
+		@Nullable
+		public final <X> StreamDataAcceptor<X> addOutput(LogDataConsumer<X, D> logDataConsumer) {
+			if (acceptors == null) {
+				// initial run, recording scheme
+				logDataConsumers.add(logDataConsumer);
+				return null;
+			}
+			// receivers must correspond outputs for recorded scheme
+			return (StreamDataAcceptor<X>) acceptors.next();
 		}
 	}
 
 	@Override
 	public StreamConsumerWithResult<T, List<D>> consume() {
-		if (logDataConsumers.isEmpty()) {
-			createSplitter(null); // recording scheme
-			checkState(!logDataConsumers.isEmpty(), "addOutput() should be called at least once");
-		}
-
 		AsyncCollector<List<D>> diffsCollector = AsyncCollector.create(new ArrayList<>());
 
-		StreamSplitter<T, Object> splitter = StreamSplitter.create(acceptors ->
-				createSplitter(new Context(asList(acceptors))));
+		Context ctx = new Context();
+		createSplitter(ctx);
 
-		for (LogDataConsumer<?, D> logDataConsumer : logDataConsumers) {
+		StreamSplitter<T, Object> splitter = StreamSplitter.create(acceptors -> {
+			ctx.acceptors = Arrays.asList(acceptors).iterator();
+			return createSplitter(ctx);
+		});
+
+		for (LogDataConsumer<?, D> logDataConsumer : ctx.logDataConsumers) {
 			diffsCollector.addPromise(
 					splitter.newOutput().streamTo(((LogDataConsumer<Object, D>) logDataConsumer).consume()),
 					List::addAll);
@@ -62,17 +68,6 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 		return StreamConsumerWithResult.of(splitter.getInput(), diffsCollector.run().get());
 	}
 
-	protected abstract StreamDataAcceptor<T> createSplitter(Context ctx);
-
-	@Nullable
-	protected final <X> StreamDataAcceptor<X> addOutput(Context ctx, LogDataConsumer<X, D> logDataConsumer) {
-		if (ctx == null) {
-			// initial run, recording scheme
-			logDataConsumers.add(logDataConsumer);
-			return null;
-		}
-		// receivers must correspond outputs for recorded scheme
-		return (StreamDataAcceptor<X>) ctx.receivers.next();
-	}
+	protected abstract StreamDataAcceptor<T> createSplitter(@NotNull Context ctx);
 
 }
