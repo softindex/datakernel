@@ -17,8 +17,8 @@ public class TestStreamSuppliers {
 			}
 
 			@Override
-			public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-				supplier.resume(decorator.decorate(new Context() {
+			public void supply(@NotNull StreamDataAcceptor<T> dataAcceptor) {
+				supplier.supply(decorator.decorate(new Context() {
 					@Override
 					public void endOfStream() {
 						endOfStream.trySet(null);

@@ -16,48 +16,28 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.queue.ChannelQueue;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
 import java.util.Iterator;
-import java.util.Set;
 
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+final class StreamSuppliers {
 
-public final class StreamSuppliers {
+	static final class ClosingWithError<T> implements StreamSupplier<T> {
+		private final Promise<Void> endOfStream;
 
-	/**
-	 * Represent supplier which sends specified exception to consumer.
-	 *
-	 * @param <T>
-	 */
-	static class ClosingWithErrorImpl<T> implements StreamSupplier<T> {
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		private final Throwable exception;
-
-		ClosingWithErrorImpl(Throwable e) {
-			this.exception = e;
+		ClosingWithError(Throwable e) {
+			this.endOfStream = Promise.ofException(e);
 		}
 
 		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(wrapContext(endOfStream, () -> endOfStream.trySetException(exception)));
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			// do nothing
-		}
-
-		@Override
-		public void suspend() {
-			// do nothing
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -66,37 +46,30 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
+		public void close(@NotNull Throwable e) {
+		}
+	}
+
+	static final class Closing<T> implements StreamSupplier<T> {
+		@Override
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		}
+
+		@Override
+		public Promise<Void> getEndOfStream() {
+			return Promise.complete();
 		}
 
 		@Override
 		public void close(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
 		}
 	}
 
-	/**
-	 * Represent supplier which sends specified exception to consumer.
-	 *
-	 * @param <T>
-	 */
-	static class ClosingImpl<T> implements StreamSupplier<T> {
+	static final class Idle<T> implements StreamSupplier<T> {
 		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(wrapContext(endOfStream, () -> endOfStream.trySet(null)));
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			// do nothing
-		}
-
-		@Override
-		public void suspend() {
-			// do nothing
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -105,98 +78,119 @@ public final class StreamSuppliers {
 		}
 
 		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
-		}
-
-		@Override
 		public void close(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
 
-	static final class IdleImpl<T> implements StreamSupplier<T> {
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			consumer.getAcknowledgement()
-					.whenException(endOfStream::trySetException);
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		}
-
-		@Override
-		public void suspend() {
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
-		}
-
-		@Override
-		public void close(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
-		}
-	}
-
-	/**
-	 * Represents a {@link AbstractStreamSupplier} which will send all values from iterator.
-	 *
-	 * @param <T> type of output data
-	 */
-	static class OfIteratorImpl<T> extends AbstractStreamSupplier<T> {
+	static final class OfIterator<T> implements StreamSupplier<T> {
 		private final Iterator<T> iterator;
+		private @Nullable StreamDataAcceptor<T> dataAcceptor;
+		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+		private boolean iterating;
+
+		{
+			endOfStream
+					.whenComplete(() -> dataAcceptor = null);
+		}
 
 		/**
 		 * Creates a new instance of  StreamSupplierOfIterator
 		 *
 		 * @param iterator iterator with object which need to send
 		 */
-		public OfIteratorImpl(@NotNull Iterator<T> iterator) {
+		public OfIterator(@NotNull Iterator<T> iterator) {
 			this.iterator = iterator;
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+			if (endOfStream.isComplete()) return;
+			if (this.dataAcceptor == dataAcceptor) return;
+			this.dataAcceptor = dataAcceptor;
+			if (iterating) return;
+			iterating = true;
 			while (iterator.hasNext()) {
-				StreamDataAcceptor<T> dataAcceptor = getCurrentDataAcceptor();
-				if (dataAcceptor == null) {
+				StreamDataAcceptor<T> acceptor = this.dataAcceptor;
+				if (acceptor == null) {
+					iterating = false;
 					return;
 				}
 				T item = iterator.next();
-				dataAcceptor.accept(item);
+				acceptor.accept(item);
 			}
-			sendEndOfStream();
+			endOfStream.trySet(null);
 		}
 
 		@Override
-		protected void onError(Throwable e) {
+		public Promise<Void> getEndOfStream() {
+			return endOfStream;
 		}
 
 		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
+		public void close(@NotNull Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 
-	static class OfChannelSupplierImpl<T> extends AbstractStreamSupplier<T> {
+	static final class OfPromise<T> implements StreamSupplier<T> {
+		@Nullable StreamSupplier<T> streamSupplier;
+		@Nullable StreamDataAcceptor<T> dataAcceptor;
+		SettablePromise<Void> endOfStream;
+
+		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
+			endOfStream = new SettablePromise<>();
+			promise
+					.whenResult(stream -> {
+						stream.getEndOfStream().whenComplete(this.endOfStream::trySet);
+						streamSupplier = stream;
+						if (streamSupplier.getEndOfStream().isComplete()) {
+							dataAcceptor = null;
+							return;
+						}
+						if (endOfStream.getException() != null) {
+							streamSupplier.close(endOfStream.getException());
+						} else if (dataAcceptor != null) {
+							StreamDataAcceptor<T> dataAcceptor = this.dataAcceptor;
+							this.dataAcceptor = null;
+							streamSupplier.supply(dataAcceptor);
+						}
+					})
+					.whenException(this::close);
+		}
+
+		@Override
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+			if (streamSupplier != null) {
+				streamSupplier.supply(dataAcceptor);
+			} else {
+				this.dataAcceptor = dataAcceptor;
+			}
+		}
+
+		@Override
+		public Promise<Void> getEndOfStream() {
+			return endOfStream;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			endOfStream.trySetException(e);
+			if (streamSupplier != null) {
+				streamSupplier.close(e);
+			}
+		}
+	}
+
+	static final class OfChannelSupplier<T> extends AbstractStreamSupplier<T> {
 		private final ChannelSupplier<T> supplier;
 
-		public OfChannelSupplierImpl(ChannelSupplier<T> supplier) {
+		public OfChannelSupplier(ChannelSupplier<T> supplier) {
 			this.supplier = supplier;
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
+		protected void onResumed(AsyncProduceController async) {
 			async.begin();
 			supplier.get()
 					.whenComplete((item, e) -> {
@@ -217,10 +211,44 @@ public final class StreamSuppliers {
 		protected void onError(Throwable e) {
 			supplier.close(e);
 		}
+	}
+
+	static final class AsChannelSupplier<T> extends AbstractChannelSupplier<T> {
+		private final ChannelQueue<T> queue;
+		private final StreamSupplier<T> streamSupplier;
+		private boolean endOfStream;
+
+		public AsChannelSupplier(StreamSupplier<T> supplier) {
+			this(new ChannelZeroBuffer<>(), supplier);
+		}
+
+		public AsChannelSupplier(ChannelQueue<T> queue, StreamSupplier<T> supplier) {
+			this.queue = queue;
+			this.streamSupplier = supplier;
+			this.streamSupplier.getEndOfStream()
+					.whenResult(() -> endOfStream = true) // *
+					.whenException(this::close); // *
+			if (!this.streamSupplier.getEndOfStream().isComplete()) {
+				this.streamSupplier.supply(item -> { // *
+					assert !isClosed();
+					assert !endOfStream;
+					Promise<Void> promise = this.queue.put(item);
+					if (!promise.isComplete()) {
+						this.streamSupplier.supply(null);
+					} else { // *
+					}
+				});
+			}
+		}
 
 		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
+		protected @NotNull Promise<T> doGet() {
+			return !endOfStream ? queue.take() : Promise.of(null);
+		}
+
+		@Override
+		protected void onClosed(@NotNull Throwable e) {
+			streamSupplier.close(e); // *
 		}
 	}
 

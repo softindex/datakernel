@@ -16,13 +16,11 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Iterator;
-
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
  * Represents {@link StreamSupplier}, which created with iterator with {@link AbstractStreamSupplier}
@@ -30,70 +28,76 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
  *
  * @param <T> type of received data
  */
-class StreamSupplierConcat<T> extends AbstractStreamSupplier<T> {
-	private final Iterator<StreamSupplier<T>> iterator;
+class StreamSupplierConcat<T> implements StreamSupplier<T> {
+	private final ChannelSupplier<StreamSupplier<T>> iterator;
+	private boolean iteratorGet;
+	@Nullable StreamDataAcceptor<T> dataAcceptor;
 	@Nullable
 	private StreamSupplier<T> supplier;
-	@Nullable
-	private InternalConsumer internalConsumer;
+	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
-	StreamSupplierConcat(Iterator<StreamSupplier<T>> iterator) {
+	StreamSupplierConcat(ChannelSupplier<StreamSupplier<T>> iterator) {
 		this.iterator = iterator;
-	}
-
-	private class InternalConsumer extends AbstractStreamConsumer<T> {
-		@Override
-		protected Promise<Void> onEndOfStream() {
-			eventloop.post(wrapContext(this, () -> {
-				supplier = null;
-				internalConsumer = null;
-				if (isReceiverReady()) {
-					onProduce(getCurrentDataAcceptor());
-				}
-			}));
-			return StreamSupplierConcat.this.getConsumer().getAcknowledgement();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			StreamSupplierConcat.this.close(e);
-		}
+		next();
 	}
 
 	@Override
-	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		if (supplier == null) {
-			if (!iterator.hasNext()) {
-				eventloop.post(wrapContext(this, this::sendEndOfStream));
-				return;
-			}
-			supplier = iterator.next();
-			internalConsumer = new InternalConsumer();
-			supplier.streamTo(internalConsumer);
-		}
-		supplier.resume(dataAcceptor);
-	}
-
-	@Override
-	protected void onSuspended() {
+	public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		if (endOfStream.isComplete()) return;
+		if (this.dataAcceptor == dataAcceptor) return;
+		this.dataAcceptor = dataAcceptor;
 		if (supplier != null) {
-			supplier.suspend();
+			supplier.supply(dataAcceptor);
 		}
 	}
 
+	private void next() {
+		if (endOfStream.isComplete()) return;
+		if (iteratorGet) return;
+		iteratorGet = true;
+		iterator.get()
+				.whenResult(supplier -> {
+					iteratorGet = false;
+					this.supplier = supplier;
+					if (supplier != null) {
+						supplier.getEndOfStream()
+								.async()
+								.whenResult(this::next)
+								.whenException(this::close);
+						assert !endOfStream.isResult(); // should not happen
+						if (endOfStream.isException()) {
+							//noinspection ConstantConditions
+							close(endOfStream.getException());
+						} else {
+							if (this.dataAcceptor != null) {
+								supplier.supply(this.dataAcceptor);
+							}
+						}
+					} else {
+						endOfStream.set(null);
+					}
+					if (endOfStream.isException()) {
+						iterator.close(endOfStream.getException());
+					}
+				})
+				.whenException(this::close);
+	}
+
 	@Override
-	protected void onError(Throwable e) {
+	public Promise<Void> getEndOfStream() {
+		return endOfStream;
+	}
+
+	@Override
+	public void close(@NotNull Throwable e) {
+		endOfStream.trySetException(e);
 		if (supplier != null) {
-			assert internalConsumer != null;
-			internalConsumer.close(e);
-		} else {
-			// TODO ?
+			supplier.close(e);
+			supplier = null;
 		}
-	}
-
-	@Override
-	protected void cleanup() {
-		supplier = null;
+		if (!iteratorGet) {
+			iterator.close(e);
+		}
 	}
 
 }

@@ -16,9 +16,14 @@
 
 package io.datakernel.datastream.processor;
 
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamDataSource;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
 
@@ -34,11 +39,15 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 	private final Input input;
 	private final Output output;
 
-	// region creators
 	private StreamMapper(Function<I, O> function) {
 		this.function = function;
 		this.input = new Input();
 		this.output = new Output();
+		input.acknowledgement
+				.whenException(output.endOfStream::trySetException);
+		output.endOfStream
+				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenException(input.acknowledgement::trySetException);
 	}
 
 	public static <I, O> StreamMapper<I, O> create(Function<I, O> function) {
@@ -54,38 +63,65 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 	public StreamSupplier<O> getOutput() {
 		return output;
 	}
-	// endregion
 
-	protected final class Input extends AbstractStreamConsumer<I> {
+	protected final class Input implements StreamConsumer<I> {
+		@Nullable StreamDataSource<I> dataSource;
+		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			return output.sendEndOfStream();
+		public void consume(@NotNull StreamDataSource<I> dataSource) {
+			this.dataSource = dataSource;
+			sync();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			output.close(e);
+		public void endOfStream() {
+			output.endOfStream.trySet(null);
+		}
+
+		@Override
+		public Promise<Void> getAcknowledgement() {
+			return acknowledgement;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			acknowledgement.trySetException(e);
+		}
+	}
+
+	protected final class Output implements StreamSupplier<O> {
+		@Nullable StreamDataAcceptor<O> dataAcceptor;
+		final SettablePromise<Void> endOfStream = new SettablePromise<>();
+
+		@Override
+		public void supply(@Nullable StreamDataAcceptor<O> dataAcceptor) {
+			if (this.dataAcceptor == dataAcceptor) return;
+			this.dataAcceptor = dataAcceptor;
+			sync();
+		}
+
+		@Override
+		public Promise<Void> getEndOfStream() {
+			return endOfStream;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<O> {
-		@Override
-		protected void onSuspended() {
-			input.getSupplier().suspend();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			input.close(e);
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<O> dataAcceptor) {
-			input.getSupplier().resume(
-					function == Function.identity() ?
-							(StreamDataAcceptor<I>) dataAcceptor :
-							item -> dataAcceptor.accept(function.apply(item)));
+	private void sync() {
+		if (input.dataSource != null) {
+			final Function<I, O> function = this.function;
+			final StreamDataAcceptor<O> dataAcceptor = output.dataAcceptor;
+			if (dataAcceptor != null) {
+				input.dataSource.resume(item -> dataAcceptor.accept(function.apply(item)));
+			} else {
+				input.dataSource.suspend();
+			}
 		}
 	}
+
 }

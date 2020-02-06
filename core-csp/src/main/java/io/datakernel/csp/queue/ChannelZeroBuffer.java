@@ -50,14 +50,17 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	 * @return {@code true} if either {@code put}
 	 * or {@code take} doesn't equal {@code null}
 	 */
+	@Override
 	public boolean isWaiting() {
 		return take != null || put != null;
 	}
 
+	@Override
 	public boolean isWaitingPut() {
 		return put != null;
 	}
 
+	@Override
 	public boolean isWaitingTake() {
 		return take != null;
 	}

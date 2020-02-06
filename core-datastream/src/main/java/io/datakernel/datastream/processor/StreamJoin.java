@@ -17,7 +17,6 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
-import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,7 +38,7 @@ import static java.util.Arrays.asList;
  * @param <R> type of data from right stream
  * @param <V> type of output data
  */
-public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<V> {
+public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamOutput<V> {
 
 	/**
 	 * It is primary interface of joiner. It contains methods which will join streams
@@ -192,18 +191,20 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 		@Override
 		public void accept(I item) {
 			deque.add(item);
-			output.tryProduce();
+			output.flush();
 		}
 
 		@Override
 		protected void onStarted() {
-			output.tryProduce();
+			output.flush();
 		}
 
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			output.tryProduce();
-			return output.getEndOfStream();
+		protected void onEndOfStream() {
+			output.flush();
+			output.getEndOfStream()
+					.whenResult(this::acknowledge)
+					.whenException(this::close);
 		}
 
 		@Override
@@ -214,28 +215,16 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 
 	protected final class Output extends AbstractStreamSupplier<V> {
 		@Override
-		protected void onSuspended() {
-			left.getSupplier().suspend();
-			right.getSupplier().suspend();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			left.close(e);
-			right.close(e);
-		}
-
-		@Override
-		protected void produce(AsyncProduceController async) {
-			if (isReceiverReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
+		protected void onResumed(AsyncProduceController async) {
+			if (isReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();
 				K leftKey = leftKeyFunction.apply(leftValue);
 				R rightValue = rightDeque.peek();
 				K rightKey = rightKeyFunction.apply(rightValue);
-				for (; ; ) {
+				while (isReady()) {
 					int compare = keyComparator.compare(leftKey, rightKey);
 					if (compare < 0) {
-						joiner.onLeftJoin(leftKey, leftValue, getCurrentDataAcceptor());
+						joiner.onLeftJoin(leftKey, leftValue, getDataAcceptor());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
@@ -248,25 +237,32 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 						rightValue = rightDeque.peek();
 						rightKey = rightKeyFunction.apply(rightValue);
 					} else {
-						joiner.onInnerJoin(leftKey, leftValue, rightValue, getCurrentDataAcceptor());
+						joiner.onInnerJoin(leftKey, leftValue, rightValue, getDataAcceptor());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
-							break;
-						if (!isReceiverReady())
 							break;
 						leftValue = leftDeque.peek();
 						leftKey = leftKeyFunction.apply(leftValue);
 					}
 				}
 			}
-			if (isReceiverReady()) {
-				if (left.getEndOfStream().isResult() && right.getEndOfStream().isResult()) {
+			if (isReady()) {
+				if (left.isEndOfStream() && right.isEndOfStream()) {
 					sendEndOfStream();
 				} else {
-					left.getSupplier().resume(left);
-					right.getSupplier().resume(right);
+					left.resume(left);
+					right.resume(right);
 				}
+			} else {
+				left.suspend();
+				right.suspend();
 			}
+		}
+
+		@Override
+		protected void onError(Throwable e) {
+			left.close(e);
+			right.close(e);
 		}
 	}
 

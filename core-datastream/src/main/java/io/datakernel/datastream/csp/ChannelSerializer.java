@@ -23,7 +23,6 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.datastream.AbstractStreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -110,19 +109,23 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 
 	@Override
 	public ChannelOutput<ByteBuf> getOutput() {
-		return output -> this.output = output;
+		return output -> {
+			this.output = output;
+			resume(input);
+		};
 	}
 	// endregion
 
 	@Override
 	protected void onStarted() {
-		getSupplier().resume(input);
+		if (output != null) {
+			resume(input);
+		}
 	}
 
 	@Override
-	protected Promise<Void> onEndOfStream() {
+	protected void onEndOfStream() {
 		input.flush();
-		return getAcknowledgement();
 	}
 
 	@Override
@@ -146,12 +149,12 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 						}
 					});
 		} else {
-			if (getEndOfStream().isResult()) {
+			if (isEndOfStream()) {
 				flushing = true;
 				output.accept(null)
-						.whenResult($ -> acknowledge());
+						.whenResult(this::acknowledge);
 			} else {
-				getSupplier().resume(input);
+				resume(input);
 			}
 		}
 	}
@@ -281,7 +284,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (buf == null) return;
 			if (buf.canRead()) {
 				if (!bufs.isEmpty()) {
-					getSupplier().suspend();
+					suspend();
 				}
 				bufs.add(buf);
 				estimatedMessageSize -= estimatedMessageSize >>> 8;

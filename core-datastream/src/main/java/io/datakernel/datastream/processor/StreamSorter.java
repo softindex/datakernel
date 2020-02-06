@@ -17,9 +17,11 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.async.process.AsyncCollector;
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,7 +47,6 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 	private final Input input;
 	private final StreamSupplier<T> output;
-	private StreamConsumer<T> outputConsumer;
 
 	// region creators
 	private StreamSorter(StreamSorterStorage<T> storage,
@@ -64,37 +65,27 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		this.input = new Input();
 
-		this.output =
-				new ForwardingStreamSupplier<T>(StreamSupplier.ofPromise(
-						(this.temporaryStreamsCollector = AsyncCollector.create(new ArrayList<>()))
-								.run(input.getEndOfStream())
-								.get()
-								.map(streamIds -> {
-									input.list.sort(itemComparator);
-									Iterator<T> iterator = !distinct ?
-											input.list.iterator() :
-											new DistinctIterator<>(input.list, keyFunction, keyComparator);
-									StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
-									if (streamIds.isEmpty()) {
-										return listSupplier;
-									} else {
-										StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
-										listSupplier.streamTo(streamMerger.newInput());
-										streamIds.forEach(streamId ->
-												StreamSupplier.ofPromise(storage.read(streamId))
-														.streamTo(streamMerger.newInput()));
-										return streamMerger
-												.getOutput()
-												.withLateBinding();
-									}
-								})
-				)) {
-					@Override
-					public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-						super.setConsumer(consumer);
-						outputConsumer = consumer;
-					}
-				};
+		this.output = StreamSupplier.ofPromise(
+				(this.temporaryStreamsCollector = AsyncCollector.create(new ArrayList<>()))
+						.get()
+						.map(streamIds -> {
+							input.list.sort(itemComparator);
+							Iterator<T> iterator = !distinct ?
+									input.list.iterator() :
+									new DistinctIterator<>(input.list, keyFunction, keyComparator);
+							StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
+							if (streamIds.isEmpty()) {
+								return listSupplier;
+							} else {
+								StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
+								listSupplier.streamTo(streamMerger.newInput());
+								for (Integer streamId : streamIds) {
+									StreamSupplier.ofPromise(storage.read(streamId))
+											.streamTo(streamMerger.newInput());
+								}
+								return streamMerger.getOutput();
+							}
+						}));
 	}
 
 	private static final class DistinctIterator<K, T> implements Iterator<T> {
@@ -150,7 +141,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onStarted() {
-			getSupplier().resume(this);
+			resume(this);
 		}
 
 		@Override
@@ -162,7 +153,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 						input.list.iterator() :
 						new DistinctIterator<>(input.list, keyFunction, keyComparator);
 				writeToTemporaryStorage(iterator)
-						.whenResult($ -> suspendOrResume());
+						.whenResult(this::suspendOrResume);
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}
@@ -179,20 +170,23 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		private void suspendOrResume() {
 			if (temporaryStreamsCollector.getActivePromises() > 2) {
-				getSupplier().suspend();
+				suspend();
 			} else {
-				getSupplier().resume(this);
+				resume(this);
 			}
 		}
 
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			return outputConsumer.getAcknowledgement();
+		protected void onEndOfStream() {
+			temporaryStreamsCollector.run();
+			output.getEndOfStream()
+					.whenResult(this::acknowledge)
+					.whenException(this::close);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			// do nothing
+			temporaryStreamsCollector.close(e);
 		}
 	}
 

@@ -16,8 +16,8 @@
 
 package io.datakernel.promise;
 
+import io.datakernel.async.callback.AsyncComputation;
 import io.datakernel.async.callback.Callback;
-import io.datakernel.async.callback.Completable;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
@@ -54,7 +54,7 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
  *
  * @see CompletionStage
  */
-public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<T> {
+public interface Promise<T> extends io.datakernel.promise.Async<T>, AsyncComputation<T> {
 	/**
 	 * Creates successfully completed {@code Promise}
 	 */
@@ -391,6 +391,10 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn);
 
+	default @NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn) {
+		return then($ -> fn.get());
+	}
+
 	/**
 	 * Returns a new {@code Promise} which, when this {@code Promise} completes either
 	 * successfully (if exception is {@code null}) or exceptionally (if exception is not
@@ -436,6 +440,10 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	@NotNull
 	Promise<T> whenResult(@NotNull Consumer<? super T> action);
 
+	default Promise<T> whenResult(@NotNull Runnable action) {
+		return whenResult($ -> action.run());
+	}
+
 	/**
 	 * Subscribes given action to be executed after
 	 * this {@code Promise} completes exceptionally
@@ -445,21 +453,6 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	 */
 	@Contract("_ -> this")
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);
-
-	@Override
-	default void onComplete(@NotNull Callback<? super T> action) {
-		whenComplete(action);
-	}
-
-	@Override
-	default void onResult(@NotNull Consumer<? super T> action) {
-		whenResult(action);
-	}
-
-	@Override
-	default void onException(@NotNull Consumer<@NotNull Throwable> action) {
-		whenException(action);
-	}
 
 	/**
 	 * Returns a new {@code Promise} that, when this and the other
@@ -514,10 +507,16 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	@NotNull
 	Promise<Void> toVoid();
 
+	@Override
+	default void run(@NotNull Callback<? super T> action) {
+		whenComplete(action);
+	}
+
 	/**
 	 * Wraps {@code Promise} into {@link CompletableFuture}.
 	 */
 	@Contract(pure = true)
 	@NotNull
 	CompletableFuture<T> toCompletableFuture();
+
 }

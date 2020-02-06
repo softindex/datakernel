@@ -1,5 +1,7 @@
 import io.datakernel.config.Config;
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.AbstractStreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -11,12 +13,9 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.EnumSet;
-import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.di.module.Modules.combine;
 
 @SuppressWarnings("WeakerAccess")
@@ -35,21 +34,15 @@ public class DatastreamBenchmark extends Launcher {
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
+		protected void onResumed(AsyncProduceController async) {
 			while (integer < limit) {
-				StreamDataAcceptor<Integer> dataAcceptor = getCurrentDataAcceptor();
-				dataAcceptor.accept(++integer);
+				send(++integer);
 			}
 			sendEndOfStream();
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
 		}
 	}
 

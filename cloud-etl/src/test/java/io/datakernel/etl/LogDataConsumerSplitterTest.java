@@ -85,7 +85,7 @@ public class LogDataConsumerSplitterTest {
 	public void testIncorrectImplementation() {
 		LogDataConsumerSplitter<Integer, Integer> splitter = new LogDataConsumerSplitter<Integer, Integer>() {
 			@Override
-			protected StreamDataAcceptor<Integer> createSplitter() {
+			protected StreamDataAcceptor<Integer> createSplitter(Context ctx) {
 				return item -> {};
 			}
 		};
@@ -101,8 +101,8 @@ public class LogDataConsumerSplitterTest {
 		}
 
 		@Override
-		protected StreamDataAcceptor<T> createSplitter() {
-			return addOutput(logConsumer);
+		protected StreamDataAcceptor<T> createSplitter(Context ctx) {
+			return addOutput(logConsumer, ctx);
 		}
 	}
 

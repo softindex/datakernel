@@ -175,13 +175,13 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 			}
 			if (inflater.finished()) {
 				output.acceptAll(queue.asIterator())
-						.whenResult($ -> processFooter());
+						.whenResult(this::processFooter);
 				return;
 			}
 		}
 		output.acceptAll(queue.asIterator())
 				.then($ -> input.needMoreData())
-				.whenResult($ -> processBody());
+				.whenResult(this::processBody);
 	}
 
 	private void processFooter() {
@@ -200,7 +200,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 					buf.recycle();
 					input.endOfStream()
 							.then($ -> output.accept(null))
-							.whenResult($ -> completeProcess());
+							.whenResult(() -> completeProcess());
 				})
 				.whenException(this::close);
 	}
@@ -244,7 +244,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		input.parse(ByteBufsDecoder.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
 				.whenException(e -> close(FNAME_FCOMMENT_TOO_LARGE))
 				.whenResult(ByteBuf::recycle)
-				.whenResult($ -> runNext(flag - part).run());
+				.whenResult(() -> runNext(flag - part).run());
 	}
 
 	private void skipExtra(int flag) {
@@ -270,7 +270,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		input.parse(ofFixedSize(2))
 				.whenException(this::close)
 				.whenResult(ByteBuf::recycle)
-				.whenResult($ -> runNext(flag - FHCRC).run());
+				.whenResult(() -> runNext(flag - FHCRC).run());
 	}
 
 	private Runnable runNext(int flag) {

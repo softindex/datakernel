@@ -48,14 +48,14 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		List<T> list = new ArrayList<>();
 		storage.put(partition, list);
 		StreamConsumerToList<T> consumer = StreamConsumerToList.create(list);
-		return Promise.of(consumer.withLateBinding());
+		return Promise.of(consumer);
 	}
 
 	@Override
 	public Promise<StreamSupplier<T>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		StreamSupplier<T> supplier = StreamSupplier.ofIterable(iterable);
-		return Promise.of(supplier.withLateBinding());
+		return Promise.of(supplier);
 	}
 
 	@Override

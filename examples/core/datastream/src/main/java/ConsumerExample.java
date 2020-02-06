@@ -2,7 +2,6 @@ import io.datakernel.datastream.AbstractStreamConsumer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -13,13 +12,13 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 public final class ConsumerExample<T> extends AbstractStreamConsumer<T> {
 	@Override
 	protected void onStarted() {
-		getSupplier().resume(x -> System.out.println("received: " + x));
+		resume(x -> System.out.println("received: " + x));
 	}
 
 	@Override
-	protected Promise<Void> onEndOfStream() {
+	protected void onEndOfStream() {
 		System.out.println("End of stream received");
-		return Promise.complete();
+		acknowledge();
 	}
 
 	@Override

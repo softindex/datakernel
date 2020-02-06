@@ -17,13 +17,16 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * It is Stream Transformer which unions all input streams and streams it
@@ -31,17 +34,19 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
  *
  * @param <T> type of output data
  */
-public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
+public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs {
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;
+	private boolean started;
 
-	// region creators
-	private StreamUnion() {
+	public StreamUnion() {
 		this.output = new Output();
 	}
 
 	public static <T> StreamUnion<T> create() {
-		return new StreamUnion<>();
+		StreamUnion<T> union = new StreamUnion<>();
+		Eventloop.getCurrentEventloop().post(union::start);
+		return union;
 	}
 
 	@Override
@@ -55,50 +60,84 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	}
 
 	public StreamConsumer<T> newInput() {
+		checkState(!started);
 		Input input = new Input();
 		inputs.add(input);
+		input.acknowledgement
+				.whenException(output.endOfStream::trySetException);
+		output.endOfStream
+				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenException(input.acknowledgement::trySetException);
 		return input;
 	}
 
-	// endregion
+	public void start() {
+		checkState(!started);
+		started = true;
+		sync();
+	}
 
-	private final class Input extends AbstractStreamConsumer<T> {
-		@Override
-		protected Promise<Void> onEndOfStream() {
-			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
-				output.sendEndOfStream();
+	private void sync() {
+		if (!started) return;
+		if (output.endOfStream.isComplete()) return;
+		if (inputs.stream().allMatch(input -> input.endOfStream)) {
+			output.endOfStream.trySet(null);
+		} else {
+			for (Input input : inputs) {
+				if (input.dataSource != null) {
+					input.dataSource.resume(output.dataAcceptor);
+				}
 			}
-			return output.getConsumer().getAcknowledgement();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			output.close(e);
 		}
 	}
 
-	private final class Output extends AbstractStreamSupplier<T> {
+	private final class Input implements StreamConsumer<T> {
+		@Nullable StreamDataSource<T> dataSource;
+		private boolean endOfStream;
+		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+
 		@Override
-		protected void onSuspended() {
-			for (Input input : inputs) {
-				input.getSupplier().suspend();
-			}
+		public void consume(@NotNull StreamDataSource<T> dataSource) {
+			this.dataSource = dataSource;
+			sync();
 		}
 
 		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			if (!inputs.isEmpty()) {
-				for (Input input : inputs) {
-					input.getSupplier().resume(dataAcceptor);
-				}
-			} else {
-				eventloop.post(wrapContext(this, this::sendEndOfStream));
-			}
+		public void endOfStream() {
+			endOfStream = true;
+			sync();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			inputs.forEach(input -> input.close(e));
+		public Promise<Void> getAcknowledgement() {
+			return acknowledgement;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			acknowledgement.trySetException(e);
+		}
+	}
+
+	private final class Output implements StreamSupplier<T> {
+		@Nullable StreamDataAcceptor<T> dataAcceptor;
+		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+
+		@Override
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+			if (this.dataAcceptor == dataAcceptor) return;
+			this.dataAcceptor = dataAcceptor;
+			sync();
+		}
+
+		@Override
+		public Promise<Void> getEndOfStream() {
+			return endOfStream;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 

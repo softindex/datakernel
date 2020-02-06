@@ -69,9 +69,9 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 				.then(item ->
 						item != null ?
 								onItem(item)
-										.whenResult($ -> loop()) :
+										.whenResult(this::loop) :
 								onProcessFinish()
-										.whenResult($ -> completeProcess()))
+										.whenResult(() -> completeProcess()))
 				.whenException(this::close);
 	}
 

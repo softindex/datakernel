@@ -16,8 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.async.callback.AsyncComputation;
 import io.datakernel.async.callback.Callback;
-import io.datakernel.async.callback.Completable;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.exception.AsyncTimeoutException;
@@ -1070,11 +1070,11 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation) {
+	public <T> CompletableFuture<T> submit(Supplier<? extends AsyncComputation<T>> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		execute(() -> {
 			try {
-				computation.get().onComplete((result, e) -> {
+				computation.get().run((result, e) -> {
 					if (e == null) {
 						future.complete(result);
 					} else {

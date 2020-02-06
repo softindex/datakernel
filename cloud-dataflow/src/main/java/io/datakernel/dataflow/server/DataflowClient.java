@@ -69,7 +69,7 @@ public final class DataflowClient {
 									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type)))
 									.withEndOfStream(eos -> eos
 											.whenComplete(messaging::close))
-									.withLateBinding());
+							);
 				});
 	}
 

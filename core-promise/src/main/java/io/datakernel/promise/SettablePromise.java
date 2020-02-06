@@ -86,10 +86,12 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * Otherwise does nothing.
 	 */
 	@Async.Execute
-	public void trySet(T result) {
+	public boolean trySet(T result) {
 		if (!isComplete()) {
 			set(result);
+			return true;
 		}
+		return false;
 	}
 
 	/**
@@ -98,10 +100,12 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * Otherwise does nothing.
 	 */
 	@Async.Execute
-	public void trySetException(@NotNull Throwable e) {
+	public boolean trySetException(@NotNull Throwable e) {
 		if (!isComplete()) {
 			setException(e);
+			return true;
 		}
+		return false;
 	}
 
 	/**
@@ -109,14 +113,16 @@ public final class SettablePromise<T> extends AbstractPromise<T> implements Call
 	 * if it not completed yet. Otherwise does nothing.
 	 */
 	@Async.Execute
-	public void trySet(T result, @Nullable Throwable e) {
+	public boolean trySet(T result, @Nullable Throwable e) {
 		if (!isComplete()) {
 			if (e == null) {
-				trySet(result);
+				set(result);
 			} else {
-				trySetException(e);
+				setException(e);
 			}
+			return true;
 		}
+		return false;
 	}
 
 	public void post(T result) {

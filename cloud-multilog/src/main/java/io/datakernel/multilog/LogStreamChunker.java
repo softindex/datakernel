@@ -60,9 +60,9 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 						//noinspection ConstantConditions
 						ensureConsumer()
 								.then($ -> currentConsumer.accept(buf))
-								.whenResult($ -> doProcess());
+								.whenResult(this::doProcess);
 					} else {
-						flush().whenResult($ -> completeProcess());
+						flush().whenResult(() -> completeProcess());
 					}
 				});
 	}
@@ -91,7 +91,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 			return Promise.complete();
 		}
 		return currentConsumer.accept(null)
-				.whenResult($ -> currentConsumer = null);
+				.whenResult(() -> currentConsumer = null);
 	}
 
 	@Override

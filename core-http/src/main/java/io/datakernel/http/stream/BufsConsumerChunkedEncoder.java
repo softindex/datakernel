@@ -79,14 +79,14 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 					if (buf != null) {
 						if (buf.canRead()) {
 							output.accept(encodeBuf(buf))
-									.whenResult($ -> doProcess());
+									.whenResult(this::doProcess);
 						} else {
 							buf.recycle();
 							doProcess();
 						}
 					} else {
 						output.accept(LAST_CHUNK, null)
-								.whenResult($ -> completeProcess());
+								.whenResult(() -> completeProcess());
 					}
 				});
 	}

@@ -164,8 +164,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 				.map(consumer -> StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
 						.transformWith(ChannelSerializer.create(serializer))
-						.streamTo(consumer))
-						.withLateBinding());
+						.streamTo(consumer)));
 	}
 
 	@Override
@@ -197,8 +196,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 					Promise<Void> process = Promises.all(Stream.concat(files, tombstones));
 
 					return reducer.getOutput()
-							.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
-							.withLateBinding();
+							.transformWith(detailedStats ? downloadStatsDetailed : downloadStats);
 				});
 	}
 
@@ -208,8 +206,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 				.map(consumer -> StreamConsumer.<K>ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? removeStatsDetailed : removeStats)
 						.transformWith(ChannelSerializer.create(serializer.getKeySerializer()))
-						.streamTo(consumer))
-						.withLateBinding());
+						.streamTo(consumer)));
 	}
 
 	@Override

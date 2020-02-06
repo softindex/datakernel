@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,104 +16,76 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.EnumSet;
-import java.util.Set;
-
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static java.util.Collections.emptySet;
 
 /**
- * It is basic implementation of {@link StreamConsumer}
+ * It is basic implementation of {@link StreamSupplier}
  *
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
-
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
-	private final long createTick = eventloop.tick();
+	protected final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	private StreamDataSource<T> dataSource;
+	private boolean endOfStream;
 
-	private StreamSupplier<T> supplier;
-
-	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
-	/**
-	 * Sets wired supplier. It will sent data to this consumer
-	 *
-	 * @param supplier stream supplier for setting
-	 */
-
-	@Override
-	public final void setSupplier(@NotNull StreamSupplier<T> supplier) {
-		checkState(this.supplier == null, "Supplier has already been set");
-		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
-				LATE_BINDING_ERROR_MESSAGE, this);
-		this.supplier = supplier;
-		onWired();
-		supplier.getEndOfStream()
-				.whenComplete(endOfStream)
-				.whenException(this::close)
-				.whenResult($1 -> onEndOfStream()
-						.whenException(this::close)
-						.post()
-						.whenResult($2 -> acknowledge()));
+	{
+		acknowledgement.async().whenComplete(this::onCleanup);
 	}
 
-	protected void onWired() {
-		eventloop.post(wrapContext(this, this::onStarted));
+	@Override
+	public final void consume(@NotNull StreamDataSource<T> dataSource) {
+		//noinspection ResultOfMethodCallIgnored
+		checkNotNull(dataSource);
+		checkState(!acknowledgement.isComplete());
+		checkState(!endOfStream);
+		checkState(this.dataSource == null);
+		this.dataSource = dataSource;
+		onStarted();
 	}
 
 	protected void onStarted() {
 	}
 
-	public boolean isWired() {
-		return supplier != null;
+	@Override
+	public final void endOfStream() {
+		checkState(!acknowledgement.isComplete());
+		checkState(!endOfStream);
+		endOfStream = true;
+		onEndOfStream();
 	}
 
-	public final StreamSupplier<T> getSupplier() {
-		return supplier;
+	protected void onEndOfStream() {
 	}
 
-	protected final void acknowledge() {
+	public boolean isEndOfStream() {
+		return endOfStream;
+	}
+
+	public final void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
+		//noinspection ResultOfMethodCallIgnored
+		checkNotNull(dataAcceptor);
+		if (acknowledgement.isComplete()) return;
+		if (endOfStream) return;
+		if (dataSource == null) return;
+		dataSource.resume(dataAcceptor);
+	}
+
+	public final void suspend() {
+		if (acknowledgement.isComplete()) return;
+		if (endOfStream) return;
+		dataSource.suspend();
+	}
+
+	public final void acknowledge() {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.set(null);
-		eventloop.post(wrapContext(this, this::cleanup));
-	}
-
-	protected abstract Promise<Void> onEndOfStream();
-
-	@Override
-	public final void close(@NotNull Throwable e) {
-		if (acknowledgement.isComplete()) return;
-		acknowledgement.setException(e);
-		if (!(e instanceof ExpectedException)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("StreamConsumer {} closed with error {}", this, e.toString());
-			}
-		}
-		onError(e);
-		eventloop.post(wrapContext(this, this::cleanup));
-	}
-
-	protected abstract void onError(Throwable e);
-
-	protected void cleanup() {
-	}
-
-	public Promise<Void> getEndOfStream() {
-		return endOfStream;
 	}
 
 	@Override
@@ -121,21 +93,22 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return acknowledgement;
 	}
 
-	/**
-	 * This method is useful for stream transformers that might add some capability to the stream
-	 */
-	protected static Set<StreamCapability> extendCapabilities(@Nullable StreamConsumer<?> consumer,
-			StreamCapability capability, StreamCapability... capabilities) {
-		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
-		if (consumer != null) {
-			result.addAll(consumer.getCapabilities());
-		}
-		return result;
+	public boolean isClosed() {
+		return acknowledgement.isComplete();
 	}
 
 	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return emptySet();
+	public final void close(@NotNull Throwable e) {
+		//noinspection ResultOfMethodCallIgnored
+		checkNotNull(e);
+		if (acknowledgement.trySetException(e)) {
+			onError(e);
+		}
 	}
 
+	protected void onError(Throwable e) {
+	}
+
+	protected void onCleanup() {
+	}
 }

@@ -17,23 +17,17 @@
 package io.datakernel.datastream;
 
 import io.datakernel.async.process.Cancellable;
-import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.datastream.StreamConsumers.ClosingWithErrorImpl;
+import io.datakernel.datastream.StreamConsumers.ClosingWithError;
 import io.datakernel.datastream.StreamConsumers.Idle;
-import io.datakernel.datastream.StreamConsumers.OfChannelConsumerImpl;
+import io.datakernel.datastream.StreamConsumers.OfChannelConsumer;
 import io.datakernel.datastream.StreamConsumers.Skip;
-import io.datakernel.datastream.processor.StreamLateBinder;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
-
-import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 
 /**
  * It represents an object which can asynchronous receive streams of data.
@@ -44,14 +38,12 @@ import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 public interface StreamConsumer<T> extends Cancellable {
 	/**
 	 * Sets wired supplier. It will sent data to this consumer
-	 *
-	 * @param supplier stream supplier for setting
 	 */
-	void setSupplier(@NotNull StreamSupplier<T> supplier);
+	void consume(@NotNull StreamDataSource<T> dataSource);
+
+	void endOfStream();
 
 	Promise<Void> getAcknowledgement();
-
-	Set<StreamCapability> getCapabilities();
 
 	static <T> StreamConsumer<T> idle() {
 		return new Idle<>();
@@ -67,15 +59,19 @@ public interface StreamConsumer<T> extends Cancellable {
 	 */
 	@Deprecated
 	static <T> StreamConsumer<T> of(Consumer<T> consumer) {
-		return new StreamConsumers.OfConsumerImpl<>(consumer);
+		return new StreamConsumers.OfConsumer<>(consumer);
 	}
 
 	static <T> StreamConsumer<T> closingWithError(Throwable e) {
-		return new ClosingWithErrorImpl<>(e);
+		return new ClosingWithError<>(e);
 	}
 
 	static <T> StreamConsumer<T> ofChannelConsumer(ChannelConsumer<T> consumer) {
-		return new OfChannelConsumerImpl<>(consumer);
+		return new OfChannelConsumer<>(consumer);
+	}
+
+	static <T> ChannelConsumer<T> asStreamConsumer(StreamConsumer<T> consumer) {
+		return new StreamConsumers.AsChannelConsumer<>(consumer);
 	}
 
 	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, Promise<Void>> supplier) {
@@ -91,40 +87,10 @@ public interface StreamConsumer<T> extends Cancellable {
 		return fn.transform(this);
 	}
 
-	default StreamConsumer<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : transformWith(StreamLateBinder.create());
-	}
-
-	default ChannelConsumer<T> asSerialConsumer() {
-		StreamSupplierEndpoint<T> endpoint = new StreamSupplierEndpoint<>();
-		endpoint.streamTo(this);
-		return new AbstractChannelConsumer<T>(this) {
-			@Override
-			protected Promise<Void> doAccept(T item) {
-				if (item != null) return endpoint.put(item);
-				return endpoint.put(null).both(endpoint.getConsumer().getAcknowledgement());
-			}
-		};
-	}
-
-	String LATE_BINDING_ERROR_MESSAGE = "" +
-			"StreamConsumer %s does not have LATE_BINDING capabilities, " +
-			"it must be bound in the same tick when it is created. " +
-			"Alternatively, use .withLateBinding() modifier";
-
 	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
 		if (promise.isResult()) return promise.getResult();
-		StreamLateBinder<T> lateBounder = StreamLateBinder.create();
-		promise.whenComplete((consumer, e) -> {
-			if (e == null) {
-				checkArgument(consumer.getCapabilities().contains(LATE_BINDING),
-						LATE_BINDING_ERROR_MESSAGE, consumer);
-				lateBounder.getOutput().streamTo(consumer);
-			} else {
-				lateBounder.getOutput().streamTo(closingWithError(e));
-			}
-		});
-		return lateBounder.getInput();
+		return new StreamConsumers.OfPromise<>(promise);
+
 	}
 
 	default StreamConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {

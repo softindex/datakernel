@@ -22,15 +22,14 @@ import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToAccumulator;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamConsumers.decorator;
+import static io.datakernel.datastream.TestStreamConsumers.decorate;
 import static io.datakernel.datastream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.datastream.processor.StreamReducers.mergeDistinctReducer;
@@ -130,8 +129,7 @@ public class StreamReducerTest {
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.<Integer, KeyValueResult, KeyValueResult>create(Integer::compareTo)
 				.withBufferSize(1);
 
-		List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(list);
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create();
 		ExpectedException exception = new ExpectedException("Test Exception");
 
 		Throwable e = awaitException(
@@ -141,25 +139,17 @@ public class StreamReducerTest {
 
 				streamReducer.getOutput()
 						.streamTo(consumer
-								.transformWith(decorator((context, dataAcceptor) ->
-										item -> {
-											list.add(item);
-											if (list.size() == 1) {
-												context.closeWithError(exception);
-											}
-										})))
+								.transformWith(decorate(promise -> promise.then(
+										item -> Promise.ofException(exception)))))
 		);
 //		assertEquals(1, list.size());
 
 		assertSame(exception, e);
-		assertClosedWithError(source1);
+		assertEndOfStream(source1);
 		assertEndOfStream(source2);
 		assertEndOfStream(source3);
 
 		assertClosedWithError(streamReducer.getOutput());
-		assertClosedWithError(streamReducer.getInput(0));
-		assertClosedWithError(streamReducer.getInput(1));
-		assertClosedWithError(streamReducer.getInput(2));
 	}
 
 	@Test
@@ -174,8 +164,7 @@ public class StreamReducerTest {
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = StreamReducer.create(Integer::compareTo);
 		streamReducer.withBufferSize(1);
 
-		List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create(list);
+		StreamConsumerToList<KeyValueResult> consumer = StreamConsumerToList.create();
 
 		Throwable e = awaitException(
 				source1.streamTo(streamReducer.newInput(input -> input.key, KeyValue1.REDUCER)),
@@ -186,7 +175,7 @@ public class StreamReducerTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(0, list.size());
+		assertEquals(0, consumer.getList().size());
 		assertClosedWithError(consumer);
 		assertEndOfStream(source1);
 		assertClosedWithError(source2);

@@ -16,31 +16,39 @@
 
 package io.datakernel.datastream.processor;
 
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamDataSource;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Predicate;
 
 /**
- * Provides you to filter data for sending. It checks predicate's verity for inputting data and if
- * predicate is true sends data to the destination. It is a {@link StreamTransformer}
- * which receives specified type and streams result set to the destination .
- *
- * @param <T>
+ * Provides you apply function before sending data to the destination. It is a {@link StreamFilter}
+ * which receives specified type and streams set of function's result  to the destination .
  */
 public final class StreamFilter<T> implements StreamTransformer<T, T> {
-	public static final Predicate<Object> ALWAYS_TRUE = t -> true;
-
+	private final Predicate<T> predicate;
 	private final Input input;
 	private final Output output;
-	private final Predicate<T> predicate;
 
-	// region creators
 	private StreamFilter(Predicate<T> predicate) {
 		this.predicate = predicate;
 		this.input = new Input();
 		this.output = new Output();
+		input.acknowledgement
+				.whenException(output.endOfStream::trySetException);
+		output.endOfStream
+				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenException(input.acknowledgement::trySetException);
+	}
+
+	public static <T> StreamFilter<T> create(Predicate<T> predicate) {
+		return new StreamFilter<>(predicate);
 	}
 
 	@Override
@@ -53,51 +61,68 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param predicate predicate for filtering data
-	 */
-	public static <T> StreamFilter<T> create(Predicate<T> predicate) {
-		return new StreamFilter<>(predicate);
+	protected final class Input implements StreamConsumer<T> {
+		@Nullable StreamDataSource<T> dataSource;
+		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+
+		@Override
+		public void consume(@NotNull StreamDataSource<T> dataSource) {
+			this.dataSource = dataSource;
+			sync();
+		}
+
+		@Override
+		public void endOfStream() {
+			output.endOfStream.trySet(null);
+		}
+
+		@Override
+		public Promise<Void> getAcknowledgement() {
+			return acknowledgement;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			acknowledgement.trySetException(e);
+		}
 	}
-	// endregion
 
-	protected final class Input extends AbstractStreamConsumer<T> {
+	protected final class Output implements StreamSupplier<T> {
+		@Nullable StreamDataAcceptor<T> dataAcceptor;
+		final SettablePromise<Void> endOfStream = new SettablePromise<>();
+
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			return output.sendEndOfStream();
+		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+			if (this.dataAcceptor == dataAcceptor) return;
+			this.dataAcceptor = dataAcceptor;
+			sync();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			output.close(e);
+		public Promise<Void> getEndOfStream() {
+			return endOfStream;
+		}
+
+		@Override
+		public void close(@NotNull Throwable e) {
+			endOfStream.trySetException(e);
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<T> {
-		@Override
-		protected void onSuspended() {
-			input.getSupplier().suspend();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			input.close(e);
-		}
-
-		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			if (predicate.equals(ALWAYS_TRUE)) {
-				input.getSupplier().resume(dataAcceptor);
-			} else {
-				Predicate<T> predicate = StreamFilter.this.predicate;
-				input.getSupplier().resume(item -> {
+	private void sync() {
+		if (input.dataSource != null) {
+			final Predicate<T> predicate = this.predicate;
+			final StreamDataAcceptor<T> dataAcceptor = output.dataAcceptor;
+			if (dataAcceptor != null) {
+				input.dataSource.resume(item -> {
 					if (predicate.test(item)) {
 						dataAcceptor.accept(item);
 					}
 				});
+			} else {
+				input.dataSource.suspend();
 			}
 		}
 	}
+
 }

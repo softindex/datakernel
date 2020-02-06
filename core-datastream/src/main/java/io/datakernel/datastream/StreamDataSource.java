@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,29 +16,13 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.promise.Promise;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
-	protected final StreamSupplier<T> supplier;
+@FunctionalInterface
+public interface StreamDataSource<T> {
+	void resume(@Nullable StreamDataAcceptor<T> dataAcceptor);
 
-	public ForwardingStreamSupplier(StreamSupplier<T> supplier) {
-		this.supplier = supplier;
-	}
-
-	@Override
-	public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		supplier.supply(dataAcceptor);
-	}
-
-	@Override
-	public Promise<Void> getEndOfStream() {
-		return supplier.getEndOfStream();
-	}
-
-	@Override
-	public void close(@NotNull Throwable e) {
-		supplier.close(e);
+	default void suspend() {
+		resume(null);
 	}
 }

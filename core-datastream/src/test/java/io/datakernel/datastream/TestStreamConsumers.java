@@ -1,125 +1,38 @@
 package io.datakernel.datastream;
 
-import io.datakernel.common.ref.Ref;
-import io.datakernel.datastream.TestStreamConsumers.Decorator.Context;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
-import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Random;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
-
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 
 public class TestStreamConsumers {
-	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> decorator(Decorator<T> decorator) {
-		return consumer -> new ForwardingStreamConsumer<T>(consumer) {
-			final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
-			{
-				consumer.getAcknowledgement().whenComplete(acknowledgement::trySet);
-			}
-
-			@Override
-			public void setSupplier(@NotNull StreamSupplier<T> supplier) {
-				super.setSupplier(new ForwardingStreamSupplier<T>(supplier) {
-					@Override
-					public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-						Ref<StreamDataAcceptor<T>> dataAcceptorRef = new Ref<>();
-						Context context = new Context() {
-							final Eventloop eventloop = getCurrentEventloop();
-
-							@Override
-							public void suspend() {
-								supplier.suspend();
-							}
-
-							@Override
-							public void resume() {
-								eventloop.post(() -> supplier.resume(dataAcceptorRef.value));
-							}
-
-							@Override
-							public void closeWithError(Throwable e) {
-								acknowledgement.trySetException(e);
-							}
-						};
-						dataAcceptorRef.value = decorator.decorate(context, dataAcceptor);
-						super.resume(dataAcceptorRef.value);
-					}
-				});
-			}
-
-			@Override
-			public Promise<Void> getAcknowledgement() {
-				return acknowledgement;
-			}
-
-			@Override
-			public void close(@NotNull Throwable e) {
-				super.close(e);
-				acknowledgement.trySetException(e);
-			}
-		};
-	}
-
-	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> errorDecorator(Function<T, Throwable> errorFunction) {
-		return decorator((context, dataAcceptor) ->
-				item -> {
-					Throwable error = errorFunction.apply(item);
-					if (error == null) {
-						dataAcceptor.accept(item);
-					} else {
-						context.closeWithError(error);
-					}
-				});
-	}
-
-	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate, Consumer<Context> resumer) {
-		return decorator((context, dataAcceptor) ->
-				item -> {
-					dataAcceptor.accept(item);
-
-					if (predicate.test(item)) {
-						context.suspend();
-						resumer.accept(context);
-					}
-				});
-	}
-
-	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> suspendDecorator(Predicate<T> predicate) {
-		return suspendDecorator(predicate, Context::resume);
-	}
-
 	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> oneByOne() {
-		return suspendDecorator(item -> true);
-	}
-
-	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending(Random random, double probability) {
-		return suspendDecorator(item -> random.nextDouble() < probability);
-	}
-
-	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending(double probability) {
-		return randomlySuspending(new Random(), probability);
+		return decorate(Promise::async);
 	}
 
 	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending() {
-		return randomlySuspending(0.5);
+		return randomlySuspending(new Random(), 0.5);
 	}
 
-	@FunctionalInterface
-	public interface Decorator<T> {
-		interface Context {
-			void suspend();
-
-			void resume();
-
-			void closeWithError(Throwable e);
-		}
-
-		StreamDataAcceptor<T> decorate(Context context, StreamDataAcceptor<T> dataAcceptor);
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> randomlySuspending(Random rnd, double probability) {
+		return decorate(promise -> {
+			double b = rnd.nextDouble();
+			return b < probability ? promise : promise.async();
+		});
 	}
+
+	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> decorate(Function<Promise<T>, Promise<T>> fn) {
+		return consumer ->
+				StreamConsumer.ofChannelConsumer(
+						StreamConsumer.asStreamConsumer(consumer)
+								.transformWith(channelConsumer -> new AbstractChannelConsumer<T>(channelConsumer) {
+									@Override
+									protected Promise<Void> doAccept(@Nullable T value) {
+										return fn.apply(channelConsumer.accept(value).map($ -> value)).toVoid();
+									}
+								}));
+	}
+
 }

@@ -138,7 +138,7 @@ public final class AbstractCommunicatingProcessTest {
 						} else {
 							output.accept(data)
 									.whenException(this::close)
-									.whenResult($ -> doProcess());
+									.whenResult(this::doProcess);
 						}
 					});
 		}

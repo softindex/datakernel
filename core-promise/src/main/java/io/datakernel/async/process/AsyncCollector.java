@@ -108,9 +108,8 @@ public final class AsyncCollector<R> implements Cancellable {
 
 	@Override
 	public void close(@NotNull Throwable e) {
-		if (!resultPromise.isComplete()) {
+		if (resultPromise.trySetException(e)) {
 			result = null;
-			resultPromise.trySetException(e);
 		}
 	}
 }

@@ -249,7 +249,7 @@ public final class ReportingTest {
 		}
 
 		@Override
-		protected StreamDataAcceptor<LogItem> createSplitter() {
+		protected StreamDataAcceptor<LogItem> createSplitter(Context ctx) {
 			return new StreamDataAcceptor<LogItem>() {
 				private final StreamDataAcceptor<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
 						LogItem.class,

@@ -4,7 +4,6 @@ import io.datakernel.config.Config;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.datastream.AbstractStreamSupplier;
-import io.datakernel.datastream.StreamCapability;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.csp.ChannelDeserializer;
@@ -20,13 +19,10 @@ import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.EnumSet;
-import java.util.Set;
 import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 
 @SuppressWarnings("WeakerAccess")
@@ -127,7 +123,7 @@ public class TpcDataBenchmarkClient extends Launcher {
 		int limit = config.get(ofInteger(), "benchmark.totalElements", TOTAL_ELEMENTS);
 
 		return AsyncTcpSocketNio.connect(address)
-				.then(socket ->  {
+				.then(socket -> {
 					StreamSupplierOfSequence.create(limit)
 							.transformWith(ChannelSerializer.create(INT_SERIALIZER))
 							.streamTo(ChannelConsumer.ofSocket(socket));
@@ -154,9 +150,9 @@ public class TpcDataBenchmarkClient extends Launcher {
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
+		protected void onResumed(AsyncProduceController async) {
 			while (value < limit) {
-				StreamDataAcceptor<Integer> dataAcceptor = getCurrentDataAcceptor();
+				StreamDataAcceptor<Integer> dataAcceptor = getDataAcceptor();
 				if (dataAcceptor == null) {
 					return;
 				}
@@ -167,11 +163,6 @@ public class TpcDataBenchmarkClient extends Launcher {
 
 		@Override
 		protected void onError(Throwable e) {
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
 		}
 	}
 

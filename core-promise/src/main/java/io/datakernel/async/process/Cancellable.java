@@ -56,18 +56,4 @@ public interface Cancellable {
 		close(CLOSE_EXCEPTION);
 	}
 
-	static void tryCancel(Object item) {
-		if (item instanceof Cancellable) {
-			Cancellable cancellable = (Cancellable) item;
-			cancellable.cancel();
-		}
-	}
-
-	static void tryClose(Object item) {
-		if (item instanceof Cancellable) {
-			Cancellable cancellable = (Cancellable) item;
-			cancellable.close();
-		}
-	}
-
 }

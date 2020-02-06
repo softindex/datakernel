@@ -1104,7 +1104,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 			return resolverContainer.resolver.resolveAttributes(singletonList(key),
 					result1 -> (Object[]) result1,
 					(result12, attributes) -> attributesRef.value = attributes)
-					.whenResult($ -> {
+					.whenResult(() -> {
 						for (int i = 0; i < resolverContainer.attributes.size(); i++) {
 							String attribute = resolverContainer.attributes.get(i);
 							result.put(attribute, attributesRef.value != null ? ((Object[]) attributesRef.value)[i] : null);

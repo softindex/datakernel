@@ -19,6 +19,7 @@ package io.datakernel.datastream.processor;
 import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -28,7 +29,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.datastream.StreamSupplier.concat;
-import static io.datakernel.datastream.TestStreamConsumers.decorator;
+import static io.datakernel.datastream.TestStreamConsumers.decorate;
 import static io.datakernel.datastream.TestStreamConsumers.randomlySuspending;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
@@ -69,13 +70,8 @@ public class StreamMapperTest {
 
 		Throwable e = awaitException(source1.transformWith(streamFunction)
 				.streamTo(consumer
-						.transformWith(decorator((context, dataAcceptor) ->
-								item -> {
-									dataAcceptor.accept(item);
-									if (list.size() == 2) {
-										context.closeWithError(exception);
-									}
-								}))));
+						.transformWith(decorate(promise -> promise.then(
+								item -> item == 2 * 2 ? Promise.ofException(exception) : Promise.of(item))))));
 
 		assertSame(exception, e);
 		assertEquals(asList(1, 4), list);
@@ -104,7 +100,7 @@ public class StreamMapperTest {
 		assertSame(exception, e);
 		assertEquals(asList(1, 4, 9, 16, 25, 36), consumer.getList());
 
-		assertClosedWithError(consumer.getSupplier());
+		assertClosedWithError(consumer);
 		assertClosedWithError(streamFunction.getInput());
 		assertClosedWithError(streamFunction.getOutput());
 	}

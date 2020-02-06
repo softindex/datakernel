@@ -18,17 +18,17 @@ package io.datakernel.datastream;
 
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
-import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collector;
 
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-
-public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamConsumer<T> {
+final class StreamConsumerToCollector<T, A, R> implements StreamConsumer<T> {
 	private final Collector<T, A, R> collector;
 	private final SettablePromise<R> resultPromise = new SettablePromise<>();
+	private final Promise<Void> acknowledgement = resultPromise.toVoid();
+	@Nullable
 	private A accumulator;
 
 	public StreamConsumerToCollector(Collector<T, A, R> collector) {
@@ -36,36 +36,38 @@ public final class StreamConsumerToCollector<T, A, R> extends AbstractStreamCons
 	}
 
 	@Override
-	protected void onStarted() {
-		accumulator = collector.supplier().get();
+	public void consume(@NotNull StreamDataSource<T> dataSource) {
+		A accumulator = collector.supplier().get();
+		this.accumulator = accumulator;
 		BiConsumer<A, T> consumer = collector.accumulator();
-		getSupplier().resume(item -> consumer.accept(accumulator, item));
+		dataSource.resume(item -> consumer.accept(accumulator, item));
 	}
 
 	@Override
-	protected Promise<Void> onEndOfStream() {
+	public void endOfStream() {
+		if (resultPromise.isComplete()) return;
 		R result = collector.finisher().apply(accumulator);
-		//noinspection AssignmentToNull - resource release
 		accumulator = null;
 		resultPromise.set(result);
-		return Promise.complete();
 	}
 
 	@Override
-	protected void onError(Throwable e) {
-		resultPromise.setException(e);
+	public Promise<Void> getAcknowledgement() {
+		return acknowledgement;
+	}
+
+	@Override
+	public void close(@NotNull Throwable e) {
+		resultPromise.trySetException(e);
 	}
 
 	public Promise<R> getResult() {
 		return resultPromise;
 	}
 
+	@Nullable
 	public A getAccumulator() {
 		return accumulator;
 	}
 
-	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return EnumSet.of(LATE_BINDING);
-	}
 }

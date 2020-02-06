@@ -215,7 +215,7 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 	private Promise<MessagingWithBinaryStreaming<FsResponse, FsCommand>> connect(InetSocketAddress address) {
 		return AsyncTcpSocketNio.connect(address, 0, socketSettings)
 				.map(socket -> MessagingWithBinaryStreaming.create(socket, SERIALIZER))
-				.whenResult($ -> logger.trace("connected to [{}]: {}", address, this))
+				.whenResult(() -> logger.trace("connected to [{}]: {}", address, this))
 				.whenException(e -> logger.warn("failed connecting to [" + address + "] (" + e + "): " + this))
 				.whenComplete(connectPromise.recordStats());
 	}

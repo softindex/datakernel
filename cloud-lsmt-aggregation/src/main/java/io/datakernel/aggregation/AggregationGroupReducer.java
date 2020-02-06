@@ -89,7 +89,7 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 
 	@Override
 	protected void onStarted() {
-		getSupplier().resume(this);
+		resume(this);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -121,23 +121,25 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 				supplier.streamTo(chunker)
 						.then($ -> chunker.getResult()),
 				List::addAll)
-				.whenResult($ -> suspendOrResume());
+				.whenResult(this::suspendOrResume);
 	}
 
 	private void suspendOrResume() {
 		if (chunksCollector.getActivePromises() > 2) {
 			logger.trace("Suspend group reduce: {}", this);
-			getSupplier().suspend();
+			suspend();
 		} else {
 			logger.trace("Resume group reduce: {}", this);
-			getSupplier().resume(this);
+			resume(this);
 		}
 	}
 
 	@Override
-	protected Promise<Void> onEndOfStream() {
+	protected void onEndOfStream() {
 		doFlush();
-		return chunksCollector.run().get().toVoid();
+		chunksCollector.run().get().toVoid()
+				.whenResult(this::acknowledge)
+				.whenException(this::close);
 	}
 
 	@Override

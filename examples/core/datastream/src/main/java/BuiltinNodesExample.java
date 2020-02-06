@@ -3,7 +3,7 @@ import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.Sharders.HashSharder;
 import io.datakernel.datastream.processor.StreamFilter;
 import io.datakernel.datastream.processor.StreamMapper;
-import io.datakernel.datastream.processor.StreamSharder;
+import io.datakernel.datastream.processor.StreamSplitter;
 import io.datakernel.eventloop.Eventloop;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -11,6 +11,7 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 /**
  * Example of some simple builtin stream nodes.
  */
+@SuppressWarnings("Convert2MethodRef")
 public final class BuiltinNodesExample {
 	//[START REGION_1]
 	private static void filter() {
@@ -22,7 +23,7 @@ public final class BuiltinNodesExample {
 
 		supplier.transformWith(filter).streamTo(consumer);
 
-		consumer.getResult().whenResult(System.out::println);
+		consumer.getResult().whenResult(v -> System.out.println(v));
 	}
 	//[END REGION_1]
 
@@ -30,8 +31,10 @@ public final class BuiltinNodesExample {
 	private static void sharder() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
+		HashSharder<Object> hashSharder = new HashSharder<>(3);
 		//creating a sharder of three parts for three consumers
-		StreamSharder<Integer> sharder = StreamSharder.create(new HashSharder<>(3));
+		StreamSplitter<Integer, Integer> sharder = StreamSplitter.create(
+				(item, acceptors) -> acceptors[hashSharder.shard(item)].accept(item));
 
 		StreamConsumerToList<Integer> first = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> second = StreamConsumerToList.create();
@@ -64,7 +67,7 @@ public final class BuiltinNodesExample {
 		supplier.transformWith(simpleMap).streamTo(consumer);
 
 		//when consumer completes receiving values, the result is printed out
-		consumer.getResult().whenResult(System.out::println);
+		consumer.getResult().whenResult(v -> System.out.println(v));
 	}
 	//[END REGION_3]
 

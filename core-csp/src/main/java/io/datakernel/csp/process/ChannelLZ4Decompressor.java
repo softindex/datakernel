@@ -121,7 +121,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			input.needMoreData()
 					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
 					.thenEx(this::sanitize)
-					.whenResult($ -> processHeader());
+					.whenResult(this::processHeader);
 			return;
 		}
 
@@ -140,7 +140,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		input.endOfStream()
 				.thenEx(this::sanitize)
 				.then($ -> output.accept(null))
-				.whenResult($ -> completeProcess());
+				.whenResult(() -> completeProcess());
 	}
 
 	public void processBody() {
@@ -148,7 +148,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			input.needMoreData()
 					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
 					.thenEx(this::sanitize)
-					.whenResult($ -> processBody());
+					.whenResult(this::processBody);
 			return;
 		}
 
@@ -165,7 +165,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		}
 
 		output.accept(outputBuf)
-				.whenResult($ -> processHeader());
+				.whenResult(this::processHeader);
 	}
 
 	@Override

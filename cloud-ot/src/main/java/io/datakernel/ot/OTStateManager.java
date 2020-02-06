@@ -111,7 +111,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@Override
 	public Promise<Void> start() {
 		return checkout()
-				.whenResult($ -> poll());
+				.whenResult(this::poll);
 	}
 
 	@NotNull

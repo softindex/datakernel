@@ -107,8 +107,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 									return StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
 													.transformWith(ChannelSerializer.create(serializer))
-													.streamTo(consumer))
-											.withLateBinding();
+													.streamTo(consumer));
 								}));
 	}
 
@@ -135,8 +134,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
 												.then($2 -> messaging.sendEndOfStream())
-												.whenResult($2 -> messaging.close()))
-										.withLateBinding()));
+												.whenResult($2 -> messaging.close()))));
 	}
 
 	@Override
@@ -152,8 +150,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 									return StreamConsumer.<K>ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? removeStats : removeStatsDetailed)
 													.transformWith(ChannelSerializer.create(keySerializer))
-													.streamTo(consumer))
-											.withLateBinding();
+													.streamTo(consumer));
 								}));
 	}
 

@@ -51,16 +51,16 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 	public ChannelInput<ByteBuf> getInput() {
 		return input -> {
 			this.input = input;
-			return getAcknowledgement();
+			return getEndOfStream();
 		};
 	}
 	// endregion
 
 	@Override
-	protected void produce(AsyncProduceController async) {
+	protected void onResumed(AsyncProduceController async) {
 		async.begin();
 		ByteBuf firstBuf;
-		while (isReceiverReady() && (firstBuf = queue.peekBuf()) != null) {
+		while (isReady() && (firstBuf = queue.peekBuf()) != null) {
 			int dataSize;
 			int headerSize;
 			int size;
@@ -138,7 +138,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 			});
 		}
 
-		if (isReceiverReady()) {
+		if (isReady()) {
 			input.get()
 					.whenResult(buf -> {
 						if (buf != null) {

@@ -2,34 +2,22 @@ package io.datakernel.datastream;
 
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
 
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-
-public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
+public final class StreamConsumerToList<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 	private final List<T> list;
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
-
-	private StreamConsumerToList() {
-		this(new ArrayList<>());
-	}
+	private final Promise<Void> acknowledgement = resultPromise.toVoid();
 
 	private StreamConsumerToList(List<T> list) {
 		this.list = list;
 	}
 
 	public static <T> StreamConsumerToList<T> create() {
-		return new StreamConsumerToList<>();
-	}
-
-	public StreamConsumerToList<T> withResultAcceptor(Consumer<Promise<List<T>>> resultAcceptor) {
-		resultAcceptor.accept(resultPromise);
-		return this;
+		return create(new ArrayList<>());
 	}
 
 	public static <T> StreamConsumerToList<T> create(List<T> list) {
@@ -42,19 +30,24 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 	}
 
 	@Override
-	protected void onStarted() {
-		getSupplier().resume(this);
+	public void consume(@NotNull StreamDataSource<T> dataSource) {
+		dataSource.resume(list::add);
 	}
 
 	@Override
-	protected Promise<Void> onEndOfStream() {
+	public void endOfStream() {
+		if (resultPromise.isComplete()) return;
 		resultPromise.set(list);
-		return Promise.complete();
 	}
 
 	@Override
-	protected void onError(Throwable e) {
-		resultPromise.setException(e);
+	public Promise<Void> getAcknowledgement() {
+		return acknowledgement;
+	}
+
+	@Override
+	public void close(@NotNull Throwable e) {
+		resultPromise.trySetException(e);
 	}
 
 	public Promise<List<T>> getResult() {
@@ -63,10 +56,5 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 
 	public final List<T> getList() {
 		return list;
-	}
-
-	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return EnumSet.of(LATE_BINDING);
 	}
 }

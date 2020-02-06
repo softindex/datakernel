@@ -32,6 +32,14 @@ public interface ChannelQueue<T> extends Cancellable {
 	 */
 	Promise<T> take();
 
+	default boolean isWaiting() {
+		return isWaitingPut() || isWaitingTake();
+	}
+
+	boolean isWaitingPut();
+
+	boolean isWaitingTake();
+
 	/**
 	 * Returns a {@code ChannelConsumer} which puts value in
 	 * this queue when {@code accept(T value)} is called.

@@ -16,6 +16,12 @@
 
 package io.datakernel.datastream;
 
-public interface StreamOutput<O> {
-	StreamSupplier<O> getOutput();
+import java.util.List;
+
+public interface HasStreamInputs {
+	List<? extends StreamConsumer<?>> getInputs();
+
+	default StreamConsumer<?> getInput(int index) {
+		return getInputs().get(index);
+	}
 }

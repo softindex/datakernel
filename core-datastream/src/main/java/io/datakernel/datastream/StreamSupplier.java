@@ -17,21 +17,19 @@
 package io.datakernel.datastream;
 
 import io.datakernel.async.process.Cancellable;
-import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.datastream.StreamSuppliers.ClosingImpl;
-import io.datakernel.datastream.StreamSuppliers.ClosingWithErrorImpl;
-import io.datakernel.datastream.StreamSuppliers.IdleImpl;
-import io.datakernel.datastream.StreamSuppliers.OfIteratorImpl;
-import io.datakernel.datastream.processor.StreamLateBinder;
+import io.datakernel.datastream.StreamSuppliers.Closing;
+import io.datakernel.datastream.StreamSuppliers.ClosingWithError;
+import io.datakernel.datastream.StreamSuppliers.Idle;
+import io.datakernel.datastream.StreamSuppliers.OfIterator;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -39,8 +37,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static java.util.Arrays.asList;
 
 /**
@@ -53,32 +49,23 @@ import static java.util.Arrays.asList;
  */
 public interface StreamSupplier<T> extends Cancellable {
 	/**
-	 * Changes consumer for this supplier, removes itself from previous consumer and removes
-	 * previous supplier for new consumer. Begins to stream to consumer.
-	 *
-	 * @param consumer consumer for streaming
-	 */
-	void setConsumer(@NotNull StreamConsumer<T> consumer);
-
-	/**
 	 * This method is called for restore streaming of this supplier
 	 */
-	void resume(@NotNull StreamDataAcceptor<T> dataAcceptor);
-
-	/**
-	 * This method is called for stop streaming of this supplier
-	 */
-	void suspend();
+	void supply(@Nullable StreamDataAcceptor<T> dataAcceptor);
 
 	Promise<Void> getEndOfStream();
 
-	Set<StreamCapability> getCapabilities();
-
 	default Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
-		StreamSupplier<T> supplier = this;
-		supplier.setConsumer(consumer);
-		consumer.setSupplier(supplier);
-		return Promises.all(supplier.getEndOfStream(), consumer.getAcknowledgement());
+		this.getEndOfStream()
+				.whenResult(consumer::endOfStream)
+				.whenException(consumer::close);
+		consumer.getAcknowledgement()
+				.whenResult(this::cancel)
+				.whenException(this::close);
+		if (!this.getEndOfStream().isComplete() && !consumer.getAcknowledgement().isComplete()) {
+			consumer.consume(this::supply);
+		}
+		return Promises.all(this.getEndOfStream(), consumer.getAcknowledgement());
 	}
 
 	default Promise<Void> streamTo(Promise<StreamConsumer<T>> consumerPromise) {
@@ -87,7 +74,7 @@ public interface StreamSupplier<T> extends Cancellable {
 
 	default <X> Promise<X> streamTo(@NotNull StreamConsumerWithResult<T, X> consumerWithResult) {
 		return this.streamTo(consumerWithResult.getConsumer())
-				.then($ -> consumerWithResult.getResult());
+				.then(consumerWithResult::getResult);
 	}
 
 	static <T> StreamSupplier<T> ofConsumer(Consumer<StreamConsumer<T>> consumer) {
@@ -100,21 +87,21 @@ public interface StreamSupplier<T> extends Cancellable {
 	 * Returns supplier which doing nothing - not sending any data and not closing itself.
 	 */
 	static <T> StreamSupplier<T> idle() {
-		return new IdleImpl<>();
+		return new Idle<>();
 	}
 
 	/**
 	 * Returns supplier which only closes itself.
 	 */
 	static <T> StreamSupplier<T> closing() {
-		return new ClosingImpl<>();
+		return new Closing<>();
 	}
 
 	/**
 	 * Returns supplier which only closes itself with given error.
 	 */
 	static <T> StreamSupplier<T> closingWithError(Throwable e) {
-		return new ClosingWithErrorImpl<>(e);
+		return new ClosingWithError<>(e);
 	}
 
 	/**
@@ -125,31 +112,31 @@ public interface StreamSupplier<T> extends Cancellable {
 	 */
 	@SafeVarargs
 	static <T> StreamSupplier<T> of(T... values) {
-		return new OfIteratorImpl<>(asList(values).iterator());
+		return new OfIterator<>(asList(values).iterator());
 	}
 
 	/**
-	 * Returns new {@link OfIteratorImpl} which sends items from iterator
+	 * Returns new {@link OfIterator} which sends items from iterator
 	 *
 	 * @param iterator iterator with items for sending
 	 * @param <T>      type of item
 	 */
 	static <T> StreamSupplier<T> ofIterator(Iterator<T> iterator) {
-		return new OfIteratorImpl<>(iterator);
+		return new OfIterator<>(iterator);
 	}
 
 	/**
-	 * Returns new {@link OfIteratorImpl} which sends items from {@code iterable}
+	 * Returns new {@link OfIterator} which sends items from {@code iterable}
 	 *
 	 * @param iterable iterable with items for sending
 	 * @param <T>      type of item
 	 */
 	static <T> StreamSupplier<T> ofIterable(Iterable<T> iterable) {
-		return new OfIteratorImpl<>(iterable.iterator());
+		return new OfIterator<>(iterable.iterator());
 	}
 
 	static <T> StreamSupplier<T> ofStream(Stream<T> stream) {
-		return new OfIteratorImpl<>(stream.iterator());
+		return new OfIterator<>(stream.iterator());
 	}
 
 	/**
@@ -157,7 +144,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	 * End of stream is marked as null, so no null values cannot be used.
 	 */
 	static <T> StreamSupplier<T> ofSupplier(Supplier<T> supplier) {
-		return new OfIteratorImpl<>(new Iterator<T>() {
+		return new OfIterator<>(new Iterator<T>() {
 			private T next = supplier.get();
 
 			@Override
@@ -175,48 +162,16 @@ public interface StreamSupplier<T> extends Cancellable {
 	}
 
 	static <T> StreamSupplier<T> ofChannelSupplier(ChannelSupplier<T> supplier) {
-		return new StreamSuppliers.OfChannelSupplierImpl<>(supplier);
+		return new StreamSuppliers.OfChannelSupplier<>(supplier);
 	}
 
 	default <R> R transformWith(StreamSupplierTransformer<T, R> fn) {
 		return fn.transform(this);
 	}
 
-	default StreamSupplier<T> withLateBinding() {
-		return getCapabilities().contains(LATE_BINDING) ? this : transformWith(StreamLateBinder.create());
-	}
-
-	default ChannelSupplier<T> asSerialSupplier() {
-		StreamConsumerEndpoint<T> endpoint = new StreamConsumerEndpoint<>();
-		this.streamTo(endpoint);
-		return new AbstractChannelSupplier<T>(this) {
-			@Override
-			protected Promise<T> doGet() {
-				return endpoint.take();
-			}
-		};
-	}
-
-	String LATE_BINDING_ERROR_MESSAGE = "" +
-			"StreamSupplier %s does not have LATE_BINDING capabilities, " +
-			"it must be bound in the same tick when it is created. " +
-			"Alternatively, use .withLateBinding() modifier";
-
 	static <T> StreamSupplier<T> ofPromise(Promise<? extends StreamSupplier<T>> promise) {
-		if (promise.isResult()) {
-			return promise.getResult();
-		}
-		StreamLateBinder<T> binder = StreamLateBinder.create();
-		promise.whenComplete((supplier, e) -> {
-			if (e == null) {
-				checkArgument(supplier.getCapabilities().contains(LATE_BINDING),
-						LATE_BINDING_ERROR_MESSAGE, supplier);
-				supplier.streamTo(binder.getInput());
-			} else {
-				StreamSupplier.<T>closingWithError(e).streamTo(binder.getInput());
-			}
-		});
-		return binder.getOutput();
+		if (promise.isResult()) return promise.getResult();
+		return new StreamSuppliers.OfPromise<>(promise);
 	}
 
 	/**
@@ -226,7 +181,7 @@ public interface StreamSupplier<T> extends Cancellable {
 	 * @param <T>      type of output data
 	 */
 	static <T> StreamSupplier<T> concat(Iterator<StreamSupplier<T>> iterator) {
-		return new StreamSupplierConcat<>(iterator);
+		return new StreamSupplierConcat<>(ChannelSupplier.ofIterator(iterator));
 	}
 
 	/**

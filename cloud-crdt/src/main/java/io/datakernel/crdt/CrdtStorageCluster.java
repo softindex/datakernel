@@ -219,11 +219,11 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return connect(CrdtStorage::upload)
 				.then(successes -> {
-					ShardingStreamSplitter<CrdtData<K, S>, K> shplitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);
+					ShardingStreamSplitter<CrdtData<K, S>, K> splitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);
 
-					successes.forEach(consumer -> shplitter.newOutput().streamTo(consumer));
+					successes.forEach(consumer -> splitter.newOutput().streamTo(consumer));
 
-					return Promise.of(shplitter.getInput()
+					return Promise.of(splitter.getInput()
 							.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
 							.withLateBinding());
 				});
@@ -241,8 +241,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 					successes.forEach(producer -> producer.streamTo(reducer.newInput()));
 
 					return Promise.of(reducer.getOutput()
-							.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
-							.withLateBinding());
+							.transformWith(detailedStats ? downloadStats : downloadStatsDetailed));
 				});
 	}
 
@@ -255,8 +254,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 					successes.forEach(consumer -> splitter.newOutput().streamTo(consumer));
 
 					return Promise.of(splitter.getInput()
-							.transformWith(detailedStats ? removeStats : removeStatsDetailed)
-							.withLateBinding());
+							.transformWith(detailedStats ? removeStats : removeStatsDetailed));
 				});
 	}
 

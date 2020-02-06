@@ -33,12 +33,12 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 				.whenComplete((data, e) -> {
 					if (data == null) {
 						output.accept(null)
-								.whenResult($ -> completeProcess());
+								.whenResult(() -> completeProcess());
 					} else {
 						data = data.toUpperCase() + '(' + data.length() + ')';
 
 						output.accept(data)
-								.whenResult($ -> doProcess());
+								.whenResult(this::doProcess);
 					}
 				});
 	}

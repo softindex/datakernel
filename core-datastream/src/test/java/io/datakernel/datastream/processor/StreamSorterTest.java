@@ -22,6 +22,7 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
@@ -37,7 +38,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamConsumers.decorate;
+import static io.datakernel.datastream.TestStreamConsumers.oneByOne;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
@@ -98,7 +100,7 @@ public final class StreamSorterTest {
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		await(source.transformWith(sorter)
-				.streamTo(consumerToList.transformWith(randomlySuspending())));
+				.streamTo(consumerToList));
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 	}
@@ -120,13 +122,8 @@ public final class StreamSorterTest {
 				source.streamTo(sorter.getInput()),
 				sorter.getOutput()
 						.streamTo(consumer
-								.transformWith(decorator((context, dataAcceptor) ->
-										item -> {
-											dataAcceptor.accept(item);
-											if (list.size() == 2) {
-												context.closeWithError(exception);
-											}
-										})))
+								.transformWith(decorate(promise -> promise.then(
+										item -> item == 5 ? Promise.ofException(exception) : Promise.of(item)))))
 		);
 
 		assertSame(exception, e);
@@ -138,13 +135,13 @@ public final class StreamSorterTest {
 		ExpectedException exception = new ExpectedException();
 
 		StreamSupplier<Integer> source = StreamSupplier.concat(
-				StreamSupplier.of(3, 1, 3, 2),
+//				StreamSupplier.of(3, 1, 3, 2),
 				StreamSupplier.closingWithError(exception)
 		);
 
 		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, tempFolder.newFolder().toPath());
 		StreamSorter<Integer, Integer> sorter = StreamSorter.create(
-				storage, Function.identity(), Integer::compareTo, true, 2);
+				storage, Function.identity(), Integer::compareTo, true, 10);
 
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 

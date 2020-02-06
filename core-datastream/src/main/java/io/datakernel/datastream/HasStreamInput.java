@@ -16,6 +16,6 @@
 
 package io.datakernel.datastream;
 
-public interface StreamInput<I> {
+public interface HasStreamInput<I> {
 	StreamConsumer<I> getInput();
 }

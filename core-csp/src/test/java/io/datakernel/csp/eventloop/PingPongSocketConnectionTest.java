@@ -85,7 +85,7 @@ public final class PingPongSocketConnectionTest {
 									.then($ -> bufsSupplier.parse(DECODER))
 									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
 									.map($ -> i - 1))
-							.whenResult($ -> socket.close());
+							.whenResult(() -> socket.close());
 				}));
 	}
 }

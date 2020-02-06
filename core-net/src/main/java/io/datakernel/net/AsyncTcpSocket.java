@@ -58,4 +58,5 @@ public interface AsyncTcpSocket extends Cancellable {
 	@NotNull
 	Promise<Void> write(@Nullable ByteBuf buf);
 
+	boolean isClosed();
 }

@@ -16,23 +16,14 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.common.Recyclable;
-import io.datakernel.common.exception.ExpectedException;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.EnumSet;
-import java.util.Set;
+import java.util.ArrayDeque;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static java.util.Collections.emptySet;
 
 /**
  * It is basic implementation of {@link StreamSupplier}
@@ -40,83 +31,36 @@ import static java.util.Collections.emptySet;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
-
-	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
-	private final long createTick = eventloop.tick();
-
-	private StreamConsumer<T> consumer;
-
-	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	public static final StreamDataAcceptor<?> NO_ACCEPTOR = item -> {};
 
 	@Nullable
-	private StreamDataAcceptor<T> currentDataAcceptor;
+	private StreamDataAcceptor<T> dataAcceptor;
+	private StreamDataAcceptor<T> dataAcceptorSafe;
 
-	private StreamDataAcceptor<T> lastDataAcceptor = $ -> {
-		throw new IllegalStateException("Uninitialized data receiver");
-	};
+	private final ArrayDeque<T> buffer = new ArrayDeque<>();
+
+	{
+		dataAcceptorSafe = buffer::addLast;
+	}
+
+	private boolean endOfStreamRequest;
+	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+
+	{
+		endOfStream.async().whenComplete(this::onCleanup);
+	}
+
+	@SuppressWarnings("FieldCanBeLocal")
+	private boolean produceRequest;
 
 	private final AsyncProduceController controller = new AsyncProduceController();
-
-	private enum ProduceStatus {
-		POSTED,
-		STARTED,
-		STARTED_ASYNC
-	}
 
 	@Nullable
 	private ProduceStatus produceStatus;
 
-	/**
-	 * Sets consumer for this supplier. At the moment of calling this method supplier shouldn't have consumer,
-	 * as well as consumer shouldn't have supplier, otherwise there will be error
-	 *
-	 * @param consumer consumer for streaming
-	 */
-	@Override
-	public final void setConsumer(@NotNull StreamConsumer<T> consumer) {
-		checkState(this.consumer == null, "Consumer has already been set");
-
-		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
-				LATE_BINDING_ERROR_MESSAGE, this);
-		this.consumer = consumer;
-		onWired();
-		consumer.getAcknowledgement()
-				.whenException(this::close)
-				.whenComplete(acknowledgement);
-	}
-
-	protected void onWired() {
-		eventloop.post(wrapContext(this, this::onStarted));
-	}
-
-	protected void onStarted() {
-	}
-
-	public boolean isWired() {
-		return consumer != null;
-	}
-
-	public final StreamConsumer<T> getConsumer() {
-		return consumer;
-	}
-
-	public final boolean isReceiverReady() {
-		return currentDataAcceptor != null;
-	}
-
-	protected void send(T item) {
-		lastDataAcceptor.accept(item);
-	}
-
-	@Nullable
-	public final StreamDataAcceptor<T> getCurrentDataAcceptor() {
-		return currentDataAcceptor;
-	}
-
-	public StreamDataAcceptor<T> getLastDataAcceptor() {
-		return lastDataAcceptor;
+	private enum ProduceStatus {
+		STARTED,
+		STARTED_ASYNC
 	}
 
 	protected final class AsyncProduceController {
@@ -132,98 +76,81 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		}
 
 		public void resume() {
-			if (isReceiverReady()) {
-				produce(this);
+			if (isReady()) {
+				onResumed(this);
 			} else {
 				end();
 			}
 		}
 	}
 
-	protected void produce(AsyncProduceController async) {
+	@Override
+	public final void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		checkState(!endOfStream.isComplete());
+		if (this.dataAcceptor == dataAcceptor) return;
+		this.dataAcceptor = dataAcceptor;
+		this.dataAcceptorSafe = dataAcceptor != null ? dataAcceptor : buffer::addLast;
+		flush();
 	}
 
-	public final void tryProduce() {
-		if (!isReceiverReady())
-			return;
-		if (produceStatus != null)
-			return;
+	public final void flush() {
+		if (endOfStream.isComplete()) return;
+		produceRequest = true;
+		if (produceStatus != null) return; // recursive call
 		produceStatus = ProduceStatus.STARTED;
-		produce(controller);
+		while (produceRequest) {
+			produceRequest = false;
+			while (this.dataAcceptor != null && !buffer.isEmpty()) {
+				T item = buffer.pollFirst();
+				this.dataAcceptor.accept(item);
+			}
+			if (this.dataAcceptor != null) {
+				//noinspection ConstantConditions
+				assert buffer.isEmpty();
+				if (!endOfStreamRequest) {
+					onResumed(controller);
+				} else {
+					dataAcceptor = null;
+					//noinspection unchecked
+					dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+					endOfStream.set(null);
+					return;
+				}
+			}
+		}
 		if (produceStatus == ProduceStatus.STARTED) {
 			produceStatus = null;
 		}
+		if (this.dataAcceptor == null) {
+			onSuspended();
+		}
 	}
 
-	public final void postProduce() {
-		if (produceStatus != null)
-			return; // recursive call from downstream - just hot-switch to another receiver
-		produceStatus = ProduceStatus.POSTED;
-		eventloop.post(wrapContext(this, () -> {
-			produceStatus = null;
-			tryProduce();
-		}));
-	}
-
-	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		postProduce();
-	}
-
-	@Override
-	public final void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
-
-		if (currentDataAcceptor == dataAcceptor) return;
-		if (endOfStream.isComplete()) return;
-		currentDataAcceptor = dataAcceptor;
-		lastDataAcceptor = dataAcceptor;
-		onProduce(dataAcceptor);
-	}
-
-	protected boolean isClosed() {
-		return endOfStream.isComplete();
-	}
+	protected abstract void onResumed(AsyncProduceController async);
 
 	protected void onSuspended() {
 	}
 
-	@Override
-	public final void suspend() {
-		if (logger.isTraceEnabled()) logger.trace("Suspend supplier: {}", this);
-		if (!isReceiverReady())
-			return;
-		currentDataAcceptor = null;
-		onSuspended();
+	public final void send(T item) {
+		dataAcceptorSafe.accept(item);
 	}
 
-	public Promise<Void> sendEndOfStream() {
-		checkState(consumer != null);
-		if (endOfStream.isComplete()) return endOfStream;
-		currentDataAcceptor = null;
-		lastDataAcceptor = Recyclable::tryRecycle;
-		endOfStream.set(null);
-		eventloop.post(wrapContext(this, this::cleanup));
-		return consumer.getAcknowledgement();
-	}
-
-	@Override
-	public final void close(@NotNull Throwable e) {
+	public final void sendEndOfStream() {
 		if (endOfStream.isComplete()) return;
-		if (!(e instanceof ExpectedException)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("StreamSupplier {} closed with error {}", this, e.toString());
-			}
+		if (produceStatus == ProduceStatus.STARTED_ASYNC) {
+			produceStatus = null;
 		}
-		currentDataAcceptor = null;
-		lastDataAcceptor = Recyclable::tryRecycle;
-		endOfStream.setException(e);
-		eventloop.post(wrapContext(this, this::cleanup));
-		onError(e);
+		endOfStreamRequest = true;
+		flush();
 	}
 
-	protected abstract void onError(Throwable e);
+	@Nullable
+	public final StreamDataAcceptor<T> getDataAcceptor() {
+		return dataAcceptor;
+	}
 
-	protected void cleanup() {
+	public final boolean isReady() {
+		return dataAcceptor != null;
 	}
 
 	@Override
@@ -231,25 +158,20 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return endOfStream;
 	}
 
-	public Promise<Void> getAcknowledgement() {
-		return acknowledgement;
-	}
-
-	/**
-	 * This method is useful for stream transformers that might add some capability to the stream
-	 */
-	protected static Set<StreamCapability> extendCapabilities(@Nullable StreamSupplier<?> supplier,
-			StreamCapability capability, StreamCapability... capabilities) {
-		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
-		if (supplier != null) {
-			result.addAll(supplier.getCapabilities());
-		}
-		return result;
-	}
-
 	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return emptySet();
+	public final void close(@NotNull Throwable e) {
+		dataAcceptor = null;
+		//noinspection unchecked
+		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+		if (endOfStream.trySetException(e)) {
+			onError(e);
+		}
+	}
+
+	protected void onError(Throwable e) {
+	}
+
+	protected void onCleanup() {
 	}
 
 }

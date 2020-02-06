@@ -20,7 +20,7 @@ import io.datakernel.datastream.*;
 
 import java.util.function.Function;
 
-public interface StreamTransformer<I, O> extends StreamInput<I>, StreamOutput<O>,
+public interface StreamTransformer<I, O> extends HasStreamInput<I>, HasStreamOutput<O>,
 		StreamSupplierTransformer<I, StreamSupplier<O>>,
 		StreamConsumerTransformer<O, StreamConsumer<I>> {
 

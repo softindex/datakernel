@@ -22,42 +22,36 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
-import io.datakernel.datastream.AbstractStreamConsumer;
-import io.datakernel.datastream.AbstractStreamSupplier;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.net.AsyncTcpSocket;
-import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-
 public final class RpcStream {
 	private static final CloseException RPC_CLOSE_EXCEPTION = new CloseException(RpcStream.class, "RPC Channel Closed");
+	private final ChannelDeserializer<RpcMessage> deserializer;
+	private final ChannelSerializer<RpcMessage> serializer;
 
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {
 		void onReceiverEndOfStream();
 
 		void onReceiverError(@NotNull Throwable e);
 
-		void onSenderError(@NotNull Throwable e);
-
 		void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor);
 
 		void onSenderSuspended();
+
+		void onSenderError(@NotNull Throwable e);
 	}
 
 	@SuppressWarnings("FieldCanBeLocal")
 	private final boolean server;
 	private final AsyncTcpSocket socket;
 	private Listener listener;
-	private final AbstractStreamSupplier<RpcMessage> sender;
-	private final AbstractStreamConsumer<RpcMessage> receiver;
 
 	public RpcStream(AsyncTcpSocket socket,
 			BinarySerializer<RpcMessage> messageSerializer,
@@ -65,61 +59,6 @@ public final class RpcStream {
 			Duration autoFlushInterval, boolean compression, boolean server) {
 		this.server = server;
 		this.socket = socket;
-		if (this.server) {
-			sender = new AbstractStreamSupplier<RpcMessage>() {
-				@Override
-				protected void onProduce(@NotNull StreamDataAcceptor<RpcMessage> dataAcceptor) {
-					receiver.getSupplier().resume(listener);
-					listener.onSenderReady(dataAcceptor);
-				}
-
-				@Override
-				protected void onSuspended() {
-					receiver.getSupplier().suspend();
-					listener.onSenderSuspended();
-				}
-
-				@Override
-				protected void onError(Throwable e) {
-					if (e != RPC_CLOSE_EXCEPTION) listener.onSenderError(e);
-				}
-			};
-		} else {
-			sender = new AbstractStreamSupplier<RpcMessage>() {
-				@Override
-				protected void onProduce(@NotNull StreamDataAcceptor<RpcMessage> dataAcceptor) {
-					listener.onSenderReady(dataAcceptor);
-				}
-
-				@Override
-				protected void onSuspended() {
-					listener.onSenderSuspended();
-				}
-
-				@Override
-				protected void onError(Throwable e) {
-					if (e != RPC_CLOSE_EXCEPTION) listener.onSenderError(e);
-				}
-			};
-		}
-
-		receiver = new AbstractStreamConsumer<RpcMessage>() {
-			@Override
-			protected void onStarted() {
-				getSupplier().resume(listener);
-			}
-
-			@Override
-			protected Promise<Void> onEndOfStream() {
-				listener.onReceiverEndOfStream();
-				return Promise.complete();
-			}
-
-			@Override
-			protected void onError(Throwable e) {
-				if (e != RPC_CLOSE_EXCEPTION) listener.onReceiverError(e);
-			}
-		};
 
 		ChannelSerializer<RpcMessage> serializer = ChannelSerializer.create(messageSerializer)
 				.withInitialBufferSize(initialBufferSize)
@@ -142,19 +81,39 @@ public final class RpcStream {
 			serializer.getOutput().set(ChannelConsumer.ofSocket(socket));
 		}
 
-		deserializer.streamTo(receiver);
-		sender.streamTo(serializer);
+		this.deserializer = deserializer;
+		this.serializer = serializer;
 	}
 
 	public void setListener(Listener listener) {
 		this.listener = listener;
+		deserializer.getEndOfStream()
+				.whenResult(listener::onReceiverEndOfStream)
+				.whenException(listener::onReceiverError);
+		serializer.getAcknowledgement()
+				.whenException(listener::onSenderError);
+		serializer.consume(
+				acceptor -> {
+					if (acceptor != null) {
+						deserializer.supply(listener);
+						listener.onSenderReady(acceptor);
+					} else {
+						if (server) {
+							deserializer.supply(null);
+						}
+						listener.onSenderSuspended();
+					}
+				}
+		);
 	}
 
 	public void sendEndOfStream() {
-		sender.sendEndOfStream();
+		if (!serializer.getAcknowledgement().isComplete()) {
+			serializer.endOfStream();
+		}
 	}
 
 	public void close() {
-		getCurrentEventloop().post(wrapContext(socket, () -> socket.close(RPC_CLOSE_EXCEPTION)));
+		socket.close(RPC_CLOSE_EXCEPTION);
 	}
 }

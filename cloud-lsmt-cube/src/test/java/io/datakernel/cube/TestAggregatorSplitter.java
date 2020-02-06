@@ -68,7 +68,7 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 	}
 
 	@Override
-	protected StreamDataAcceptor<TestPubRequest> createSplitter() {
+	protected StreamDataAcceptor<TestPubRequest> createSplitter(Context ctx) {
 		return new StreamDataAcceptor<TestPubRequest>() {
 			private final AggregationItem outputItem = new AggregationItem();
 

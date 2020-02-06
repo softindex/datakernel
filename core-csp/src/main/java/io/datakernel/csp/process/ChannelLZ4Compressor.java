@@ -151,10 +151,10 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 						if (inspector != null) inspector.onBuf(buf, outputBuf);
 						buf.recycle();
 						output.accept(outputBuf)
-								.whenResult($ -> doProcess());
+								.whenResult(this::doProcess);
 					} else {
 						output.accept(createEndOfStreamBlock(), null)
-								.whenResult($ -> completeProcess());
+								.whenResult(() -> completeProcess());
 					}
 				});
 	}

@@ -139,8 +139,8 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
 					return messaging.send("start")
-							.then($ -> messaging.sendEndOfStream())
-							.then($ -> messaging.receiveBinaryStream()
+							.then(messaging::sendEndOfStream)
+							.then(() -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 									.toList());
 				}));

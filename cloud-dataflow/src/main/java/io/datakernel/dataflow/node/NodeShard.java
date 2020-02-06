@@ -20,7 +20,7 @@ import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.Sharders.HashSharder;
-import io.datakernel.datastream.processor.StreamSharder;
+import io.datakernel.datastream.processor.StreamSplitter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -91,8 +91,8 @@ public final class NodeShard<K, T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		HashSharder<K> hashSharder = new HashSharder<>(outputs.size());
-		StreamSharder<T> streamSharder = StreamSharder.create(
-				object -> hashSharder.shard(keyFunction.apply(object)));
+		StreamSplitter<T, T> streamSharder = StreamSplitter.create(
+				(item, acceptors) -> acceptors[hashSharder.shard(keyFunction.apply(item))].accept(item));
 		taskContext.bindChannel(input, streamSharder.getInput());
 		for (StreamId streamId : outputs) {
 			StreamSupplier<T> supplier = streamSharder.newOutput();

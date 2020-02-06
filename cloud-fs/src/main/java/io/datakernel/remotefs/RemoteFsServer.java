@@ -108,7 +108,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					messaging.send(new ServerError(getErrorCode(e)))
 							.then($ -> messaging.sendEndOfStream())
-							.whenResult($ -> messaging.close());
+							.whenResult(() -> messaging.close());
 				});
 	}
 
@@ -126,7 +126,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					})
 					.then($ -> messaging.send(new UploadFinished()))
 					.then($ -> messaging.sendEndOfStream())
-					.whenResult($ -> messaging.close())
+					.whenResult(() -> messaging.close())
 					.whenComplete(uploadPromise.recordStats())
 					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
 					.toVoid();

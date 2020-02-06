@@ -19,28 +19,26 @@ package io.datakernel.datastream;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Set;
-
 public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
-	private final StreamConsumer<T> consumer;
+	protected final StreamConsumer<T> consumer;
 
 	public ForwardingStreamConsumer(StreamConsumer<T> consumer) {
 		this.consumer = consumer;
 	}
 
 	@Override
-	public void setSupplier(@NotNull StreamSupplier<T> supplier) {
-		consumer.setSupplier(supplier);
+	public void consume(@NotNull StreamDataSource<T> dataSource) {
+		consumer.consume(dataSource);
+	}
+
+	@Override
+	public void endOfStream() {
+		consumer.endOfStream();
 	}
 
 	@Override
 	public Promise<Void> getAcknowledgement() {
 		return consumer.getAcknowledgement();
-	}
-
-	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return consumer.getCapabilities();
 	}
 
 	@Override
