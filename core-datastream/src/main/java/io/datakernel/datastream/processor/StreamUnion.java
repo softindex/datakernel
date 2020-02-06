@@ -66,7 +66,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		input.acknowledgement
 				.whenException(output.endOfStream::trySetException);
 		output.endOfStream
-				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenResult(input.acknowledgement::trySet)
 				.whenException(input.acknowledgement::trySetException);
 		return input;
 	}

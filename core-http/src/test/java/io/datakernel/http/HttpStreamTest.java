@@ -164,9 +164,9 @@ public final class HttpStreamTest {
 
 		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.then($ -> socket.write(null))
-						.then($ -> ChannelSupplier.ofSocket(socket).toCollector(ByteBufQueue.collector()))
-						.whenComplete(socket::close)));
+						.then(() -> socket.write(null))
+						.then(() -> ChannelSupplier.ofSocket(socket).toCollector(ByteBufQueue.collector()))
+						.whenComplete(socket::cancel)));
 
 		assertEquals(responseMessage, body.asString(UTF_8));
 
@@ -187,8 +187,8 @@ public final class HttpStreamTest {
 
 		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.then($ -> socket.read())
-						.whenComplete(socket::close)));
+						.then(socket::read)
+						.whenComplete(socket::cancel)));
 
 		assertNull(body);
 
@@ -215,9 +215,9 @@ public final class HttpStreamTest {
 
 		ByteBuf body = await(AsyncTcpSocketNio.connect(new InetSocketAddress(PORT))
 				.then(socket -> socket.write(ByteBuf.wrapForReading(chunkedRequest.getBytes(UTF_8)))
-						.then($ -> socket.write(null))
-						.then($ -> socket.read())
-						.whenComplete(socket::close)));
+						.then(() -> socket.write(null))
+						.then(socket::read)
+						.whenComplete(socket::cancel)));
 
 		assertNull(body);
 

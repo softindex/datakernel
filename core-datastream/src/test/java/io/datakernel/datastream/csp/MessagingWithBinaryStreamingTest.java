@@ -76,27 +76,27 @@ public final class MessagingWithBinaryStreamingTest {
 		messaging.receive()
 				.then(msg -> {
 					if (msg != null) {
-						return messaging.send(msg).whenResult($ -> pong(messaging));
+						return messaging.send(msg).whenResult(() -> pong(messaging));
 					}
-					messaging.close();
-					return Promise.complete();
+                    messaging.cancel();
+                    return Promise.complete();
 				})
-				.whenException(e -> messaging.close());
+				.whenException(e -> messaging.cancel());
 	}
 
 	private static void ping(int n, Messaging<Integer, Integer> messaging) {
 		messaging.send(n)
-				.then($ -> messaging.receive())
+				.then(messaging::receive)
 				.whenResult(msg -> {
 					if (msg != null) {
 						if (msg > 0) {
 							ping(msg - 1, messaging);
 						} else {
-							messaging.close();
-						}
+                            messaging.cancel();
+                        }
 					}
 				})
-				.whenException(e -> messaging.close());
+				.whenException(e -> messaging.cancel());
 	}
 
 	@Test
@@ -161,7 +161,7 @@ public final class MessagingWithBinaryStreamingTest {
 
 					messaging.receive()
 							.whenComplete(assertComplete(msg -> assertEquals("start", msg)))
-							.then($ ->
+							.then(() ->
 									messaging.receiveBinaryStream()
 											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 											.toList()
@@ -205,7 +205,7 @@ public final class MessagingWithBinaryStreamingTest {
 											.toList()
 											.then(list ->
 													messaging.send("ack")
-															.then($ -> messaging.sendEndOfStream())
+															.then(messaging::sendEndOfStream)
 															.map($ -> list)))
 							.whenComplete(assertComplete(list -> assertEquals(source, list)));
 				})
@@ -219,12 +219,12 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
 					return messaging.send("start")
-							.then($ -> StreamSupplier.ofIterable(source)
+							.then(() -> StreamSupplier.ofIterable(source)
 									.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream()))
-							.then($ -> messaging.receive())
-							.whenComplete(messaging::close);
+							.then(messaging::receive)
+							.whenComplete(messaging::cancel);
 				}));
 
 		assertEquals("ack", msg);

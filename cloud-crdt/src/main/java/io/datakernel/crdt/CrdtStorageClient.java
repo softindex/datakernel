@@ -102,9 +102,9 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 								.map($ -> {
 									ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
-													.then($2 -> messaging.receive())
+													.then(messaging::receive)
 													.then(simpleHandler(UPLOAD_FINISHED)));
-									return StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier ->
+									return StreamConsumer.ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
 													.transformWith(ChannelSerializer.create(serializer))
 													.streamTo(consumer));
@@ -115,7 +115,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return connect()
 				.then(messaging -> messaging.send(new Download(timestamp))
-						.then($ -> messaging.receive())
+						.then(messaging::receive)
 						.then(response -> {
 							if (response == null) {
 								return Promise.ofException(new IllegalStateException("Unexpected end of stream"));
@@ -133,8 +133,8 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 										.transformWith(ChannelDeserializer.create(serializer))
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
-												.then($2 -> messaging.sendEndOfStream())
-												.whenResult($2 -> messaging.close()))));
+												.then(messaging::sendEndOfStream)
+												.whenResult(messaging::cancel))));
 	}
 
 	@Override
@@ -145,9 +145,9 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 								.map($ -> {
 									ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
-													.then($2 -> messaging.receive())
+													.then(messaging::receive)
 													.then(simpleHandler(REMOVE_FINISHED)));
-									return StreamConsumer.<K>ofSupplier(supplier ->
+									return StreamConsumer.ofSupplier(supplier ->
 											supplier.transformWith(detailedStats ? removeStats : removeStatsDetailed)
 													.transformWith(ChannelSerializer.create(keySerializer))
 													.streamTo(consumer));
@@ -158,7 +158,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	public Promise<Void> ping() {
 		return connect()
 				.then(messaging -> messaging.send(PING)
-						.then($ -> messaging.receive())
+						.then(messaging::receive)
 						.then(simpleHandler(PONG)));
 	}
 

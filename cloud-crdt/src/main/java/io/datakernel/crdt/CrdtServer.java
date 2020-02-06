@@ -66,18 +66,18 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
                         return messaging.receiveBinaryStream()
                                 .transformWith(ChannelDeserializer.create(serializer))
                                 .streamTo(StreamConsumer.ofPromise(client.upload()))
-                                .then($ -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
-                                .then($ -> messaging.sendEndOfStream())
-                                .whenResult(() -> messaging.close());
+                                .then(() -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
+                                .then(messaging::sendEndOfStream)
+                                .whenResult(messaging::cancel);
 
                     }
                     if (msg == CrdtMessages.REMOVE) {
                         return messaging.receiveBinaryStream()
                                 .transformWith(ChannelDeserializer.create(keySerializer))
                                 .streamTo(StreamConsumer.ofPromise(client.remove()))
-                                .then($ -> messaging.send(CrdtResponses.REMOVE_FINISHED))
-                                .then($ -> messaging.sendEndOfStream())
-                                .whenResult(() -> messaging.close());
+                                .then(() -> messaging.send(CrdtResponses.REMOVE_FINISHED))
+                                .then(messaging::sendEndOfStream)
+                                .whenResult(messaging::cancel);
                     }
                     if (msg instanceof Download) {
                         return client.download(((Download) msg).getToken())
@@ -95,8 +95,8 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
                     logger.warn("got an error while handling message (" + e + ") : " + this);
                     String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
                     messaging.send(new ServerError(prefix + e.getMessage()))
-                            .then($1 -> messaging.sendEndOfStream())
-                            .whenResult($1 -> messaging.close());
+                            .then(messaging::sendEndOfStream)
+                            .whenResult(messaging::cancel);
                 });
     }
 }

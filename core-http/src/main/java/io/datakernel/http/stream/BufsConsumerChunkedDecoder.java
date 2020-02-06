@@ -141,8 +141,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 		int newChunkLength = chunkLength - buf.readRemaining();
 		if (newChunkLength != 0) {
 			Promise.complete()
-					.then($ -> buf.canRead() ? output.accept(buf) : Promise.complete())
-					.then($ -> bufs.isEmpty() ? input.needMoreData() : Promise.complete())
+					.then(() -> buf.canRead() ? output.accept(buf) : Promise.complete())
+					.then(() -> bufs.isEmpty() ? input.needMoreData() : Promise.complete())
 					.whenResult(() -> processData(newChunkLength));
 			return;
 		}
@@ -151,7 +151,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					buf.recycle();
 					close(MALFORMED_CHUNK);
 				})
-				.then($ -> output.accept(buf))
+				.then(() -> output.accept(buf))
 				.whenResult(this::processLength);
 	}
 
@@ -180,8 +180,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					bufs.skip(i + 4);
 
 					input.endOfStream()
-							.then($ -> output.accept(null))
-							.whenResult(() -> completeProcess());
+							.then(() -> output.accept(null))
+							.whenResult(this::completeProcess);
 					return;
 				}
 			}

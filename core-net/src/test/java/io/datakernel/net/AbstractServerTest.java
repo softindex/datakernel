@@ -61,8 +61,8 @@ public final class AbstractServerTest {
 											socket.write(buf)
 													.whenComplete(($2, e) -> {
 														if (buf == null) {
-															socket.close();
-														}
+                                                            socket.cancel();
+                                                        }
 													});
 										});
 									}),
@@ -76,8 +76,8 @@ public final class AbstractServerTest {
 		ByteBuf response = await(AsyncTcpSocketNio.connect(address)
 				.then(socket ->
 						socket.write(ByteBufStrings.wrapAscii(message))
-								.then($ -> socket.write(null))
-								.then($ -> {
+								.then(() -> socket.write(null))
+								.then(() -> {
 									ByteBufQueue queue = new ByteBufQueue();
 									return Promises.<ByteBuf>until(null,
 											$2 -> socket.read()
@@ -90,7 +90,7 @@ public final class AbstractServerTest {
 											Objects::isNull)
 											.map($2 -> queue.takeRemaining());
 								})
-								.whenComplete(socket::close)));
+								.whenComplete(socket::cancel)));
 
 		assertEquals(message, response.asString(UTF_8));
 	}

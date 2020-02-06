@@ -161,7 +161,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return client.upload(namingStrategy.apply("bin"))
-				.map(consumer -> StreamConsumer.<CrdtData<K, S>>ofSupplier(supplier -> supplier
+				.map(consumer -> StreamConsumer.ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
 						.transformWith(ChannelSerializer.create(serializer))
 						.streamTo(consumer)));
@@ -203,7 +203,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return tombstoneFolderClient.upload(namingStrategy.apply("tomb"))
-				.map(consumer -> StreamConsumer.<K>ofSupplier(supplier -> supplier
+				.map(consumer -> StreamConsumer.ofSupplier(supplier -> supplier
 						.transformWith(detailedStats ? removeStatsDetailed : removeStats)
 						.transformWith(ChannelSerializer.create(serializer.getKeySerializer()))
 						.streamTo(consumer)));

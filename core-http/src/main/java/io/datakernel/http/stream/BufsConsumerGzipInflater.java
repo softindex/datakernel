@@ -180,7 +180,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 			}
 		}
 		output.acceptAll(queue.asIterator())
-				.then($ -> input.needMoreData())
+				.then(() -> input.needMoreData())
 				.whenResult(this::processBody);
 	}
 
@@ -199,8 +199,8 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 					}
 					buf.recycle();
 					input.endOfStream()
-							.then($ -> output.accept(null))
-							.whenResult(() -> completeProcess());
+							.then(() -> output.accept(null))
+							.whenResult(this::completeProcess);
 				})
 				.whenException(this::close);
 	}
@@ -263,7 +263,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				})
 				.whenException(this::close)
 				.whenResult(ByteBuf::recycle)
-				.whenResult($ -> runNext(flag - FEXTRA).run());
+				.whenResult(() -> runNext(flag - FEXTRA).run());
 	}
 
 	private void skipCRC16(int flag) {

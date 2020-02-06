@@ -83,8 +83,8 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 	protected void doProcess() {
 		if (remaining == 0) {
 			input.endOfStream()
-					.then($ -> output.accept(null))
-					.whenResult(() -> completeProcess());
+					.then(() -> output.accept(null))
+					.whenResult(this::completeProcess);
 			return;
 		}
 		ByteBufQueue outputBufs = new ByteBufQueue();
@@ -93,11 +93,11 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 				.whenResult(() -> {
 					if (remaining != 0) {
 						input.needMoreData()
-								.whenResult($1 -> doProcess());
+								.whenResult(this::doProcess);
 					} else {
 						input.endOfStream()
-								.then($1 -> output.accept(null))
-								.whenResult($1 -> completeProcess());
+								.then(() -> output.accept(null))
+								.whenResult(this::completeProcess);
 					}
 				});
 	}

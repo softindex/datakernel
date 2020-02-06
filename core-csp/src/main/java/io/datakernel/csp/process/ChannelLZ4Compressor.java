@@ -154,7 +154,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 								.whenResult(this::doProcess);
 					} else {
 						output.accept(createEndOfStreamBlock(), null)
-								.whenResult(() -> completeProcess());
+								.whenResult(this::completeProcess);
 					}
 				});
 	}

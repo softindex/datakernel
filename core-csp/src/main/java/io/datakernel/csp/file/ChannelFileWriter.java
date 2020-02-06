@@ -109,7 +109,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 		started = true;
 		if (buf == null) {
 			closeFile();
-			close();
+			cancel();
 			return Promise.of(null);
 		}
 		long p = position;
@@ -124,7 +124,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 					}
 					return Promise.of($, e2);
 				})
-				.then($ -> {
+				.then(() -> {
 					buf.recycle();
 					return Promise.complete();
 				});

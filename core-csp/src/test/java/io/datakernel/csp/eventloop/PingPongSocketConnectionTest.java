@@ -67,9 +67,9 @@ public final class PingPongSocketConnectionTest {
 							i -> i != 0,
 							i -> bufsSupplier.parse(DECODER)
 									.whenResult(res -> assertEquals(REQUEST_MSG, res))
-									.then($ -> socket.write(wrapAscii(RESPONSE_MSG)))
+									.then(() -> socket.write(wrapAscii(RESPONSE_MSG)))
 									.map($ -> i - 1))
-							.whenComplete(socket::close)
+							.whenComplete(socket::cancel)
 							.whenComplete(assertComplete());
 				})
 				.withListenAddress(ADDRESS)
@@ -82,10 +82,10 @@ public final class PingPongSocketConnectionTest {
 					return loop(ITERATIONS,
 							i -> i != 0,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
-									.then($ -> bufsSupplier.parse(DECODER))
+									.then(() -> bufsSupplier.parse(DECODER))
 									.whenResult(res -> assertEquals(RESPONSE_MSG, res))
 									.map($ -> i - 1))
-							.whenResult(() -> socket.close());
+							.whenResult(socket::cancel);
 				}));
 	}
 }

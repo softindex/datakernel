@@ -139,7 +139,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 
 	private void closeIfDone() {
 		if (readDone && writeDone) {
-			close();
+			cancel();
 		}
 	}
 

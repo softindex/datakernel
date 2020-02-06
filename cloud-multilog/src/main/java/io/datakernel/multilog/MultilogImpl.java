@@ -103,7 +103,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	public Promise<StreamConsumer<T>> write(@NotNull String logPartition) {
 		validateLogPartition(logPartition);
 
-		return Promise.of(StreamConsumer.<T>ofSupplier(
+		return Promise.of(StreamConsumer.ofSupplier(
 				supplier -> supplier
 						.transformWith(ChannelSerializer.create(serializer)
 								.withAutoFlushInterval(autoFlushInterval)

@@ -134,7 +134,7 @@ public final class AbstractCommunicatingProcessTest {
 						if (data == null) {
 							output.accept(null)
 									.whenException(this::close)
-									.whenResult($ -> completeProcess());
+									.whenResult(this::completeProcess);
 						} else {
 							output.accept(data)
 									.whenException(this::close)

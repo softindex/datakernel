@@ -283,7 +283,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		if (isClosed()) return Promise.ofException(CLOSE_EXCEPTION);
+		if (isClosed()) return Promise.ofException(CANCEL_EXCEPTION);
 		read = null;
 		if (readBuf != null || readEndOfStream) {
 			ByteBuf readBuf = this.readBuf;
@@ -374,7 +374,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		checkState(!writeEndOfStream, "End of stream has already been sent");
 		if (isClosed()) {
 			if (buf != null) buf.recycle();
-			return Promise.ofException(CLOSE_EXCEPTION);
+			return Promise.ofException(CANCEL_EXCEPTION);
 		}
 		writeEndOfStream |= buf == null;
 

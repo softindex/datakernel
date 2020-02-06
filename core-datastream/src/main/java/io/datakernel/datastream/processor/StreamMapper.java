@@ -46,7 +46,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		input.acknowledgement
 				.whenException(output.endOfStream::trySetException);
 		output.endOfStream
-				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenResult(input.acknowledgement::trySet)
 				.whenException(input.acknowledgement::trySetException);
 	}
 

@@ -97,16 +97,16 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 						if (e != null) {
 							logger.warn("Exception occurred while trying to send data");
 						}
-						messaging.close();
-					}));
+                        messaging.cancel();
+                    }));
 		}
 	}
 
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
 		public void onCommand(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
-			messaging.close();
-			TaskContext taskContext = new TaskContext(eventloop, DataflowEnvironment.extend(environment));
+            messaging.cancel();
+            TaskContext taskContext = new TaskContext(eventloop, DataflowEnvironment.extend(environment));
 			for (Node node : command.getNodes()) {
 				node.createAndBind(taskContext);
 			}
@@ -143,21 +143,21 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 						doRead(messaging, msg);
 					} else {
 						logger.warn("unexpected end of stream");
-						messaging.close();
-					}
+                        messaging.cancel();
+                    }
 				})
 				.whenException(e -> {
 					logger.error("received error while trying to read", e);
-					messaging.close();
-				});
+                    messaging.cancel();
+                });
 	}
 
 	@SuppressWarnings("unchecked")
 	private void doRead(Messaging<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {
-			messaging.close();
-			logger.error("missing handler for " + command);
+            messaging.cancel();
+            logger.error("missing handler for " + command);
 		} else {
 			handler.onCommand(messaging, command);
 		}

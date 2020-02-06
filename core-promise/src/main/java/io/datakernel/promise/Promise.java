@@ -454,6 +454,10 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, AsyncComputa
 	@Contract("_ -> this")
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
+	default Promise<T> whenException(@NotNull Runnable action) {
+		return whenException($ -> action.run());
+	}
+
 	/**
 	 * Returns a new {@code Promise} that, when this and the other
 	 * given {@code Promise} both complete, is executed with the two

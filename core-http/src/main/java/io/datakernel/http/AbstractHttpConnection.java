@@ -151,8 +151,8 @@ public abstract class AbstractHttpConnection {
 		if (isClosed()) return;
 		flags |= CLOSED;
 		onClosed();
-		socket.close();
-		readQueue.recycle();
+        socket.cancel();
+        readQueue.recycle();
 	}
 
 	protected final void closeWithError(@NotNull Throwable e) {
@@ -160,8 +160,8 @@ public abstract class AbstractHttpConnection {
 		flags |= CLOSED;
 		onClosedWithError(e);
 		onClosed();
-		socket.close();
-		readQueue.recycle();
+        socket.cancel();
+        readQueue.recycle();
 	}
 
 	protected final void readHttpMessage() throws ParseException {

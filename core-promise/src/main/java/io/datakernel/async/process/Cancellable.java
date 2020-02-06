@@ -32,7 +32,6 @@ import org.jetbrains.annotations.NotNull;
  */
 public interface Cancellable {
 	CloseException CANCEL_EXCEPTION = new CloseException(Cancellable.class, "Cancelled");
-	CloseException CLOSE_EXCEPTION = new CloseException(Cancellable.class, "Closed");
 
 	/**
 	 * Closes process exceptionally in case an exception
@@ -47,13 +46,6 @@ public interface Cancellable {
 	 */
 	default void cancel() {
 		close(CANCEL_EXCEPTION);
-	}
-
-	/**
-	 * Closes process when it has finished.
-	 */
-	default void close() {
-		close(CLOSE_EXCEPTION);
 	}
 
 }

@@ -46,8 +46,8 @@ import java.util.function.ToIntFunction;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
-import static java.lang.Math.min;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static java.lang.Math.min;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -409,7 +409,7 @@ public final class ChannelSuppliers {
 			@Override
 			public void close() {
 				current = nullify(current, ByteBuf::recycle);
-				eventloop.execute(wrapContext(channelSupplier, channelSupplier::close));
+				eventloop.execute(wrapContext(channelSupplier, () -> channelSupplier.cancel()));
 			}
 		};
 	}

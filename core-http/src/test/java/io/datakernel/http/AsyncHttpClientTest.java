@@ -118,8 +118,8 @@ public final class AsyncHttpClientTest {
 		SimpleServer.create(socket ->
 				socket.read()
 						.whenResult(ByteBuf::recycle)
-						.then($ -> socket.write(wrapAscii("\r\n")))
-						.whenComplete(socket::close))
+						.then(() -> socket.write(wrapAscii("\r\n")))
+						.whenComplete(socket::cancel))
 				.withListenPort(PORT)
 				.withAcceptOnce()
 				.listen();

@@ -91,7 +91,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 									}
 								})))));
 		return startProcess()
-				.then($ -> up.get() >= requiredSuccesses ?
+				.then(() -> up.get() >= requiredSuccesses ?
 						Promise.complete() :
 						Promise.ofException(new StacklessException(ChannelSplitter.class, "Not enough successes")));
 	}
@@ -150,7 +150,7 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 							tryRecycle(item);
 						} else {
 							Promises.all(outputs.stream().map(output -> output.accept(null)))
-									.whenComplete(($, e1) -> completeProcess(e1));
+									.whenComplete(($, e1) -> closeProcess(e1));
 						}
 					} else {
 						close(e);

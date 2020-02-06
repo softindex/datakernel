@@ -43,7 +43,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		input.acknowledgement
 				.whenException(output.endOfStream::trySetException);
 		output.endOfStream
-				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenResult(input.acknowledgement::trySet)
 				.whenException(input.acknowledgement::trySetException);
 	}
 

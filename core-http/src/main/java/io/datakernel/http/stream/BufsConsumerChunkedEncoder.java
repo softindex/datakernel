@@ -86,7 +86,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 						}
 					} else {
 						output.accept(LAST_CHUNK, null)
-								.whenResult(() -> completeProcess());
+								.whenResult(this::completeProcess);
 					}
 				});
 	}

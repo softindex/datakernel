@@ -131,7 +131,7 @@ public class TpcDataBenchmarkClient extends Launcher {
 					return ChannelSupplier.ofSocket(socket)
 							.transformWith(ChannelDeserializer.create(INT_SERIALIZER))
 							.streamTo(StreamConsumer.skip())
-							.whenComplete(socket::close)
+							.whenComplete(socket::cancel)
 							.map($ -> System.currentTimeMillis() - start);
 				});
 	}

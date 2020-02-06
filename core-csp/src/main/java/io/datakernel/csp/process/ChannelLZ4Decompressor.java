@@ -139,8 +139,8 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 
 		input.endOfStream()
 				.thenEx(this::sanitize)
-				.then($ -> output.accept(null))
-				.whenResult(() -> completeProcess());
+				.then(() -> output.accept(null))
+				.whenResult(this::completeProcess);
 	}
 
 	public void processBody() {

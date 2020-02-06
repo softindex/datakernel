@@ -68,7 +68,7 @@ public final class DataflowClient {
 							.map($ -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type)))
 									.withEndOfStream(eos -> eos
-											.whenComplete(messaging::close))
+											.whenComplete(messaging::cancel))
 							);
 				});
 	}
@@ -80,7 +80,7 @@ public final class DataflowClient {
 
 					DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(new ArrayList<>(nodes));
 					return messaging.send(commandExecute)
-							.then($ -> messaging.sendEndOfStream());
+							.then(messaging::sendEndOfStream);
 				});
 	}
 }

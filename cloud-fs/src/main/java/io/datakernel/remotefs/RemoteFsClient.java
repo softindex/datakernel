@@ -106,7 +106,7 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 		return connect(address)
 				.then(messaging ->
 						messaging.send(new Upload(filename, offset, revision))
-								.then($ -> messaging.receive())
+								.then(messaging::receive)
 								.then(msg -> {
 									if (!(msg instanceof UploadAck)) {
 										return handleInvalidResponse(msg);
@@ -116,10 +116,10 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 									}
 									return Promise.of(messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
-													.then($2 -> messaging.receive())
+													.then(messaging::receive)
 													.then(msg2 -> {
-														messaging.close();
-														return msg2 instanceof UploadFinished ?
+                                                        messaging.cancel();
+                                                        return msg2 instanceof UploadFinished ?
 																Promise.complete() :
 																handleInvalidResponse(msg2);
 													})
@@ -142,7 +142,7 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 		return connect(address)
 				.then(messaging ->
 						messaging.send(new Download(name, offset, length))
-								.then($ -> messaging.receive())
+								.then(messaging::receive)
 								.then(msg -> {
 									if (!(msg instanceof DownloadSize)) {
 										return handleInvalidResponse(msg);
@@ -155,7 +155,7 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 									return Promise.of(messaging.receiveBinaryStream()
 											.peek(buf -> size.inc(buf.readRemaining()))
 											.withEndOfStream(eos -> eos
-													.then($ -> messaging.sendEndOfStream())
+													.then(messaging::sendEndOfStream)
 													.then(result -> {
 														if (size.get() == receivingSize) {
 															return Promise.of(result);
@@ -167,7 +167,7 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 														return Promise.ofException(size.get() < receivingSize ? UNEXPECTED_END_OF_STREAM : TOO_MUCH_DATA);
 													})
 													.whenComplete(downloadFinishPromise.recordStats())
-													.whenResult($1 -> messaging.close())));
+													.whenResult(messaging::cancel)));
 								})
 								.whenException(e -> {
 									messaging.close(e);
@@ -237,10 +237,10 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 		return connect(address)
 				.then(messaging ->
 						messaging.send(command)
-								.then($ -> messaging.receive())
+								.then(messaging::receive)
 								.then(msg -> {
-									messaging.close();
-									if (msg != null && msg.getClass() == responseType) {
+                                    messaging.cancel();
+                                    if (msg != null && msg.getClass() == responseType) {
 										return Promise.of(answerExtractor.apply(responseType.cast(msg)));
 									}
 									return handleInvalidResponse(msg);

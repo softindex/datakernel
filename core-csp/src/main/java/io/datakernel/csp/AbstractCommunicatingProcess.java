@@ -59,10 +59,10 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	}
 
 	protected void completeProcess() {
-		completeProcess(null);
+		closeProcess(null);
 	}
 
-	protected void completeProcess(@Nullable Throwable e) {
+	protected void closeProcess(@Nullable Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		if (e == null) {
@@ -135,14 +135,6 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	@Override
 	public final void cancel() {
 		AsyncProcess.super.cancel();
-	}
-
-	/**
-	 * Closes this process with {@link Cancellable#CLOSE_EXCEPTION}
-	 */
-	@Override
-	public final void close() {
-		AsyncProcess.super.close();
 	}
 
 	protected final <T> ChannelSupplier<T> sanitize(ChannelSupplier<T> supplier) {

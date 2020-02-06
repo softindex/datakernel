@@ -71,7 +71,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 								onItem(item)
 										.whenResult(this::loop) :
 								onProcessFinish()
-										.whenResult(() -> completeProcess()))
+										.whenResult(this::completeProcess))
 				.whenException(this::close);
 	}
 

@@ -93,8 +93,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 				.then(msg -> {
 					if (msg == null) {
 						logger.warn("unexpected end of stream: {}", this);
-						messaging.close();
-						return Promise.complete();
+                        messaging.cancel();
+                        return Promise.complete();
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 					if (handler == null) {
@@ -107,8 +107,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 				.whenException(e -> {
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					messaging.send(new ServerError(getErrorCode(e)))
-							.then($ -> messaging.sendEndOfStream())
-							.whenResult(() -> messaging.close());
+							.then(messaging::sendEndOfStream)
+							.whenResult(messaging::cancel);
 				});
 	}
 
@@ -121,12 +121,11 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 							return messaging.send(new UploadAck(false));
 						}
 						return messaging.send(new UploadAck(true))
-								.then($ -> messaging.receiveBinaryStream()
-										.streamTo(uploader));
+								.then(() -> messaging.receiveBinaryStream().streamTo(uploader));
 					})
-					.then($ -> messaging.send(new UploadFinished()))
-					.then($ -> messaging.sendEndOfStream())
-					.whenResult(() -> messaging.close())
+					.then(() -> messaging.send(new UploadFinished()))
+					.then(messaging::sendEndOfStream)
+					.whenResult(messaging::cancel)
 					.whenComplete(uploadPromise.recordStats())
 					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
 					.toVoid();
@@ -148,7 +147,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 						long fixedLength = length == -1 ? size - offset : length;
 
 						return messaging.send(new DownloadSize(fixedLength))
-								.then($ ->
+								.then(() ->
 										ChannelSupplier.ofPromise(client.download(name, offset, fixedLength))
 												.streamTo(messaging.sendBinaryStream()))
 								.whenComplete(toLogger(logger, "sending data", meta, offset, fixedLength, this));
@@ -168,7 +167,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 	private <T extends FsCommand, R> MessagingHandler<T> simpleHandler(Function<T, Promise<R>> action, Function<R, FsResponse> response, PromiseStats stats) {
 		return (messaging, msg) -> action.apply(msg)
 				.then(res -> messaging.send(response.apply(res)))
-				.then($ -> messaging.sendEndOfStream())
+				.then(messaging::sendEndOfStream)
 				.whenComplete(stats.recordStats());
 	}
 

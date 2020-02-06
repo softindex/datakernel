@@ -211,11 +211,11 @@ public final class CachedFsClient implements FsClient, EventloopService {
 								return ChannelSuppliers.concat(prefix, splitter.addOutput().getSupplier())
 										.withEndOfStream(eos -> eos
 												.both(splitter.getProcessCompletion())
-												.then($2 -> {
+												.then(() -> {
 													totalCacheSize += toBeCached;
 													return updateCacheStats(fileName);
 												})
-												.whenResult($2 -> downloadingNowSize -= toBeCached));
+												.whenResult(() -> downloadingNowSize -= toBeCached));
 							});
 				});
 	}
@@ -300,7 +300,7 @@ public final class CachedFsClient implements FsClient, EventloopService {
 				.then(filesToDelete -> Promises.all(filesToDelete
 						.map(fullCacheStat -> cacheClient
 								.delete(fullCacheStat.getFileMetadata().getName())
-								.whenResult($ -> {
+								.whenResult(() -> {
 									totalCacheSize -= fullCacheStat.getFileMetadata().getSize();
 									cacheStats.remove(fullCacheStat.getFileMetadata().getName());
 								}))));

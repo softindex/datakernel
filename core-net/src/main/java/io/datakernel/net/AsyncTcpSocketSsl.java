@@ -107,7 +107,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		if (isClosed()) return Promise.ofException(CLOSE_EXCEPTION);
+		if (isClosed()) return Promise.ofException(CANCEL_EXCEPTION);
 		read = null;
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
@@ -127,7 +127,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			if (buf != null) {
 				buf.recycle();
 			}
-			return Promise.ofException(CLOSE_EXCEPTION);
+			return Promise.ofException(CANCEL_EXCEPTION);
 		}
 		if (buf == null) {
 			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
@@ -187,8 +187,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 						return;
 					}
 					if (engine.isOutboundDone()) {
-						close();
-						return;
+                        cancel();
+                        return;
 					}
 					if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
 						SettablePromise<Void> write = this.write;
@@ -264,8 +264,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		SSLEngineResult result = null;
 		while (true) {
 			if (result != null && result.getStatus() == CLOSED) {
-				close();
-				return;
+                cancel();
+                return;
 			}
 
 			HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
@@ -350,8 +350,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		}
 
 		if (result != null && result.getStatus() == CLOSED) {
-			close();
-			return;
+            cancel();
+            return;
 		}
 
 		doRead();

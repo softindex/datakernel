@@ -49,8 +49,8 @@ public final class PingPongSocketConnection {
 					repeat(() ->
 							bufsSupplier.parse(DECODER)
 									.whenResult((Consumer<String>) System.out::println)
-									.then($ -> socket.write(wrapAscii(RESPONSE_MSG))))
-							.whenComplete(socket::close);
+									.then(() -> socket.write(wrapAscii(RESPONSE_MSG))))
+							.whenComplete(socket::cancel);
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce();
@@ -63,10 +63,10 @@ public final class PingPongSocketConnection {
 					loop(0,
 							i -> i < ITERATIONS,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
-									.then($ -> bufsSupplier.parse(DECODER)
+									.then(() -> bufsSupplier.parse(DECODER)
 											.whenResult((Consumer<String>) System.out::println)
 											.map($2 -> i + 1)))
-							.whenComplete(socket::close);
+							.whenComplete(socket::cancel);
 				})
 				.whenException(e -> { throw new RuntimeException(e); });
 

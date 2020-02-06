@@ -92,7 +92,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		input.acknowledgement
 				.whenException(e -> outputs.forEach(output -> output.endOfStream.trySetException(e)));
 		Promises.all(outputs.stream().map(Output::getEndOfStream))
-				.whenResult(() -> input.acknowledgement.trySet(null))
+				.whenResult(input.acknowledgement::trySet)
 				.whenException(input.acknowledgement::trySetException);
 		sync();
 	}
