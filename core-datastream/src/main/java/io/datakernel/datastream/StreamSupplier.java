@@ -16,7 +16,7 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.datastream.StreamSuppliers.Closing;
 import io.datakernel.datastream.StreamSuppliers.ClosingWithError;
@@ -47,7 +47,7 @@ import static java.util.Arrays.asList;
  *
  * @param <T> type of output data
  */
-public interface StreamSupplier<T> extends Cancellable {
+public interface StreamSupplier<T> extends AsyncCloseable {
 	/**
 	 * This method is called for restore streaming of this supplier
 	 */

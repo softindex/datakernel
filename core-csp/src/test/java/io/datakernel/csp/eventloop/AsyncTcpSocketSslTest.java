@@ -16,7 +16,7 @@
 
 package io.datakernel.csp.eventloop;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelSupplier;
@@ -212,7 +212,7 @@ public final class AsyncTcpSocketSslTest {
 				socket.write(wrapAscii("He"))
 						.whenComplete(socket::close)
 						.then(() -> socket.write(wrapAscii("ello")))
-						.whenComplete(($, e) -> assertSame(Cancellable.CANCEL_EXCEPTION, e)));
+						.whenComplete(($, e) -> assertSame(AsyncCloseable.CLOSE_EXCEPTION, e)));
 
 		Throwable e = awaitException(AsyncTcpSocketNio.connect(ADDRESS)
 				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
@@ -222,7 +222,7 @@ public final class AsyncTcpSocketSslTest {
 							.whenException(supplier::closeEx);
 				}));
 
-		assertSame(Cancellable.CANCEL_EXCEPTION, e);
+		assertSame(AsyncCloseable.CLOSE_EXCEPTION, e);
 	}
 
 	static void startServer(SSLContext sslContext, Consumer<AsyncTcpSocket> logic) throws IOException {

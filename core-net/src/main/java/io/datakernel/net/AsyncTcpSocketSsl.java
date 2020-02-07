@@ -107,7 +107,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		if (isClosed()) return Promise.ofException(CANCEL_EXCEPTION);
+		if (isClosed()) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
@@ -127,7 +127,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			if (buf != null) {
 				buf.recycle();
 			}
-			return Promise.ofException(CANCEL_EXCEPTION);
+			return Promise.ofException(CLOSE_EXCEPTION);
 		}
 		if (buf == null) {
 			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");

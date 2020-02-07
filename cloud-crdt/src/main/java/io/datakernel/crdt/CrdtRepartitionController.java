@@ -16,7 +16,7 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
@@ -81,9 +81,9 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 						return downloader.streamTo(splitter.getInput());
 					} else {
 						StacklessException exception = new StacklessException("Repartition exceptions:");
-						all.getValue1().consume(Cancellable::close, exception::addSuppressed);
-						all.getValue2().consume(Cancellable::close, exception::addSuppressed);
-						all.getValue3().consume(Cancellable::close, exception::addSuppressed);
+						all.getValue1().consume(AsyncCloseable::close, exception::addSuppressed);
+						all.getValue2().consume(AsyncCloseable::close, exception::addSuppressed);
+						all.getValue3().consume(AsyncCloseable::close, exception::addSuppressed);
 						return Promise.ofException(exception);
 					}
 				});

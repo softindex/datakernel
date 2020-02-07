@@ -16,7 +16,7 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.datastream.StreamConsumers.ClosingWithError;
 import io.datakernel.datastream.StreamConsumers.Idle;
@@ -35,7 +35,7 @@ import java.util.function.Function;
  * in this package which implement this interface and make the threading and state management
  * easier.
  */
-public interface StreamConsumer<T> extends Cancellable {
+public interface StreamConsumer<T> extends AsyncCloseable {
 	/**
 	 * Sets wired supplier. It will sent data to this consumer
 	 */

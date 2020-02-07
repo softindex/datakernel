@@ -16,7 +16,7 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.Initializable;
@@ -381,7 +381,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 												.withEndOfStream(eos -> eos
 														.whenException(e -> markIfDead(piwfs.getValue1(), e))
 														.whenComplete(downloadFinishPromise.recordStats())));
-							}), Cancellable::close);
+							}), AsyncCloseable::close);
 				})
 				.whenComplete(downloadStartPromise.recordStats());
 	}

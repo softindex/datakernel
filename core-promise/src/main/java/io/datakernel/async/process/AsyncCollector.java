@@ -25,7 +25,7 @@ import org.jetbrains.annotations.Nullable;
 import static io.datakernel.common.Preconditions.checkState;
 
 @SuppressWarnings("UnusedReturnValue")
-public final class AsyncCollector<R> implements Cancellable {
+public final class AsyncCollector<R> implements AsyncCloseable {
 	@FunctionalInterface
 	public interface Accumulator<R, T> {
 		void accumulate(R result, T value) throws UncheckedException;

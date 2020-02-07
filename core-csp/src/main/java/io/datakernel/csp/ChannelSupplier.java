@@ -17,8 +17,8 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.process.AsyncExecutor;
-import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.dsl.ChannelSupplierTransformer;
@@ -57,12 +57,12 @@ import static io.datakernel.common.collection.CollectionUtils.asIterator;
  * If {@link #get()} returns {@link Promise} of {@code null}, it represents end-of-stream
  * and means that no additional data should be queried.
  */
-public interface ChannelSupplier<T> extends Cancellable {
+public interface ChannelSupplier<T> extends AsyncCloseable {
 	@NotNull
 	Promise<T> get();
 
 	/**
-	 * @see #of(AsyncSupplier, Cancellable)
+	 * @see #of(AsyncSupplier, AsyncCloseable)
 	 */
 	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier) {
 		return of(supplier, null);
@@ -73,13 +73,13 @@ public interface ChannelSupplier<T> extends Cancellable {
 	 * is called, {@code AsyncSupplier}'s {@code get()} will be executed.
 	 *
 	 * @param supplier    an {@code AsyncSupplier} to be wrapped in ChannelSupplier
-	 * @param cancellable a {@code Cancellable} which will be set
+	 * @param closeable a {@code Cancellable} which will be set
 	 *                    for the ChannelSupplier wrapper
 	 * @param <T>         data type wrapped in {@code AsyncSupplier} and ChannelSupplier
 	 * @return ChannelSupplier which wraps {@code AsyncSupplier}
 	 */
-	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier, @Nullable Cancellable cancellable) {
-		return new AbstractChannelSupplier<T>(cancellable) {
+	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier, @Nullable AsyncCloseable closeable) {
+		return new AbstractChannelSupplier<T>(closeable) {
 			@Override
 			protected Promise<T> doGet() {
 				return supplier.get();

@@ -1,6 +1,6 @@
 package io.datakernel.csp.queue;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelConsumer;
@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @param <T> type of values stored in the queue
  */
-public interface ChannelQueue<T> extends Cancellable {
+public interface ChannelQueue<T> extends AsyncCloseable {
 	/**
 	 * Puts a value in the queue and returns a
 	 * {@code promise} of {@code null} as a marker of completion.

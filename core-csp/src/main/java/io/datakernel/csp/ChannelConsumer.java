@@ -17,8 +17,8 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.process.AsyncExecutor;
-import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
@@ -55,7 +55,7 @@ import static io.datakernel.common.Recyclable.tryRecycle;
  * and means that no additional data should be consumed.
  */
 
-public interface ChannelConsumer<T> extends Cancellable {
+public interface ChannelConsumer<T> extends AsyncCloseable {
 	/**
 	 * Consumes a provided value and returns a
 	 * {@link Promise} as a marker of success.
@@ -93,7 +93,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	/**
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
-	 * @see ChannelConsumer#of(AsyncConsumer, Cancellable)
+	 * @see ChannelConsumer#of(AsyncConsumer, AsyncCloseable)
 	 */
 	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer) {
 		return of(consumer, e -> {});
@@ -103,12 +103,12 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
 	 * @param consumer    AsyncConsumer to be wrapped
-	 * @param cancellable a Cancellable, which will be set to the returned ChannelConsumer
+	 * @param closeable a Cancellable, which will be set to the returned ChannelConsumer
 	 * @param <T>         type of data to be consumed
 	 * @return AbstractChannelConsumer which wraps AsyncConsumer
 	 */
-	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable Cancellable cancellable) {
-		return new AbstractChannelConsumer<T>(cancellable) {
+	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable AsyncCloseable closeable) {
+		return new AbstractChannelConsumer<T>(closeable) {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
 			@Override

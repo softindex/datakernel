@@ -22,9 +22,9 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.common.Recyclable.tryRecycle;
 
-public abstract class AbstractCancellable implements Cancellable {
+public abstract class AbstractAsyncCloseable implements AsyncCloseable {
 	@Nullable
-	private Cancellable cancellable;
+	private AsyncCloseable closeable;
 
 	private Throwable exception;
 
@@ -32,8 +32,8 @@ public abstract class AbstractCancellable implements Cancellable {
 		return exception;
 	}
 
-	public void setCancellable(@Nullable Cancellable cancellable) {
-		this.cancellable = cancellable;
+	public void setCloseable(@Nullable AsyncCloseable closeable) {
+		this.closeable = closeable;
 	}
 
 	protected void onClosed(@NotNull Throwable e) {
@@ -44,8 +44,8 @@ public abstract class AbstractCancellable implements Cancellable {
 		if (isClosed()) return;
 		exception = e;
 		onClosed(e);
-		if (cancellable != null) {
-			cancellable.closeEx(e);
+		if (closeable != null) {
+			closeable.closeEx(e);
 		}
 	}
 
@@ -63,8 +63,8 @@ public abstract class AbstractCancellable implements Cancellable {
 	public final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
 		if (exception != null) {
 			tryRecycle(value);
-			if (value instanceof Cancellable) {
-				((Cancellable) value).closeEx(exception);
+			if (value instanceof AsyncCloseable) {
+				((AsyncCloseable) value).closeEx(exception);
 			}
 			return Promise.ofException(exception);
 		}

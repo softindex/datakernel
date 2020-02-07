@@ -17,7 +17,7 @@
 package io.datakernel.csp.binary;
 
 import io.datakernel.async.function.AsyncSupplier;
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.parse.ParseException;
@@ -28,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 
-public abstract class BinaryChannelSupplier implements Cancellable {
+public abstract class BinaryChannelSupplier implements AsyncCloseable {
 	public static final Exception UNEXPECTED_DATA_EXCEPTION = new ParseException(BinaryChannelSupplier.class, "Unexpected data after end-of-stream");
 	public static final Exception UNEXPECTED_END_OF_STREAM_EXCEPTION = new ParseException(BinaryChannelSupplier.class, "Unexpected end-of-stream");
 
@@ -101,7 +101,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 	}
 
 	public static BinaryChannelSupplier ofProvidedQueue(ByteBufQueue queue,
-			AsyncSupplier<Void> get, AsyncSupplier<Void> complete, Cancellable cancellable) {
+			AsyncSupplier<Void> get, AsyncSupplier<Void> complete, AsyncCloseable closeable) {
 		return new BinaryChannelSupplier(queue) {
 			@Override
 			public Promise<Void> needMoreData() {
@@ -115,7 +115,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 
 			@Override
 			public void closeEx(@NotNull Throwable e) {
-				cancellable.closeEx(e);
+				closeable.closeEx(e);
 			}
 		};
 	}

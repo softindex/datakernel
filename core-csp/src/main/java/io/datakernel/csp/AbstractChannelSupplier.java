@@ -16,20 +16,20 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.process.AbstractCancellable;
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AbstractAsyncCloseable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public abstract class AbstractChannelSupplier<T> extends AbstractCancellable implements ChannelSupplier<T> {
+public abstract class AbstractChannelSupplier<T> extends AbstractAsyncCloseable implements ChannelSupplier<T> {
 	// region creators
 	protected AbstractChannelSupplier() {
-		setCancellable(null);
+		setCloseable(null);
 	}
 
-	protected AbstractChannelSupplier(@Nullable Cancellable cancellable) {
-		setCancellable(cancellable);
+	protected AbstractChannelSupplier(@Nullable AsyncCloseable closeable) {
+		setCloseable(closeable);
 	}
 	// endregion
 

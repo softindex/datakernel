@@ -16,8 +16,8 @@
 
 package io.datakernel.csp;
 
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.process.AsyncProcess;
-import io.datakernel.async.process.Cancellable;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.promise.Promise;
@@ -130,7 +130,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	protected abstract void doClose(Throwable e);
 
 	/**
-	 * Closes this process with {@link Cancellable#CANCEL_EXCEPTION}
+	 * Closes this process with {@link AsyncCloseable#CLOSE_EXCEPTION}
 	 */
 	@Override
 	public final void close() {
@@ -209,8 +209,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	protected final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
 		if (isProcessComplete()) {
 			tryRecycle(value);
-			if (value instanceof Cancellable) {
-				((Cancellable) value).closeEx(ASYNC_PROCESS_IS_COMPLETE);
+			if (value instanceof AsyncCloseable) {
+				((AsyncCloseable) value).closeEx(ASYNC_PROCESS_IS_COMPLETE);
 			}
 			return Promise.ofException(ASYNC_PROCESS_IS_COMPLETE);
 		}

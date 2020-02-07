@@ -16,7 +16,7 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.MemSize;
@@ -204,8 +204,8 @@ public final class ChannelSuppliers {
 			return streamTo(supplier.get(), consumer.get());
 		}
 		StacklessException exception = new StacklessException("Channel stream failed");
-		supplier.consume(Cancellable::close, exception::addSuppressed);
-		consumer.consume(Cancellable::close, exception::addSuppressed);
+		supplier.consume(AsyncCloseable::close, exception::addSuppressed);
+		consumer.consume(AsyncCloseable::close, exception::addSuppressed);
 		return Promise.ofException(exception);
 	}
 

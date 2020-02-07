@@ -30,8 +30,15 @@ import org.jetbrains.annotations.NotNull;
  * </ul>
  * All operations of this interface are idempotent.
  */
-public interface Cancellable {
-	CloseException CANCEL_EXCEPTION = new CloseException(Cancellable.class, "Cancelled");
+public interface AsyncCloseable {
+	CloseException CLOSE_EXCEPTION = new CloseException(AsyncCloseable.class, "Closed");
+
+	/**
+	 * Cancels the process.
+	 */
+	default void close() {
+		closeEx(CLOSE_EXCEPTION);
+	}
 
 	/**
 	 * Closes process exceptionally in case an exception
@@ -40,12 +47,5 @@ public interface Cancellable {
 	 * @param e exception that is used to close process with
 	 */
 	void closeEx(@NotNull Throwable e);
-
-	/**
-	 * Cancels the process.
-	 */
-	default void close() {
-		closeEx(CANCEL_EXCEPTION);
-	}
 
 }
