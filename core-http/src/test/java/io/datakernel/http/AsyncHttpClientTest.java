@@ -178,17 +178,29 @@ public final class AsyncHttpClientTest {
 
 	@Test
 	public void testClientNoContentLength() throws Exception {
-		ServerSocket listener = new ServerSocket(PORT);
 		String text = "content";
+		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+		doTestNoContentLength(text, buf);
+	}
+
+	@Test
+	public void testClientNoContentLengthGzipped() throws Exception {
+		String text = "content";
+		ByteBuf headLines = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n" +
+				"Content-Encoding: gzip\r\n\r\n"));
+		ByteBuf gzippedContent = GzipProcessorUtils.toGzip(wrapAscii(text));
+		doTestNoContentLength(text, ByteBufPool.append(headLines, gzippedContent));
+	}
+
+	private void doTestNoContentLength(String expectedBody, ByteBuf rawRequest) throws IOException {
+		ServerSocket listener = new ServerSocket(PORT);
 		Thread serverThread = new Thread(() -> {
 			try (Socket socket = listener.accept()) {
 				DataInputStream in = new DataInputStream(socket.getInputStream());
 				//noinspection StatementWithEmptyBody
-				while (in.read() != CR || in.read() != LF || in.read() != CR || in.read() != LF) {
-					;
-				}
-				ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
-				socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
+				while (in.read() != CR || in.read() != LF || in.read() != CR || in.read() != LF) {}
+				socket.getOutputStream().write(rawRequest.array(), rawRequest.head(), rawRequest.readRemaining());
+				rawRequest.recycle();
 			} catch (IOException ignored) {
 				throw new AssertionError();
 			}
@@ -204,7 +216,7 @@ public final class AsyncHttpClientTest {
 							listener.close();
 						}))));
 
-		assertEquals(text, responseBody);
+		assertEquals(expectedBody, responseBody);
 	}
 
 	@Test
