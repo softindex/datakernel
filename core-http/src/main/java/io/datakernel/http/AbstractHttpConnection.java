@@ -331,12 +331,12 @@ public abstract class AbstractHttpConnection {
 
 	private void readBody() {
 		assert !isClosed();
-		if ((flags & (CHUNKED | GZIPPED)) == 0) {
+		if ((flags & CHUNKED) == 0) {
 			if (contentLength == UNSET_CONTENT_LENGTH) {
 				onNoContentLength();
 				return;
 			}
-			if (readQueue.hasRemainingBytes(contentLength)) {
+			if (((flags & GZIPPED) == 0) && readQueue.hasRemainingBytes(contentLength)) {
 				ByteBuf body = readQueue.takeExactSize(contentLength);
 				onHeadersReceived(body, null);
 				if (isClosed()) return;
