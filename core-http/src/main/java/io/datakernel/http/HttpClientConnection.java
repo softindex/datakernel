@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient.Inspector;
+import io.datakernel.http.stream.BufsConsumerGzipInflater;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodePositiveInt;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
@@ -224,6 +226,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 							}
 						})));
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
+		if ((flags & GZIPPED) != 0) {
+			supplier = supplier
+					.transformWith(BufsConsumerGzipInflater.create())
+					.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
+		}
 
 		if (isClosed()) return;
 
@@ -351,7 +358,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", response=" + response +
 				", httpClient=" + client +
 				", keepAlive=" + (pool == client.poolKeepAlive) +
-//				", lastRequestUrl='" + (request.getFullUrl() == null ? "" : request.getFullUrl()) + '\'' +
+				//				", lastRequestUrl='" + (request.getFullUrl() == null ? "" : request.getFullUrl()) + '\'' +
 				", remoteAddress=" + remoteAddress +
 				',' + super.toString() +
 				'}';
