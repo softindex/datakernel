@@ -48,23 +48,19 @@ import static java.util.Arrays.asList;
  * @param <T> type of output data
  */
 public interface StreamSupplier<T> extends AsyncCloseable {
-	/**
-	 * This method is called for restore streaming of this supplier
-	 */
-	void supply(@Nullable StreamDataAcceptor<T> dataAcceptor);
+	void resume(@Nullable StreamDataAcceptor<T> dataAcceptor);
+
+	default void suspend() {
+		resume(null);
+	}
 
 	Promise<Void> getEndOfStream();
 
 	default Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
-		this.getEndOfStream()
-				.whenResult(consumer::endOfStream)
-				.whenException(consumer::closeEx);
 		consumer.getAcknowledgement()
 				.whenResult(this::close)
 				.whenException(this::closeEx);
-		if (!this.getEndOfStream().isComplete() && !consumer.getAcknowledgement().isComplete()) {
-			consumer.consume(this::supply);
-		}
+		consumer.consume(this);
 		return Promises.all(this.getEndOfStream(), consumer.getAcknowledgement());
 	}
 

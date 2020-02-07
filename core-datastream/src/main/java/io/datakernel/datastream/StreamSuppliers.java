@@ -37,7 +37,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -52,7 +52,7 @@ final class StreamSuppliers {
 
 	static final class Closing<T> implements StreamSupplier<T> {
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -69,7 +69,7 @@ final class StreamSuppliers {
 		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		}
 
 		@Override
@@ -104,7 +104,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 			if (endOfStream.isComplete()) return;
 			if (this.dataAcceptor == dataAcceptor) return;
 			this.dataAcceptor = dataAcceptor;
@@ -153,16 +153,16 @@ final class StreamSuppliers {
 						} else if (dataAcceptor != null) {
 							StreamDataAcceptor<T> dataAcceptor = this.dataAcceptor;
 							this.dataAcceptor = null;
-							streamSupplier.supply(dataAcceptor);
+							streamSupplier.resume(dataAcceptor);
 						}
 					})
 					.whenException(this::closeEx);
 		}
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 			if (streamSupplier != null) {
-				streamSupplier.supply(dataAcceptor);
+				streamSupplier.resume(dataAcceptor);
 			} else {
 				this.dataAcceptor = dataAcceptor;
 			}
@@ -229,12 +229,12 @@ final class StreamSuppliers {
 					.whenResult(() -> endOfStream = true) // *
 					.whenException(this::closeEx); // *
 			if (!this.streamSupplier.getEndOfStream().isComplete()) {
-				this.streamSupplier.supply(item -> { // *
+				this.streamSupplier.resume(item -> { // *
 					assert !isClosed();
 					assert !endOfStream;
 					Promise<Void> promise = this.queue.put(item);
 					if (!promise.isComplete()) {
-						this.streamSupplier.supply(null);
+						this.streamSupplier.resume(null);
 					} else { // *
 					}
 				});

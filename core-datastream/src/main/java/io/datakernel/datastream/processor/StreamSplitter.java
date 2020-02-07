@@ -100,26 +100,28 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 	private void sync() {
 		if (!started) return;
 		if (input.acknowledgement.isComplete()) return;
-		if (input.dataSource != null) {
+		if (input.streamSupplier != null) {
 			if (active == dataAcceptors.length) {
-				input.dataSource.resume(acceptorFactory.apply(this.dataAcceptors));
+				input.streamSupplier.resume(acceptorFactory.apply(this.dataAcceptors));
 			} else {
-				input.dataSource.suspend();
+				input.streamSupplier.suspend();
 			}
 		}
 	}
 
 	protected final class InputConsumer implements StreamConsumer<I> {
-		@Nullable StreamDataSource<I> dataSource;
+		@Nullable StreamSupplier<I> streamSupplier;
 		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void consume(@NotNull StreamDataSource<I> dataSource) {
-			this.dataSource = dataSource;
+		public void consume(@NotNull StreamSupplier<I> streamSupplier) {
+			this.streamSupplier = streamSupplier;
+			this.streamSupplier.getEndOfStream()
+					.whenResult(this::endOfStream)
+					.whenException(this::closeEx);
 			sync();
 		}
 
-		@Override
 		public void endOfStream() {
 			for (Output output : outputs) {
 				output.endOfStream.trySet(null);
@@ -145,7 +147,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		public Output(int index) {this.index = index;}
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<O> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<O> dataAcceptor) {
 			if (dataAcceptor != null && this.dataAcceptor == null) active++;
 			if (dataAcceptor == null && this.dataAcceptor != null) active--;
 			if (this.dataAcceptor == dataAcceptor) return;

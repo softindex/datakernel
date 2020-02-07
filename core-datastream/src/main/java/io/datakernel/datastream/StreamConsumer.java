@@ -39,9 +39,7 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	/**
 	 * Sets wired supplier. It will sent data to this consumer
 	 */
-	void consume(@NotNull StreamDataSource<T> dataSource);
-
-	void endOfStream();
+	void consume(@NotNull StreamSupplier<T> streamSupplier);
 
 	Promise<Void> getAcknowledgement();
 

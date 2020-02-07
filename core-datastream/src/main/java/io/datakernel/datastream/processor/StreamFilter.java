@@ -18,7 +18,6 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.datastream.StreamDataSource;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -62,17 +61,19 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 	}
 
 	protected final class Input implements StreamConsumer<T> {
-		@Nullable StreamDataSource<T> dataSource;
+		@Nullable StreamSupplier<T> streamSupplier;
 		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void consume(@NotNull StreamDataSource<T> dataSource) {
-			this.dataSource = dataSource;
+		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
+			this.streamSupplier = streamSupplier;
+			this.streamSupplier.getEndOfStream()
+					.whenResult(this::endOfStream)
+					.whenException(this::closeEx);
 			sync();
 		}
 
-		@Override
-		public void endOfStream() {
+		private void endOfStream() {
 			output.endOfStream.trySet(null);
 		}
 
@@ -92,7 +93,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 			if (this.dataAcceptor == dataAcceptor) return;
 			this.dataAcceptor = dataAcceptor;
 			sync();
@@ -110,17 +111,17 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 	}
 
 	private void sync() {
-		if (input.dataSource != null) {
+		if (input.streamSupplier != null) {
 			final Predicate<T> predicate = this.predicate;
 			final StreamDataAcceptor<T> dataAcceptor = output.dataAcceptor;
 			if (dataAcceptor != null) {
-				input.dataSource.resume(item -> {
+				input.streamSupplier.resume(item -> {
 					if (predicate.test(item)) {
 						dataAcceptor.accept(item);
 					}
 				});
 			} else {
-				input.dataSource.suspend();
+				input.streamSupplier.suspend();
 			}
 		}
 	}

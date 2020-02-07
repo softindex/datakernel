@@ -85,7 +85,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public final void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		checkState(!endOfStream.isComplete());
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;

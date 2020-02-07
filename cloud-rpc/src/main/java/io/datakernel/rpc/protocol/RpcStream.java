@@ -23,11 +23,15 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
 import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.Promise;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
@@ -35,6 +39,7 @@ public final class RpcStream {
 	private static final CloseException RPC_CLOSE_EXCEPTION = new CloseException(RpcStream.class, "RPC Channel Closed");
 	private final ChannelDeserializer<RpcMessage> deserializer;
 	private final ChannelSerializer<RpcMessage> serializer;
+	private final SettablePromise<Void> serializerEndOfStream = new SettablePromise<>();
 
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {
 		void onReceiverEndOfStream();
@@ -92,28 +97,44 @@ public final class RpcStream {
 				.whenException(listener::onReceiverError);
 		serializer.getAcknowledgement()
 				.whenException(listener::onSenderError);
-		serializer.consume(
-				acceptor -> {
-					if (acceptor != null) {
-						deserializer.supply(listener);
-						listener.onSenderReady(acceptor);
-					} else {
-						if (server) {
-							deserializer.supply(null);
-						}
-						listener.onSenderSuspended();
+		serializer.consume(new StreamSupplier<RpcMessage>() {
+			@Override
+			public void resume(@Nullable StreamDataAcceptor<RpcMessage> dataAcceptor) {
+				if (dataAcceptor != null) {
+					deserializer.resume(listener);
+					listener.onSenderReady(dataAcceptor);
+				} else {
+					if (server) {
+						deserializer.resume(null);
 					}
+					listener.onSenderSuspended();
 				}
-		);
+			}
+
+			@Override
+			public Promise<Void> getEndOfStream() {
+				return serializerEndOfStream;
+			}
+
+			@Override
+			public void closeEx(@NotNull Throwable e) {
+				RpcStream.this.closeEx(e);
+			}
+		});
 	}
 
 	public void sendEndOfStream() {
-		if (!serializer.getAcknowledgement().isComplete()) {
-			serializer.endOfStream();
-		}
+		serializerEndOfStream.trySet(null);
 	}
 
 	public void close() {
-		socket.closeEx(RPC_CLOSE_EXCEPTION);
+		closeEx(RPC_CLOSE_EXCEPTION);
+	}
+
+	public void closeEx(@NotNull Throwable e) {
+		socket.closeEx(e);
+		serializer.closeEx(e);
+		deserializer.closeEx(e);
+		serializerEndOfStream.trySetException(e);
 	}
 }

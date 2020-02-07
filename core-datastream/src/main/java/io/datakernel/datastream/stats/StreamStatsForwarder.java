@@ -18,7 +18,6 @@ package io.datakernel.datastream.stats;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.datastream.StreamDataSource;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
@@ -58,22 +57,25 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	}
 
 	protected final class Input implements StreamConsumer<T> {
-		@Nullable StreamDataSource<T> dataSource;
+		@Nullable StreamSupplier<T> streamSupplier;
 		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void consume(@NotNull StreamDataSource<T> dataSource) {
-			if (this.dataSource == null) {
+		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
+			streamSupplier.getEndOfStream()
+					.whenResult(this::endOfStream)
+					.whenException(this::closeEx);
+			if (getAcknowledgement().isComplete()) return;
+			if (this.streamSupplier == null) {
 				stats.onStarted();
 			}
-			this.dataSource = dataSource;
-			if (input.dataSource != null) {
-				input.dataSource.resume(output.dataAcceptor);
+			this.streamSupplier = streamSupplier;
+			if (input.streamSupplier != null) {
+				input.streamSupplier.resume(output.dataAcceptor);
 			}
 		}
 
-		@Override
-		public void endOfStream() {
+		private void endOfStream() {
 			if (output.endOfStream.trySet(null)) {
 				stats.onEndOfStream();
 			}
@@ -97,7 +99,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 			if (this.dataAcceptor == dataAcceptor) return;
 			if (dataAcceptor != null) {
 				stats.onProduce();
@@ -105,8 +107,8 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 				stats.onSuspend();
 			}
 			this.dataAcceptor = dataAcceptor;
-			if (input.dataSource != null) {
-				input.dataSource.resume(output.dataAcceptor);
+			if (input.streamSupplier != null) {
+				input.streamSupplier.resume(output.dataAcceptor);
 			}
 		}
 

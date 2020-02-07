@@ -32,7 +32,7 @@ import static io.datakernel.common.Preconditions.checkState;
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 	protected final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-	private StreamDataSource<T> dataSource;
+	private StreamSupplier<T> streamSupplier;
 	private boolean endOfStream;
 
 	{
@@ -40,21 +40,25 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public final void consume(@NotNull StreamDataSource<T> dataSource) {
+	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		//noinspection ResultOfMethodCallIgnored
-		checkNotNull(dataSource);
+		checkNotNull(streamSupplier);
 		checkState(!acknowledgement.isComplete());
 		checkState(!endOfStream);
-		checkState(this.dataSource == null);
-		this.dataSource = dataSource;
-		onStarted();
+		checkState(this.streamSupplier == null);
+		this.streamSupplier = streamSupplier;
+		streamSupplier.getEndOfStream()
+				.whenResult(this::endOfStream)
+				.whenException(this::closeEx);
+		if (!getAcknowledgement().isComplete()) {
+			onStarted();
+		}
 	}
 
 	protected void onStarted() {
 	}
 
-	@Override
-	public final void endOfStream() {
+	private void endOfStream() {
 		checkState(!acknowledgement.isComplete());
 		checkState(!endOfStream);
 		endOfStream = true;
@@ -73,14 +77,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		checkNotNull(dataAcceptor);
 		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
-		if (dataSource == null) return;
-		dataSource.resume(dataAcceptor);
+		if (streamSupplier == null) return;
+		streamSupplier.resume(dataAcceptor);
 	}
 
 	public final void suspend() {
 		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
-		dataSource.suspend();
+		streamSupplier.suspend();
 	}
 
 	public final void acknowledge() {

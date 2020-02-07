@@ -36,15 +36,18 @@ final class StreamConsumerToCollector<T, A, R> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void consume(@NotNull StreamDataSource<T> dataSource) {
+	public void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		A accumulator = collector.supplier().get();
 		this.accumulator = accumulator;
+		streamSupplier.getEndOfStream()
+				.whenResult(this::endOfStream)
+				.whenException(this::closeEx);
+		if (getAcknowledgement().isComplete()) return;
 		BiConsumer<A, T> consumer = collector.accumulator();
-		dataSource.resume(item -> consumer.accept(accumulator, item));
+		streamSupplier.resume(item -> consumer.accept(accumulator, item));
 	}
 
-	@Override
-	public void endOfStream() {
+	private void endOfStream() {
 		if (resultPromise.isComplete()) return;
 		R result = collector.finisher().apply(accumulator);
 		accumulator = null;

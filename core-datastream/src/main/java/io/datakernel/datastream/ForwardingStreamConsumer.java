@@ -27,13 +27,8 @@ public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void consume(@NotNull StreamDataSource<T> dataSource) {
-		consumer.consume(dataSource);
-	}
-
-	@Override
-	public void endOfStream() {
-		consumer.endOfStream();
+	public void consume(@NotNull StreamSupplier<T> streamSupplier) {
+		consumer.consume(streamSupplier);
 	}
 
 	@Override

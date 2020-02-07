@@ -28,6 +28,8 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import static io.datakernel.common.Preconditions.checkState;
+
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
 
@@ -58,6 +60,8 @@ public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T
 			ctx.acceptors = Arrays.asList(acceptors).iterator();
 			return createSplitter(ctx);
 		});
+
+		checkState(!ctx.logDataConsumers.isEmpty());
 
 		for (LogDataConsumer<?, D> logDataConsumer : ctx.logDataConsumers) {
 			diffsCollector.addPromise(

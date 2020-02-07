@@ -216,15 +216,16 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 	protected final class Output extends AbstractStreamSupplier<V> {
 		@Override
 		protected void onResumed(AsyncProduceController async) {
+			StreamDataAcceptor<V> acceptor = this::send;
 			if (isReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();
 				K leftKey = leftKeyFunction.apply(leftValue);
 				R rightValue = rightDeque.peek();
 				K rightKey = rightKeyFunction.apply(rightValue);
-				while (isReady()) {
+				while (true) {
 					int compare = keyComparator.compare(leftKey, rightKey);
 					if (compare < 0) {
-						joiner.onLeftJoin(leftKey, leftValue, getDataAcceptor());
+						joiner.onLeftJoin(leftKey, leftValue, acceptor);
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
@@ -237,9 +238,11 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 						rightValue = rightDeque.peek();
 						rightKey = rightKeyFunction.apply(rightValue);
 					} else {
-						joiner.onInnerJoin(leftKey, leftValue, rightValue, getDataAcceptor());
+						joiner.onInnerJoin(leftKey, leftValue, rightValue, acceptor);
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
+							break;
+						if (!isReady())
 							break;
 						leftValue = leftDeque.peek();
 						leftKey = leftKeyFunction.apply(leftValue);

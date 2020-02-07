@@ -42,12 +42,12 @@ class StreamSupplierConcat<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+	public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		if (endOfStream.isComplete()) return;
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
 		if (supplier != null) {
-			supplier.supply(dataAcceptor);
+			supplier.resume(dataAcceptor);
 		}
 	}
 
@@ -70,7 +70,7 @@ class StreamSupplierConcat<T> implements StreamSupplier<T> {
 							closeEx(endOfStream.getException());
 						} else {
 							if (this.dataAcceptor != null) {
-								supplier.supply(this.dataAcceptor);
+								supplier.resume(this.dataAcceptor);
 							}
 						}
 					} else {

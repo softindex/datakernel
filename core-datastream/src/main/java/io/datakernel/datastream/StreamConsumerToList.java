@@ -30,14 +30,16 @@ public final class StreamConsumerToList<T> implements StreamConsumer<T>, StreamD
 	}
 
 	@Override
-	public void consume(@NotNull StreamDataSource<T> dataSource) {
-		dataSource.resume(list::add);
+	public void consume(@NotNull StreamSupplier<T> streamSupplier) {
+		streamSupplier.getEndOfStream()
+				.whenResult(this::endOfStream)
+				.whenException(this::closeEx);
+		if (getAcknowledgement().isComplete()) return;
+		streamSupplier.resume(list::add);
 	}
 
-	@Override
-	public void endOfStream() {
-		if (resultPromise.isComplete()) return;
-		resultPromise.set(list);
+	private void endOfStream() {
+		resultPromise.trySet(list);
 	}
 
 	@Override

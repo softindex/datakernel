@@ -18,7 +18,6 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.datastream.StreamDataSource;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -65,17 +64,19 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 	}
 
 	protected final class Input implements StreamConsumer<I> {
-		@Nullable StreamDataSource<I> dataSource;
+		@Nullable StreamSupplier<I> streamSupplier;
 		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void consume(@NotNull StreamDataSource<I> dataSource) {
-			this.dataSource = dataSource;
+		public void consume(@NotNull StreamSupplier<I> streamSupplier) {
+			this.streamSupplier = streamSupplier;
+			this.streamSupplier.getEndOfStream()
+					.whenResult(this::endOfStream)
+					.whenException(this::closeEx);
 			sync();
 		}
 
-		@Override
-		public void endOfStream() {
+		private void endOfStream() {
 			output.endOfStream.trySet(null);
 		}
 
@@ -95,7 +96,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<O> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<O> dataAcceptor) {
 			if (this.dataAcceptor == dataAcceptor) return;
 			this.dataAcceptor = dataAcceptor;
 			sync();
@@ -113,13 +114,13 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 	}
 
 	private void sync() {
-		if (input.dataSource != null) {
+		if (input.streamSupplier != null) {
 			final Function<I, O> function = this.function;
 			final StreamDataAcceptor<O> dataAcceptor = output.dataAcceptor;
 			if (dataAcceptor != null) {
-				input.dataSource.resume(item -> dataAcceptor.accept(function.apply(item)));
+				input.streamSupplier.resume(item -> dataAcceptor.accept(function.apply(item)));
 			} else {
-				input.dataSource.suspend();
+				input.streamSupplier.suspend();
 			}
 		}
 	}

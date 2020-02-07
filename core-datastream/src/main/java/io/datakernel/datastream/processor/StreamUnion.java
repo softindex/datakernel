@@ -84,26 +84,28 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 			output.endOfStream.trySet(null);
 		} else {
 			for (Input input : inputs) {
-				if (input.dataSource != null) {
-					input.dataSource.resume(output.dataAcceptor);
+				if (input.streamSupplier != null) {
+					input.streamSupplier.resume(output.dataAcceptor);
 				}
 			}
 		}
 	}
 
 	private final class Input implements StreamConsumer<T> {
-		@Nullable StreamDataSource<T> dataSource;
+		@Nullable StreamSupplier<T> streamSupplier;
 		private boolean endOfStream;
 		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		@Override
-		public void consume(@NotNull StreamDataSource<T> dataSource) {
-			this.dataSource = dataSource;
+		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
+			this.streamSupplier = streamSupplier;
+			this.streamSupplier.getEndOfStream()
+					.whenResult(this::endOfStream)
+					.whenException(this::closeEx);
 			sync();
 		}
 
-		@Override
-		public void endOfStream() {
+		private void endOfStream() {
 			endOfStream = true;
 			sync();
 		}
@@ -124,7 +126,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		@Override
-		public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 			if (this.dataAcceptor == dataAcceptor) return;
 			this.dataAcceptor = dataAcceptor;
 			sync();

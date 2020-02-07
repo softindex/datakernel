@@ -24,6 +24,7 @@ import io.datakernel.datastream.*;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -109,10 +110,13 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		}
 
 		@Override
-		public void consume(@NotNull StreamDataSource<T> dataSource) {
-			super.consume(dataAcceptor -> {
-				this.dataAcceptor = dataAcceptor;
-				dataSource.resume(this);
+		public void consume(@NotNull StreamSupplier<T> dataSource) {
+			super.consume(new ForwardingStreamSupplier<T>(dataSource) {
+				@Override
+				public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+					ChunkWriter.this.dataAcceptor = dataAcceptor;
+					super.resume(ChunkWriter.this);
+				}
 			});
 		}
 

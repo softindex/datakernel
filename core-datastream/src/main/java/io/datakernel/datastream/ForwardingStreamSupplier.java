@@ -28,8 +28,8 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void supply(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		supplier.supply(dataAcceptor);
+	public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		supplier.resume(dataAcceptor);
 	}
 
 	@Override
