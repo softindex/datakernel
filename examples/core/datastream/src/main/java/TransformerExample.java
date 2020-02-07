@@ -40,10 +40,10 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 
 	{
 		input.getAcknowledgement()
-				.whenException(output::close);
+				.whenException(output::closeEx);
 		output.getEndOfStream()
 				.whenResult(input::acknowledge)
-				.whenException(input::close);
+				.whenException(input::closeEx);
 	}
 
 

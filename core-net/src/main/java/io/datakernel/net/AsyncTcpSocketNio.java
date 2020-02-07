@@ -248,7 +248,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		scheduledReadTimeout = eventloop.delayBackground(readTimeout, wrapContext(this, () -> {
 			if (inspector != null) inspector.onReadTimeout();
 			scheduledReadTimeout = null;
-			close(TIMEOUT_EXCEPTION);
+			closeEx(TIMEOUT_EXCEPTION);
 		}));
 	}
 
@@ -257,7 +257,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, wrapContext(this, () -> {
 			if (inspector != null) inspector.onWriteTimeout();
 			scheduledWriteTimeout = null;
-			close(TIMEOUT_EXCEPTION);
+			closeEx(TIMEOUT_EXCEPTION);
 		}));
 	}
 
@@ -270,7 +270,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 				key = channel.register(eventloop.ensureSelector(), ops, this);
 				CONNECTION_COUNT.incrementAndGet();
 			} catch (ClosedChannelException e) {
-				close(e);
+				closeEx(e);
 			}
 		} else {
 			if (ops != newOps) {
@@ -307,7 +307,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		try {
 			doRead();
 		} catch (IOException e) {
-			close(e);
+			closeEx(e);
 			return;
 		}
 		if (read != null && (readBuf != null || readEndOfStream)) {
@@ -396,7 +396,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		try {
 			doWrite();
 		} catch (IOException e) {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 
@@ -421,7 +421,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		try {
 			doWrite();
 		} catch (IOException e) {
-			close(e);
+			closeEx(e);
 			return;
 		}
 		if (writeBuf == null) {
@@ -471,7 +471,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		assert eventloop.inEventloopThread();
 		if (isClosed()) return;
 		doClose();

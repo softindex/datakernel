@@ -53,7 +53,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 		}
 	}
 
@@ -71,7 +71,7 @@ final class StreamConsumers {
 				try {
 					consumer.accept(item);
 				} catch (UncheckedException u) {
-					close(u.getCause());
+					closeEx(u.getCause());
 				}
 			});
 		}
@@ -87,7 +87,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -109,7 +109,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -133,7 +133,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -155,7 +155,7 @@ final class StreamConsumers {
 							return;
 						}
 						if (acknowledgement.getException() != null) {
-							consumer.close(acknowledgement.getException());
+							consumer.closeEx(acknowledgement.getException());
 						} else if (endOfStream) {
 							consumer.endOfStream();
 						} else if (dataSource != null) {
@@ -164,7 +164,7 @@ final class StreamConsumers {
 							consumer.consume(dataSource);
 						}
 					})
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 
 		@Override
@@ -192,10 +192,10 @@ final class StreamConsumers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 			if (consumer != null) {
-				consumer.close(e);
+				consumer.closeEx(e);
 			}
 		}
 	}
@@ -213,7 +213,7 @@ final class StreamConsumers {
 			this.consumer = consumer;
 			queue.getSupplier().streamTo(consumer)
 					.whenResult(this::acknowledge)
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 
 		@Override
@@ -247,7 +247,7 @@ final class StreamConsumers {
 
 		@Override
 		protected void onError(Throwable e) {
-			consumer.close(e);
+			consumer.closeEx(e);
 		}
 	}
 
@@ -260,8 +260,8 @@ final class StreamConsumers {
 		AsChannelConsumer(StreamConsumer<T> consumer) { // *
 			streamConsumer = consumer;
 			streamConsumer.getAcknowledgement()
-					.whenResult(this::cancel)
-					.whenException(this::close);
+					.whenResult(this::close)
+					.whenException(this::closeEx);
 			if (!streamConsumer.getAcknowledgement().isComplete()) {
 				streamConsumer.consume(dataAcceptor -> { // *
 					checkState(!isClosed());
@@ -302,7 +302,7 @@ final class StreamConsumers {
 		@Override
 		protected void onClosed(@NotNull Throwable e) {
 			this.dataAcceptor = null;
-			streamConsumer.close(e);
+			streamConsumer.closeEx(e);
 			if (itemPromise != null) {
 				itemPromise.setException(e); // *
 			}

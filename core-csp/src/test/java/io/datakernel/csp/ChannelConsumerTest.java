@@ -39,7 +39,7 @@ public class ChannelConsumerTest {
 		};
 
 		ChannelConsumer<ByteBuf> channelConsumer = outputStreamAsChannelConsumer(newSingleThreadExecutor(), outputStream);
-		await(channelConsumer.accept(
+		await(channelConsumer.acceptAll(
 				ByteBuf.wrapForReading("Hello".getBytes()),
 				ByteBuf.wrapForReading("World".getBytes())));
 
@@ -57,7 +57,7 @@ public class ChannelConsumerTest {
 		};
 
 		ChannelConsumer<ByteBuf> channelConsumer = outputStreamAsChannelConsumer(newSingleThreadExecutor(), outputStream);
-		await(channelConsumer.accept(ByteBuf.empty(), ByteBuf.empty()));
+		await(channelConsumer.acceptAll(ByteBuf.empty(), ByteBuf.empty()));
 
 		assertEquals(buf.asString(Charset.defaultCharset()), "");
 	}
@@ -72,7 +72,7 @@ public class ChannelConsumerTest {
 		};
 
 		ChannelConsumer<ByteBuf> channelConsumer = outputStreamAsChannelConsumer(newSingleThreadExecutor(), outputStream);
-		awaitException(channelConsumer.accept(ByteBuf.empty(), ByteBuf.wrapForReading("Hello".getBytes())));
+		awaitException(channelConsumer.acceptAll(ByteBuf.empty(), ByteBuf.wrapForReading("Hello".getBytes())));
 	}
 
 	@Test

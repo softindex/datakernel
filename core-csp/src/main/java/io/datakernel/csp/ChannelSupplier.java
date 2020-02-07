@@ -50,7 +50,7 @@ import static io.datakernel.common.collection.CollectionUtils.asIterator;
  * After supplier is closed, all subsequent calls to {@link #get()} will return promise,
  * completed exceptionally.
  * <p>
- * If any exception is caught while supplying data items, {@link #close(Throwable)} method
+ * If any exception is caught while supplying data items, {@link #closeEx(Throwable)} method
  * should be called. All resources should be freed and the caught exception should be
  * propagated to all related processes.
  * <p>
@@ -208,7 +208,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				promise.whenResult(supplier -> supplier.close(e));
+				promise.whenResult(supplier -> supplier.closeEx(e));
 			}
 		};
 	}
@@ -234,7 +234,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				if (supplier != null) {
-					supplier.close(e);
+					supplier.closeEx(e);
 				}
 			}
 		};
@@ -308,7 +308,7 @@ public interface ChannelSupplier<T> extends Cancellable {
 								try {
 									return fn.apply(value);
 								} catch (UncheckedException u) {
-									ChannelSupplier.this.close(u.getCause());
+									ChannelSupplier.this.closeEx(u.getCause());
 									throw u;
 								}
 							} else {

@@ -93,7 +93,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 				.then(msg -> {
 					if (msg == null) {
 						logger.warn("unexpected end of stream: {}", this);
-                        messaging.cancel();
+                        messaging.close();
                         return Promise.complete();
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
@@ -108,7 +108,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					logger.warn("got an error while handling message (" + e + ") : " + this);
 					messaging.send(new ServerError(getErrorCode(e)))
 							.then(messaging::sendEndOfStream)
-							.whenResult(messaging::cancel);
+							.whenResult(messaging::close);
 				});
 	}
 
@@ -125,7 +125,7 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 					})
 					.then(() -> messaging.send(new UploadFinished()))
 					.then(messaging::sendEndOfStream)
-					.whenResult(messaging::cancel)
+					.whenResult(messaging::close)
 					.whenComplete(uploadPromise.recordStats())
 					.whenComplete(toLogger(logger, TRACE, "receiving data", msg, this))
 					.toVoid();

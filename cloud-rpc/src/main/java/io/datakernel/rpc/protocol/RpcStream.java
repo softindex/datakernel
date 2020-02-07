@@ -114,6 +114,6 @@ public final class RpcStream {
 	}
 
 	public void close() {
-		socket.close(RPC_CLOSE_EXCEPTION);
+		socket.closeEx(RPC_CLOSE_EXCEPTION);
 	}
 }

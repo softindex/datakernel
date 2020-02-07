@@ -181,12 +181,12 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			temporaryStreamsCollector.run();
 			output.getEndOfStream()
 					.whenResult(this::acknowledge)
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			temporaryStreamsCollector.close(e);
+			temporaryStreamsCollector.closeEx(e);
 		}
 	}
 

@@ -63,11 +63,11 @@ class StreamSupplierConcat<T> implements StreamSupplier<T> {
 						supplier.getEndOfStream()
 								.async()
 								.whenResult(this::next)
-								.whenException(this::close);
+								.whenException(this::closeEx);
 						assert !endOfStream.isResult(); // should not happen
 						if (endOfStream.isException()) {
 							//noinspection ConstantConditions
-							close(endOfStream.getException());
+							closeEx(endOfStream.getException());
 						} else {
 							if (this.dataAcceptor != null) {
 								supplier.supply(this.dataAcceptor);
@@ -77,10 +77,10 @@ class StreamSupplierConcat<T> implements StreamSupplier<T> {
 						endOfStream.set(null);
 					}
 					if (endOfStream.isException()) {
-						iterator.close(endOfStream.getException());
+						iterator.closeEx(endOfStream.getException());
 					}
 				})
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	@Override
@@ -89,14 +89,14 @@ class StreamSupplierConcat<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		endOfStream.trySetException(e);
 		if (supplier != null) {
-			supplier.close(e);
+			supplier.closeEx(e);
 			supplier = null;
 		}
 		if (!iteratorGet) {
-			iterator.close(e);
+			iterator.closeEx(e);
 		}
 	}
 

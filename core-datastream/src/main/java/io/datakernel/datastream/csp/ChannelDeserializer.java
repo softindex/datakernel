@@ -148,11 +148,11 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 							if (queue.isEmpty()) {
 								sendEndOfStream();
 							} else {
-								close(new TruncatedDataException(ChannelDeserializer.class, format("Truncated serialized data stream, %s : %s", this, queue)));
+								closeEx(new TruncatedDataException(ChannelDeserializer.class, format("Truncated serialized data stream, %s : %s", this, queue)));
 							}
 						}
 					})
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		} else {
 			async.end();
 		}
@@ -161,7 +161,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 	@Override
 	protected void onError(Throwable e) {
 		queue.recycle();
-		input.close(e);
+		input.closeEx(e);
 	}
 
 }

@@ -85,7 +85,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			if (acknowledgement.trySetException(e)) {
 				stats.onError(e);
 			}
@@ -116,7 +116,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			if (endOfStream.trySetException(e)) {
 				stats.onError(e);
 			}

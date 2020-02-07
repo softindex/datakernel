@@ -50,7 +50,7 @@ public final class PingPongSocketConnection {
 							bufsSupplier.parse(DECODER)
 									.whenResult((Consumer<String>) System.out::println)
 									.then(() -> socket.write(wrapAscii(RESPONSE_MSG))))
-							.whenComplete(socket::cancel);
+							.whenComplete(socket::close);
 				})
 				.withListenAddress(ADDRESS)
 				.withAcceptOnce();
@@ -66,7 +66,7 @@ public final class PingPongSocketConnection {
 									.then(() -> bufsSupplier.parse(DECODER)
 											.whenResult((Consumer<String>) System.out::println)
 											.map($2 -> i + 1)))
-							.whenComplete(socket::cancel);
+							.whenComplete(socket::close);
 				})
 				.whenException(e -> { throw new RuntimeException(e); });
 

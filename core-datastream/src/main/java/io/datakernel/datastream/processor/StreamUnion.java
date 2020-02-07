@@ -114,7 +114,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -136,7 +136,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}

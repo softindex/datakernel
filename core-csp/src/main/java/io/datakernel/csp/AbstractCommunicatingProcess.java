@@ -59,17 +59,17 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	}
 
 	protected void completeProcess() {
-		closeProcess(null);
+		completeProcessEx(null);
 	}
 
-	protected void closeProcess(@Nullable Throwable e) {
+	protected void completeProcessEx(@Nullable Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		if (e == null) {
 			processCompletion.trySet(null);
 			afterProcess(null);
 		} else {
-			close(e);
+			closeEx(e);
 		}
 	}
 
@@ -113,7 +113,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 * @param e exception that is used to close process with
 	 */
 	@Override
-	public final void close(@NotNull Throwable e) {
+	public final void closeEx(@NotNull Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		doClose(e);
@@ -133,8 +133,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 * Closes this process with {@link Cancellable#CANCEL_EXCEPTION}
 	 */
 	@Override
-	public final void cancel() {
-		AsyncProcess.super.cancel();
+	public final void close() {
+		AsyncProcess.super.close();
 	}
 
 	protected final <T> ChannelSupplier<T> sanitize(ChannelSupplier<T> supplier) {
@@ -146,8 +146,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
-				supplier.close(e);
-				AbstractCommunicatingProcess.this.close(e);
+				supplier.closeEx(e);
+				AbstractCommunicatingProcess.this.closeEx(e);
 			}
 		};
 	}
@@ -161,8 +161,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
-				consumer.close(e);
-				AbstractCommunicatingProcess.this.close(e);
+				consumer.closeEx(e);
+				AbstractCommunicatingProcess.this.closeEx(e);
 			}
 		};
 	}
@@ -180,9 +180,9 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			}
 
 			@Override
-			public void close(@NotNull Throwable e) {
-				supplier.close(e);
-				AbstractCommunicatingProcess.this.close(e);
+			public void closeEx(@NotNull Throwable e) {
+				supplier.closeEx(e);
+				AbstractCommunicatingProcess.this.closeEx(e);
 			}
 		};
 	}
@@ -210,14 +210,14 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 		if (isProcessComplete()) {
 			tryRecycle(value);
 			if (value instanceof Cancellable) {
-				((Cancellable) value).close(ASYNC_PROCESS_IS_COMPLETE);
+				((Cancellable) value).closeEx(ASYNC_PROCESS_IS_COMPLETE);
 			}
 			return Promise.ofException(ASYNC_PROCESS_IS_COMPLETE);
 		}
 		if (e == null) {
 			return Promise.of(value);
 		} else {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 	}

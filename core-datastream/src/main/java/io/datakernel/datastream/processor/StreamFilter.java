@@ -82,7 +82,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -104,7 +104,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}

@@ -114,7 +114,7 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	@Override
 	protected Promise<ByteBuf> doGet() {
 		if (limit == 0) {
-            cancel();
+            close();
             return Promise.of(null);
 		}
 		ByteBuf buf = ByteBufPool.allocateExact((int) Math.min(bufferSize, limit));
@@ -122,12 +122,12 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 				.thenEx((bytesRead, e) -> {
 					if (e != null) {
 						buf.recycle();
-						close(e);
+						closeEx(e);
 						return Promise.ofException(getException());
 					}
 					if (bytesRead == 0) { // no data read, assuming end of file
 						buf.recycle();
-                        cancel();
+                        close();
                         return Promise.of(null);
 					}
 

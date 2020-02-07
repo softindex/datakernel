@@ -143,7 +143,7 @@ public final class MultipartParser implements ByteBufsDecoder<MultipartFrame> {
 						return doSplit(frame, frames, dataHandler);
 					}
 					StacklessException e = new StacklessException(MultipartParser.class, "First frame had no headers");
-					frames.close(e);
+					frames.closeEx(e);
 					return Promise.ofException(e);
 				});
 	}

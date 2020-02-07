@@ -61,7 +61,7 @@ public final class AbstractServerTest {
 											socket.write(buf)
 													.whenComplete(($2, e) -> {
 														if (buf == null) {
-                                                            socket.cancel();
+                                                            socket.close();
                                                         }
 													});
 										});
@@ -90,7 +90,7 @@ public final class AbstractServerTest {
 											Objects::isNull)
 											.map($2 -> queue.takeRemaining());
 								})
-								.whenComplete(socket::cancel)));
+								.whenComplete(socket::close)));
 
 		assertEquals(message, response.asString(UTF_8));
 	}

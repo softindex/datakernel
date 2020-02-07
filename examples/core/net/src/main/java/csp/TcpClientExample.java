@@ -35,7 +35,7 @@ public final class TcpClientExample {
 				ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(line + "\r\n"));
 				eventloop.execute(() -> socket.write(buf));
 			}
-			eventloop.execute(socket::cancel);
+			eventloop.execute(socket::close);
 		});
 		thread.start();
 	}

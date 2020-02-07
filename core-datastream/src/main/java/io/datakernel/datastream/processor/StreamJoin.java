@@ -204,12 +204,12 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 			output.flush();
 			output.getEndOfStream()
 					.whenResult(this::acknowledge)
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			output.close(e);
+			output.closeEx(e);
 		}
 	}
 
@@ -261,8 +261,8 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 
 		@Override
 		protected void onError(Throwable e) {
-			left.close(e);
-			right.close(e);
+			left.closeEx(e);
+			right.closeEx(e);
 		}
 	}
 

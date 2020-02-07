@@ -46,7 +46,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 		}
 	}
 
@@ -61,7 +61,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 		}
 	}
 
@@ -78,7 +78,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -128,7 +128,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}
@@ -149,14 +149,14 @@ final class StreamSuppliers {
 							return;
 						}
 						if (endOfStream.getException() != null) {
-							streamSupplier.close(endOfStream.getException());
+							streamSupplier.closeEx(endOfStream.getException());
 						} else if (dataAcceptor != null) {
 							StreamDataAcceptor<T> dataAcceptor = this.dataAcceptor;
 							this.dataAcceptor = null;
 							streamSupplier.supply(dataAcceptor);
 						}
 					})
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 
 		@Override
@@ -174,10 +174,10 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 			if (streamSupplier != null) {
-				streamSupplier.close(e);
+				streamSupplier.closeEx(e);
 			}
 		}
 	}
@@ -202,14 +202,14 @@ final class StreamSuppliers {
 								sendEndOfStream();
 							}
 						} else {
-							close(e);
+							closeEx(e);
 						}
 					});
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			supplier.close(e);
+			supplier.closeEx(e);
 		}
 	}
 
@@ -227,7 +227,7 @@ final class StreamSuppliers {
 			this.streamSupplier = supplier;
 			this.streamSupplier.getEndOfStream()
 					.whenResult(() -> endOfStream = true) // *
-					.whenException(this::close); // *
+					.whenException(this::closeEx); // *
 			if (!this.streamSupplier.getEndOfStream().isComplete()) {
 				this.streamSupplier.supply(item -> { // *
 					assert !isClosed();
@@ -248,7 +248,7 @@ final class StreamSuppliers {
 
 		@Override
 		protected void onClosed(@NotNull Throwable e) {
-			streamSupplier.close(e); // *
+			streamSupplier.closeEx(e); // *
 		}
 	}
 

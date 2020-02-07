@@ -153,7 +153,7 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 						output.accept(outputBuf)
 								.whenResult(this::doProcess);
 					} else {
-						output.accept(createEndOfStreamBlock(), null)
+						output.acceptAll(createEndOfStreamBlock(), null)
 								.whenResult(this::completeProcess);
 					}
 				});
@@ -161,8 +161,8 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 
 	// endregion

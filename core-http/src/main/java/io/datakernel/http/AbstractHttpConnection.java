@@ -151,7 +151,7 @@ public abstract class AbstractHttpConnection {
 		if (isClosed()) return;
 		flags |= CLOSED;
 		onClosed();
-        socket.cancel();
+        socket.close();
         readQueue.recycle();
 	}
 
@@ -160,7 +160,7 @@ public abstract class AbstractHttpConnection {
 		flags |= CLOSED;
 		onClosedWithError(e);
 		onClosed();
-        socket.cancel();
+        socket.close();
         readQueue.recycle();
 	}
 

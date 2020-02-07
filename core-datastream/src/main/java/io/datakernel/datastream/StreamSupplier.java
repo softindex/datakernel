@@ -58,10 +58,10 @@ public interface StreamSupplier<T> extends Cancellable {
 	default Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
 		this.getEndOfStream()
 				.whenResult(consumer::endOfStream)
-				.whenException(consumer::close);
+				.whenException(consumer::closeEx);
 		consumer.getAcknowledgement()
-				.whenResult(this::cancel)
-				.whenException(this::close);
+				.whenResult(this::close)
+				.whenException(this::closeEx);
 		if (!this.getEndOfStream().isComplete() && !consumer.getAcknowledgement().isComplete()) {
 			consumer.consume(this::supply);
 		}

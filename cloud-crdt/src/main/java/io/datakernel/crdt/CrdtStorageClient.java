@@ -134,7 +134,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 										.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
 										.withEndOfStream(eos -> eos
 												.then(messaging::sendEndOfStream)
-												.whenResult(messaging::cancel))));
+												.whenResult(messaging::close))));
 	}
 
 	@Override

@@ -132,7 +132,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	protected void onError(Throwable e) {
 		bufs.clear();
 		input.buf = nullify(input.buf, ByteBuf::recycle);
-		output.close(e);
+		output.closeEx(e);
 	}
 
 	private void doFlush() {
@@ -145,7 +145,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 							flushing = false;
 							doFlush();
 						} else {
-							close(e);
+							closeEx(e);
 						}
 					});
 		} else {
@@ -276,7 +276,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (skipSerializationErrors) {
 				logger.warn("Skipping serialization error in {}", this, e);
 			} else {
-				close(e);
+				closeEx(e);
 			}
 		}
 

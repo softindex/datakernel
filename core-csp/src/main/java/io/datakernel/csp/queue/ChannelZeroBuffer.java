@@ -149,7 +149,7 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	 * @param e exception that is used to close buffer with
 	 */
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (exception != null) return;
 		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {

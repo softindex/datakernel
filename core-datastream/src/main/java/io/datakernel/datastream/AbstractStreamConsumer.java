@@ -98,7 +98,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public final void close(@NotNull Throwable e) {
+	public final void closeEx(@NotNull Throwable e) {
 		//noinspection ResultOfMethodCallIgnored
 		checkNotNull(e);
 		if (acknowledgement.trySetException(e)) {

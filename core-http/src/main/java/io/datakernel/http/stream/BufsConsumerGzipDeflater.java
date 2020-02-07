@@ -157,7 +157,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 	@Override
 	protected void doClose(Throwable e) {
 		deflater.end();
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 }

@@ -381,7 +381,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 												.withEndOfStream(eos -> eos
 														.whenException(e -> markIfDead(piwfs.getValue1(), e))
 														.whenComplete(downloadFinishPromise.recordStats())));
-							}), Cancellable::cancel);
+							}), Cancellable::close);
 				})
 				.whenComplete(downloadStartPromise.recordStats());
 	}

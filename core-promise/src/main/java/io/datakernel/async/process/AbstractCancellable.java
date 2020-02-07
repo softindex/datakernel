@@ -40,12 +40,12 @@ public abstract class AbstractCancellable implements Cancellable {
 	}
 
 	@Override
-	public final void close(@NotNull Throwable e) {
+	public final void closeEx(@NotNull Throwable e) {
 		if (isClosed()) return;
 		exception = e;
 		onClosed(e);
 		if (cancellable != null) {
-			cancellable.close(e);
+			cancellable.closeEx(e);
 		}
 	}
 
@@ -64,14 +64,14 @@ public abstract class AbstractCancellable implements Cancellable {
 		if (exception != null) {
 			tryRecycle(value);
 			if (value instanceof Cancellable) {
-				((Cancellable) value).close(exception);
+				((Cancellable) value).closeEx(exception);
 			}
 			return Promise.ofException(exception);
 		}
 		if (e == null) {
 			return Promise.of(value);
 		} else {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 	}

@@ -85,7 +85,7 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 							doProcess();
 						}
 					} else {
-						output.accept(LAST_CHUNK, null)
+						output.acceptAll(LAST_CHUNK, null)
 								.whenResult(this::completeProcess);
 					}
 				});
@@ -112,8 +112,8 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 
 }

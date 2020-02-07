@@ -159,7 +159,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public final void close(@NotNull Throwable e) {
+	public final void closeEx(@NotNull Throwable e) {
 		dataAcceptor = null;
 		//noinspection unchecked
 		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;

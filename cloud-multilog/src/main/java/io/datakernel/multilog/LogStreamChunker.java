@@ -96,9 +96,9 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
+		input.closeEx(e);
 		if (currentConsumer != null) {
-			currentConsumer.close(e);
+			currentConsumer.closeEx(e);
 		}
 	}
 }

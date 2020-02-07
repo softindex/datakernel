@@ -46,7 +46,7 @@ public final class StreamConsumerToList<T> implements StreamConsumer<T>, StreamD
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		resultPromise.trySetException(e);
 	}
 

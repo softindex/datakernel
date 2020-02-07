@@ -78,10 +78,10 @@ public final class MessagingWithBinaryStreamingTest {
 					if (msg != null) {
 						return messaging.send(msg).whenResult(() -> pong(messaging));
 					}
-                    messaging.cancel();
+                    messaging.close();
                     return Promise.complete();
 				})
-				.whenException(e -> messaging.cancel());
+				.whenException(e -> messaging.close());
 	}
 
 	private static void ping(int n, Messaging<Integer, Integer> messaging) {
@@ -92,11 +92,11 @@ public final class MessagingWithBinaryStreamingTest {
 						if (msg > 0) {
 							ping(msg - 1, messaging);
 						} else {
-                            messaging.cancel();
+                            messaging.close();
                         }
 					}
 				})
-				.whenException(e -> messaging.cancel());
+				.whenException(e -> messaging.close());
 	}
 
 	@Test
@@ -224,7 +224,7 @@ public final class MessagingWithBinaryStreamingTest {
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream()))
 							.then(messaging::receive)
-							.whenComplete(messaging::cancel);
+							.whenComplete(messaging::close);
 				}));
 
 		assertEquals("ack", msg);

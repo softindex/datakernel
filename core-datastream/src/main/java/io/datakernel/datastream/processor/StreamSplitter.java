@@ -132,7 +132,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -160,7 +160,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}

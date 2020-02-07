@@ -68,7 +68,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
                                 .streamTo(StreamConsumer.ofPromise(client.upload()))
                                 .then(() -> messaging.send(CrdtResponses.UPLOAD_FINISHED))
                                 .then(messaging::sendEndOfStream)
-                                .whenResult(messaging::cancel);
+                                .whenResult(messaging::close);
 
                     }
                     if (msg == CrdtMessages.REMOVE) {
@@ -77,7 +77,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
                                 .streamTo(StreamConsumer.ofPromise(client.remove()))
                                 .then(() -> messaging.send(CrdtResponses.REMOVE_FINISHED))
                                 .then(messaging::sendEndOfStream)
-                                .whenResult(messaging::cancel);
+                                .whenResult(messaging::close);
                     }
                     if (msg instanceof Download) {
                         return client.download(((Download) msg).getToken())
@@ -96,7 +96,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
                     String prefix = e.getClass() != StacklessException.class ? e.getClass().getSimpleName() + ": " : "";
                     messaging.send(new ServerError(prefix + e.getMessage()))
                             .then(messaging::sendEndOfStream)
-                            .whenResult(messaging::cancel);
+                            .whenResult(messaging::close);
                 });
     }
 }

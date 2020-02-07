@@ -57,7 +57,7 @@ final class StreamConsumerToCollector<T, A, R> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		resultPromise.trySetException(e);
 	}
 

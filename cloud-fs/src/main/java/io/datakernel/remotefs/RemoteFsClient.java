@@ -118,19 +118,19 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 											.withAcknowledgement(ack -> ack
 													.then(messaging::receive)
 													.then(msg2 -> {
-                                                        messaging.cancel();
+                                                        messaging.close();
                                                         return msg2 instanceof UploadFinished ?
 																Promise.complete() :
 																handleInvalidResponse(msg2);
 													})
 													.whenException(e -> {
-														messaging.close(e);
+														messaging.closeEx(e);
 														logger.warn("Cancelled while trying to upload file " + filename + " (" + e + "): " + this);
 													})
 													.whenComplete(uploadFinishPromise.recordStats())));
 								})
 								.whenException(e -> {
-									messaging.close(e);
+									messaging.closeEx(e);
 									logger.warn("Error while trying to upload file " + filename + " (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, "upload", filename, this))
@@ -167,10 +167,10 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 														return Promise.ofException(size.get() < receivingSize ? UNEXPECTED_END_OF_STREAM : TOO_MUCH_DATA);
 													})
 													.whenComplete(downloadFinishPromise.recordStats())
-													.whenResult(messaging::cancel)));
+													.whenResult(messaging::close)));
 								})
 								.whenException(e -> {
-									messaging.close(e);
+									messaging.closeEx(e);
 									logger.warn("error trying to download file " + name + " (offset=" + offset + ", length=" + length + ") (" + e + "): " + this);
 								}))
 				.whenComplete(toLogger(logger, "download", name, offset, length, this))
@@ -239,14 +239,14 @@ public final class RemoteFsClient implements FsClient, EventloopService, Eventlo
 						messaging.send(command)
 								.then(messaging::receive)
 								.then(msg -> {
-                                    messaging.cancel();
+                                    messaging.close();
                                     if (msg != null && msg.getClass() == responseType) {
 										return Promise.of(answerExtractor.apply(responseType.cast(msg)));
 									}
 									return handleInvalidResponse(msg);
 								})
 								.whenException(e -> {
-									messaging.close(e);
+									messaging.closeEx(e);
 									logger.warn("Error while processing command " + command + " (" + e + ") : " + this);
 								}));
 	}

@@ -50,7 +50,7 @@ public final class StreamSupplierWithResult<T, X> {
 
 	protected StreamSupplierWithResult<T, X> sanitize() {
 		return new StreamSupplierWithResult<>(supplier,
-				supplier.getEndOfStream().combine(result.whenException(supplier::close), ($, v) -> v).post());
+				supplier.getEndOfStream().combine(result.whenException(supplier::closeEx), ($, v) -> v).post());
 	}
 
 	public <T1, X1> StreamSupplierWithResult<T1, X1> transform(

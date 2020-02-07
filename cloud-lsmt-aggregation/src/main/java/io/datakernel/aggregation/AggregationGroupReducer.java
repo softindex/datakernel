@@ -139,12 +139,12 @@ public final class AggregationGroupReducer<C, T, K extends Comparable> extends A
 		doFlush();
 		chunksCollector.run().get().toVoid()
 				.whenResult(this::acknowledge)
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	@Override
 	protected void onError(Throwable e) {
-		chunksCollector.close(e);
+		chunksCollector.closeEx(e);
 	}
 
 	// jmx

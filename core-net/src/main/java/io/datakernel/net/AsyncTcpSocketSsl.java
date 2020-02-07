@@ -99,7 +99,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		if (e == null) {
 			return Promise.of(value);
 		} else {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 	}
@@ -165,7 +165,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 								this.read = null;
 								read.set(null);
 							}
-							close(new CloseWithoutNotifyException(AsyncTcpSocketSsl.class, "Peer closed without sending close_notify", e));
+							closeEx(new CloseWithoutNotifyException(AsyncTcpSocketSsl.class, "Peer closed without sending close_notify", e));
 						}
 					}
 				});
@@ -187,7 +187,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 						return;
 					}
 					if (engine.isOutboundDone()) {
-                        cancel();
+                        close();
                         return;
 					}
 					if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
@@ -264,7 +264,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		SSLEngineResult result = null;
 		while (true) {
 			if (result != null && result.getStatus() == CLOSED) {
-                cancel();
+                close();
                 return;
 			}
 
@@ -297,7 +297,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 						try {
 							doHandshake();
 						} catch (SSLException e) {
-							close(e);
+							closeEx(e);
 						}
 					});
 		}
@@ -307,7 +307,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		try {
 			doSync();
 		} catch (SSLException e) {
-			close(e);
+			closeEx(e);
 		}
 	}
 
@@ -350,7 +350,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		}
 
 		if (result != null && result.getStatus() == CLOSED) {
-            cancel();
+            close();
             return;
 		}
 
@@ -369,7 +369,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			engine.beginHandshake();
 			sync();
 		} catch (SSLException e) {
-			close(e);
+			closeEx(e);
 		}
 	}
 
@@ -389,7 +389,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (isClosed()) return;
 		tryRecycle(net2engine);
 		tryRecycle(engine2app);
@@ -398,9 +398,9 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		tryRecycle(app2engine); // app2Engine is recycled later as it is used while sending close notify messages
 		app2engine = null;
 		if (pendingUpstreamWrite != null) {
-			pendingUpstreamWrite.whenResult(() -> upstream.close(e));
+			pendingUpstreamWrite.whenResult(() -> upstream.closeEx(e));
 		} else {
-			upstream.close(e);
+			upstream.closeEx(e);
 		}
 		if (write != null) {
 			write.setException(e);

@@ -59,7 +59,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 								return Promise.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
-						.whenException(this::close),
+						.whenException(this::closeEx),
 				Promise::complete,
 				this);
 	}
@@ -83,7 +83,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 							closeIfDone();
 						}
 					})
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 	}
 
@@ -91,7 +91,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public Promise<I> receive() {
 		return bufsSupplier.parse(codec::tryDecode)
 				.whenResult(this::prefetch)
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	@Override
@@ -106,7 +106,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 					writeDone = true;
 					closeIfDone();
 				})
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	@Override
@@ -130,16 +130,16 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (isClosed()) return;
 		closedException = e;
-		socket.close(e);
+		socket.closeEx(e);
 		bufs.recycle();
 	}
 
 	private void closeIfDone() {
 		if (readDone && writeDone) {
-			cancel();
+			close();
 		}
 	}
 

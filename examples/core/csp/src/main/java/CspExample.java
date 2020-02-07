@@ -47,8 +47,8 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 	@Override
 	protected void doClose(Throwable e) {
 		System.out.println("Process has been closed with exception: " + e);
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 
 	public static void main(String[] args) {

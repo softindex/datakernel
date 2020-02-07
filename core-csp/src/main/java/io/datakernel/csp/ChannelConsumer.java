@@ -30,15 +30,14 @@ import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
-import static io.datakernel.common.collection.CollectionUtils.asIterator;
 
 /**
  * This interface represents consumer of data items that should be used serially
@@ -48,7 +47,7 @@ import static io.datakernel.common.collection.CollectionUtils.asIterator;
  * After consumer is closed, all subsequent calls to {@link #accept(Object)} will
  * return a completed exceptionally promise.
  * <p>
- * If any exception is caught while consuming data items, {@link #close(Throwable)}
+ * If any exception is caught while consuming data items, {@link #closeEx(Throwable)}
  * method should be called. All resources should be freed and the caught exception
  * should be propagated to all related processes.
  * <p>
@@ -65,25 +64,6 @@ public interface ChannelConsumer<T> extends Cancellable {
 	Promise<Void> accept(@Nullable T value);
 
 	/**
-	 * Accepts two items and returns a {@code Promise} as a
-	 * marker of completion. If the first item was accepted
-	 * with an exception, second item will be recycled and
-	 * a Promise of exception will be returned.
-	 */
-	@NotNull
-	default Promise<Void> accept(@Nullable T item1, @Nullable T item2) {
-		return accept(item1)
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return accept(item2);
-					} else {
-						tryRecycle(item2);
-						return Promise.ofException(e);
-					}
-				});
-	}
-
-	/**
 	 * Accepts provided items and returns {@code Promise} as a
 	 * marker of completion. If one of the items was accepted
 	 * with an error, subsequent items will be recycled and a
@@ -91,26 +71,8 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 */
 	@NotNull
 	@SuppressWarnings("unchecked")
-	default Promise<Void> accept(T item1, T item2, T... items) {
-		return accept(item1)
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return accept(item1);
-					} else {
-						tryRecycle(item2);
-						deepRecycle(items);
-						return Promise.ofException(e);
-					}
-				})
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return accept(item2);
-					} else {
-						deepRecycle(items);
-						return Promise.ofException(e);
-					}
-				})
-				.then($ -> acceptAll(asIterator(items)));
+	default Promise<Void> acceptAll(T... items) {
+		return acceptAll(Arrays.asList(items));
 	}
 
 	/**
@@ -236,7 +198,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				promise.whenResult(supplier -> supplier.close(e));
+				promise.whenResult(supplier -> supplier.closeEx(e));
 			}
 		};
 	}
@@ -261,7 +223,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				if (consumer != null) {
-					consumer.close(e);
+					consumer.closeEx(e);
 				}
 			}
 		};
@@ -354,7 +316,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 					try {
 						newValue = fn.apply(value);
 					} catch (UncheckedException u) {
-						ChannelConsumer.this.close(u.getCause());
+						ChannelConsumer.this.closeEx(u.getCause());
 						return Promise.ofException(u.getCause());
 					}
 					return ChannelConsumer.this.accept(newValue);

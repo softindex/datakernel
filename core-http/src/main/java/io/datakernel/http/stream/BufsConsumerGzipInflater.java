@@ -136,19 +136,19 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 					//header validation
 					if (buf.get() != GZIP_HEADER[0] || buf.get() != GZIP_HEADER[1]) {
 						buf.recycle();
-						close(INCORRECT_ID_HEADER_BYTES);
+						closeEx(INCORRECT_ID_HEADER_BYTES);
 						return;
 					}
 					if (buf.get() != GZIP_HEADER[2]) {
 						buf.recycle();
-						close(UNSUPPORTED_COMPRESSION_METHOD);
+						closeEx(UNSUPPORTED_COMPRESSION_METHOD);
 						return;
 					}
 
 					byte flag = buf.get();
 					if ((flag & 0b11100000) > 0) {
 						buf.recycle();
-						close(MALFORMED_FLAG);
+						closeEx(MALFORMED_FLAG);
 						return;
 					}
 					// unsetting FTEXT bit
@@ -156,7 +156,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 					buf.recycle();
 					runNext(flag).run();
 				})
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	private void processBody() {
@@ -170,7 +170,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				inflate(queue);
 			} catch (DataFormatException e) {
 				queue.recycle();
-				close(e);
+				closeEx(e);
 				return;
 			}
 			if (inflater.finished()) {
@@ -188,12 +188,12 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 		input.parse(ofFixedSize(GZIP_FOOTER_SIZE))
 				.whenResult(buf -> {
 					if ((int) crc32.getValue() != reverseBytes(buf.readInt())) {
-						close(CRC32_VALUE_DIFFERS);
+						closeEx(CRC32_VALUE_DIFFERS);
 						buf.recycle();
 						return;
 					}
 					if (inflater.getTotalOut() != reverseBytes(buf.readInt())) {
-						close(ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
+						closeEx(ACTUAL_DECOMPRESSED_DATA_SIZE_IS_NOT_EQUAL_TO_EXPECTED);
 						buf.recycle();
 						return;
 					}
@@ -202,7 +202,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 							.then(() -> output.accept(null))
 							.whenResult(this::completeProcess);
 				})
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	private void inflate(ByteBufQueue queue) throws DataFormatException {
@@ -242,7 +242,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 
 	private void skipTerminatorByte(int flag, int part) {
 		input.parse(ByteBufsDecoder.ofNullTerminatedBytes(MAX_HEADER_FIELD_LENGTH))
-				.whenException(e -> close(FNAME_FCOMMENT_TOO_LARGE))
+				.whenException(e -> closeEx(FNAME_FCOMMENT_TOO_LARGE))
 				.whenResult(ByteBuf::recycle)
 				.whenResult(() -> runNext(flag - part).run());
 	}
@@ -256,19 +256,19 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				})
 				.then(toSkip -> {
 					if (toSkip > MAX_HEADER_FIELD_LENGTH) {
-						close(FEXTRA_TOO_LARGE);
+						closeEx(FEXTRA_TOO_LARGE);
 						return Promise.ofException(FEXTRA_TOO_LARGE);
 					}
 					return input.parse(ofFixedSize(toSkip));
 				})
-				.whenException(this::close)
+				.whenException(this::closeEx)
 				.whenResult(ByteBuf::recycle)
 				.whenResult(() -> runNext(flag - FEXTRA).run());
 	}
 
 	private void skipCRC16(int flag) {
 		input.parse(ofFixedSize(2))
-				.whenException(this::close)
+				.whenException(this::closeEx)
 				.whenResult(ByteBuf::recycle)
 				.whenResult(() -> runNext(flag - FHCRC).run());
 	}
@@ -284,7 +284,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 	@Override
 	protected void doClose(Throwable e) {
 		inflater.end();
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 }

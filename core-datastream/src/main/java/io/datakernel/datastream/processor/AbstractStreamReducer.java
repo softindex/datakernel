@@ -153,12 +153,12 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 			output.flush();
 			output.getEndOfStream()
 					.whenComplete(this::acknowledge)
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			output.close(e);
+			output.closeEx(e);
 		}
 	}
 
@@ -166,7 +166,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		@Override
 		protected void onError(Throwable e) {
 			for (Input input : inputs) {
-				input.close(e);
+				input.closeEx(e);
 			}
 		}
 

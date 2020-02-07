@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Describes methods that are used to handle exceptional behaviour or to handle closing.
  * <p>
- * After {@link #close()}, {@link #close(Throwable)} or {@link #cancel()} is called, the following things
+ * After {@link #close()}, {@link #closeEx(Throwable)} or {@link #close()} is called, the following things
  * should be done:
  * <ul>
  * <li>Resources held by an object should be freed</li>
@@ -39,13 +39,13 @@ public interface Cancellable {
 	 *
 	 * @param e exception that is used to close process with
 	 */
-	void close(@NotNull Throwable e);
+	void closeEx(@NotNull Throwable e);
 
 	/**
 	 * Cancels the process.
 	 */
-	default void cancel() {
-		close(CANCEL_EXCEPTION);
+	default void close() {
+		closeEx(CANCEL_EXCEPTION);
 	}
 
 }

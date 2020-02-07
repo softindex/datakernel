@@ -59,7 +59,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 					if (e == null) {
 						loop();
 					} else {
-						close(e);
+						closeEx(e);
 					}
 				});
 	}
@@ -72,7 +72,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 										.whenResult(this::loop) :
 								onProcessFinish()
 										.whenResult(this::completeProcess))
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	@SuppressWarnings("ConstantConditions")
@@ -96,7 +96,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 
 	@Override
 	protected final void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 }

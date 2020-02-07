@@ -85,7 +85,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			acknowledgement.trySetException(e);
 		}
 	}
@@ -107,7 +107,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
+		public void closeEx(@NotNull Throwable e) {
 			endOfStream.trySetException(e);
 		}
 	}

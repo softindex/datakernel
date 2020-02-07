@@ -77,7 +77,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			public Promise<Void> endOfStream() {
 				if (!bufs.isEmpty()) {
 					bufs.recycle();
-					input.close(UNEXPECTED_DATA_EXCEPTION);
+					input.closeEx(UNEXPECTED_DATA_EXCEPTION);
 					return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 				}
 				return input.get()
@@ -86,16 +86,16 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 								return Promise.complete();
 							} else {
 								buf.recycle();
-								input.close(UNEXPECTED_DATA_EXCEPTION);
+								input.closeEx(UNEXPECTED_DATA_EXCEPTION);
 								return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 							}
 						});
 			}
 
 			@Override
-			public void close(@NotNull Throwable e) {
+			public void closeEx(@NotNull Throwable e) {
 				bufs.recycle();
-				input.close(e);
+				input.closeEx(e);
 			}
 		};
 	}
@@ -114,8 +114,8 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			}
 
 			@Override
-			public void close(@NotNull Throwable e) {
-				cancellable.close(e);
+			public void closeEx(@NotNull Throwable e) {
+				cancellable.closeEx(e);
 			}
 		};
 	}
@@ -143,7 +143,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 						try {
 							result = decoder.tryDecoder(bufs);
 						} catch (Exception e2) {
-							close(e2);
+							closeEx(e2);
 							cb.setException(e2);
 							return;
 						}
@@ -162,7 +162,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 		return parse(decoder)
 				.then(result -> {
 					if (!bufs.isEmpty()) {
-						close(UNEXPECTED_DATA_EXCEPTION);
+						closeEx(UNEXPECTED_DATA_EXCEPTION);
 						return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 					}
 					return endOfStream().map($ -> result);

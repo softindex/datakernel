@@ -109,10 +109,10 @@ public final class StreamConsumerSwitcher<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		acknowledgement.trySetException(e);
 		if (consumer != null) {
-			consumer.close(e);
+			consumer.closeEx(e);
 		}
 	}
 

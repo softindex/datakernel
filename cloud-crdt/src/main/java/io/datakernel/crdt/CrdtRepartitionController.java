@@ -81,9 +81,9 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 						return downloader.streamTo(splitter.getInput());
 					} else {
 						StacklessException exception = new StacklessException("Repartition exceptions:");
-						all.getValue1().consume(Cancellable::cancel, exception::addSuppressed);
-						all.getValue2().consume(Cancellable::cancel, exception::addSuppressed);
-						all.getValue3().consume(Cancellable::cancel, exception::addSuppressed);
+						all.getValue1().consume(Cancellable::close, exception::addSuppressed);
+						all.getValue2().consume(Cancellable::close, exception::addSuppressed);
+						all.getValue3().consume(Cancellable::close, exception::addSuppressed);
 						return Promise.ofException(exception);
 					}
 				});

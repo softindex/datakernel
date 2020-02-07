@@ -104,7 +104,7 @@ public final class BufsConsumerDelimiter extends AbstractCommunicatingProcess
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 }
