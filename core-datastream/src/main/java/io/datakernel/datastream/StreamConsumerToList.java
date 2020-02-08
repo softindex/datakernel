@@ -7,6 +7,14 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Accumulates items from this supplier until it closes and
+ * then completes the returned promise with a list of those items.
+ *
+ * @see StreamSupplier#toList()
+ * @deprecated This class should not be used, because now the {@link StreamSupplier#toCollector} method exists.
+ */
+@Deprecated
 public final class StreamConsumerToList<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
 	private final List<T> list;
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();

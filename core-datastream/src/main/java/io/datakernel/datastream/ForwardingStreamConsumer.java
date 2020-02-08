@@ -19,6 +19,10 @@ package io.datakernel.datastream;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
+/**
+ * A wrapper class that delegates all calls to underlying {@link StreamConsumer}.
+ * It exists for when one method of some supplier needs to be altered.
+ */
 public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	protected final StreamConsumer<T> consumer;
 

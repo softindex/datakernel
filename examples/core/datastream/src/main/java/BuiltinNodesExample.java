@@ -1,9 +1,6 @@
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.Sharders.HashSharder;
-import io.datakernel.datastream.processor.StreamFilter;
-import io.datakernel.datastream.processor.StreamMapper;
-import io.datakernel.datastream.processor.StreamSplitter;
+import io.datakernel.datastream.processor.*;
 import io.datakernel.eventloop.Eventloop;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
@@ -31,7 +28,7 @@ public final class BuiltinNodesExample {
 	private static void sharder() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-		HashSharder<Object> hashSharder = new HashSharder<>(3);
+		Sharder<Object> hashSharder = Sharders.byHash(3);
 		//creating a sharder of three parts for three consumers
 		StreamSplitter<Integer, Integer> sharder = StreamSplitter.create(
 				(item, acceptors) -> acceptors[hashSharder.shard(item)].accept(item));

@@ -22,15 +22,14 @@ import io.datakernel.common.parse.TruncatedDataException;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.datastream.AbstractStreamSupplier;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.serializer.BinarySerializer;
 
 import static java.lang.String.format;
 
 /**
- * Represent deserializer which deserializes data from ByteBuffer to some type. Is a stream transformer
- * which receives ByteBufs and streams specified type.
- *
- * @param <T> original type of data
+ * An adapter that converts a {@link ChannelSupplier} of {@link ByteBuf ByteBufs} to a {@link StreamSupplier} of some type,
+ * that is deserialized from incoming binary data using given {@link BinarySerializer}.
  */
 public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> implements WithChannelToStream<ChannelDeserializer<T>, ByteBuf, T> {
 	private ChannelSupplier<ByteBuf> input;
@@ -38,11 +37,13 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 
 	private final ByteBufQueue queue = new ByteBufQueue();
 
-	// region creators
 	private ChannelDeserializer(BinarySerializer<T> valueSerializer) {
 		this.valueSerializer = valueSerializer;
 	}
 
+	/**
+	 * Creates a new instance of the deserializer for type T
+	 */
 	public static <T> ChannelDeserializer<T> create(BinarySerializer<T> valueSerializer) {
 		return new ChannelDeserializer<>(valueSerializer);
 	}
@@ -54,7 +55,6 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 			return getEndOfStream();
 		};
 	}
-	// endregion
 
 	@Override
 	protected void onResumed(AsyncProduceController async) {
@@ -163,5 +163,4 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 		queue.recycle();
 		input.closeEx(e);
 	}
-
 }

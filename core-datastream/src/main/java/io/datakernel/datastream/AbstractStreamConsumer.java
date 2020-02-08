@@ -25,9 +25,8 @@ import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
 
 /**
- * It is basic implementation of {@link StreamSupplier}
- *
- * @param <T> type of received item
+ * This is a helper partial implementation of the {@link StreamConsumer}
+ * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -55,6 +54,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		}
 	}
 
+	/**
+	 * This method will be called when this consumer begins receiving items.
+	 * It may not be called if consumer never received anything getting closed.
+	 */
 	protected void onStarted() {
 	}
 
@@ -65,13 +68,23 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		onEndOfStream();
 	}
 
+	/**
+	 * This method will be called when associated supplier closes.
+	 */
 	protected void onEndOfStream() {
 	}
 
+	/**
+	 * Returns <code>true</code> when associated supplier gets closed,
+	 * this may happen before {@link #getAcknowledgement() acknowledgement}.
+	 */
 	public boolean isEndOfStream() {
 		return endOfStream;
 	}
 
+	/**
+	 * Begins receiving data into given acceptor, resumes the associated supplier to receive data from it.
+	 */
 	public final void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
 		//noinspection ResultOfMethodCallIgnored
 		checkNotNull(dataAcceptor);
@@ -81,12 +94,18 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		streamSupplier.resume(dataAcceptor);
 	}
 
+	/**
+	 * Suspends the associated supplier.
+	 */
 	public final void suspend() {
 		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
 		streamSupplier.suspend();
 	}
 
+	/**
+	 * Triggers the {@link #getAcknowledgement() acknowledgement} of this consumer.
+	 */
 	public final void acknowledge() {
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.set(null);
@@ -97,6 +116,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return acknowledgement;
 	}
 
+	/**
+	 * Unlike {@link #isEndOfStream()}, returns <code>true</code> when this consumer
+	 * has its {@link #getAcknowledgement() acknowledgement} set, meaning that it is completely closed.
+	 */
 	public boolean isClosed() {
 		return acknowledgement.isComplete();
 	}
@@ -110,9 +133,15 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		}
 	}
 
+	/**
+	 * This method will be called when this consumer erroneously changes to the acknowledged state.
+	 */
 	protected void onError(Throwable e) {
 	}
 
+	/**
+	 * This method will be asynchronously called after this consumer changes to the acknowledged state regardless of error.
+	 */
 	protected void onCleanup() {
 	}
 }

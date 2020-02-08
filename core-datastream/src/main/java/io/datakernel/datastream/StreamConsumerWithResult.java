@@ -21,9 +21,14 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
+/**
+ * A {@link StreamConsumer} that is bound with some {@link Promise}
+ * that represents some kind of result from the streaming process.
+ */
 public final class StreamConsumerWithResult<T, X> {
 	@NotNull
 	private final StreamConsumer<T> consumer;
+
 	@NotNull
 	private final Promise<X> result;
 

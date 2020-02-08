@@ -18,6 +18,9 @@ package io.datakernel.datastream;
 
 import java.util.List;
 
+/**
+ * A separate interface for components that have multiple outputs represented with a list of {@link StreamSupplier consumers}.
+ */
 public interface HasStreamOutputs<O> {
 	List<? extends StreamSupplier<O>> getOutputs();
 

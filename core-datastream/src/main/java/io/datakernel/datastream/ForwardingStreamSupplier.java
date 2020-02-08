@@ -20,6 +20,10 @@ import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * A wrapper class that delegates all calls to underlying {@link StreamSupplier}.
+ * It exists for when one method of some supplier needs to be altered.
+ */
 public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	protected final StreamSupplier<T> supplier;
 

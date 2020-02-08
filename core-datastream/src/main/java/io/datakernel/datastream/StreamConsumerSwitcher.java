@@ -24,19 +24,24 @@ import org.jetbrains.annotations.Nullable;
 import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
- * Provides you apply function before sending data to the destination. It is a {@link StreamConsumerSwitcher}
- * which receives specified type and streams set of function's result  to the destination .
+ * A consumer that wraps around another consumer that can be hot swapped with some other consumer.
+ * <p>
+ * It sets its acknowledgement on supplier end of stream, and acts as if suspended when current consumer stops and acknowledges.
  */
 public final class StreamConsumerSwitcher<T> implements StreamConsumer<T> {
-	private @Nullable StreamSupplier<T> supplier;
 	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
+	private @Nullable StreamSupplier<T> supplier;
 	private @Nullable StreamConsumer<T> currentConsumer;
+
 	SettablePromise<Void> currentEndOfStream = new SettablePromise<>();
 
 	private StreamConsumerSwitcher() {
 	}
 
+	/**
+	 * Creates a new instance of this consumer.
+	 */
 	public static <T> StreamConsumerSwitcher<T> create() {
 		return new StreamConsumerSwitcher<>();
 	}
@@ -136,5 +141,4 @@ public final class StreamConsumerSwitcher<T> implements StreamConsumer<T> {
 			currentEndOfStream.trySetException(e);
 		}
 	}
-
 }

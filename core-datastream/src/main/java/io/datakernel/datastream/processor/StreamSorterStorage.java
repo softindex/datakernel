@@ -23,40 +23,39 @@ import io.datakernel.promise.Promise;
 import java.util.List;
 
 /**
- * This class uses for  splitting a single input stream into smaller partitions during merge sort,
- * for avoid overflow RAM, it write it to  external memory . You can write here data with index
- * of partition and then read it from here and merge.
- *
- * @param <T> type of storing data
+ * This class is for storing partitions of data from the stream during merge sort,
+ * it stores data in some external storage to avoid RAM overflow.
+ * Data can be stored here with the index of partition and then read to be merged.
  */
 public interface StreamSorterStorage<T> {
 	Promise<Integer> newPartitionId();
 
 	/**
-	 * Method for writing to storage partition of elements
-	 *
-	 * @return partition number
+	 * Write a partition of elements to the storage.
 	 */
 	Promise<StreamConsumer<T>> write(int partition);
 
+	/**
+	 * Shortcut for {@link #write} that unwraps and returns an actual consumer.
+	 */
 	default StreamConsumer<T> writeStream(int partition) {
 		return StreamConsumer.ofPromise(write(partition));
 	}
 
 	/**
-	 * Method for creating supplier for reading from storage partition of elements
-	 *
-	 * @param partition index of partition
-	 * @return supplier for streaming to storage
+	 * Read a partition of elements from the storage.
 	 */
 	Promise<StreamSupplier<T>> read(int partition);
 
+	/**
+	 * Shortcut for {@link #read} that unwraps and returns an actual supplier.
+	 */
 	default StreamSupplier<T> readStream(int partition) {
 		return StreamSupplier.ofPromise(read(partition));
 	}
 
 	/**
-	 * Method for removing all stored created objects
+	 * Removes listed partitions from the storage.
 	 */
 	Promise<Void> cleanup(List<Integer> partitionsToDelete);
 }

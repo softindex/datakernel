@@ -20,10 +20,20 @@ import io.datakernel.datastream.*;
 
 import java.util.function.Function;
 
+/**
+ * A bidirectional stream transformer capable of transforming both
+ * {@link StreamConsumer consumers} and {@link StreamSupplier suppliers}.
+ *
+ * @param <I> input elements type
+ * @param <O> output elements type.
+ */
 public interface StreamTransformer<I, O> extends HasStreamInput<I>, HasStreamOutput<O>,
 		StreamSupplierTransformer<I, StreamSupplier<O>>,
 		StreamConsumerTransformer<O, StreamConsumer<I>> {
 
+	/**
+	 * An identity transformer that does not change the elements.
+	 */
 	static <X> StreamTransformer<X, X> identity() {
 		return StreamMapper.create(Function.identity());
 	}

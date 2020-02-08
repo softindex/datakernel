@@ -5,8 +5,14 @@ import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.csp.dsl.WithChannelInput;
 import io.datakernel.datastream.StreamSupplier;
 
-public interface WithChannelToStream<B, I, O> extends
-		WithChannelInput<B, I>, StreamSupplier<O>,
+/**
+ * This interface is a shortcut for implementing transformers that convert
+ * {@link ChannelSupplier channel suppliers} to {@link StreamSupplier stream suppliers}
+ * and are useful through both DSLs.
+ */
+public interface WithChannelToStream<Self, I, O> extends
+		StreamSupplier<O>,
+		WithChannelInput<Self, I>,
 		ChannelSupplierTransformer<I, StreamSupplier<O>> {
 
 	@Override

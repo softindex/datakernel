@@ -18,6 +18,9 @@ package io.datakernel.datastream;
 
 import java.util.List;
 
+/**
+ * A separate interface for components that have multiple inputs represented with a list of {@link StreamConsumer consumers}.
+ */
 public interface HasStreamInputs {
 	List<? extends StreamConsumer<?>> getInputs();
 

@@ -22,12 +22,6 @@ import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Represents {@link StreamSupplier}, which created with iterator with {@link AbstractStreamSupplier}
- * which will stream to this
- *
- * @param <T> type of received data
- */
 class StreamSupplierConcat<T> implements StreamSupplier<T> {
 	private final ChannelSupplier<StreamSupplier<T>> iterator;
 	private boolean iteratorGet;
@@ -99,5 +93,4 @@ class StreamSupplierConcat<T> implements StreamSupplier<T> {
 			iterator.closeEx(e);
 		}
 	}
-
 }

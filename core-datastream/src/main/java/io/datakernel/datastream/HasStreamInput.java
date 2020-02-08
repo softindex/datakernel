@@ -16,6 +16,9 @@
 
 package io.datakernel.datastream;
 
+/**
+ * A separate interface for components that have some kind of input represented with a {@link StreamConsumer}.
+ */
 public interface HasStreamInput<I> {
 	StreamConsumer<I> getInput();
 }

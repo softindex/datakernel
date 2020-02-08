@@ -16,6 +16,9 @@
 
 package io.datakernel.datastream;
 
+/**
+ * A separate interface for components that have some kind of output represented with a {@link StreamSupplier}.
+ */
 public interface HasStreamOutput<O> {
 	StreamSupplier<O> getOutput();
 }

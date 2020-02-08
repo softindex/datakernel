@@ -27,8 +27,10 @@ import java.util.function.Function;
 import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
- * Perform aggregative functions on the elements from input streams. Searches key of item
- * with key function, selects elements with some key, reductions it and streams result sorted by key.
+ * Apply aggregative functions to the elements from input streams.
+ *
+ * Searches key of item with key function, selects elements with some key, reductions it and streams result sorted by key.
+ *
  * Elements from stream to input must be sorted by keys. It is Stream Transformer
  * because it represents few consumers and one supplier.
  *

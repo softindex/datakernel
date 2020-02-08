@@ -22,6 +22,7 @@ import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
@@ -36,19 +37,23 @@ import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.max;
 
+/**
+ * An adapter that converts a {@link ChannelConsumer} of {@link ByteBuf ByteBufs} to a {@link StreamConsumer} of some type,
+ * that is serialized into binary data using given {@link BinarySerializer}.
+ */
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class);
-	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
-	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
-	public static final MemSize MAX_SIZE_1 = MemSize.bytes(128); // (1 << (1 * 7))
-	public static final MemSize MAX_SIZE_2 = MemSize.kilobytes(16); // (1 << (2 * 7))
-	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
-	public static final MemSize MAX_SIZE = MAX_SIZE_3;
+	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
+
+	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
+	public static final MemSize DEFAULT_MAX_SIZE = MemSize.megabytes(2);
 
 	private final BinarySerializer<T> serializer;
+
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
-	private MemSize maxMessageSize = MAX_SIZE;
+	private MemSize maxMessageSize = DEFAULT_MAX_SIZE;
+
 	@Nullable
 	private Duration autoFlushInterval;
 	private boolean skipSerializationErrors = false;
@@ -71,40 +76,63 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	}
 
 	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param serializer specified BufferSerializer for this type
+	 * Creates a new instance of the serializer for type T
 	 */
 	public static <T> ChannelSerializer<T> create(BinarySerializer<T> serializer) {
 		return new ChannelSerializer<>(serializer);
 	}
 
+	/**
+	 * Sets the initial buffer size - a buffer of this size will
+	 * be allocated first when trying to serialize incoming item
+	 * <p>
+	 * Defaults to 16kb
+	 */
 	public ChannelSerializer<T> withInitialBufferSize(MemSize bufferSize) {
 		this.initialBufferSize = bufferSize;
 		rebuild();
 		return this;
 	}
 
+	/**
+	 * Sets the max message size - when a single message takes more
+	 * than this amount of memory to be serialized, this transformer
+	 * will be closed with {@link #OUT_OF_BOUNDS_EXCEPTION out of bounds excetion}
+	 * unless {@link #withSkipSerializationErrors} was used to ignore such errors.
+	 */
 	public ChannelSerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
 		this.maxMessageSize = maxMessageSize;
 		rebuild();
 		return this;
 	}
 
+	/**
+	 * Sets the auto flush interval - when this is set the
+	 * transformer will automatically flush itself at a given interval
+	 */
 	public ChannelSerializer<T> withAutoFlushInterval(@Nullable Duration autoFlushInterval) {
 		this.autoFlushInterval = autoFlushInterval;
 		rebuild();
 		return this;
 	}
 
-	public ChannelSerializer<T> withSkipSerializationErrors() {
-		return withSkipSerializationErrors(true);
-	}
-
+	/**
+	 * Enables or disables skipping serialization errors.
+	 * <p>
+	 * When this set to <code>true</code> the transformer ignores errors and just logs them,
+	 * otherwise it closes with the error.
+	 */
 	public ChannelSerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
 		this.skipSerializationErrors = skipSerializationErrors;
 		rebuild();
 		return this;
+	}
+
+	/**
+	 * @see #withSkipSerializationErrors(boolean)
+	 */
+	public ChannelSerializer<T> withSkipSerializationErrors() {
+		return withSkipSerializationErrors(true);
 	}
 
 	@Override
@@ -183,12 +211,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			this.autoFlushIntervalMillis = autoFlushInterval == null ? -1 : (int) autoFlushInterval.toMillis();
 		}
 
-		/**
-		 * After receiving data it serializes it to buffer and adds it to the outputBuffer,
-		 * and flushes bytes depending on the autoFlushDelay
-		 *
-		 * @param item receiving item
-		 */
 		@Override
 		public void accept(T item) {
 			int positionBegin;

@@ -30,48 +30,81 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * It represents an object which can asynchronous receive streams of data.
- * Implementors of this interface are strongly encouraged to extend one of the abstract classes
- * in this package which implement this interface and make the threading and state management
- * easier.
+ * This interface represents an object that can asynchronously receive streams of data.
+ * <p>
+ * Implementors of this interface might want to extend {@link AbstractStreamConsumer}
+ * instead of this interface, since it makes the threading and state management easier.
  */
 public interface StreamConsumer<T> extends AsyncCloseable {
+
 	/**
-	 * Sets wired supplier. It will sent data to this consumer
+	 * Begins streaming data from the given supplier into this consumer.
+	 * This method may not be called directly, use {@link StreamSupplier#streamTo} instead.
+	 * <p>
+	 * This method must not be called after {@link #getAcknowledgement() the acknowledgement} is set.
 	 */
 	void consume(@NotNull StreamSupplier<T> streamSupplier);
 
+	/**
+	 * A signal promise of the <i>acknowledgement</i> state of this consumer - its completion means that
+	 * this consumer changed to that state and is now <b>closed</b>.
+	 * <p>
+	 * When the consumer is in this state nobody must send any more data to any of its related acceptors,
+	 * and the {@link #consume} method must never be called.
+	 * <p>
+	 * If promise completes with an error then this consumer closes with that error.
+	 */
 	Promise<Void> getAcknowledgement();
 
+	/**
+	 * Creates a consumer which does not consume anything.
+	 * Its acknowledgement completes when the supplier closes.
+	 */
 	static <T> StreamConsumer<T> idle() {
 		return new Idle<>();
 	}
 
+	/**
+	 * Creates a consumer which consumes and ignores everything.
+	 * Its acknowledgement completes when the supplier closes.
+	 */
 	static <T> StreamConsumer<T> skip() {
 		return new Skip<>();
 	}
 
 	/**
-	 * @deprecated use of this consumer is discouraged as it breaks the whole asynchronous model.
-	 * Exists only for testing
+	 * @deprecated This consumer must not be used, because it
+	 * breaks the whole asynchronous model,
+	 * and it exists only for testing purposes.
 	 */
 	@Deprecated
 	static <T> StreamConsumer<T> of(Consumer<T> consumer) {
 		return new StreamConsumers.OfConsumer<>(consumer);
 	}
 
+	/**
+	 * Creates a consumer that is in the closed state with given error set.
+	 */
 	static <T> StreamConsumer<T> closingWithError(Throwable e) {
 		return new ClosingWithError<>(e);
 	}
 
+	/**
+	 * Creates a consumer that streams the received items into a given {@link io.datakernel.csp.ChannelConsumer channel consumer}
+	 */
 	static <T> StreamConsumer<T> ofChannelConsumer(ChannelConsumer<T> consumer) {
 		return new OfChannelConsumer<>(consumer);
 	}
 
+	// TODO: this does not belong here I think - Anton
 	static <T> ChannelConsumer<T> asStreamConsumer(StreamConsumer<T> consumer) {
 		return new StreamConsumers.AsChannelConsumer<>(consumer);
 	}
 
+	/**
+	 * Creates a consumer which sends received items through the supplier received in the callback.
+	 * Acknowledge of that consumer will not be set until the promise received from the callback invocation completes.
+	 */
 	static <T> StreamConsumer<T> ofSupplier(Function<StreamSupplier<T>, Promise<Void>> supplier) {
 		StreamTransformer<T, T> forwarder = StreamTransformer.identity();
 		Promise<Void> extraAcknowledge = supplier.apply(forwarder.getOutput());
@@ -81,16 +114,25 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
+	/**
+	 * Creates a consumer that waits until the promise completes
+	 * and then consumer items into the resulting consumer.
+	 */
+	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
+		if (promise.isResult()) return promise.getResult();
+		return new StreamConsumers.OfPromise<>(promise);
+	}
+
+	/**
+	 * Transforms this supplier with a given transformer.
+	 */
 	default <R> R transformWith(StreamConsumerTransformer<T, R> fn) {
 		return fn.transform(this);
 	}
 
-	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
-		if (promise.isResult()) return promise.getResult();
-		return new StreamConsumers.OfPromise<>(promise);
-
-	}
-
+	/**
+	 * Creates a consumer from this one with its <i>acknowledge</i> signal modified by the given function.
+	 */
 	default StreamConsumer<T> withAcknowledgement(Function<Promise<Void>, Promise<Void>> fn) {
 		Promise<Void> acknowledgement = getAcknowledgement();
 		Promise<Void> newAcknowledgement = fn.apply(acknowledgement);
@@ -102,5 +144,4 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 			}
 		};
 	}
-
 }

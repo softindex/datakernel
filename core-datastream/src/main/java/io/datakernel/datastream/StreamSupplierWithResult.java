@@ -23,6 +23,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
+/**
+ * A {@link StreamSupplier} that is bound with some {@link Promise}
+ * that represents some kind of result from the streaming process.
+ */
 public final class StreamSupplierWithResult<T, X> {
 	@NotNull
 	private final StreamSupplier<T> supplier;
