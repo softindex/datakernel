@@ -25,9 +25,9 @@ class App extends Component {
               <Switch>
                 <Route path="/folders/**" component={MainScreen}/>
                 <Route path="/folders" component={MainScreen}/>
-                <Route exact={true} path="/sign-up" component={SignUp}/>
-                <Route exact={true} path="/sign-up/auth" component={OAuthCallback}/>
-                <Route exact={true} path="/" component={MainScreen}/>
+                <Route exact path="/sign-up" component={SignUp}/>
+                <Route exact path="/sign-up/auth" component={OAuthCallback}/>
+                <Route exact path="/" component={MainScreen}/>
               </Switch>
             </Router>
           </SnackbarProvider>
