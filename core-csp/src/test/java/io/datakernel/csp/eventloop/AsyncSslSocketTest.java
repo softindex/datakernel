@@ -54,6 +54,7 @@ import java.util.function.Consumer;
 
 import static io.datakernel.async.process.Cancellable.CLOSE_EXCEPTION;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -224,7 +225,7 @@ public final class AsyncSslSocketTest {
 							.whenException(supplier::close);
 				}));
 
-		assertSame(CLOSE_EXCEPTION, e);
+		assertSame(UNEXPECTED_END_OF_STREAM_EXCEPTION, e);
 	}
 
 	@Test

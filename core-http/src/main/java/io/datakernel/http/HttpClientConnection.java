@@ -215,26 +215,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onNoContentLength() {
 		ChannelSupplier<ByteBuf> ofQueue = readQueue.hasRemaining() ? ChannelSupplier.of(readQueue.takeRemaining()) : ChannelSupplier.of();
 		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
-		ChannelSupplier.of(socket::read, socket).streamTo(buffer.getConsumer()
-				.withAcknowledgement(ack -> ack
-						.whenComplete((result, e) -> {
-							if (isClosed()) return;
-							if (e == null) {
-								onBodyReceived();
-							} else {
-								closeWithError(e);
-							}
-						})));
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
 		if ((flags & GZIPPED) != 0) {
 			supplier = supplier
 					.transformWith(BufsConsumerGzipInflater.create())
 					.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
 		}
-
-		if (isClosed()) return;
-
 		onHeadersReceived(null, supplier);
+		ChannelSupplier.of(socket::read, socket)
+				.streamTo(buffer.getConsumer())
+				.whenComplete(afterProcessCb);
 	}
 
 	private void onHttpMessageComplete() {
@@ -248,6 +238,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 					.whenComplete((buf, e) -> {
 						if (e == null) {
 							if (buf != null) {
+								buf.recycle();
 								closeWithError(UNEXPECTED_READ);
 							} else {
 								close();

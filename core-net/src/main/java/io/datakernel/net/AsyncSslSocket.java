@@ -50,6 +50,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	private ByteBuf net2engine = ByteBuf.empty();
 	private ByteBuf engine2app = ByteBuf.empty();
 	private ByteBuf app2engine = ByteBuf.empty();
+	private boolean shouldReturnEndOfStream;
 
 	@Nullable
 	private SettablePromise<ByteBuf> read;
@@ -105,8 +106,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
+		if (shouldReturnEndOfStream) {
+			shouldReturnEndOfStream = false;
+			return Promise.of(null);
+		}
+		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
@@ -332,13 +337,17 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 				result = tryToUnwrap();
 			} while (net2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 
+			// peer sent close_notify
+			if (result.getStatus() == CLOSED) {
+				shouldReturnEndOfStream = true;
+			}
+
 			if (read != null && engine2app.canRead()) {
 				SettablePromise<ByteBuf> read = this.read;
 				this.read = null;
 				ByteBuf readBuf = engine2app;
 				engine2app = ByteBuf.empty();
 				read.set(readBuf);
-				return;
 			}
 		}
 
@@ -347,7 +356,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			return;
 		}
 
-		doRead();
+		if (isOpen() && (read != null || !engine2app.canRead())){
+			doRead();
+		}
 	}
 
 	private static ByteBuf recycleIfEmpty(ByteBuf buf) {
@@ -404,7 +415,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			write = null;
 		}
 		if (read != null) {
-			read.setException(e);
+			if (shouldReturnEndOfStream) {
+				shouldReturnEndOfStream = false;
+				read.set(null);
+			} else {
+				read.setException(e);
+			}
 			read = null;
 		}
 	}
