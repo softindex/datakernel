@@ -138,14 +138,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			throw new ParseException(HttpClientConnection.class, "Invalid response: " + new String(line, 0, limit, ISO_8859_1));
 		}
 
-		int sp2;
-		for (sp2 = sp1; sp2 < limit; sp2++) {
-			if (line[sp2] == SP) {
-				break;
-			}
-		}
-
-		int statusCode = decodePositiveInt(line, sp1, sp2 - sp1);
+		int statusCode = decodePositiveInt(line, sp1, 3);
 		if (!(statusCode >= 100 && statusCode < 600)) {
 			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}

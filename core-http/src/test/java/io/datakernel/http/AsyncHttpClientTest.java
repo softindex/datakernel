@@ -194,15 +194,21 @@ public final class AsyncHttpClientTest {
 	@Test
 	public void testClientNoContentLength() throws Exception {
 		String text = "content";
-		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
-		doTestNoContentLength(text, buf, false);
+		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+		String responseText = await(customResponse(req, false)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
 	}
 
 	@Test
 	public void testClientNoContentLengthSSL() throws Exception {
 		String text = "content";
-		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
-		doTestNoContentLength(text, buf, true);
+		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+		String responseText = await(customResponse(req, false)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
 	}
 
 	@Test
@@ -210,8 +216,11 @@ public final class AsyncHttpClientTest {
 		String text = "content";
 		ByteBuf headLines = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n" +
 				"Content-Encoding: gzip\r\n\r\n"));
-		ByteBuf gzippedContent = GzipProcessorUtils.toGzip(wrapAscii(text));
-		doTestNoContentLength(text, ByteBufPool.append(headLines, gzippedContent), false);
+
+		String responseText = await(customResponse(ByteBufPool.append(headLines, GzipProcessorUtils.toGzip(wrapAscii(text))), false)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
 	}
 
 	@Test
@@ -219,45 +228,11 @@ public final class AsyncHttpClientTest {
 		String text = "content";
 		ByteBuf headLines = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n" +
 				"Content-Encoding: gzip\r\n\r\n"));
-		ByteBuf gzippedContent = GzipProcessorUtils.toGzip(wrapAscii(text));
-		doTestNoContentLength(text, ByteBufPool.append(headLines, gzippedContent), true);
-	}
 
-	private static final ByteBufsParser<ByteBuf> REQUEST_PARSER = bufs -> {
-		for (int i = 0; i < bufs.remainingBytes() - 3; i++) {
-			if (bufs.peekByte(i) == CR &&
-					bufs.peekByte(i + 1) == LF &&
-					bufs.peekByte(i + 2) == CR &&
-					bufs.peekByte(i + 3) == LF) {
-				return bufs.takeRemaining();
-			}
-		}
-		return null;
-	};
-
-	private void doTestNoContentLength(String expectedBody, ByteBuf rawResponse, boolean ssl) throws IOException {
-		SimpleServer server = SimpleServer.create(asyncTcpSocket -> {
-			BinaryChannelSupplier.of(ChannelSupplier.ofSocket(asyncTcpSocket))
-					.parse(REQUEST_PARSER)
-					.whenResult(ByteBuf::recycle)
-					.then($ -> asyncTcpSocket.write(rawResponse))
-					.whenResult($ -> asyncTcpSocket.close());
-		})
-				.withAcceptOnce();
-		if (ssl) {
-			server.withSslListenAddress(createSslContext(), Executors.newSingleThreadExecutor(), new InetSocketAddress(PORT));
-		} else {
-			server.withListenAddress(new InetSocketAddress(PORT));
-		}
-		server.listen();
-
-		String responseBody = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.withSslEnabled(createSslContext(), Executors.newSingleThreadExecutor())
-				.request(HttpRequest.get("http" + (ssl ? "s" : "") + "://127.0.0.1:" + PORT))
-				.then(response -> response.loadBody()
-						.map(body -> body.getString(UTF_8))));
-
-		assertEquals(expectedBody, responseBody);
+		String responseText = await(customResponse(ByteBufPool.append(headLines, GzipProcessorUtils.toGzip(wrapAscii(text))), true)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
 	}
 
 	@Test
@@ -304,6 +279,45 @@ public final class AsyncHttpClientTest {
 						}))));
 
 		assertEquals(200, code);
+	}
+
+	@Test
+	public void testResponseWithoutReasonPhrase() throws IOException {
+		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200\n" +
+				"Content-Length: 0\r\n\r\n"));
+		assertEquals((Integer) 200, await(customResponse(req, false).map(HttpResponse::getCode)));
+	}
+
+	private static final ByteBufsParser<ByteBuf> REQUEST_PARSER = bufs -> {
+		for (int i = 0; i < bufs.remainingBytes() - 3; i++) {
+			if (bufs.peekByte(i) == CR &&
+					bufs.peekByte(i + 1) == LF &&
+					bufs.peekByte(i + 2) == CR &&
+					bufs.peekByte(i + 3) == LF) {
+				return bufs.takeRemaining();
+			}
+		}
+		return null;
+	};
+
+	private Promise<HttpResponse> customResponse(ByteBuf rawResponse, boolean ssl) throws IOException {
+		SimpleServer server = SimpleServer.create(asyncTcpSocket -> {
+			BinaryChannelSupplier.of(ChannelSupplier.ofSocket(asyncTcpSocket))
+					.parse(REQUEST_PARSER)
+					.whenResult(ByteBuf::recycle)
+					.then($ -> asyncTcpSocket.write(rawResponse))
+					.whenResult($ -> asyncTcpSocket.close());
+		})
+				.withAcceptOnce();
+		if (ssl) {
+			server.withSslListenAddress(createSslContext(), Executors.newSingleThreadExecutor(), new InetSocketAddress(PORT));
+		} else {
+			server.withListenAddress(new InetSocketAddress(PORT));
+		}
+		server.listen();
+		return AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withSslEnabled(createSslContext(), Executors.newSingleThreadExecutor())
+				.request(HttpRequest.get("http" + (ssl ? "s" : "") + "://127.0.0.1:" + PORT));
 	}
 
 	private static SSLContext createSslContext() {
