@@ -46,8 +46,9 @@ import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.http.AsyncServletDecorator.onRequest;
-import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
-import static io.global.Utils.cachedContent;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
+import static io.global.Utils.*;
 import static io.global.debug.DebugViewerModule.DebugView.FS;
 import static io.global.debug.DebugViewerModule.DebugView.KV;
 import static io.global.launchers.Initializers.sslServerInitializer;
@@ -82,9 +83,10 @@ public final class GlobalFilesApp extends Launcher {
 
 		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(driverServlet))
-				.map("/fs/download/*", download.then(onRequest(request -> request.attach(request.getAttachment(UserContainer.class).getKeys().getPubKey()))))
-				.map("/static/*", cachedContent().serve(staticServlet))
-				.map("/*", staticServlet)
+				.map(GET, "/fs/download/*", download.then(onRequest(request -> request.attach(request.getAttachment(UserContainer.class).getKeys().getPubKey()))))
+				.map(POST, "/fs/deleteBulk", sessionDecorator.serve(bulkDeleteServlet(fsDriver)))
+				.map(GET, "/static/*", cachedContent().serve(staticServlet))
+				.map(GET, "/*", staticServlet)
 				.merge(authorizationServlet);
 		if (debugServlet != null) {
 			routingServlet.map("/debug/*", debugServlet);

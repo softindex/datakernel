@@ -6,19 +6,23 @@ import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.config.Config;
+import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.AsyncServletDecorator;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.global.appstore.pojo.AppInfo;
 import io.global.appstore.pojo.HostingInfo;
 import io.global.appstore.pojo.Profile;
 import io.global.appstore.pojo.User;
 import io.global.common.CryptoUtils;
+import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.api.AnnounceData;
+import io.global.fs.local.GlobalFsDriver;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -175,5 +179,17 @@ public final class Utils {
 			}
 		}
 		return false;
+	}
+
+	public static AsyncServlet bulkDeleteServlet(GlobalFsDriver fsDriver) {
+		return request -> {
+			PubKey space = request.getAttachment(PubKey.class);
+			String glob = request.getQueryParameter("glob");
+			KeyPair keys = request.getAttachment(KeyPair.class);
+			return fsDriver.list(space, glob != null ? glob : "**")
+					.then(checkpoints -> Promises.all(checkpoints.stream()
+							.map(s -> fsDriver.delete(keys, s.getFilename(), System.currentTimeMillis()))))
+					.map($ -> HttpResponse.ok200());
+		};
 	}
 }

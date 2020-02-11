@@ -44,8 +44,9 @@ import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
-import static io.global.Utils.DEFAULT_SYNC_SCHEDULE_CONFIG;
-import static io.global.Utils.cachedContent;
+import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
+import static io.global.Utils.*;
 import static io.global.debug.DebugViewerModule.DebugView.FS;
 import static io.global.debug.DebugViewerModule.DebugView.KV;
 import static io.global.launchers.Initializers.sslServerInitializer;
@@ -72,13 +73,14 @@ public final class GlobalCdnApp extends Launcher {
 	@Provides
 	AsyncServlet servlet(StaticServlet staticServlet, @Named("authorization") RoutingServlet authorizationServlet,
 			@Named("FS") AsyncServlet fsServlet, @Named("Download") AsyncServlet downloadServlet, @Named("session") AsyncServletDecorator sessionDecorator,
-			@Optional @Named("debug") AsyncServlet debugServlet
+			GlobalFsDriver driver, @Optional @Named("debug") AsyncServlet debugServlet
 	) {
 		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(fsServlet))
-				.map("/fs/download/*", downloadServlet)
-				.map("/static/*", cachedContent().serve(staticServlet))
-				.map("/*", staticServlet)
+				.map(GET,"/fs/download/*", downloadServlet)
+				.map(POST, "/fs/deleteBulk", sessionDecorator.serve(bulkDeleteServlet(driver)))
+				.map(GET,"/static/*", cachedContent().serve(staticServlet))
+				.map(GET,"/*", staticServlet)
 				.merge(authorizationServlet);
 		if (debugServlet != null) {
 			routingServlet.map("/debug/*", debugServlet);
