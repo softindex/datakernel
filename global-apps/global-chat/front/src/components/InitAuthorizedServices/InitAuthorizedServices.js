@@ -1,5 +1,4 @@
 import React, {useMemo} from 'react';
-import {checkAuth, AuthContext, useService, useSnackbar, connectService, RegisterDependency, initService} from 'global-apps-common';
 import ContactsService from "../../modules/contacts/ContactsService";
 import RoomsService from "../../modules/rooms/RoomsService";
 import MyProfileService from "../../modules/profile/MyProfileService";
@@ -13,6 +12,15 @@ import {withRouter} from "react-router-dom";
 import CallsService from '../../modules/calls/CallsService';
 import NotificationsService from '../../modules/notifications/NotificationsService';
 import Audio from '../Audio/Audio';
+import {
+  checkAuth,
+  AuthContext,
+  useService,
+  useSnackbar,
+  connectService,
+  RegisterDependency,
+  initService
+} from 'global-apps-common';
 
 function InitAuthorizedServices({publicKey, children}) {
   const {showSnackbar} = useSnackbar();

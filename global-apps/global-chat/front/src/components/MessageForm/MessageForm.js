@@ -64,9 +64,7 @@ function MessageForm({classes, publicKey}) {
     onCall() {
       chatRoomService.startCall()
         .catch(err => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         });
     }
   };

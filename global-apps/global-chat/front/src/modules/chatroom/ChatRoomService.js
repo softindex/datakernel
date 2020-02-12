@@ -145,7 +145,7 @@ class ChatRoomService extends Service {
         .sort((left, right) => left.timestamp - right.timestamp),
       chatReady: true,
       call: {...otState.call},
-      isHostValid: newPeerId === oldPeerId && this.state.isHostValid || inThisCall
+      isHostValid: (newPeerId === oldPeerId && this.state.isHostValid) || inThisCall
     });
 
     if (newPeerId !== oldPeerId) {

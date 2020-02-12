@@ -6,7 +6,7 @@ import MessageItem from "../MessageItem/MessageItem"
 import CircularProgress from '@material-ui/core/CircularProgress';
 import Paper from '@material-ui/core/Paper';
 import Typography from '@material-ui/core/Typography';
-import {getInstance, useService} from "global-apps-common";
+import {getInstance, useService, useSnackbar} from "global-apps-common";
 import NamesService from "../../modules/names/NamesService";
 import ChatRoomService from "../../modules/chatroom/ChatRoomService";
 import ScrollArea from 'react-scrollbar';
@@ -118,7 +118,7 @@ class MessagesView extends React.Component {
   }
 }
 
-function Messages({classes, publicKey, enqueueSnackbar}) {
+function Messages({classes, publicKey}) {
   const namesService = getInstance(NamesService);
   const {names, namesReady} = useService(namesService);
   const chatRoomService = getInstance(ChatRoomService);
@@ -129,6 +129,8 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
   const beingCalled = isHostValid && ![null, publicKey].includes(call.callerInfo.publicKey) &&
     !call.handled.has(publicKey);
   const [callLoading, setCallLoading] = useState(false);
+  const {showSnackbar} = useSnackbar();
+
 
   const props = {
     classes,
@@ -150,9 +152,7 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
       chatRoomService.acceptCall()
         .catch(err => {
           chatRoomService.finishCall();
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         })
         .finally(() => {
           setCallLoading(false);
@@ -164,9 +164,7 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
 
       chatRoomService.declineCall()
         .catch(err => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         })
         .finally(() => {
           setCallLoading(false);
@@ -179,9 +177,7 @@ function Messages({classes, publicKey, enqueueSnackbar}) {
       try {
         chatRoomService.finishCall();
       } catch (err) {
-        enqueueSnackbar(err.message, {
-          variant: 'error'
-        });
+        showSnackbar(err.message, 'error');
       } finally {
         setCallLoading(false);
       }

@@ -57,7 +57,7 @@ class SearchContactsService extends Service {
     if (this._resyncDelay) {
       this._resyncDelay.cancel();
     }
-    this._contactsCheckoutPromise.stop();
+    this._contactsCheckoutPromise.cancel();
     this._contactsOTStateManager.removeChangeListener(() => this.search(this.state.search));
   }
 

@@ -26,7 +26,7 @@ class ContactsService extends Service {
   }
 
   async init() {
-    this._contactsCheckoutPromise = retry(async () => await this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
+    this._contactsCheckoutPromise = retry(() => this._contactsOTStateManager.checkout(), RETRY_TIMEOUT);
 
     try {
       await this._contactsCheckoutPromise;
