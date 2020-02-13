@@ -17,6 +17,12 @@ export function useSnackbar() {
             key
           });
           break;
+        case 'success':
+          enqueueSnackbar(message, {
+            variant: 'success',
+            key
+          });
+          break;
         case 'loading':
           state.timeoutId = setTimeout(() => {
             enqueueSnackbar(message, {
