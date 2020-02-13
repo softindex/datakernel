@@ -48,6 +48,7 @@ import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.regex.PatternSyntaxException;
 
 import static io.datakernel.async.util.LogUtils.Level.TRACE;
 import static io.datakernel.async.util.LogUtils.toLogger;
@@ -56,6 +57,7 @@ import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.remotefs.FileNamingScheme.FilenameInfo;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 import static java.nio.file.FileVisitResult.CONTINUE;
+import static java.nio.file.FileVisitResult.SKIP_SUBTREE;
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.WRITE;
@@ -630,9 +632,40 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 		String subglob = glob.substring(sb.length());
 		Path subfolder = resolve(sb.toString());
 
-		return defaultRevision != null ?
-				simpleFindMatching(subfolder, subglob) :
-				findMatchingWithRevision(subfolder, subglob, includeTombstones);
+		try {
+			return defaultRevision != null ?
+					simpleFindMatching(subfolder, subglob) :
+					findMatchingWithRevision(subfolder, subglob, includeTombstones);
+		} catch (PatternSyntaxException | UnsupportedOperationException e) {
+			throw MALFORMED_GLOB_PATTERN;
+		}
+	}
+
+	private List<String> splitIntoGlobParts(String glob) throws StacklessException {
+		List<String> globParts = new ArrayList<>();
+		boolean braceIsOpen = false;
+		int prevSeparatorIdx = -1;
+		for (int i = 0; i < glob.length(); i++) {
+			char c = glob.charAt(i);
+			if (!braceIsOpen) {
+				if (c == FILE_SEPARATOR_CHAR) {
+					globParts.add(glob.substring(prevSeparatorIdx + 1, i));
+					prevSeparatorIdx = i;
+				} else if (c == '{') {
+					braceIsOpen = true;
+				}
+			} else if (c == '}') {
+				braceIsOpen = false;
+			}
+			if (i == glob.length() - 1){
+				if (braceIsOpen || prevSeparatorIdx == i){
+					throw MALFORMED_GLOB_PATTERN;
+				}
+				globParts.add(glob.substring(prevSeparatorIdx + 1));
+			}
+		}
+
+		return globParts;
 	}
 
 	private FilenameInfo simpleFileInfo(Path path) {
@@ -641,7 +674,7 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 		return new FilenameInfo(path, storage.relativize(path).toString(), defaultRevision, false);
 	}
 
-	private Collection<FilenameInfo> simpleFindMatching(Path folder, String glob) throws IOException {
+	private Collection<FilenameInfo> simpleFindMatching(Path folder, String glob) throws IOException, StacklessException {
 		assert defaultRevision != null;
 
 		// optimization for listing all files
@@ -671,7 +704,7 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 		return list;
 	}
 
-	private Collection<FilenameInfo> findMatchingWithRevision(Path folder, String glob, boolean includeTombstones) throws IOException {
+	private Collection<FilenameInfo> findMatchingWithRevision(Path folder, String glob, boolean includeTombstones) throws IOException, StacklessException {
 		Map<String, FilenameInfo> files = new HashMap<>();
 
 		// optimization for listing all files
@@ -747,16 +780,16 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 		void accept(Path path) throws IOException;
 	}
 
-	private void walkFiles(Path dir, Walker walker) throws IOException {
+	private void walkFiles(Path dir, Walker walker) throws IOException, StacklessException {
 		walkFiles(dir, null, walker);
 	}
 
-	private void walkFiles(Path dir, @Nullable String glob, Walker walker) throws IOException {
+	private void walkFiles(Path dir, @Nullable String glob, Walker walker) throws IOException, StacklessException {
 		if (!Files.isDirectory(dir)) {
 			return;
 		}
-		String[] parts;
-		if (glob == null || (parts = glob.split(FILE_SEPARATOR))[0].contains("**")) {
+		List<String> parts;
+		if (glob == null || (parts = splitIntoGlobParts(glob)).get(0).contains("**")) {
 			Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
 				@Override
 				public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
@@ -775,12 +808,12 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 
 		FileSystem fs = dir.getFileSystem();
 
-		PathMatcher[] matchers = new PathMatcher[parts.length];
-		matchers[0] = fs.getPathMatcher("glob:" + parts[0]);
+		PathMatcher[] matchers = new PathMatcher[parts.size()];
+		// matchers[0] = fs.getPathMatcher("glob:" + parts.get(0));
 
-		for (int i = 1; i < parts.length; i++) {
-			String part = parts[i];
-			if (part.contains("**")) {
+		for (int i = 0; i < parts.size(); i++) {
+			String part = parts.get(i);
+			if (part.contains("**") || part.contains("/")) {
 				break;
 			}
 			matchers[i] = fs.getPathMatcher("glob:" + part);
@@ -790,6 +823,30 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 			@Override
 			public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
 				walker.accept(file);
+				return CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult preVisitDirectory(Path subdir, BasicFileAttributes attrs) {
+				if (subdir.equals(dir)) {
+					return CONTINUE;
+				}
+				Path relative = dir.relativize(subdir);
+				for (int i = 0; i < relative.getNameCount(); i++) {
+					PathMatcher matcher = matchers[i];
+					if (matcher == null) {
+						return CONTINUE;
+					}
+					if (!matcher.matches(relative.getName(i))) {
+						return SKIP_SUBTREE;
+					}
+				}
+				return CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult visitFileFailed(Path file, IOException exc) {
+				logger.warn("Failed to visit file {}", storage.relativize(file), exc);
 				return CONTINUE;
 			}
 		});

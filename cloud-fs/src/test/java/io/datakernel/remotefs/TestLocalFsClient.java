@@ -40,8 +40,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.common.collection.CollectionUtils.set;
@@ -89,6 +87,7 @@ public final class TestLocalFsClient {
 
 		Files.createDirectories(storagePath.resolve("1"));
 		Files.createDirectories(storagePath.resolve("2/3"));
+		Files.createDirectories(storagePath.resolve("2/3/t"));
 		Files.createDirectories(storagePath.resolve("2/b"));
 
 		Path a1 = storagePath.resolve("1/a.txt");
@@ -99,6 +98,15 @@ public final class TestLocalFsClient {
 
 		Path a2 = storagePath.resolve("2/3/a.txt");
 		Files.write(a2, "6\n5\n4\n3\n2\n1\n".getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
+
+		Path a3 = storagePath.resolve("2/3/image.png");
+		Files.write(a3, "imagebytes".getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
+
+		Path t = storagePath.resolve("2/3/t/t.txt");
+		Files.write(t, "t file data".getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
+
+		Path btxt = storagePath.resolve("2/b.txt");
+		Files.write(btxt, "b.txt file data".getBytes(UTF_8), CREATE, TRUNCATE_EXISTING);
 
 		Path d = storagePath.resolve("2/b/d.txt");
 		StringBuilder sb = new StringBuilder();
@@ -277,27 +285,48 @@ public final class TestLocalFsClient {
 		Set<String> expected = set(
 				"1/a.txt",
 				"1/b.txt",
+				"2/b.txt",
 				"2/3/a.txt",
 				"2/b/d.txt",
-				"2/b/e.txt"
+				"2/b/e.txt",
+				"2/3/image.png",
+				"2/3/t/t.txt"
 		);
 
 		List<FileMetadata> actual = await(client.list("**"));
 
-		assertEquals(expected, actual.stream().map(FileMetadata::getName).collect(toSet()));
+		assertEquals(expected, toFilenameSet(actual));
 	}
 
 	@Test
 	public void testGlobListFiles() {
-		Set<String> expected = set(
-				"2/3/a.txt",
-				"2/b/d.txt",
-				"2/b/e.txt"
-		);
+		List<FileMetadata> emptyGlob = await(client.list(""));
+		assertTrue(emptyGlob.isEmpty());
 
-		List<FileMetadata> actual = await(client.list("2/*/*.txt"));
+		List<FileMetadata> txt_inDir_2 = await(client.list("2/*/*.txt"));
+		assertEquals(set("2/3/a.txt", "2/b/d.txt", "2/b/e.txt"), toFilenameSet(txt_inDir_2));
 
-		assertEquals(expected, actual.stream().map(FileMetadata::getName).collect(toSet()));
+		List<FileMetadata> all_inDir_2 = await(client.list("2/**"));
+		assertEquals(set("2/3/a.txt", "2/b/d.txt", "2/b/e.txt", "2/3/image.png", "2/b.txt", "2/3/t/t.txt"), toFilenameSet(all_inDir_2));
+
+		List<FileMetadata> inDir_2_b = await(client.list("2/b/*"));
+		assertEquals(set("2/b/d.txt", "2/b/e.txt"), toFilenameSet(inDir_2_b));
+
+		List<FileMetadata> allAFiles = await(client.list("**/a.txt"));
+		assertEquals(set("2/3/a.txt", "1/a.txt"), toFilenameSet(allAFiles));
+
+		List<FileMetadata> inDir_2_allAEFiles = await(client.list("2/*/{a,e}.txt"));
+		assertEquals(set("2/b/e.txt", "2/3/a.txt"), toFilenameSet(inDir_2_allAEFiles));
+
+		List<FileMetadata> inDir2_3_a_txt_and_b_e_txt = await(client.list("2/{3/a,b/e}.txt"));
+		assertEquals(set("2/b/e.txt", "2/3/a.txt"), toFilenameSet(inDir2_3_a_txt_and_b_e_txt));
+
+		List<FileMetadata> dir2Depth1 = await(client.list("2/{*/*,*}"));
+		assertEquals(set("2/3/a.txt", "2/b/d.txt", "2/b/e.txt", "2/3/image.png", "2/b.txt"), toFilenameSet(dir2Depth1));
+	}
+
+	private Set<String> toFilenameSet(List<FileMetadata> metadataList) {
+		return metadataList.stream().map(FileMetadata::getName).collect(toSet());
 	}
 
 	@Test

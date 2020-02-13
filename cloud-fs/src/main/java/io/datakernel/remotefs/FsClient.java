@@ -47,6 +47,7 @@ public interface FsClient {
 	StacklessException BAD_RANGE = new StacklessException(FsClient.class, "Given offset or length don't make sense");
 	StacklessException MOVING_DIRS = new StacklessException(FsClient.class, "Tried to move, copy delete or replace a directory");
 	StacklessException UNSUPPORTED_REVISION = new StacklessException(FsClient.class, "Given revision is not supported");
+	StacklessException MALFORMED_GLOB_PATTERN = new StacklessException(FsClient.class, "Malformed glob pattern");
 
 	long DEFAULT_REVISION = 0;
 
