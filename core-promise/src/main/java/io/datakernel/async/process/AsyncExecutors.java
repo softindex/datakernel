@@ -147,9 +147,13 @@ public class AsyncExecutors {
 			@Override
 			public <T> Promise<T> execute(@NotNull AsyncSupplier<T> supplier) {
 				Promise<T> promise = supplier.get();
-				if (promise.isComplete() && counter++ % maxCalls == 0) {
+				if (promise.isComplete()) {
+					if (++counter % maxCalls == 0) {
+						counter = 0;
+						return promise.async();
+					}
+				} else {
 					counter = 0;
-					return promise.async();
 				}
 				return promise;
 			}
