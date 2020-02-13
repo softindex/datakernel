@@ -138,14 +138,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			throw new ParseException(HttpClientConnection.class, "Invalid response: " + new String(line, 0, limit, ISO_8859_1));
 		}
 
-		int sp2;
-		for (sp2 = sp1; sp2 < limit; sp2++) {
-			if (line[sp2] == SP) {
-				break;
-			}
-		}
-
-		int statusCode = decodePositiveInt(line, sp1, sp2 - sp1);
+		int statusCode = decodePositiveInt(line, sp1, 3);
 		if (!(statusCode >= 100 && statusCode < 600)) {
 			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}
@@ -215,26 +208,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onNoContentLength() {
 		ChannelSupplier<ByteBuf> ofQueue = readQueue.hasRemaining() ? ChannelSupplier.of(readQueue.takeRemaining()) : ChannelSupplier.of();
 		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
-		ChannelSupplier.of(socket::read, socket).streamTo(buffer.getConsumer()
-				.withAcknowledgement(ack -> ack
-						.whenComplete((result, e) -> {
-							if (isClosed()) return;
-							if (e == null) {
-								onBodyReceived();
-							} else {
-								closeWithError(e);
-							}
-						})));
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
 		if ((flags & GZIPPED) != 0) {
 			supplier = supplier
 					.transformWith(BufsConsumerGzipInflater.create())
 					.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
 		}
-
-		if (isClosed()) return;
-
 		onHeadersReceived(null, supplier);
+		ChannelSupplier.of(socket::read, socket)
+				.streamTo(buffer.getConsumer())
+				.whenComplete(afterProcessCb);
 	}
 
 	private void onHttpMessageComplete() {
@@ -248,6 +231,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 					.whenComplete((buf, e) -> {
 						if (e == null) {
 							if (buf != null) {
+								buf.recycle();
 								closeWithError(UNEXPECTED_READ);
 							} else {
 								close();
