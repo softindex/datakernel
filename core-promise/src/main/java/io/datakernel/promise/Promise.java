@@ -391,9 +391,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, AsyncComputa
 	@Contract(pure = true)
 	@NotNull <U> Promise<U> then(@NotNull Function<? super T, ? extends Promise<? extends U>> fn);
 
-	default @NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn) {
-		return then($ -> fn.get());
-	}
+	@NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn);
 
 	/**
 	 * Returns a new {@code Promise} which, when this {@code Promise} completes either
@@ -440,9 +438,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, AsyncComputa
 	@NotNull
 	Promise<T> whenResult(@NotNull Consumer<? super T> action);
 
-	default Promise<T> whenResult(@NotNull Runnable action) {
-		return whenResult($ -> action.run());
-	}
+	Promise<T> whenResult(@NotNull Runnable action);
 
 	/**
 	 * Subscribes given action to be executed after
@@ -454,9 +450,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, AsyncComputa
 	@Contract("_ -> this")
 	Promise<T> whenException(@NotNull Consumer<Throwable> action);
 
-	default Promise<T> whenException(@NotNull Runnable action) {
-		return whenException($ -> action.run());
-	}
+	Promise<T> whenException(@NotNull Runnable action);
 
 	/**
 	 * Returns a new {@code Promise} that, when this and the other

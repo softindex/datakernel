@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
@@ -102,6 +103,12 @@ public final class CompleteExceptionallyPromise<T> implements Promise<T> {
 	}
 
 	@SuppressWarnings("unchecked")
+	@Override
+	public @NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn) {
+		return (Promise<U>) this;
+	}
+
+	@SuppressWarnings("unchecked")
 	@NotNull
 	@Override
 	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
@@ -133,8 +140,19 @@ public final class CompleteExceptionallyPromise<T> implements Promise<T> {
 	}
 
 	@Override
+	public Promise<T> whenResult(@NotNull Runnable action) {
+		return this;
+	}
+
+	@Override
 	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		action.accept(exception);
+		return this;
+	}
+
+	@Override
+	public Promise<T> whenException(@NotNull Runnable action) {
+		action.run();
 		return this;
 	}
 

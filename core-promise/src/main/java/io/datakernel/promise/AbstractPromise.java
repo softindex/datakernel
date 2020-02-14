@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
@@ -261,6 +262,41 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		return resultPromise;
 	}
 
+	@Override
+	public @NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn) {
+		if (isComplete()) {
+			try {
+				return isResult() ? (Promise<U>) fn.get() : (Promise<U>) this;
+			} catch (UncheckedException u) {
+				return Promise.ofException(u.getCause());
+			}
+		}
+		NextPromise<T, U> resultPromise = new NextPromise<T, U>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					Promise<? extends U> promise;
+					try {
+						promise = fn.get();
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
+					promise.whenComplete(this::complete);
+				} else {
+					completeExceptionally(e);
+				}
+			}
+
+			@Override
+			public String describe() {
+				return ".then(" + formatToString(fn) + ')';
+			}
+		};
+		subscribe(resultPromise);
+		return resultPromise;
+	}
+
 	@NotNull
 	@Override
 	public <U> Promise<U> thenEx(@NotNull BiFunction<? super T, Throwable, ? extends Promise<? extends U>> fn) {
@@ -360,6 +396,28 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	}
 
 	@Override
+	public Promise<T> whenResult(@NotNull Runnable action) {
+		if (isComplete()) {
+			if (isResult()) action.run();
+			return this;
+		}
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					action.run();
+				}
+			}
+
+			@Override
+			public String toString() {
+				return ".whenResult(" + formatToString(action) + ')';
+			}
+		});
+		return this;
+	}
+
+	@Override
 	public Promise<T> whenException(@NotNull Consumer<Throwable> action) {
 		if (isComplete()) {
 			if (isException()) {
@@ -372,6 +430,30 @@ abstract class AbstractPromise<T> implements Promise<T> {
 			public void accept(T result, @Nullable Throwable e) {
 				if (e != null) {
 					action.accept(e);
+				}
+			}
+
+			@Override
+			public String toString() {
+				return ".whenException(" + formatToString(action) + ')';
+			}
+		});
+		return this;
+	}
+
+	@Override
+	public Promise<T> whenException(@NotNull Runnable action) {
+		if (isComplete()) {
+			if (isException()) {
+				action.run();
+			}
+			return this;
+		}
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e != null) {
+					action.run();
 				}
 			}
 

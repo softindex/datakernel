@@ -30,7 +30,8 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
-import static io.datakernel.codec.json.JsonUtils.*;
+import static io.datakernel.codec.json.JsonUtils.indent;
+import static io.datakernel.codec.json.JsonUtils.toJson;
 import static java.util.stream.Collectors.*;
 
 /**
@@ -95,10 +96,13 @@ public class DataflowGraph {
 		Map<Partition, List<Node>> nodesByPartition = getNodesByPartition();
 
 		return connect(nodesByPartition.keySet()).then(sessions ->
-				Promises.all(sessions.stream().map(session -> {
-					List<Node> nodes = nodesByPartition.get(session.partition);
-					return session.execute(nodes);
-				})).whenException($ -> sessions.forEach(PartitionSession::close))
+				Promises.all(
+						sessions.stream()
+								.map(session -> {
+									List<Node> nodes = nodesByPartition.get(session.partition);
+									return session.execute(nodes);
+								}))
+						.whenException(() -> sessions.forEach(PartitionSession::close))
 		);
 	}
 

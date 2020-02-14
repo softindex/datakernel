@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
@@ -100,6 +101,15 @@ public abstract class CompletePromise<T> implements Promise<T> {
 		}
 	}
 
+	@Override
+	public @NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn) {
+		try {
+			return (Promise<U>) fn.get();
+		} catch (UncheckedException u) {
+			return Promise.ofException(u.getCause());
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	@NotNull
 	@Override
@@ -132,7 +142,18 @@ public abstract class CompletePromise<T> implements Promise<T> {
 	}
 
 	@Override
+	public Promise<T> whenResult(@NotNull Runnable action) {
+		action.run();
+		return this;
+	}
+
+	@Override
 	public final Promise<T> whenException(@NotNull Consumer<Throwable> action) {
+		return this;
+	}
+
+	@Override
+	public Promise<T> whenException(@NotNull Runnable action) {
 		return this;
 	}
 

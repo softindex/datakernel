@@ -94,7 +94,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 				pendingStreams.put(streamId, forwarder);
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
 				messaging.receive()
-						.whenException($ -> {
+						.whenException(() -> {
 							ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
 							if (removed != null) {
 								logger.info("onDownload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
@@ -138,7 +138,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 					});
 
 			messaging.receive()
-					.whenException($ -> {
+					.whenException(() -> {
 						if (!task.isExecuted()) {
 							logger.error("Client disconnected. Canceling task: {}", command);
 							task.cancel();
@@ -173,13 +173,14 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
 		streamSerializer.getOutput().set(forwarder.getConsumer());
-		streamSerializer.getAcknowledgement().whenException($ -> {
-			ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
-			if (removed != null) {
-				logger.info("onUpload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
-				removed.close();
-			}
-		});
+		streamSerializer.getAcknowledgement()
+				.whenException(() -> {
+					ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
+					if (removed != null) {
+						logger.info("onUpload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
+						removed.close();
+					}
+				});
 		return streamSerializer;
 	}
 
