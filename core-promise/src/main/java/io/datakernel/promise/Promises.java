@@ -20,6 +20,7 @@ import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.common.tuple.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
@@ -304,6 +305,7 @@ public final class Promises {
 			resultPromise.countdown++;
 			promise.whenComplete(resultPromise);
 		}
+		resultPromise.countdown--;
 		return resultPromise.countdown != 0 ? resultPromise : Promise.complete();
 	}
 
@@ -321,14 +323,13 @@ public final class Promises {
 	public static Promise<Void> allCompleted(@NotNull Iterator<? extends Promise<?>> promises) {
 		if (!promises.hasNext()) return all();
 		@NotNull PromiseAllSettled<Object> resultPromise = new PromiseAllSettled<>();
-		resultPromise.loopAlive = true;
 		while (promises.hasNext()) {
 			Promise<?> promise = promises.next();
 			if (promise.isResult()) continue;
 			resultPromise.countdown++;
 			promise.whenComplete(resultPromise);
 		}
-		resultPromise.loopAlive = false;
+		resultPromise.countdown--;
 		if (resultPromise.countdown != 0) {
 			return resultPromise;
 		}
@@ -454,6 +455,7 @@ public final class Promises {
 				}
 			});
 		}
+		resultPromise.errors--;
 		return resultPromise.errors != 0 ? resultPromise : any();
 	}
 
@@ -536,10 +538,11 @@ public final class Promises {
 		PromiseSome<T> some = new PromiseSome<>(number);
 		while (promises.hasNext()) {
 			Promise<? extends T> promise = promises.next();
+			if (some.isComplete()) break;
 			if (promise.isResult()) {
-				some.resultArray.add(promise.getResult());
+				some.resultList.add(promise.getResult());
 				if (some.isFull()) {
-					return Promise.of(some.resultArray);
+					return Promise.of(some.resultList);
 				}
 				continue;
 			}
@@ -549,6 +552,7 @@ public final class Promises {
 			some.activePromises++;
 			promise.whenComplete(some);
 		}
+		some.activePromises--;
 
 		if (some.notEnoughForTheResult()) {
 			return Promise.ofException(new StacklessException(Promises.class, "There are not enough promises to be complete"));
@@ -1349,16 +1353,17 @@ public final class Promises {
 			@NotNull BiConsumer<A, T> consumer,
 			@NotNull Function<A, R> finisher) {
 		return Promise.ofCallback(cb ->
-				reduceImpl(promises, maxCalls, new int[]{0},
+				reduceImpl(promises, maxCalls, new RefInt(0),
 						accumulator, consumer, finisher, cb));
 	}
 
-	private static <T, A, R> void reduceImpl(Iterator<Promise<T>> promises, int maxCalls, int[] calls,
+	private static <T, A, R> void reduceImpl(Iterator<Promise<T>> promises, int maxCalls, RefInt calls,
 			A accumulator, BiConsumer<A, T> consumer, Function<A, R> finisher,
 			SettablePromise<R> cb) {
-		while (promises.hasNext() && calls[0] < maxCalls) {
-			assert !cb.isComplete();
+		calls.inc();
+		while (promises.hasNext() && calls.get() <= maxCalls + 1) {
 			Promise<T> promise = promises.next();
+			if (cb.isComplete()) return;
 			if (promise.isComplete()) {
 				if (promise.isResult()) {
 					consumer.accept(accumulator, promise.getResult());
@@ -1368,9 +1373,9 @@ public final class Promises {
 					return;
 				}
 			}
-			calls[0]++;
+			calls.inc();
 			promise.whenComplete((v, e) -> {
-				calls[0]--;
+				calls.dec();
 				if (cb.isComplete()) {
 					return;
 				}
@@ -1383,7 +1388,8 @@ public final class Promises {
 				}
 			});
 		}
-		if (calls[0] == 0) {
+		calls.dec();
+		if (calls.get() == 0) {
 			R result = finisher.apply(accumulator);
 			cb.set(result);
 		}
@@ -1438,16 +1444,17 @@ public final class Promises {
 			@NotNull Function<A, @NotNull Try<R>> finisher,
 			@Nullable Consumer<T> recycler) {
 		return Promise.ofCallback(cb ->
-				reduceExImpl(promises, maxCalls, new int[]{0},
+				reduceExImpl(promises, maxCalls, new RefInt(0),
 						accumulator, consumer, finisher, recycler, cb));
 	}
 
-	private static <T, A, R> void reduceExImpl(Iterator<Promise<T>> promises, ToIntFunction<A> maxCalls, int[] calls,
+	private static <T, A, R> void reduceExImpl(Iterator<Promise<T>> promises, ToIntFunction<A> maxCalls, RefInt calls,
 			A accumulator, BiFunction<A, Try<T>, Try<R>> consumer, Function<A, @NotNull Try<R>> finisher, @Nullable Consumer<T> recycler,
 			SettablePromise<R> cb) {
-		while (promises.hasNext() && calls[0] < maxCalls.applyAsInt(accumulator)) {
-			assert !cb.isComplete();
+		calls.inc();
+		while (promises.hasNext() && calls.get() <= maxCalls.applyAsInt(accumulator) + 1) {
 			Promise<T> promise = promises.next();
+			if (cb.isComplete()) return;
 			if (promise.isComplete()) {
 				@Nullable Try<R> maybeResult = consumer.apply(accumulator, promise.getTry());
 				if (maybeResult != null) {
@@ -1456,9 +1463,9 @@ public final class Promises {
 				}
 				continue;
 			}
-			calls[0]++;
+			calls.inc();
 			promise.whenComplete((v, e) -> {
-				calls[0]--;
+				calls.dec();
 				if (cb.isComplete()) {
 					if (recycler != null) recycler.accept(v);
 					return;
@@ -1472,7 +1479,8 @@ public final class Promises {
 				}
 			});
 		}
-		if (calls[0] == 0) {
+		calls.dec();
+		if (calls.get() == 0) {
 			@NotNull Try<R> result = finisher.apply(accumulator);
 			if (result.isSuccess()) {
 				cb.set(result.get());
@@ -1484,7 +1492,7 @@ public final class Promises {
 
 	// region helper classes
 	private static final class PromiseAll<T> extends NextPromise<T, Void> {
-		int countdown;
+		int countdown = 1;
 
 		@Override
 		public void accept(@Nullable T result, @Nullable Throwable e) {
@@ -1505,7 +1513,6 @@ public final class Promises {
 
 	private static final class PromiseAllSettled<T> extends NextPromise<T, Void> {
 		int countdown;
-		boolean loopAlive = true;
 		@Nullable Throwable lastException;
 
 		@Override
@@ -1521,7 +1528,7 @@ public final class Promises {
 			if (e != null) {
 				lastException = e;
 			}
-			if (--countdown == 0 && !loopAlive) {
+			if (--countdown == 0) {
 				if (lastException == null) {
 					complete(null);
 				} else {
@@ -1532,7 +1539,7 @@ public final class Promises {
 	}
 
 	private static final class PromiseAny<T> extends NextPromise<T, T> {
-		int errors;
+		int errors = 1;
 
 		@Override
 		public void accept(@Nullable T result, @Nullable Throwable e) {
@@ -1552,22 +1559,25 @@ public final class Promises {
 	}
 
 	private static final class PromiseSome<T> extends NextPromise<T, List<T>> {
-		final List<T> resultArray;
-		int expectedSize;
-		int activePromises;
+		final List<T> resultList;
+		final int expectedSize;
+		int activePromises = 1;
 
 		PromiseSome(int expectedSize) {
 			this.expectedSize = expectedSize;
-			this.resultArray = new ArrayList<>(expectedSize);
+			this.resultList = new ArrayList<>(expectedSize);
 		}
 
 		@Override
 		public void accept(@Nullable T result, @Nullable Throwable e) {
 			activePromises--;
+			if (isComplete()) {
+				return;
+			}
 			if (e == null) {
-				resultArray.add(result);
+				resultList.add(result);
 				if (isFull()) {
-					complete(resultArray);
+					complete(resultList);
 				}
 			} else {
 				if (notEnoughForTheResult()) {
@@ -1582,11 +1592,11 @@ public final class Promises {
 		}
 
 		boolean isFull() {
-			return resultArray.size() == expectedSize;
+			return resultList.size() == expectedSize;
 		}
 
 		boolean notEnoughForTheResult() {
-			return activePromises + resultArray.size() < expectedSize;
+			return activePromises + resultList.size() < expectedSize;
 		}
 	}
 
