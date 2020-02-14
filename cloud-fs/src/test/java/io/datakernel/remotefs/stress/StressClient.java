@@ -188,7 +188,7 @@ class StressClient {
 
 		StreamSupplier<TestObject> supplier = StreamSupplier.ofIterable(Collections.singletonList(obj));
 		ChannelSerializer<TestObject> serializer = ChannelSerializer.create(binarySerializer)
-				.withInitialBufferSize(ChannelSerializer.DEFAULT_MAX_SIZE);
+				.withInitialBufferSize(ChannelSerializer.MAX_SIZE);
 
 		//		supplier.with(serializer).streamTo(
 		//				client.uploadStream("someName" + i));

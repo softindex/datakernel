@@ -66,7 +66,8 @@ public final class DataflowClient {
 
 					return messaging.send(commandDownload)
 							.map($ -> messaging.receiveBinaryStream()
-									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type)))
+									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type))
+											.withExplicitEndOfStream())
 									.withEndOfStream(eos -> eos
 											.whenComplete(messaging::close))
 							);

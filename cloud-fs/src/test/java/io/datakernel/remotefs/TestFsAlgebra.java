@@ -16,6 +16,7 @@
 
 package io.datakernel.remotefs;
 
+import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -52,7 +53,7 @@ public final class TestFsAlgebra {
 	}
 
 	private void upload(FsClient client, String filename) {
-		await(client.upload(filename).then(consumer -> consumer.accept(null)));
+		await(client.upload(filename).then(ChannelConsumer::acceptEndOfStream));
 	}
 
 	private void expect(String... realFiles) {

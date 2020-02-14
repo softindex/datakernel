@@ -135,7 +135,7 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		footer.writeInt(Integer.reverseBytes(deflater.getTotalIn()));
 		queue.add(footer);
 		output.acceptAll(queue.asIterator())
-				.then(() -> output.accept(null))
+				.then(output::acceptEndOfStream)
 				.whenResult(this::completeProcess);
 	}
 

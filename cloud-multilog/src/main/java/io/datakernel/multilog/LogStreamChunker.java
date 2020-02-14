@@ -90,7 +90,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 		if (currentConsumer == null) {
 			return Promise.complete();
 		}
-		return currentConsumer.accept(null)
+		return currentConsumer.acceptEndOfStream()
 				.whenResult(() -> currentConsumer = null);
 	}
 

@@ -32,7 +32,7 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 		input.get()
 				.whenComplete((data, e) -> {
 					if (data == null) {
-						output.accept(null)
+						output.acceptEndOfStream()
 								.whenResult(this::completeProcess);
 					} else {
 						data = data.toUpperCase() + '(' + data.length() + ')';

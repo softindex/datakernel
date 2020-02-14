@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelOutput;
 import io.datakernel.datastream.AbstractStreamConsumer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -44,15 +45,45 @@ import static java.lang.Math.max;
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class);
 
-	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
+	/**
+	 * Binary format: 1-byte varlen message size + message, for messages with max size up to 128 bytes
+	 * This is the most efficient and fast binary representation for both serializer and deserializer.
+	 * <p>
+	 * It is still possible to change max size at any time, switching from 1-byte to 2-byte or 3-byte header size or vice versa,
+	 * because varlen encoding of message size is fully backward and forward compatible.
+	 */
+	public static final MemSize MAX_SIZE_1 = MemSize.bytes(128); // (1 << (1 * 7))
 
-	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
-	public static final MemSize DEFAULT_MAX_SIZE = MemSize.megabytes(2);
+	/**
+	 * Binary format: 2-byte varlen message size + message, for messages with max size up to 16KB
+	 */
+	public static final MemSize MAX_SIZE_2 = MemSize.kilobytes(16); // (1 << (2 * 7))
+
+	/**
+	 * Binary format: 3-byte varlen message size + message, for messages with max size up to 2MB
+	 * Messages with size >2MB are not supported
+	 */
+	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
+
+	/**
+	 * Default setting for max message size (2MB).
+	 * Messages with size >2MB are not supported
+	 * <p>
+	 * Because varlen encoding of message size is fully backward and forward compatible,
+	 * even for smaller messages it is possible to start with default max message size (2MB),
+	 * and fine-tune performance by switching to 1-byte or 2-byte encoding at later time.
+	 */
+	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
 	private final BinarySerializer<T> serializer;
 
+	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
+
+	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
+
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
-	private MemSize maxMessageSize = DEFAULT_MAX_SIZE;
+	private MemSize maxMessageSize = MAX_SIZE;
+	private boolean explicitEndOfStream = false;
 
 	@Nullable
 	private Duration autoFlushInterval;
@@ -135,6 +166,15 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		return withSkipSerializationErrors(true);
 	}
 
+	public ChannelSerializer<T> withExplicitEndOfStream() {
+		return withExplicitEndOfStream(true);
+	}
+
+	public ChannelSerializer<T> withExplicitEndOfStream(boolean explicitEndOfStream) {
+		this.explicitEndOfStream = explicitEndOfStream;
+		return this;
+	}
+
 	@Override
 	public ChannelOutput<ByteBuf> getOutput() {
 		return output -> {
@@ -179,7 +219,11 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		} else {
 			if (isEndOfStream()) {
 				flushing = true;
-				output.accept(null)
+				Promise.complete()
+						.then(() -> (explicitEndOfStream ?
+								output.accept(ByteBuf.wrapForReading(new byte[]{0})) :
+								Promise.complete()))
+						.then(output::acceptEndOfStream)
 						.whenResult(this::acknowledge);
 			} else {
 				resume(input);

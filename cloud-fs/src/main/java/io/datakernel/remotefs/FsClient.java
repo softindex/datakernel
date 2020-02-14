@@ -95,7 +95,7 @@ public interface FsClient {
 
 	default Promise<Void> truncate(@NotNull String name, long revision) {
 		return upload(name, 0, revision)
-				.then(consumer -> consumer.accept(null));
+				.then(ChannelConsumer::acceptEndOfStream);
 	}
 
 	// endregion

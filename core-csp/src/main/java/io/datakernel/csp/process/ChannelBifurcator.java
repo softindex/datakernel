@@ -95,7 +95,7 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 								});
 						tryRecycle(item);
 					} else {
-						first.accept(null).both(second.accept(null))
+						first.acceptEndOfStream().both(second.acceptEndOfStream())
 								.whenComplete(($, e2) -> completeProcessEx(e2));
 					}
 				});

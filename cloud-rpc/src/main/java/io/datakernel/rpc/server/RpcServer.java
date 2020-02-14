@@ -79,7 +79,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = ServerSocketSettings.create(16384);
 
 	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = ChannelSerializer.DEFAULT_INITIAL_BUFFER_SIZE;
-	public static final MemSize DEFAULT_MAX_MESSAGE_SIZE = ChannelSerializer.DEFAULT_MAX_SIZE;
+	public static final MemSize DEFAULT_MAX_MESSAGE_SIZE = ChannelSerializer.MAX_SIZE;
 
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
 	private MemSize maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;

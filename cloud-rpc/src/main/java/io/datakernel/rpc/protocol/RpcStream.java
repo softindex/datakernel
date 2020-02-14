@@ -70,7 +70,8 @@ public final class RpcStream {
 				.withMaxMessageSize(maxMessageSize)
 				.withAutoFlushInterval(autoFlushInterval)
 				.withSkipSerializationErrors();
-		ChannelDeserializer<RpcMessage> deserializer = ChannelDeserializer.create(messageSerializer);
+		ChannelDeserializer<RpcMessage> deserializer = ChannelDeserializer.create(messageSerializer)
+				.withMaxMessageSize(maxMessageSize);
 
 		if (compression) {
 			ChannelLZ4Decompressor decompressor = ChannelLZ4Decompressor.create();

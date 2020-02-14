@@ -63,6 +63,10 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 	@NotNull
 	Promise<Void> accept(@Nullable T value);
 
+	default Promise<Void> acceptEndOfStream() {
+		return accept(null);
+	}
+
 	/**
 	 * Accepts provided items and returns {@code Promise} as a
 	 * marker of completion. If one of the items was accepted
@@ -321,7 +325,7 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 					}
 					return ChannelConsumer.this.accept(newValue);
 				} else {
-					return ChannelConsumer.this.accept(null);
+					return ChannelConsumer.this.acceptEndOfStream();
 				}
 			}
 		};
@@ -345,7 +349,7 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 				return value != null ?
 						fn.apply(value)
 								.then(ChannelConsumer.this::accept) :
-						ChannelConsumer.this.accept(null);
+						ChannelConsumer.this.acceptEndOfStream();
 			}
 		};
 	}

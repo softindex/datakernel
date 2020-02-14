@@ -180,7 +180,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					bufs.skip(i + 4);
 
 					input.endOfStream()
-							.then(() -> output.accept(null))
+							.then(output::acceptEndOfStream)
 							.whenResult(this::completeProcess);
 					return;
 				}
