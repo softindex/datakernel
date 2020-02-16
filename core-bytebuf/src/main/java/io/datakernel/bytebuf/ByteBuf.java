@@ -21,7 +21,6 @@ import io.datakernel.common.Sliceable;
 import io.datakernel.common.Utils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -125,8 +124,8 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	int refs;
 
-	@Nullable
-	ByteBuf next;
+	volatile int pos;
+
 	/**
 	 * Represents an empty ByteBuf with {@link #head} and
 	 * {@link #tail} set at value 0.
@@ -1071,7 +1070,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	@Override
 	@Contract(pure = true)
 	public String toString() {
-		char[] chars = new char[min(readRemaining(), 256)];
+		char[] chars = new char[min(tail - head, 256)];
 		for (int i = 0; i < chars.length; i++) {
 			byte b = array[head + i];
 			chars[i] = (b == '\n') ? (char) 9166 : (b >= ' ') ? (char) b : (char) 65533;
