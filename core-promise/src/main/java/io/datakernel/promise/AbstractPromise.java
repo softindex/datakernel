@@ -677,16 +677,17 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		StringBuilder sb = new StringBuilder(indent);
 		sb.append(describe());
 		if (isComplete()) {
+			sb.append('{');
 			if (exception == null) {
 				sb.append(result);
 			} else {
 				sb.append("exception=");
 				sb.append(exception.getClass().getSimpleName());
 			}
+			sb.append('}');
 		} else {
 			sb.append("<unset>");
 		}
-		sb.append('}');
 		appendChildren(sb, next, indent);
 		return sb.toString();
 	}

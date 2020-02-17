@@ -39,11 +39,11 @@ public class ByteArraySlabPoolTest {
 
 		assertTrue(poolSizes.length <= ByteBufPool.slabs.length);
 		for (int i = 0; i < poolSizes.length; i++) {
-			ByteBufConcurrentStack slab = ByteBufPool.slabs[i];
+			ByteBufConcurrentQueue slab = ByteBufPool.slabs[i];
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
-				assertTrue(slab.peek().isRecycled());
-				assertEquals(poolSizes[i], slab.peek().limit());
+				assertTrue(slab.getBufs().stream().allMatch(ByteBuf::isRecycled));
+				assertEquals(poolSizes[i], slab.getBufs().get(0).limit());
 			}
 		}
 	}

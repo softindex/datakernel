@@ -18,9 +18,11 @@ package io.datakernel.bytebuf;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.*;
@@ -285,6 +287,27 @@ public class ByteBufTest {
 		assertArrayEquals(new byte[]{0, 0, 0, 0}, array);
 	}
 
+	@Test
+	@Ignore("Takes some time and resources")
+	// Should not fail with OOME
+	public void testProperMemoryFreeing() {
+		int bufSize = (int) (Runtime.getRuntime().maxMemory() / 2000);
+
+		//noinspection MismatchedQueryAndUpdateOfCollection
+		List<ByteBuf> keptRefs = new ArrayList<>();
+		for (int i = 0; i < 5; i++) {
+			List<ByteBuf> temp = new ArrayList<>();
+			for (int j = 0; j < 1000; j++) {
+				temp.add(ByteBufPool.allocate(bufSize));
+			}
+			temp.forEach(ByteBuf::recycle);
+			temp.clear();
+			ByteBuf newBuf = ByteBufPool.allocate(bufSize);
+			keptRefs.add(newBuf);
+			ByteBufPool.clear();
+		}
+		keptRefs.clear();
+	}
 
 	private ByteBuf createEmptyByteBufOfSize(int size) {
 		return ByteBuf.wrapForWriting(new byte[size]);

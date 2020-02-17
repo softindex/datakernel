@@ -94,7 +94,7 @@ public final class ByteBufPool {
 	 * due to utilizing {@link java.util.concurrent.atomic.AtomicReference}.
 	 * Moreover, such approach allows to work with slabs concurrently safely.
 	 */
-	static final ByteBufConcurrentStack[] slabs;
+	static final ByteBufConcurrentQueue[] slabs;
 	static final AtomicInteger[] created;
 	static final AtomicInteger[] reused;
 
@@ -155,11 +155,11 @@ public final class ByteBufPool {
 	private static final WeakHashMap<ByteBuf, Entry> recycleRegistry = new WeakHashMap<>();
 
 	static {
-		slabs = new ByteBufConcurrentStack[NUMBER_OF_SLABS];
+		slabs = new ByteBufConcurrentQueue[NUMBER_OF_SLABS];
 		created = new AtomicInteger[NUMBER_OF_SLABS];
 		reused = new AtomicInteger[NUMBER_OF_SLABS];
 		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
-			slabs[i] = new ByteBufConcurrentStack();
+			slabs[i] = new ByteBufConcurrentQueue();
 			created[i] = new AtomicInteger();
 			reused[i] = new AtomicInteger();
 		}
@@ -189,8 +189,8 @@ public final class ByteBufPool {
 			}
 		}
 		int index = 32 - numberOfLeadingZeros(size - 1); // index==32 for size==0
-		ByteBufConcurrentStack stack = slabs[index];
-		ByteBuf buf = stack.pop();
+		ByteBufConcurrentQueue queue = slabs[index];
+		ByteBuf buf = queue.poll();
 		if (buf != null) {
 			if (ByteBuf.CHECK_RECYCLE && buf.refs != -1) throw onByteBufRecycled(buf);
 			buf.tail = 0;
@@ -238,8 +238,8 @@ public final class ByteBufPool {
 
 	static AssertionError onByteBufRecycled(@NotNull ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
-		ByteBufConcurrentStack stack = slabs[slab];
-		stack.clear();
+		ByteBufConcurrentQueue queue = slabs[slab];
+		queue.clear();
 		return new AssertionError("Attempt to use recycled ByteBuf" +
 				(REGISTRY ? ByteBufPool.getByteBufTrace(buf) : ""));
 	}
@@ -296,9 +296,9 @@ public final class ByteBufPool {
 	 */
 	static void recycle(@NotNull ByteBuf buf) {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
-		ByteBufConcurrentStack stack = slabs[slab];
+		ByteBufConcurrentQueue queue = slabs[slab];
 		if (CLEAR_ON_RECYCLE) Arrays.fill(buf.array(), (byte) 0);
-		stack.push(buf);
+		queue.offer(buf);
 		if (REGISTRY) registerRecycle(buf);
 	}
 
@@ -461,7 +461,7 @@ public final class ByteBufPool {
 
 		@Override
 		public int getPoolItems() {
-			return stream(slabs).mapToInt(ByteBufConcurrentStack::size).sum();
+			return stream(slabs).mapToInt(ByteBufConcurrentQueue::size).sum();
 		}
 
 		public String getPoolItemsString() {
@@ -496,8 +496,8 @@ public final class ByteBufPool {
 		public Map<ByteBuf, Entry> getUnrecycledBufs() {
 			synchronized (allocateRegistry) {
 				Map<ByteBuf, Entry> externalBufs = new IdentityHashMap<>(allocateRegistry);
-				for (ByteBufConcurrentStack slab : slabs) {
-					for (ByteBuf buf = slab.peek(); buf != null; buf = buf.next) {
+				for (ByteBufConcurrentQueue slab : slabs) {
+					for (ByteBuf buf : slab.getBufs()) {
 						externalBufs.remove(buf);
 					}
 				}
