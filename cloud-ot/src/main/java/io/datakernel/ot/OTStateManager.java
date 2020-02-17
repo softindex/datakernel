@@ -174,7 +174,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 			poll.get()
 					.async()
 					.whenComplete(() -> isPolling = false)
-					.whenComplete(($, e) -> {
+					.whenComplete(() -> {
 						if (!isSyncing()) {
 							poll();
 						}

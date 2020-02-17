@@ -263,7 +263,7 @@ public final class AsyncHttpClientTest {
 		int code = await(client
 				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
 				.then(response -> response.loadBody().async()
-						.then($ -> client.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
+						.then(() -> client.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
 						.then(res -> {
 							assertFalse(res.isRecycled());
 							return res.loadBody()
@@ -305,8 +305,8 @@ public final class AsyncHttpClientTest {
 				BinaryChannelSupplier.of(ChannelSupplier.ofSocket(asyncTcpSocket))
 						.parse(REQUEST_PARSER)
 						.whenResult(ByteBuf::recycle)
-						.then($ -> asyncTcpSocket.write(rawResponse))
-						.whenResult($ -> asyncTcpSocket.close()))
+						.then(() -> asyncTcpSocket.write(rawResponse))
+						.whenResult(asyncTcpSocket::close))
 				.withAcceptOnce();
 		if (ssl) {
 			server.withSslListenAddress(createSslContext(), Executors.newSingleThreadExecutor(), new InetSocketAddress(PORT));

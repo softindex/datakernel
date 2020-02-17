@@ -77,7 +77,7 @@ public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBea
 		}
 		return retry(
 				() -> reserveId.get()
-						.then($ -> next < limit ? Promise.of(next++) : Promise.of(null)),
+						.then(() -> next < limit ? Promise.of(next++) : Promise.of(null)),
 				(v, e) -> e != null || v != null);
 	}
 

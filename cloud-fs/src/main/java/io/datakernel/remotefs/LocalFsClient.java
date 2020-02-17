@@ -461,7 +461,7 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 						throw new UncheckedException(e);
 					}
 				})
-				.then($ -> cleanup());
+				.then(this::cleanup);
 	}
 
 	@NotNull

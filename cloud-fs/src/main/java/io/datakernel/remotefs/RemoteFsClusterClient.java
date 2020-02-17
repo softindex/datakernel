@@ -296,7 +296,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
 					return Promise.of(consumer.withAcknowledgement(ack -> ack
-							.then($ -> uploadResults)
+							.then(() -> uploadResults)
 							.then(ackTries -> {
 								long successCount = ackTries.stream().filter(Try::isSuccess).count();
 								// check number of uploads only here, so even if there were less connections

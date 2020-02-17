@@ -73,7 +73,7 @@ public final class RpcBinaryProtocolTest {
 		int countRequests = 10;
 
 		List<String> list = await(client.start()
-				.then($ ->
+				.then(() ->
 						Promises.toList(IntStream.range(0, countRequests)
 								.mapToObj(i -> client.<String, String>sendRequest(testMessage, 1000))))
 				.whenComplete(() -> {

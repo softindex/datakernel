@@ -41,7 +41,7 @@ class StaticLoaderFileReader implements StaticLoader {
 						throw NOT_FOUND_EXCEPTION;
 					}
 				})
-				.then($ -> ChannelFileReader.open(executor, file))
+				.then(() -> ChannelFileReader.open(executor, file))
 				.then(cfr -> cfr.toCollector(ByteBufQueue.collector()));
 	}
 }

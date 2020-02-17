@@ -95,7 +95,7 @@ public final class ChannelFileReaderWriterTest {
 		writer.closeEx(exception);
 		Throwable e = awaitException(ChannelSupplier.of(ByteBuf.wrapForReading(bytes))
 				.streamTo(writer)
-				.then($ -> writer.accept(ByteBuf.wrapForReading("abc".getBytes()))));
+				.then(() -> writer.accept(ByteBuf.wrapForReading("abc".getBytes()))));
 		assertSame(exception, e);
 	}
 

@@ -348,7 +348,8 @@ public final class TestCachedFsClient {
 		new Random().nextBytes(fileData);
 		Files.write(cacheStorage.resolve("bigFile.txt"), fileData);
 
-		await(cacheRemote.start().then($ -> cacheRemote.download("bigFile.txt"))
+		await(cacheRemote.start()
+				.then(() -> cacheRemote.download("bigFile.txt"))
 				.then(RECYCLING_FUNCTION));
 		await(cacheRemote.download("bigFile.txt")
 				.then(RECYCLING_FUNCTION));

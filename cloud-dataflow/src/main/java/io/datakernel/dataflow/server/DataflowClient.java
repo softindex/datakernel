@@ -87,7 +87,7 @@ public final class DataflowClient {
 
 		public Promise<Void> execute(Collection<Node> nodes) {
 			return messaging.send(new DatagraphCommandExecute(new ArrayList<>(nodes)))
-					.then($ -> messaging.receive())
+					.then(messaging::receive)
 					.then(response -> {
 						messaging.close();
 						String error = response.getError();

@@ -179,7 +179,7 @@ public interface FsClient {
 	 */
 	default Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return copy(name, target, targetRevision)
-				.then($ -> delete(name, tombstoneRevision));
+				.then(() -> delete(name, tombstoneRevision));
 	}
 
 	default Promise<Void> move(@NotNull String name, @NotNull String target) {

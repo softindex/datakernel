@@ -238,7 +238,7 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 										.toCollector(ByteBufQueue.collector())
 										.whenResult(byteBuf -> blacklist.addAll(Arrays.asList(byteBuf.asString(UTF_8).split("\n"))))
 										.toVoid())))
-				.then($ -> client.list("*"))
+				.then(() -> client.list("*"))
 				.then(list -> {
 					String name = namingStrategy.apply("bin");
 					List<String> files = list.stream()
@@ -254,16 +254,16 @@ public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStor
 							.then(consumer ->
 									ChannelSupplier.of(ByteBuf.wrapForReading(dump.getBytes(UTF_8)))
 											.streamTo(consumer))
-							.then($ -> download())
+							.then(() -> download())
 							.then(producer -> producer
 									.transformWith(ChannelSerializer.create(serializer))
 									.streamTo(ChannelConsumer.ofPromise(client.upload(name))))
-							.then($ -> tombstoneFolderClient.list("*")
+							.then(() -> tombstoneFolderClient.list("*")
 									.map(fileList -> Promises.sequence(fileList.stream()
 											.map(file -> () -> tombstoneFolderClient.delete(file.getName()))))
 							)
-							.then($ -> consolidationFolderClient.delete(metafile))
-							.then($ -> Promises.all(files.stream().map(client::delete)));
+							.then(() -> consolidationFolderClient.delete(metafile))
+							.then(() -> Promises.all(files.stream().map(client::delete)));
 				})
 				.whenComplete(consolidationStats.recordStats());
 	}

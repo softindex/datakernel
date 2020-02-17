@@ -476,12 +476,12 @@ public final class OTAlgorithms {
 																				queue.add(parent);
 																			}
 																		})))
-														.then($ -> to.push(commit))
+														.then(() -> to.push(commit))
 														.map($ -> queue.poll());
 											}));
 
 						})
-						.then($ -> to.updateHeads(heads, emptySet())));
+						.then(() -> to.updateHeads(heads, emptySet())));
 	}
 
 }

@@ -149,7 +149,7 @@ public final class StaticServlet implements AsyncServlet {
 		if (mappedPath == null) return Promise.ofException(HttpException.notFound404());
 		ContentType contentType = contentTypeResolver.apply(mappedPath);
 		return Promise.complete()
-				.then($ -> (mappedPath.endsWith("/") || mappedPath.isEmpty()) ?
+				.then(() -> (mappedPath.endsWith("/") || mappedPath.isEmpty()) ?
 						tryLoadIndexResource(mappedPath) :
 						resourceLoader.load(mappedPath)
 								.map(byteBuf -> createHttpResponse(byteBuf, contentType))

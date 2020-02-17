@@ -59,7 +59,7 @@ public final class AbstractServerTest {
 									.whenResult(buf -> {
 										getCurrentEventloop().delay(delay.inc(), () -> {
 											socket.write(buf)
-													.whenComplete(($2, e) -> {
+													.whenComplete(() -> {
 														if (buf == null) {
                                                             socket.close();
                                                         }

@@ -85,7 +85,7 @@ final class MountingFsClient implements FsClient {
 				.then(supplier ->
 						second.upload(name, 0, targetRevision)
 								.then(supplier::streamTo))
-				.then($ -> first.delete(name));
+				.then(() -> first.delete(name));
 	}
 
 	@Override

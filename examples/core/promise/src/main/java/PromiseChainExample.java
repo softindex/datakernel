@@ -16,7 +16,7 @@ public class PromiseChainExample {
 				.whenResult(s -> System.out.println(s));
 		//[END REGION_1]
 		Promise.complete()
-				.then($ -> loadData())
+				.then(PromiseChainExample::loadData)
 				.whenResult(result -> System.out.println(String.format("Loaded data is '%s'", result)));
 		eventloop.run();
 	}

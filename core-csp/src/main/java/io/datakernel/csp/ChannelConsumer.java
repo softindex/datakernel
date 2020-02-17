@@ -241,7 +241,7 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 	static ChannelConsumer<ByteBuf> ofSocket(AsyncTcpSocket socket) {
 		return ChannelConsumer.of(socket::write, socket)
 				.withAcknowledgement(ack -> ack
-						.then($ -> socket.write(null)));
+						.then(() -> socket.write(null)));
 	}
 
 	/**

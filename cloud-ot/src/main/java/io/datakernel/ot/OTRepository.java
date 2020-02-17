@@ -23,7 +23,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 
 	default Promise<Void> pushAndUpdateHead(OTCommit<K, D> commit) {
 		return push(commit)
-				.then($ -> updateHeads(singleton(commit.getId()), commit.getParentIds()));
+				.then(() -> updateHeads(singleton(commit.getId()), commit.getParentIds()));
 	}
 
 	default Promise<Void> pushAndUpdateHeads(Collection<OTCommit<K, D>> commits) {
@@ -34,7 +34,7 @@ public interface OTRepository<K, D> extends OTCommitFactory<K, D> {
 				.map(OTCommit::getId)
 				.filter(commit -> !parents.contains(commit)).collect(toSet());
 		return push(commits)
-				.then($ -> updateHeads(heads, parents));
+				.then(() -> updateHeads(heads, parents));
 	}
 
 	@NotNull

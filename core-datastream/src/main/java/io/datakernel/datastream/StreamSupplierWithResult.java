@@ -49,7 +49,7 @@ public final class StreamSupplierWithResult<T, X> {
 
 	public <Y> Promise<Tuple2<X, Y>> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		return supplier.streamTo(consumer.getConsumer())
-				.then($ -> Promises.toTuple(result, consumer.getResult()));
+				.then(() -> Promises.toTuple(result, consumer.getResult()));
 	}
 
 	protected StreamSupplierWithResult<T, X> sanitize() {

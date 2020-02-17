@@ -53,7 +53,7 @@ public final class TestRpcClientShutdown {
 		rpcServer.listen();
 
 		Throwable exception = awaitException(rpcClient.start()
-				.then($ -> Promises.all(
+				.then(() -> Promises.all(
 						rpcClient.sendRequest(new Request())
 								.whenComplete(() -> {
 									for (RpcClientConnection conn : rpcClient.getRequestStatsPerConnection().values()) {

@@ -965,7 +965,7 @@ public final class Promises {
 	 */
 	@NotNull
 	public static Promise<Void> sequence(@NotNull AsyncSupplier<Void> promise1, @NotNull AsyncSupplier<Void> promise2) {
-		return promise1.get().then($ -> sequence(promise2));
+		return promise1.get().then(() -> sequence(promise2));
 	}
 
 	/**
