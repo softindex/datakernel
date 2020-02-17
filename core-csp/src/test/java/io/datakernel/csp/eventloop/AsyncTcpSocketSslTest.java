@@ -16,7 +16,6 @@
 
 package io.datakernel.csp.eventloop;
 
-import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.csp.ChannelSupplier;
@@ -44,6 +43,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.util.Random;
@@ -51,7 +52,9 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
+import static io.datakernel.async.process.AsyncCloseable.CLOSE_EXCEPTION;
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
+import static io.datakernel.csp.binary.BinaryChannelSupplier.UNEXPECTED_END_OF_STREAM_EXCEPTION;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -175,7 +178,6 @@ public final class AsyncTcpSocketSslTest {
 		assertEquals(TEST_STRING, result);
 	}
 
-
 	@Test
 	public void sendsLargeAmountOfDataFromClientToServer() throws IOException {
 		startServer(sslContext, serverSsl -> BinaryChannelSupplier.of(ChannelSupplier.ofSocket(serverSsl))
@@ -212,7 +214,7 @@ public final class AsyncTcpSocketSslTest {
 				socket.write(wrapAscii("He"))
 						.whenComplete(socket::close)
 						.then(() -> socket.write(wrapAscii("ello")))
-						.whenComplete(($, e) -> assertSame(AsyncCloseable.CLOSE_EXCEPTION, e)));
+						.whenComplete(($, e) -> assertSame(CLOSE_EXCEPTION, e)));
 
 		Throwable e = awaitException(AsyncTcpSocketNio.connect(ADDRESS)
 				.map(socket -> AsyncTcpSocketSsl.wrapClientSocket(socket, sslContext, executor))
@@ -222,7 +224,34 @@ public final class AsyncTcpSocketSslTest {
 							.whenException(supplier::closeEx);
 				}));
 
-		assertSame(AsyncCloseable.CLOSE_EXCEPTION, e);
+		assertSame(UNEXPECTED_END_OF_STREAM_EXCEPTION, e);
+	}
+
+	@Test
+	public void testPeerClosingDuringHandshake() throws IOException {
+		ServerSocket listener = new ServerSocket(ADDRESS.getPort());
+		Thread serverThread = new Thread(() -> {
+			try (Socket ignored = listener.accept()) {
+				listener.close();
+			} catch (IOException ignored) {
+				throw new AssertionError();
+			}
+		});
+
+		serverThread.start();
+
+		Throwable exception = awaitException(AsyncTcpSocketNio.connect(ADDRESS)
+				.whenResult(asyncTcpSocket -> {
+					try {
+						// noinspection ConstantConditions - Imitating a suddenly closed channel
+						asyncTcpSocket.getSocketChannel().close();
+					} catch (IOException e) {
+						throw new AssertionError();
+					}
+				})
+				.map(tcpSocket -> AsyncTcpSocketSsl.wrapClientSocket(tcpSocket, sslContext, executor))
+				.then(socket -> socket.write(ByteBufStrings.wrapUtf8("hello"))));
+		assertEquals(CLOSE_EXCEPTION, exception);
 	}
 
 	static void startServer(SSLContext sslContext, Consumer<AsyncTcpSocket> logic) throws IOException {

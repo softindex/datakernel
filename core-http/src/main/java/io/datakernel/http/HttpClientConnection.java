@@ -24,6 +24,7 @@ import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient.Inspector;
+import io.datakernel.http.stream.BufsConsumerGzipInflater;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodePositiveInt;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
@@ -136,14 +138,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			throw new ParseException(HttpClientConnection.class, "Invalid response: " + new String(line, 0, limit, ISO_8859_1));
 		}
 
-		int sp2;
-		for (sp2 = sp1; sp2 < limit; sp2++) {
-			if (line[sp2] == SP) {
-				break;
-			}
-		}
-
-		int statusCode = decodePositiveInt(line, sp1, sp2 - sp1);
+		int statusCode = decodePositiveInt(line, sp1, 3);
 		if (!(statusCode >= 100 && statusCode < 600)) {
 			throw new UnknownFormatException(HttpClientConnection.class, "Invalid HTTP Status Code " + statusCode);
 		}
@@ -213,21 +208,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onNoContentLength() {
 		ChannelSupplier<ByteBuf> ofQueue = readQueue.hasRemaining() ? ChannelSupplier.of(readQueue.takeRemaining()) : ChannelSupplier.of();
 		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
-		ChannelSupplier.of(socket::read, socket).streamTo(buffer.getConsumer()
-				.withAcknowledgement(ack -> ack
-						.whenComplete((result, e) -> {
-							if (isClosed()) return;
-							if (e == null) {
-								onBodyReceived();
-							} else {
-								closeWithError(e);
-							}
-						})));
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
-
-		if (isClosed()) return;
-
+		if ((flags & GZIPPED) != 0) {
+			supplier = supplier
+					.transformWith(BufsConsumerGzipInflater.create())
+					.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
+		}
 		onHeadersReceived(null, supplier);
+		ChannelSupplier.of(socket::read, socket)
+				.streamTo(buffer.getConsumer())
+				.whenComplete(afterProcessCb);
 	}
 
 	private void onHttpMessageComplete() {
@@ -241,6 +231,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 					.whenComplete((buf, e) -> {
 						if (e == null) {
 							if (buf != null) {
+								buf.recycle();
 								closeWithError(UNEXPECTED_READ);
 							} else {
 								close();
@@ -285,18 +276,29 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 		request.recycle();
 		if (!isClosed()) {
-			try {
-				/*
-					as per RFC 7230, section 3.3.3,
-					if no Content-Length header is set, client should read body until a server closes the connection
-				 */
-				contentLength = UNSET_CONTENT_LENGTH;
-				readHttpMessage();
-			} catch (ParseException e) {
-				closeWithError(e);
+			/*
+				as per RFC 7230, section 3.3.3,
+				if no Content-Length header is set, client should read body until a server closes the connection
+			*/
+			contentLength = UNSET_CONTENT_LENGTH;
+			if (readQueue.isEmpty()) {
+				tryReadHttpMessage();
+			} else {
+				eventloop.post(() -> {
+					if (isClosed()) return;
+					tryReadHttpMessage();
+				});
 			}
 		}
 		return promise;
+	}
+
+	private void tryReadHttpMessage() {
+		try {
+			readHttpMessage();
+		} catch (ParseException e) {
+			closeWithError(e);
+		}
 	}
 
 	/**
@@ -340,7 +342,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				", response=" + response +
 				", httpClient=" + client +
 				", keepAlive=" + (pool == client.poolKeepAlive) +
-//				", lastRequestUrl='" + (request.getFullUrl() == null ? "" : request.getFullUrl()) + '\'' +
+				//				", lastRequestUrl='" + (request.getFullUrl() == null ? "" : request.getFullUrl()) + '\'' +
 				", remoteAddress=" + remoteAddress +
 				',' + super.toString() +
 				'}';

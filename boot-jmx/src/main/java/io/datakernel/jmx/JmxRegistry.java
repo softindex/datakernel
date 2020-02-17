@@ -52,6 +52,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private final Map<Key<?>, String> keyToObjectNames;
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes;
 	private final Map<WorkerPool, Key<?>> workerPoolKeys = new HashMap<>();
+	private final Set<ObjectName> registeredObjectNames = new HashSet<>();
 	private boolean withScopes = true;
 
 	// jmx
@@ -129,6 +130,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			logger.trace(format("Instance with key %s was successfully registered to jmx " +
 					"with ObjectName \"%s\" ", key.toString(), objectName.toString()));
 
+			registeredObjectNames.add(objectName);
 			registeredSingletons++;
 			totallyRegisteredMBeans++;
 
@@ -145,6 +147,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				String name = createNameForKey(key);
 				ObjectName objectName = new ObjectName(name);
 				mbs.unregisterMBean(objectName);
+				registeredObjectNames.remove(objectName);
 			} catch (ReflectiveOperationException | JMException e) {
 				String msg =
 						format("Error during attempt to unregister MBean for instance with key %s.", key.toString());
@@ -213,6 +216,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			logger.trace(format("Pool of instances with key %s was successfully registered to jmx " +
 					"with ObjectName \"%s\"", key.toString(), objectName.toString()));
 
+			registeredObjectNames.add(objectName);
 			registeredPools++;
 			totallyRegisteredMBeans++;
 
@@ -249,7 +253,9 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		for (int i = 0; i < poolInstances.size(); i++) {
 			try {
 				String workerName = createWorkerName(commonName, i);
-				mbs.unregisterMBean(new ObjectName(workerName));
+				ObjectName objectName = new ObjectName(workerName);
+				mbs.unregisterMBean(objectName);
+				registeredObjectNames.remove(objectName);
 			} catch (JMException e) {
 				String msg = format("Error during attempt to unregister mbean for worker" +
 								" of pool of instances with key %s. Worker id is \"%d\"",
@@ -260,11 +266,27 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		// unregister aggregated mbean for pool of workers
 		try {
-			mbs.unregisterMBean(new ObjectName(commonName));
+			ObjectName objectName = new ObjectName(commonName);
+			mbs.unregisterMBean(objectName);
+			registeredObjectNames.remove(objectName);
 		} catch (JMException e) {
 			String msg = format("Error during attempt to unregister aggregated mbean for pool of instances " +
 					"with key %s.", key.toString());
 			logger.error(msg, e);
+		}
+	}
+
+	public void unregisterAll() {
+		Iterator<ObjectName> iterator = registeredObjectNames.iterator();
+		while (iterator.hasNext()) {
+			ObjectName objectName = iterator.next();
+			try {
+				mbs.unregisterMBean(objectName);
+			} catch (InstanceNotFoundException | MBeanRegistrationException e) {
+				String msg = format("Cannot unregister MBean with ObjectName \"%s\"", objectName.toString());
+				logger.error(msg, e);
+			}
+			iterator.remove();
 		}
 	}
 
@@ -295,6 +317,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		try {
 			mbs.registerMBean(mbean, objectName);
 
+			registeredObjectNames.add(objectName);
 			totallyRegisteredMBeans++;
 
 		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {

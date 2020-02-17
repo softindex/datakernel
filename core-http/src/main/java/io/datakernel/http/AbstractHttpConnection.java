@@ -115,6 +115,15 @@ public abstract class AbstractHttpConnection {
 		}
 	};
 
+	protected final Callback<Void> afterProcessCb = ($, e) -> {
+		if (isClosed()) return;
+		if (e == null) {
+			onBodyReceived();
+		} else {
+			closeWithError(e);
+		}
+	};
+
 	/**
 	 * Creates a new instance of AbstractHttpConnection
 	 *
@@ -331,12 +340,12 @@ public abstract class AbstractHttpConnection {
 
 	private void readBody() {
 		assert !isClosed();
-		if ((flags & (CHUNKED | GZIPPED)) == 0) {
+		if ((flags & CHUNKED) == 0) {
 			if (contentLength == UNSET_CONTENT_LENGTH) {
 				onNoContentLength();
 				return;
 			}
-			if (readQueue.hasRemainingBytes(contentLength)) {
+			if (((flags & GZIPPED) == 0) && readQueue.hasRemainingBytes(contentLength)) {
 				ByteBuf body = readQueue.takeExactSize(contentLength);
 				onHeadersReceived(body, null);
 				if (isClosed()) return;
@@ -395,14 +404,7 @@ public abstract class AbstractHttpConnection {
 		onHeadersReceived(null, supplier);
 
 		process.getProcessCompletion()
-				.whenComplete(($, e) -> {
-					if (isClosed()) return;
-					if (e == null) {
-						onBodyReceived();
-					} else {
-						closeWithError(e);
-					}
-				});
+				.whenComplete(afterProcessCb);
 	}
 
 	static ByteBuf renderHttpMessage(HttpMessage httpMessage) {

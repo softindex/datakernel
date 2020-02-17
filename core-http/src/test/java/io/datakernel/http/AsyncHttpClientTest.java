@@ -21,7 +21,10 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.parse.InvalidSizeException;
 import io.datakernel.common.parse.UnknownFormatException;
+import io.datakernel.common.ref.Ref;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.binary.BinaryChannelSupplier;
+import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient.JmxInspector;
 import io.datakernel.net.SimpleServer;
@@ -34,13 +37,19 @@ import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
 
-import java.io.DataInputStream;
-import java.io.IOException;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.*;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyStore;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.stream.IntStream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
@@ -56,6 +65,13 @@ import static org.junit.Assert.*;
 
 public final class AsyncHttpClientTest {
 	private static final int PORT = getFreePort();
+
+	private static final String KEYSTORE_PATH = "./src/test/resources/keystore.jks";
+	private static final String KEYSTORE_PASS = "testtest";
+	private static final String KEY_PASS = "testtest";
+
+	private static final String TRUSTSTORE_PATH = "./src/test/resources/truststore.jks";
+	private static final String TRUSTSTORE_PASS = "testtest";
 
 	private static final byte[] HELLO_WORLD = encodeAscii("Hello, World!");
 
@@ -177,33 +193,154 @@ public final class AsyncHttpClientTest {
 
 	@Test
 	public void testClientNoContentLength() throws Exception {
-		int port = getFreePort();
-
-		ServerSocket listener = new ServerSocket(port);
 		String text = "content";
-		Thread serverThread = new Thread(() -> {
-				try (Socket socket = listener.accept()) {
+		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+		String responseText = await(customResponse(req, false)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
+	}
+
+	@Test
+	public void testClientNoContentLengthSSL() throws Exception {
+		String text = "content";
+		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+		String responseText = await(customResponse(req, false)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
+	}
+
+	@Test
+	public void testClientNoContentLengthGzipped() throws Exception {
+		String text = "content";
+		ByteBuf headLines = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n" +
+				"Content-Encoding: gzip\r\n\r\n"));
+
+		String responseText = await(customResponse(ByteBufPool.append(headLines, GzipProcessorUtils.toGzip(wrapAscii(text))), false)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
+	}
+
+	@Test
+	public void testClientNoContentLengthGzippedSSL() throws Exception {
+		String text = "content";
+		ByteBuf headLines = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n" +
+				"Content-Encoding: gzip\r\n\r\n"));
+
+		String responseText = await(customResponse(ByteBufPool.append(headLines, GzipProcessorUtils.toGzip(wrapAscii(text))), true)
+				.then(HttpMessage::loadBody)
+				.map(byteBuf -> byteBuf.getString(UTF_8)));
+		assertEquals(text, responseText);
+	}
+
+	@Test
+	public void testAsyncPipelining() throws IOException {
+		ServerSocket listener = new ServerSocket(PORT);
+		Ref<Socket> socketRef = new Ref<>();
+		new Thread(() -> {
+			while (Thread.currentThread().isAlive()) {
+				try {
+					Socket socket = listener.accept();
+					socketRef.set(socket);
 					DataInputStream in = new DataInputStream(socket.getInputStream());
+					int b = 0;
 					//noinspection StatementWithEmptyBody
-					while (in.read() != CR || in.read() != LF || in.read() != CR || in.read() != LF) ;
-					ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
+					while (b != -1 && !(((b = in.read()) == CR || b == LF) && (b = in.read()) == LF)) {
+					}
+					ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\nContent-Length:  4\n\ntest" +
+							"HTTP/1.1 200 OK\nContent-Length:  4\n\ntest"));
 					socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
 				} catch (IOException ignored) {
-					throw new AssertionError();
 				}
-		});
+			}
+		}).start();
 
-		serverThread.start();
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withKeepAliveTimeout(Duration.ofSeconds(30));
 
-		String responseBody = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop())
-				.request(HttpRequest.get("http://127.0.0.1:" + port))
-				.then(response -> response.loadBody()
-						.map(body -> body.getString(UTF_8))
+		int code = await(client
+				.request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.then(response -> response.loadBody().async()
+						.then($ -> client.request(HttpRequest.get("http://127.0.0.1:" + PORT)))
+						.then(res -> {
+							assertFalse(res.isRecycled());
+							return res.loadBody()
+									.map(body -> {
+										assertEquals("test", body.getString(UTF_8));
+										return res;
+									});
+						})
+						.map(HttpResponse::getCode)
 						.whenComplete(asserting(($, e) -> {
+							socketRef.get().close();
 							listener.close();
 						}))));
 
-		assertEquals(text, responseBody);
+		assertEquals(200, code);
 	}
 
+	@Test
+	public void testResponseWithoutReasonPhrase() throws IOException {
+		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200\n" +
+				"Content-Length: 0\r\n\r\n"));
+		assertEquals((Integer) 200, await(customResponse(req, false).map(HttpResponse::getCode)));
+	}
+
+	private static final ByteBufsDecoder<ByteBuf> REQUEST_PARSER = bufs -> {
+		for (int i = 0; i < bufs.remainingBytes() - 3; i++) {
+			if (bufs.peekByte(i) == CR &&
+					bufs.peekByte(i + 1) == LF &&
+					bufs.peekByte(i + 2) == CR &&
+					bufs.peekByte(i + 3) == LF) {
+				return bufs.takeRemaining();
+			}
+		}
+		return null;
+	};
+
+	private Promise<HttpResponse> customResponse(ByteBuf rawResponse, boolean ssl) throws IOException {
+		SimpleServer server = SimpleServer.create(asyncTcpSocket ->
+				BinaryChannelSupplier.of(ChannelSupplier.ofSocket(asyncTcpSocket))
+						.parse(REQUEST_PARSER)
+						.whenResult(ByteBuf::recycle)
+						.then($ -> asyncTcpSocket.write(rawResponse))
+						.whenResult($ -> asyncTcpSocket.close()))
+				.withAcceptOnce();
+		if (ssl) {
+			server.withSslListenAddress(createSslContext(), Executors.newSingleThreadExecutor(), new InetSocketAddress(PORT));
+		} else {
+			server.withListenAddress(new InetSocketAddress(PORT));
+		}
+		server.listen();
+		return AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withSslEnabled(createSslContext(), Executors.newSingleThreadExecutor())
+				.request(HttpRequest.get("http" + (ssl ? "s" : "") + "://127.0.0.1:" + PORT));
+	}
+
+	private static SSLContext createSslContext() {
+		try {
+			SSLContext instance = SSLContext.getInstance("TLSv1.2");
+
+			KeyStore keyStore = KeyStore.getInstance("JKS");
+			KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+			try (InputStream input = new FileInputStream(new File(KEYSTORE_PATH))) {
+				keyStore.load(input, KEYSTORE_PASS.toCharArray());
+			}
+			kmf.init(keyStore, KEY_PASS.toCharArray());
+
+			KeyStore trustStore = KeyStore.getInstance("JKS");
+			TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+			try (InputStream input = new FileInputStream(new File(TRUSTSTORE_PATH))) {
+				trustStore.load(input, TRUSTSTORE_PASS.toCharArray());
+			}
+			tmf.init(trustStore);
+
+			instance.init(kmf.getKeyManagers(), tmf.getTrustManagers(), new SecureRandom());
+			return instance;
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
+	}
 }
