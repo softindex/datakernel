@@ -84,7 +84,8 @@ public final class GlobalFilesApp extends Launcher {
 		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(driverServlet))
 				.map(GET, "/fs/download/*", download.then(onRequest(request -> request.attach(request.getAttachment(UserContainer.class).getKeys().getPubKey()))))
-				.map(POST, "/fs/deleteBulk", sessionDecorator.serve(bulkDeleteServlet(fsDriver)))
+				.map(POST, "/fs/deleteBulk", sessionDecorator.serve(bulkDeleteServlet()))
+				.map(GET, "/fs/shallowList", sessionDecorator.serve(shallowList()))
 				.map(GET, "/static/*", cachedContent().serve(staticServlet))
 				.map(GET, "/*", staticServlet)
 				.merge(authorizationServlet);

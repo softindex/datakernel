@@ -3,6 +3,7 @@ package io.global;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
+import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.config.Config;
@@ -13,16 +14,17 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import io.datakernel.remotefs.FileMetadata;
+import io.datakernel.remotefs.FsClient;
 import io.global.appstore.pojo.AppInfo;
 import io.global.appstore.pojo.HostingInfo;
 import io.global.appstore.pojo.Profile;
 import io.global.appstore.pojo.User;
 import io.global.common.CryptoUtils;
-import io.global.common.KeyPair;
 import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.api.AnnounceData;
-import io.global.fs.local.GlobalFsDriver;
+import io.global.ot.service.FsUserContainer;
 import org.spongycastle.math.ec.ECPoint;
 
 import java.math.BigInteger;
@@ -76,6 +78,9 @@ public final class Utils {
 	public static final StructuredCodec<Map<PubKey, User>> USERS_CODEC = ofMapAsObjectList(
 			"pubKey", PUB_KEY_HEX_CODEC,
 			"profile", USER_CODEC);
+	public static final StructuredCodec<List<Tuple2<String, Boolean>>> SHALLOW_LIST_FS_CODEC = ofList(StructuredCodecs.object((Tuple2::new),
+			"name", Tuple2::getValue1, STRING_CODEC,
+			"isDirectory", Tuple2::getValue2, BOOLEAN_CODEC));
 
 	public static String generateString(int size) {
 		return toHexString(randomBytes(size));
@@ -181,15 +186,43 @@ public final class Utils {
 		return false;
 	}
 
-	public static AsyncServlet bulkDeleteServlet(GlobalFsDriver fsDriver) {
+	public static AsyncServlet bulkDeleteServlet() {
 		return request -> {
-			PubKey space = request.getAttachment(PubKey.class);
+			FsClient fsClient = request.getAttachment(FsUserContainer.class).getFsClient();
 			String glob = request.getQueryParameter("glob");
-			KeyPair keys = request.getAttachment(KeyPair.class);
-			return fsDriver.list(space, glob != null ? glob : "**")
+			return fsClient.list(glob != null ? glob : "**")
 					.then(checkpoints -> Promises.all(checkpoints.stream()
-							.map(s -> fsDriver.delete(keys, s.getFilename(), System.currentTimeMillis()))))
+							.map(s -> fsClient.delete(s.getName(), System.currentTimeMillis()))))
 					.map($ -> HttpResponse.ok200());
+		};
+	}
+
+	public static AsyncServlet shallowList() {
+		return request -> {
+			FsClient fsClient = request.getAttachment(FsUserContainer.class).getFsClient();
+			String dir = request.getQueryParameter("dir");
+			if (dir != null && !dir.isEmpty()) {
+				dir = dir.endsWith("/") ? dir : dir + "/";
+			} else {
+				dir = "";
+			}
+			String glob = dir + "**";
+			String finalDir = dir;
+			return fsClient.list(glob)
+					.map(checkpoints -> HttpResponse.ok200()
+							.withJson(JsonUtils.toJson(SHALLOW_LIST_FS_CODEC, checkpoints.stream()
+									.map(FileMetadata::getName)
+									.map(filename -> filename.substring(finalDir.length()))
+									.map(shortName -> {
+										int idx = shortName.indexOf("/");
+										if (idx == -1) {
+											return new Tuple2<>(shortName, false);
+										} else {
+											return new Tuple2<>(shortName.substring(0, idx), true);
+										}
+									})
+									.distinct()
+									.collect(toList()))));
 		};
 	}
 }

@@ -78,7 +78,8 @@ public final class GlobalCdnApp extends Launcher {
 		RoutingServlet routingServlet = RoutingServlet.create()
 				.map("/fs/*", sessionDecorator.serve(fsServlet))
 				.map(GET,"/fs/download/*", downloadServlet)
-				.map(POST, "/fs/deleteBulk", sessionDecorator.serve(bulkDeleteServlet(driver)))
+				.map(POST, "/fs/deleteBulk", sessionDecorator.serve(bulkDeleteServlet()))
+				.map(GET, "/fs/shallowList", sessionDecorator.serve(shallowList()))
 				.map(GET,"/static/*", cachedContent().serve(staticServlet))
 				.map(GET,"/*", staticServlet)
 				.merge(authorizationServlet);
