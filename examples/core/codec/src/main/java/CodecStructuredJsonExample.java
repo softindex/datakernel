@@ -8,10 +8,9 @@ import java.time.LocalDate;
 
 //[START EXAMPLE]
 public final class CodecStructuredJsonExample {
-	private static final StructuredCodec<Person> PERSON_CODEC = Registry.REGISTRY.get(Person.class);
-	private static final Person sarah = new Person(124, "Sarah", LocalDate.of(1992, 6, 27));
-
-	private static void encodeDecodeJson() throws ParseException {
+	public static void main(String[] args) throws ParseException {
+		final StructuredCodec<Person> PERSON_CODEC = Registry.REGISTRY.get(Person.class);
+		final Person sarah = new Person(124, "Sarah", LocalDate.of(1992, 6, 27));
 		System.out.println("Person before encoding: " + sarah);
 
 		String json = JsonUtils.toJson(PERSON_CODEC, sarah);
@@ -20,11 +19,6 @@ public final class CodecStructuredJsonExample {
 		Person decodedPerson = JsonUtils.fromJson(PERSON_CODEC, json);
 		System.out.println("Person after encoding: " + decodedPerson);
 		System.out.println("Persons are equal? : " + sarah.equals(decodedPerson));
-		System.out.println();
-	}
-
-	public static void main(String[] args) throws ParseException {
-		encodeDecodeJson();
 	}
 }
 //[END EXAMPLE]
