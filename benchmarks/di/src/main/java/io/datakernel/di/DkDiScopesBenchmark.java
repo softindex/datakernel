@@ -1,9 +1,12 @@
 package io.datakernel.di;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
+import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.specializer.Specializer;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -20,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @SuppressWarnings("FieldCanBeLocal")
 public class DkDiScopesBenchmark {
+	private static final boolean SPECIALIZE = ApplicationSettings.getBoolean(DkDiScopesBenchmark.class, "specialize", false);
 
 	static class Kitchen {
 		private final int places;
@@ -311,6 +315,13 @@ public class DkDiScopesBenchmark {
 			}
 		};
 
+		if (SPECIALIZE) {
+			Specializer specializer = Specializer.create()
+					.withPredicate(cls -> CompiledBinding.class.isAssignableFrom(cls) &&
+							!cls.getName().startsWith("io.datakernel.di.core.Multibinder$"));
+			Injector.setBytecodePostprocessor(() -> specializer::specialize);
+		}
+
 		injector = Injector.of(cookbook);
 	}
 
@@ -330,6 +341,7 @@ public class DkDiScopesBenchmark {
 	}
 
 	public static void main(String[] args) throws RunnerException {
+		System.out.println("Running benchmark with specialization " + (SPECIALIZE ? "ON" : "OFF"));
 
 		Options opt = new OptionsBuilder()
 				.include(DkDiScopesBenchmark.class.getSimpleName())

@@ -79,10 +79,9 @@ public final class Injector {
 
 	final AtomicReferenceArray[] scopeCaches;
 
-	@Nullable
 	private static Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory = Function::identity;
 
-	public static void setBytecodePostprocessor(@Nullable Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory) {
+	public static void setBytecodePostprocessor(@NotNull Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory) {
 		Injector.bytecodePostprocessorFactory = bytecodePostprocessorFactory;
 	}
 
@@ -206,7 +205,7 @@ public final class Injector {
 			Map<Key<?>, MarkedBinding<?>> bindings,
 			Map<Key<?>, CompiledBinding<?>> compiledBindingsOfParent
 	) {
-		@Nullable Function<CompiledBinding<?>, CompiledBinding<?>> postprocessor = bytecodePostprocessorFactory.get();
+		Function<CompiledBinding<?>, CompiledBinding<?>> postprocessor = bytecodePostprocessorFactory.get();
 
 		boolean threadsafe = path.length == 0 || path[path.length - 1].isThreadsafe();
 
