@@ -10,6 +10,8 @@ import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -81,8 +83,21 @@ public final class Injector {
 
 	private static Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory = Function::identity;
 
-	public static void setBytecodePostprocessor(@NotNull Supplier<Function<CompiledBinding<?>, CompiledBinding<?>>> bytecodePostprocessorFactory) {
-		Injector.bytecodePostprocessorFactory = bytecodePostprocessorFactory;
+	/**
+	 * Enables specialization of compiled bindings. <b>Depends on {@code Datakernel-Specializer} module</b>
+	 */
+	@SuppressWarnings("unchecked")
+	public static void useSpecializer() {
+		try {
+			Class<?> aClass = Class.forName("io.datakernel.specializer.Utils$InjectorSpecializer");
+			Constructor<?> constructor = aClass.getConstructor();
+			constructor.setAccessible(true);
+			Object specializerInstance = constructor.newInstance();
+			Function<CompiledBinding<?>, CompiledBinding<?>> specializer = (Function<CompiledBinding<?>, CompiledBinding<?>>) specializerInstance;
+			Injector.bytecodePostprocessorFactory = () -> specializer;
+		} catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | ClassNotFoundException | InstantiationException e) {
+			throw new IllegalStateException("Can not access Datakernel Specializer", e);
+		}
 	}
 
 	@SuppressWarnings("unchecked")

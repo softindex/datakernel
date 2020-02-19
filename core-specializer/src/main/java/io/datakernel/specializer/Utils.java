@@ -3,6 +3,7 @@ package io.datakernel.specializer;
 import org.objectweb.asm.Type;
 
 import java.lang.reflect.Array;
+import java.util.function.Function;
 
 import static java.lang.System.identityHashCode;
 
@@ -28,8 +29,7 @@ class Utils {
 	private static Class<?> doLoadClass(ClassLoader loader, String name) {
 		if (name.startsWith("[")) {
 			Class<?> aClass = doLoadClass(loader, name.substring(1));
-			Class<?> aClass1 = Array.newInstance(aClass, 0).getClass();
-			return aClass1;
+			return Array.newInstance(aClass, 0).getClass();
 		}
 		if (name.startsWith("L") && name.endsWith(";")) {
 			return doLoadClass(loader, name.substring(1, name.length() - 1));
@@ -72,6 +72,27 @@ class Utils {
 
 	public static String internalizeClassName(String type) {
 		return type.startsWith("[") ? type : "L" + type + ";";
+	}
+
+	@SuppressWarnings("unused") // A private class that should only be accessed via Reflection API
+	private static class InjectorSpecializer implements Function<Object, Object> {
+		private final Specializer specializer;
+
+		public InjectorSpecializer() {
+			try {
+				Class<?> compiledBindingClass = Class.forName("io.datakernel.di.impl.CompiledBinding");
+				this.specializer = Specializer.create()
+						.withPredicate(cls -> compiledBindingClass.isAssignableFrom(cls) &&
+								!cls.getName().startsWith("io.datakernel.di.core.Multibinder$"));
+			} catch (ClassNotFoundException e) {
+				throw new IllegalStateException("Can not access Datakernel DI", e);
+			}
+		}
+
+		@Override
+		public Object apply(Object o) {
+			return specializer.specialize(o);
+		}
 	}
 
 }

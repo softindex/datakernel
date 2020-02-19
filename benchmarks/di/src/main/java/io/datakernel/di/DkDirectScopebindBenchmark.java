@@ -4,9 +4,7 @@ import io.datakernel.common.ApplicationSettings;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
-import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.module.Module;
-import io.datakernel.specializer.Specializer;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -246,10 +244,7 @@ public class DkDirectScopebindBenchmark {
 						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
 
 		if (SPECIALIZE) {
-			Specializer specializer = Specializer.create()
-					.withPredicate(cls -> CompiledBinding.class.isAssignableFrom(cls) &&
-							!cls.getName().startsWith("io.datakernel.di.core.Multibinder$"));
-			Injector.setBytecodePostprocessor(() -> specializer::specialize);
+			Injector.useSpecializer();
 		}
 		injector = Injector.of(cookbook);
 
