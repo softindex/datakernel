@@ -12,9 +12,8 @@ import static io.datakernel.codegen.Expressions.*;
  * Methods are constructed programmatically using our fluent API built on top of ASM.
  */
 public class DynamicClassCreationExample {
-	//[START REGION_1]
 	public static void main(String[] args) throws IllegalAccessException, InstantiationException {
-		// Construct a Class that implements Person interface
+		//[START REGION_2]
 		Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Person.class)
 
 				// declare fields
@@ -38,7 +37,9 @@ public class DynamicClassCreationExample {
 						.with("id: ", property(self(), "id"))
 						.with("name: ", property(self(), "name")))
 				.build();
+		//[END REGION_2]
 
+		//[START REGION_3]
 		// Instantiate two objects of dynamically defined class
 		Person jack = personClass.newInstance();
 		Person martha = personClass.newInstance();
@@ -50,6 +51,7 @@ public class DynamicClassCreationExample {
 		System.out.println("Second person: " + martha);
 
 		System.out.println("jack.equals(martha) ? : " + jack.equals(martha));
+		//[END REGION_3]
 
 		// Compare dynamically created hashing implementation with the conventional one
 		ExamplePojo examplePojo = new ExamplePojo(5, "Jack");
@@ -58,8 +60,8 @@ public class DynamicClassCreationExample {
 		System.out.println("jack.hash()             = " + jack.hash());
 		System.out.println("examplePojo.hashCode()  = " + examplePojo.hashCode());
 	}
-	//[END REGION_1]
 
+	//[START REGION_1]
 	public interface Person extends Comparable<Person> {
 		void setIdAndName(int id, String name);
 
@@ -80,6 +82,7 @@ public class DynamicClassCreationExample {
 		@Override
 		boolean equals(Object obj);
 	}
+	//[END REGION_1]
 
 	public static class ExamplePojo {
 		int id;
@@ -110,5 +113,4 @@ public class DynamicClassCreationExample {
 			return "PersonPojo{id=" + id + ", name=" + name + '}';
 		}
 	}
-
 }

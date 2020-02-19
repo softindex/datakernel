@@ -6,21 +6,25 @@ import io.datakernel.codegen.DefiningClassLoader;
 import static io.datakernel.codegen.Expressions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
-//[START EXAMPLE]
 public final class CodegenExpressionsExample {
 	public static void main(String[] args) throws InstantiationException, IllegalAccessException {
+		//[START REGION_1]
 		Class<Example> example = ClassBuilder
-				// context class loader is used because without it maven runner is not happy with our codegen
+				// DefiningClassLoader represents a loader for defining dynamically generated classes
 				.create(DefiningClassLoader.create(getSystemClassLoader()), Example.class)
 				.withMethod("sayHello", call(staticField(System.class, "out"), "println", value("Hello world")))
 				.build();
-		Example instance = example.newInstance();
+		//[END REGION_1]
 
+		//[START REGION_2]
+		Example instance = example.newInstance();
 		instance.sayHello();
+		//[END REGION_2]
 	}
 
+	//[START REGION_3]
 	public interface Example {
 		void sayHello();
 	}
+	//[END REGION_3]
 }
-//[END EXAMPLE]
