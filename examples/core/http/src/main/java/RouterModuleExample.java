@@ -1,4 +1,5 @@
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.http.AsyncServlet;
@@ -40,6 +41,8 @@ public final class RouterModuleExample extends HttpServerLauncher {
 	}
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		RouterModuleExample example = new RouterModuleExample();
 		example.launch(args);
 	}

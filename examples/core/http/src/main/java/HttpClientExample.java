@@ -2,6 +2,7 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.dns.AsyncDnsClient;
@@ -89,6 +90,8 @@ public final class HttpClientExample extends Launcher {
 	//[END REGION_3]
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		HttpClientExample example = new HttpClientExample();
 		example.launch(args);
 	}

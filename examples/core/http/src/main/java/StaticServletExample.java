@@ -1,4 +1,5 @@
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.StaticServlet;
 import io.datakernel.launcher.Launcher;
@@ -23,6 +24,8 @@ public final class StaticServletExample extends HttpServerLauncher {
 	//[END EXAMPLE]
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		Launcher launcher = new StaticServletExample();
 		launcher.launch(args);
 	}

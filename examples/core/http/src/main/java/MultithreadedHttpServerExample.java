@@ -1,4 +1,5 @@
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
@@ -19,6 +20,8 @@ public final class MultithreadedHttpServerExample extends MultithreadedHttpServe
 	}
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		MultithreadedHttpServerExample example = new MultithreadedHttpServerExample();
 		example.launch(args);
 	}

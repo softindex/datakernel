@@ -35,6 +35,8 @@ public final class ScopeServletExample extends HttpServerLauncher {
 	}
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		ScopeServletExample example = new ScopeServletExample();
 		example.launch(args);
 	}
