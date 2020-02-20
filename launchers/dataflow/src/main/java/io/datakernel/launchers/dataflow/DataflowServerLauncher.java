@@ -21,8 +21,7 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
-import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
+import static io.datakernel.launchers.initializers.Initializers.*;
 
 public abstract class DataflowServerLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "dataflow-server.properties";
@@ -41,7 +40,8 @@ public abstract class DataflowServerLauncher extends Launcher {
 	@Provides
 	DataflowServer server(Eventloop eventloop, DataflowEnvironment environment, Config config) {
 		return new DataflowServer(eventloop, environment)
-				.initialize(ofAbstractServer(config.getChild("dataflow.server")));
+				.initialize(ofAbstractServer(config.getChild("dataflow.server")))
+				.initialize(s -> s.withSocketSettings(s.getSocketSettings().withTcpNoDelay(true)));
 	}
 
 	@Provides

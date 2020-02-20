@@ -33,10 +33,10 @@ import java.util.function.Function;
 
 public class DatasetUtils {
 
-	@SuppressWarnings("unchecked")
-	public static <K, I, O> List<StreamId> repartitionAndReduce(DataflowGraph graph, LocallySortedDataset<K, I> input,
-	                                                            Reducer<K, I, O, ?> reducer,
-	                                                            List<Partition> partitions) {
+	public static <K, I, O, A> List<StreamId> repartitionAndReduce(DataflowGraph graph,
+	                                                               LocallySortedDataset<K, I> input,
+	                                                               Reducer<K, I, O, A> reducer,
+	                                                               List<Partition> partitions) {
 		Function<I, K> keyFunction = input.keyFunction();
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<NodeShard<K, I>> sharders = new ArrayList<>();
@@ -48,18 +48,17 @@ public class DatasetUtils {
 		}
 
 		for (Partition partition : partitions) {
-			NodeReduce<K, O, Object> streamReducer = new NodeReduce<>( // TODO
-					input.keyComparator());
-			graph.addNode(partition, streamReducer);
+			NodeReduce<K, O, A> nodeReduce = new NodeReduce<>(input.keyComparator());
+			graph.addNode(partition, nodeReduce);
 
 			for (NodeShard<K, I> sharder : sharders) {
 				StreamId sharderOutput = sharder.newPartition();
 				graph.addNodeStream(sharder, sharderOutput);
 				StreamId reducerInput = forwardChannel(graph, input.valueType(), sharderOutput, partition);
-				streamReducer.addInput(reducerInput, keyFunction, (Reducer<K, I, O, Object>) reducer);
+				nodeReduce.addInput(reducerInput, keyFunction, reducer);
 			}
 
-			outputStreamIds.add(streamReducer.getOutput());
+			outputStreamIds.add(nodeReduce.getOutput());
 		}
 
 		return outputStreamIds;

@@ -252,7 +252,7 @@ public final class DataflowTest {
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 		LocallySortedDataset<Long, TestItem> sortedDataset = localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
-		Collector<TestItem> collector = new Collector<>(sortedDataset, TestItem.class, client);
+		Collector<TestItem> collector = new Collector<>(sortedDataset, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 		resultSupplier.streamTo(resultConsumer);
 

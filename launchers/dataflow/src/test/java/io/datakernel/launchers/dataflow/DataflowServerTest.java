@@ -26,9 +26,7 @@ import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
@@ -146,6 +144,25 @@ public class DataflowServerTest {
 		startServer(PORT_2, asList("dog", "cat"));
 	}
 
+	@Test
+	public void startServer1_OneMillionStrings() throws Exception {
+		startServer(PORT_1, createOneMillionStrings());
+	}
+
+	@Test
+	public void startServer2_OneMillionStrings() throws Exception {
+		startServer(PORT_2, createOneMillionStrings());
+	}
+
+	private static List<String> createOneMillionStrings() {
+		List<String> list = new ArrayList<>(1_000_000);
+		Random random = new Random();
+		for (int i = 0; i < 1_000_000; i++) {
+			list.add(Integer.toString(random.nextInt(100_000)));
+		}
+		return list;
+	}
+
 	private void startServer(int port, List<String> words) throws Exception {
 		new DataflowServerLauncher() {
 			@Override
@@ -180,9 +197,9 @@ public class DataflowServerTest {
 
 		Dataset<String> items = datasetOfList("items", String.class);
 		Dataset<StringCount> mappedItems = map(items, new TestMapFunction(), StringCount.class);
-		Dataset<StringCount> reducedItems = sort_Reduce_Repartition_Reduce(mappedItems,
-				new TestReducer(), String.class, new TestKeyFunction(), new TestComparator());
-		Collector<StringCount> collector = new Collector<>(reducedItems, StringCount.class, client);
+		Dataset<StringCount> reducedItems = splitSortReduce_Repartition_Reduce(mappedItems,
+				new TestReducer(), new TestKeyFunction(), new TestComparator());
+		Collector<StringCount> collector = new Collector<>(reducedItems, client);
 		StreamSupplier<StringCount> resultSupplier = collector.compile(graph);
 		StreamConsumerToList<StringCount> resultConsumer = StreamConsumerToList.create();
 		resultSupplier.streamTo(resultConsumer);

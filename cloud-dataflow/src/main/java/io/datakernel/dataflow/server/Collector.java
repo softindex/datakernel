@@ -28,12 +28,10 @@ import java.util.List;
 
 public final class Collector<T> {
 	private final Dataset<T> input;
-	private final Class<T> type;
 	private final DataflowClient client;
 
-	public Collector(Dataset<T> input, Class<T> type, DataflowClient client) {
+	public Collector(Dataset<T> input, DataflowClient client) {
 		this.input = input;
-		this.type = type;
 		this.client = client;
 	}
 
@@ -42,10 +40,10 @@ public final class Collector<T> {
 		List<StreamSupplier<T>> suppliers = new ArrayList<>();
 
 		for (StreamId streamId : inputStreamIds) {
-			NodeUpload<T> nodeUpload = new NodeUpload<>(type, streamId);
+			NodeUpload<T> nodeUpload = new NodeUpload<>(input.valueType(), streamId);
 			Partition partition = graph.getPartition(streamId);
 			graph.addNode(partition, nodeUpload);
-			StreamSupplier<T> supplier = StreamSupplier.ofPromise(client.download(partition.getAddress(), streamId, type));
+			StreamSupplier<T> supplier = StreamSupplier.ofPromise(client.download(partition.getAddress(), streamId, input.valueType()));
 			suppliers.add(supplier);
 		}
 

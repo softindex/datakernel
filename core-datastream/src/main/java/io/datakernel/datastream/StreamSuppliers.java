@@ -114,7 +114,7 @@ final class StreamSuppliers {
 								.whenResult(this::sendEndOfStream)
 								.whenException(this::closeEx);
 						this.getEndOfStream()
-								.whenException(supplier::closeEx);
+								.whenException(e -> supplier.closeEx(e));
 						if (isClosed()) return;
 
 						this.supplier = supplier;

@@ -26,25 +26,31 @@ import io.datakernel.dataflow.server.command.DatagraphCommand;
 import io.datakernel.dataflow.server.command.DatagraphCommandDownload;
 import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
+import io.datakernel.datastream.ForwardingStreamSupplier;
+import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.StreamSupplierTransformer;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.Collection;
 
 import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
+import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Client for datagraph server.
  * Sends JSON commands for performing certain actions on server.
  */
 public final class DataflowClient {
-
+	private static final Logger logger = getLogger(DataflowClient.class);
 	private final DataflowSerialization serialization;
 	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
 
@@ -70,10 +76,45 @@ public final class DataflowClient {
 							.map($ -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type))
 											.withExplicitEndOfStream())
+									.transformWith(new StreamTraceCounter<>(streamId, address))
 									.withEndOfStream(eos -> eos
 											.whenComplete(messaging::close))
 							);
 				});
+	}
+
+	private static class StreamTraceCounter<T> implements StreamSupplierTransformer<T, StreamSupplier<T>> {
+		private final StreamId streamId;
+		private final InetSocketAddress address;
+		private int count = 0;
+
+		public StreamTraceCounter(StreamId streamId, InetSocketAddress address) {
+			this.streamId = streamId;
+			this.address = address;
+		}
+
+		@Override
+		public StreamSupplier<T> transform(StreamSupplier<T> supplier) {
+			supplier.getEndOfStream()
+					.whenComplete(() -> logger.info("Received {} items total from stream {}({})", count, streamId, address));
+
+			return new ForwardingStreamSupplier<T>(supplier) {
+				@Override
+				public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+					if (dataAcceptor == null) {
+						supplier.suspend();
+						return;
+					}
+					supplier.resume(item -> {
+						count++;
+						if (count == 1 || count % 1_000 == 0) {
+							logger.info("Received {} items from stream {}({}): {}", count, streamId, address, item);
+						}
+						dataAcceptor.accept(item);
+					});
+				}
+			};
+		}
 	}
 
 	public class Session implements AsyncCloseable {

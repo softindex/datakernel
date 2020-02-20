@@ -107,7 +107,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		private final Reducer<K, I, O, A> reducer;
 
 		private Input(int index,
-				PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, Reducer<K, I, O, A> reducer, int bufferSize) {
+		              PriorityQueue<Input> priorityQueue, Function<I, K> keyFunction, Reducer<K, I, O, A> reducer, int bufferSize) {
 			this.index = index;
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;
@@ -132,7 +132,9 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 				headItem = item;
 				headKey = keyFunction.apply(headItem);
 				priorityQueue.offer(this);
-				streamsAwaiting--;
+				if (--streamsAwaiting == 0) {
+					output.flush();
+				}
 			} else {
 				deque.offer(item);
 				if (deque.size() == bufferSize) {

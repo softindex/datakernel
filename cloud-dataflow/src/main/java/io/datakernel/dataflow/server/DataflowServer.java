@@ -161,7 +161,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 
 		ChannelSerializer<T> streamSerializer = ChannelSerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))
-				.withAutoFlushInterval(Duration.ofSeconds(1))
+				.withAutoFlushInterval(Duration.ZERO)
 				.withExplicitEndOfStream();
 
 		ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);

@@ -106,7 +106,7 @@ final class StreamConsumers {
 								.whenResult(this::acknowledge)
 								.whenException(this::closeEx);
 						this.getAcknowledgement()
-								.whenException(consumer::closeEx);
+								.whenException(e -> consumer.closeEx(e));
 						if (isClosed()) return;
 						this.consumer = consumer;
 						if (supplier != null) {
