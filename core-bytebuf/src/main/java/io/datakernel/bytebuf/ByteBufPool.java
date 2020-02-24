@@ -85,6 +85,12 @@ public final class ByteBufPool {
 	 */
 	static final boolean CLEAR_ON_RECYCLE = ApplicationSettings.getBoolean(ByteBufPool.class, "clearOnRecycle", false);
 
+	static final boolean USE_WATCHDOG = ApplicationSettings.getBoolean(ByteBufPool.class, "useWatchdog", false);
+	static final Duration WATCHDOG_INTERVAL = ApplicationSettings.getDuration(ByteBufPool.class, "watchdogInterval", Duration.ofSeconds(1));
+	static final Duration WATCHDOG_SMOOTHING_WINDOW = ApplicationSettings.getDuration(ByteBufPool.class, "watchdogSmoothingWindow", Duration.ofSeconds(5));
+	static final double WATCHDOG_ERROR_MARGIN = ApplicationSettings.getDouble(ByteBufPool.class, "watchdogErrorMargin", 2.0);
+	private static final double SMOOTHING_COEFF = 1.0 - Math.pow(0.5, (double) WATCHDOG_INTERVAL.toMillis() / WATCHDOG_SMOOTHING_WINDOW.toMillis());
+
 	/**
 	 * {@code ByteBufConcurrentStack} allows to work with slabs and their ByteBufs.
 	 * Basically, it is a singly linked list with basic stack operations:
@@ -95,6 +101,7 @@ public final class ByteBufPool {
 	 * Moreover, such approach allows to work with slabs concurrently safely.
 	 */
 	static final ByteBufConcurrentQueue[] slabs;
+	static final SlabStats[] slabStats;
 	static final AtomicInteger[] created;
 	static final AtomicInteger[] reused;
 
@@ -156,12 +163,32 @@ public final class ByteBufPool {
 
 	static {
 		slabs = new ByteBufConcurrentQueue[NUMBER_OF_SLABS];
+		slabStats = new SlabStats[NUMBER_OF_SLABS];
 		created = new AtomicInteger[NUMBER_OF_SLABS];
 		reused = new AtomicInteger[NUMBER_OF_SLABS];
 		for (int i = 0; i < NUMBER_OF_SLABS; i++) {
 			slabs[i] = new ByteBufConcurrentQueue();
 			created[i] = new AtomicInteger();
 			reused[i] = new AtomicInteger();
+		}
+		if (USE_WATCHDOG) {
+			for (int i = 0; i < slabs.length; i++) {
+				slabStats[i] = new SlabStats();
+			}
+			Thread watchdogThread = new Thread(() -> {
+				while (true) {
+					updateStats();
+					evict();
+					try {
+						Thread.sleep(WATCHDOG_INTERVAL.toMillis());
+					} catch (InterruptedException ignored) {
+						break;
+					}
+				}
+			}, "bytebufpool-watchdog-thread");
+			watchdogThread.setDaemon(true);
+			watchdogThread.setPriority(Thread.MIN_PRIORITY);
+			watchdogThread.start();
 		}
 	}
 
@@ -197,13 +224,12 @@ public final class ByteBufPool {
 			buf.head = 0;
 			buf.refs = 1;
 			if (STATS) recordReuse(index);
-			if (REGISTRY) registerAllocate(buf);
 		} else {
 			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs = 1;
 			if (STATS) recordNew(index);
-			if (REGISTRY) registerAllocate(buf);
 		}
+		if (REGISTRY) registerAllocate(buf);
 		return buf;
 	}
 
@@ -424,6 +450,10 @@ public final class ByteBufPool {
 
 		long getPoolSizeKB();
 
+		long getTotalSlabMins();
+
+		long getTotalEvicted();
+
 		List<String> getPoolSlabs();
 
 		List<Entry> queryUnrecycledBufs(int limit);
@@ -493,6 +523,27 @@ public final class ByteBufPool {
 			return getPoolSize() / 1024;
 		}
 
+		@Override
+		public long getTotalSlabMins() {
+			if (!USE_WATCHDOG) return -1;
+			long totalSlabMins = 0;
+			for (ByteBufConcurrentQueue slab : slabs) {
+				int realMin = slab.realMin.get();
+				totalSlabMins += realMin == Integer.MAX_VALUE ? slab.size() : realMin;
+			}
+			return totalSlabMins;
+		}
+
+		@Override
+		public long getTotalEvicted() {
+			if (!USE_WATCHDOG) return -1;
+			long totalEvicted = 0;
+			for (SlabStats slabStat : slabStats) {
+				totalEvicted += slabStat.evictedTotal;
+			}
+			return totalEvicted;
+		}
+
 		public Map<ByteBuf, Entry> getUnrecycledBufs() {
 			synchronized (allocateRegistry) {
 				Map<ByteBuf, Entry> externalBufs = new IdentityHashMap<>(allocateRegistry);
@@ -546,6 +597,60 @@ public final class ByteBufPool {
 		}
 	}
 
+	// region watchdog
+	private static final class SlabStats {
+		double estimatedMin;
+		int evictedTotal;
+		int evictedLast;
+		int evictedMax;
+		double estimatedError;
+
+		@Override
+		public String toString() {
+			return "SlabStats{" +
+					"estimatedMin=" + estimatedMin +
+					", estimatedError=" + estimatedError +
+					", evictedTotal=" + evictedTotal +
+					", evictedLast=" + evictedLast +
+					", evictedMax=" + evictedMax +
+					'}';
+		}
+	}
+
+	private static void updateStats() {
+		for (int i = 0; i < slabs.length; i++) {
+			SlabStats stats = slabStats[i];
+			ByteBufConcurrentQueue slab = slabs[i];
+			int realMin = slab.realMin.getAndSet(Integer.MAX_VALUE);
+			if (realMin == Integer.MAX_VALUE) realMin = slab.size();
+
+			double realError = Math.abs(stats.estimatedMin - realMin);
+			stats.estimatedError += (realError - stats.estimatedError) * SMOOTHING_COEFF;
+
+			if (realMin < stats.estimatedMin) {
+				stats.estimatedMin = realMin;
+			} else {
+				stats.estimatedMin += (realMin - stats.estimatedMin) * SMOOTHING_COEFF;
+			}
+		}
+	}
+
+	private static void evict() {
+		for (int i = 0; i < slabs.length; i++) {
+			ByteBufConcurrentQueue slab = slabs[i];
+			SlabStats stats = slabStats[i];
+			int evictCount = (int) Math.round(stats.estimatedMin - stats.estimatedError * WATCHDOG_ERROR_MARGIN);
+			stats.evictedLast = 0;
+			for (int j = 0; j < evictCount; j++) {
+				ByteBuf buf = slab.poll();
+				if (buf == null) break;
+				stats.estimatedMin--;
+				stats.evictedLast++;
+			}
+			stats.evictedTotal += stats.evictedLast;
+			stats.evictedMax = Math.max(stats.evictedLast, stats.evictedMax);
+		}
+	}
 	//endregion
 
 }
