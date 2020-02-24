@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import {BrowserRouter as Router, Route, Switch} from 'react-router-dom';
-import MainScreen from './MainScreen';
-import SignUp from './SignUp';
+import MainScreen from './MainScreen/MainScreen';
+import SignUp from './SignUp/SignUp';
 import {AuthService, AuthContext, OAuthCallback} from 'global-apps-common';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import {MuiThemeProvider} from '@material-ui/core/styles';

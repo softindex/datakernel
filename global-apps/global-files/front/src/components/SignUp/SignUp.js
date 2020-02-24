@@ -6,7 +6,7 @@ import AttachFileIcon from '@material-ui/icons/AttachFile';
 import StoreIcon from '@material-ui/icons/Store';
 import Grid from '@material-ui/core/Grid';
 import Button from '@material-ui/core/Button';
-import Snackbar from '../Snackbar';
+import Snackbar from '../Snackbar/Snackbar';
 import signUpStyles from './signUpStyles';
 import {withSnackbar} from "notistack";
 

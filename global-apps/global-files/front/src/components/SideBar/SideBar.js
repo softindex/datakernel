@@ -1,11 +1,11 @@
 import React, {useRef, useState} from 'react';
 import {getInstance} from 'global-apps-common';
-import PromptDialog from '../PromptDialog';
+import PromptDialog from '../PromptDialog/PromptDialog';
 import {withStyles} from "@material-ui/core";
 import Drawer from '@material-ui/core/Drawer';
 import AddIcon from '@material-ui/icons/AddCircleOutline';
 import Fab from '@material-ui/core/Fab';
-import Snackbar from '../Snackbar';
+import Snackbar from '../Snackbar/Snackbar';
 import withWidth, {isWidthDown} from '@material-ui/core/withWidth';
 import sideBarStyles from './sideBarStyles';
 import {withSnackbar} from "notistack";

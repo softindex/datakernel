@@ -57,7 +57,8 @@ class GlobalFS extends EventEmitter {
     });
   }
 
-  async removeDir(nestedFiles) {
+  async removeDir(dirName) {
+    await fetch(path.join(this._url, 'deleteBulk?glob=' + dirName), {method: 'POST'});
   }
 
   async remove(fileName) {

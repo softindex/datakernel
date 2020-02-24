@@ -1,4 +1,4 @@
-import ItemCard from "../ItemCard";
+import ItemCard from "../ItemCard/ItemCard";
 import React from "react";
 
 export const getItemsByType = (path, fileList, openFileViewer, handleContextMenu) => {

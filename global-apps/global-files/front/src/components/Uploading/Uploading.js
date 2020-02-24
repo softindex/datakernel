@@ -3,11 +3,11 @@ import {getInstance, useService} from 'global-apps-common';
 import {withStyles} from "@material-ui/core";
 import ListItem from '@material-ui/core/ListItem';
 import ListItemText from '@material-ui/core/ListItemText';
-import CircularProgress from '../CircularProgress';
+import CircularProgress from '../CircularProgress/CircularProgress';
 import uploadingStyles from '../Uploading/uploadingStyles';
 import {getFileTypeByName} from '../../common/utils';
-import FileTypeIcon from '../FileTypeIcon';
-import UploadingAlert from "../UploadingAlert";
+import FileTypeIcon from '../FileTypeIcon/FileTypeIcon';
+import UploadingAlert from "../UploadingAlert/UploadingAlert";
 import FSService from "../../modules/fs/FSService";
 
 function UploadingView({files, uploads, classes, onClose}) {
