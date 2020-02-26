@@ -122,6 +122,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 	@Override
 	public void close() {
+		assert eventloop.inEventloopThread();
 		if (socket == null) {
 			return;
 		}
@@ -148,6 +149,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 	@Override
 	public Promise<DnsResponse> resolve(DnsQuery query) {
+		assert eventloop.inEventloopThread();
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);

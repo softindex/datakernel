@@ -34,6 +34,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.ofTupleArray;
@@ -49,7 +50,7 @@ public class Utils {
 	public static <K extends Comparable> Class<K> createKeyClass(Map<String, FieldType> keys, DefiningClassLoader classLoader) {
 		List<String> keyList = new ArrayList<>(keys.keySet());
 		return ClassBuilder.<K>create(classLoader, Comparable.class)
-				.withClassKey(keys.keySet())
+				.withClassKey(keyList)
 				.initialize(cb ->
 						keys.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
@@ -62,16 +63,16 @@ public class Utils {
 
 	public static <R> Comparator<R> createKeyComparator(Class<R> recordClass, List<String> keys, DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Comparator.class)
-				.withClassKey(recordClass, new HashSet<>(keys))
+				.withClassKey(recordClass, keys)
 				.withMethod("compare", compare(recordClass, keys))
 				.buildClassAndCreateNewInstance();
 	}
 
 	public static <T, R> Function<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
-			List<String> keys, List<String> fields,
-			DefiningClassLoader classLoader) {
+	                                                 List<String> keys, List<String> fields,
+	                                                 DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withClassKey(recordClass, resultClass, new HashSet<>(keys), new HashSet<>(fields))
+				.withClassKey(recordClass, resultClass, keys, fields)
 				.withMethod("apply",
 						let(constructor(resultClass), result ->
 								sequence(expressions -> {
@@ -86,10 +87,10 @@ public class Utils {
 	}
 
 	public static <K extends Comparable, R> Function<R, K> createKeyFunction(Class<R> recordClass, Class<K> keyClass,
-			List<String> keys,
-			DefiningClassLoader classLoader) {
+	                                                                         List<String> keys,
+	                                                                         DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
-				.withClassKey(recordClass, keyClass, new HashSet<>(keys))
+				.withClassKey(recordClass, keyClass, keys)
 				.withMethod("apply",
 						let(constructor(keyClass), key ->
 								sequence(expressions -> {
@@ -105,8 +106,8 @@ public class Utils {
 	}
 
 	public static <T> Class<T> createRecordClass(AggregationStructure aggregation,
-			Collection<String> keys, Collection<String> fields,
-			DefiningClassLoader classLoader) {
+	                                             Collection<String> keys, Collection<String> fields,
+	                                             DefiningClassLoader classLoader) {
 		return createRecordClass(
 				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
 				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
@@ -115,8 +116,10 @@ public class Utils {
 
 	public static <T> Class<T> createRecordClass(Map<String, FieldType> keys, Map<String, FieldType> fields,
 			DefiningClassLoader classLoader) {
+		List<String> keysList = new ArrayList<>(keys.keySet());
+		List<String> fieldsList = new ArrayList<>(fields.keySet());
 		return (Class<T>) ClassBuilder.create(classLoader, Object.class)
-				.withClassKey(keys.keySet(), fields.keySet())
+				.withClassKey(keysList, fieldsList)
 				.initialize(cb ->
 						keys.forEach((key, value) ->
 								cb.withField(key, value.getInternalDataType())))
@@ -128,8 +131,8 @@ public class Utils {
 	}
 
 	public static <T> BinarySerializer<T> createBinarySerializer(AggregationStructure aggregation, Class<T> recordClass,
-			List<String> keys, List<String> fields,
-			DefiningClassLoader classLoader) {
+	                                                             List<String> keys, List<String> fields,
+	                                                             DefiningClassLoader classLoader) {
 		return createBinarySerializer(recordClass,
 				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
 				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
@@ -140,32 +143,33 @@ public class Utils {
 			Map<String, FieldType> keys, Map<String, FieldType> fields,
 			DefiningClassLoader classLoader) {
 		SerializerDefClass serializer = SerializerDefClass.of(recordClass);
-		for (String key : keys.keySet()) {
-			FieldType keyType = keys.get(key);
+		addFields(recordClass, new ArrayList<>(keys.entrySet()), serializer);
+		addFields(recordClass, new ArrayList<>(fields.entrySet()), serializer);
+
+		ArrayList<String> keysList = new ArrayList<>(keys.keySet());
+		ArrayList<String> fieldsList = new ArrayList<>(fields.keySet());
+		return SerializerBuilder.create(classLoader)
+				.withClassKey(recordClass, keysList, fieldsList)
+				.build(serializer);
+	}
+
+	private static <T> void addFields(Class<T> recordClass, List<Entry<String, FieldType>> fields, SerializerDefClass serializer) {
+		for (Entry<String, FieldType> entry : fields) {
 			try {
-				Field recordClassKey = recordClass.getField(key);
-				serializer.addField(recordClassKey, keyType.getSerializer(), -1, -1);
+				Field field = recordClass.getField(entry.getKey());
+				serializer.addField(field, entry.getValue().getSerializer(), -1, -1);
 			} catch (NoSuchFieldException e) {
 				throw new RuntimeException(e);
 			}
 		}
-		for (String field : fields.keySet()) {
-			try {
-				Field recordClassField = recordClass.getField(field);
-				serializer.addField(recordClassField, fields.get(field).getSerializer(), -1, -1);
-			} catch (NoSuchFieldException e) {
-				throw new RuntimeException(e);
-			}
-		}
-		return SerializerBuilder.create(classLoader).withClassKey(recordClass, keys.keySet(), fields.keySet()).build(serializer);
 	}
 
 	public static <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
-			List<String> keys, List<String> fields,
-			DefiningClassLoader classLoader) {
+	                                                                                     List<String> keys, List<String> fields,
+	                                                                                     DefiningClassLoader classLoader) {
 
 		return ClassBuilder.create(classLoader, Reducer.class)
-				.withClassKey(inputClass, outputClass, new HashSet<>(keys), new HashSet<>(fields))
+				.withClassKey(inputClass, outputClass, keys, fields)
 				.withMethod("onFirstItem",
 						let(constructor(outputClass), accumulator ->
 								sequence(expressions -> {
@@ -203,11 +207,13 @@ public class Utils {
 	}
 
 	public static <I, O> Aggregate<O, Object> createPreaggregator(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
-			Map<String, String> keyFields, Map<String, String> measureFields,
-			DefiningClassLoader classLoader) {
+	                                                              Map<String, String> keyFields, Map<String, String> measureFields,
+	                                                              DefiningClassLoader classLoader) {
 
+		ArrayList<String> keysList = new ArrayList<>(keyFields.keySet());
+		ArrayList<String> measuresList = new ArrayList<>(measureFields.keySet());
 		return ClassBuilder.create(classLoader, Aggregate.class)
-				.withClassKey(inputClass, outputClass, keyFields, measureFields)
+				.withClassKey(inputClass, outputClass, keysList, measuresList)
 				.withMethod("createAccumulator",
 						let(constructor(outputClass), accumulator ->
 								sequence(expressions -> {
@@ -248,7 +254,7 @@ public class Utils {
 	}
 
 	public static PartitionPredicate createPartitionPredicate(Class recordClass, List<String> partitioningKey,
-			DefiningClassLoader classLoader) {
+	                                                          DefiningClassLoader classLoader) {
 		if (partitioningKey.isEmpty())
 			return singlePartition();
 

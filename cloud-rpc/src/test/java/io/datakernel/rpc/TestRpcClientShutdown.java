@@ -21,12 +21,14 @@ import java.util.concurrent.Executors;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.rpc.client.RpcClientConnection.CONNECTION_CLOSED;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertSame;
 
 public final class TestRpcClientShutdown {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+	public static final int PORT = getFreePort();
 
 	@Rule
 	public final EventloopRule eventloopRule = new EventloopRule();
@@ -44,11 +46,11 @@ public final class TestRpcClientShutdown {
 							Thread.sleep(100);
 							return new Response();
 						}))
-				.withListenPort(8080);
+				.withListenPort(PORT);
 
 		RpcClient rpcClient = RpcClient.create(eventloop)
 				.withMessageTypes(messageTypes)
-				.withStrategy(server(new InetSocketAddress(8080)));
+				.withStrategy(server(new InetSocketAddress(PORT)));
 
 		rpcServer.listen();
 

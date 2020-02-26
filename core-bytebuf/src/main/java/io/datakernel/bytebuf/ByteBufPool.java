@@ -86,9 +86,9 @@ public final class ByteBufPool {
 	static final boolean CLEAR_ON_RECYCLE = ApplicationSettings.getBoolean(ByteBufPool.class, "clearOnRecycle", false);
 
 	static final boolean USE_WATCHDOG = ApplicationSettings.getBoolean(ByteBufPool.class, "useWatchdog", false);
-	static final Duration WATCHDOG_INTERVAL = ApplicationSettings.getDuration(ByteBufPool.class, "watchdogInterval", Duration.ofSeconds(1));
-	static final Duration WATCHDOG_SMOOTHING_WINDOW = ApplicationSettings.getDuration(ByteBufPool.class, "watchdogSmoothingWindow", Duration.ofSeconds(5));
-	static final double WATCHDOG_ERROR_MARGIN = ApplicationSettings.getDouble(ByteBufPool.class, "watchdogErrorMargin", 2.0);
+	static final Duration WATCHDOG_INTERVAL = ApplicationSettings.getDuration(ByteBufPool.class, "watchdogInterval", Duration.ofSeconds(2));
+	static final Duration WATCHDOG_SMOOTHING_WINDOW = ApplicationSettings.getDuration(ByteBufPool.class, "watchdogSmoothingWindow", Duration.ofSeconds(10));
+	static final double WATCHDOG_ERROR_MARGIN = ApplicationSettings.getDouble(ByteBufPool.class, "watchdogErrorMargin", 4.0);
 	private static final double SMOOTHING_COEFF = 1.0 - Math.pow(0.5, (double) WATCHDOG_INTERVAL.toMillis() / WATCHDOG_SMOOTHING_WINDOW.toMillis());
 
 	/**
@@ -172,7 +172,7 @@ public final class ByteBufPool {
 			reused[i] = new AtomicInteger();
 		}
 		if (USE_WATCHDOG) {
-			for (int i = 0; i < slabs.length; i++) {
+			for (int i = 0; i < NUMBER_OF_SLABS; i++) {
 				slabStats[i] = new SlabStats();
 			}
 			Thread watchdogThread = new Thread(() -> {
@@ -528,8 +528,7 @@ public final class ByteBufPool {
 			if (!USE_WATCHDOG) return -1;
 			long totalSlabMins = 0;
 			for (ByteBufConcurrentQueue slab : slabs) {
-				int realMin = slab.realMin.get();
-				totalSlabMins += realMin == Integer.MAX_VALUE ? slab.size() : realMin;
+				totalSlabMins += slab.realMin.get();
 			}
 			return totalSlabMins;
 		}
@@ -621,8 +620,7 @@ public final class ByteBufPool {
 		for (int i = 0; i < slabs.length; i++) {
 			SlabStats stats = slabStats[i];
 			ByteBufConcurrentQueue slab = slabs[i];
-			int realMin = slab.realMin.getAndSet(Integer.MAX_VALUE);
-			if (realMin == Integer.MAX_VALUE) realMin = slab.size();
+			int realMin = slab.realMin.getAndSet(slab.size());
 
 			double realError = Math.abs(stats.estimatedMin - realMin);
 			stats.estimatedError += (realError - stats.estimatedError) * SMOOTHING_COEFF;
