@@ -21,7 +21,7 @@ final class ByteBufConcurrentQueue {
 	private final AtomicReference<AtomicReferenceArray<ByteBuf>> array = new AtomicReference<>(new AtomicReferenceArray<>(1));
 	private final ConcurrentHashMap<Integer, ByteBuf> map = new ConcurrentHashMap<>();
 
-	final AtomicInteger realMin = new AtomicInteger(Integer.MAX_VALUE);
+	final AtomicInteger realMin = new AtomicInteger(0);
 
 	@Nullable
 	public ByteBuf poll() {

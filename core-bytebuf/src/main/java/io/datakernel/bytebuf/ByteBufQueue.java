@@ -16,6 +16,7 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.Recyclable;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.common.parse.InvalidSizeException;
@@ -41,8 +42,12 @@ import static java.lang.System.arraycopy;
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class ByteBufQueue implements Recyclable {
 	private static final int DEFAULT_CAPACITY = 8;
+	/**
+	 * If set, nullifies bytebufs when they are taken out of queue. Set this setting ON if you need more control over memory.
+	 * For example, it is reasonable to enable this setting if you explicitly clear {@link ByteBufPool}
+	 */
+	private static final boolean NULLIFY_ON_TAKE_OUT = ApplicationSettings.getBoolean(ByteBufQueue.class, "nullifyOnTakeOut", ByteBufPool.USE_WATCHDOG);
 
-	@NotNull
 	private ByteBuf[] bufs;
 
 	private int first = 0;
@@ -100,11 +105,6 @@ public final class ByteBufQueue implements Recyclable {
 		return (i + 1) % bufs.length;
 	}
 
-	private void doPoll() {
-		bufs[first].recycle();
-		first = next(first);
-	}
-
 	private void grow() {
 		ByteBuf[] newBufs = new ByteBuf[bufs.length * 2];
 		arraycopy(bufs, last, newBufs, 0, bufs.length - last);
@@ -159,6 +159,7 @@ public final class ByteBufQueue implements Recyclable {
 	public ByteBuf take() {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
+		if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 		first = next(first);
 		return buf;
 	}
@@ -197,6 +198,7 @@ public final class ByteBufQueue implements Recyclable {
 		if (isEmpty() || size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (size >= buf.readRemaining()) {
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 			first = next(first);
 			return buf;
 		}
@@ -223,6 +225,7 @@ public final class ByteBufQueue implements Recyclable {
 		if (size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 			first = next(first);
 			return buf;
 		}
@@ -238,6 +241,7 @@ public final class ByteBufQueue implements Recyclable {
 		if (size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 			first = next(first);
 			return buf;
 		}
@@ -265,6 +269,7 @@ public final class ByteBufQueue implements Recyclable {
 		if (exactSize == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() == exactSize) {
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 			first = next(first);
 			return buf;
 		} else if (exactSize < buf.readRemaining()) {
@@ -284,6 +289,7 @@ public final class ByteBufQueue implements Recyclable {
 		if (exactSize == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() == exactSize) {
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 			first = next(first);
 			return buf;
 		} else if (exactSize < buf.readRemaining()) {
@@ -320,6 +326,7 @@ public final class ByteBufQueue implements Recyclable {
 			consumer.accept(buf);
 			buf.head(newPos);
 			if (!buf.canRead()) {
+				if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 				first = next(first);
 				buf.recycle();
 			}
@@ -432,7 +439,9 @@ public final class ByteBufQueue implements Recyclable {
 		assert buf.canRead();
 		byte result = buf.get();
 		if (!buf.canRead()) {
-			doPoll();
+			bufs[first].recycle();
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
+			first = next(first);
 		}
 		return result;
 	}
@@ -494,6 +503,7 @@ public final class ByteBufQueue implements Recyclable {
 				return maxSize;
 			} else {
 				buf.recycle();
+				if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 				first = next(first);
 				s -= remaining;
 			}
@@ -512,6 +522,7 @@ public final class ByteBufQueue implements Recyclable {
 			} else {
 				recycledBufs.accept(buf);
 				buf.recycle();
+				if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 				first = next(first);
 				s -= remaining;
 			}
@@ -542,6 +553,7 @@ public final class ByteBufQueue implements Recyclable {
 			} else {
 				arraycopy(buf.array(), buf.head(), dest, destOffset, remaining);
 				buf.recycle();
+				if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 				first = next(first);
 				s -= remaining;
 				destOffset += remaining;
@@ -563,6 +575,7 @@ public final class ByteBufQueue implements Recyclable {
 				arraycopy(buf.array(), buf.head(), dest, destOffset, remaining);
 				recycledBufs.accept(buf);
 				buf.recycle();
+				if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 				first = next(first);
 				s -= remaining;
 				destOffset += remaining;
@@ -710,12 +723,12 @@ public final class ByteBufQueue implements Recyclable {
 		if (!hasRemaining()) return emptyIterator();
 		ByteBufIterator iterator = new ByteBufIterator(this);
 		first = last = 0;
+		bufs = null;
 		return iterator;
 	}
 
 	public static class ByteBufIterator implements Iterator<ByteBuf>, Recyclable {
-		@NotNull
-		final ByteBuf[] bufs;
+		ByteBuf[] bufs;
 		int first;
 		final int last;
 
@@ -734,8 +747,13 @@ public final class ByteBufQueue implements Recyclable {
 		@NotNull
 		public ByteBuf next() {
 			ByteBuf buf = bufs[first];
+			if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 			first = (first + 1) % bufs.length;
 			return buf;
+		}
+
+		public boolean isRecycled() {
+			return bufs == null;
 		}
 
 		@Override
@@ -743,7 +761,12 @@ public final class ByteBufQueue implements Recyclable {
 			while (hasNext()) {
 				next().recycle();
 			}
+			bufs = null;
 		}
+	}
+
+	public boolean isRecycled() {
+		return bufs == null;
 	}
 
 	/**
@@ -752,10 +775,10 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@Override
 	public void recycle() {
-		for (int i = first; i != last; i = next(i)) {
-			bufs[i].recycle();
+		for (; first != last; first = next(first)) {
+			bufs[first].recycle();
 		}
-		first = last = 0;
+		bufs = null;
 	}
 
 	@Override

@@ -295,6 +295,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
+		assert eventloop.inEventloopThread();
 		if (channel == null) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (readBuf != null || readEndOfStream) {
