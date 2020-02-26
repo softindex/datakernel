@@ -26,7 +26,9 @@ import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Collector;
 
 import static io.datakernel.common.Preconditions.checkState;
 
@@ -53,21 +55,16 @@ final class StreamConsumers {
 		}
 	}
 
-	static final class OfConsumer<T> implements StreamConsumer<T> {
+	static final class OfConsumer<T> extends AbstractStreamConsumer<T> {
 		private final Consumer<T> consumer;
-		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 		OfConsumer(Consumer<T> consumer) {
 			this.consumer = consumer;
 		}
 
 		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-			streamSupplier.getEndOfStream()
-					.whenResult(acknowledgement::trySet)
-					.whenException(this::closeEx);
-			if (getAcknowledgement().isComplete()) return;
-			streamSupplier.resume(item -> {
+		protected void onStarted() {
+			resume(item -> {
 				try {
 					consumer.accept(item);
 				} catch (UncheckedException u) {
@@ -77,108 +74,50 @@ final class StreamConsumers {
 		}
 
 		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
+		protected void onEndOfStream() {
+			acknowledge();
 		}
 	}
 
-	static final class Idle<T> implements StreamConsumer<T> {
-		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
+	static final class Idle<T> extends AbstractStreamConsumer<T> {
 		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-			streamSupplier.getEndOfStream()
-					.whenResult(acknowledgement::trySet)
-					.whenException(this::closeEx);
-		}
-
-		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
+		protected void onEndOfStream() {
+			acknowledge();
 		}
 	}
 
-	static final class Skip<T> implements StreamConsumer<T> {
-		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
+	static final class Skip<T> extends AbstractStreamConsumer<T> {
 		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-			streamSupplier.getEndOfStream()
-					.whenResult(acknowledgement::trySet)
-					.whenException(this::closeEx);
-			if (getAcknowledgement().isComplete()) return;
-			streamSupplier.resume(item -> {});
+		protected void onStarted() {
+			resume(item -> {});
 		}
 
 		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
+		protected void onEndOfStream() {
+			acknowledge();
 		}
 	}
 
-	static final class OfPromise<T> implements StreamConsumer<T> {
-		@Nullable StreamConsumer<T> actualConsumer;
-		@Nullable StreamSupplier<T> supplier;
-		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	static final class OfPromise<T> extends AbstractStreamConsumer<T> {
+		final @NotNull Promise<? extends StreamConsumer<T>> promise;
 
-		public OfPromise(Promise<? extends StreamConsumer<T>> promise) {
+		public OfPromise(@NotNull Promise<? extends StreamConsumer<T>> promise) {
+			this.promise = promise;
+		}
+
+		@Override
+		protected void onStarted() {
 			promise
 					.whenResult(consumer -> {
-						consumer.getAcknowledgement().whenComplete(this.acknowledgement::trySet);
-						actualConsumer = consumer;
-						if (actualConsumer.getAcknowledgement().isComplete()) {
-							supplier = null;
-							return;
-						}
-						if (acknowledgement.getException() != null) {
-							actualConsumer.closeEx(acknowledgement.getException());
-						} else if (supplier != null) {
-							StreamSupplier<T> supplier = this.supplier;
-							this.supplier = null;
-							actualConsumer.consume(supplier);
-						}
+						consumer.getAcknowledgement()
+								.whenComplete(this::acknowledge)
+								.whenException(this::closeEx);
+						this.getAcknowledgement()
+								.whenException(consumer::closeEx);
+						if (isClosed()) return;
+						consumer.consume(supplier);
 					})
 					.whenException(this::closeEx);
-		}
-
-		@Override
-		public void consume(@NotNull StreamSupplier<T> supplier) {
-			supplier.getEndOfStream()
-					.whenException(this::closeEx);
-			if (getAcknowledgement().isComplete()) return;
-			if (actualConsumer != null) {
-				actualConsumer.consume(supplier);
-			} else {
-				this.supplier = supplier;
-			}
-		}
-
-		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
-			if (actualConsumer != null) {
-				actualConsumer.closeEx(e);
-			}
 		}
 	}
 
@@ -249,14 +188,13 @@ final class StreamConsumers {
 				streamConsumer.consume(new StreamSupplier<T>() {
 					@Override
 					public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-						// *
-						checkState(!isClosed());
-						checkState(!streamConsumer.getAcknowledgement().isComplete());
+						if (isClosed()) return;
+						if (streamConsumer.getAcknowledgement().isComplete()) return;
 						AsChannelConsumer.this.dataAcceptor = dataAcceptor;
 						if (dataAcceptor != null) {
 							if (item != null) {
 								dataAcceptor.accept(item);
-								itemPromise.set(null); // *
+								itemPromise.set(null);
 							}
 						}
 					}
@@ -268,7 +206,6 @@ final class StreamConsumers {
 
 					@Override
 					public void closeEx(@NotNull Throwable e) {
-						throw new AssertionError();
 					}
 				});
 			}
@@ -309,4 +246,45 @@ final class StreamConsumers {
 		}
 	}
 
+	static final class ToCollector<T, A, R> extends AbstractStreamConsumer<T> {
+		private final Collector<T, A, R> collector;
+		private final SettablePromise<R> resultPromise = new SettablePromise<>();
+		@Nullable
+		private A accumulator;
+
+		{
+			resultPromise.whenComplete(this::acknowledge);
+			acknowledgement.whenException(resultPromise::trySetException);
+		}
+
+		public ToCollector(Collector<T, A, R> collector) {
+			this.collector = collector;
+		}
+
+		@Override
+		protected void onStarted() {
+			A accumulator = collector.supplier().get();
+			this.accumulator = accumulator;
+			BiConsumer<A, T> consumer = collector.accumulator();
+			resume(item -> consumer.accept(accumulator, item));
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			if (resultPromise.isComplete()) return;
+			R result = collector.finisher().apply(accumulator);
+			accumulator = null;
+			resultPromise.set(result);
+		}
+
+		public Promise<R> getResult() {
+			return resultPromise;
+		}
+
+		@Nullable
+		public A getAccumulator() {
+			return accumulator;
+		}
+
+	}
 }

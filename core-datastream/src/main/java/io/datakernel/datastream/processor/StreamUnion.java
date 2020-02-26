@@ -18,10 +18,6 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,11 +59,11 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		checkState(!started);
 		Input input = new Input();
 		inputs.add(input);
-		input.acknowledgement
-				.whenException(output.endOfStream::trySetException);
-		output.endOfStream
-				.whenResult(input.acknowledgement::trySet)
-				.whenException(input.acknowledgement::trySetException);
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
 		return input;
 	}
 
@@ -77,69 +73,39 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		sync();
 	}
 
+	private final class Input extends AbstractStreamConsumer<T> {
+		@Override
+		protected void onStarted() {
+			sync();
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			sync();
+		}
+	}
+
+	private final class Output extends AbstractStreamSupplier<T> {
+		@Override
+		protected void onResumed(AsyncProduceController async) {
+			sync();
+		}
+
+		@Override
+		protected void onSuspended() {
+			sync();
+		}
+	}
+
 	private void sync() {
 		if (!started) return;
-		if (output.endOfStream.isComplete()) return;
-		if (inputs.stream().allMatch(input -> input.endOfStream)) {
-			output.endOfStream.trySet(null);
+		if (output.getEndOfStream().isComplete()) return;
+		if (inputs.stream().allMatch(Input::isEndOfStream)) {
+			output.sendEndOfStream();
 		} else {
 			for (Input input : inputs) {
-				if (input.streamSupplier != null) {
-					input.streamSupplier.resume(output.dataAcceptor);
-				}
+				input.resume(output.getDataAcceptor());
 			}
-		}
-	}
-
-	private final class Input implements StreamConsumer<T> {
-		@Nullable StreamSupplier<T> streamSupplier;
-		private boolean endOfStream;
-		private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
-		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-			this.streamSupplier = streamSupplier;
-			this.streamSupplier.getEndOfStream()
-					.whenResult(this::endOfStream)
-					.whenException(this::closeEx);
-			sync();
-		}
-
-		private void endOfStream() {
-			endOfStream = true;
-			sync();
-		}
-
-		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
-		}
-	}
-
-	private final class Output implements StreamSupplier<T> {
-		@Nullable StreamDataAcceptor<T> dataAcceptor;
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-			if (this.dataAcceptor == dataAcceptor) return;
-			this.dataAcceptor = dataAcceptor;
-			sync();
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
 		}
 	}
 

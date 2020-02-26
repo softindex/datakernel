@@ -101,6 +101,7 @@ public final class RpcStream {
 		serializer.consume(new StreamSupplier<RpcMessage>() {
 			@Override
 			public void resume(@Nullable StreamDataAcceptor<RpcMessage> dataAcceptor) {
+				if (serializerEndOfStream.isComplete()) return;
 				if (dataAcceptor != null) {
 					deserializer.resume(listener);
 					listener.onSenderReady(dataAcceptor);

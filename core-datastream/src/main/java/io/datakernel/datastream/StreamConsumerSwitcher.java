@@ -16,25 +16,17 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
  * A consumer that wraps around another consumer that can be hot swapped with some other consumer.
  * <p>
  * It sets its acknowledgement on supplier end of stream, and acts as if suspended when current consumer stops and acknowledges.
  */
-public final class StreamConsumerSwitcher<T> implements StreamConsumer<T> {
-	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
-	private @Nullable StreamSupplier<T> supplier;
+public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
+	private @Nullable InternalStreamSupplier currentSupplier;
 	private @Nullable StreamConsumer<T> currentConsumer;
-
-	SettablePromise<Void> currentEndOfStream = new SettablePromise<>();
 
 	private StreamConsumerSwitcher() {
 	}
@@ -47,24 +39,26 @@ public final class StreamConsumerSwitcher<T> implements StreamConsumer<T> {
 	}
 
 	public void switchTo(@NotNull StreamConsumer<T> consumer) {
-		//noinspection unused
-		StreamConsumer<T> oldConsumer = this.currentConsumer;
-		SettablePromise<Void> oldEndOfStream = this.currentEndOfStream;
-
-		if (oldEndOfStream.isResult()) {
-			StreamSupplier.<T>closing().streamTo(consumer);
+		if (isEndOfStream()) {
+			StreamSupplier.<T>closing()
+					.streamTo(consumer);
 			return;
 		}
 
-		if (oldEndOfStream.isException()) {
-			StreamSupplier.<T>closingWithError(oldEndOfStream.getException()).streamTo(consumer);
+		if (getAcknowledgement().isException()) {
+			StreamSupplier.<T>closingWithError(getAcknowledgement().getException())
+					.streamTo(consumer);
 			return;
 		}
 
+		InternalStreamSupplier oldSupplier = this.currentSupplier;
+
+		this.currentSupplier = new InternalStreamSupplier();
 		this.currentConsumer = consumer;
-		this.currentEndOfStream = new SettablePromise<>();
 
-		oldEndOfStream.trySet(null);
+		if (oldSupplier != null) {
+			oldSupplier.sendEndOfStream();
+		}
 
 		this.currentConsumer.getAcknowledgement()
 				.whenComplete((v, e) -> {
@@ -73,72 +67,49 @@ public final class StreamConsumerSwitcher<T> implements StreamConsumer<T> {
 					}
 				});
 
-		if (!acknowledgement.isComplete() && supplier != null) {
-			supplier.suspend();
-			currentConsumer.consume(internalSupplier());
+		currentSupplier.streamTo(currentConsumer);
+	}
+
+	@Override
+	protected void onStarted() {
+		if (currentSupplier != null && currentSupplier.getDataAcceptor() != null) {
+			resume(currentSupplier.getDataAcceptor());
 		}
 	}
 
 	@Override
-	public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-		this.supplier = streamSupplier;
-		this.supplier.getEndOfStream()
-				.whenResult(this::endOfStream)
-				.whenException(this::closeEx);
-		if (getAcknowledgement().isComplete()) return;
-
-		if (currentConsumer != null) {
-			currentConsumer.consume(internalSupplier());
-		}
-	}
-
-	@NotNull
-	private StreamSupplier<T> internalSupplier() {
-		return new StreamSupplier<T>() {
-			final StreamConsumer<T> finalCurrentConsumer = currentConsumer;
-			private final Promise<Void> endOfStream = Promise.ofCallback(currentEndOfStream::whenComplete);
-
-			@Override
-			public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-				checkArgument(finalCurrentConsumer == currentConsumer);
-				assert StreamConsumerSwitcher.this.supplier != null;
-				StreamConsumerSwitcher.this.supplier.resume(dataAcceptor);
-			}
-
-			@Override
-			public Promise<Void> getEndOfStream() {
-				return endOfStream;
-			}
-
-			@Override
-			public void closeEx(@NotNull Throwable e) {
-				StreamConsumerSwitcher.this.closeEx(e);
-			}
-		};
-	}
-
-	private void endOfStream() {
-		if (currentConsumer == null) {
-			acknowledgement.trySet(null);
+	protected void onEndOfStream() {
+		if (currentSupplier == null) {
+			acknowledge();
 		} else {
-			currentEndOfStream.trySet(null);
+			currentSupplier.sendEndOfStream();
 			currentConsumer.getAcknowledgement()
-					.whenResult(acknowledgement::trySet)
-					.whenException(acknowledgement::trySetException);
+					.whenResult(this::acknowledge)
+					.whenException(this::closeEx);
 		}
 	}
 
 	@Override
-	public Promise<Void> getAcknowledgement() {
-		return acknowledgement;
+	protected void onError(Throwable e) {
+		if (currentSupplier != null) {
+			currentSupplier.closeEx(e);
+		}
 	}
 
-	@Override
-	public void closeEx(@NotNull Throwable e) {
-		acknowledgement.trySetException(e);
-		if (currentConsumer != null) {
-			currentConsumer.closeEx(e);
-			currentEndOfStream.trySetException(e);
+	private class InternalStreamSupplier extends AbstractStreamSupplier<T> {
+		@Override
+		protected void onResumed(AsyncProduceController async) {
+			StreamConsumerSwitcher.this.resume(getDataAcceptor());
+		}
+
+		@Override
+		protected void onSuspended() {
+			StreamConsumerSwitcher.this.suspend();
+		}
+
+		@Override
+		protected void onError(Throwable e) {
+			StreamConsumerSwitcher.this.closeEx(e);
 		}
 	}
 }

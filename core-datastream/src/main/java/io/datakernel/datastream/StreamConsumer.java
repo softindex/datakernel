@@ -96,7 +96,6 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 		return new OfChannelConsumer<>(consumer);
 	}
 
-	// TODO: this does not belong here I think - Anton
 	static <T> ChannelConsumer<T> asStreamConsumer(StreamConsumer<T> consumer) {
 		return new StreamConsumers.AsChannelConsumer<>(consumer);
 	}

@@ -16,13 +16,7 @@
 
 package io.datakernel.datastream.processor;
 
-import io.datakernel.datastream.StreamConsumer;
-import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import io.datakernel.datastream.*;
 
 import java.util.function.Predicate;
 
@@ -39,11 +33,11 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		this.predicate = predicate;
 		this.input = new Input();
 		this.output = new Output();
-		input.acknowledgement
-				.whenException(output.endOfStream::trySetException);
-		output.endOfStream
-				.whenResult(input.acknowledgement::trySet)
-				.whenException(input.acknowledgement::trySetException);
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
 	}
 
 	public static <T> StreamFilter<T> create(Predicate<T> predicate) {
@@ -60,69 +54,41 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	protected final class Input implements StreamConsumer<T> {
-		@Nullable StreamSupplier<T> streamSupplier;
-		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
+	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-			this.streamSupplier = streamSupplier;
-			this.streamSupplier.getEndOfStream()
-					.whenResult(this::endOfStream)
-					.whenException(this::closeEx);
+		protected void onStarted() {
 			sync();
 		}
 
-		private void endOfStream() {
-			output.endOfStream.trySet(null);
-		}
-
 		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
+		protected void onEndOfStream() {
+			output.sendEndOfStream();
 		}
 	}
 
-	protected final class Output implements StreamSupplier<T> {
-		@Nullable StreamDataAcceptor<T> dataAcceptor;
-		final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
+	protected final class Output extends AbstractStreamSupplier<T> {
 		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-			if (this.dataAcceptor == dataAcceptor) return;
-			this.dataAcceptor = dataAcceptor;
+		protected void onResumed(AsyncProduceController async) {
 			sync();
 		}
 
 		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
+		protected void onSuspended() {
+			sync();
 		}
 	}
 
 	private void sync() {
-		if (input.streamSupplier != null) {
+		final StreamDataAcceptor<T> dataAcceptor = output.getDataAcceptor();
+		if (dataAcceptor != null) {
 			final Predicate<T> predicate = this.predicate;
-			final StreamDataAcceptor<T> dataAcceptor = output.dataAcceptor;
-			if (dataAcceptor != null) {
-				input.streamSupplier.resume(item -> {
-					if (predicate.test(item)) {
-						dataAcceptor.accept(item);
-					}
-				});
-			} else {
-				input.streamSupplier.suspend();
-			}
+			input.resume(item -> {
+				if (predicate.test(item)) {
+					dataAcceptor.accept(item);
+				}
+			});
+		} else {
+			input.suspend();
 		}
 	}
 

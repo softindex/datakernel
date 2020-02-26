@@ -26,7 +26,7 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
@@ -196,7 +196,7 @@ public class StreamMergerTest {
 						.streamTo(consumer.transformWith(oneByOne()))
 		);
 
-		assertEquals(5, consumer.getList().size());
+		assertEquals(0, consumer.getList().size());
 		assertClosedWithError(consumer);
 		assertClosedWithError(merger.getOutput());
 		assertClosedWithError(merger.getInput(0));

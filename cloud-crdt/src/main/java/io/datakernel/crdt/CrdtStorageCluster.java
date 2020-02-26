@@ -24,7 +24,6 @@ import io.datakernel.crdt.primitives.CrdtType;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.MultiSharder;
 import io.datakernel.datastream.processor.StreamReducerSimple;
 import io.datakernel.datastream.processor.StreamReducers.BinaryAccumulatorReducer;
 import io.datakernel.datastream.processor.StreamSplitter;
@@ -133,7 +132,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		return Collections.unmodifiableList(orderedIds);
 	}
 
-	public MultiSharder<K> getShardingFunction() {
+	public RendezvousHashSharder<I, K> getShardingFunction() {
 		return shardingFunction;
 	}
 	// endregion

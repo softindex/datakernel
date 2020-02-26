@@ -26,7 +26,8 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.oneByOne;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
@@ -53,8 +54,8 @@ public class StreamSplitterTest {
 
 		await(
 				source.streamTo(streamConcat.getInput()),
-				streamConcat.newOutput().streamTo(consumerToList1.transformWith(randomlySuspending())),
-				streamConcat.newOutput().streamTo(consumerToList2.transformWith(randomlySuspending()))
+				streamConcat.newOutput().streamTo(consumerToList1.transformWith(oneByOne())),
+				streamConcat.newOutput().streamTo(consumerToList2.transformWith(oneByOne()))
 		);
 
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
@@ -135,7 +136,7 @@ public class StreamSplitterTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(3, consumer1.getList().size());
+		assertEquals(1, consumer1.getList().size());
 		assertEquals(3, consumer2.getList().size());
 		assertEquals(3, consumer3.getList().size());
 

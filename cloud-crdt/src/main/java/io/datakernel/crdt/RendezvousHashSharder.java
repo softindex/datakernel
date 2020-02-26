@@ -17,7 +17,6 @@
 package io.datakernel.crdt;
 
 import io.datakernel.common.HashUtils;
-import io.datakernel.datastream.processor.MultiSharder;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,7 +25,7 @@ import java.util.List;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
-public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {
+public final class RendezvousHashSharder<I, K> {
 
 	private int numOfBuckets = 1024;
 	private int[][] buckets;
@@ -79,7 +78,6 @@ public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {
 		}
 	}
 
-	@Override
 	public int[] shard(K key) {
 		return buckets[key.hashCode() & (numOfBuckets - 1)];
 	}

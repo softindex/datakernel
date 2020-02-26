@@ -20,6 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
@@ -29,10 +30,11 @@ import static io.datakernel.common.Preconditions.checkState;
  * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+	protected @Nullable StreamSupplier<T> supplier;
 	protected final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-	private StreamSupplier<T> streamSupplier;
 	private boolean endOfStream;
+
+	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	{
 		acknowledgement.async().whenComplete(this::onCleanup);
@@ -40,18 +42,17 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	@Override
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
+		checkState(eventloop.inEventloopThread());
 		//noinspection ResultOfMethodCallIgnored
 		checkNotNull(streamSupplier);
-		checkState(!acknowledgement.isComplete());
 		checkState(!endOfStream);
-		checkState(this.streamSupplier == null);
-		this.streamSupplier = streamSupplier;
+		checkState(this.supplier == null);
+		if (acknowledgement.isComplete()) return;
+		this.supplier = streamSupplier;
+		onStarted();
 		streamSupplier.getEndOfStream()
 				.whenResult(this::endOfStream)
 				.whenException(this::closeEx);
-		if (!getAcknowledgement().isComplete()) {
-			onStarted();
-		}
 	}
 
 	/**
@@ -62,8 +63,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	private void endOfStream() {
-		checkState(!acknowledgement.isComplete());
 		checkState(!endOfStream);
+		if (acknowledgement.isComplete()) return;
 		endOfStream = true;
 		onEndOfStream();
 	}
@@ -85,34 +86,43 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	/**
 	 * Begins receiving data into given acceptor, resumes the associated supplier to receive data from it.
 	 */
-	public final void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
+	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		if (dataAcceptor == null) {
+			suspend();
+			return;
+		}
+		checkState(eventloop.inEventloopThread());
 		//noinspection ResultOfMethodCallIgnored
 		checkNotNull(dataAcceptor);
 		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
-		if (streamSupplier == null) return;
-		streamSupplier.resume(dataAcceptor);
+		if (supplier == null) return;
+		supplier.resume(dataAcceptor);
 	}
 
 	/**
 	 * Suspends the associated supplier.
 	 */
 	public final void suspend() {
+		checkState(eventloop.inEventloopThread());
 		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
-		streamSupplier.suspend();
+		if (supplier == null) return;
+		supplier.suspend();
 	}
 
 	/**
 	 * Triggers the {@link #getAcknowledgement() acknowledgement} of this consumer.
 	 */
 	public final void acknowledge() {
+		checkState(eventloop.inEventloopThread());
 		if (acknowledgement.isComplete()) return;
 		acknowledgement.set(null);
 	}
 
 	@Override
 	public final Promise<Void> getAcknowledgement() {
+		checkState(eventloop.inEventloopThread());
 		return acknowledgement;
 	}
 
@@ -126,6 +136,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
+		checkState(eventloop.inEventloopThread());
 		//noinspection ResultOfMethodCallIgnored
 		checkNotNull(e);
 		if (acknowledgement.trySetException(e)) {

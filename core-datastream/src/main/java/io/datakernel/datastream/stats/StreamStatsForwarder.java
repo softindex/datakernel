@@ -16,14 +16,11 @@
 
 package io.datakernel.datastream.stats;
 
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.AbstractStreamSupplier;
 import io.datakernel.datastream.StreamConsumer;
-import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamTransformer;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	private final Input input;
@@ -35,11 +32,11 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		this.stats = stats;
 		this.input = new Input();
 		this.output = new Output();
-		input.acknowledgement
-				.whenException(output.endOfStream::trySetException);
-		output.endOfStream
-				.whenResult(input.acknowledgement::trySet)
-				.whenException(input.acknowledgement::trySetException);
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
 	}
 
 	public static <T> StreamStatsForwarder<T> create(StreamStats<T> stats) {
@@ -56,72 +53,41 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	protected final class Input implements StreamConsumer<T> {
-		@Nullable StreamSupplier<T> streamSupplier;
-		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
+	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-			streamSupplier.getEndOfStream()
-					.whenResult(this::endOfStream)
-					.whenException(this::closeEx);
-			if (getAcknowledgement().isComplete()) return;
-			if (this.streamSupplier == null) {
-				stats.onStarted();
-			}
-			this.streamSupplier = streamSupplier;
-			if (input.streamSupplier != null) {
-				input.streamSupplier.resume(output.dataAcceptor);
-			}
-		}
-
-		private void endOfStream() {
-			if (output.endOfStream.trySet(null)) {
-				stats.onEndOfStream();
-			}
+		protected void onStarted() {
+			stats.onStarted();
+			resume(output.getDataAcceptor());
 		}
 
 		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
+		protected void onEndOfStream() {
+			stats.onEndOfStream();
+			output.sendEndOfStream();
 		}
 
 		@Override
-		public void closeEx(@NotNull Throwable e) {
-			if (acknowledgement.trySetException(e)) {
-				stats.onError(e);
-			}
+		protected void onError(Throwable e) {
+			stats.onError(e);
 		}
 	}
 
-	protected final class Output implements StreamSupplier<T> {
-		@Nullable StreamDataAcceptor<T> dataAcceptor;
-		final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
+	protected final class Output extends AbstractStreamSupplier<T> {
 		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-			if (this.dataAcceptor == dataAcceptor) return;
-			if (dataAcceptor != null) {
-				stats.onProduce();
-			} else {
-				stats.onSuspend();
-			}
-			this.dataAcceptor = dataAcceptor;
-			if (input.streamSupplier != null) {
-				input.streamSupplier.resume(output.dataAcceptor);
-			}
+		protected void onResumed(AsyncProduceController async) {
+			stats.onProduce();
+			input.resume(getDataAcceptor());
 		}
 
 		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
+		protected void onSuspended() {
+			stats.onSuspend();
+			input.suspend();
 		}
 
 		@Override
-		public void closeEx(@NotNull Throwable e) {
-			if (endOfStream.trySetException(e)) {
-				stats.onError(e);
-			}
+		protected void onError(Throwable e) {
+			stats.onError(e);
 		}
 	}
 

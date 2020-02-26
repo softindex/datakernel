@@ -24,7 +24,7 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;

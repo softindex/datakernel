@@ -29,8 +29,8 @@ import org.junit.Test;
 
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamConsumers.decorate;
-import static io.datakernel.datastream.TestStreamConsumers.randomlySuspending;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.randomlySuspending;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.datastream.processor.StreamReducers.mergeDistinctReducer;
 import static io.datakernel.promise.TestUtils.await;

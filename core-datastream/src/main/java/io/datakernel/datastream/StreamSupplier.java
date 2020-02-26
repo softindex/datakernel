@@ -214,7 +214,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * Creates a supplier that supplies items from given suppliers consecutively and only then closes.
 	 */
 	static <T> StreamSupplier<T> concat(Iterator<StreamSupplier<T>> iterator) {
-		return new StreamSupplierConcat<>(ChannelSupplier.ofIterator(iterator));
+		return new StreamSuppliers.Concat<>(ChannelSupplier.ofIterator(iterator));
 	}
 
 	/**
@@ -237,7 +237,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * then completes the returned promise with the accumulator.
 	 */
 	default <A, R> Promise<R> toCollector(Collector<T, A, R> collector) {
-		StreamConsumerToCollector<T, A, R> consumerToCollector = new StreamConsumerToCollector<>(collector);
+		StreamConsumers.ToCollector<T, A, R> consumerToCollector = new StreamConsumers.ToCollector<>(collector);
 		this.streamTo(consumerToCollector);
 		return consumerToCollector.getResult();
 	}

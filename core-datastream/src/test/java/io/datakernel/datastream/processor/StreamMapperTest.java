@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.function.Function;
 
 import static io.datakernel.datastream.StreamSupplier.concat;
-import static io.datakernel.datastream.TestStreamConsumers.decorate;
-import static io.datakernel.datastream.TestStreamConsumers.randomlySuspending;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.oneByOne;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
@@ -49,7 +49,7 @@ public class StreamMapperTest {
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		await(supplier.transformWith(StreamMapper.create(input -> input * input))
-				.streamTo(consumer.transformWith(randomlySuspending())));
+				.streamTo(consumer.transformWith(oneByOne())));
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 

@@ -16,6 +16,7 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -36,6 +37,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private StreamDataAcceptor<T> dataAcceptor;
 	private StreamDataAcceptor<T> dataAcceptorSafe;
 
+	@SuppressWarnings("FieldCanBeLocal")
+	private boolean produceRequest;
+	@Nullable
+	private ProduceStatus produceStatus;
+
 	private final ArrayDeque<T> buffer = new ArrayDeque<>();
 
 	{
@@ -45,17 +51,13 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private boolean endOfStreamRequest;
 	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
+	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+
 	{
 		endOfStream.async().whenComplete(this::onCleanup);
 	}
 
-	@SuppressWarnings("FieldCanBeLocal")
-	private boolean produceRequest;
-
 	private final AsyncProduceController controller = new AsyncProduceController();
-
-	@Nullable
-	private ProduceStatus produceStatus;
 
 	private enum ProduceStatus {
 		STARTED,
@@ -85,20 +87,26 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		checkState(!endOfStream.isComplete());
+		checkState(eventloop.inEventloopThread());
+		if (endOfStream.isComplete()) return;
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
 		this.dataAcceptorSafe = dataAcceptor != null ? dataAcceptor : buffer::addLast;
-		flush();
+		if (this.dataAcceptor != null) {
+			flush();
+		} else {
+			onSuspended();
+		}
 	}
 
 	/**
 	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
 	 */
 	public final void flush() {
-		if (endOfStream.isComplete()) return;
+		checkState(eventloop.inEventloopThread());
 		produceRequest = true;
 		if (produceStatus != null) return; // recursive call
+		if (endOfStream.isComplete()) return;
 		produceStatus = ProduceStatus.STARTED;
 		while (produceRequest) {
 			produceRequest = false;
@@ -111,20 +119,20 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 				assert buffer.isEmpty();
 				if (!endOfStreamRequest) {
 					onResumed(controller);
-				} else {
-					dataAcceptor = null;
-					//noinspection unchecked
-					dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
-					endOfStream.set(null);
-					return;
 				}
 			}
 		}
+
+		if (endOfStreamRequest && buffer.isEmpty()) {
+			dataAcceptor = null;
+			//noinspection unchecked
+			dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+			endOfStream.trySet(null);
+			return;
+		}
+
 		if (produceStatus == ProduceStatus.STARTED) {
 			produceStatus = null;
-		}
-		if (this.dataAcceptor == null) {
-			onSuspended();
 		}
 	}
 
@@ -154,6 +162,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * This operation is final, cannot be undone and must not be called multiple times.
 	 */
 	public final void sendEndOfStream() {
+		checkState(eventloop.inEventloopThread());
 		if (endOfStream.isComplete()) return;
 		if (produceStatus == ProduceStatus.STARTED_ASYNC) {
 			produceStatus = null;
@@ -181,11 +190,17 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final Promise<Void> getEndOfStream() {
+		checkState(eventloop.inEventloopThread());
 		return endOfStream;
+	}
+
+	public boolean isClosed() {
+		return endOfStream.isComplete();
 	}
 
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
+		checkState(eventloop.inEventloopThread());
 		dataAcceptor = null;
 		//noinspection unchecked
 		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;

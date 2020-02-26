@@ -18,11 +18,7 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.SettablePromise;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,7 +42,6 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 	private final List<Output> outputs = new ArrayList<>();
 
 	private StreamDataAcceptor<O>[] dataAcceptors = new StreamDataAcceptor[8];
-	private int active;
 
 	private boolean started;
 
@@ -89,81 +84,52 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		checkState(!started);
 		started = true;
 		dataAcceptors = Arrays.copyOf(dataAcceptors, outputs.size());
-		input.acknowledgement
-				.whenException(e -> outputs.forEach(output -> output.endOfStream.trySetException(e)));
+		input.getAcknowledgement()
+				.whenException(e -> outputs.forEach(output -> output.closeEx(e)));
 		Promises.all(outputs.stream().map(Output::getEndOfStream))
-				.whenResult(input.acknowledgement::trySet)
-				.whenException(input.acknowledgement::trySetException);
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
 		sync();
 	}
 
-	private void sync() {
-		if (!started) return;
-		if (input.acknowledgement.isComplete()) return;
-		if (input.streamSupplier != null) {
-			if (active == dataAcceptors.length) {
-				input.streamSupplier.resume(acceptorFactory.apply(this.dataAcceptors));
-			} else {
-				input.streamSupplier.suspend();
-			}
-		}
-	}
-
-	protected final class InputConsumer implements StreamConsumer<I> {
-		@Nullable StreamSupplier<I> streamSupplier;
-		final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
+	protected final class InputConsumer extends AbstractStreamConsumer<I> {
 		@Override
-		public void consume(@NotNull StreamSupplier<I> streamSupplier) {
-			this.streamSupplier = streamSupplier;
-			this.streamSupplier.getEndOfStream()
-					.whenResult(this::endOfStream)
-					.whenException(this::closeEx);
+		protected void onStarted() {
 			sync();
 		}
 
-		public void endOfStream() {
+		@Override
+		protected void onEndOfStream() {
 			for (Output output : outputs) {
-				output.endOfStream.trySet(null);
+				output.sendEndOfStream();
 			}
-		}
-
-		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			acknowledgement.trySetException(e);
 		}
 	}
 
-	protected final class Output implements StreamSupplier<O> {
+	protected final class Output extends AbstractStreamSupplier<O> {
 		final int index;
-		@Nullable StreamDataAcceptor<O> dataAcceptor;
-		final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 		public Output(int index) {this.index = index;}
 
 		@Override
-		public void resume(@Nullable StreamDataAcceptor<O> dataAcceptor) {
-			if (dataAcceptor != null && this.dataAcceptor == null) active++;
-			if (dataAcceptor == null && this.dataAcceptor != null) active--;
-			if (this.dataAcceptor == dataAcceptor) return;
-			this.dataAcceptor = dataAcceptor;
-			dataAcceptors[index] = dataAcceptor;
+		protected void onResumed(AsyncProduceController async) {
+			dataAcceptors[index] = getDataAcceptor();
 			sync();
 		}
 
 		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
+		protected void onSuspended() {
+			dataAcceptors[index] = getDataAcceptor();
+			sync();
 		}
+	}
 
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
+	private void sync() {
+		if (!started) return;
+		if (outputs.stream().filter(AbstractStreamSupplier::isReady).count() == dataAcceptors.length) {
+			input.resume(acceptorFactory.apply(this.dataAcceptors));
+		} else {
+			input.suspend();
 		}
 	}
 

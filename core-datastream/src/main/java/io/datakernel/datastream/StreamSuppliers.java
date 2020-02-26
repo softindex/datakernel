@@ -83,16 +83,8 @@ final class StreamSuppliers {
 		}
 	}
 
-	static final class OfIterator<T> implements StreamSupplier<T> {
+	static final class OfIterator<T> extends AbstractStreamSupplier<T> {
 		private final Iterator<T> iterator;
-		private @Nullable StreamDataAcceptor<T> dataAcceptor;
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-		private boolean iterating;
-
-		{
-			endOfStream
-					.whenComplete(() -> dataAcceptor = null);
-		}
 
 		/**
 		 * Creates a new instance of  StreamSupplierOfIterator
@@ -104,80 +96,109 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-			if (endOfStream.isComplete()) return;
-			if (this.dataAcceptor == dataAcceptor) return;
-			this.dataAcceptor = dataAcceptor;
-			if (iterating) return;
-			iterating = true;
-			while (iterator.hasNext()) {
-				StreamDataAcceptor<T> acceptor = this.dataAcceptor;
-				if (acceptor == null) {
-					iterating = false;
-					return;
-				}
-				T item = iterator.next();
-				acceptor.accept(item);
+		protected void onResumed(AsyncProduceController async) {
+			while (isReady() && iterator.hasNext()) {
+				send(iterator.next());
 			}
-			endOfStream.trySet(null);
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
+			if (!iterator.hasNext()) {
+				sendEndOfStream();
+			}
 		}
 	}
 
-	static final class OfPromise<T> implements StreamSupplier<T> {
-		@Nullable StreamSupplier<T> streamSupplier;
-		@Nullable StreamDataAcceptor<T> dataAcceptor;
-		SettablePromise<Void> endOfStream;
+	static class OfPromise<T> extends AbstractStreamSupplier<T> {
+		@Nullable
+		private StreamSupplier<T> supplier;
 
-		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
-			endOfStream = new SettablePromise<>();
+		OfPromise(Promise<? extends StreamSupplier<T>> promise) {
 			promise
-					.whenResult(stream -> {
-						stream.getEndOfStream().whenComplete(this.endOfStream::trySet);
-						streamSupplier = stream;
-						if (streamSupplier.getEndOfStream().isComplete()) {
-							dataAcceptor = null;
-							return;
-						}
-						if (endOfStream.getException() != null) {
-							streamSupplier.closeEx(endOfStream.getException());
-						} else if (dataAcceptor != null) {
-							StreamDataAcceptor<T> dataAcceptor = this.dataAcceptor;
-							this.dataAcceptor = null;
-							streamSupplier.resume(dataAcceptor);
+					.whenResult(supplier -> {
+						supplier.getEndOfStream()
+								.whenResult(this::sendEndOfStream)
+								.whenException(this::closeEx);
+						this.getEndOfStream()
+								.whenException(supplier::closeEx);
+						if (isClosed()) return;
+
+						this.supplier = supplier;
+						this.supplier.resume(getDataAcceptor());
+					})
+					.whenException(this::closeEx);
+		}
+
+		@Override
+		protected void onResumed(AsyncProduceController async) {
+			if (supplier != null) {
+				supplier.resume(getDataAcceptor());
+			}
+		}
+
+		@Override
+		protected void onSuspended() {
+			if (supplier != null) {
+				supplier.suspend();
+			}
+		}
+
+		@Override
+		protected void onError(Throwable e) {
+			if (supplier != null) {
+				supplier.closeEx(e);
+			}
+		}
+	}
+
+	static class Concat<T> extends AbstractStreamSupplier<T> {
+		private final ChannelSupplier<StreamSupplier<T>> iterator;
+		@Nullable
+		private StreamSupplier<T> supplier;
+
+		Concat(ChannelSupplier<StreamSupplier<T>> iterator) {
+			this.iterator = iterator;
+			next();
+		}
+
+		private void next() {
+			this.supplier = null;
+			iterator.get()
+					.whenResult(supplier -> {
+						if (supplier != null) {
+							this.getEndOfStream()
+									.whenException(supplier::closeEx)
+									.whenException(iterator::closeEx);
+							supplier.getEndOfStream()
+									.whenResult(this::next)
+									.whenException(this::closeEx);
+							if (supplier.getEndOfStream().isComplete()) return;
+
+							this.supplier = supplier;
+							this.supplier.resume(getDataAcceptor());
+						} else {
+							sendEndOfStream();
 						}
 					})
 					.whenException(this::closeEx);
 		}
 
 		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-			if (streamSupplier != null) {
-				streamSupplier.resume(dataAcceptor);
-			} else {
-				this.dataAcceptor = dataAcceptor;
+		protected void onResumed(AsyncProduceController async) {
+			if (supplier != null) {
+				supplier.resume(getDataAcceptor());
 			}
 		}
 
 		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
+		protected void onSuspended() {
+			if (supplier != null) {
+				supplier.suspend();
+			}
 		}
 
 		@Override
-		public void closeEx(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
-			if (streamSupplier != null) {
-				streamSupplier.closeEx(e);
+		protected void onError(Throwable e) {
+			if (supplier != null) {
+				supplier.closeEx(e);
+				iterator.closeEx(e);
 			}
 		}
 	}
@@ -251,5 +272,4 @@ final class StreamSuppliers {
 			streamSupplier.closeEx(e); // *
 		}
 	}
-
 }

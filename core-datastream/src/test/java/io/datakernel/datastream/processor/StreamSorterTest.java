@@ -38,8 +38,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamConsumers.decorate;
-import static io.datakernel.datastream.TestStreamConsumers.oneByOne;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.oneByOne;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;

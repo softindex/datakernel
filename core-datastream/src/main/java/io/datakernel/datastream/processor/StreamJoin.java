@@ -190,8 +190,11 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 
 		@Override
 		public void accept(I item) {
-			deque.add(item);
-			output.flush();
+			boolean wasEmpty = deque.isEmpty();
+			deque.addLast(item);
+			if (wasEmpty) {
+				output.flush();
+			}
 		}
 
 		@Override

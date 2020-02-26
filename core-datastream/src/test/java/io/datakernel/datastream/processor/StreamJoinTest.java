@@ -30,8 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.datastream.TestStreamConsumers.decorate;
-import static io.datakernel.datastream.TestStreamConsumers.oneByOne;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.oneByOne;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
@@ -191,7 +191,7 @@ public class StreamJoinTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(1, list.size());
+		assertEquals(0, list.size());
 		assertClosedWithError(source1);
 		assertClosedWithError(source2);
 	}

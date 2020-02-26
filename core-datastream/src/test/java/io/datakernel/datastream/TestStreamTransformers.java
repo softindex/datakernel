@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Random;
 import java.util.function.Function;
 
-public class TestStreamConsumers {
+public class TestStreamTransformers {
 	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> oneByOne() {
 		return decorate(Promise::async);
 	}

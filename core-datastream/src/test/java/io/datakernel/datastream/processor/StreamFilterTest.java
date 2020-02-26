@@ -26,8 +26,8 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
-import static io.datakernel.datastream.TestStreamConsumers.decorate;
-import static io.datakernel.datastream.TestStreamConsumers.randomlySuspending;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.randomlySuspending;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;

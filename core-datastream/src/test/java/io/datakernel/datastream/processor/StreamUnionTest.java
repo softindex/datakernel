@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;

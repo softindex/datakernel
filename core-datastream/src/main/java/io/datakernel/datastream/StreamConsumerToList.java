@@ -2,7 +2,6 @@ package io.datakernel.datastream;
 
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,10 +12,14 @@ import java.util.List;
  *
  * @see StreamSupplier#toList()
  */
-public final class StreamConsumerToList<T> implements StreamConsumer<T>, StreamDataAcceptor<T> {
+public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 	private final List<T> list;
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
-	private final Promise<Void> acknowledgement = resultPromise.toVoid();
+
+	{
+		resultPromise.whenComplete(this::acknowledge);
+		acknowledgement.whenException(resultPromise::trySetException);
+	}
 
 	private StreamConsumerToList(List<T> list) {
 		this.list = list;
@@ -36,26 +39,13 @@ public final class StreamConsumerToList<T> implements StreamConsumer<T>, StreamD
 	}
 
 	@Override
-	public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-		streamSupplier.getEndOfStream()
-				.whenResult(this::endOfStream)
-				.whenException(this::closeEx);
-		if (getAcknowledgement().isComplete()) return;
-		streamSupplier.resume(list::add);
+	protected void onStarted() {
+		resume(list::add);
 	}
 
-	private void endOfStream() {
+	@Override
+	protected void onEndOfStream() {
 		resultPromise.trySet(list);
-	}
-
-	@Override
-	public Promise<Void> getAcknowledgement() {
-		return acknowledgement;
-	}
-
-	@Override
-	public void closeEx(@NotNull Throwable e) {
-		resultPromise.trySetException(e);
 	}
 
 	public Promise<List<T>> getResult() {
