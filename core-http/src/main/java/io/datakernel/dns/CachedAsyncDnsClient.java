@@ -90,6 +90,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		return new AsyncDnsClient() {
 			@Override
 			public Promise<DnsResponse> resolve(DnsQuery query) {
+				assert anotherEventloop.inEventloopThread();
 				DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 				if (fromQuery != null) {
 					logger.trace("{} already contained an IP address within itself", query);
@@ -116,6 +117,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 			@Override
 			public void close() {
+				assert anotherEventloop.inEventloopThread();
 				eventloop.execute(wrapContext(CachedAsyncDnsClient.this, CachedAsyncDnsClient.this::close));
 			}
 		};

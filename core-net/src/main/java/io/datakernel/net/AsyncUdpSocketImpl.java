@@ -162,6 +162,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	@Override
 	public Promise<UdpPacket> receive() {
+		assert eventloop.inEventloopThread();
 		if (!isOpen()) {
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}
@@ -214,6 +215,7 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	@Override
 	public Promise<Void> send(UdpPacket packet) {
+		assert eventloop.inEventloopThread();
 		if (!isOpen()) {
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}

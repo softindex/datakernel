@@ -399,6 +399,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	 */
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+		assert eventloop.inEventloopThread();
 		if (timeout > 0) {
 			requestSender.sendRequest(request, timeout, cb);
 		} else {
@@ -408,6 +409,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@Override
 	public <I, O> void sendRequest(I request, Callback<O> cb) {
+		assert eventloop.inEventloopThread();
 		requestSender.sendRequest(request, cb);
 	}
 
@@ -419,6 +421,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
+				assert anotherEventloop.inEventloopThread();
 				if (timeout > 0) {
 					eventloop.execute(wrapContext(requestSender, () ->
 							requestSender.sendRequest(request, timeout, toAnotherEventloop(anotherEventloop, cb))));
@@ -440,7 +443,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return "RpcClient{" + connections + '}';
 	}
 
-	private final class NoSenderAvailable implements RpcSender {
+	private static final class NoSenderAvailable implements RpcSender {
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
 			cb.accept(null, NO_SENDER_AVAILABLE_EXCEPTION);

@@ -170,6 +170,7 @@ public final class AsyncDnsClientTest {
 					}
 				})
 				.forEach(runnable -> new Thread(runnable, "test thread #" + index.inc()).start());
+		await();
 
 		System.out.println("Real requests per query:");
 		inspector.getRequestCounts().forEach((k, v) -> System.out.println(v + " of " + k));
