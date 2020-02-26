@@ -1,4 +1,5 @@
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.RoutingServlet;
@@ -30,6 +31,8 @@ public final class BlockingServletExample extends HttpServerLauncher {
 	//[END EXAMPLE]
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		Launcher launcher = new BlockingServletExample();
 		launcher.launch(args);
 	}

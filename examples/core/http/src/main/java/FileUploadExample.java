@@ -43,6 +43,8 @@ public final class FileUploadExample extends HttpServerLauncher {
 	//[END EXAMPLE]
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		Launcher launcher = new FileUploadExample();
 		launcher.launch(args);
 	}

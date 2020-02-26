@@ -1,5 +1,6 @@
 import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
@@ -36,10 +37,13 @@ public final class CustomHttpServerExample extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
+		logger.info("HTTP Server is now available at http://localhost:" + PORT);
 		awaitShutdown();
 	}
 
 	public static void main(String[] args) throws Exception {
+		Injector.useSpecializer();
+
 		Launcher launcher = new CustomHttpServerExample();
 		launcher.launch(args);
 	}

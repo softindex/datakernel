@@ -1,5 +1,6 @@
 package io.datakernel.di;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @SuppressWarnings("FieldCanBeLocal")
 public class DkDiScopesBenchmark {
+	private static final boolean SPECIALIZE = ApplicationSettings.getBoolean(DkDiScopesBenchmark.class, "specialize", false);
 
 	static class Kitchen {
 		private final int places;
@@ -311,6 +313,9 @@ public class DkDiScopesBenchmark {
 			}
 		};
 
+		if (SPECIALIZE) {
+			Injector.useSpecializer();
+		}
 		injector = Injector.of(cookbook);
 	}
 

@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -20,6 +21,8 @@ final class ByteBufConcurrentQueue {
 	private final AtomicReference<AtomicReferenceArray<ByteBuf>> array = new AtomicReference<>(new AtomicReferenceArray<>(1));
 	private final ConcurrentHashMap<Integer, ByteBuf> map = new ConcurrentHashMap<>();
 
+	final AtomicInteger realMin = new AtomicInteger(0);
+
 	@Nullable
 	public ByteBuf poll() {
 		long pos1, pos2;
@@ -32,6 +35,10 @@ final class ByteBufConcurrentQueue {
 				return null;
 			}
 			tail++;
+			if (ByteBufPool.USE_WATCHDOG) {
+				int size = head - tail;
+				realMin.updateAndGet(prevMin -> Math.min(prevMin, size));
+			}
 			pos2 = ((long) head << 32) + (tail & 0xFFFFFFFFL);
 		} while (!pos.compareAndSet(pos1, pos2));
 

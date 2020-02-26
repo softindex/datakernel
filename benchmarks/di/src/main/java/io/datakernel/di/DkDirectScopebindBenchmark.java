@@ -1,5 +1,6 @@
 package io.datakernel.di;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Benchmark)
 @SuppressWarnings("FieldCanBeLocal")
 public class DkDirectScopebindBenchmark {
+	public static final boolean SPECIALIZE = ApplicationSettings.getBoolean(DkDiScopesBenchmark.class, "specialize", false);
 
 	static class Kitchen {
 		private final int places;
@@ -241,6 +243,9 @@ public class DkDirectScopebindBenchmark {
 				.bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
 						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
 
+		if (SPECIALIZE) {
+			Injector.useSpecializer();
+		}
 		injector = Injector.of(cookbook);
 
 	}
@@ -264,6 +269,7 @@ public class DkDirectScopebindBenchmark {
 	}
 
 	public static void main(String[] args) throws RunnerException {
+		System.out.println("Running benchmark with specialization " + (SPECIALIZE ? "ON" : "OFF"));
 
 		Options opt = new OptionsBuilder()
 				.include(DkDirectScopebindBenchmark.class.getSimpleName())

@@ -18,7 +18,6 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.promise.Promise;
@@ -60,14 +59,12 @@ public final class BufsConsumerChunkedDecoderTest {
 			"Etiam egestas ac augue dui dapibus, aliquam adipiscing porttitor magna at, libero elit faucibus purus"
 	};
 	public final AssertingConsumer consumer = new AssertingConsumer();
-	public final ByteBufQueue queue = new ByteBufQueue();
 	public final List<ByteBuf> list = new ArrayList<>();
 	public final BufsConsumerChunkedDecoder chunkedDecoder = BufsConsumerChunkedDecoder.create();
 	public final Random random = new Random();
 
 	@Before
 	public void setUp() {
-		queue.recycle();
 		list.clear();
 		consumer.reset();
 		chunkedDecoder.getOutput().set(consumer);
