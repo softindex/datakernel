@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.crdt;
+package io.datakernel.crdt.remote;
 
 import io.datakernel.common.exception.StacklessException;
+import io.datakernel.crdt.CrdtClient;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.csp.ChannelDeserializer;
@@ -32,12 +34,12 @@ import java.net.InetAddress;
 import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 
-public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer<CrdtServer<K, S>> {
-	private final CrdtStorage<K, S> client;
+public final class CrdtRemoteServer<K extends Comparable<K>, S> extends AbstractServer<CrdtRemoteServer<K, S>> {
+	private final CrdtClient<K, S> client;
 	private final CrdtDataSerializer<K, S> serializer;
 	private final BinarySerializer<K> keySerializer;
 
-	private CrdtServer(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
+	private CrdtRemoteServer(Eventloop eventloop, CrdtClient<K, S> client, CrdtDataSerializer<K, S> serializer) {
 		super(eventloop);
 		this.client = client;
 		this.serializer = serializer;
@@ -45,24 +47,28 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, CrdtDataSerializer<K, S> serializer) {
-		return new CrdtServer<>(eventloop, client, serializer);
+	public static <K extends Comparable<K>, S> CrdtRemoteServer<K, S> create(Eventloop eventloop, CrdtClient<K, S> client, CrdtDataSerializer<K, S> serializer) {
+		return new CrdtRemoteServer<>(eventloop, client, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtServer<K, S> create(Eventloop eventloop, CrdtStorage<K, S> client, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
-		return new CrdtServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
+	public static <K extends Comparable<K>, S> CrdtRemoteServer<K, S> create(Eventloop eventloop, CrdtClient<K, S> client, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+		return new CrdtRemoteServer<>(eventloop, client, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
-		MessagingWithBinaryStreaming<CrdtMessage, CrdtResponse> messaging =
-				MessagingWithBinaryStreaming.create(socket, ofJsonCodec(MESSAGE_CODEC, RESPONSE_CODEC));
+		MessagingWithBinaryStreaming<CrdtRequest, CrdtResponse> messaging =
+				MessagingWithBinaryStreaming.create(socket, ofJsonCodec(REQUEST_CODEC, RESPONSE_CODEC));
 		messaging.receive()
 				.then(msg -> {
 					if (msg == null) {
-						return Promise.ofException(new StacklessException(CrdtServer.class, "Unexpected end of stream"));
+						return Promise.ofException(new StacklessException(CrdtRemoteServer.class, "Unexpected end of stream"));
 					}
-					if (msg == CrdtMessages.UPLOAD) {
+					if (msg == CrdtRequests.PING) {
+						return messaging.send(CrdtResponses.PONG)
+								.whenResult($ -> messaging.close());
+					}
+					if (msg == CrdtRequests.UPLOAD) {
 						return messaging.receiveBinaryStream()
 								.transformWith(ChannelDeserializer.create(serializer))
 								.streamTo(StreamConsumer.ofPromise(client.upload()))
@@ -71,7 +77,7 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 								.whenResult($ -> messaging.close());
 
 					}
-					if (msg == CrdtMessages.REMOVE) {
+					if (msg == CrdtRequests.REMOVE) {
 						return messaging.receiveBinaryStream()
 								.transformWith(ChannelDeserializer.create(keySerializer))
 								.streamTo(StreamConsumer.ofPromise(client.remove()))
@@ -81,12 +87,12 @@ public final class CrdtServer<K extends Comparable<K>, S> extends AbstractServer
 					}
 					if (msg instanceof Download) {
 						return client.download(((Download) msg).getToken())
-								.whenResult($ -> messaging.send(new DownloadStarted()))
+								.whenResult($ -> messaging.send(CrdtResponses.DOWNLOAD_STARTED))
 								.then(supplier -> supplier
 										.transformWith(ChannelSerializer.create(serializer))
 										.streamTo(messaging.sendBinaryStream()));
 					}
-					return Promise.ofException(new StacklessException(CrdtServer.class, "Message type was added, but no handling code for it"));
+					return Promise.ofException(new StacklessException(CrdtRemoteServer.class, "Message type was added, but no handling code for it"));
 				})
 				.whenComplete(($, e) -> {
 					if (e == null) {

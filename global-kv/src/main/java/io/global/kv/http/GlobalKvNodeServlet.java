@@ -72,14 +72,14 @@ public final class GlobalKvNodeServlet {
 					String table = request.getPathParameter("table");
 					try {
 						PubKey space = PubKey.fromString(parameterSpace);
-						long offset;
+						long timestamp;
 						try {
-							String offsetParam = request.getQueryParameter("offset");
-							offset = Long.parseUnsignedLong(offsetParam != null ? offsetParam : "0");
+							String timestampParam = request.getQueryParameter("timestamp");
+							timestamp = Long.parseUnsignedLong(timestampParam != null ? timestampParam : "0");
 						} catch (NumberFormatException e) {
 							throw new ParseException(e);
 						}
-						return node.download(space, table, offset)
+						return node.download(space, table, timestamp)
 								.map(supplier ->
 										HttpResponse.ok200()
 												.withBodyStream(supplier.map(signedDbItem -> encodeWithSizePrefix(KV_ITEM_CODEC, signedDbItem))));

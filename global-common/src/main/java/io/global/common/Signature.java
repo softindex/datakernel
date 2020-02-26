@@ -24,7 +24,6 @@ public final class Signature {
 	private final BigInteger r;
 	private final BigInteger s;
 
-	// region creators
 	private Signature(BigInteger r, BigInteger s) {
 		this.r = r;
 		this.s = s;
@@ -35,7 +34,8 @@ public final class Signature {
 	}
 
 	public static Signature parse(BigInteger r, BigInteger s) throws ParseException {
-		return new Signature(r, s); // TODO
+		// if r and s are bogus then this signature would simply fail verification
+		return new Signature(r, s);
 	}
 
 	public static Signature fromString(String string) throws ParseException {
@@ -47,19 +47,6 @@ public final class Signature {
 			return new Signature(new BigInteger(parts[0], 16), new BigInteger(parts[1], 16));
 		} catch (NumberFormatException e) {
 			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
-		}
-	}
-	// endregion
-
-	public boolean isCanonical() {
-		return s.compareTo(CryptoUtils.HALF_CURVE_ORDER) <= 0;
-	}
-
-	public Signature toCanonicalised() {
-		if (!isCanonical()) {
-			return new Signature(r, CryptoUtils.CURVE.getN().subtract(s));
-		} else {
-			return this;
 		}
 	}
 

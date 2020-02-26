@@ -26,7 +26,6 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.RetryPolicy;
 import io.global.common.*;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
@@ -37,7 +36,6 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -54,14 +52,12 @@ import static java.util.stream.Collectors.toSet;
 public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl, GlobalOTNamespace, GlobalOTNode> implements GlobalOTNode, EventloopService, Initializable<GlobalOTNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalOTNodeImpl.class);
 
-	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.fixedDelay(Duration.ofSeconds(1)); //.immediateRetry().withMaxTotalRetryCount(10);
 	public static final Boolean DEFAULT_POLL_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalOTNodeImpl.class, "pollMasterRepositories", true);
 
 	private final Eventloop eventloop;
 	private final CommitStorage commitStorage;
 
-	boolean pollMasterRepositories = DEFAULT_POLL_MASTER_REPOSITORIES;
-	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
+	private boolean pollMasterRepositories = DEFAULT_POLL_MASTER_REPOSITORIES;
 
 	private GlobalOTNodeImpl(Eventloop eventloop, RawServerId id,
 			DiscoveryService discoveryService,
@@ -83,19 +79,13 @@ public final class GlobalOTNodeImpl extends AbstractGlobalNode<GlobalOTNodeImpl,
 		return this;
 	}
 
-	public GlobalOTNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
-		this.retryPolicy = retryPolicy;
-		return this;
+	public boolean doesPollMasterRepositories() {
+		return pollMasterRepositories;
 	}
 
 	@Override
 	protected GlobalOTNamespace createNamespace(PubKey space) {
 		return new GlobalOTNamespace(this, space);
-	}
-
-	@Override
-	public RawServerId getId() {
-		return id;
 	}
 
 	public CommitStorage getCommitStorage() {

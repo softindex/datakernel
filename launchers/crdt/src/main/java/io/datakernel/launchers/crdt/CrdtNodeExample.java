@@ -17,8 +17,7 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
@@ -27,25 +26,23 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
-import static io.datakernel.codec.StructuredCodecs.*;
+import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
+import static io.datakernel.codec.StructuredCodecs.STRING_CODEC;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
-public final class CrdtNodeExample extends CrdtNodeLauncher<String, TimestampContainer<Integer>> {
+public final class CrdtNodeExample extends CrdtNodeLauncher<String, Integer> {
 	@Override
-	protected CrdtNodeLogicModule<String, TimestampContainer<Integer>> getBusinessLogicModule() {
-		return new CrdtNodeLogicModule<String, TimestampContainer<Integer>>() {
+	protected CrdtNodeLogicModule<String, Integer> getBusinessLogicModule() {
+		return new CrdtNodeLogicModule<String, Integer>() {
 			@Provides
-			CrdtDescriptor<String, TimestampContainer<Integer>> descriptor() {
+			CrdtDescriptor<String, Integer> descriptor() {
 				return new CrdtDescriptor<>(
-						TimestampContainer.createCrdtFunction(Integer::max),
-						new CrdtDataSerializer<>(UTF8_SERIALIZER,
-								TimestampContainer.createSerializer(INT_SERIALIZER)),
+						Integer::max,
+						new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER),
 						STRING_CODEC,
-						tuple(TimestampContainer::new,
-								TimestampContainer::getTimestamp, LONG_CODEC,
-								TimestampContainer::getState, INT_CODEC));
+						INT_CODEC);
 			}
 
 			@Provides

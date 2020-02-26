@@ -16,7 +16,10 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
+import io.datakernel.crdt.local.CrdtClientMap;
+import io.datakernel.crdt.remote.CrdtRemoteClient;
+import io.datakernel.crdt.remote.CrdtRemoteServer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;
@@ -36,9 +39,9 @@ import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static org.junit.Assert.assertEquals;
 
 public final class TestSimpleCrdt {
-	private CrdtStorageMap<String, TimestampContainer<Integer>> remoteStorage;
-	private CrdtServer<String, TimestampContainer<Integer>> server;
-	private CrdtStorage<String, TimestampContainer<Integer>> client;
+	private CrdtClientMap<String, Integer> remoteStorage;
+	private CrdtRemoteServer<String, Integer> server;
+	private CrdtClient<String, Integer> client;
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -48,31 +51,31 @@ public final class TestSimpleCrdt {
 
 	@Before
 	public void setup() throws IOException {
-		remoteStorage = CrdtStorageMap.create(getCurrentEventloop(), TimestampContainer.createCrdtFunction(Integer::max));
-		remoteStorage.put("mx", TimestampContainer.now(2));
-		remoteStorage.put("test", TimestampContainer.now(3));
-		remoteStorage.put("test", TimestampContainer.now(5));
-		remoteStorage.put("only_remote", TimestampContainer.now(35));
-		remoteStorage.put("only_remote", TimestampContainer.now(4));
+		remoteStorage = CrdtClientMap.create(getCurrentEventloop(), Integer::max);
+		remoteStorage.put("mx", 2);
+		remoteStorage.put("test", 3);
+		remoteStorage.put("test", 5);
+		remoteStorage.put("only_remote", 35);
+		remoteStorage.put("only_remote", 4);
 
-		server = CrdtServer.create(getCurrentEventloop(), remoteStorage, new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)));
+		server = CrdtRemoteServer.create(getCurrentEventloop(), remoteStorage, new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER));
 		server.withListenAddress(new InetSocketAddress(5555)).listen();
 
-		client = CrdtStorageClient.create(getCurrentEventloop(), new InetSocketAddress(5555), new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER)));
+		client = CrdtRemoteClient.create(getCurrentEventloop(), new InetSocketAddress(5555), new CrdtDataSerializer<>(UTF8_SERIALIZER, INT_SERIALIZER));
 	}
 
 	@Test
 	public void testUpload() {
-		CrdtStorageMap<String, TimestampContainer<Integer>> localStorage = CrdtStorageMap.create(getCurrentEventloop(), TimestampContainer.createCrdtFunction(Integer::max));
-		localStorage.put("mx", TimestampContainer.now(22));
-		localStorage.put("mx", TimestampContainer.now(2));
-		localStorage.put("mx", TimestampContainer.now(23));
-		localStorage.put("test", TimestampContainer.now(1));
-		localStorage.put("test", TimestampContainer.now(2));
-		localStorage.put("test", TimestampContainer.now(4));
-		localStorage.put("test", TimestampContainer.now(3));
-		localStorage.put("only_local", TimestampContainer.now(47));
-		localStorage.put("only_local", TimestampContainer.now(12));
+		CrdtClientMap<String, Integer> localStorage = CrdtClientMap.create(getCurrentEventloop(), Integer::max);
+		localStorage.put("mx", 22);
+		localStorage.put("mx", 2);
+		localStorage.put("mx", 23);
+		localStorage.put("test", 1);
+		localStorage.put("test", 2);
+		localStorage.put("test", 4);
+		localStorage.put("test", 3);
+		localStorage.put("only_local", 47);
+		localStorage.put("only_local", 12);
 
 		await(StreamSupplier.ofIterator(localStorage.iterator())
 				.streamTo(StreamConsumer.ofPromise(client.upload()))
@@ -81,26 +84,23 @@ public final class TestSimpleCrdt {
 		System.out.println("Data at 'remote' storage:");
 		remoteStorage.iterator().forEachRemaining(System.out::println);
 
-		assertEquals(23, checkNotNull(remoteStorage.get("mx")).getState().intValue());
-		assertEquals(5, checkNotNull(remoteStorage.get("test")).getState().intValue());
-		assertEquals(35, checkNotNull(remoteStorage.get("only_remote")).getState().intValue());
-		assertEquals(47, checkNotNull(remoteStorage.get("only_local")).getState().intValue());
+		assertEquals(23, checkNotNull(remoteStorage.get("mx")).intValue());
+		assertEquals(5, checkNotNull(remoteStorage.get("test")).intValue());
+		assertEquals(35, checkNotNull(remoteStorage.get("only_remote")).intValue());
+		assertEquals(47, checkNotNull(remoteStorage.get("only_local")).intValue());
 	}
 
-	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
-	public void testDownload() {
-		CrdtStorageMap<String, TimestampContainer<Integer>> localStorage = CrdtStorageMap.create(getCurrentEventloop(), TimestampContainer.createCrdtFunction(Integer::max));
+	public void testFetch() {
+		CrdtClientMap<String, Integer> localStorage = CrdtClientMap.create(getCurrentEventloop(), Integer::max);
 
-		await(client.download().then(supplierWithResult -> supplierWithResult
-				.streamTo(StreamConsumer.of(localStorage::put))
-				.whenComplete(server::close)));
+		await(localStorage.fetchAll(client).whenComplete(server::close));
 
 		System.out.println("Data fetched from 'remote' storage:");
 		localStorage.iterator().forEachRemaining(System.out::println);
 
-		assertEquals(2, checkNotNull(localStorage.get("mx")).getState().intValue());
-		assertEquals(5, checkNotNull(localStorage.get("test")).getState().intValue());
-		assertEquals(35, checkNotNull(localStorage.get("only_remote")).getState().intValue());
+		assertEquals(2, checkNotNull(localStorage.get("mx")).intValue());
+		assertEquals(5, checkNotNull(localStorage.get("test")).intValue());
+		assertEquals(35, checkNotNull(localStorage.get("only_remote")).intValue());
 	}
 }

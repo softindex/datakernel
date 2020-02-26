@@ -34,6 +34,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpWorker;
 import static io.global.common.api.AbstractGlobalNode.DEFAULT_LATENCY_MARGIN;
+import static io.global.kv.GlobalKvNodeImpl.DEFAULT_RETRY_POLICY;
 import static io.global.launchers.GlobalConfigConverters.ofPubKey;
 import static io.global.launchers.Utils.getSslContext;
 import static java.util.Collections.emptyList;
@@ -43,10 +44,10 @@ public class Initializers {
 		throw new AssertionError();
 	}
 
-	public static <S extends AbstractGlobalNode<S, L, N>, L extends AbstractGlobalNamespace<L, S, N>, N> Initializer<S>
-	ofAbstractGlobalNode(Config config) {
+	public static <S extends AbstractGlobalNode<S, L, N>, L extends AbstractGlobalNamespace<L, S, N>, N> Initializer<S> ofAbstractGlobalNode(Config config) {
 		return node -> node
 				.withLatencyMargin(config.get(ofDuration(), "latencyMargin", DEFAULT_LATENCY_MARGIN))
+				.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy", DEFAULT_RETRY_POLICY))
 				.withManagedPublicKeys(new HashSet<>(config.get(ofList(ofPubKey()), "managedKeys", emptyList())));
 	}
 

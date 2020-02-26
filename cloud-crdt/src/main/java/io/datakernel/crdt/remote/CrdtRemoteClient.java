@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.crdt;
+package io.datakernel.crdt.remote;
 
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.StacklessException;
+import io.datakernel.crdt.CrdtData;
+import io.datakernel.crdt.CrdtClient;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.datastream.StreamConsumer;
@@ -42,11 +45,11 @@ import java.net.InetSocketAddress;
 import java.util.function.Function;
 
 import static io.datakernel.crdt.CrdtMessaging.*;
-import static io.datakernel.crdt.CrdtMessaging.CrdtMessages.PING;
+import static io.datakernel.crdt.CrdtMessaging.CrdtRequests.PING;
 import static io.datakernel.crdt.CrdtMessaging.CrdtResponses.*;
 import static io.datakernel.csp.binary.ByteBufSerializer.ofJsonCodec;
 
-public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtRemoteClient<K extends Comparable<K>, S> implements CrdtClient<K, S>, EventloopService, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 	private final CrdtDataSerializer<K, S> serializer;
@@ -66,7 +69,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	// endregion
 
 	//region creators
-	private CrdtStorageClient(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
+	private CrdtRemoteClient(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
 		this.eventloop = eventloop;
 		this.address = address;
 		this.serializer = serializer;
@@ -74,15 +77,15 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 		keySerializer = serializer.getKeySerializer();
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
-		return new CrdtStorageClient<>(eventloop, address, serializer);
+	public static <K extends Comparable<K>, S> CrdtRemoteClient<K, S> create(Eventloop eventloop, InetSocketAddress address, CrdtDataSerializer<K, S> serializer) {
+		return new CrdtRemoteClient<>(eventloop, address, serializer);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageClient<K, S> create(Eventloop eventloop, InetSocketAddress address, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
-		return new CrdtStorageClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
+	public static <K extends Comparable<K>, S> CrdtRemoteClient<K, S> create(Eventloop eventloop, InetSocketAddress address, BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+		return new CrdtRemoteClient<>(eventloop, address, new CrdtDataSerializer<>(keySerializer, stateSerializer));
 	}
 
-	public CrdtStorageClient<K, S> withSocketSettings(SocketSettings socketSettings) {
+	public CrdtRemoteClient<K, S> withSocketSettings(SocketSettings socketSettings) {
 		this.socketSettings = socketSettings;
 		return this;
 	}
@@ -98,7 +101,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return connect()
 				.then(messaging ->
-						messaging.send(CrdtMessages.UPLOAD)
+						messaging.send(CrdtRequests.UPLOAD)
 								.map($ -> {
 									ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
@@ -113,22 +116,11 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	}
 
 	@Override
-	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long revision) {
 		return connect()
-				.then(messaging -> messaging.send(new Download(timestamp))
+				.then(messaging -> messaging.send(new Download(revision))
 						.then($ -> messaging.receive())
-						.then(response -> {
-							if (response == null) {
-								return Promise.ofException(new IllegalStateException("Unexpected end of stream"));
-							}
-							if (response.getClass() == DownloadStarted.class) {
-								return Promise.complete();
-							}
-							if (response instanceof ServerError) {
-								return Promise.ofException(new StacklessException(CrdtStorageClient.class, ((ServerError) response).getMsg()));
-							}
-							return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + DownloadStarted.class.getSimpleName()));
-						})
+						.then(simpleHandler(DOWNLOAD_STARTED))
 						.map($ ->
 								messaging.receiveBinaryStream()
 										.transformWith(ChannelDeserializer.create(serializer))
@@ -143,7 +135,7 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 	public Promise<StreamConsumer<K>> remove() {
 		return connect()
 				.then(messaging ->
-						messaging.send(CrdtMessages.REMOVE)
+						messaging.send(CrdtRequests.REMOVE)
 								.map($ -> {
 									ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
 											.withAcknowledgement(ack -> ack
@@ -186,15 +178,15 @@ public final class CrdtStorageClient<K extends Comparable<K>, S> implements Crdt
 				return Promise.complete();
 			}
 			if (response instanceof ServerError) {
-				return Promise.ofException(new StacklessException(CrdtStorageClient.class, ((ServerError) response).getMsg()));
+				return Promise.ofException(new StacklessException(CrdtRemoteClient.class, ((ServerError) response).getMsg()));
 			}
 			return Promise.ofException(new IllegalStateException("Received message " + response + " instead of " + expected));
 		};
 	}
 
-	private Promise<MessagingWithBinaryStreaming<CrdtResponse, CrdtMessage>> connect() {
+	private Promise<MessagingWithBinaryStreaming<CrdtResponse, CrdtRequest>> connect() {
 		return AsyncTcpSocketNio.connect(address, null, socketSettings)
-				.map(socket -> MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, MESSAGE_CODEC)));
+				.map(socket -> MessagingWithBinaryStreaming.create(socket, ofJsonCodec(RESPONSE_CODEC, REQUEST_CODEC)));
 	}
 
 	// region JMX

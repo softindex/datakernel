@@ -34,7 +34,7 @@ public final class BinaryDataFormats {
 	}
 
 	public static final CodecFactory REGISTRY = createGlobal()
-			.with(RawMessage.class, tuple(RawMessage::of,
+			.with(RawMessage.class, tuple(RawMessage::parse,
 					RawMessage::getId, LONG_CODEC,
 					RawMessage::getTimestamp, LONG_CODEC,
 					rawMessage -> rawMessage.isTombstone() ? null : rawMessage.getEncrypted(), BYTES_CODEC.nullable()));

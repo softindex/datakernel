@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.StacklessException;
-import io.datakernel.crdt.primitives.CrdtType;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.MultiSharder;
@@ -43,25 +42,27 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
-public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class);
+@SuppressWarnings("rawtypes") // JMX
+public final class CrdtCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<CrdtCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(CrdtCluster.class);
 
 	private final Eventloop eventloop;
-	private final Map<I, CrdtStorage<K, S>> clients;
-	private final Map<I, CrdtStorage<K, S>> aliveClients;
-	private final Map<I, CrdtStorage<K, S>> deadClients;
+	private final Map<I, CrdtClient<K, S>> clients;
+	private final Map<I, CrdtClient<K, S>> aliveClients;
+	private final Map<I, CrdtClient<K, S>> deadClients;
 
-	private final CrdtFunction<S> function;
+	private final CrdtOperator<S> function;
 	private final RendezvousHashSharder<I, K> shardingFunction;
 
 	private List<I> orderedIds;
 
 	private int replicationCount = 1;
-	private CrdtFilter<S> filter = $ -> true;
+	private Predicate<S> filter = $ -> true;
 
 	// region JMX
 	private boolean detailedStats;
@@ -75,7 +76,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	// endregion
 
 	// region creators
-	private CrdtStorageCluster(Eventloop eventloop, Map<I, CrdtStorage<K, S>> clients, CrdtFunction<S> function) {
+	private CrdtCluster(Eventloop eventloop, Map<I, CrdtClient<K, S>> clients, CrdtOperator<S> function) {
 		this.eventloop = eventloop;
 		this.clients = clients;
 		this.aliveClients = new LinkedHashMap<>(clients); // to keep order for indexed sharding
@@ -84,47 +85,47 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		shardingFunction = RendezvousHashSharder.create(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
-	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtStorageCluster<I, K, S> create(
-			Eventloop eventloop, Map<I, ? extends CrdtStorage<K, S>> clients, CrdtFunction<S> crdtFunction
+	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtCluster<I, K, S> create(
+			Eventloop eventloop, Map<I, ? extends CrdtClient<K, S>> clients, CrdtOperator<S> crdtOperator
 	) {
-		return new CrdtStorageCluster<>(eventloop, new HashMap<>(clients), crdtFunction);
+		return new CrdtCluster<>(eventloop, new HashMap<>(clients), crdtOperator);
 	}
 
-	public static <I extends Comparable<I>, K extends Comparable<K>, S extends CrdtType<S>> CrdtStorageCluster<I, K, S> create(
-			Eventloop eventloop, Map<I, ? extends CrdtStorage<K, S>> clients
+	public static <I extends Comparable<I>, K extends Comparable<K>, S extends Crdt<S>> CrdtCluster<I, K, S> create(
+			Eventloop eventloop, Map<I, ? extends CrdtClient<K, S>> clients
 	) {
-		return new CrdtStorageCluster<>(eventloop, new HashMap<>(clients), CrdtFunction.ofCrdtType());
+		return new CrdtCluster<>(eventloop, new HashMap<>(clients), CrdtOperator.ofCrdtType());
 	}
 
-	public CrdtStorageCluster<I, K, S> withPartition(I partitionId, CrdtStorage<K, S> client) {
+	public CrdtCluster<I, K, S> withPartition(I partitionId, CrdtClient<K, S> client) {
 		clients.put(partitionId, client);
 		aliveClients.put(partitionId, client);
 		recompute();
 		return this;
 	}
 
-	public CrdtStorageCluster<I, K, S> withReplicationCount(int replicationCount) {
+	public CrdtCluster<I, K, S> withReplicationCount(int replicationCount) {
 		this.replicationCount = replicationCount;
 		recompute();
 		return this;
 	}
 
-	public CrdtStorageCluster<I, K, S> withFilter(CrdtFilter<S> filter) {
+	public CrdtCluster<I, K, S> withFilter(Predicate<S> filter) {
 		this.filter = filter;
 		return this;
 	}
 	// endregion
 
 	// region getters
-	public Map<I, ? extends CrdtStorage<K, S>> getClients() {
+	public Map<I, ? extends CrdtClient<K, S>> getClients() {
 		return Collections.unmodifiableMap(clients);
 	}
 
-	public Map<I, CrdtStorage<K, S>> getAliveClients() {
+	public Map<I, CrdtClient<K, S>> getAliveClients() {
 		return Collections.unmodifiableMap(aliveClients);
 	}
 
-	public Map<I, CrdtStorage<K, S>> getDeadClients() {
+	public Map<I, CrdtClient<K, S>> getDeadClients() {
 		return Collections.unmodifiableMap(deadClients);
 	}
 
@@ -175,7 +176,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	}
 
 	private void markAlive(I partitionId) {
-		CrdtStorage<K, S> removed = deadClients.remove(partitionId);
+		CrdtClient<K, S> removed = deadClients.remove(partitionId);
 		if (removed != null) {
 			aliveClients.put(partitionId, removed);
 			recompute();
@@ -184,7 +185,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	}
 
 	public void markDead(I partitionId, Throwable err) {
-		CrdtStorage<K, S> removed = aliveClients.remove(partitionId);
+		CrdtClient<K, S> removed = aliveClients.remove(partitionId);
 		if (removed != null) {
 			deadClients.put(partitionId, removed);
 			recompute();
@@ -196,7 +197,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		shardingFunction.recompute(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
-	private <T> Promise<List<T>> connect(Function<CrdtStorage<K, S>, Promise<T>> method) {
+	private <T> Promise<List<T>> connect(Function<CrdtClient<K, S>, Promise<T>> method) {
 		return Promises.toList(
 				aliveClients.entrySet().stream()
 						.map(entry ->
@@ -209,7 +210,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 							.map(Try::get)
 							.collect(toList());
 					if (successes.isEmpty()) {
-						return Promise.ofException(new StacklessException(CrdtStorageCluster.class, "No successful connections"));
+						return Promise.ofException(new StacklessException(CrdtCluster.class, "No successful connections"));
 					}
 					return Promise.of(successes);
 				});
@@ -217,7 +218,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
-		return connect(CrdtStorage::upload)
+		return connect(CrdtClient::upload)
 				.then(successes -> {
 					ShardingStreamSplitter<CrdtData<K, S>, K> shplitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);
 
@@ -230,8 +231,8 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	}
 
 	@Override
-	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
-		return connect(storage -> storage.download(timestamp))
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long revision) {
+		return connect(storage -> storage.download(revision))
 				.then(successes -> {
 					StreamReducerSimple<K, CrdtData<K, S>, CrdtData<K, S>, CrdtData<K, S>> reducer =
 							StreamReducerSimple.create(CrdtData::getKey, Comparator.naturalOrder(),
@@ -248,7 +249,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
-		return connect(CrdtStorage::remove)
+		return connect(CrdtClient::remove)
 				.then(successes -> {
 					StreamSplitter<K> splitter = StreamSplitter.create();
 

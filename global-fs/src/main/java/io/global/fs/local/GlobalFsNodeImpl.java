@@ -24,7 +24,6 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.RetryPolicy;
 import io.datakernel.remotefs.FsClient;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
@@ -53,11 +52,8 @@ import static io.global.util.Utils.untilTrue;
 public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl, GlobalFsNamespace, GlobalFsNode> implements GlobalFsNode, Initializable<GlobalFsNodeImpl> {
 	private static final Logger logger = LoggerFactory.getLogger(GlobalFsNodeImpl.class);
 
-	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
-
 	private final Function<PubKey, FsClient> storageFactory;
 	private final Function<PubKey, CheckpointStorage> checkpointStorageFactory;
-	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
 	// region creators
 	private GlobalFsNodeImpl(RawServerId id, DiscoveryService discoveryService,
@@ -83,11 +79,6 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 				key -> data.subfolder(key.asString()),
 				key -> new RemoteFsCheckpointStorage(checkpoints.subfolder(key.asString())));
 	}
-
-	public GlobalFsNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
-		this.retryPolicy = retryPolicy;
-		return this;
-	}
 	// endregion
 
 	@Override
@@ -101,10 +92,6 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	public Function<PubKey, CheckpointStorage> getCheckpointStorageFactory() {
 		return checkpointStorageFactory;
-	}
-
-	public RetryPolicy getRetryPolicy() {
-		return retryPolicy;
 	}
 
 	@Override
@@ -123,26 +110,20 @@ public final class GlobalFsNodeImpl extends AbstractGlobalNode<GlobalFsNodeImpl,
 
 	@Override
 	public Promise<ChannelSupplier<DataFrame>> download(PubKey space, String filename, long offset, long length) {
-		GlobalFsNamespace ns = ensureNamespace(space);
-		return ns.getMetadata(filename)
-				.then(metadata -> {
-					if (metadata != null) {
-						return ns.download(filename, offset, length);
-					}
-					return simpleMethod(space,
-							master -> master.getMetadata(space, filename)
-									.then(meta -> meta == null ?
-											Promise.ofException(FILE_NOT_FOUND) :
-											master.download(space, filename, offset, length)
-													.map(supplier -> {
-														ChannelSplitter<DataFrame> splitter = ChannelSplitter.create();
-														ChannelOutput<DataFrame> output = splitter.addOutput();
-														splitter.addOutput().set(ChannelConsumer.ofPromise(ns.upload(filename, offset, meta.getValue().getRevision())));
-														splitter.getInput().set(supplier);
-														return output.getSupplier();
-													})),
-							$ -> Promise.ofException(FILE_NOT_FOUND));
-				})
+		return simpleMethod(space,
+				ns -> ns.getMetadata(filename).then(metadata -> metadata != null ? ns.download(filename, offset, length) : null),
+				(master, ns) -> master.getMetadata(space, filename)
+						.then(meta -> meta == null ?
+								Promise.ofException(FILE_NOT_FOUND) :
+								master.download(space, filename, offset, length)
+										.map(supplier -> {
+											ChannelSplitter<DataFrame> splitter = ChannelSplitter.create();
+											ChannelOutput<DataFrame> output = splitter.addOutput();
+											splitter.addOutput().set(ChannelConsumer.ofPromise(ns.upload(filename, offset, meta.getValue().getRevision())));
+											splitter.getInput().set(supplier);
+											return output.getSupplier();
+										})),
+				() -> Promise.ofException(FILE_NOT_FOUND))
 				.whenComplete(toLogger(logger, "download", space, filename, offset, length, this));
 	}
 

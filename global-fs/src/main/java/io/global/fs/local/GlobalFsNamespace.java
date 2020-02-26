@@ -41,7 +41,7 @@ public final class GlobalFsNamespace extends AbstractGlobalNamespace<GlobalFsNam
 	private final FsClient storage;
 	private final CheckpointStorage checkpointStorage;
 	private final AsyncSupplier<Boolean> fetch = reuse(this::doFetch);
-	private final AsyncSupplier<Boolean> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
+	private final AsyncSupplier<Boolean> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.getRetryPolicy())));
 
 	public GlobalFsNamespace(GlobalFsNodeImpl node, PubKey space) {
 		super(node, space);

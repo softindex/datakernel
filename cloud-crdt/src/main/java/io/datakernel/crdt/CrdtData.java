@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,10 @@
  */
 
 package io.datakernel.crdt;
+
+import io.datakernel.serializer.BinaryInput;
+import io.datakernel.serializer.BinaryOutput;
+import io.datakernel.serializer.BinarySerializer;
 
 public final class CrdtData<K extends Comparable<K>, S> implements Comparable<CrdtData<K, S>> {
 	private final K key;
@@ -60,5 +64,34 @@ public final class CrdtData<K extends Comparable<K>, S> implements Comparable<Cr
 	@Override
 	public String toString() {
 		return "CrdtData{key=" + key + ", state=" + state + '}';
+	}
+
+	public static final class CrdtDataSerializer<K extends Comparable<K>, S> implements BinarySerializer<CrdtData<K, S>> {
+		private final BinarySerializer<K> keySerializer;
+		private final BinarySerializer<S> stateSerializer;
+
+		public CrdtDataSerializer(BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer) {
+			this.keySerializer = keySerializer;
+			this.stateSerializer = stateSerializer;
+		}
+
+		public BinarySerializer<K> getKeySerializer() {
+			return keySerializer;
+		}
+
+		public BinarySerializer<S> getStateSerializer() {
+			return stateSerializer;
+		}
+
+		@Override
+		public void encode(BinaryOutput out, CrdtData<K, S> item) {
+			keySerializer.encode(out, item.getKey());
+			stateSerializer.encode(out, item.getState());
+		}
+
+		@Override
+		public CrdtData<K, S> decode(BinaryInput in) {
+			return new CrdtData<>(keySerializer.decode(in), stateSerializer.decode(in));
+		}
 	}
 }

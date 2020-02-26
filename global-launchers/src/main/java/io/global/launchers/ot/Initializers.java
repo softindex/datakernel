@@ -32,7 +32,6 @@ public class Initializers {
 
 	public static Initializer<GlobalOTNodeImpl> ofGlobalOTNodeImpl(Config config) {
 		return node -> node
-				.withPollMasterRepositories(config.get(ofBoolean(), "pollMasters", DEFAULT_POLL_MASTER_REPOSITORIES))
-				.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy", DEFAULT_RETRY_POLICY));
+				.withPollMasterRepositories(config.get(ofBoolean(), "pollMasters", DEFAULT_POLL_MASTER_REPOSITORIES));
 	}
 }

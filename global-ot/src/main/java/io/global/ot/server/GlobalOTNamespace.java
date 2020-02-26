@@ -105,7 +105,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		private final AsyncSupplier<Void> updateSnapshots = reuse(this::doUpdateSnapshots);
 		private final AsyncSupplier<Void> updatePullRequests = reuse(this::doUpdatePullRequests);
 		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
+		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.getRetryPolicy())));
 		private final AsyncSupplier<Void> pushSnapshots = reuse(this::doPushSnapshots);
 		private final AsyncSupplier<Void> pushPullRequests = reuse(this::doPushPullRequests);
 		private final Function<Set<SignedData<RawCommitHead>>, Promise<Void>> saveHeads = Promises.coalesce(HashSet::new, AbstractCollection::addAll, this::doSaveHeads);
@@ -123,7 +123,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 		}
 
 		public void start() {
-			Promises.retry(() -> Promises.loop((Void) null, $ -> node.pollMasterRepositories, $ -> doPollMasterHeads()), node.retryPolicy);
+			Promises.retry(() -> Promises.loop((Void) null, $ -> node.doesPollMasterRepositories(), $ -> doPollMasterHeads()), node.getRetryPolicy());
 		}
 
 		// region API methods
@@ -254,7 +254,7 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 			if (updateTimestamp > node.getCurrentTimeProvider().currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 				return Promise.complete();
 			}
-			Stream<AsyncSupplier> updates = Stream.of(this::updateHeads, this::updatePullRequests, this::updateSnapshots);
+			Stream<AsyncSupplier<Void>> updates = Stream.of(this::updateHeads, this::updatePullRequests, this::updateSnapshots);
 			return ensureMasterNodes()
 					.then(masters -> masters.isEmpty() && node.isMasterFor(space) ?
 							Promise.complete() :
@@ -428,11 +428,6 @@ public final class GlobalOTNamespace extends AbstractGlobalNamespace<GlobalOTNam
 							resultHeads,
 							cb))
 					.whenException(cb::setException);
-		}
-
-		private Promise<Void> forEachMaster(Function<GlobalOTNode, Promise<Void>> action) {
-			return ensureMasterNodes()
-					.then(masters -> tolerantCollectVoid(masters, action));
 		}
 		// endregion
 	}

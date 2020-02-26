@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.crdt.Crdt;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
@@ -24,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.stream.Stream;
 
-public final class TPSet<E> implements Set<E>, CrdtMergable<TPSet<E>> {
+public final class TPSet<E> implements Set<E>, Crdt<TPSet<E>> {
 	private final GSet<E> adds;
 	private final GSet<E> removes;
 

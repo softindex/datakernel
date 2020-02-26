@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package io.datakernel.crdt.primitives;
 
 import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.crdt.Crdt;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
@@ -31,7 +32,7 @@ import java.util.stream.Stream;
 import static java.lang.Math.max;
 import static java.util.stream.Collectors.toMap;
 
-public final class LWWSet<E> implements Set<E>, CrdtType<LWWSet<E>> {
+public final class LWWSet<E> implements Set<E>, Crdt<LWWSet<E>> {
 	private final Map<E, Timestamps> set;
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
@@ -62,14 +63,21 @@ public final class LWWSet<E> implements Set<E>, CrdtType<LWWSet<E>> {
 
 	@Override
 	@Nullable
-	public LWWSet<E> extract(long timestamp) {
+	public LWWSet<E> extract(long revision) {
 		Map<E, Timestamps> newSet = set.entrySet().stream()
-				.filter(entry -> entry.getValue().added > timestamp || entry.getValue().removed > timestamp)
+				.filter(entry -> entry.getValue().added > revision || entry.getValue().removed > revision)
 				.collect(toMap(Entry::getKey, Entry::getValue));
 		if (newSet.isEmpty()) {
 			return null;
 		}
 		return new LWWSet<>(newSet);
+	}
+
+	public long getRevision() {
+		return set.values().stream()
+				.mapToLong(value -> Math.min(value.added, value.removed))
+				.min()
+				.orElse(0);
 	}
 
 	@Override

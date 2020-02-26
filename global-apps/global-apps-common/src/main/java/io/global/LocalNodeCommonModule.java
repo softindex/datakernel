@@ -8,8 +8,9 @@ import io.datakernel.http.IAsyncHttpClient;
 import io.datakernel.promise.Promise;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.RepoStorageFactory;
 import io.global.common.discovery.HttpDiscoveryService;
-import io.global.kv.api.StorageFactory;
+import io.global.kv.api.KvStorage;
 import io.global.kv.stub.RuntimeKvStorageStub;
 import io.global.ot.server.CommitStorage;
 import io.global.ot.stub.CommitStorageStub;
@@ -62,7 +63,7 @@ public final class LocalNodeCommonModule extends AbstractModule {
 	}
 
 	@Provides
-	StorageFactory kvStorageFactory() {
+	RepoStorageFactory<KvStorage> kvStorageFactory() {
 		return (pubKey, table) -> Promise.of(new RuntimeKvStorageStub());
 	}
 }

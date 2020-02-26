@@ -112,18 +112,20 @@ public interface RetryPolicy<S> {
 		};
 	}
 
-	static RetryPolicy exponentialBackoff(Duration initialDelay, Duration maxDelay) {
+	static RetryPolicy<SimpleRetryState> exponentialBackoff(Duration initialDelay, Duration maxDelay) {
 		return exponentialBackoff(initialDelay.toMillis(), maxDelay.toMillis());
 	}
 
-	static RetryPolicy exponentialBackoff(long initialDelay, long maxDelay) {
+	static RetryPolicy<SimpleRetryState> exponentialBackoff(long initialDelay, long maxDelay) {
 		return exponentialBackoff(initialDelay, maxDelay, 2.0);
 	}
 
 	abstract class DelegatingRetryPolicy<S, DS> implements RetryPolicy<Tuple2<S, DS>> {
 		private final RetryPolicy<DS> delegateRetryPolicy;
 
-		protected DelegatingRetryPolicy(RetryPolicy<DS> policy) {delegateRetryPolicy = policy;}
+		protected DelegatingRetryPolicy(RetryPolicy<DS> policy) {
+			delegateRetryPolicy = policy;
+		}
 
 		@Override
 		public final Tuple2<S, DS> createRetryState() {
@@ -160,7 +162,7 @@ public interface RetryPolicy<S> {
 		};
 	}
 
-	default RetryPolicy withMaxTotalRetryTimeout(Duration maxRetryTimeout) {
+	default RetryPolicy<Tuple2<RefLong, S>> withMaxTotalRetryTimeout(Duration maxRetryTimeout) {
 		long maxRetryTimeoutMillis = maxRetryTimeout.toMillis();
 		return new DelegatingRetryPolicy<RefLong, S>(this) {
 			@Override

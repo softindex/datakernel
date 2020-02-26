@@ -22,7 +22,7 @@ import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.config.Config;
 import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.local.CrdtClientMap;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
@@ -55,7 +55,7 @@ public abstract class CrdtHttpModule<K extends Comparable<K>, S> extends Abstrac
 	@Provides
 	AsyncServlet servlet(
 			CrdtDescriptor<K, S> descriptor,
-			CrdtStorageMap<K, S> client,
+			CrdtClientMap<K, S> client,
 			@Optional BackupService<K, S> backupService
 	) {
 		StructuredCodec<K> keyCodec = descriptor.getKeyCodec();

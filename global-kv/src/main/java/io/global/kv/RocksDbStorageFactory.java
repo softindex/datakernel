@@ -8,14 +8,13 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.global.common.PubKey;
+import io.global.common.api.RepoStorageFactory;
 import io.global.kv.api.KvStorage;
-import io.global.kv.api.StorageFactory;
 import org.jetbrains.annotations.NotNull;
 import org.rocksdb.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -31,7 +30,7 @@ import static io.datakernel.codec.binary.BinaryUtils.decode;
 import static io.datakernel.codec.binary.BinaryUtils.encodeAsArray;
 import static io.global.kv.util.BinaryDataFormats.REGISTRY;
 
-public final class RocksDbStorageFactory implements EventloopService, StorageFactory {
+public final class RocksDbStorageFactory implements EventloopService, RepoStorageFactory<KvStorage> {
 	private static final Logger logger = LoggerFactory.getLogger(RocksDbStorageFactory.class);
 
 	private static final StructuredCodec<Tuple2<PubKey, String>> DESCRIPTOR_CODEC = REGISTRY.get(new TypeT<Tuple2<PubKey, String>>() {});

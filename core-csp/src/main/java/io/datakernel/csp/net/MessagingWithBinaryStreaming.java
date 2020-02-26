@@ -64,8 +64,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 				this);
 	}
 
-	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket,
-			ByteBufSerializer<I, O> serializer) {
+	public static <I, O> MessagingWithBinaryStreaming<I, O> create(AsyncTcpSocket socket, ByteBufSerializer<I, O> serializer) {
 		MessagingWithBinaryStreaming<I, O> messaging = new MessagingWithBinaryStreaming<>(socket, serializer);
 		messaging.prefetch();
 		return messaging;
@@ -73,18 +72,19 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	// endregion
 
 	private void prefetch() {
-		if (bufs.isEmpty()) {
-			socket.read()
-					.whenResult(buf -> {
-						if (buf != null) {
-							bufs.add(buf);
-						} else {
-							readDone = true;
-							closeIfDone();
-						}
-					})
-					.whenException(this::close);
+		if (!bufs.isEmpty()) {
+			return;
 		}
+		socket.read()
+				.whenResult(buf -> {
+					if (buf == null) {
+						readDone = true;
+						closeIfDone();
+					} else {
+						bufs.add(buf);
+					}
+				})
+				.whenException(this::close);
 	}
 
 	@Override

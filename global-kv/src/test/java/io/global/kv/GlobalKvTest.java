@@ -31,11 +31,9 @@ import io.global.common.SignedData;
 import io.global.common.SimKey;
 import io.global.common.api.AnnounceData;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.RepoStorageFactory;
 import io.global.common.discovery.LocalDiscoveryService;
-import io.global.kv.api.GlobalKvNode;
-import io.global.kv.api.KvClient;
-import io.global.kv.api.KvItem;
-import io.global.kv.api.StorageFactory;
+import io.global.kv.api.*;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.kv.stub.RuntimeKvStorageStub;
@@ -87,7 +85,7 @@ public final class GlobalKvTest {
 	private GlobalKvAdapter<String, String> secondAliceAdapter;
 
 	private Function<RawServerId, GlobalKvNode> nodeFactory;
-	private StorageFactory storageFactory;
+	private RepoStorageFactory<KvStorage> storageFactory;
 
 	private KvClient<String, String> cachingAliceGateway;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,16 +17,14 @@
 package io.datakernel.datastream.processor;
 
 /**
- * Shares objects to shards with specified algorithm
+ * A function that calculates shard indices for given objects
  *
- * @param <K> type of object for sharding
+ * @see MultiSharder
  */
 @FunctionalInterface
 public interface Sharder<K> {
 	/**
-	 * Returns shard key (index of partition to which this object should be sent)
-	 *
-	 * @param object object for sharding
+	 * Returns shard index for given object
 	 */
 	int shard(K object);
 }

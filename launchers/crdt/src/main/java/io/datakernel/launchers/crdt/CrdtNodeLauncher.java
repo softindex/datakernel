@@ -18,7 +18,7 @@ package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.crdt.CrdtServer;
+import io.datakernel.crdt.remote.CrdtRemoteServer;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
@@ -41,10 +41,10 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 
 	@Inject
 	@Cluster
-	CrdtServer<K, S> clusterServer;
+	CrdtRemoteServer<K, S> clusterServer;
 
 	@Inject
-	CrdtServer<K, S> crdtServer;
+	CrdtRemoteServer<K, S> crdtServer;
 
 	@Provides
 	Config config() {
@@ -55,13 +55,14 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 
 	@Override
 	protected Module getModule() {
+		Key<CompletionStage<Void>> completionKey = new Key<CompletionStage<Void>>() {};
 		return combine(
 				ServiceGraphModule.create(),
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.rebindImport(completionKey, completionKey.named(OnStart.class)),
 				getBusinessLogicModule());
 	}
 

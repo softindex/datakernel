@@ -1,5 +1,6 @@
 package io.global.pm.api;
 
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -16,7 +17,11 @@ public final class RawMessage {
 		this.encrypted = encrypted;
 	}
 
-	public static RawMessage of(long id, long timestamp, @Nullable byte[] encrypted) {
+	public static RawMessage of(long id, long timestamp, @NotNull byte[] encrypted) {
+		return new RawMessage(id, timestamp, encrypted);
+	}
+
+	public static RawMessage parse(long id, long timestamp, @Nullable byte[] encrypted) {
 		return new RawMessage(id, timestamp, encrypted);
 	}
 

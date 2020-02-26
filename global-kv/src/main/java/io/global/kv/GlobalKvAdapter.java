@@ -59,27 +59,27 @@ public final class GlobalKvAdapter<K, V> implements KvClient<K, V> {
 	}
 
 	@Override
-	public Promise<ChannelConsumer<KvItem<K, V>>> upload(String table) {
+	public Promise<ChannelConsumer<KvItem<K, V>>> upload(String repo) {
 		return privKey != null ?
-				driver.upload(new KeyPair(privKey, space), table, currentSimKey) :
+				driver.upload(new KeyPair(privKey, space), repo, currentSimKey) :
 				Promise.ofException(UPK_UPLOAD);
 	}
 
 	@Override
-	public Promise<ChannelSupplier<KvItem<K, V>>> download(String table, long timestamp) {
-		return driver.download(space, table, timestamp, currentSimKey);
+	public Promise<ChannelSupplier<KvItem<K, V>>> download(String repo, long timestamp) {
+		return driver.download(space, repo, timestamp, currentSimKey);
 	}
 
 	@Override
-	public Promise<ChannelConsumer<K>> remove(String table) {
+	public Promise<ChannelConsumer<K>> remove(String repo) {
 		return privKey != null ?
-				driver.remove(new KeyPair(privKey, space), table) :
+				driver.remove(new KeyPair(privKey, space), repo) :
 				Promise.ofException(UPK_DELETE);
 	}
 
 	@Override
-	public Promise<KvItem<K, V>> get(String table, K key) {
-		return driver.get(space, table, key, currentSimKey);
+	public Promise<KvItem<K, V>> get(String repo, K key) {
+		return driver.get(space, repo, key, currentSimKey);
 	}
 
 	@Override

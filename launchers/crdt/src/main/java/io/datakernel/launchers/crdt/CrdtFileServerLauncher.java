@@ -18,8 +18,8 @@ package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.crdt.CrdtServer;
-import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.remote.CrdtRemoteServer;
+import io.datakernel.crdt.local.CrdtClientFs;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Key;
@@ -47,7 +47,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 	public static final String PROPERTIES_FILE = "crdt-file-server.properties";
 
 	@Inject
-	CrdtServer<K, S> crdtServer;
+	CrdtRemoteServer<K, S> crdtServer;
 
 	@Provides
 	Eventloop eventloop() {
@@ -87,14 +87,14 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 
 	public abstract static class CrdtFileServerLogicModule<K extends Comparable<K>, S> extends AbstractModule {
 		@Provides
-		CrdtServer<K, S> crdtServer(Eventloop eventloop, CrdtStorageFs<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
-			return CrdtServer.create(eventloop, crdtClient, descriptor.getSerializer())
+		CrdtRemoteServer<K, S> crdtServer(Eventloop eventloop, CrdtClientFs<K, S> crdtClient, CrdtDescriptor<K, S> descriptor, Config config) {
+			return CrdtRemoteServer.create(eventloop, crdtClient, descriptor.getSerializer())
 					.initialize(ofAbstractServer(config.getChild("crdt.server")));
 		}
 
 		@Provides
-		CrdtStorageFs<K, S> fsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
-			return CrdtStorageFs.create(eventloop, localFsClient, descriptor.getSerializer(), descriptor.getCrdtFunction())
+        CrdtClientFs<K, S> fsCrdtClient(Eventloop eventloop, LocalFsClient localFsClient, CrdtDescriptor<K, S> descriptor, Config config) {
+			return CrdtClientFs.create(eventloop, localFsClient, descriptor.getSerializer(), descriptor.getCrdtOperator())
 					.initialize(Initializers.ofFsCrdtClient(config.getChild("crdt.files")));
 		}
 	}

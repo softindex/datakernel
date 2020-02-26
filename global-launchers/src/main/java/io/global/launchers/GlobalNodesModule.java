@@ -35,6 +35,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 import io.global.common.RawServerId;
 import io.global.common.api.DiscoveryService;
+import io.global.common.api.RepoStorageFactory;
 import io.global.common.discovery.HttpDiscoveryService;
 import io.global.fs.api.CheckpointPosStrategy;
 import io.global.fs.api.GlobalFsNode;
@@ -46,7 +47,7 @@ import io.global.kv.GlobalKvDriver;
 import io.global.kv.GlobalKvNodeImpl;
 import io.global.kv.RocksDbStorageFactory;
 import io.global.kv.api.GlobalKvNode;
-import io.global.kv.api.StorageFactory;
+import io.global.kv.api.KvStorage;
 import io.global.kv.http.GlobalKvNodeServlet;
 import io.global.kv.http.HttpGlobalKvNode;
 import io.global.ot.api.GlobalOTNode;
@@ -78,10 +79,7 @@ import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.global.launchers.GlobalConfigConverters.ofRawServerId;
 import static io.global.launchers.Initializers.ofAbstractGlobalNode;
 import static io.global.launchers.Initializers.sslServerInitializer;
-import static io.global.launchers.fs.Initializers.ofGlobalFsNodeImpl;
-import static io.global.launchers.kv.Initializers.ofGlobalKvNodeImpl;
 import static io.global.launchers.ot.Initializers.ofGlobalOTNodeImpl;
-import static io.global.launchers.pm.Initializers.ofGlobalPmNodeImpl;
 
 public class GlobalNodesModule extends AbstractModule {
 	@Override
@@ -110,23 +108,20 @@ public class GlobalNodesModule extends AbstractModule {
 	GlobalFsNodeImpl globalFsNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalFsNode> factory,
 			@Named("FS") FsClient fsClient) {
 		return GlobalFsNodeImpl.create(serverId, discoveryService, factory, fsClient)
-				.initialize(ofAbstractGlobalNode(config.getChild("fs")))
-				.initialize(ofGlobalFsNodeImpl(config.getChild("fs")));
+				.initialize(ofAbstractGlobalNode(config.getChild("fs")));
 	}
 
 	@Provides
 	GlobalKvNodeImpl globalKvNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalKvNode> factory,
-			StorageFactory storageFactory) {
+			RepoStorageFactory<KvStorage> storageFactory) {
 		return GlobalKvNodeImpl.create(serverId, discoveryService, factory, storageFactory)
-				.initialize(ofAbstractGlobalNode(config.getChild("kv")))
-				.initialize(ofGlobalKvNodeImpl(config.getChild("kv")));
+				.initialize(ofAbstractGlobalNode(config.getChild("kv")));
 	}
 
 	@Provides
 	GlobalPmNodeImpl globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
 		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
-				.initialize(ofAbstractGlobalNode(config.getChild("pm")))
-				.initialize(ofGlobalPmNodeImpl(config.getChild("pm")));
+				.initialize(ofAbstractGlobalNode(config.getChild("pm")));
 	}
 
 	@Provides
@@ -232,7 +227,7 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	StorageFactory kvStorageFactory(Eventloop eventloop, Config config, Executor executor) {
+	RepoStorageFactory<KvStorage> kvStorageFactory(Eventloop eventloop, Config config, Executor executor) {
 		return RocksDbStorageFactory.create(eventloop, executor, config.get("kv.storage"));
 	}
 

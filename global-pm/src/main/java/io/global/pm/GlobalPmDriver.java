@@ -60,7 +60,7 @@ public final class GlobalPmDriver<T> {
 		byte[] encrypted = payload != null ?
 				receiver.encrypt(BinaryUtils.encodeAsArray(tupleCodec, new Tuple2<>(sender.computePubKey(), payload))) :
 				null;
-		RawMessage msg = RawMessage.of(id, timestamp, encrypted);
+		RawMessage msg = RawMessage.parse(id, timestamp, encrypted);
 		return SignedData.sign(RAW_MESSAGE_CODEC, msg, sender);
 	}
 

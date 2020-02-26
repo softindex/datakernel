@@ -28,12 +28,13 @@ import io.datakernel.promise.RetryPolicy;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
-import io.global.common.api.AbstractGlobalNode;
+import io.global.common.api.AbstractRepoGlobalNamespace.Repo;
+import io.global.common.api.AbstractRepoGlobalNode;
 import io.global.common.api.DiscoveryService;
-import io.global.kv.GlobalKvNamespace.Repo;
+import io.global.common.api.RepoStorageFactory;
 import io.global.kv.api.GlobalKvNode;
+import io.global.kv.api.KvStorage;
 import io.global.kv.api.RawKvItem;
-import io.global.kv.api.StorageFactory;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -45,38 +46,29 @@ import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static io.global.util.Utils.untilTrue;
 
-public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl, GlobalKvNamespace, GlobalKvNode> implements GlobalKvNode, Initializable<GlobalKvNodeImpl> {
-	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
-	public static final Duration DEFAULT_SYNC_MARGIN = Duration.ofMinutes(5);
+public final class GlobalKvNodeImpl extends AbstractRepoGlobalNode<GlobalKvNodeImpl, GlobalKvNamespace, GlobalKvNode, KvStorage> implements GlobalKvNode, Initializable<GlobalKvNodeImpl> {
+	public static final RetryPolicy<?> DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
 
-	private Duration syncMargin = DEFAULT_SYNC_MARGIN;
-	private final StorageFactory storageFactory;
-	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
+	private final RepoStorageFactory<KvStorage> storageFactory;
 
 	// region creators
 	private GlobalKvNodeImpl(RawServerId id, DiscoveryService discoveryService,
 			Function<RawServerId, GlobalKvNode> nodeFactory,
-			StorageFactory storageFactory) {
+			RepoStorageFactory<KvStorage> storageFactory) {
 		super(id, discoveryService, nodeFactory);
 		this.storageFactory = storageFactory;
 	}
 
 	public static GlobalKvNodeImpl create(RawServerId id, DiscoveryService discoveryService,
 			Function<RawServerId, GlobalKvNode> nodeFactory,
-			StorageFactory storageFactory) {
+			RepoStorageFactory<KvStorage> storageFactory) {
 		return new GlobalKvNodeImpl(id, discoveryService, nodeFactory, storageFactory);
 	}
 
-	public GlobalKvNodeImpl withSyncMargin(Duration syncMargin) {
-		this.syncMargin = syncMargin;
+	public GlobalKvNodeImpl withSyncMargin(Duration latencyMargin) {
+		this.latencyMargin = latencyMargin;
 		return this;
 	}
-
-	public GlobalKvNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
-		this.retryPolicy = retryPolicy;
-		return this;
-	}
-
 	// endregion
 
 	@Override
@@ -84,19 +76,19 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 		return new GlobalKvNamespace(this, space);
 	}
 
-	public Duration getSyncMargin() {
-		return syncMargin;
+	public RepoStorageFactory<KvStorage> getStorageFactory() {
+		return storageFactory;
 	}
 
-	public StorageFactory getStorageFactory() {
-		return storageFactory;
+	public Duration getSyncMargin() {
+		return latencyMargin;
 	}
 
 	@Override
 	public Promise<ChannelConsumer<SignedData<RawKvItem>>> upload(PubKey space, String table) {
 		GlobalKvNamespace ns = ensureNamespace(space);
 		return ns.ensureRepository(table)
-				.then(repo -> repo.upload()
+				.then(repo -> repo.getStorage().upload()
 						.map(consumer -> consumer
 								.withAcknowledgement(ack -> ack
 										.whenComplete(() -> {
@@ -107,40 +99,26 @@ public final class GlobalKvNodeImpl extends AbstractGlobalNode<GlobalKvNodeImpl,
 	}
 
 	@Override
-	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(PubKey space, String table, long timestamp) {
-		GlobalKvNamespace ns = ensureNamespace(space);
-		return ns.ensureRepository(table)
-				.then(repo -> repo.storage.download(timestamp)
-						.then(supplier -> {
-							if (supplier != null) {
-								return Promise.of(supplier);
-							}
-							return simpleMethod(space,
-									master -> master.download(space, table, timestamp)
-											.map(itemSupplier -> {
-												ChannelSplitter<SignedData<RawKvItem>> splitter = ChannelSplitter.create();
-												ChannelOutput<SignedData<RawKvItem>> output = splitter.addOutput();
-												splitter.addOutput().set(ChannelConsumer.ofPromise(repo.upload()));
-												splitter.getInput().set(itemSupplier);
-												return output.getSupplier();
-											}),
-									$ -> Promise.of(ChannelSupplier.of()));
-						}));
+	public Promise<ChannelSupplier<SignedData<RawKvItem>>> download(PubKey space, String repo, long timestamp) {
+		return simpleRepoMethod(space, repo,
+				r -> r.getStorage().download(timestamp),
+				(master, r) -> master.download(space, repo, timestamp)
+						.map(itemSupplier -> {
+							ChannelSplitter<SignedData<RawKvItem>> splitter = ChannelSplitter.create();
+							ChannelOutput<SignedData<RawKvItem>> output = splitter.addOutput();
+							splitter.addOutput().set(ChannelConsumer.ofPromise((r.getStorage().upload())));
+							splitter.getInput().set(itemSupplier);
+							return output.getSupplier();
+						}),
+				() -> Promise.of(ChannelSupplier.of()));
 	}
 
 	@Override
-	public Promise<@Nullable SignedData<RawKvItem>> get(PubKey space, String table, byte[] key) {
-		GlobalKvNamespace ns = ensureNamespace(space);
-		return ns.ensureRepository(table)
-				.then(repo -> repo.storage.get(key)
-						.then(signedData -> {
-							if (signedData != null) {
-								return Promise.of(signedData);
-							}
-							return simpleMethod(space,
-									master -> master.get(space, table, key),
-									$ -> Promise.of(signedData));
-						}));
+	public Promise<@Nullable SignedData<RawKvItem>> get(PubKey space, String repo, byte[] key) {
+		return simpleRepoMethod(space, repo,
+				r -> r.getStorage().get(key),
+				(master, r) -> master.get(space, repo, key),
+				() -> Promise.of(null));
 	}
 
 	@Override

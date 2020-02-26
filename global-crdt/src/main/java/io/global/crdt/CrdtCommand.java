@@ -14,22 +14,24 @@
  * limitations under the License.
  */
 
-package io.global.launchers.fs;
+package io.global.crdt;
 
-import io.datakernel.common.Initializer;
-import io.datakernel.config.Config;
-import io.global.fs.local.GlobalFsNodeImpl;
+import io.datakernel.http.HttpPathPart;
 
-import static io.datakernel.config.ConfigConverters.ofRetryPolicy;
-import static io.global.fs.local.GlobalFsNodeImpl.DEFAULT_RETRY_POLICY;
+public enum CrdtCommand implements HttpPathPart {
+	UPLOAD("upload"),
+	DOWNLOAD("download"),
+	REMOVE("remove"),
+	LIST("list");
 
-public class Initializers {
-	private Initializers() {
-		throw new AssertionError();
+	private final String pathPart;
+
+	CrdtCommand(String pathPart) {
+		this.pathPart = pathPart;
 	}
 
-	public static Initializer<GlobalFsNodeImpl> ofGlobalFsNodeImpl(Config config) {
-		return node -> node
-				.withRetryPolicy(config.get(ofRetryPolicy(), "retryPolicy", DEFAULT_RETRY_POLICY));
+	@Override
+	public String toString() {
+		return pathPart;
 	}
 }

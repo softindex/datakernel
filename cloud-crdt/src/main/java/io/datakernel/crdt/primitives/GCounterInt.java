@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,13 +16,14 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.crdt.Crdt;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
 
 import static java.lang.Math.max;
 
-public final class GCounterInt implements CrdtMergable<GCounterInt> {
+public final class GCounterInt implements Crdt<GCounterInt> {
 	public static final BinarySerializer<GCounterInt> SERIALIZER = new Serializer();
 
 	private final int[] state;

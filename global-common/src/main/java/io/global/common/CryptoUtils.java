@@ -183,7 +183,11 @@ public final class CryptoUtils {
 		ECDSASigner signer = new ECDSASigner(new HMacDSAKCalculator(new SHA256Digest()));
 		signer.init(true, ecPrivateKeyParameters);
 		BigInteger[] components = signer.generateSignature(input);
-		return Signature.of(components[0], components[1]).toCanonicalised();
+		BigInteger s = components[1];
+		if (s.compareTo(HALF_CURVE_ORDER) > 0) {
+			s = CURVE.getN().subtract(s);
+		}
+		return Signature.of(components[0], s);
 	}
 
 	public static byte[] randomBytes(int size) {

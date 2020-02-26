@@ -8,66 +8,41 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.RetryPolicy;
 import io.global.common.PubKey;
 import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNode;
 import io.global.common.api.DiscoveryService;
-import io.global.pm.GlobalPmNamespace.MailBox;
+import io.global.pm.GlobalPmNamespace.Repo;
 import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.MessageStorage;
 import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static io.global.util.Utils.untilTrue;
 
 public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl, GlobalPmNamespace, GlobalPmNode> implements GlobalPmNode {
-	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
-	public static final Duration DEFAULT_SYNC_MARGIN = Duration.ofMinutes(5);
-
-	private Duration syncMargin = DEFAULT_SYNC_MARGIN;
 	private final MessageStorage storage;
-	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
 
-	// region creators
-	private GlobalPmNodeImpl(RawServerId id, DiscoveryService discoveryService,
-			Function<RawServerId, GlobalPmNode> nodeFactory,
-			MessageStorage storage) {
+	private GlobalPmNodeImpl(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> nodeFactory, MessageStorage storage) {
 		super(id, discoveryService, nodeFactory);
 		this.storage = storage;
 	}
 
-	public static GlobalPmNodeImpl create(RawServerId id, DiscoveryService discoveryService,
-			Function<RawServerId, GlobalPmNode> nodeFactory, MessageStorage storage) {
+	public static GlobalPmNodeImpl create(RawServerId id, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> nodeFactory, MessageStorage storage) {
 		return new GlobalPmNodeImpl(id, discoveryService, nodeFactory, storage);
 	}
-
-	public GlobalPmNodeImpl withSyncMargin(Duration syncMargin) {
-		this.syncMargin = syncMargin;
-		return this;
-	}
-
-	public GlobalPmNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
-		this.retryPolicy = retryPolicy;
-		return this;
-	}
-	// endregion
 
 	@Override
 	protected GlobalPmNamespace createNamespace(PubKey space) {
 		return new GlobalPmNamespace(this, space);
-	}
-
-	public Duration getSyncMargin() {
-		return syncMargin;
 	}
 
 	public MessageStorage getStorage() {
@@ -77,7 +52,7 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	@Override
 	public Promise<ChannelConsumer<SignedData<RawMessage>>> upload(PubKey space, String mailBox) {
 		GlobalPmNamespace ns = ensureNamespace(space);
-		MailBox box = ns.ensureMailBox(mailBox);
+		Repo box = ns.ensureRepo(mailBox);
 		return box.upload()
 				.map(consumer -> consumer.withAcknowledgement(ack -> ack
 						.whenComplete(() -> {
@@ -88,30 +63,23 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	}
 
 	@Override
-	public Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String mailBox, long timestamp) {
-		MailBox box = ensureNamespace(space).ensureMailBox(mailBox);
-		return storage.download(space, mailBox, timestamp)
-				.then(supplier -> {
-					if (supplier != null) {
-						return Promise.of(supplier);
-					}
-					return simpleMethod(space,
-							master -> master.download(space, mailBox, timestamp)
-									.map(messageSupplier -> {
-										ChannelSplitter<SignedData<RawMessage>> splitter = ChannelSplitter.create();
-										ChannelOutput<SignedData<RawMessage>> output = splitter.addOutput();
-										splitter.addOutput().set(ChannelConsumer.ofPromise(box.upload()));
-										splitter.getInput().set(messageSupplier);
-										return output.getSupplier();
-									}),
-							$ -> Promise.of(ChannelSupplier.of())
-					);
-				});
+	public Promise<ChannelSupplier<SignedData<RawMessage>>> download(PubKey space, String repo, long timestamp) {
+		return simpleMethod(space,
+				ns -> storage.download(space, repo, timestamp),
+				(master, ns) -> master.download(space, repo, timestamp)
+						.map(messageSupplier -> {
+							ChannelSplitter<SignedData<RawMessage>> splitter = ChannelSplitter.create();
+							ChannelOutput<SignedData<RawMessage>> output = splitter.addOutput();
+							splitter.addOutput().set(ChannelConsumer.ofPromise(ns.ensureRepo(repo).upload()));
+							splitter.getInput().set(messageSupplier);
+							return output.getSupplier();
+						}),
+				() -> Promise.of(ChannelSupplier.of()));
 	}
 
 	@Override
 	public Promise<Void> send(PubKey space, String mailBox, SignedData<RawMessage> message) {
-		MailBox box = ensureNamespace(space).ensureMailBox(mailBox);
+		Repo box = ensureNamespace(space).ensureRepo(mailBox);
 		return box.send(message)
 				.toVoid()
 				.whenResult($ -> {
@@ -122,36 +90,36 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	}
 
 	@Override
-	public Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox) {
-		GlobalPmNamespace ns = ensureNamespace(space);
-		MailBox box = ns.ensureMailBox(mailBox);
-		return box.poll()
-				.then(message -> {
-					if (message != null) {
-						return Promise.of(message);
-					}
-					return simpleMethod(space,
-							master -> master.poll(space, mailBox)
-									.then(polledMsg -> {
-										if (polledMsg == null) {
-											return Promise.ofException(new StacklessException("No message polled"));
-										}
-										return box.send(polledMsg)
-												.map($ -> polledMsg)
-												.whenResult($ -> box.fetch(master));
-									}),
-							$ -> Promise.of(null));
-				});
+	public Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String repo) {
+		return simpleMethod(space,
+				ns -> ns.ensureRepo(repo).poll(),
+				(master, ns) -> master.poll(space, repo)
+						.then(polledMsg -> {
+							Repo box = ns.ensureRepo(repo);
+							return polledMsg != null ?
+									box.send(polledMsg)
+											.map($ -> polledMsg)
+											.whenResult($ -> box.fetch(master)) :
+									Promise.ofException(new StacklessException("No message polled"));
+						}),
+				() -> Promise.of(null));
 	}
 
 	@Override
 	public Promise<Set<String>> list(PubKey space) {
-		return simpleMethod(space, node -> node.list(space), GlobalPmNamespace::list);
+		GlobalPmNamespace ns = ensureNamespace(space);
+		return ns.ensureMasterNodes()
+				.then(nodes -> {
+					if (isMasterFor(space)) {
+						return ns.list();
+					}
+					return Promises.firstSuccessful(Stream.concat(nodes.stream().map(globalFsNode -> () -> list(space)), Stream.of(ns::list)));
+				});
 	}
 
 	public Promise<Void> fetch() {
 		return Promises.all(namespaces.values().stream().map(GlobalPmNamespace::updateMailBoxes))
-				.then($ -> forEachMailBox(MailBox::fetch));
+				.then($ -> forEachMailBox(Repo::fetch));
 	}
 
 	public Promise<Void> fetch(String mailbox) {
@@ -160,11 +128,11 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	}
 
 	public Promise<Void> fetch(PubKey space, String mailbox) {
-		return ensureNamespace(space).ensureMailBox(mailbox).fetch();
+		return ensureNamespace(space).ensureRepo(mailbox).fetch();
 	}
 
 	public Promise<Void> push() {
-		return forEachMailBox(MailBox::push);
+		return forEachMailBox(Repo::push);
 	}
 
 	private final AsyncSupplier<Void> catchUp = reuse(this::doCatchUp);
@@ -181,7 +149,7 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 		});
 	}
 
-	private Promise<Void> forEachMailBox(Function<MailBox, Promise<Void>> fn) {
+	private Promise<Void> forEachMailBox(Function<Repo, Promise<Void>> fn) {
 		return tolerantCollectVoid(new HashSet<>(namespaces.values()).stream().flatMap(entry -> entry.getMailBoxes().values().stream()), fn);
 	}
 

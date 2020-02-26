@@ -1,18 +1,34 @@
+/*
+ * Copyright (C) 2015-2020 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.crdt.Crdt;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
 
-public final class GMap<K, V extends CrdtMergable<V>> implements Map<K, V>, CrdtMergable<GMap<K, V>> {
-
+public final class GMap<K, V extends Crdt<V>> implements Map<K, V>, Crdt<GMap<K, V>> {
 	private final Map<K, V> map;
 
 	private GMap(Map<K, V> map) {
@@ -26,7 +42,7 @@ public final class GMap<K, V extends CrdtMergable<V>> implements Map<K, V>, Crdt
 	@Override
 	public GMap<K, V> merge(GMap<K, V> other) {
 		HashMap<K, V> newMap = new HashMap<>(map);
-		other.map.forEach((k, v) -> newMap.merge(k, v, CrdtMergable::merge));
+		other.map.forEach((k, v) -> newMap.merge(k, v, Crdt::merge));
 		return new GMap<>(newMap);
 	}
 
@@ -58,12 +74,12 @@ public final class GMap<K, V extends CrdtMergable<V>> implements Map<K, V>, Crdt
 	@Nullable
 	@Override
 	public V put(K key, V value) {
-		return map.merge(key, value, CrdtMergable::merge);
+		return map.merge(key, value, Crdt::merge);
 	}
 
 	@Override
 	public V remove(Object key) {
-		throw new UnsupportedOperationException("GMap is a grow-only map");
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
@@ -73,28 +89,144 @@ public final class GMap<K, V extends CrdtMergable<V>> implements Map<K, V>, Crdt
 
 	@Override
 	public void clear() {
-		throw new UnsupportedOperationException("GMap is a grow-only map");
+		throw new UnsupportedOperationException();
 	}
 
 	@NotNull
 	@Override
 	public Set<K> keySet() {
-		throw new UnsupportedOperationException("GMap#keySet is not implemented yet");
+		return Collections.unmodifiableSet(map.keySet());
 	}
 
 	@NotNull
 	@Override
 	public Collection<V> values() {
-		throw new UnsupportedOperationException("GMap#values is not implemented yet");
+		return Collections.unmodifiableCollection(map.values());
 	}
 
 	@NotNull
 	@Override
 	public Set<Entry<K, V>> entrySet() {
-		throw new UnsupportedOperationException("GMap#entrySet is not implemented yet");
+		Set<Entry<K, V>> peer = map.entrySet();
+		return new Set<Entry<K, V>>() {
+			@Override
+			public int size() {
+				return peer.size();
+			}
+
+			@Override
+			public boolean isEmpty() {
+				return peer.isEmpty();
+			}
+
+			@Override
+			public boolean contains(Object o) {
+				return peer.contains(o);
+			}
+
+			@NotNull
+			@Override
+			public Iterator<Entry<K, V>> iterator() {
+				Iterator<Entry<K, V>> iterator = peer.iterator();
+				return new Iterator<Entry<K, V>>() {
+					@Override
+					public boolean hasNext() {
+						return iterator.hasNext();
+					}
+
+					@Override
+					public Entry<K, V> next() {
+						return new AbstractMap.SimpleImmutableEntry<>(iterator.next());
+					}
+
+					@Override
+					public void remove() {
+						throw new UnsupportedOperationException();
+					}
+
+					@Override
+					public void forEachRemaining(Consumer<? super Entry<K, V>> action) {
+						iterator.forEachRemaining(action);
+					}
+				};
+			}
+
+			@NotNull
+			@Override
+			public Object[] toArray() {
+				return peer.toArray();
+			}
+
+			@SuppressWarnings("SuspiciousToArrayCall")
+			@NotNull
+			@Override
+			public <T> T[] toArray(@NotNull T[] a) {
+				return peer.toArray(a);
+			}
+
+			@Override
+			public boolean add(Entry<K, V> kvEntry) {
+				return peer.add(kvEntry);
+			}
+
+			@Override
+			public boolean remove(Object o) {
+				return peer.remove(o);
+			}
+
+			@Override
+			public boolean containsAll(@NotNull Collection<?> c) {
+				return peer.containsAll(c);
+			}
+
+			@Override
+			public boolean addAll(@NotNull Collection<? extends Entry<K, V>> c) {
+				return peer.addAll(c);
+			}
+
+			@Override
+			public boolean retainAll(@NotNull Collection<?> c) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public boolean removeAll(@NotNull Collection<?> c) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public void clear() {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public Spliterator<Entry<K, V>> spliterator() {
+				return peer.spliterator();
+			}
+
+			@Override
+			public boolean removeIf(Predicate<? super Entry<K, V>> filter) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			public Stream<Entry<K, V>> stream() {
+				return peer.stream();
+			}
+
+			@Override
+			public Stream<Entry<K, V>> parallelStream() {
+				return peer.parallelStream();
+			}
+
+			@Override
+			public void forEach(Consumer<? super Entry<K, V>> action) {
+				peer.forEach(action);
+			}
+		};
 	}
 
-	public static class Serializer<K, V extends CrdtMergable<V>> implements BinarySerializer<GMap<K, V>> {
+	public static class Serializer<K, V extends Crdt<V>> implements BinarySerializer<GMap<K, V>> {
 		private final BinarySerializer<K> keySerializer;
 		private final BinarySerializer<V> valueSerializer;
 

@@ -17,24 +17,24 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtFunction;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
+import io.datakernel.crdt.CrdtOperator;
 
 public final class CrdtDescriptor<K extends Comparable<K>, S> {
-	private final CrdtFunction<S> crdtFunction;
+	private final CrdtOperator<S> crdtOperator;
 	private final CrdtDataSerializer<K, S> serializer;
 	private final StructuredCodec<K> keyCodec;
 	private final StructuredCodec<S> stateCodec;
 
-	public CrdtDescriptor(CrdtFunction<S> crdtFunction, CrdtDataSerializer<K, S> serializer, StructuredCodec<K> keyCodec, StructuredCodec<S> stateCodec) {
-		this.crdtFunction = crdtFunction;
+	public CrdtDescriptor(CrdtOperator<S> crdtOperator, CrdtDataSerializer<K, S> serializer, StructuredCodec<K> keyCodec, StructuredCodec<S> stateCodec) {
+		this.crdtOperator = crdtOperator;
 		this.serializer = serializer;
 		this.keyCodec = keyCodec;
 		this.stateCodec = stateCodec;
 	}
 
-	public CrdtFunction<S> getCrdtFunction() {
-		return crdtFunction;
+	public CrdtOperator<S> getCrdtOperator() {
+		return crdtOperator;
 	}
 
 	public CrdtDataSerializer<K, S> getSerializer() {

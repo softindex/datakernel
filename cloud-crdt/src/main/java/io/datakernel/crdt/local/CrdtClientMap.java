@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,9 @@ package io.datakernel.crdt.local;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.CrdtFilter;
-import io.datakernel.crdt.CrdtFunction;
-import io.datakernel.crdt.CrdtStorage;
-import io.datakernel.crdt.primitives.CrdtType;
+import io.datakernel.crdt.CrdtOperator;
+import io.datakernel.crdt.CrdtClient;
+import io.datakernel.crdt.Crdt;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.stats.StreamStats;
@@ -42,15 +41,16 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageMap<K, S>>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtClientMap<K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<CrdtClientMap<K, S>>, EventloopService, EventloopJmxMBeanEx {
 	private static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;
-	private final CrdtFunction<S> function;
+	private final CrdtOperator<S> function;
 
-	private CrdtFilter<S> filter = $ -> true;
+	private Predicate<S> filter = $ -> true;
 
 	private final SortedMap<K, CrdtData<K, S>> storage = new ConcurrentSkipListMap<>();
 
@@ -69,17 +69,17 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 	private final EventStats singleRemoves = EventStats.create(DEFAULT_SMOOTHING_WINDOW);
 	// endregion
 
-	private CrdtStorageMap(Eventloop eventloop, CrdtFunction<S> function) {
+	private CrdtClientMap(Eventloop eventloop, CrdtOperator<S> function) {
 		this.eventloop = eventloop;
 		this.function = function;
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageMap<K, S> create(Eventloop eventloop, CrdtFunction<S> crdtFunction) {
-		return new CrdtStorageMap<>(eventloop, crdtFunction);
+	public static <K extends Comparable<K>, S> CrdtClientMap<K, S> create(Eventloop eventloop, CrdtOperator<S> crdtOperator) {
+		return new CrdtClientMap<>(eventloop, crdtOperator);
 	}
 
-	public static <K extends Comparable<K>, S extends CrdtType<S>> CrdtStorageMap<K, S> create(Eventloop eventloop) {
-		return new CrdtStorageMap<>(eventloop, CrdtFunction.<S>ofCrdtType());
+	public static <K extends Comparable<K>, S extends Crdt<S>> CrdtClientMap<K, S> create(Eventloop eventloop) {
+		return new CrdtClientMap<>(eventloop, CrdtOperator.<S>ofCrdtType());
 	}
 
 	@NotNull
@@ -97,8 +97,8 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 	}
 
 	@Override
-	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
-		return Promise.of(StreamSupplier.ofStream(extract(timestamp))
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long revision) {
+		return Promise.of(StreamSupplier.ofStream(extract(revision))
 				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
 				.withLateBinding());
 	}
@@ -128,14 +128,14 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 		return Promise.complete();
 	}
 
-	private Stream<CrdtData<K, S>> extract(long timestamp) {
+	private Stream<CrdtData<K, S>> extract(long revision) {
 		Stream<CrdtData<K, S>> stream = storage.values().stream();
-		if (timestamp == 0) {
+		if (revision == 0) {
 			return stream;
 		}
 		return stream
 				.map(data -> {
-					S partial = function.extract(data.getState(), timestamp);
+					S partial = function.extract(data.getState(), revision);
 					return partial != null ? new CrdtData<>(data.getKey(), partial) : null;
 				})
 				.filter(Objects::nonNull);
@@ -170,10 +170,8 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 		return storage.remove(key) != null;
 	}
 
-	public Iterator<CrdtData<K, S>> iterator(long timestamp) {
-		Iterator<CrdtData<K, S>> iterator = extract(timestamp).iterator();
-
-		// had to hook the remove so it would be reflected in the storage
+	public Iterator<CrdtData<K, S>> iterator(long revision) {
+		Iterator<CrdtData<K, S>> iterator = extract(revision).iterator();
 		return new Iterator<CrdtData<K, S>>() {
 			private CrdtData<K, S> current;
 
@@ -190,9 +188,8 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 			@Override
 			public void remove() {
 				if (current != null) {
-					CrdtStorageMap.this.remove(current.getKey());
+					CrdtClientMap.this.remove(current.getKey());
 				}
-				iterator.remove();
 			}
 		};
 	}

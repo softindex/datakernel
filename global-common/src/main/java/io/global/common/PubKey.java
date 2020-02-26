@@ -25,7 +25,6 @@ import java.math.BigInteger;
 public final class PubKey {
 	private final ECPublicKeyParameters ecPublicKey;
 
-	// region creators
 	public PubKey(ECPublicKeyParameters ecPublicKey) {
 		this.ecPublicKey = ecPublicKey;
 	}
@@ -59,7 +58,6 @@ public final class PubKey {
 			throw new ParseException(PubKey.class, "Failed to parse big integer", e);
 		}
 	}
-	// endregion
 
 	public ECPublicKeyParameters getEcPublicKey() {
 		return ecPublicKey;

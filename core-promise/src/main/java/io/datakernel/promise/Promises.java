@@ -50,6 +50,8 @@ import static java.util.Collections.emptyList;
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class Promises {
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(Promises.class, "Promise timeout");
+	public static final StacklessException NO_SUCCESSFUL_RESULTS = new StacklessException(Promises.class, "No successful results");
+	public static final StacklessException TOO_MANY_FAILURES = new StacklessException(Promises.class, "Not enough promises to complete successfully");
 
 	/**
 	 * @see #timeout(long, Promise)
@@ -344,7 +346,7 @@ public final class Promises {
 	@Contract(pure = true)
 	@NotNull
 	public static <T> Promise<T> any() {
-		return Promise.ofException(new StacklessException(Promises.class, "All promises completed exceptionally"));
+		return Promise.ofException(NO_SUCCESSFUL_RESULTS);
 	}
 
 	/**
@@ -467,9 +469,7 @@ public final class Promises {
 	@NotNull
 	public static Promise<?> some(int number) {
 		if (number == 0) return Promise.of(emptyList());
-
-		return Promise.ofException(new StacklessException(Promises.class,
-				"There are no promises to be complete"));
+		return Promise.ofException(TOO_MANY_FAILURES);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -477,9 +477,7 @@ public final class Promises {
 	@NotNull
 	public static <T> Promise<List<T>> some(@NotNull Promise<? extends T> promise, int number) {
 		if (number == 0) return (Promise<List<T>>) some(number);
-		if (number > 1) return Promise.ofException(new StacklessException(Promises.class,
-				"There are not enough promises to be complete"));
-
+		if (number > 1) return Promise.ofException(TOO_MANY_FAILURES);
 		return promise.map(Collections::singletonList);
 	}
 
@@ -551,7 +549,7 @@ public final class Promises {
 		}
 
 		if (some.notEnoughForTheResult()) {
-			return Promise.ofException(new StacklessException(Promises.class, "There are not enough promises to be complete"));
+			return Promise.ofException(TOO_MANY_FAILURES);
 		}
 
 		return some;
@@ -1099,7 +1097,7 @@ public final class Promises {
 			@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			SettablePromise<T> cb) {
 		if (!promises.hasNext()) {
-			cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
+			cb.setException(NO_SUCCESSFUL_RESULTS);
 			return;
 		}
 		promises.next().whenComplete((result, e) -> {
@@ -1571,7 +1569,7 @@ public final class Promises {
 				}
 			} else {
 				if (notEnoughForTheResult()) {
-					completeExceptionally(new StacklessException(Promises.class, "There are not enough promises to be complete"));
+					completeExceptionally(TOO_MANY_FAILURES);
 				}
 			}
 		}

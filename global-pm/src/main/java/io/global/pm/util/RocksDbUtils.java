@@ -43,7 +43,6 @@ public final class RocksDbUtils {
 		RawMessage rawMessage = message.getValue();
 		Signature signature = message.getSignature();
 		byte[] key = encodeAsArray(KEY_CODEC, new Tuple4<>(space, mailBox, rawMessage.getTimestamp(), rawMessage.getId()));
-		//noinspection ConstantConditions - using nullable codec for Tuple.value2
 		byte[] value = encodeAsArray(VALUE_CODEC, new Tuple2<>(signature, rawMessage.isTombstone() ? null : rawMessage.getEncrypted()));
 		return new Tuple2<>(key, value);
 	}
@@ -51,7 +50,7 @@ public final class RocksDbUtils {
 	public static SignedData<RawMessage> unpack(byte[] key, byte[] value) throws ParseException {
 		Tuple4<PubKey, String, Long, Long> keyTuple = unpackKey(key);
 		Tuple2<Signature, byte[]> valueTuple = decode(VALUE_CODEC, value);
-		RawMessage rawMessage = RawMessage.of(keyTuple.getValue4(), keyTuple.getValue3(), valueTuple.getValue2());
+		RawMessage rawMessage = RawMessage.parse(keyTuple.getValue4(), keyTuple.getValue3(), valueTuple.getValue2());
 		return SignedData.parse(RAW_MESSAGE_CODEC, rawMessage, valueTuple.getValue1());
 	}
 

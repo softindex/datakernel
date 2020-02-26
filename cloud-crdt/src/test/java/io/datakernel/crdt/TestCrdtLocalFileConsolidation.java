@@ -16,7 +16,9 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
+import io.datakernel.crdt.local.CrdtClientFs;
+import io.datakernel.crdt.primitives.GSet;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
@@ -30,13 +32,11 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.stream.Stream;
 
-import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.serializer.BinarySerializers.*;
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
+import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
 public final class TestCrdtLocalFileConsolidation {
 	private LocalFsClient fsClient;
@@ -55,33 +55,24 @@ public final class TestCrdtLocalFileConsolidation {
 		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
 	}
 
-	private Set<Integer> union(Set<Integer> first, Set<Integer> second) {
-		Set<Integer> res = new HashSet<>(Math.max((int) ((first.size() + second.size()) / .75f) + 1, 16));
-		first.addAll(second);
-		return res;
-	}
-
 	@Test
 	public void test() {
-		CrdtFunction<TimestampContainer<Set<Integer>>> crdtFunction = TimestampContainer.createCrdtFunction(this::union);
-
-		CrdtDataSerializer<String, TimestampContainer<Set<Integer>>> serializer =
-				new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(ofSet(INT_SERIALIZER)));
-		CrdtStorageFs<String, TimestampContainer<Set<Integer>>> client = CrdtStorageFs.create(Eventloop.getCurrentEventloop(), fsClient, serializer, crdtFunction);
+		CrdtDataSerializer<String, GSet<Integer>> serializer = new CrdtDataSerializer<>(UTF8_SERIALIZER, new GSet.Serializer<>(INT_SERIALIZER));
+		CrdtClientFs<String, GSet<Integer>> client = CrdtClientFs.create(Eventloop.getCurrentEventloop(), fsClient, serializer);
 
 		await(StreamSupplier.ofStream(Stream.of(
-				new CrdtData<>("1_test_1", TimestampContainer.now(set(1, 2, 3))),
-				new CrdtData<>("1_test_2", TimestampContainer.now(set(2, 3, 7))),
-				new CrdtData<>("1_test_3", TimestampContainer.now(set(78, 2, 3))),
-				new CrdtData<>("12_test_1", TimestampContainer.now(set(123, 124, 125))),
-				new CrdtData<>("12_test_2", TimestampContainer.now(set(12)))).sorted())
+				new CrdtData<>("1_test_1", GSet.of(1, 2, 3)),
+				new CrdtData<>("1_test_2", GSet.of(2, 3, 7)),
+				new CrdtData<>("1_test_3", GSet.of(78, 2, 3)),
+				new CrdtData<>("12_test_1", GSet.of(123, 124, 125)),
+				new CrdtData<>("12_test_2", GSet.of(12))).sorted())
 				.streamTo(StreamConsumer.ofPromise(client.upload())));
 		await(StreamSupplier.ofStream(Stream.of(
-				new CrdtData<>("2_test_1", TimestampContainer.now(set(1, 2, 3))),
-				new CrdtData<>("2_test_2", TimestampContainer.now(set(2, 3, 4))),
-				new CrdtData<>("2_test_3", TimestampContainer.now(set(0, 1, 2))),
-				new CrdtData<>("12_test_1", TimestampContainer.now(set(123, 542, 125, 2))),
-				new CrdtData<>("12_test_2", TimestampContainer.now(set(12, 13)))).sorted())
+				new CrdtData<>("2_test_1", GSet.of(1, 2, 3)),
+				new CrdtData<>("2_test_2", GSet.of(2, 3, 4)),
+				new CrdtData<>("2_test_3", GSet.of(0, 1, 2)),
+				new CrdtData<>("12_test_1", GSet.of(123, 542, 125, 2)),
+				new CrdtData<>("12_test_2", GSet.of(12, 13))).sorted())
 				.streamTo(StreamConsumer.ofPromise(client.upload())));
 
 		System.out.println(await(fsClient.list("**")));

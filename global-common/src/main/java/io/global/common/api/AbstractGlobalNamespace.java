@@ -9,26 +9,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.Function;
 
 import static io.datakernel.async.function.AsyncSuppliers.reuse;
+import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.stream.Collectors.toList;
 
-public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<S, L, N>, L extends AbstractGlobalNode<L, S, N>, N> {
+public abstract class AbstractGlobalNamespace<
+		Self extends AbstractGlobalNamespace<Self, ParentNode, Node>,
+		ParentNode extends AbstractGlobalNode<ParentNode, Self, Node>,
+		Node> {
+
 	private static final Logger logger = LoggerFactory.getLogger(AbstractGlobalNamespace.class);
 
-	protected final L node;
+	protected final ParentNode node;
 	protected final PubKey space;
 
-	protected final AsyncSupplier<List<N>> ensureMasterNodes = reuse(this::doEnsureMasterNodes);
-	protected final Map<RawServerId, N> masterNodes = new HashMap<>();
+	protected final AsyncSupplier<List<Node>> ensureMasterNodes = reuse(this::doEnsureMasterNodes);
+	protected final Map<RawServerId, Node> masterNodes = new HashMap<>();
 	protected long updateNodesTimestamp;
 	protected long announceTimestamp;
 
-	private List<N> ensuredNodes = new ArrayList<>();
+	private List<Node> ensuredNodes = new ArrayList<>();
 
 	CurrentTimeProvider now = CurrentTimeProvider.ofSystem();
 
-	public AbstractGlobalNamespace(L node, PubKey space) {
+	public AbstractGlobalNamespace(ParentNode node, PubKey space) {
 		this.node = node;
 		this.space = space;
 	}
@@ -37,11 +43,16 @@ public abstract class AbstractGlobalNamespace<S extends AbstractGlobalNamespace<
 		return space;
 	}
 
-	public Promise<List<N>> ensureMasterNodes() {
+	public Promise<List<Node>> ensureMasterNodes() {
 		return ensureMasterNodes.get();
 	}
 
-	private Promise<List<N>> doEnsureMasterNodes() {
+	protected final Promise<Void> forEachMaster(Function<Node, Promise<Void>> action) {
+		return ensureMasterNodes()
+				.then(masters -> tolerantCollectVoid(masters, action));
+	}
+
+	private Promise<List<Node>> doEnsureMasterNodes() {
 		if (updateNodesTimestamp > now.currentTimeMillis() - node.getLatencyMargin().toMillis()) {
 			return Promise.of(ensuredNodes);
 		}

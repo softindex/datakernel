@@ -1,8 +1,8 @@
 import io.datakernel.crdt.CrdtData;
 import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtStorage;
-import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.CrdtClient;
+import io.datakernel.crdt.CrdtCluster;
+import io.datakernel.crdt.local.CrdtClientFs;
 import io.datakernel.crdt.primitives.LWWSet;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
@@ -29,16 +29,16 @@ public final class CrdtExample {
 
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
-		Map<Integer, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
+		Map<Integer, CrdtClient<String, LWWSet<String>>> clients = new HashMap<>();
 
 		for (int i = 0; i < 8; i++) {
 			clients.put(i, createClient(eventloop, executor, i));
 		}
 
-		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
-		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
+		CrdtClientFs<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
+		CrdtClientFs<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
 
-		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients)
+		CrdtCluster<Integer, String, LWWSet<String>> cluster = CrdtCluster.create(eventloop, clients)
 				.withPartition(8, one)
 				.withPartition(9, two)
 				.withReplicationCount(5);
@@ -77,9 +77,9 @@ public final class CrdtExample {
 		eventloop.run();
 	}
 
-	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, Executor executor, int n) {
+	private static CrdtClientFs<String, LWWSet<String>> createClient(Eventloop eventloop, Executor executor, int n) {
 		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS/crdt_" + n));
-		return CrdtStorageFs.create(eventloop, storage, SERIALIZER);
+		return CrdtClientFs.create(eventloop, storage, SERIALIZER);
 	}
 }
 

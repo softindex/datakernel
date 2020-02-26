@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.crdt.Crdt;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
@@ -23,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public final class GSet<E> implements Set<E>, CrdtMergable<GSet<E>> {
+public final class GSet<E> implements Set<E>, Crdt<GSet<E>> {
 	private final Set<E> set;
 
 	private GSet(Set<E> newSet) {
@@ -34,11 +35,13 @@ public final class GSet<E> implements Set<E>, CrdtMergable<GSet<E>> {
 		this(new HashSet<>());
 	}
 
+	public static <E> GSet<E> fromSet(Set<E> set) {
+		return new GSet<>(new HashSet<>(set));
+	}
+
 	@SafeVarargs
 	public static <T> GSet<T> of(T... items) {
-		GSet<T> set = new GSet<>();
-		set.addAll(Arrays.asList(items));
-		return set;
+		return new GSet<>(new HashSet<>(Arrays.asList(items)));
 	}
 
 	@Override
@@ -96,22 +99,22 @@ public final class GSet<E> implements Set<E>, CrdtMergable<GSet<E>> {
 
 	@Override
 	public boolean remove(Object o) {
-		throw new UnsupportedOperationException("GSet is a grow-only set");
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public boolean retainAll(@NotNull Collection<?> c) {
-		throw new UnsupportedOperationException("GSet is a grow-only set");
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public boolean removeAll(@NotNull Collection<?> c) {
-		throw new UnsupportedOperationException("GSet is a grow-only set");
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
 	public void clear() {
-		throw new UnsupportedOperationException("GSet is a grow-only set");
+		throw new UnsupportedOperationException();
 	}
 
 	@Override

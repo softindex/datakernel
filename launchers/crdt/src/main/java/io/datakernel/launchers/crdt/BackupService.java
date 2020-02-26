@@ -17,8 +17,8 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.async.service.EventloopService;
-import io.datakernel.crdt.local.CrdtStorageFs;
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.local.CrdtClientFs;
+import io.datakernel.crdt.local.CrdtClientMap;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
@@ -27,15 +27,15 @@ import org.jetbrains.annotations.Nullable;
 
 public final class BackupService<K extends Comparable<K>, S> implements EventloopService {
 	private final Eventloop eventloop;
-	private final CrdtStorageMap<K, S> inMemory;
-	private final CrdtStorageFs<K, S> localFiles;
+	private final CrdtClientMap<K, S> inMemory;
+	private final CrdtClientFs<K, S> localFiles;
 
 	private long lastTimestamp = 0;
 
 	@Nullable
 	private Promise<Void> backupPromise = null;
 
-	public BackupService(CrdtStorageMap<K, S> inMemory, CrdtStorageFs<K, S> localFiles) {
+	public BackupService(CrdtClientMap<K, S> inMemory, CrdtClientFs<K, S> localFiles) {
 		this.inMemory = inMemory;
 		this.localFiles = localFiles;
 		this.eventloop = localFiles.getEventloop();

@@ -12,17 +12,15 @@ import io.global.pm.api.RawMessage;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.function.Function;
 
 import static io.datakernel.async.function.AsyncSuppliers.coalesce;
 import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.async.process.AsyncExecutors.retry;
 import static io.datakernel.promise.Promises.toList;
-import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.stream.Collectors.toSet;
 
 public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNamespace, GlobalPmNodeImpl, GlobalPmNode> {
-	private final Map<String, MailBox> mailBoxes = new HashMap<>();
+	private final Map<String, Repo> mailBoxes = new HashMap<>();
 	private final AsyncSupplier<Void> updateMailBoxes = reuse(this::doUpdateMailBoxes);
 	private boolean listUpdated;
 
@@ -32,11 +30,11 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 		super(node, space);
 	}
 
-	public MailBox ensureMailBox(String mailBox) {
-		return mailBoxes.computeIfAbsent(mailBox, MailBox::new);
+	public Repo ensureRepo(String repo) {
+		return mailBoxes.computeIfAbsent(repo, Repo::new);
 	}
 
-	public Map<String, MailBox> getMailBoxes() {
+	public Map<String, Repo> getMailBoxes() {
 		return mailBoxes;
 	}
 
@@ -53,7 +51,7 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 						.map(master -> master.list(space)
 								.thenEx((v, e) -> Promise.of(e == null ? v : Collections.<String>emptySet()))))
 						.map(lists -> lists.stream().flatMap(Collection::stream).collect(toSet())))
-				.whenResult(repoNames -> repoNames.forEach(this::ensureMailBox))
+				.whenResult(repoNames -> repoNames.forEach(this::ensureRepo))
 				.whenResult($ -> updateMailBoxesTimestamp = node.getCurrentTimeProvider().currentTimeMillis())
 				.toVoid();
 	}
@@ -64,21 +62,21 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 		}
 		return node.getStorage().list(space)
 				.whenResult(list -> {
-					list.forEach(this::ensureMailBox);
+					list.forEach(this::ensureRepo);
 					listUpdated = true;
 				});
 	}
 
-	class MailBox {
+	class Repo {
 		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
-		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
+		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.getRetryPolicy())));
 
 		private final String mailBox;
 
 		private long lastFetchTimestamp;
 		private long lastPushTimestamp;
 
-		MailBox(String mailBox) {
+		Repo(String mailBox) {
 			this.mailBox = mailBox;
 		}
 
@@ -112,7 +110,7 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 
 		Promise<Void> fetch(GlobalPmNode from) {
 			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
-			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getSyncMargin().toMillis());
+			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getLatencyMargin().toMillis());
 			return ChannelSupplier.ofPromise(from.download(space, mailBox, fetchFromTimestamp))
 					.streamTo(node.getStorage().upload(space, mailBox))
 					.whenResult($ -> lastFetchTimestamp = currentTimestamp);
@@ -120,20 +118,10 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 
 		Promise<Void> push(GlobalPmNode to) {
 			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
-			long pushFromTimestamp = Math.max(0, lastPushTimestamp - node.getSyncMargin().toMillis());
+			long pushFromTimestamp = Math.max(0, lastPushTimestamp - node.getLatencyMargin().toMillis());
 			return node.getStorage().download(space, mailBox, pushFromTimestamp)
-					.then(supplier -> {
-						if (supplier == null) {
-							return Promise.complete();
-						}
-						return supplier.streamTo(to.upload(space, mailBox));
-					})
+					.then(supplier -> supplier == null ? Promise.complete() : supplier.streamTo(to.upload(space, mailBox)))
 					.whenResult($ -> lastPushTimestamp = currentTimestamp);
-		}
-
-		private Promise<Void> forEachMaster(Function<GlobalPmNode, Promise<Void>> action) {
-			return ensureMasterNodes()
-					.then(masters -> tolerantCollectVoid(masters, action));
 		}
 	}
 }

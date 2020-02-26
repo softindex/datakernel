@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,14 @@ import java.util.List;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
-public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {
-
+/**
+ * A {@link MultiSharder multi-sharder} that distributes objects using the
+ * rendezvous hashing algorithm
+ *
+ * @param <P> opaque partition type
+ * @param <T> distributed object type
+ */
+public final class RendezvousHashSharder<P, T> implements MultiSharder<T> {
 	private int numOfBuckets = 1024;
 	private int[][] buckets;
 
@@ -40,16 +46,27 @@ public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {
 		return sharder;
 	}
 
-	public RendezvousHashSharder<I, K> withNumberOfBuckets(int numOfBuckets) {
+	/**
+	 * Sets the number of buckets to this instance of the sharder.
+	 * By default, it is set to 1024.
+	 */
+	public RendezvousHashSharder<P, T> withNumberOfBuckets(int numOfBuckets) {
 		checkArgument((numOfBuckets & (numOfBuckets - 1)) == 0, "Number of buckets must be a power of two");
 
 		this.numOfBuckets = numOfBuckets;
 		return this;
 	}
 
-	public void recompute(List<I> partitionIds, int topShards) {
+	/**
+	 * Recomputes the hash values for the given list of partitions,
+	 * and the number of shards for objects to be distributed to.
+	 *
+	 * @param partitions list of partitions whose indices will be returned from the algorithm.
+	 * @param topShards number of indices to be returned.
+	 */
+	public void recompute(List<P> partitions, int topShards) {
 		checkArgument(topShards > 0, "Top number of partitions must be positive");
-		checkArgument(topShards <= partitionIds.size(), "Top number of partitions must less than or equal to number of partitions");
+		checkArgument(topShards <= partitions.size(), "Top number of partitions must less than or equal to number of partitions");
 
 		buckets = new int[numOfBuckets][topShards];
 
@@ -62,15 +79,15 @@ public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {
 				this.index = index;
 			}
 		}
-		List<ObjWithIndex<I>> indexed = new ArrayList<>();
-		for (int i = 0; i < partitionIds.size(); i++) {
-			indexed.add(new ObjWithIndex<>(partitionIds.get(i), i));
+		List<ObjWithIndex<P>> indexed = new ArrayList<>();
+		for (int i = 0; i < partitions.size(); i++) {
+			indexed.add(new ObjWithIndex<>(partitions.get(i), i));
 		}
 
 		for (int n = 0; n < buckets.length; n++) {
 			int finalN = n;
-			List<ObjWithIndex<I>> copy = indexed.stream()
-					.sorted(Comparator.<ObjWithIndex<I>>comparingInt(x -> HashUtils.murmur3hash(x.object.hashCode(), finalN)).reversed())
+			List<ObjWithIndex<P>> copy = indexed.stream()
+					.sorted(Comparator.<ObjWithIndex<P>>comparingInt(x -> HashUtils.murmur3hash(x.object.hashCode(), finalN)).reversed())
 					.collect(toList());
 
 			for (int i = 0; i < topShards; i++) {
@@ -80,7 +97,7 @@ public final class RendezvousHashSharder<I, K> implements MultiSharder<K> {
 	}
 
 	@Override
-	public int[] shard(K key) {
+	public int[] shard(T key) {
 		return buckets[key.hashCode() & (numOfBuckets - 1)];
 	}
 }

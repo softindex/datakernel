@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2019 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.crdt.*;
-import io.datakernel.crdt.primitives.CrdtType;
+import io.datakernel.crdt.CrdtClient;
+import io.datakernel.crdt.CrdtData;
+import io.datakernel.crdt.CrdtData.CrdtDataSerializer;
+import io.datakernel.crdt.CrdtOperator;
+import io.datakernel.crdt.Crdt;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.datastream.StreamConsumer;
@@ -43,12 +46,13 @@ import org.rocksdb.*;
 
 import java.time.Duration;
 import java.util.concurrent.Executor;
+import java.util.function.Predicate;
 
-public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtClientRocksDB<K extends Comparable<K>, S> implements CrdtClient<K, S>, EventloopService, EventloopJmxMBeanEx {
 	private final Eventloop eventloop;
 	private final Executor executor;
 	private final RocksDB db;
-	private final CrdtFunction<S> function;
+	private final CrdtOperator<S> function;
 	private final BinarySerializer<K> keySerializer;
 	private final BinarySerializer<S> stateSerializer;
 
@@ -56,7 +60,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	private final WriteOptions writeOptions; // }
 
 	private MemSize bufferSize = MemSize.kilobytes(16);
-	private CrdtFilter<S> filter = $ -> true;
+	private Predicate<S> filter = $ -> true;
 
 	// region JMX
 	private boolean detailedStats;
@@ -73,8 +77,8 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	private final EventStats singleRemoves = EventStats.create(Duration.ofMinutes(5));
 	// endregion
 
-	private CrdtStorageRocksDB(Eventloop eventloop, Executor executor, RocksDB db,
-			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer, CrdtFunction<S> function) {
+	private CrdtClientRocksDB(Eventloop eventloop, Executor executor, RocksDB db,
+			BinarySerializer<K> keySerializer, BinarySerializer<S> stateSerializer, CrdtOperator<S> function) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.db = db;
@@ -85,23 +89,23 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 		writeOptions = new WriteOptions().setDisableWAL(true);
 	}
 
-	public static <K extends Comparable<K>, S> CrdtStorageRocksDB<K, S> create(
+	public static <K extends Comparable<K>, S> CrdtClientRocksDB<K, S> create(
 			Eventloop eventloop, Executor executor, RocksDB db,
-			CrdtDataSerializer<K, S> serializer, CrdtFunction<S> crdtFunction) {
-		return new CrdtStorageRocksDB<>(eventloop, executor, db, serializer.getKeySerializer(), serializer.getStateSerializer(), crdtFunction);
+			CrdtDataSerializer<K, S> serializer, CrdtOperator<S> crdtOperator) {
+		return new CrdtClientRocksDB<>(eventloop, executor, db, serializer.getKeySerializer(), serializer.getStateSerializer(), crdtOperator);
 	}
 
-	public static <K extends Comparable<K>, S extends CrdtType<S>> CrdtStorageRocksDB<K, S> create(
+	public static <K extends Comparable<K>, S extends Crdt<S>> CrdtClientRocksDB<K, S> create(
 			Eventloop eventloop, Executor executor, RocksDB db, CrdtDataSerializer<K, S> serializer) {
-		return new CrdtStorageRocksDB<>(eventloop, executor, db, serializer.getKeySerializer(), serializer.getStateSerializer(), CrdtFunction.ofCrdtType());
+		return new CrdtClientRocksDB<>(eventloop, executor, db, serializer.getKeySerializer(), serializer.getStateSerializer(), CrdtOperator.ofCrdtType());
 	}
 
-	public CrdtStorageRocksDB<K, S> withBufferSize(MemSize bufferSize) {
+	public CrdtClientRocksDB<K, S> withBufferSize(MemSize bufferSize) {
 		this.bufferSize = bufferSize;
 		return this;
 	}
 
-	public CrdtStorageRocksDB<K, S> withFilter(CrdtFilter<S> filter) {
+	public CrdtClientRocksDB<K, S> withFilter(Predicate<S> filter) {
 		this.filter = filter;
 		return this;
 	}
@@ -178,7 +182,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 	}
 
 	@Override
-	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
+	public Promise<StreamSupplier<CrdtData<K, S>>> download(long revision) {
 		return Promise.ofBlockingCallable(executor,
 				() -> {
 					RocksIterator iterator = db.newIterator();
@@ -192,7 +196,7 @@ public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements Crd
 								byte[] stateBytes = iterator.value();
 								iterator.next();
 
-								S partial = function.extract(stateSerializer.decode(stateBytes, 0), timestamp);
+								S partial = function.extract(stateSerializer.decode(stateBytes, 0), revision);
 								if (partial != null) {
 									return new CrdtData<>(keySerializer.decode(keyBytes, 0), partial);
 								}

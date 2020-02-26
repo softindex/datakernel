@@ -389,6 +389,7 @@
         <module>global-fs</module>
         <module>global-kv</module>
         <module>global-pm</module>
+        <module>global-crdt</module>
         <module>global-launchers</module>
         <module>global-apps</module>
         <module>global-comm</module>

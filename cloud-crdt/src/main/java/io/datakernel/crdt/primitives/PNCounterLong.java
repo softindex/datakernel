@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,12 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.crdt.Crdt;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
 
-public final class PNCounterLong implements CrdtMergable<PNCounterLong> {
+public final class PNCounterLong implements Crdt<PNCounterLong> {
 	public static final BinarySerializer<PNCounterLong> SERIALIZER = new Serializer();
 
 	private final GCounterLong p;

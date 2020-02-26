@@ -17,7 +17,7 @@
 package io.datakernel.crdt;
 
 import io.datakernel.common.ref.RefInt;
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.local.CrdtClientMap;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
@@ -42,17 +42,16 @@ public final class RepartitionTest {
 
 	@Test
 	public void test() {
-		CrdtFunction<TimestampContainer<Integer>> crdtFunction = TimestampContainer.createCrdtFunction(Integer::max);
 
-		Map<String, CrdtStorageMap<String, TimestampContainer<Integer>>> clients = new LinkedHashMap<>();
+		Map<String, CrdtClientMap<String, Integer>> clients = new LinkedHashMap<>();
 		for (int i = 0; i < 10; i++) {
-			CrdtStorageMap<String, TimestampContainer<Integer>> client = CrdtStorageMap.create(Eventloop.getCurrentEventloop(), crdtFunction);
+			CrdtClientMap<String, Integer> client = CrdtClientMap.create(Eventloop.getCurrentEventloop(), Integer::max);
 			clients.put("client_" + i, client);
 		}
-		await(StreamSupplier.ofStream(IntStream.range(1, 100).mapToObj(i -> new CrdtData<>("test" + i, TimestampContainer.now(i))))
+		await(StreamSupplier.ofStream(IntStream.range(1, 100).mapToObj(i -> new CrdtData<>("test" + i, i)))
 				.streamTo(StreamConsumer.ofPromise(clients.get("client_0").upload())));
 
-		CrdtStorageCluster<String, String, TimestampContainer<Integer>> cluster = CrdtStorageCluster.create(Eventloop.getCurrentEventloop(), clients, crdtFunction)
+		CrdtCluster<String, String, Integer> cluster = CrdtCluster.create(Eventloop.getCurrentEventloop(), clients, Integer::max)
 				.withReplicationCount(3);
 
 		await(CrdtRepartitionController.create(cluster, "client_0").repartition());

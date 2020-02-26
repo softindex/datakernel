@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015-2020 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,28 +23,25 @@ import static io.datakernel.codec.StructuredCodecs.*;
 
 public final class CrdtMessaging {
 
-	public static final StructuredCodec<CrdtMessage> MESSAGE_CODEC = CodecSubtype.<CrdtMessage>create()
-			.with(Download.class, object(Download::new,
-					"token", Download::getToken, LONG64_CODEC))
-			.with(CrdtMessages.class, ofEnum(CrdtMessages.class));
+	public static final StructuredCodec<CrdtRequest> REQUEST_CODEC = CodecSubtype.<CrdtRequest>create()
+			.with(Download.class, object(Download::new, "token", Download::getToken, LONG64_CODEC))
+			.with(CrdtRequests.class, ofEnum(CrdtRequests.class));
 
 	public static final StructuredCodec<CrdtResponse> RESPONSE_CODEC = CodecSubtype.<CrdtResponse>create()
 			.with(CrdtResponses.class, ofEnum(CrdtResponses.class))
-			.with(DownloadStarted.class, object(DownloadStarted::new))
-			.with(ServerError.class, object(ServerError::new,
-					"msg", ServerError::getMsg, STRING_CODEC));
+			.with(ServerError.class, object(ServerError::new, "msg", ServerError::getMsg, STRING_CODEC));
 
-	public interface CrdtMessage {}
+	public interface CrdtRequest {}
 
 	public interface CrdtResponse {}
 
-	public enum CrdtMessages implements CrdtMessage {
+	public enum CrdtRequests implements CrdtRequest {
 		UPLOAD,
 		REMOVE,
 		PING
 	}
 
-	public final static class Download implements CrdtMessage {
+	public final static class Download implements CrdtRequest {
 		private final long token;
 
 		public Download(long token) {
@@ -62,16 +59,10 @@ public final class CrdtMessaging {
 	}
 
 	public enum CrdtResponses implements CrdtResponse {
+		DOWNLOAD_STARTED,
 		UPLOAD_FINISHED,
 		REMOVE_FINISHED,
 		PONG
-	}
-
-	public final static class DownloadStarted implements CrdtResponse {
-		@Override
-		public String toString() {
-			return "DownloadStarted";
-		}
 	}
 
 	public final static class ServerError implements CrdtResponse {
