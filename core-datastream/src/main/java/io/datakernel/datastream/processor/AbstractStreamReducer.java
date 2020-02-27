@@ -162,9 +162,19 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		protected void onError(Throwable e) {
 			output.closeEx(e);
 		}
+
+		@Override
+		protected void onCleanup() {
+			deque.clear();
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
+		@Override
+		protected void onResumed() {
+			AbstractStreamReducer.this.doProduce();
+		}
+
 		@Override
 		protected void onError(Throwable e) {
 			for (Input input : inputs) {
@@ -173,8 +183,8 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		}
 
 		@Override
-		protected void onResumed() {
-			AbstractStreamReducer.this.doProduce();
+		protected void onCleanup() {
+			priorityQueue.clear();
 		}
 	}
 

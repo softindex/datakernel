@@ -37,10 +37,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-	{
-		acknowledgement.whenComplete(this::cleanup);
-	}
-
 	@Override
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		checkState(eventloop.inEventloopThread());
@@ -111,8 +107,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 */
 	public final void acknowledge() {
 		checkState(eventloop.inEventloopThread());
-		if (acknowledgement.isComplete()) return;
-		acknowledgement.set(null);
+		if (acknowledgement.trySet(null)) {
+			cleanup();
+		}
 	}
 
 	@Override
@@ -136,6 +133,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		checkNotNull(e);
 		if (acknowledgement.trySetException(e)) {
 			onError(e);
+			cleanup();
 		}
 	}
 
@@ -148,10 +146,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private void cleanup() {
 		onCleanup();
 		supplier = null;
-		SettablePromise<Void> completedPromise = acknowledgement;
-		assert completedPromise.isComplete();
-		acknowledgement = new SettablePromise<>();
-		acknowledgement.accept(completedPromise.getResult(), completedPromise.getException());
+		SettablePromise<Void> acknowledgement = this.acknowledgement;
+		assert acknowledgement.isComplete();
+		this.acknowledgement = new SettablePromise<>();
+		this.acknowledgement.accept(acknowledgement.getResult(), acknowledgement.getException());
 	}
 
 	/**

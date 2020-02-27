@@ -44,17 +44,13 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	private final ArrayDeque<T> buffer = new ArrayDeque<>();
 
-	{
-		dataAcceptorSafe = buffer::addLast;
-	}
-
 	private boolean endOfStreamRequest;
 	private SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	{
-		endOfStream.whenComplete(this::cleanup);
+		dataAcceptorSafe = buffer::addLast;
 	}
 
 	private enum ProduceStatus {
@@ -62,15 +58,18 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		STARTED_ASYNC
 	}
 
-	protected final void asyncEnd() {
-		produceStatus = null;
-	}
-
 	protected final void asyncBegin() {
+		checkState(produceStatus == ProduceStatus.STARTED || produceStatus == ProduceStatus.STARTED_ASYNC);
 		produceStatus = ProduceStatus.STARTED_ASYNC;
 	}
 
+	protected final void asyncEnd() {
+		checkState(produceStatus == ProduceStatus.STARTED_ASYNC);
+		produceStatus = null;
+	}
+
 	protected final void asyncResume() {
+		checkState(produceStatus == ProduceStatus.STARTED_ASYNC);
 		if (isReady()) {
 			onResumed();
 		} else {
@@ -131,12 +130,14 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 			dataAcceptor = null;
 			//noinspection unchecked
 			dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
-			endOfStream.trySet(null);
+			if (endOfStream.trySet(null)) {
+				cleanup();
+			}
 			return;
 		}
 
 		if (produceStatus == ProduceStatus.STARTED) {
-			asyncEnd();
+			produceStatus = null;
 		}
 	}
 
@@ -210,6 +211,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
 		if (endOfStream.trySetException(e)) {
 			onError(e);
+			cleanup();
 		}
 	}
 
@@ -222,10 +224,10 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private void cleanup() {
 		onCleanup();
 		buffer.clear();
-		SettablePromise<Void> completedPromise = endOfStream;
-		assert completedPromise.isComplete();
-		endOfStream = new SettablePromise<>();
-		endOfStream.accept(completedPromise.getResult(), completedPromise.getException());
+		SettablePromise<Void> endOfStream = this.endOfStream;
+		assert endOfStream.isComplete();
+		this.endOfStream = new SettablePromise<>();
+		this.endOfStream.accept(endOfStream.getResult(), endOfStream.getException());
 	}
 
 	/**

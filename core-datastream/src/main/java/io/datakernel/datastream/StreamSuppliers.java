@@ -151,7 +151,7 @@ final class StreamSuppliers {
 	}
 
 	static class Concat<T> extends AbstractStreamSupplier<T> {
-		private final ChannelSupplier<StreamSupplier<T>> iterator;
+		private ChannelSupplier<StreamSupplier<T>> iterator;
 		@Nullable
 		private StreamSupplier<T> supplier;
 
@@ -202,6 +202,12 @@ final class StreamSuppliers {
 				supplier.closeEx(e);
 				iterator.closeEx(e);
 			}
+		}
+
+		@Override
+		protected void onCleanup() {
+			iterator = null;
+			supplier = null;
 		}
 	}
 

@@ -40,10 +40,6 @@ public class DatastreamBenchmark extends Launcher {
 			}
 			sendEndOfStream();
 		}
-
-		@Override
-		protected void onError(Throwable e) {
-		}
 	}
 
 	//region fields

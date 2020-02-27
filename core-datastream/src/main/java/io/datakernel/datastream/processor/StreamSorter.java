@@ -188,6 +188,11 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		protected void onError(Throwable e) {
 			temporaryStreamsCollector.closeEx(e);
 		}
+
+		@Override
+		protected void onCleanup() {
+			list = null;
+		}
 	}
 
 	@Override

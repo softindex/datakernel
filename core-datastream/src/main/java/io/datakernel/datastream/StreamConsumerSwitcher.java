@@ -96,6 +96,12 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		}
 	}
 
+	@Override
+	protected void onCleanup() {
+		currentSupplier = null;
+		currentConsumer = null;
+	}
+
 	private class InternalStreamSupplier extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onResumed() {

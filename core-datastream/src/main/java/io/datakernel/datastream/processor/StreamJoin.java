@@ -270,6 +270,12 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 			left.closeEx(e);
 			right.closeEx(e);
 		}
+
+		@Override
+		protected void onCleanup() {
+			leftDeque.clear();
+			rightDeque.clear();
+		}
 	}
 
 	/**

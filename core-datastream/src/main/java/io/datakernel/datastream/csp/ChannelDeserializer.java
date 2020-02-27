@@ -262,7 +262,11 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 
 	@Override
 	protected void onError(Throwable e) {
-		queue.recycle();
 		input.closeEx(e);
+	}
+
+	@Override
+	protected void onCleanup() {
+		queue.recycle();
 	}
 }

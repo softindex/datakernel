@@ -160,10 +160,6 @@ public class TpcDataBenchmarkClient extends Launcher {
 			}
 			sendEndOfStream();
 		}
-
-		@Override
-		protected void onError(Throwable e) {
-		}
 	}
 
 	public static void main(String[] args) throws Exception {

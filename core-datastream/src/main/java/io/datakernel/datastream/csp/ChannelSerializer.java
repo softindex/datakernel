@@ -198,9 +198,13 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 
 	@Override
 	protected void onError(Throwable e) {
+		output.closeEx(e);
+	}
+
+	@Override
+	protected void onCleanup() {
 		bufs.clear();
 		input.buf = nullify(input.buf, ByteBuf::recycle);
-		output.closeEx(e);
 	}
 
 	private void doFlush() {
