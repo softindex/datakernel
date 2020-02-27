@@ -96,7 +96,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			while (isReady() && iterator.hasNext()) {
 				send(iterator.next());
 			}
@@ -127,7 +127,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			if (supplier != null) {
 				supplier.resume(getDataAcceptor());
 			}
@@ -181,7 +181,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			if (supplier != null) {
 				supplier.resume(getDataAcceptor());
 			}
@@ -211,14 +211,14 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
-			async.begin();
+		protected void onResumed() {
+			asyncBegin();
 			supplier.get()
 					.whenComplete((item, e) -> {
 						if (e == null) {
 							if (item != null) {
 								send(item);
-								async.resume();
+								asyncResume();
 							} else {
 								sendEndOfStream();
 							}

@@ -112,7 +112,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		public Output(int index) {this.index = index;}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			dataAcceptors[index] = getDataAcceptor();
 			sync();
 		}

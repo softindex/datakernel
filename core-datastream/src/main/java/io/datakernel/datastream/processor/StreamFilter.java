@@ -68,7 +68,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 
 	protected final class Output extends AbstractStreamSupplier<T> {
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			sync();
 		}
 

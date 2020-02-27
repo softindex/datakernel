@@ -150,7 +150,7 @@ public class TpcDataBenchmarkClient extends Launcher {
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			while (value < limit) {
 				StreamDataAcceptor<Integer> dataAcceptor = getDataAcceptor();
 				if (dataAcceptor == null) {

@@ -22,7 +22,7 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 
 	private final AbstractStreamSupplier<Integer> output = new AbstractStreamSupplier<Integer>() {
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			input.resume(item -> {
 				int len = item.length();
 				if (len < MAX_LENGTH) {

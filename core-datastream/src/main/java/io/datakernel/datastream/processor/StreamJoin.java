@@ -218,7 +218,7 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 
 	protected final class Output extends AbstractStreamSupplier<V> {
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			StreamDataAcceptor<V> acceptor = this::send;
 			if (isReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();

@@ -98,7 +98,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 
 	private class InternalStreamSupplier extends AbstractStreamSupplier<T> {
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			StreamConsumerSwitcher.this.resume(getDataAcceptor());
 		}
 

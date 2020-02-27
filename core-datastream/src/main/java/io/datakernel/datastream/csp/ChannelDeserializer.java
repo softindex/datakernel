@@ -76,8 +76,8 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 	}
 
 	@Override
-	protected void onResumed(AsyncProduceController async) {
-		async.begin();
+	protected void onResumed() {
+		asyncBegin();
 
 		final boolean endOfStream;
 
@@ -114,7 +114,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 								return;
 							}
 							queue.add(buf);
-							async.resume();
+							asyncResume();
 						} else {
 							if (explicitEndOfStream && !endOfStream) {
 								closeEx(new UnknownFormatException(ChannelDeserializer.class, format("Explicit end-of-stream is missing, %s : %s", this, queue)));
@@ -130,7 +130,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 					})
 					.whenException(this::closeEx);
 		} else {
-			async.end();
+			asyncEnd();
 		}
 	}
 

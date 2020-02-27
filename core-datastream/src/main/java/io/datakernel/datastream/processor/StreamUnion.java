@@ -87,7 +87,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 
 	private final class Output extends AbstractStreamSupplier<T> {
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			sync();
 		}
 

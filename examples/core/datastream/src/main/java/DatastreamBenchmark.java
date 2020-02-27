@@ -34,7 +34,7 @@ public class DatastreamBenchmark extends Launcher {
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			while (integer < limit) {
 				send(++integer);
 			}

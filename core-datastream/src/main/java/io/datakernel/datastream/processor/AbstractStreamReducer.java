@@ -173,7 +173,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		}
 
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			AbstractStreamReducer.this.doProduce();
 		}
 	}

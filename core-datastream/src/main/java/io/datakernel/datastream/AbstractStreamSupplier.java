@@ -57,31 +57,24 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		endOfStream.async().whenComplete(this::onCleanup);
 	}
 
-	private final AsyncProduceController controller = new AsyncProduceController();
-
 	private enum ProduceStatus {
 		STARTED,
 		STARTED_ASYNC
 	}
 
-	protected final class AsyncProduceController {
-		private AsyncProduceController() {
-		}
+	protected final void asyncEnd() {
+		produceStatus = null;
+	}
 
-		public void begin() {
-			produceStatus = ProduceStatus.STARTED_ASYNC;
-		}
+	protected final void asyncBegin() {
+		produceStatus = ProduceStatus.STARTED_ASYNC;
+	}
 
-		public void end() {
-			produceStatus = null;
-		}
-
-		public void resume() {
-			if (isReady()) {
-				onResumed(this);
-			} else {
-				end();
-			}
+	protected final void asyncResume() {
+		if (isReady()) {
+			onResumed();
+		} else {
+			asyncEnd();
 		}
 	}
 
@@ -118,7 +111,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 				//noinspection ConstantConditions
 				assert buffer.isEmpty();
 				if (!endOfStreamRequest) {
-					onResumed(controller);
+					onResumed();
 				}
 			}
 		}
@@ -132,14 +125,14 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		}
 
 		if (produceStatus == ProduceStatus.STARTED) {
-			produceStatus = null;
+			asyncEnd();
 		}
 	}
 
 	/**
 	 * Called when this supplier changes from suspended state to a normal one.
 	 */
-	protected abstract void onResumed(AsyncProduceController async);
+	protected abstract void onResumed();
 
 	/**
 	 * Called when this supplier changes a normal state to a suspended one.
@@ -165,7 +158,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		checkState(eventloop.inEventloopThread());
 		if (endOfStream.isComplete()) return;
 		if (produceStatus == ProduceStatus.STARTED_ASYNC) {
-			produceStatus = null;
+			asyncEnd();
 		}
 		endOfStreamRequest = true;
 		flush();

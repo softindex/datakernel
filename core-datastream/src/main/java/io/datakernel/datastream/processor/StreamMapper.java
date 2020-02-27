@@ -71,7 +71,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 
 	protected final class Output extends AbstractStreamSupplier<O> {
 		@Override
-		protected void onResumed(AsyncProduceController async) {
+		protected void onResumed() {
 			sync();
 		}
 
