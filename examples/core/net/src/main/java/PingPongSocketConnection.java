@@ -23,7 +23,6 @@ import io.datakernel.net.SimpleServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.function.Consumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.promise.Promises.loop;
@@ -48,7 +47,7 @@ public final class PingPongSocketConnection {
 					BinaryChannelSupplier bufsSupplier = BinaryChannelSupplier.of(ChannelSupplier.ofSocket(socket));
 					repeat(() ->
 							bufsSupplier.parse(DECODER)
-									.whenResult((Consumer<String>) System.out::println)
+									.whenResult(x -> System.out.println(x))
 									.then(() -> socket.write(wrapAscii(RESPONSE_MSG))))
 							.whenComplete(socket::close);
 				})
@@ -64,7 +63,7 @@ public final class PingPongSocketConnection {
 							i -> i < ITERATIONS,
 							i -> socket.write(wrapAscii(REQUEST_MSG))
 									.then(() -> bufsSupplier.parse(DECODER)
-											.whenResult((Consumer<String>) System.out::println)
+											.whenResult(x -> System.out.println(x))
 											.map($2 -> i + 1)))
 							.whenComplete(socket::close);
 				})

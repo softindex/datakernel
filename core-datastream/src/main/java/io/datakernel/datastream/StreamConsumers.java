@@ -17,7 +17,6 @@
 package io.datakernel.datastream;
 
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
@@ -29,8 +28,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
-
-import static io.datakernel.common.Preconditions.checkState;
 
 final class StreamConsumers {
 
@@ -99,14 +96,10 @@ final class StreamConsumers {
 	}
 
 	static final class OfPromise<T> extends AbstractStreamConsumer<T> {
-		final @NotNull Promise<? extends StreamConsumer<T>> promise;
+		@Nullable
+		private StreamConsumer<T> consumer;
 
 		public OfPromise(@NotNull Promise<? extends StreamConsumer<T>> promise) {
-			this.promise = promise;
-		}
-
-		@Override
-		protected void onStarted() {
 			promise
 					.whenResult(consumer -> {
 						consumer.getAcknowledgement()
@@ -115,9 +108,25 @@ final class StreamConsumers {
 						this.getAcknowledgement()
 								.whenException(consumer::closeEx);
 						if (isClosed()) return;
-						consumer.consume(supplier);
+						this.consumer = consumer;
+						if (supplier != null) {
+							consumer.consume(supplier);
+						}
 					})
 					.whenException(this::closeEx);
+		}
+
+		@Override
+		protected void onStarted() {
+			assert supplier != null;
+			if (consumer != null) {
+				consumer.consume(supplier);
+			}
+		}
+
+		@Override
+		protected void onCleanup() {
+			consumer = null;
 		}
 	}
 
@@ -172,80 +181,6 @@ final class StreamConsumers {
 		}
 	}
 
-	static final class AsChannelConsumer<T> extends AbstractChannelConsumer<T> {
-		private final StreamConsumer<T> streamConsumer;
-		private StreamDataAcceptor<T> dataAcceptor;
-		private T item;
-		private SettablePromise<Void> itemPromise;
-		final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		AsChannelConsumer(StreamConsumer<T> consumer) {
-			streamConsumer = consumer;
-			streamConsumer.getAcknowledgement()
-					.whenResult(this::close)
-					.whenException(this::closeEx);
-			if (!streamConsumer.getAcknowledgement().isComplete()) {
-				streamConsumer.consume(new StreamSupplier<T>() {
-					@Override
-					public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-						if (isClosed()) return;
-						if (streamConsumer.getAcknowledgement().isComplete()) return;
-						AsChannelConsumer.this.dataAcceptor = dataAcceptor;
-						if (dataAcceptor != null) {
-							if (item != null) {
-								dataAcceptor.accept(item);
-								itemPromise.set(null);
-							}
-						}
-					}
-
-					@Override
-					public Promise<Void> getEndOfStream() {
-						return endOfStream;
-					}
-
-					@Override
-					public void closeEx(@NotNull Throwable e) {
-					}
-				});
-			}
-		}
-
-		@Override
-		protected Promise<Void> doAccept(@Nullable T item) {
-			assert !isClosed();
-			assert !streamConsumer.getAcknowledgement().isComplete();
-			if (item == null) {
-				endOfStream.trySet(null);
-				return streamConsumer.getAcknowledgement();
-			}
-			if (dataAcceptor != null) {
-				dataAcceptor.accept(item);
-				return Promise.complete();
-			} else {
-				this.item = item;
-				this.itemPromise = new SettablePromise<>();
-				this.itemPromise.whenComplete(() -> { // *
-					this.item = null;
-					this.itemPromise = null;
-				});
-				return this.itemPromise;
-			}
-		}
-
-		@Override
-		protected void onClosed(@NotNull Throwable e) {
-			dataAcceptor = null;
-			endOfStream.trySetException(e);
-			streamConsumer.closeEx(e);
-			if (itemPromise != null) {
-				itemPromise.setException(e); // *
-			}
-			checkState(this.dataAcceptor == null);
-			checkState(this.item == null);
-		}
-	}
-
 	static final class ToCollector<T, A, R> extends AbstractStreamConsumer<T> {
 		private final Collector<T, A, R> collector;
 		private final SettablePromise<R> resultPromise = new SettablePromise<>();
@@ -271,9 +206,7 @@ final class StreamConsumers {
 
 		@Override
 		protected void onEndOfStream() {
-			if (resultPromise.isComplete()) return;
 			R result = collector.finisher().apply(accumulator);
-			accumulator = null;
 			resultPromise.set(result);
 		}
 
@@ -284,6 +217,11 @@ final class StreamConsumers {
 		@Nullable
 		public A getAccumulator() {
 			return accumulator;
+		}
+
+		@Override
+		protected void onCleanup() {
+			accumulator = null;
 		}
 
 	}

@@ -4,7 +4,6 @@ import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsDecoder;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -23,7 +22,7 @@ public final class ByteBufsParserExample {
 		};
 
 		BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)).parse(decoder)
-				.whenResult((Consumer<String>) System.out::println);
+				.whenResult(x -> System.out.println(x));
 	}
 }
 //[END EXAMPLE]

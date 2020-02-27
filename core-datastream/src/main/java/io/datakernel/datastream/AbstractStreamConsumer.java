@@ -31,13 +31,14 @@ import static io.datakernel.common.Preconditions.checkState;
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected @Nullable StreamSupplier<T> supplier;
-	protected final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	protected SettablePromise<Void> acknowledgement = new SettablePromise<>();
 	private boolean endOfStream;
+	private @Nullable StreamDataAcceptor<T> dataAcceptor;
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	{
-		acknowledgement.async().whenComplete(this::onCleanup);
+		acknowledgement.whenComplete(this::cleanup);
 	}
 
 	@Override
@@ -49,7 +50,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		checkState(this.supplier == null);
 		if (acknowledgement.isComplete()) return;
 		this.supplier = streamSupplier;
-		onStarted();
+		if (!streamSupplier.getEndOfStream().isException()) {
+			onStarted();
+		}
 		streamSupplier.getEndOfStream()
 				.whenResult(this::endOfStream)
 				.whenException(this::closeEx);
@@ -87,16 +90,12 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * Begins receiving data into given acceptor, resumes the associated supplier to receive data from it.
 	 */
 	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		if (dataAcceptor == null) {
-			suspend();
-			return;
-		}
 		checkState(eventloop.inEventloopThread());
-		//noinspection ResultOfMethodCallIgnored
-		checkNotNull(dataAcceptor);
 		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
 		if (supplier == null) return;
+		if (this.dataAcceptor == dataAcceptor) return;
+		this.dataAcceptor = dataAcceptor;
 		supplier.resume(dataAcceptor);
 	}
 
@@ -104,11 +103,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * Suspends the associated supplier.
 	 */
 	public final void suspend() {
-		checkState(eventloop.inEventloopThread());
-		if (acknowledgement.isComplete()) return;
-		if (endOfStream) return;
-		if (supplier == null) return;
-		supplier.suspend();
+		resume(null);
 	}
 
 	/**
@@ -148,6 +143,15 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * This method will be called when this consumer erroneously changes to the acknowledged state.
 	 */
 	protected void onError(Throwable e) {
+	}
+
+	private void cleanup() {
+		onCleanup();
+		supplier = null;
+		SettablePromise<Void> completedPromise = acknowledgement;
+		assert completedPromise.isComplete();
+		acknowledgement = new SettablePromise<>();
+		acknowledgement.accept(completedPromise.getResult(), completedPromise.getException());
 	}
 
 	/**

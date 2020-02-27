@@ -95,15 +95,16 @@ public class DataflowGraph {
 	public Promise<Void> execute() {
 		Map<Partition, List<Node>> nodesByPartition = getNodesByPartition();
 
-		return connect(nodesByPartition.keySet()).then(sessions ->
-				Promises.all(
-						sessions.stream()
-								.map(session -> {
-									List<Node> nodes = nodesByPartition.get(session.partition);
-									return session.execute(nodes);
-								}))
-						.whenException(() -> sessions.forEach(PartitionSession::close))
-		);
+		return connect(nodesByPartition.keySet())
+				.then(sessions ->
+						Promises.all(
+								sessions.stream()
+										.map(session -> {
+											List<Node> nodes = nodesByPartition.get(session.partition);
+											return session.execute(nodes);
+										}))
+								.whenException(() -> sessions.forEach(PartitionSession::close))
+				);
 	}
 
 	private Promise<List<PartitionSession>> connect(Set<Partition> partitions) {

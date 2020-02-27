@@ -16,10 +16,7 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.csp.queue.ChannelQueue;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -146,6 +143,11 @@ final class StreamSuppliers {
 				supplier.closeEx(e);
 			}
 		}
+
+		@Override
+		protected void onCleanup() {
+			supplier = null;
+		}
 	}
 
 	static class Concat<T> extends AbstractStreamSupplier<T> {
@@ -234,42 +236,4 @@ final class StreamSuppliers {
 		}
 	}
 
-	static final class AsChannelSupplier<T> extends AbstractChannelSupplier<T> {
-		private final ChannelQueue<T> queue;
-		private final StreamSupplier<T> streamSupplier;
-		private boolean endOfStream;
-
-		public AsChannelSupplier(StreamSupplier<T> supplier) {
-			this(new ChannelZeroBuffer<>(), supplier);
-		}
-
-		public AsChannelSupplier(ChannelQueue<T> queue, StreamSupplier<T> supplier) {
-			this.queue = queue;
-			this.streamSupplier = supplier;
-			this.streamSupplier.getEndOfStream()
-					.whenResult(() -> endOfStream = true) // *
-					.whenException(this::closeEx); // *
-			if (!this.streamSupplier.getEndOfStream().isComplete()) {
-				this.streamSupplier.resume(item -> { // *
-					assert !isClosed();
-					assert !endOfStream;
-					Promise<Void> promise = this.queue.put(item);
-					if (!promise.isComplete()) {
-						this.streamSupplier.resume(null);
-					} else { // *
-					}
-				});
-			}
-		}
-
-		@Override
-		protected @NotNull Promise<T> doGet() {
-			return !endOfStream ? queue.take() : Promise.of(null);
-		}
-
-		@Override
-		protected void onClosed(@NotNull Throwable e) {
-			streamSupplier.closeEx(e); // *
-		}
-	}
 }

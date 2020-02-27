@@ -49,12 +49,12 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	private boolean endOfStreamRequest;
-	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+	private SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	{
-		endOfStream.async().whenComplete(this::onCleanup);
+		endOfStream.whenComplete(this::cleanup);
 	}
 
 	private enum ProduceStatus {
@@ -76,6 +76,17 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		} else {
 			asyncEnd();
 		}
+	}
+
+	@Override
+	public Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
+		if (!this.getEndOfStream().isException() && !consumer.getAcknowledgement().isException()) {
+			onStarted();
+		}
+		return StreamSupplier.super.streamTo(consumer);
+	}
+
+	protected void onStarted() {
 	}
 
 	@Override
@@ -206,6 +217,15 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * This method will be called when this supplier erroneously changes to the closed state.
 	 */
 	protected void onError(Throwable e) {
+	}
+
+	private void cleanup() {
+		onCleanup();
+		buffer.clear();
+		SettablePromise<Void> completedPromise = endOfStream;
+		assert completedPromise.isComplete();
+		endOfStream = new SettablePromise<>();
+		endOfStream.accept(completedPromise.getResult(), completedPromise.getException());
 	}
 
 	/**
