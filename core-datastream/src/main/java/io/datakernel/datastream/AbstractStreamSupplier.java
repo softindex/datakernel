@@ -36,49 +36,34 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	@Nullable
 	private StreamDataAcceptor<T> dataAcceptor;
 	private StreamDataAcceptor<T> dataAcceptorSafe;
+	private final ArrayDeque<T> buffer = new ArrayDeque<>();
+
+	{
+		dataAcceptorSafe = buffer::addLast;
+	}
+
+	private StreamConsumer<T> consumer;
 
 	@SuppressWarnings("FieldCanBeLocal")
-	private boolean produceRequest;
+	private boolean flushRequest;
 	@Nullable
-	private ProduceStatus produceStatus;
+	private FlushStatus flushStatus;
 
-	private final ArrayDeque<T> buffer = new ArrayDeque<>();
+	private enum FlushStatus {
+		STARTED,
+		STARTED_ASYNC
+	}
 
 	private boolean endOfStreamRequest;
 	private SettablePromise<Void> endOfStream = new SettablePromise<>();
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-	{
-		dataAcceptorSafe = buffer::addLast;
-	}
-
-	private enum ProduceStatus {
-		STARTED,
-		STARTED_ASYNC
-	}
-
-	protected final void asyncBegin() {
-		checkState(produceStatus == ProduceStatus.STARTED || produceStatus == ProduceStatus.STARTED_ASYNC);
-		produceStatus = ProduceStatus.STARTED_ASYNC;
-	}
-
-	protected final void asyncEnd() {
-		checkState(produceStatus == ProduceStatus.STARTED_ASYNC);
-		produceStatus = null;
-	}
-
-	protected final void asyncResume() {
-		checkState(produceStatus == ProduceStatus.STARTED_ASYNC);
-		if (isReady()) {
-			onResumed();
-		} else {
-			asyncEnd();
-		}
-	}
-
 	@Override
 	public Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
+		checkState(eventloop.inEventloopThread());
+		checkState(!isStarted());
+		this.consumer = consumer;
 		if (!this.getEndOfStream().isException() && !consumer.getAcknowledgement().isException()) {
 			onStarted();
 		}
@@ -86,6 +71,14 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	protected void onStarted() {
+	}
+
+	public final boolean isStarted() {
+		return consumer != null;
+	}
+
+	public final StreamConsumer<T> getConsumer() {
+		return consumer;
 	}
 
 	@Override
@@ -102,17 +95,36 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		}
 	}
 
+	protected final void asyncBegin() {
+		checkState(flushStatus == FlushStatus.STARTED || flushStatus == FlushStatus.STARTED_ASYNC);
+		flushStatus = FlushStatus.STARTED_ASYNC;
+	}
+
+	protected final void asyncEnd() {
+		checkState(flushStatus == FlushStatus.STARTED_ASYNC);
+		flushStatus = null;
+	}
+
+	protected final void asyncResume() {
+		checkState(flushStatus == FlushStatus.STARTED_ASYNC);
+		if (isReady()) {
+			onResumed();
+		} else {
+			asyncEnd();
+		}
+	}
+
 	/**
 	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
 	 */
 	public final void flush() {
 		checkState(eventloop.inEventloopThread());
-		produceRequest = true;
-		if (produceStatus != null) return; // recursive call
+		flushRequest = true;
+		if (flushStatus != null) return; // recursive call
 		if (endOfStream.isComplete()) return;
-		produceStatus = ProduceStatus.STARTED;
-		while (produceRequest) {
-			produceRequest = false;
+		flushStatus = FlushStatus.STARTED;
+		while (flushRequest) {
+			flushRequest = false;
 			while (isReady() && !buffer.isEmpty()) {
 				T item = buffer.pollFirst();
 				this.dataAcceptor.accept(item);
@@ -132,8 +144,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 			return;
 		}
 
-		if (produceStatus == ProduceStatus.STARTED) {
-			produceStatus = null;
+		if (flushStatus == FlushStatus.STARTED) {
+			flushStatus = null;
 		}
 	}
 
@@ -166,7 +178,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	public final void sendEndOfStream() {
 		checkState(eventloop.inEventloopThread());
 		if (endOfStream.isComplete()) return;
-		if (produceStatus == ProduceStatus.STARTED_ASYNC) {
+		if (flushStatus == FlushStatus.STARTED_ASYNC) {
 			asyncEnd();
 		}
 		endOfStreamRequest = true;
@@ -196,7 +208,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return endOfStream;
 	}
 
-	public boolean isClosed() {
+	public final boolean isClosed() {
 		return endOfStream.isComplete();
 	}
 
@@ -219,12 +231,16 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	private void cleanup() {
-		onCleanup();
+		onComplete();
+		eventloop.post(this::onCleanup);
 		buffer.clear();
 		SettablePromise<Void> endOfStream = this.endOfStream;
-		assert endOfStream.isComplete();
 		this.endOfStream = new SettablePromise<>();
-		this.endOfStream.accept(endOfStream.getResult(), endOfStream.getException());
+		assert endOfStream.isComplete();
+		endOfStream.whenComplete(this.endOfStream);
+	}
+
+	protected void onComplete() {
 	}
 
 	/**

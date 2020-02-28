@@ -113,10 +113,12 @@ final class StreamSuppliers {
 						supplier.getEndOfStream()
 								.whenResult(this::sendEndOfStream)
 								.whenException(this::closeEx);
+						this.getEndOfStream()
+								.whenException(supplier::closeEx);
 						if (isClosed()) return;
 
 						this.supplier = supplier;
-						supplier.resume(getDataAcceptor());
+						this.supplier.resume(getDataAcceptor());
 					})
 					.whenException(this::closeEx);
 		}
@@ -143,7 +145,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onCleanup() {
+		protected void onComplete() {
 			supplier = null;
 		}
 	}
@@ -163,7 +165,9 @@ final class StreamSuppliers {
 			iterator.get()
 					.whenResult(supplier -> {
 						if (supplier != null) {
-							supplier.getEndOfStream().async()
+							this.getEndOfStream()
+									.whenException(supplier::closeEx);
+							supplier.getEndOfStream()
 									.whenResult(this::next)
 									.whenException(this::closeEx);
 							if (supplier.getEndOfStream().isComplete()) return;
@@ -173,7 +177,8 @@ final class StreamSuppliers {
 						} else {
 							sendEndOfStream();
 						}
-					});
+					})
+					.whenException(this::closeEx);
 		}
 
 		@Override
@@ -199,7 +204,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onCleanup() {
+		protected void onComplete() {
 			iterator = null;
 			supplier = null;
 		}
@@ -216,15 +221,18 @@ final class StreamSuppliers {
 		protected void onResumed() {
 			asyncBegin();
 			supplier.get()
-					.whenResult(item -> {
-						if (item != null) {
-							send(item);
-							asyncResume();
+					.whenComplete((item, e) -> {
+						if (e == null) {
+							if (item != null) {
+								send(item);
+								asyncResume();
+							} else {
+								sendEndOfStream();
+							}
 						} else {
-							sendEndOfStream();
+							closeEx(e);
 						}
-					})
-					.whenException(this::closeEx);
+					});
 		}
 
 		@Override

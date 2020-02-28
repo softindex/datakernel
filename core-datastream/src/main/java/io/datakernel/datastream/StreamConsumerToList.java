@@ -42,7 +42,7 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> {
 
 	@Override
 	protected void onStarted() {
-		resume(e -> list.add(e));
+		resume(list::add);
 	}
 
 	@Override

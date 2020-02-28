@@ -105,8 +105,9 @@ final class StreamConsumers {
 						consumer.getAcknowledgement()
 								.whenResult(this::acknowledge)
 								.whenException(this::closeEx);
+						this.getAcknowledgement()
+								.whenException(consumer::closeEx);
 						if (isClosed()) return;
-
 						this.consumer = consumer;
 						if (supplier != null) {
 							consumer.consume(supplier);
@@ -124,14 +125,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			if (consumer != null) {
-				consumer.closeEx(e);
-			}
-		}
-
-		@Override
-		protected void onCleanup() {
+		protected void onComplete() {
 			consumer = null;
 		}
 	}
@@ -152,11 +146,12 @@ final class StreamConsumers {
 					.whenException(this::closeEx);
 		}
 
-		private void sendEndOfStream() {
-			queue.put(null);
+		@Override
+		protected void onStarted() {
+			flush();
 		}
 
-		private void resume() {
+		private void flush() {
 			resume(item -> {
 				Promise<Void> promise = queue.put(item);
 				if (promise.isComplete()) return;
@@ -164,17 +159,12 @@ final class StreamConsumers {
 				promise.whenResult(() -> {
 					if (isClosed()) return;
 					if (!isEndOfStream()) {
-						resume();
+						flush();
 					} else {
 						sendEndOfStream();
 					}
 				});
 			});
-		}
-
-		@Override
-		protected void onStarted() {
-			resume();
 		}
 
 		@Override
@@ -184,6 +174,10 @@ final class StreamConsumers {
 			if (!queue.isWaitingPut()) {
 				sendEndOfStream();
 			}
+		}
+
+		private void sendEndOfStream() {
+			queue.put(null);
 		}
 
 		@Override
@@ -203,7 +197,6 @@ final class StreamConsumers {
 
 		public ToCollector(Collector<T, A, R> collector) {
 			this.collector = collector;
-			accumulator = collector.supplier().get();
 		}
 
 		public Promise<R> getResult() {
@@ -212,6 +205,8 @@ final class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
+			A accumulator = collector.supplier().get();
+			this.accumulator = accumulator;
 			BiConsumer<A, T> consumer = collector.accumulator();
 			resume(item -> consumer.accept(accumulator, item));
 		}
@@ -227,7 +222,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		protected void onCleanup() {
+		protected void onComplete() {
 			accumulator = null;
 		}
 

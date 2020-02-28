@@ -53,16 +53,6 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		return output;
 	}
 
-	private void sync() {
-		StreamDataAcceptor<O> dataAcceptor = output.getDataAcceptor();
-		if (dataAcceptor != null) {
-			Function<I, O> function = this.function;
-			input.resume(item -> dataAcceptor.accept(function.apply(item)));
-		} else {
-			input.suspend();
-		}
-	}
-
 	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
@@ -83,7 +73,18 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 
 		@Override
 		protected void onSuspended() {
+			sync();
+		}
+	}
+
+	private void sync() {
+		final StreamDataAcceptor<O> dataAcceptor = output.getDataAcceptor();
+		if (dataAcceptor != null) {
+			final Function<I, O> function = this.function;
+			input.resume(item -> dataAcceptor.accept(function.apply(item)));
+		} else {
 			input.suspend();
 		}
 	}
+
 }

@@ -101,7 +101,7 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	static <T> StreamConsumer<T> ofChannelConsumer(ChannelConsumer<T> consumer) {
 		return new OfChannelConsumer<>(consumer);
 	}
-	
+
 	/**
 	 * Creates a consumer which sends received items through the supplier received in the callback.
 	 * Acknowledge of that consumer will not be set until the promise received from the callback invocation completes.

@@ -212,7 +212,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		if (!bufs.isEmpty()) {
 			flushing = true;
 			output.accept(bufs.poll())
-					.whenResult($ -> {
+					.whenResult(() -> {
 						flushing = false;
 						doFlush();
 					})

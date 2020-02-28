@@ -192,8 +192,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 						return;
 					}
 					if (engine.isOutboundDone()) {
-                        close();
-                        return;
+						close();
+						return;
 					}
 					if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING && write != null) {
 						SettablePromise<Void> write = this.write;
@@ -269,8 +269,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		SSLEngineResult result = null;
 		while (!isClosed()) {
 			if (result != null && result.getStatus() == CLOSED) {
-                close();
-                return;
+				close();
+				return;
 			}
 
 			HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
@@ -363,7 +363,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			return;
 		}
 
-		if (!isClosed() && (read != null || !engine2app.canRead())){
+		if (!isClosed() && (read != null || !engine2app.canRead())) {
 			doRead();
 		}
 	}

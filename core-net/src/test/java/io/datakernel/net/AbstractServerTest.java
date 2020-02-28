@@ -53,19 +53,18 @@ public final class AbstractServerTest {
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(Duration.ofMillis(100000L)).withImplWriteTimeout(Duration.ofMillis(100000L));
 
 		RefLong delay = new RefLong(5);
-		SimpleServer.create(socket -> {
-			Promises.<ByteBuf>until(null, $ ->
-							socket.read()
-									.whenResult(buf ->
-											getCurrentEventloop().delay(delay.inc(),
-													() -> socket.write(buf)
-															.whenComplete(() -> {
-																if (buf == null) {
-																	socket.close();
-																}
-															}))),
-					Objects::isNull);
-		})
+		SimpleServer.create(socket -> Promises.<ByteBuf>until(null,
+				$ ->
+						socket.read()
+								.whenResult(buf ->
+										getCurrentEventloop().delay(delay.inc(),
+												() -> socket.write(buf)
+														.whenComplete(() -> {
+															if (buf == null) {
+																socket.close();
+															}
+														}))),
+				Objects::isNull))
 				.withSocketSettings(settings)
 				.withListenAddress(address)
 				.withAcceptOnce()

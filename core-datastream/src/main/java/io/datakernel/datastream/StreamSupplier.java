@@ -212,19 +212,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * Creates a supplier that supplies items from given suppliers consecutively and only then closes.
 	 */
 	static <T> StreamSupplier<T> concat(Iterator<StreamSupplier<T>> iterator) {
-		return new StreamSuppliers.Concat<>(new ChannelSupplier<StreamSupplier<T>>() {
-			@Override
-			public @NotNull Promise<StreamSupplier<T>> get() {
-				return Promise.of(iterator.hasNext() ? iterator.next() : null);
-			}
-
-			@Override
-			public void closeEx(@NotNull Throwable e) {
-				while (iterator.hasNext()) {
-					iterator.next().closeEx(e);
-				}
-			}
-		});
+		return new StreamSuppliers.Concat<>(ChannelSupplier.ofIterator(iterator));
 	}
 
 	/**

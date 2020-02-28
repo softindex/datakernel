@@ -55,20 +55,6 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	private void sync() {
-		StreamDataAcceptor<T> dataAcceptor = output.getDataAcceptor();
-		if (dataAcceptor != null) {
-			Predicate<T> predicate = this.predicate;
-			input.resume(item -> {
-				if (predicate.test(item)) {
-					dataAcceptor.accept(item);
-				}
-			});
-		} else {
-			input.suspend();
-		}
-	}
-
 	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
@@ -89,7 +75,22 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 
 		@Override
 		protected void onSuspended() {
+			sync();
+		}
+	}
+
+	private void sync() {
+		final StreamDataAcceptor<T> dataAcceptor = output.getDataAcceptor();
+		if (dataAcceptor != null) {
+			final Predicate<T> predicate = this.predicate;
+			input.resume(item -> {
+				if (predicate.test(item)) {
+					dataAcceptor.accept(item);
+				}
+			});
+		} else {
 			input.suspend();
 		}
 	}
+
 }
