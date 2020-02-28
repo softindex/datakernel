@@ -3,8 +3,6 @@ package io.datakernel.bytebuf;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -106,18 +104,6 @@ final class ByteBufConcurrentQueue {
 			ByteBuf buf = bufsOld.getAndSet(i, null);
 			if (buf != null) map.put(buf.pos, buf);
 		}
-	}
-
-	public List<ByteBuf> getBufs() {
-		AtomicReferenceArray<ByteBuf> bufs = array.get();
-		List<ByteBuf> list = new ArrayList<>();
-		for (int i = 0; i < bufs.length(); i++) {
-			ByteBuf buf = bufs.get(i);
-			if (buf != null) {
-				list.add(buf);
-			}
-		}
-		return list;
 	}
 
 	public void clear() {

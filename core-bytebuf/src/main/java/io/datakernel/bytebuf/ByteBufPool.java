@@ -158,8 +158,8 @@ public final class ByteBufPool {
 		}
 	}
 
-	private static final WeakHashMap<ByteBuf, Entry> allocateRegistry = new WeakHashMap<>();
-	private static final WeakHashMap<ByteBuf, Entry> recycleRegistry = new WeakHashMap<>();
+	private static final Map<ByteBuf, Entry> allocateRegistry = Collections.synchronizedMap(new WeakHashMap<>());
+	private static final Map<ByteBuf, Entry> recycleRegistry = Collections.synchronizedMap(new WeakHashMap<>());
 
 	static {
 		slabs = new ByteBufConcurrentQueue[NUMBER_OF_SLABS];
@@ -199,8 +199,8 @@ public final class ByteBufPool {
 	 * <code>ceil(log<sub>2</sub>(size))<sup>2</sup></code>
 	 * (rounds up to the nearest power of 2) bytes.
 	 * <p>
-	 * Note that resource intensive {@link #registerAllocate(ByteBuf)} (ByteBuf)} will be executed
-	 * only if {@code #REGISTRY} is set {@code true}. Also, such parameters as
+	 * Note that resource intensive {@link #buildRegistryEntry(ByteBuf)} will be executed
+	 * only if {{@code #REGISTRY}} is set {@code true}. Also, such parameters as
 	 * {@code STATS}, {@code MIN_MAX_CHECKS}, {@code MIN_SIZE}, {@code MAX_SIZE}
 	 * significantly influence the workflow of the {@code allocate} operation.
 	 *
@@ -230,7 +230,7 @@ public final class ByteBufPool {
 			buf.refs = 1;
 			if (STATS) recordNew(index);
 		}
-		if (REGISTRY) registerAllocate(buf);
+		if (REGISTRY) allocateRegistry.put(buf, buildRegistryEntry(buf));
 		return buf;
 	}
 
@@ -240,20 +240,6 @@ public final class ByteBufPool {
 
 	private static void recordReuse(int index) {
 		reused[index].incrementAndGet();
-	}
-
-	private static void registerAllocate(@NotNull ByteBuf buf) {
-		Entry entry = buildRegistryEntry(buf);
-		synchronized (allocateRegistry) {
-			allocateRegistry.put(buf, entry);
-		}
-	}
-
-	private static void registerRecycle(@NotNull ByteBuf buf) {
-		Entry entry = buildRegistryEntry(buf);
-		synchronized (recycleRegistry) {
-			recycleRegistry.put(buf, entry);
-		}
 	}
 
 	private static Entry buildRegistryEntry(@NotNull ByteBuf buf) {
@@ -272,14 +258,8 @@ public final class ByteBufPool {
 	}
 
 	static String getByteBufTrace(@NotNull ByteBuf buf) {
-		Entry allocated;
-		Entry recycled;
-		synchronized (allocateRegistry) {
-			allocated = allocateRegistry.get(buf);
-		}
-		synchronized (recycleRegistry) {
-			recycled = recycleRegistry.get(buf);
-		}
+		Entry allocated = allocateRegistry.get(buf);
+		Entry recycled = recycleRegistry.get(buf);
 		if (allocated == null && recycled == null) return "";
 		return "\nAllocated: " + allocated +
 				"\nRecycled: " + recycled;
@@ -325,8 +305,11 @@ public final class ByteBufPool {
 		int slab = 32 - numberOfLeadingZeros(buf.array.length - 1);
 		ByteBufConcurrentQueue queue = slabs[slab];
 		if (CLEAR_ON_RECYCLE) Arrays.fill(buf.array(), (byte) 0);
+		if (REGISTRY) {
+			recycleRegistry.put(buf, buildRegistryEntry(buf));
+			allocateRegistry.remove(buf);
+		}
 		queue.offer(buf);
-		if (REGISTRY) registerRecycle(buf);
 	}
 
 	@NotNull
@@ -426,13 +409,10 @@ public final class ByteBufPool {
 			slabs[i].clear();
 			created[i].set(0);
 			reused[i].set(0);
+			if (USE_WATCHDOG) slabStats[i].clear();
 		}
-		synchronized (allocateRegistry) {
-			allocateRegistry.clear();
-		}
-		synchronized (recycleRegistry) {
-			recycleRegistry.clear();
-		}
+		allocateRegistry.clear();
+		recycleRegistry.clear();
 	}
 
 	@NotNull
@@ -448,8 +428,6 @@ public final class ByteBufPool {
 		int getPoolItems();
 
 		long getPoolSize();
-
-		long getPoolSizeKB();
 
 		long getTotalSlabMins();
 
@@ -520,11 +498,6 @@ public final class ByteBufPool {
 		}
 
 		@Override
-		public long getPoolSizeKB() {
-			return getPoolSize() / 1024;
-		}
-
-		@Override
 		public long getTotalSlabMins() {
 			if (!USE_WATCHDOG) return -1;
 			long totalSlabMins = 0;
@@ -545,15 +518,7 @@ public final class ByteBufPool {
 		}
 
 		public Map<ByteBuf, Entry> getUnrecycledBufs() {
-			synchronized (allocateRegistry) {
-				Map<ByteBuf, Entry> externalBufs = new IdentityHashMap<>(allocateRegistry);
-				for (ByteBufConcurrentQueue slab : slabs) {
-					for (ByteBuf buf : slab.getBufs()) {
-						externalBufs.remove(buf);
-					}
-				}
-				return externalBufs;
-			}
+			return new HashMap<>(allocateRegistry);
 		}
 
 		@Override
@@ -567,16 +532,28 @@ public final class ByteBufPool {
 		public List<String> getPoolSlabs() {
 			assert slabs.length == 33;
 			List<String> result = new ArrayList<>(slabs.length + 1);
-			result.add("SlotSize,Created,Reused,InPool,Total(Kb)");
+			String header = "SlotSize,Created,Reused,InPool,Total(Kb)";
+			if (USE_WATCHDOG) header += ",RealMin,EstMean,Error,Evicted";
+			result.add(header);
 			for (int i = 0; i < slabs.length; i++) {
 				int idx = (i + 32) % slabs.length;
 				long slabSize = idx == 32 ? 0 : 1L << idx;
-				int count = slabs[idx].size();
-				result.add(slabSize + "," +
-						(STATS ? created[idx] : '-') + "," +
-						(STATS ? reused[idx] : '-') + "," +
+				ByteBufConcurrentQueue slab = slabs[idx];
+				int count = slab.size();
+				String slabInfo = slabSize + "," +
+						(STATS ? created[idx] : "-") + "," +
+						(STATS ? reused[idx] : "-") + "," +
 						count + "," +
-						slabSize * count / 1024);
+						slabSize * count / 1024;
+				if (USE_WATCHDOG){
+					SlabStats slabStat = slabStats[idx];
+					slabInfo += "," + slab.realMin.get() + "," +
+							String.format("%.1f", slabStat.estimatedMin) + "," +
+							String.format("%.1f", slabStat.estimatedError) + "," +
+							slabStat.evictedTotal;
+				}
+
+				result.add(slabInfo);
 			}
 			return result;
 		}
@@ -588,12 +565,8 @@ public final class ByteBufPool {
 
 		@Override
 		public void clearRegistry() {
-			synchronized (allocateRegistry) {
-				allocateRegistry.clear();
-			}
-			synchronized (recycleRegistry) {
-				recycleRegistry.clear();
-			}
+			allocateRegistry.clear();
+			recycleRegistry.clear();
 		}
 	}
 
@@ -604,6 +577,10 @@ public final class ByteBufPool {
 		int evictedLast;
 		int evictedMax;
 		double estimatedError;
+
+		void clear() {
+			estimatedMin = estimatedError = evictedTotal = evictedLast = evictedMax = 0;
+		}
 
 		@Override
 		public String toString() {
@@ -645,6 +622,7 @@ public final class ByteBufPool {
 				if (buf == null) break;
 				stats.estimatedMin--;
 				stats.evictedLast++;
+				if (REGISTRY) recycleRegistry.remove(buf);
 			}
 			stats.evictedTotal += stats.evictedLast;
 			stats.evictedMax = Math.max(stats.evictedLast, stats.evictedMax);
