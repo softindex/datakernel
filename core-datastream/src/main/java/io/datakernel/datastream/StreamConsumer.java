@@ -36,12 +36,11 @@ import java.util.function.Function;
  * instead of this interface, since it makes the threading and state management easier.
  */
 public interface StreamConsumer<T> extends AsyncCloseable {
-
 	/**
 	 * Begins streaming data from the given supplier into this consumer.
 	 * This method may not be called directly, use {@link StreamSupplier#streamTo} instead.
 	 * <p>
-	 * This method must not be called after {@link #getAcknowledgement() the acknowledgement} is set.
+	 * This method must have no effect after {@link #getAcknowledgement() the acknowledgement} is set.
 	 */
 	void consume(@NotNull StreamSupplier<T> streamSupplier);
 
@@ -49,8 +48,7 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	 * A signal promise of the <i>acknowledgement</i> state of this consumer - its completion means that
 	 * this consumer changed to that state and is now <b>closed</b>.
 	 * <p>
-	 * When the consumer is in this state nobody must send any more data to any of its related acceptors,
-	 * and the {@link #consume} method must never be called.
+	 * When the consumer is in this state nobody must send any more data to any of its related acceptors.
 	 * <p>
 	 * If promise completes with an error then this consumer closes with that error.
 	 */
@@ -73,11 +71,10 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	}
 
 	/**
-	 * @deprecated This consumer must not be used, because it
-	 * breaks the whole asynchronous model,
-	 * and it exists only for testing purposes.
+	 * Creates a consumer which calls the provided {@link Consumer} with items
+	 * it receives.
+	 * Its acknowledgement completes when the supplier closes.
 	 */
-	@Deprecated
 	static <T> StreamConsumer<T> of(Consumer<T> consumer) {
 		return new StreamConsumers.OfConsumer<>(consumer);
 	}
@@ -87,6 +84,15 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	 */
 	static <T> StreamConsumer<T> closingWithError(Throwable e) {
 		return new ClosingWithError<>(e);
+	}
+
+	/**
+	 * Creates a consumer that waits until the promise completes
+	 * and then consumer items into the resulting consumer.
+	 */
+	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
+		if (promise.isResult()) return promise.getResult();
+		return new StreamConsumers.OfPromise<>(promise);
 	}
 
 	/**
@@ -107,15 +113,6 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 		if (extraAcknowledge == Promise.complete()) return result;
 		return result
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
-	}
-
-	/**
-	 * Creates a consumer that waits until the promise completes
-	 * and then consumer items into the resulting consumer.
-	 */
-	static <T> StreamConsumer<T> ofPromise(Promise<? extends StreamConsumer<T>> promise) {
-		if (promise.isResult()) return promise.getResult();
-		return new StreamConsumers.OfPromise<>(promise);
 	}
 
 	/**

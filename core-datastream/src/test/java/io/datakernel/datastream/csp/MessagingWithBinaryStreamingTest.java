@@ -78,8 +78,8 @@ public final class MessagingWithBinaryStreamingTest {
 					if (msg != null) {
 						return messaging.send(msg).whenResult(() -> pong(messaging));
 					}
-                    messaging.close();
-                    return Promise.complete();
+					messaging.close();
+					return Promise.complete();
 				})
 				.whenException(e -> messaging.close());
 	}
@@ -92,8 +92,8 @@ public final class MessagingWithBinaryStreamingTest {
 						if (msg > 0) {
 							ping(msg - 1, messaging);
 						} else {
-                            messaging.close();
-                        }
+							messaging.close();
+						}
 					}
 				})
 				.whenException(e -> messaging.close());

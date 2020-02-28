@@ -40,12 +40,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		checkState(eventloop.inEventloopThread());
-		//noinspection ResultOfMethodCallIgnored
-		checkNotNull(streamSupplier);
-		checkState(!endOfStream);
-		checkState(this.supplier == null);
+		if (endOfStream) return;
+		if (this.supplier != null) return;
 		if (acknowledgement.isComplete()) return;
-		this.supplier = streamSupplier;
+		this.supplier = checkNotNull(streamSupplier);
 		if (!streamSupplier.getEndOfStream().isException()) {
 			onStarted();
 		}
@@ -129,9 +127,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
 		checkState(eventloop.inEventloopThread());
-		//noinspection ResultOfMethodCallIgnored
-		checkNotNull(e);
-		if (acknowledgement.trySetException(e)) {
+		if (acknowledgement.trySetException(checkNotNull(e))) {
 			onError(e);
 			cleanup();
 		}

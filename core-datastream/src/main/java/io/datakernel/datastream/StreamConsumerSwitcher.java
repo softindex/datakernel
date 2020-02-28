@@ -72,7 +72,7 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 
 	@Override
 	protected void onStarted() {
-		if (currentSupplier != null && currentSupplier.getDataAcceptor() != null) {
+		if (currentSupplier != null && currentSupplier.isReady()) {
 			resume(currentSupplier.getDataAcceptor());
 		}
 	}
@@ -81,12 +81,13 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 	protected void onEndOfStream() {
 		if (currentSupplier == null) {
 			acknowledge();
-		} else {
-			currentSupplier.sendEndOfStream();
-			currentConsumer.getAcknowledgement()
-					.whenResult(this::acknowledge)
-					.whenException(this::closeEx);
+			return;
 		}
+		assert currentConsumer != null;
+		currentSupplier.sendEndOfStream();
+		currentConsumer.getAcknowledgement()
+				.whenResult(this::acknowledge)
+				.whenException(this::closeEx);
 	}
 
 	@Override

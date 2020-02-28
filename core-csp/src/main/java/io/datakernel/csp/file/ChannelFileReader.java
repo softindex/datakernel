@@ -114,8 +114,8 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	@Override
 	protected Promise<ByteBuf> doGet() {
 		if (limit == 0) {
-            close();
-            return Promise.of(null);
+			close();
+			return Promise.of(null);
 		}
 		ByteBuf buf = ByteBufPool.allocateExact((int) Math.min(bufferSize, limit));
 		return fileService.read(channel, position, buf.array(), buf.head(), buf.writeRemaining()) // reads are synchronized at least on asyncFile, so if produce() is called twice, position wont be broken (i hope)
@@ -127,8 +127,8 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 					}
 					if (bytesRead == 0) { // no data read, assuming end of file
 						buf.recycle();
-                        close();
-                        return Promise.of(null);
+						close();
+						return Promise.of(null);
 					}
 
 					buf.moveTail(Math.toIntExact(bytesRead));
@@ -142,10 +142,6 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 	@Override
 	protected void onClosed(@NotNull Throwable e) {
-		closeFile();
-	}
-
-	private Promise<Void> closeFile() {
 		try {
 			if (!channel.isOpen()) {
 				throw new CloseException(ChannelFileReader.class, "File has been closed");
@@ -153,10 +149,8 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 
 			channel.close();
 			logger.trace(this + ": closed file");
-			return Promise.complete();
-		} catch (IOException | CloseException e) {
-			logger.error(this + ": failed to close file", e);
-			return Promise.ofException(e);
+		} catch (IOException | CloseException e1) {
+			logger.error(this + ": failed to close file", e1);
 		}
 	}
 

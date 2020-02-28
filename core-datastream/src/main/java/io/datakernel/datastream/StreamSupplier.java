@@ -46,14 +46,13 @@ import static java.util.Arrays.asList;
  * instead of this interface, since it makes the threading and state management easier.
  */
 public interface StreamSupplier<T> extends AsyncCloseable {
-
 	/**
 	 * Sets the {@link StreamDataAcceptor} to which this supplies must stream its data.
 	 * <p>
 	 * Calling this with <code>null</code> parameter is the same as calling {@link #suspend()}
 	 * and all suspension rules apply.
 	 * <p>
-	 * This method must not be called after {@link #getEndOfStream() the end of stream} is set.
+	 * This method must have no effect after {@link #getEndOfStream() the end of stream} is set.
 	 */
 	void resume(@Nullable StreamDataAcceptor<T> dataAcceptor);
 
@@ -62,7 +61,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * <b>must not</b> send data to any {@link StreamDataAcceptor} that it may have got
 	 * from the {@link #resume} method.
 	 * <p>
-	 * This method must not be called after {@link #getEndOfStream() the end of stream} is set.
+	 * This method must have no effect after {@link #getEndOfStream() the end of stream} is set.
 	 */
 	default void suspend() {
 		resume(null);
@@ -72,8 +71,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * A signal promise of the <i>end of stream</i> state of this supplier - its completion means that
 	 * this supplier changed to that state and is now <b>closed</b>.
 	 * <p>
-	 * In this state supplier <b>must not</b> supply anything to any acceptors (just like when suspended),
-	 * and {@link #resume} and {@link #suspend} methods must never be called.
+	 * In this state supplier <b>must not</b> supply anything to any acceptors (just like when suspended).
 	 * <p>
 	 * If promise completes with an error then this supplier closes with that error.
 	 */
@@ -102,7 +100,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * A shortcut for {@link #streamTo(StreamConsumer)} for {@link StreamConsumerWithResult}.
 	 */
 	default <X> Promise<X> streamTo(@NotNull StreamConsumerWithResult<T, X> consumerWithResult) {
-		return this.streamTo(consumerWithResult.getConsumer())
+		return streamTo(consumerWithResult.getConsumer())
 				.then(consumerWithResult::getResult);
 	}
 
@@ -214,7 +212,26 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * Creates a supplier that supplies items from given suppliers consecutively and only then closes.
 	 */
 	static <T> StreamSupplier<T> concat(Iterator<StreamSupplier<T>> iterator) {
-		return new StreamSuppliers.Concat<>(ChannelSupplier.ofIterator(iterator));
+		return new StreamSuppliers.Concat<>(new ChannelSupplier<StreamSupplier<T>>() {
+			@Override
+			public @NotNull Promise<StreamSupplier<T>> get() {
+				return Promise.of(iterator.hasNext() ? iterator.next() : null);
+			}
+
+			@Override
+			public void closeEx(@NotNull Throwable e) {
+				while (iterator.hasNext()) {
+					iterator.next().closeEx(e);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Creates a supplier that supplies items from given suppliers consecutively and only then closes.
+	 */
+	static <T> StreamSupplier<T> concat(ChannelSupplier<StreamSupplier<T>> supplier) {
+		return new StreamSuppliers.Concat<>(supplier);
 	}
 
 	/**

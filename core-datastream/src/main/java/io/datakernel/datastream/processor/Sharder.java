@@ -18,8 +18,6 @@ package io.datakernel.datastream.processor;
 
 /**
  * A function that calculates shard indices for given objects
- *
- * @see MultiSharder
  */
 @FunctionalInterface
 public interface Sharder<K> {

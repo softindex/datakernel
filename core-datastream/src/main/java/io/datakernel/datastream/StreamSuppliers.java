@@ -103,22 +103,20 @@ final class StreamSuppliers {
 		}
 	}
 
-	static class OfPromise<T> extends AbstractStreamSupplier<T> {
+	static final class OfPromise<T> extends AbstractStreamSupplier<T> {
 		@Nullable
 		private StreamSupplier<T> supplier;
 
-		OfPromise(Promise<? extends StreamSupplier<T>> promise) {
+		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
 			promise
 					.whenResult(supplier -> {
 						supplier.getEndOfStream()
 								.whenResult(this::sendEndOfStream)
 								.whenException(this::closeEx);
-						this.getEndOfStream()
-								.whenException(supplier::closeEx);
 						if (isClosed()) return;
 
 						this.supplier = supplier;
-						this.supplier.resume(getDataAcceptor());
+						supplier.resume(getDataAcceptor());
 					})
 					.whenException(this::closeEx);
 		}
@@ -150,7 +148,7 @@ final class StreamSuppliers {
 		}
 	}
 
-	static class Concat<T> extends AbstractStreamSupplier<T> {
+	static final class Concat<T> extends AbstractStreamSupplier<T> {
 		private ChannelSupplier<StreamSupplier<T>> iterator;
 		@Nullable
 		private StreamSupplier<T> supplier;
@@ -165,10 +163,7 @@ final class StreamSuppliers {
 			iterator.get()
 					.whenResult(supplier -> {
 						if (supplier != null) {
-							this.getEndOfStream()
-									.whenException(supplier::closeEx)
-									.whenException(iterator::closeEx);
-							supplier.getEndOfStream()
+							supplier.getEndOfStream().async()
 									.whenResult(this::next)
 									.whenException(this::closeEx);
 							if (supplier.getEndOfStream().isComplete()) return;
@@ -178,8 +173,7 @@ final class StreamSuppliers {
 						} else {
 							sendEndOfStream();
 						}
-					})
-					.whenException(this::closeEx);
+					});
 		}
 
 		@Override
@@ -200,8 +194,8 @@ final class StreamSuppliers {
 		protected void onError(Throwable e) {
 			if (supplier != null) {
 				supplier.closeEx(e);
-				iterator.closeEx(e);
 			}
+			iterator.closeEx(e);
 		}
 
 		@Override
@@ -222,18 +216,15 @@ final class StreamSuppliers {
 		protected void onResumed() {
 			asyncBegin();
 			supplier.get()
-					.whenComplete((item, e) -> {
-						if (e == null) {
-							if (item != null) {
-								send(item);
-								asyncResume();
-							} else {
-								sendEndOfStream();
-							}
+					.whenResult(item -> {
+						if (item != null) {
+							send(item);
+							asyncResume();
 						} else {
-							closeEx(e);
+							sendEndOfStream();
 						}
-					});
+					})
+					.whenException(this::closeEx);
 		}
 
 		@Override

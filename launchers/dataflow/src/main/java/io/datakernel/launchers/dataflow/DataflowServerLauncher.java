@@ -21,7 +21,8 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.*;
+import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
+import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 
 public abstract class DataflowServerLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "dataflow-server.properties";

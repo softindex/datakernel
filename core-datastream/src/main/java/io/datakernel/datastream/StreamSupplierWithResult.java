@@ -52,7 +52,7 @@ public final class StreamSupplierWithResult<T, X> {
 				.then(() -> Promises.toTuple(result, consumer.getResult()));
 	}
 
-	protected StreamSupplierWithResult<T, X> sanitize() {
+	public StreamSupplierWithResult<T, X> sanitize() {
 		return new StreamSupplierWithResult<>(supplier,
 				supplier.getEndOfStream().combine(result.whenException(supplier::closeEx), ($, v) -> v).post());
 	}

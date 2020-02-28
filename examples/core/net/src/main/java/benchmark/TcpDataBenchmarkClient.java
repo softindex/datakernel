@@ -26,7 +26,7 @@ import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 
 @SuppressWarnings("WeakerAccess")
-public class TpcDataBenchmarkClient extends Launcher {
+public class TcpDataBenchmarkClient extends Launcher {
 	private final static int TOTAL_ELEMENTS = 100_000_000;
 	private final static int WARMUP_ROUNDS = 3;
 	private final static int BENCHMARK_ROUNDS = 10;
@@ -163,7 +163,7 @@ public class TpcDataBenchmarkClient extends Launcher {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Launcher benchmark = new TpcDataBenchmarkClient();
+		Launcher benchmark = new TcpDataBenchmarkClient();
 		benchmark.launch(args);
 	}
 

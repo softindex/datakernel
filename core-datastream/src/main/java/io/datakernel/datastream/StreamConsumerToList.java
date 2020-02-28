@@ -12,13 +12,12 @@ import java.util.List;
  *
  * @see StreamSupplier#toList()
  */
-public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
-	private final List<T> list;
+public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> {
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
+	private final List<T> list;
 
 	{
 		resultPromise.whenComplete(this::acknowledge);
-		acknowledgement.whenException(resultPromise::trySetException);
 	}
 
 	private StreamConsumerToList(List<T> list) {
@@ -33,26 +32,26 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> imp
 		return new StreamConsumerToList<>(list);
 	}
 
-	@Override
-	public void accept(T item) {
-		list.add(item);
-	}
-
-	@Override
-	protected void onStarted() {
-		resume(list::add);
-	}
-
-	@Override
-	protected void onEndOfStream() {
-		resultPromise.trySet(list);
-	}
-
 	public Promise<List<T>> getResult() {
 		return resultPromise;
 	}
 
 	public final List<T> getList() {
 		return list;
+	}
+
+	@Override
+	protected void onStarted() {
+		resume(e -> list.add(e));
+	}
+
+	@Override
+	protected void onEndOfStream() {
+		resultPromise.set(list);
+	}
+
+	@Override
+	protected void onError(Throwable e) {
+		resultPromise.setException(e);
 	}
 }

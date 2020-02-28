@@ -91,7 +91,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	@NotNull
-	public OTStateManager<K, D> withPoll(@NotNull RetryPolicy pollRetryPolicy) {
+	public OTStateManager<K, D> withPoll(@NotNull RetryPolicy<?> pollRetryPolicy) {
 		return withPoll(poll -> poll.withExecutor(AsyncExecutors.retry(pollRetryPolicy)));
 	}
 

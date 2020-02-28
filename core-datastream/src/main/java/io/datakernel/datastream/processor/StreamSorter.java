@@ -48,7 +48,6 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	private final Input input;
 	private final StreamSupplier<T> output;
 
-	// region creators
 	private StreamSorter(StreamSorterStorage<T> storage,
 			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
 			int itemsInMemory) {
@@ -134,7 +133,6 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			int itemsInMemorySize) {
 		return new StreamSorter<>(storage, keyFunction, keyComparator, distinct, itemsInMemorySize);
 	}
-	// endregion
 
 	private final class Input extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private ArrayList<T> list = new ArrayList<>();
@@ -150,8 +148,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			if (list.size() >= itemsInMemory) {
 				list.sort(itemComparator);
 				Iterator<T> iterator = !distinct ?
-						input.list.iterator() :
-						new DistinctIterator<>(input.list, keyFunction, keyComparator);
+						list.iterator() :
+						new DistinctIterator<>(list, keyFunction, keyComparator);
 				writeToTemporaryStorage(iterator)
 						.whenResult(this::suspendOrResume);
 				suspendOrResume();

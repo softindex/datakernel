@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.exception.CloseException;
 import io.datakernel.csp.ChannelConsumer;
@@ -35,7 +36,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
-public final class RpcStream {
+public final class RpcStream implements AsyncCloseable {
 	private static final CloseException RPC_CLOSE_EXCEPTION = new CloseException(RpcStream.class, "RPC Channel Closed");
 	private final ChannelDeserializer<RpcMessage> deserializer;
 	private final ChannelSerializer<RpcMessage> serializer;
@@ -53,10 +54,8 @@ public final class RpcStream {
 		void onSenderError(@NotNull Throwable e);
 	}
 
-	@SuppressWarnings("FieldCanBeLocal")
 	private final boolean server;
 	private final AsyncTcpSocket socket;
-	private Listener listener;
 
 	public RpcStream(AsyncTcpSocket socket,
 			BinarySerializer<RpcMessage> messageSerializer,
@@ -92,7 +91,6 @@ public final class RpcStream {
 	}
 
 	public void setListener(Listener listener) {
-		this.listener = listener;
 		deserializer.getEndOfStream()
 				.whenResult(listener::onReceiverEndOfStream)
 				.whenException(listener::onReceiverError);
@@ -129,10 +127,12 @@ public final class RpcStream {
 		serializerEndOfStream.trySet(null);
 	}
 
+	@Override
 	public void close() {
 		closeEx(RPC_CLOSE_EXCEPTION);
 	}
 
+	@Override
 	public void closeEx(@NotNull Throwable e) {
 		socket.closeEx(e);
 		serializer.closeEx(e);

@@ -93,8 +93,8 @@ public final class RemoteFsServer extends AbstractServer<RemoteFsServer> {
 				.then(msg -> {
 					if (msg == null) {
 						logger.warn("unexpected end of stream: {}", this);
-                        messaging.close();
-                        return Promise.complete();
+						messaging.close();
+						return Promise.complete();
 					}
 					MessagingHandler<FsCommand> handler = handlers.get(msg.getClass());
 					if (handler == null) {

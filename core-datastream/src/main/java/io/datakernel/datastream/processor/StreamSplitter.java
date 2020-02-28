@@ -23,6 +23,7 @@ import io.datakernel.promise.Promises;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
@@ -38,7 +39,7 @@ import static io.datakernel.common.Preconditions.checkState;
 @SuppressWarnings("unchecked")
 public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamOutputs<O> {
 	private final Function<StreamDataAcceptor<O>[], StreamDataAcceptor<I>> acceptorFactory;
-	private final InputConsumer input;
+	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 
 	private StreamDataAcceptor<O>[] dataAcceptors = new StreamDataAcceptor[8];
@@ -47,7 +48,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 
 	private StreamSplitter(Function<StreamDataAcceptor<O>[], StreamDataAcceptor<I>> acceptorFactory) {
 		this.acceptorFactory = acceptorFactory;
-		this.input = new InputConsumer();
+		this.input = new Input();
 	}
 
 	public static <I, O> StreamSplitter<I, O> create(BiConsumer<I, StreamDataAcceptor<O>[]> action) {
@@ -61,7 +62,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 	}
 
 	public StreamSupplier<O> newOutput() {
-		checkState(!started);
+		checkState(!started, "You must call newOutput only in the same eventloop tick when StreamSplitter was created");
 		Output output = new Output(outputs.size());
 		outputs.add(output);
 		if (outputs.size() > dataAcceptors.length) {
@@ -89,10 +90,24 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		Promises.all(outputs.stream().map(Output::getEndOfStream))
 				.whenResult(input::acknowledge)
 				.whenException(input::closeEx);
+
 		sync();
 	}
 
-	protected final class InputConsumer extends AbstractStreamConsumer<I> {
+	private boolean allOutputsReady() {
+		return Arrays.stream(dataAcceptors).allMatch(Objects::nonNull);
+	}
+
+	private void sync() {
+		if (!started) return;
+		if (allOutputsReady()) {
+			input.resume(acceptorFactory.apply(dataAcceptors));
+		} else {
+			input.suspend();
+		}
+	}
+
+	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
 			sync();
@@ -109,28 +124,26 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 	protected final class Output extends AbstractStreamSupplier<O> {
 		final int index;
 
-		public Output(int index) {this.index = index;}
+		public Output(int index) {
+			this.index = index;
+		}
 
 		@Override
 		protected void onResumed() {
 			dataAcceptors[index] = getDataAcceptor();
-			sync();
+
+			if (started && allOutputsReady()) {
+				input.resume(acceptorFactory.apply(dataAcceptors));
+			} // else { input is always suspended there }
 		}
 
 		@Override
 		protected void onSuspended() {
-			dataAcceptors[index] = getDataAcceptor();
-			sync();
+			dataAcceptors[index] = null;
+
+			if (started) {
+				input.suspend();
+			}
 		}
 	}
-
-	private void sync() {
-		if (!started) return;
-		if (outputs.stream().filter(AbstractStreamSupplier::isReady).count() == dataAcceptors.length) {
-			input.resume(acceptorFactory.apply(this.dataAcceptors));
-		} else {
-			input.suspend();
-		}
-	}
-
 }

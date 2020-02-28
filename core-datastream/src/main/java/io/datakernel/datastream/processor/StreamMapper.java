@@ -21,11 +21,7 @@ import io.datakernel.datastream.*;
 import java.util.function.Function;
 
 /**
- * Provides you apply function before sending data to the destination. It is a {@link StreamMapper}
- * which receives specified type and streams set of function's result  to the destination .
- *
- * @param <I> type of input data
- * @param <O> type of output data
+ * A stream transformer that changes each item according to given function.
  */
 public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 	private final Function<I, O> function;
@@ -57,6 +53,16 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		return output;
 	}
 
+	private void sync() {
+		StreamDataAcceptor<O> dataAcceptor = output.getDataAcceptor();
+		if (dataAcceptor != null) {
+			Function<I, O> function = this.function;
+			input.resume(item -> dataAcceptor.accept(function.apply(item)));
+		} else {
+			input.suspend();
+		}
+	}
+
 	protected final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
@@ -77,18 +83,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 
 		@Override
 		protected void onSuspended() {
-			sync();
-		}
-	}
-
-	private void sync() {
-		final StreamDataAcceptor<O> dataAcceptor = output.getDataAcceptor();
-		if (dataAcceptor != null) {
-			final Function<I, O> function = this.function;
-			input.resume(item -> dataAcceptor.accept(function.apply(item)));
-		} else {
 			input.suspend();
 		}
 	}
-
 }

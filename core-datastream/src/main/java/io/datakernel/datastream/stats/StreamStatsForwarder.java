@@ -90,5 +90,4 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 			stats.onError(e);
 		}
 	}
-
 }

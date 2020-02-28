@@ -212,14 +212,11 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		if (!bufs.isEmpty()) {
 			flushing = true;
 			output.accept(bufs.poll())
-					.whenComplete(($, e) -> {
-						if (e == null) {
-							flushing = false;
-							doFlush();
-						} else {
-							closeEx(e);
-						}
-					});
+					.whenResult($ -> {
+						flushing = false;
+						doFlush();
+					})
+					.whenException(this::closeEx);
 		} else {
 			if (isEndOfStream()) {
 				flushing = true;
@@ -386,5 +383,4 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	private static int varintSize(int value) {
 		return 1 + (31 - Integer.numberOfLeadingZeros(value)) / 7;
 	}
-
 }

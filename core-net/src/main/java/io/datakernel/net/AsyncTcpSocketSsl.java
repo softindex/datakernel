@@ -359,8 +359,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		}
 
 		if (result != null && result.getStatus() == CLOSED) {
-            close();
-            return;
+			close();
+			return;
 		}
 
 		if (!isClosed() && (read != null || !engine2app.canRead())){

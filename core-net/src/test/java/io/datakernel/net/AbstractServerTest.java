@@ -56,16 +56,14 @@ public final class AbstractServerTest {
 		SimpleServer.create(socket -> {
 			Promises.<ByteBuf>until(null, $ ->
 							socket.read()
-									.whenResult(buf -> {
-										getCurrentEventloop().delay(delay.inc(), () -> {
-											socket.write(buf)
-													.whenComplete(() -> {
-														if (buf == null) {
-                                                            socket.close();
-                                                        }
-													});
-										});
-									}),
+									.whenResult(buf ->
+											getCurrentEventloop().delay(delay.inc(),
+													() -> socket.write(buf)
+															.whenComplete(() -> {
+																if (buf == null) {
+																	socket.close();
+																}
+															}))),
 					Objects::isNull);
 		})
 				.withSocketSettings(settings)

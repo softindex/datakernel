@@ -340,8 +340,8 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return AsyncTcpSocketNio.connect(address, connectTimeoutMillis, socketSettings)
 				.whenResult(asyncTcpSocketImpl -> {
 					if (stopPromise != null) {
-                        asyncTcpSocketImpl.close();
-                        return;
+						asyncTcpSocketImpl.close();
+						return;
 					}
 					asyncTcpSocketImpl
 							.withInspector(statsSocket);

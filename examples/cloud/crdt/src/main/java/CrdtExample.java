@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
+@SuppressWarnings("Convert2MethodRef")
 public final class CrdtExample {
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
 			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));

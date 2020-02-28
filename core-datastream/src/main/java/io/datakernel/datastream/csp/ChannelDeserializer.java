@@ -156,7 +156,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 				send(item);
 				if (firstBufRemaining != size) {
 					firstBuf.moveHead(size);
-				} else {
+				} else if (!isClosed()) {
 					queue.take().recycle();
 				}
 				continue;
@@ -213,7 +213,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 					send(item);
 					if (firstBufRemaining != size) {
 						firstBuf.moveHead(size);
-					} else {
+					} else if (!isClosed()) {
 						queue.take().recycle();
 					}
 					continue;

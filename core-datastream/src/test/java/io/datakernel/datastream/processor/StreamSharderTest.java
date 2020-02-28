@@ -142,8 +142,8 @@ public class StreamSharderTest {
 		);
 
 		assertSame(exception, e);
-//		assertEquals(1, consumer1.getList().size());
-//		assertEquals(2, consumer2.getList().size());
+		assertEquals(1, consumer1.getList().size());
+		assertEquals(1, consumer2.getList().size());
 
 		assertClosedWithError(streamSharder.getInput());
 		assertSuppliersClosedWithError(streamSharder.getOutputs());

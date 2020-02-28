@@ -3,6 +3,7 @@ import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 
 //[START EXAMPLE]
+@SuppressWarnings("Convert2MethodRef")
 public class PromiseChainExample {
 	private static final Eventloop eventloop = Eventloop.create().withCurrentThread();
 

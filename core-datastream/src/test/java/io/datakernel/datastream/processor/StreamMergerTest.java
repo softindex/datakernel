@@ -196,7 +196,7 @@ public class StreamMergerTest {
 						.streamTo(consumer.transformWith(oneByOne()))
 		);
 
-		assertEquals(0, consumer.getList().size());
+		assertEquals(5, consumer.getList().size());
 		assertClosedWithError(consumer);
 		assertClosedWithError(merger.getOutput());
 		assertClosedWithError(merger.getInput(0));

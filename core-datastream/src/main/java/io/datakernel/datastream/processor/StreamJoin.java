@@ -28,64 +28,36 @@ import java.util.function.Function;
 import static java.util.Arrays.asList;
 
 /**
- * Represents a object which has left and right consumers, and one supplier. After receiving data
- * it can join it, available are inner join and left join. It work analogous joins from SQL.
+ * Represents an object which has left and right consumers and one supplier. After receiving data
+ * it can join it, or either does an inner-join or a left join. It works similar to joins from SQL.
  * It is a {@link StreamJoin} which receives specified type and streams
- * set of join's result  to the destination .
- *
- * @param <K> type of  keys
- * @param <L> type of data from left stream
- * @param <R> type of data from right stream
- * @param <V> type of output data
+ * set of join's result to the destination.
  */
 public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamOutput<V> {
 
 	/**
-	 * It is primary interface of joiner. It contains methods which will join streams
-	 *
-	 * @param <K> type of  keys
-	 * @param <L> type of data from left stream
-	 * @param <R> type of data from right stream
-	 * @param <V> type of output data
+	 * It is the primary interface of a joiner. It contains methods which will join streams
 	 */
 	public interface Joiner<K, L, R, V> {
 		/**
-		 * Streams objects with all fields from  both received streams as long as there is a match
+		 * Streams objects with all fields from both received streams as long as there is a match
 		 * between the keys in both items.
-		 *
-		 * @param key    on this key it will join
-		 * @param left   left stream
-		 * @param right  right stream
-		 * @param output callback for sending result
 		 */
 		void onInnerJoin(K key, L left, R right, StreamDataAcceptor<V> output);
 
 		/**
-		 * Streams objects with all fields from the left stream , with the matching key - fields in the
+		 * Streams objects with all fields from the left stream, with the matching key - fields in the
 		 * right stream. The field of result object is NULL in the right stream when there is no match.
-		 *
-		 * @param key    on this key it will join
-		 * @param left   left stream
-		 * @param output callback for sending result
 		 */
 		void onLeftJoin(K key, L left, StreamDataAcceptor<V> output);
 	}
 
 	/**
-	 * Represent joiner which produce only inner joins
-	 *
-	 * @param <K> type of  keys
-	 * @param <L> type of data from left stream
-	 * @param <R> type of data from right stream
-	 * @param <V> type of output data
+	 * Represents a joiner that produces only inner joins
 	 */
 	public static abstract class InnerJoiner<K, L, R, V> implements Joiner<K, L, R, V> {
 		/**
 		 * Left join does nothing for absence null fields in result inner join
-		 *
-		 * @param key    on this key it will join
-		 * @param left   left stream
-		 * @param output callback for sending result
 		 */
 		@Override
 		public void onLeftJoin(K key, L left, StreamDataAcceptor<V> output) {
@@ -94,29 +66,15 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 
 	/**
 	 * Simple implementation of Joiner, which does inner and left join
-	 *
-	 * @param <K> type of  keys
-	 * @param <L> type of data from left stream
-	 * @param <R> type of data from right stream
-	 * @param <V> type of output data
 	 */
 	public static abstract class ValueJoiner<K, L, R, V> implements Joiner<K, L, R, V> {
 		/**
 		 * Method which contains realization inner join.
-		 *
-		 * @param key   on this key it will join
-		 * @param left  left stream
-		 * @param right right stream
-		 * @return stream with joined streams
 		 */
 		public abstract V doInnerJoin(K key, L left, R right);
 
 		/**
 		 * Method which contains realization left join
-		 *
-		 * @param key  on this key it will join
-		 * @param left left stream
-		 * @return stream with joined streams
 		 */
 		@Nullable
 		public V doLeftJoin(K key, L left) {
@@ -153,7 +111,6 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 
 	private final Joiner<K, L, R, V> joiner;
 
-	// region creators
 	private StreamJoin(@NotNull Comparator<K> keyComparator,
 			@NotNull Function<L, K> leftKeyFunction, @NotNull Function<R, K> rightKeyFunction,
 			@NotNull Joiner<K, L, R, V> joiner) {
@@ -179,7 +136,6 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 			Joiner<K, L, R, V> joiner) {
 		return new StreamJoin<>(keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
-	// endregion
 
 	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
 		private final ArrayDeque<I> deque;

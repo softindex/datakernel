@@ -409,7 +409,7 @@ public final class ChannelSuppliers {
 			@Override
 			public void close() {
 				current = nullify(current, ByteBuf::recycle);
-				eventloop.execute(wrapContext(channelSupplier, () -> channelSupplier.close()));
+				eventloop.execute(wrapContext(channelSupplier, channelSupplier::close));
 			}
 		};
 	}

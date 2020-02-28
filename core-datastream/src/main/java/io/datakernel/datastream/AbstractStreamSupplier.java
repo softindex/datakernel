@@ -95,7 +95,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
 		this.dataAcceptorSafe = dataAcceptor != null ? dataAcceptor : buffer::addLast;
-		if (this.dataAcceptor != null) {
+		if (isReady()) {
 			flush();
 		} else {
 			onSuspended();
@@ -113,16 +113,12 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		produceStatus = ProduceStatus.STARTED;
 		while (produceRequest) {
 			produceRequest = false;
-			while (this.dataAcceptor != null && !buffer.isEmpty()) {
+			while (isReady() && !buffer.isEmpty()) {
 				T item = buffer.pollFirst();
 				this.dataAcceptor.accept(item);
 			}
-			if (this.dataAcceptor != null) {
-				//noinspection ConstantConditions
-				assert buffer.isEmpty();
-				if (!endOfStreamRequest) {
-					onResumed();
-				}
+			if (isReady() && !endOfStreamRequest) {
+				onResumed();
 			}
 		}
 
@@ -164,7 +160,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	/**
 	 * Puts this supplier in closed state with no error.
-	 * This operation is final, cannot be undone and must not be called multiple times.
+	 * This operation is final and cannot be undone.
+	 * Only the first call causes any effect.
 	 */
 	public final void sendEndOfStream() {
 		checkState(eventloop.inEventloopThread());

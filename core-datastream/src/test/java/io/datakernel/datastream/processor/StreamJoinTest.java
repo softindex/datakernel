@@ -191,7 +191,7 @@ public class StreamJoinTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(0, list.size());
+		assertEquals(1, list.size());
 		assertClosedWithError(source1);
 		assertClosedWithError(source2);
 	}

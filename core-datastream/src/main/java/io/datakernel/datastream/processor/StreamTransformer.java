@@ -49,5 +49,4 @@ public interface StreamTransformer<I, O> extends HasStreamInput<I>, HasStreamOut
 		supplier.streamTo(getInput());
 		return getOutput();
 	}
-
 }

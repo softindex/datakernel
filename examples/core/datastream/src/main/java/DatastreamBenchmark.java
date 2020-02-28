@@ -107,10 +107,6 @@ public class DatastreamBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		benchmark("Datastream");
-	}
-
-	private void benchmark(String nameBenchmark) throws Exception {
 		long time = 0;
 		long bestTime = -1;
 		long worstTime = -1;
@@ -122,7 +118,7 @@ public class DatastreamBenchmark extends Launcher {
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; OPS : " + rps);
 		}
 
-		System.out.println("Start benchmarking " + nameBenchmark);
+		System.out.println("Start benchmarking...");
 
 		for (int i = 0; i < benchmarkRounds; i++) {
 			long roundTime = round();

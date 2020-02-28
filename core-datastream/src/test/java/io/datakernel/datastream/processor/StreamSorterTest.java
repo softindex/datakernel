@@ -135,7 +135,7 @@ public final class StreamSorterTest {
 		ExpectedException exception = new ExpectedException();
 
 		StreamSupplier<Integer> source = StreamSupplier.concat(
-//				StreamSupplier.of(3, 1, 3, 2),
+				StreamSupplier.of(3, 1, 3, 2),
 				StreamSupplier.closingWithError(exception)
 		);
 

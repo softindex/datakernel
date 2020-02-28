@@ -41,7 +41,7 @@ public final class StreamConsumerWithResult<T, X> {
 		return new StreamConsumerWithResult<>(consumer, result);
 	}
 
-	protected StreamConsumerWithResult<T, X> sanitize() {
+	public StreamConsumerWithResult<T, X> sanitize() {
 		return new StreamConsumerWithResult<>(consumer,
 				consumer.getAcknowledgement().combine(result.whenException(consumer::closeEx), ($, v) -> v).post());
 	}

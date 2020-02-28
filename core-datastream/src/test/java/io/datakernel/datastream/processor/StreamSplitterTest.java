@@ -98,9 +98,9 @@ public class StreamSplitterTest {
 		);
 
 		assertSame(exception, e);
-//		assertEquals(3, consumerToList1.getList().size());
-//		assertEquals(3, consumerToList1.getList().size());
-//		assertEquals(3, toBadList.size());
+		// assertEquals(3, consumerToList1.getList().size());
+		// assertEquals(3, consumerToList1.getList().size());
+		// assertEquals(3, toBadList.size());
 
 		assertClosedWithError(source);
 		assertClosedWithError(streamSplitter.getInput());
@@ -136,7 +136,7 @@ public class StreamSplitterTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(1, consumer1.getList().size());
+		assertEquals(3, consumer1.getList().size());
 		assertEquals(3, consumer2.getList().size());
 		assertEquals(3, consumer3.getList().size());
 
