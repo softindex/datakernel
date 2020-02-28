@@ -260,7 +260,6 @@ public class ByteBufTest {
 	public void testClearPool() {
 		ByteBufPool.clear();
 		List<String> cleared = ByteBufPool.getStats().getPoolSlabs();
-		assertEquals("32768,0,0,0,0", cleared.get(17));
 		int size = 10;
 		ByteBuf[] bufs = new ByteBuf[size];
 		for (int i = 0; i < size; i++) {

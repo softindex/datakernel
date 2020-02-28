@@ -429,8 +429,6 @@ public final class ByteBufPool {
 
 		long getPoolSize();
 
-		long getPoolSizeKB();
-
 		long getTotalSlabMins();
 
 		long getTotalEvicted();
@@ -500,11 +498,6 @@ public final class ByteBufPool {
 		}
 
 		@Override
-		public long getPoolSizeKB() {
-			return getPoolSize() / 1024;
-		}
-
-		@Override
 		public long getTotalSlabMins() {
 			if (!USE_WATCHDOG) return -1;
 			long totalSlabMins = 0;
@@ -539,16 +532,28 @@ public final class ByteBufPool {
 		public List<String> getPoolSlabs() {
 			assert slabs.length == 33;
 			List<String> result = new ArrayList<>(slabs.length + 1);
-			result.add("SlotSize,Created,Reused,InPool,Total(Kb)");
+			String header = "SlotSize,Created,Reused,InPool,Total(Kb)";
+			if (USE_WATCHDOG) header += ",RealMin,EstMean,Error,Evicted";
+			result.add(header);
 			for (int i = 0; i < slabs.length; i++) {
 				int idx = (i + 32) % slabs.length;
 				long slabSize = idx == 32 ? 0 : 1L << idx;
-				int count = slabs[idx].size();
-				result.add(slabSize + "," +
-						(STATS ? created[idx] : '-') + "," +
-						(STATS ? reused[idx] : '-') + "," +
+				ByteBufConcurrentQueue slab = slabs[idx];
+				int count = slab.size();
+				String slabInfo = slabSize + "," +
+						(STATS ? created[idx] : "-") + "," +
+						(STATS ? reused[idx] : "-") + "," +
 						count + "," +
-						slabSize * count / 1024);
+						slabSize * count / 1024;
+				if (USE_WATCHDOG){
+					SlabStats slabStat = slabStats[idx];
+					slabInfo += "," + slab.realMin.get() + "," +
+							String.format("%.1f", slabStat.estimatedMin) + "," +
+							String.format("%.1f", slabStat.estimatedError) + "," +
+							slabStat.evictedTotal;
+				}
+
+				result.add(slabInfo);
 			}
 			return result;
 		}
