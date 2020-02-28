@@ -136,6 +136,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket {
 			throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
 		}
 		if (!buf.canRead()) {
+			buf.recycle();
 			return write == null ? Promise.complete() : write;
 		}
 		app2engine = ByteBufPool.append(app2engine, buf);
