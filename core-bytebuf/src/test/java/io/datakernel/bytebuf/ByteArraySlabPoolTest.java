@@ -36,13 +36,15 @@ public class ByteArraySlabPoolTest {
 		}
 		bytes.recycle();
 
-		assertTrue(poolSizes.length <= ByteBufPool.slabs.length);
 		for (int i = 0; i < poolSizes.length; i++) {
 			ByteBufConcurrentQueue slab = ByteBufPool.slabs[i];
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
-			if (!slab.isEmpty()) {
-				assertTrue(slab.getBufs().stream().allMatch(ByteBuf::isRecycled));
-				assertEquals(poolSizes[i], slab.getBufs().get(0).limit());
+			ByteBuf polled = slab.poll();
+			if (polled != null) {
+				assertEquals(poolSizes[i], polled.limit());
+				while ((polled = slab.poll()) != null) {
+					assertTrue(polled.isRecycled());
+				}
 			}
 		}
 	}
