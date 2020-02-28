@@ -209,6 +209,7 @@ public final class ByteBufPool {
 	 */
 	@NotNull
 	public static ByteBuf allocate(int size) {
+		assert size >= 0 : "Allocating ByteBuf with negative size";
 		if (MIN_MAX_CHECKS) {
 			if ((MIN_SIZE != 0 && size < MIN_SIZE) || (MAX_SIZE != 0 && size >= MAX_SIZE)) {
 				// not willing to register in pool
@@ -225,7 +226,7 @@ public final class ByteBufPool {
 			buf.refs = 1;
 			if (STATS) recordReuse(index);
 		} else {
-			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
+			buf = ByteBuf.wrapForWriting(new byte[index == 32 ? 0 : 1 << index]);
 			buf.refs = 1;
 			if (STATS) recordNew(index);
 		}
