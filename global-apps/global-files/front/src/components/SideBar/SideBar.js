@@ -1,14 +1,12 @@
 import React, {useRef, useState} from 'react';
-import {getInstance} from 'global-apps-common';
+import {getInstance, useSnackbar} from 'global-apps-common';
 import PromptDialog from '../PromptDialog/PromptDialog';
 import {withStyles} from "@material-ui/core";
 import Drawer from '@material-ui/core/Drawer';
 import AddIcon from '@material-ui/icons/AddCircleOutline';
 import Fab from '@material-ui/core/Fab';
-import Snackbar from '../Snackbar/Snackbar';
 import withWidth, {isWidthDown} from '@material-ui/core/withWidth';
 import sideBarStyles from './sideBarStyles';
-import {withSnackbar} from "notistack";
 import FSService from "../../modules/fs/FSService";
 import CreateFolderMenu from "../CreateFolderMenu/CreateFolderMenu";
 import SideBarMenu from "../SideBarMenu/SideBarMenu";
@@ -18,7 +16,6 @@ function SideBarView({
                        width,
                        folderFormIsOpen,
                        onSubmit,
-                       error,
                        onDialogClose,
                        isDrawerOpen,
                        onDrawerClose,
@@ -31,9 +28,7 @@ function SideBarView({
                      }) {
   return (
     <Drawer
-      classes={{
-        paper: classes.root
-      }}
+      classes={{paper: classes.root}}
       variant={isWidthDown('md', width) ?
         'persistant' : 'permanent'
       }
@@ -63,17 +58,15 @@ function SideBarView({
           onSubmit={onSubmit}
         />
       )}
-      <Snackbar error={error}/>
     </Drawer>
   );
 }
 
-function SideBar({classes, width, enqueueSnackbar, isDrawerOpen, onDrawerClose}) {
+function SideBar({classes, width, isDrawerOpen, onDrawerClose}) {
   const fsService = getInstance(FSService);
-
   const [fabElement, setFabElement] = useState(null);
   const [folderFormIsOpen, setFolderFormIsOpen] = useState(false);
-  const [error, setError] = useState(null);
+  const {showSnackbar} = useSnackbar();
   const inputRef = useRef();
 
   const props = {
@@ -83,7 +76,6 @@ function SideBar({classes, width, enqueueSnackbar, isDrawerOpen, onDrawerClose})
     folderFormIsOpen,
     isDrawerOpen,
     onDrawerClose,
-    error,
     inputRef,
 
     onFileUpload() {
@@ -91,11 +83,7 @@ function SideBar({classes, width, enqueueSnackbar, isDrawerOpen, onDrawerClose})
       onDrawerClose();
       Promise.all([...inputRef.current.files].map(file => {
         fsService.writeFile(file)
-          .catch((err) => {
-            enqueueSnackbar(err.message, {
-              variant: 'error'
-            });
-          });
+          .catch(err => showSnackbar(err.message, 'error'));
       }));
     },
 
@@ -120,9 +108,7 @@ function SideBar({classes, width, enqueueSnackbar, isDrawerOpen, onDrawerClose})
           return;
         }
         fsService.mkdir(name)
-          .catch((err) => {
-            setError(err.message);
-          });
+          .catch(err => showSnackbar(err.message, 'error'));
       }
     },
 
@@ -136,7 +122,5 @@ function SideBar({classes, width, enqueueSnackbar, isDrawerOpen, onDrawerClose})
 
 
 export default withWidth()(
-  withSnackbar(
-    withStyles(sideBarStyles)(SideBar)
-  )
+  withStyles(sideBarStyles)(SideBar)
 );

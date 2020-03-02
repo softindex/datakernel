@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {useRouteMatch} from 'react-router-dom';
-import {getInstance, useService} from 'global-apps-common';
+import {getInstance, useService, useSnackbar} from 'global-apps-common';
 import DeleteMenu from '../DeleteMenu/DeleteMenu';
 import {withStyles} from "@material-ui/core";
 import CircularProgress from '../CircularProgress/CircularProgress';
@@ -11,7 +11,6 @@ import itemListStyles from './ItemListStyles';
 import FolderIcon from '@material-ui/icons/FolderOpenOutlined';
 import FileViewer from '../FileViewer/FileViewer';
 import {getItemContainer} from "./getItemContainer";
-import {withSnackbar} from "notistack";
 import FSService from "../../modules/fs/FSService";
 
 function ItemListView({
@@ -36,15 +35,13 @@ function ItemListView({
           <CircularProgress/>
         </div>
       )}
-      {fileList.length > 0 && !loading &&
-      getItemContainer(
+      {fileList.length > 0 && !loading && getItemContainer(
         path,
         fileList,
         openFileViewer,
         onOpenDeleteMenu,
         classes
-      )
-      }
+      )}
       {fileList.length <= 0 && !loading && (
         <div className={classes.wrapper}>
           <FolderIcon className={classes.emptyIndicator}/>
@@ -68,29 +65,35 @@ function ItemListView({
   );
 }
 
-function ItemList({classes, enqueueSnackbar}) {
+function ItemList({classes}) {
   const fsService = getInstance(FSService);
   const {directories, files, path, loading} = useService(fsService);
   const [contextStyles, setContextStyles] = useState({});
   const [isFileViewerOpen, setIsFileViewerOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
+  const {showSnackbar} = useSnackbar();
   const match = useRouteMatch();
 
   useEffect(() => {
-    fsService.fetch(getCurrentPath())
-      .then(() => window.addEventListener('click', removeContextMenu))
-      .catch(error => enqueueSnackbar(error.message, {
-        variant: 'error'
-      }));
+    if (match.params[0] || path === '' || match.path.includes('folders')) {
+      fetchFilesAndDirectories();
+    }
+
     return window.removeEventListener('click', removeContextMenu)
-  }, [match]);
+  }, [match.params[0]]);
 
   function getCurrentPath() {
-    return match.params[0] || '/';
+    return match.params[0] || '';
   }
 
   function removeContextMenu() {
     setContextStyles({open: false});
+  }
+
+  function fetchFilesAndDirectories() {
+    fsService.fetch(getCurrentPath())
+      .then(() => window.addEventListener('click', removeContextMenu))
+      .catch(error => showSnackbar(error.message, 'error'));
   }
 
   const props = {
@@ -120,14 +123,10 @@ function ItemList({classes, enqueueSnackbar}) {
     onDeleteItem() {
       if (selectedItem.isDirectory) {
         fsService.rmdir(selectedItem.name)
-          .catch(error => enqueueSnackbar(error.message, {
-            variant: 'error'
-          }));
+          .catch(error => showSnackbar(error.message, 'error'));
       } else {
         fsService.rmfile(selectedItem.name)
-          .catch(error => enqueueSnackbar(error.message, {
-            variant: 'error'
-          }));
+          .catch(error => showSnackbar(error.message, 'error'));
         setIsFileViewerOpen(false);
         setSelectedItem(null);
       }
@@ -147,6 +146,4 @@ function ItemList({classes, enqueueSnackbar}) {
   return <ItemListView {...props}/>
 }
 
-export default withSnackbar(
-  withStyles(itemListStyles)(ItemList)
-);
+export default withStyles(itemListStyles)(ItemList);

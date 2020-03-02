@@ -14,9 +14,9 @@ class OfflineGlobalFS extends EventEmitter {
     this._subscribeForProgress();
   }
 
-  async list() {
+  async list(dirPath) {
     const filesToUpload = await this._getFilesToUpload();
-    const cachedFiles = await this._globalFS.list(); // Always returns list because of SW caching
+    const cachedFiles = await this._globalFS.list(dirPath);
     const cachedNotDeletedFiles = await this._removeDeleted(cachedFiles);
     return [...filesToUpload, ...cachedNotDeletedFiles];
   }

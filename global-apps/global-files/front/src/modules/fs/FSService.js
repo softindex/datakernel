@@ -14,12 +14,12 @@ class FSService extends Service {
     this._subscribeForProgress();
   }
 
-  async fetch(path) {
+  async fetch(path = '') {
     this.setState({
       loading: true
     });
-    const list = await this._globalFSGateway.list();
-    const {files, directories} = this._getFilesAndDirectories(list, path);
+    const list = await this._globalFSGateway.list(path);
+    const {files, directories} = this._getFilesAndDirectories(list);
     this.setState({
       path,
       files,
@@ -73,7 +73,7 @@ class FSService extends Service {
     }
 
     const file = new File([], PREFIX_TO_IGNORE);
-    const fullDirName = this.state.path === '/' ? dirName : this.state.path.match(/^\/?(.*?)\/?$/)[1] + '/' + dirName;
+    const fullDirName = this.state.path === '' ? dirName : this.state.path.match(/^\/?(.*?)\/?$/)[1] + '/' + dirName;
 
     await this._globalFSGateway.upload(fullDirName, file);
 
@@ -112,30 +112,23 @@ class FSService extends Service {
     });
   }
 
-  _getFilesAndDirectories(list, path) {
-    // Formatting path to 'foo/bar/'
-    path = path.match(/^\/?(.*?)\/?$/)[1] + '/';
-    path = path === '/' ? '' : path;
-
+  _getFilesAndDirectories(list) {
     const files = [];
-    const directoriesSet = new Set();
+    const directories = [];
 
-    for (const {name, downloadLink} of list) {
-      if (name.indexOf(path) !== 0) {
-        continue;
+    for (const {name, isDirectory, downloadLink} of list) {
+      if (isDirectory) {
+        directories.push({
+          isDirectory,
+          name,
+          upload: 100,
+          error: false
+        })
       }
-
-      const nextSlashPos = name.indexOf('/', path.length);
-      if (nextSlashPos !== -1) {
-        directoriesSet.add(name.slice(path.length, nextSlashPos));
-        continue;
-      }
-
-      const fileName = name.slice(path.length);
-      if (fileName.indexOf(PREFIX_TO_IGNORE) !== 0) {
+      if (!name.includes(PREFIX_TO_IGNORE) && !isDirectory) {
         files.push({
-          isDirectory: false,
-          name: fileName,
+          isDirectory,
+          name,
           upload: 100,
           error: false,
           downloadLink
@@ -145,14 +138,7 @@ class FSService extends Service {
 
     return {
       files: files.sort(ascStringComparator),
-      directories: [...directoriesSet]
-        .map(directory => ({
-          isDirectory: true,
-          name: directory,
-          upload: 100,
-          error: false
-        }))
-        .sort(ascStringComparator)
+      directories: directories.sort(ascStringComparator)
     };
   }
 

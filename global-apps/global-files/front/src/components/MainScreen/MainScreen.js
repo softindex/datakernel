@@ -10,7 +10,6 @@ import {connectService, AuthContext, checkAuth, RegisterDependency} from 'global
 import Header from "../Header/Header";
 import {withStyles} from "@material-ui/core";
 import mainScreenStyles from "./mainScreenStyles";
-import {withSnackbar} from "notistack";
 
 function MainScreen({classes, publicKey}) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -54,12 +53,10 @@ function MainScreen({classes, publicKey}) {
   );
 }
 
-export default withSnackbar(
-  withStyles(mainScreenStyles)(
-    connectService(AuthContext, ({publicKey}) =>
-      ({publicKey})
-    )(
-      checkAuth(MainScreen)
-    )
+export default withStyles(mainScreenStyles)(
+  connectService(AuthContext, ({publicKey}) =>
+    ({publicKey})
+  )(
+    checkAuth(MainScreen)
   )
 );

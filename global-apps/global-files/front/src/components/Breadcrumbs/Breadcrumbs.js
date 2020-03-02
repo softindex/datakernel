@@ -10,9 +10,8 @@ import DropDownIcon from '@material-ui/icons/ArrowDropDownOutlined';
 import breadcrumbsStyles from './breadcrumbsStyles';
 import BreadcrumbsMenu from '../BreadcrumbsMenu/BreadcrumbsMenu';
 import BreadcrumbItem from "../BreadcrumbItem/BreadcrumbItem";
-import {withSnackbar} from "notistack";
 import FSService from "../../modules/fs/FSService";
-import {getInstance} from "global-apps-common";
+import {getInstance, useSnackbar} from "global-apps-common";
 
 function BreadcrumbsView({
                            classes,
@@ -75,8 +74,9 @@ function BreadcrumbsView({
   )
 }
 
-function Breadcrumbs({classes, width, enqueueSnackbar, breadcrumbs, location, history}) {
+function Breadcrumbs({classes, width, breadcrumbs, location, history}) {
   const fsService = getInstance(FSService);
+  const {showSnackbar} = useSnackbar();
   const [anchorElement, setAnchorElement] = useState(null);
   const props = {
     classes,
@@ -93,9 +93,7 @@ function Breadcrumbs({classes, width, enqueueSnackbar, breadcrumbs, location, hi
           history.push(prevCrumb.key);
         })
         .catch((err) => {
-          enqueueSnackbar(err.message, {
-            variant: 'error'
-          });
+          showSnackbar(err.message, 'error');
         });
     },
 
@@ -112,12 +110,10 @@ function Breadcrumbs({classes, width, enqueueSnackbar, breadcrumbs, location, hi
 }
 
 export default withWidth()(
-  withSnackbar(
-    withStyles(breadcrumbsStyles)(
-      withBreadcrumbs(
-        [{path: '/folders', breadcrumb: 'My files'}],
-        {excludePaths: ['/']}
-      )(Breadcrumbs)
-    )
+  withStyles(breadcrumbsStyles)(
+    withBreadcrumbs(
+      [{path: '/folders', breadcrumb: 'My files'}],
+      {excludePaths: ['/']}
+    )(Breadcrumbs)
   )
 );

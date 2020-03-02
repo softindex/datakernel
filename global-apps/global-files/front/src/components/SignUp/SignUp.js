@@ -106,7 +106,7 @@ class SignUp extends React.Component {
           </Grid>
         </Grid>
         <Snackbar
-          error={this.props.auth.error && this.props.auth.error.message}
+          error={this.props.error && this.props.error.message}
           action={[
             <Button
               key="undo"
@@ -132,6 +132,6 @@ class SignUp extends React.Component {
 
 export default withSnackbar(
   withStyles(signUpStyles)(
-    connectService(AuthContext, (auth, authService) => ({auth, authService}))(SignUp)
+    connectService(AuthContext, ({error}, authService) => ({error, authService}))(SignUp)
   )
 );

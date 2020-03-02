@@ -20,7 +20,7 @@ class App extends Component {
       <AuthContext.Provider value={authService}>
         <CssBaseline/>
         <MuiThemeProvider theme={theme}>
-          <SnackbarProvider maxSnack={1}>
+          <SnackbarProvider maxSnack={5}>
             <Router>
               <Switch>
                 <Route path="/folders/**" component={MainScreen}/>

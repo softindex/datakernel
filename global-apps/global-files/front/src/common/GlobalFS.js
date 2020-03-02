@@ -7,21 +7,20 @@ class GlobalFS extends EventEmitter {
     this._url = url;
   }
 
-  async list() {
-    const response = await fetch(path.join(this._url, 'list'));
+  async list(dirPath) {
+    const response = await fetch(path.join(this._url, 'shallowList?dir=' + dirPath));
     const parsedResponse = await response.json();
     return parsedResponse
-      .filter(item => Boolean(item[3]))
-      .map(item => ({
-        name: item[0],
-        size: item[1],
-        downloadLink: this._getDownloadLink(item[0])
+      .map(({name, isDirectory}) => ({
+        name,
+        isDirectory,
+        downloadLink: this._getDownloadLink(dirPath + '/' + name)
       }));
   }
 
   upload(filepath, file) {
     const formData = new FormData();
-    const fileName = filepath === '/' ? file.name : filepath + '/' + file.name;
+    const fileName = filepath === '' ? file.name : filepath + '/' + file.name;
     const url = path.join(this._url, 'upload');
     formData.append('file', file, fileName);
 
