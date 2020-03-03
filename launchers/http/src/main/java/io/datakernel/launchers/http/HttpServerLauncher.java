@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
-import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
@@ -58,7 +58,7 @@ public abstract class HttpServerLauncher extends Launcher {
 		return Config.create()
 				.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(8080)))
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(ofSystemProperties("config"));
 	}
 
 	@Override

@@ -37,7 +37,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
-import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
@@ -68,7 +68,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 	Config config() {
 		return Config.create()
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(ofSystemProperties("config"));
 	}
 
 	@Override

@@ -25,7 +25,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
-import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
@@ -82,7 +82,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 				.with("http.listenAddresses", Config.ofValue(ofInetSocketAddress(), new InetSocketAddress(PORT)))
 				.with("workers", "" + WORKERS)
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(ofSystemProperties("config"));
 	}
 
 	@Override

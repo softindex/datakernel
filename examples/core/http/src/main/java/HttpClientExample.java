@@ -71,7 +71,7 @@ public final class HttpClientExample extends Launcher {
 		return Config.create()
 				.with("dns.address", "8.8.8.8")
 				.with("dns.timeout", "5 seconds")
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(Config.ofSystemProperties("config"));
 	}
 	//[END REGION_2]
 

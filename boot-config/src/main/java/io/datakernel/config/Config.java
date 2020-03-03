@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import io.datakernel.common.CollectorsEx;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -30,7 +31,6 @@ import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -248,14 +248,35 @@ public interface Config {
 	}
 
 	/**
-	 * Creates new config from properties
+	 * Creates a new config from all system properties
+	 *
+	 * @return new {@code Config}
+	 */
+	static Config ofSystemProperties() {
+		return ofProperties(System.getProperties());
+	}
+
+	/**
+	 * Creates a new config from system properties that start with a prefix
+	 *
+	 * @return new {@code Config}
+	 */
+	static Config ofSystemProperties(String prefix) {
+		//noinspection unchecked - properties are expected to have String keys and values
+		return ofMap(System.getProperties().entrySet().stream()
+				.map(e -> (Map.Entry<String, String>) (Map.Entry<?, ?>) e)
+				.filter(entry -> entry.getKey().startsWith(prefix))
+				.collect(CollectorsEx.toMap()));
+	}
+
+	/**
+	 * Creates a new config from properties
 	 *
 	 * @return new {@code Config}
 	 */
 	static Config ofProperties(Properties properties) {
-		return ofMap(properties.stringPropertyNames().stream()
-				.collect(Collectors.toMap(Function.identity(), properties::getProperty,
-						(u, v) -> {throw new AssertionError();}, LinkedHashMap::new)));
+		//noinspection unchecked - properties are expected to have String keys and values
+		return ofMap((Map<String, String>) (Map<?, ?>) properties);
 	}
 
 	/**
@@ -335,18 +356,16 @@ public interface Config {
 	 */
 	static Config ofMap(Map<String, String> map) {
 		Config config = create();
-		for (String path : map.keySet()) {
-			String value = map.get(path);
-			config = config.with(path, value);
+		for (Map.Entry<String, String> entry : map.entrySet()) {
+			config = config.with(entry.getKey(), entry.getValue());
 		}
 		return config;
 	}
 
 	static Config ofConfigs(Map<String, Config> map) {
 		Config config = create();
-		for (String path : map.keySet()) {
-			Config childConfig = map.get(path);
-			config = config.with(path, childConfig);
+		for (Map.Entry<String, Config> entry : map.entrySet()) {
+			config = config.with(entry.getKey(), entry.getValue());
 		}
 		return config;
 	}

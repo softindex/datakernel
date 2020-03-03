@@ -59,7 +59,7 @@ public class CspBenchmark extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(Config.ofSystemProperties("config"));
 	}
 
 	@Provides

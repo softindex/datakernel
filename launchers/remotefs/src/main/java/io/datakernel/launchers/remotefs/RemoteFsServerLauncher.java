@@ -70,7 +70,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	Config config() {
 		return Config.create()
 				.overrideWith(Config.ofClassPathProperties(PROPERTIES_FILE, true))
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(Config.ofSystemProperties("config"));
 	}
 
 	@Override

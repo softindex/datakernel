@@ -67,7 +67,7 @@ public final class CrdtNodeExample extends CrdtNodeLauncher<String, TimestampCon
 						.with("crdt.cluster.localPartitionId", "local")
 						.with("crdt.cluster.partitions.noop", "localhost:9091")
 						.overrideWith(Config.ofClassPathProperties(PROPERTIES_FILE, true))
-						.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+						.overrideWith(Config.ofSystemProperties("config"));
 			}
 		};
 	}

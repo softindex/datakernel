@@ -37,7 +37,7 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
-import static io.datakernel.config.Config.ofProperties;
+import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 
@@ -60,7 +60,7 @@ public abstract class RpcServerLauncher extends Launcher {
 	Config config() {
 		return Config.create()
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE, true))
-				.overrideWith(ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(ofSystemProperties("config"));
 	}
 
 	@Override

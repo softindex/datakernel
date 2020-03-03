@@ -86,7 +86,7 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 		return Config.create()
 				.with("address", "0.0.0.0:9001")
 				.with("client.address", "http://127.0.0.1:9001/")
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(Config.ofSystemProperties("config"));
 	}
 
 	@Override

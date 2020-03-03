@@ -115,7 +115,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	Config config() {
 		return Config.create()
 				.overrideWith(Config.ofProperties(PROPERTIES_FILE, true))
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(Config.ofSystemProperties("config"));
 	}
 
 	@Override

@@ -69,7 +69,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 				.with("memcache.bufferCapacity", BUFFER_CAPACITY.format())
 				.with("server.listenAddresses", "localhost:8080")
 				.with("client.addresses", "localhost:8080")
-				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
+				.overrideWith(Config.ofSystemProperties("config"));
 	}
 
 	@ProvidesIntoSet
