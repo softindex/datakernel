@@ -956,4 +956,5 @@ public class ExpressionTest {
 	public static class StaticFieldHolder {
 		public static int field;
 	}
+
 }

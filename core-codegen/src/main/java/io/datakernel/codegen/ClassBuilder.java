@@ -151,7 +151,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	}
 
 	/**
-	 * CCreates a new method for a dynamic class
+	 * Creates a new method for a dynamic class
 	 *
 	 * @param methodName name of method
 	 * @param expression function which will be processed

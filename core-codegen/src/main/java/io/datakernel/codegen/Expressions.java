@@ -28,7 +28,9 @@ import java.util.stream.Stream;
 
 import static io.datakernel.codegen.ExpressionCast.SELF_TYPE;
 import static io.datakernel.codegen.ExpressionComparator.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.objectweb.asm.Type.getType;
 
@@ -503,7 +505,14 @@ public class Expressions {
 	}
 
 	public static Expression arrayNew(Class<?> type, Expression length) {
-		return new ExpressionArrayNew(type, length);
+		return new ExpressionArrayNew(type, singletonList(length));
+	}
+
+	public static Expression multiArrayNew(Class<?> type, Expression firstLength, Expression... otherLengths) {
+		ArrayList<Expression> lengths = new ArrayList<>();
+		lengths.add(firstLength);
+		lengths.addAll(asList(otherLengths));
+		return new ExpressionArrayNew(type, lengths);
 	}
 
 	public static Expression staticCall(Class<?> owner, String method, Expression... arguments) {
@@ -514,8 +523,15 @@ public class Expressions {
 		return new ExpressionStaticCallSelf(method, asList(arguments));
 	}
 
-	public static Expression arrayGet(Expression array, Expression nom) {
-		return new ExpressionArrayGet(array, nom);
+	public static Expression arrayGet(Expression array, Expression index) {
+		return new ExpressionArrayGet(array, singletonList(index));
+	}
+
+	public static Expression multiArrayGet(Expression array, Expression index, Expression... otherIndexes) {
+		ArrayList<Expression> indexes = new ArrayList<>();
+		indexes.add(index);
+		indexes.addAll(asList(otherIndexes));
+		return new ExpressionArrayGet(array, indexes);
 	}
 
 	public static Expression isNull(Expression field) {
@@ -581,7 +597,12 @@ public class Expressions {
 	}
 
 	public static Expression arraySet(Expression array, Expression position, Expression newElement) {
-		return new ExpressionArraySet(array, position, newElement);
+		return new ExpressionArraySet(array, singletonList(position), newElement);
+	}
+
+	public static Expression multiArraySet(Expression array, List<Expression> positions, Expression newElement) {
+		checkArgument(positions, list -> list.size() > 0);
+		return new ExpressionArraySet(array, positions, newElement);
 	}
 
 	public static Expression forEach(Expression collection, Function<Expression, Expression> it) {

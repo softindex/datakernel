@@ -20,16 +20,18 @@ import org.jetbrains.annotations.NotNull;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.List;
+
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArraySet implements Expression {
 	private final Expression array;
-	private final Expression position;
+	private final List<Expression> positions;
 	private final Expression newElement;
 
-	ExpressionArraySet(@NotNull Expression array, @NotNull Expression position, @NotNull Expression newElement) {
+	ExpressionArraySet(@NotNull Expression array, @NotNull List<Expression> positions, @NotNull Expression newElement) {
 		this.array = array;
-		this.position = position;
+		this.positions = positions;
 		this.newElement = newElement;
 	}
 
@@ -37,10 +39,15 @@ final class ExpressionArraySet implements Expression {
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
-		Type arrayType = array.load(ctx);
-		position.load(ctx);
+		String descriptor = array.load(ctx).getDescriptor();
+		int dimensions = positions.size();
+		for (int i = 0; i < dimensions - 1; i++) {
+			positions.get(i).load(ctx);
+			g.arrayLoad(getType(descriptor.substring(i + 1)));
+		}
+		positions.get(dimensions - 1).load(ctx);
 		newElement.load(ctx);
-		g.arrayStore(getType(arrayType.getDescriptor().substring(1)));
+		g.arrayStore(getType(descriptor.substring(dimensions)));
 		return Type.VOID_TYPE;
 	}
 }

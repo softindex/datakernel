@@ -19,22 +19,27 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.List;
+
 final class ExpressionArrayGet implements Expression {
 	private final Expression array;
-	private final Expression index;
+	private final List<Expression> indexes;
 
-	ExpressionArrayGet(Expression array, Expression index) {
+	ExpressionArrayGet(Expression array, List<Expression> indexes) {
 		this.array = array;
-		this.index = index;
+		this.indexes = indexes;
 	}
 
 	@Override
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
-		Type arrayType = array.load(ctx);
-		Type type = Type.getType(arrayType.getDescriptor().substring(1));
-		index.load(ctx);
-		g.arrayLoad(type);
+		String descriptor = array.load(ctx).getDescriptor();
+		Type type = null;
+		for (int i = 0; i < indexes.size(); i++) {
+			type = Type.getType(descriptor.substring(i + 1));
+			indexes.get(i).load(ctx);
+			g.arrayLoad(type);
+		}
 		return type;
 	}
 }
