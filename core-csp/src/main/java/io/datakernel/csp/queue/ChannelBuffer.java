@@ -16,11 +16,13 @@
 
 package io.datakernel.csp.queue;
 
+import io.datakernel.common.Check;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.tryRecycle;
 
 /**
@@ -31,6 +33,8 @@ import static io.datakernel.common.Recyclable.tryRecycle;
  * @param <T> the type of values that are stored in the buffer
  */
 public final class ChannelBuffer<T> implements ChannelQueue<T> {
+	private static final Boolean CHECK = Check.isEnabled(ChannelBuffer.class);
+
 	private Exception exception;
 
 	private Object[] elements;
@@ -261,7 +265,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 */
 	@Override
 	public Promise<Void> put(@Nullable T value) {
-		assert put == null;
+		if (CHECK) checkState(put == null, "Previous put() has not finished yet");
 		if (exception == null) {
 			if (take != null) {
 				assert isEmpty();
@@ -301,7 +305,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 */
 	@Override
 	public Promise<T> take() {
-		assert take == null;
+		if (CHECK) checkState(take == null, "Previous take() has not finished yet");
 		if (exception == null) {
 			if (put != null && willBeExhausted()) {
 				assert !isEmpty();

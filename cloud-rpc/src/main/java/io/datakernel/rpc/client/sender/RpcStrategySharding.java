@@ -26,8 +26,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkArgument;
-
 public final class RpcStrategySharding implements RpcStrategy {
 	private final RpcStrategyList list;
 	private final ShardingFunction<?> shardingFunction;
@@ -71,12 +69,12 @@ public final class RpcStrategySharding implements RpcStrategy {
 		return new Sender(shardingFunction, subSenders);
 	}
 
-	static final class Sender implements RpcSender {
+	private static final class Sender implements RpcSender {
 		private final ShardingFunction<?> shardingFunction;
 		private final RpcSender[] subSenders;
 
 		Sender(@NotNull ShardingFunction<?> shardingFunction, @NotNull List<RpcSender> senders) {
-			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");
+			assert senders.size() > 0;
 			this.shardingFunction = shardingFunction;
 			this.subSenders = senders.toArray(new RpcSender[0]);
 		}

@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Array;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
  * This is a case-insensitive token registry used as permanent header value cache.
@@ -43,18 +44,17 @@ public final class CaseInsensitiveTokenMap<T extends Token> {
 	private final TokenFactory<T> factory;
 
 	protected CaseInsensitiveTokenMap(int slotsNumber, int maxProbings, Class<T> elementsType, TokenFactory<T> factory) {
+		checkArgument(Integer.bitCount(slotsNumber) == 1);
 		this.maxProbings = maxProbings;
 		this.factory = factory;
-		@SuppressWarnings("unchecked") T[] ts = (T[]) Array.newInstance(elementsType, slotsNumber);
-		TOKENS = ts;
+		//noinspection unchecked
+		TOKENS = (T[]) Array.newInstance(elementsType, slotsNumber);
 	}
 
 	/**
 	 * Creates a token with given value and places it in the registry, also returning it.
 	 */
 	public final T register(String name) {
-		assert Integer.bitCount(TOKENS.length) == 1;
-
 		T token = create(name);
 
 		for (int p = 0; p < maxProbings; p++) {

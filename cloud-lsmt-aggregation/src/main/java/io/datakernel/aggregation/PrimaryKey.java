@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation;
 
+import io.datakernel.common.Check;
 import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Field;
@@ -24,10 +25,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.lang.System.arraycopy;
 import static java.util.Arrays.asList;
 
 public class PrimaryKey implements Comparable<PrimaryKey> {
+	private static final Boolean CHECK = Check.isEnabled(PrimaryKey.class);
+
 	private final Object[] values;
 
 	private PrimaryKey(Object[] values) {
@@ -86,12 +91,12 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 	@Override
 	public boolean equals(Object o) {
 		PrimaryKey that = (PrimaryKey) o;
-		assert values.length == that.values.length;
+		if (CHECK) checkArgument(values.length == that.values.length);
 
 		for (int i = 0; i < values.length; i++) {
 			Object thisKey = values[i];
 			Object thatKey = that.values[i];
-			assert thisKey != null && thatKey != null;
+			if (CHECK) checkState(thisKey != null && thatKey != null);
 			if (!thisKey.equals(thatKey))
 				return false;
 		}
@@ -106,12 +111,12 @@ public class PrimaryKey implements Comparable<PrimaryKey> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public int compareTo(@NotNull PrimaryKey o) {
-		assert values.length == o.values.length;
+		if (CHECK) checkArgument(values.length == o.values.length);
 
 		for (int i = 0; i < values.length; i++) {
 			Object thisKey = values[i];
 			Object thatKey = o.values[i];
-			assert thisKey != null && thatKey != null;
+			if (CHECK) checkState(thisKey != null && thatKey != null);
 			int result = ((Comparable<Object>) thisKey).compareTo(thatKey);
 			if (result != 0)
 				return result;

@@ -19,6 +19,7 @@ package io.datakernel.remotefs;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.collection.Try;
 import io.datakernel.csp.ChannelConsumer;
@@ -53,6 +54,7 @@ import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 
 public final class RemoteFsRepartitionController implements Initializable<RemoteFsRepartitionController>, EventloopJmxMBeanEx, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsRepartitionController.class);
+	private static final Boolean CHECK = Check.isEnabled(RemoteFsRepartitionController.class);
 
 	private final Eventloop eventloop;
 	private final Object localPartitionId;
@@ -134,7 +136,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 
 	@NotNull
 	private Promise<Void> doRepartition() {
-		checkState(eventloop.inEventloopThread(), "Should be called from eventloop thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Should be called from eventloop thread");
 
 		isRepartitioning = true;
 		return localStorage.list(glob)

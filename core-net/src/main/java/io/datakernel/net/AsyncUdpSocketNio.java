@@ -18,6 +18,7 @@ package io.datakernel.net;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.Check;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
@@ -42,9 +43,12 @@ import java.time.Duration;
 import java.util.ArrayDeque;
 
 import static io.datakernel.async.process.Cancellable.CLOSE_EXCEPTION;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.deepRecycle;
 
 public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventHandler {
+	private static final Boolean CHECK = Check.isEnabled(AsyncUdpSocketNio.class);
+
 	private static final MemSize DEFAULT_UDP_BUFFER_SIZE = MemSize.kilobytes(16);
 	public static final int OP_POSTPONED = 1 << 7;  // SelectionKey constant
 
@@ -162,7 +166,7 @@ public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventH
 
 	@Override
 	public Promise<UdpPacket> receive() {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (!isOpen()) {
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}
@@ -215,7 +219,7 @@ public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventH
 
 	@Override
 	public Promise<Void> send(UdpPacket packet) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (!isOpen()) {
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}
@@ -283,7 +287,7 @@ public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventH
 
 	@Override
 	public void close() {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		SelectionKey key = this.key;
 		if (key == null) {
 			return;

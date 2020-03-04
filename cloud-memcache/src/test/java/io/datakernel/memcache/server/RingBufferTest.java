@@ -56,7 +56,7 @@ public class RingBufferTest {
 		assertEquals(endNumberAmount - startNumberAmount, amountBuffers);
 	}
 
-	@Test(expected = ArrayIndexOutOfBoundsException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testPutToEmptyRingBuffer() {
 		RingBuffer ringBuffer = RingBuffer.create(0, 0);
 

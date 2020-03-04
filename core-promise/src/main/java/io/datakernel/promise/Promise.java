@@ -34,6 +34,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
@@ -141,7 +142,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 	 */
 	@NotNull
 	static <T> Promise<T> of(@Nullable T value, @Nullable Throwable e) {
-		assert !(value != null && e != null);
+		checkArgument(!(value != null && e != null), "Either value or exception should be 'null'");
 		return e == null ? of(value) : ofException(e);
 	}
 

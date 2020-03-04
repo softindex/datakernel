@@ -28,6 +28,9 @@ import java.util.concurrent.Callable;
 import java.util.function.*;
 import java.util.stream.Collector;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+
 public final class Try<T> {
 	private final T result;
 
@@ -44,7 +47,7 @@ public final class Try<T> {
 	}
 
 	public static <T> Try<T> of(@Nullable T result, @Nullable Throwable e) {
-		assert result == null || e == null;
+		checkArgument(result == null || e == null, "Either result or exception should be null");
 		return new Try<>(result, e);
 	}
 
@@ -134,7 +137,7 @@ public final class Try<T> {
 
 	@Contract(pure = true)
 	public T get() {
-		assert isSuccess();
+		checkState(isSuccess());
 		return result;
 	}
 
@@ -165,7 +168,7 @@ public final class Try<T> {
 	@Contract(pure = true)
 	@NotNull
 	public Throwable getException() {
-		assert throwable != null;
+		checkState(isException());
 		return throwable;
 	}
 
@@ -211,7 +214,7 @@ public final class Try<T> {
 	@Contract(pure = true)
 	@NotNull
 	private <U> Try<U> mold() {
-		assert throwable != null;
+		checkState(isException());
 		return (Try<U>) this;
 	}
 

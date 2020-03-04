@@ -27,7 +27,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static java.net.StandardSocketOptions.*;
 
 /**
- * This class used to change settings for socket. It will be applying with creating new socket
+ * This class is used to hold settings for a socket. Settings  will be applied when creating new socket
  */
 public final class SocketSettings {
 	private static final byte DEF_BOOL = -1;
@@ -188,7 +188,7 @@ public final class SocketSettings {
 	}
 
 	public long getImplReadTimeoutMillis() {
-		assert hasImplReadTimeout();
+		checkState(hasImplReadTimeout(), "No 'implicit read timeout' setting is present");
 		return implReadTimeout;
 	}
 
@@ -202,7 +202,7 @@ public final class SocketSettings {
 	}
 
 	public long getImplWriteTimeoutMillis() {
-		assert hasImplWriteTimeout();
+		checkState(hasImplWriteTimeout(), "No 'implicit write timeout' setting is present");
 		return implWriteTimeout;
 	}
 
@@ -216,7 +216,7 @@ public final class SocketSettings {
 	}
 
 	public int getImplReadBufferSizeBytes() {
-		assert hasReadBufferSize();
+		checkState(hasReadBufferSize(), "No 'read buffer size' setting is present");
 		return implReadBufferSize;
 	}
 

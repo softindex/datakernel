@@ -17,6 +17,7 @@
 package io.datakernel.promise;
 
 import io.datakernel.async.callback.Callback;
+import io.datakernel.common.Check;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.Async;
@@ -30,11 +31,14 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
-@SuppressWarnings({"unchecked", "WeakerAccess", "unused", "ConstantConditions"})
+@SuppressWarnings({"unchecked", "WeakerAccess", "unused"})
 abstract class AbstractPromise<T> implements Promise<T> {
+	private static final Boolean CHECK = Check.isEnabled(AbstractPromise.class);
+
 	private static final Object PROMISE_NOT_SET = new Object();
 
 	protected T result = (T) PROMISE_NOT_SET;
@@ -78,7 +82,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	}
 
 	protected void complete(@Nullable T value, @Nullable Throwable e) {
-		assert !isComplete();
+		if (CHECK) checkState(!isComplete(), "Promise has already been completed");
 		if (e == null) {
 			complete(value);
 		} else {
@@ -88,7 +92,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@Async.Execute
 	protected void complete(@Nullable T value) {
-		assert !isComplete();
+		if (CHECK) checkState(!isComplete(), "Promise has already been completed");
 		result = value;
 		if (next != null) {
 			next.accept(value, null);
@@ -97,7 +101,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@Async.Execute
 	protected void completeExceptionally(@Nullable Throwable e) {
-		assert !isComplete();
+		if (CHECK) checkState(!isComplete(), "Promise has already been completed");
 		result = null;
 		exception = e;
 		if (next != null) {
@@ -136,7 +140,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@Async.Schedule
 	protected void subscribe(@NotNull Callback<? super T> callback) {
-		assert !isComplete() : "Promise has already been completed";
+		if (CHECK) checkState(!isComplete(), "Promise has already been completed");
 		if (next == null) {
 			next = callback;
 		} else if (next instanceof CallbackList) {

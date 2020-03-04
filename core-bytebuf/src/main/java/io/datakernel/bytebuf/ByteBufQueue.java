@@ -17,6 +17,7 @@
 package io.datakernel.bytebuf;
 
 import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Check;
 import io.datakernel.common.Recyclable;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.common.parse.InvalidSizeException;
@@ -28,6 +29,8 @@ import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.emptyIterator;
 import static java.lang.System.arraycopy;
 
@@ -41,6 +44,8 @@ import static java.lang.System.arraycopy;
  */
 @SuppressWarnings({"unused", "WeakerAccess"})
 public final class ByteBufQueue implements Recyclable {
+	private static final Boolean CHECK = Check.isEnabled(ByteBufQueue.class);
+
 	private static final int DEFAULT_CAPACITY = 8;
 	/**
 	 * If set, nullifies bytebufs when they are taken out of queue. Set this setting ON if you need more control over memory.
@@ -157,7 +162,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@NotNull
 	public ByteBuf take() {
-		assert hasRemaining();
+		if (CHECK) checkState(hasRemaining(), "No bufs to take");
 		ByteBuf buf = bufs[first];
 		if (NULLIFY_ON_TAKE_OUT) bufs[first] = null;
 		first = next(first);
@@ -221,7 +226,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@NotNull
 	public ByteBuf takeAtLeast(int size) {
-		assert hasRemainingBytes(size);
+		if (CHECK) checkArgument(hasRemainingBytes(size), () -> "Queue does not have " + size + " bufs");
 		if (size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
@@ -237,7 +242,7 @@ public final class ByteBufQueue implements Recyclable {
 
 	@NotNull
 	public ByteBuf takeAtLeast(int size, @NotNull Consumer<ByteBuf> recycled) {
-		assert hasRemainingBytes(size);
+		if (CHECK) checkArgument(hasRemainingBytes(size), () -> "Queue does not have " + size + " bufs");
 		if (size == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
@@ -265,7 +270,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@NotNull
 	public ByteBuf takeExactSize(int exactSize) {
-		assert hasRemainingBytes(exactSize);
+		if (CHECK) checkArgument(hasRemainingBytes(exactSize), () -> "Queue does not have " + exactSize + " bufs");
 		if (exactSize == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() == exactSize) {
@@ -285,7 +290,7 @@ public final class ByteBufQueue implements Recyclable {
 
 	@NotNull
 	public ByteBuf takeExactSize(int exactSize, @NotNull Consumer<ByteBuf> recycledBufs) {
-		assert hasRemainingBytes(exactSize);
+		if (CHECK) checkArgument(hasRemainingBytes(exactSize), () -> "Queue does not have " + exactSize + " bufs");
 		if (exactSize == 0) return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() == exactSize) {
@@ -319,7 +324,7 @@ public final class ByteBufQueue implements Recyclable {
 	 * @param consumer a consumer for the ByteBuf
 	 */
 	public void consume(int size, @NotNull Consumer<ByteBuf> consumer) {
-		assert hasRemainingBytes(size);
+		if (CHECK) checkArgument(hasRemainingBytes(size), () -> "Queue does not have " + size + " bufs");
 		ByteBuf buf = bufs[first];
 		if (buf.readRemaining() >= size) {
 			int newPos = buf.head() + size;
@@ -370,7 +375,7 @@ public final class ByteBufQueue implements Recyclable {
 	@NotNull
 	@Contract(pure = true)
 	public ByteBuf peekBuf(int n) {
-		assert n <= remainingBufs();
+		if (CHECK) checkArgument(n <= remainingBufs(), "Index exceeds queue size");
 		return bufs[(first + n) % bufs.length];
 	}
 
@@ -417,7 +422,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@Contract(pure = true)
 	public boolean hasRemainingBytes(int remaining) {
-		assert remaining >= 0;
+		if (CHECK) checkArgument(remaining >= 0, "Cannot check for negative bytes");
 		if (remaining == 0) return true;
 		for (int i = first; i != last; i = next(i)) {
 			int bufRemaining = bufs[i].readRemaining();
@@ -434,9 +439,9 @@ public final class ByteBufQueue implements Recyclable {
 	 * readable bytes left after the operation, this ByteBuf will be recycled.
 	 */
 	public byte getByte() {
-		assert hasRemaining();
+		if (CHECK) checkState(hasRemaining(), "No bytes to get");
 		ByteBuf buf = bufs[first];
-		assert buf.canRead();
+		if (CHECK) checkState(buf.canRead(), "Empty buf is found in queue");
 		byte result = buf.get();
 		if (!buf.canRead()) {
 			bufs[first].recycle();
@@ -453,7 +458,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@Contract(pure = true)
 	public byte peekByte() {
-		assert hasRemaining();
+		if (CHECK) checkState(hasRemaining(), "No bytes to peek");
 		ByteBuf buf = bufs[first];
 		return buf.peek();
 	}
@@ -466,7 +471,7 @@ public final class ByteBufQueue implements Recyclable {
 	 */
 	@Contract(pure = true)
 	public byte peekByte(int index) {
-		assert hasRemainingBytes(index + 1);
+		if (CHECK) checkState(hasRemainingBytes(index + 1), "Index exceeds the number of bytes in queue");
 		for (int i = first; ; i = next(i)) {
 			ByteBuf buf = bufs[i];
 			if (index < buf.readRemaining())
@@ -476,7 +481,7 @@ public final class ByteBufQueue implements Recyclable {
 	}
 
 	public void setByte(int index, byte b) {
-		assert hasRemainingBytes(index + 1);
+		if (CHECK) checkArgument(hasRemainingBytes(index + 1), "Index exceeds queue bytes length");
 		for (int i = first; ; i = next(i)) {
 			ByteBuf buf = bufs[i];
 			if (index < buf.readRemaining()) {

@@ -1,7 +1,6 @@
 package io.datakernel.eventloop.util;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.nio.channels.SelectionKey;
 import java.util.AbstractSet;
@@ -49,13 +48,10 @@ public final class OptimizedSelectedKeysSet extends AbstractSet<SelectionKey> {
 	 * @param index the pointer to the Selection key from the array,
 	 *              must be in range of {@param size}
 	 * @return the {@link SelectionKey} from the array by index
+	 * @throws ArrayIndexOutOfBoundsException if index is less than 0 or greater than {@code size-1}
 	 */
-	@Nullable
 	public SelectionKey get(int index) {
-		if (index >= 0 && index < size) {
-			return selectionKeys[index];
-		}
-		return null;
+		return selectionKeys[index];
 	}
 
 	@NotNull

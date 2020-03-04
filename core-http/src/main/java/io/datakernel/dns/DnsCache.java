@@ -16,6 +16,7 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.common.Check;
 import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
@@ -30,11 +31,14 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static io.datakernel.common.Preconditions.checkState;
+
 /**
  * Represents a cache for storing resolved domains during its time to live.
  */
 public final class DnsCache {
 	private static final Logger logger = LoggerFactory.getLogger(DnsCache.class);
+	private static final Boolean CHECK = Check.isEnabled(DnsCache.class);
 
 	public static final Duration DEFAULT_TIMED_OUT_EXCEPTION_TTL = Duration.ofSeconds(1);
 	public static final Duration DEFAULT_ERROR_CACHE_EXPIRATION = Duration.ofMinutes(1);
@@ -139,7 +143,7 @@ public final class DnsCache {
 	 * @param response response to add
 	 */
 	public void add(DnsQuery query, DnsResponse response) {
-		assert eventloop.inEventloopThread() : "Concurrent cache adds are not allowed";
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Concurrent cache adds are not allowed");
 		long expirationTime = now.currentTimeMillis();
 		if (response.isSuccessful()) {
 			assert response.getRecord() != null; // where are my advanced contracts so that the IDE would know it's true here without an assert?
@@ -197,7 +201,7 @@ public final class DnsCache {
 	}
 
 	public void clear() {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		cache.clear();
 		expirations.clear();
 	}

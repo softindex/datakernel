@@ -21,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
+import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullify;
 
 /**
@@ -59,8 +60,7 @@ public final class UdpPacket {
 	 * Returns the data buffer to send or which was received
 	 */
 	public ByteBuf getBuf() {
-		assert buf != null : "Using UdpPacket after recycling";
-		return buf;
+		return checkNotNull(buf, "Using UdpPacket after recycling");
 	}
 
 	/**

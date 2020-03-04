@@ -158,7 +158,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 	private void consumeCRLF(int chunkLength) {
 		input.parse(
 				bufs -> {
-					ByteBuf maybeResult = ofCrlfTerminatedBytes().tryDecoder(bufs);
+					ByteBuf maybeResult = ofCrlfTerminatedBytes().tryDecode(bufs);
 					if (maybeResult == null) {
 						bufs.skip(bufs.remainingBytes() - 1);
 					}

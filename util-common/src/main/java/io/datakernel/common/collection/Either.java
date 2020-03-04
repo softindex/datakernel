@@ -6,6 +6,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.*;
 
+import static io.datakernel.common.Preconditions.checkState;
+
 public final class Either<L, R> {
 	@Nullable
 	private final L left;
@@ -41,13 +43,13 @@ public final class Either<L, R> {
 
 	@Contract(pure = true)
 	public L getLeft() {
-		assert isLeft();
+		checkState(isLeft());
 		return left;
 	}
 
 	@Contract(pure = true)
 	public R getRight() {
-		assert isRight();
+		checkState(isRight());
 		return right;
 	}
 

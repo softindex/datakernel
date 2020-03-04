@@ -16,6 +16,7 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.common.Check;
 import io.datakernel.common.Recyclable;
 import io.datakernel.common.Sliceable;
 import io.datakernel.common.Utils;
@@ -25,6 +26,8 @@ import org.jetbrains.annotations.NotNull;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.lang.Math.min;
 
 /**
@@ -43,15 +46,9 @@ import static java.lang.Math.min;
 
 @SuppressWarnings({"WeakerAccess", "DefaultAnnotationParam", "unused"})
 public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
-	static final boolean CHECK_RECYCLE;
+	private static final Boolean CHECK = Check.isEnabled(ByteBuf.class);
 
-	static {
-		boolean assertsEnabled = false;
-		//noinspection AssertWithSideEffects
-		assert (assertsEnabled = true);
-		//noinspection ConstantConditions
-		CHECK_RECYCLE = ByteBufPool.REGISTRY || assertsEnabled;
-	}
+	static final boolean CHECK_RECYCLE = ByteBufPool.REGISTRY || CHECK;
 
 	/**
 	 * Allows to create slices of {@link ByteBuf}, helper class.
@@ -142,8 +139,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 * @param tail  value of {@link #tail} of {@code ByteBuf}
 	 */
 	private ByteBuf(@NotNull byte[] array, int head, int tail) {
-		assert head >= 0 && head <= tail && tail <= array.length
-				: "Wrong ByteBuf boundaries - readPos: " + head + ", writePos: " + tail + ", array.length: " + array.length;
+		if (CHECK) {
+			checkArgument(head >= 0 && head <= tail && tail <= array.length,
+					() -> "Wrong ByteBuf boundaries - readPos: " + head + ", writePos: " + tail + ", array.length: " + array.length);
+		}
 		this.array = array;
 		this.head = head;
 		this.tail = tail;
@@ -157,8 +156,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	@Contract(pure = true)
 	public static ByteBuf empty() {
-		assert EMPTY.head == 0;
-		assert EMPTY.tail == 0;
+		if (CHECK) checkState(EMPTY.head == 0 && EMPTY.tail == 0);
 		return EMPTY;
 	}
 
@@ -339,8 +337,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public void ofReadByteBuffer(ByteBuffer byteBuffer) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert array == byteBuffer.array();
-		assert byteBuffer.limit() == tail;
+		if (CHECK) checkArgument(array == byteBuffer.array() && byteBuffer.limit() == tail);
 		head = byteBuffer.position();
 	}
 
@@ -351,8 +348,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public void ofWriteByteBuffer(ByteBuffer byteBuffer) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert array == byteBuffer.array();
-		assert byteBuffer.limit() == array.length;
+		if (CHECK) checkArgument(array == byteBuffer.array() && byteBuffer.limit() == array.length);
 		tail = byteBuffer.position();
 	}
 
@@ -396,7 +392,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 *            Must be smaller or equal to {@link #tail}
 	 */
 	public void head(int pos) {
-		assert pos <= tail;
+		if (CHECK) checkArgument(pos <= tail);
 		head = pos;
 	}
 
@@ -418,7 +414,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 *            and smaller than length of the {@link #array}
 	 */
 	public void tail(int pos) {
-		assert pos >= head && pos <= array.length;
+		if (CHECK) checkArgument(pos >= head && pos <= array.length);
 		tail = pos;
 	}
 
@@ -432,8 +428,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public void moveHead(int delta) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert head + delta >= 0;
-		assert head + delta <= tail;
+		if (CHECK) {
+			checkArgument(head + delta >= 0, "New head cannot be negative");
+			checkArgument(head + delta <= tail, "New head cannot be greater than tail");
+		}
 		head += delta;
 	}
 
@@ -447,8 +445,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public void moveTail(int delta) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert tail + delta >= head;
-		assert tail + delta <= array.length;
+		if (CHECK) {
+			checkArgument(tail + delta >= head, "New tail cannot be lesser than head");
+			checkArgument(tail + delta <= array.length, "New tail cannot be greater than size of underlying array");
+		}
 		tail += delta;
 	}
 
@@ -510,7 +510,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public byte get() {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert head < tail;
+		if (CHECK) checkState(head < tail, "No bytes are remaining for read");
 		return array[head++];
 	}
 
@@ -554,7 +554,7 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	@Contract(pure = true)
 	public byte peek(int offset) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert (head + offset) < tail;
+		if (CHECK) checkArgument(head + offset < tail, "Trying to peek outside of buf's limit");
 		return array[head + offset];
 	}
 
@@ -576,8 +576,11 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public int drainTo(@NotNull byte[] array, int offset, int length) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert length >= 0 && (offset + length) <= array.length;
-		assert head + length <= tail;
+		if (CHECK) {
+			checkArgument(length >= 0, () -> "Length should be a positive value");
+			checkArgument(offset + length <= array.length && head + length <= tail,
+					"Trying to drain from outside this buf's limit");
+		}
 		System.arraycopy(this.array, head, array, offset, length);
 		head += length;
 		return length;
@@ -590,7 +593,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public int drainTo(@NotNull ByteBuf buf, int length) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert buf.tail + length <= buf.array.length;
+		if (CHECK) {
+			checkArgument(buf.tail + length <= buf.array.length,
+					"Trying to drain from outside this buf's limit");
+		}
 		drainTo(buf.array, buf.tail, length);
 		buf.tail += length;
 		return length;
@@ -663,8 +669,10 @@ public class ByteBuf implements Recyclable, Sliceable<ByteBuf>, AutoCloseable {
 	 */
 	public void put(@NotNull byte[] bytes, int offset, int length) {
 		if (CHECK_RECYCLE && isRecycled()) throw ByteBufPool.onByteBufRecycled(this);
-		assert tail + length <= array.length;
-		assert offset + length <= bytes.length;
+		if (CHECK) {
+			checkArgument(tail + length <= array.length, () -> "This buf cannot hold " + length + " more bytes");
+			checkArgument(offset + length <= bytes.length, "Not enough bytes in source array");
+		}
 		System.arraycopy(bytes, offset, array, tail, length);
 		tail += length;
 	}

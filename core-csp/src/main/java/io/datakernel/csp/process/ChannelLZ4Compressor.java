@@ -216,7 +216,6 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		writeIntLE(compressedLength, outputBytes, MAGIC_LENGTH + 1);
 		writeIntLE(len, outputBytes, MAGIC_LENGTH + 5);
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
-		checkArgument(MAGIC_LENGTH + 13 == HEADER_LENGTH);
 
 		outputBuf.tail(HEADER_LENGTH + compressedLength);
 

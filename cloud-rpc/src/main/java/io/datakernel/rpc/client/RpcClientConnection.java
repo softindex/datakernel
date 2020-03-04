@@ -18,6 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Check;
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.datastream.StreamDataAcceptor;
@@ -37,6 +38,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
@@ -44,6 +46,8 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcStream.Listener, RpcSender, JmxRefreshable {
 	private static final Logger logger = getLogger(RpcClientConnection.class);
+	private static final Boolean CHECK = Check.isEnabled(RpcClientConnection.class);
+
 	private static final int BUCKET_CAPACITY = ApplicationSettings.getInt(RpcClientConnection.class, "bucketCapacity", 16);
 
 	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor = this::addIntoInitialBuffer;
@@ -100,7 +104,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, @NotNull Callback<O> cb) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
 		// jmx
 		totalRequests.recordEvent();
@@ -154,7 +158,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	@Override
 	public <I, O> void sendRequest(I request, @NotNull Callback<O> cb) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
 		// jmx
 		totalRequests.recordEvent();

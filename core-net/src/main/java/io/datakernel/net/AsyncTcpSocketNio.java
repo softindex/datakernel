@@ -19,6 +19,7 @@ package io.datakernel.net;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Check;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
@@ -51,6 +52,8 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 @SuppressWarnings("WeakerAccess")
 public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventHandler {
+	private static final Boolean CHECK = Check.isEnabled(AsyncTcpSocketNio.class);
+
 	public static final int DEFAULT_READ_BUFFER_SIZE = ApplicationSettings.getMemSize(AsyncTcpSocketNio.class, "readBufferSize", kilobytes(16)).toInt();
 
 	public static final AsyncTimeoutException TIMEOUT_EXCEPTION = new AsyncTimeoutException(AsyncTcpSocketNio.class, "timed out");
@@ -283,7 +286,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	@NotNull
 	@Override
 	public Promise<ByteBuf> read() {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (channel == null) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (readBuf != null || readEndOfStream) {
@@ -371,8 +374,10 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	@NotNull
 	@Override
 	public Promise<Void> write(@Nullable ByteBuf buf) {
-		assert eventloop.inEventloopThread();
-		checkState(!writeEndOfStream, "End of stream has already been sent");
+		if (CHECK) {
+			checkState(eventloop.inEventloopThread());
+			checkState(!writeEndOfStream, "End of stream has already been sent");
+		}
 		if (channel == null) {
 			if (buf != null) buf.recycle();
 			return Promise.ofException(CLOSE_EXCEPTION);
@@ -473,7 +478,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 
 	@Override
 	public void close(@NotNull Throwable e) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (channel == null) return;
 		doClose();
 		readBuf = nullify(readBuf, ByteBuf::recycle);

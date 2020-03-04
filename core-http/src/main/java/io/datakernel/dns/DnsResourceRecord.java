@@ -21,6 +21,8 @@ import org.jetbrains.annotations.Nullable;
 import java.net.InetAddress;
 import java.util.Arrays;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+
 /**
  * Represents a resolved domain (of A or AAAA type)
  */
@@ -34,7 +36,7 @@ public final class DnsResourceRecord {
 	}
 
 	public static DnsResourceRecord of(InetAddress[] ips, int minTtl) {
-		assert ips.length > 0 : "Cannot create DNS record with no data";
+		checkArgument(ips.length > 0, "Cannot create DNS record with no data");
 		return new DnsResourceRecord(ips, minTtl);
 	}
 

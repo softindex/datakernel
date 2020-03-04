@@ -18,6 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.exception.StacklessException;
@@ -88,6 +89,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	public static final StacklessException START_EXCEPTION = new StacklessException("Could not establish initial connection");
 
 	private Logger logger = getLogger(getClass());
+	private static final Boolean CHECK = Check.isEnabled(RpcClient.class);
 
 	private final Eventloop eventloop;
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
@@ -300,7 +302,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkNotNull(messageTypes, "Message types must be specified");
 
 		checkState(stopPromise == null);
@@ -322,7 +324,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (stopPromise != null) return stopPromise;
 
 		stopPromise = new SettablePromise<>();
@@ -410,7 +412,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 	 */
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (timeout > 0) {
 			requestSender.sendRequest(request, timeout, cb);
 		} else {
@@ -420,7 +422,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@Override
 	public <I, O> void sendRequest(I request, Callback<O> cb) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		requestSender.sendRequest(request, cb);
 	}
 
@@ -432,7 +434,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 		return new IRpcClient() {
 			@Override
 			public <I, O> void sendRequest(I request, int timeout, Callback<O> cb) {
-				assert anotherEventloop.inEventloopThread();
+				if (CHECK) checkState(anotherEventloop.inEventloopThread(), "Not in eventloop thread");
 				if (timeout > 0) {
 					eventloop.execute(wrapContext(requestSender, () ->
 							requestSender.sendRequest(request, timeout, toAnotherEventloop(anotherEventloop, cb))));

@@ -21,6 +21,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
+
 public final class IntrusiveLinkedList<T> implements Iterable<T> {
 
 	@Override
@@ -174,7 +177,7 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 	}
 
 	public void addFirstNode(Node<T> node) {
-		assert node.prev == null && node.next == null;
+		checkArgument(node.prev == null && node.next == null, "Node should not have 'next' or 'prev' pointers");
 		if (first != null) {
 			assert first.prev == null;
 			first.prev = node;
@@ -188,7 +191,7 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 	}
 
 	public void addLastNode(Node<T> node) {
-		assert node.prev == null && node.next == null;
+		checkArgument(node.prev == null && node.next == null, "Node should not have 'next' or 'prev' pointers");
 		if (last != null) {
 			assert last.next == null;
 			last.next = node;
@@ -216,7 +219,7 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 	}
 
 	public Node<T> addAfterNode(@Nullable Node<T> node, T value) {
-		assert first != null && last != null; // node is assumed to be in this list
+		checkState(first != null && last != null, "Node is assumed to be in this list");
 		// null node in add-after context is "node before the head"
 		if (node == null) {
 			return addFirstValue(value);
@@ -234,8 +237,8 @@ public final class IntrusiveLinkedList<T> implements Iterable<T> {
 		return newNode;
 	}
 
-	public Node<T> addBeforeNode(Node<T> node, T value) {
-		assert first != null && last != null; // node is assumed to be in this list
+	public Node<T> addBeforeNode(@Nullable Node<T> node, T value) {
+		checkState(first != null && last != null); // node is assumed to be in this list
 		// null node in add-before context is "node after the tail"
 		if (node == null) {
 			return addLastValue(value);

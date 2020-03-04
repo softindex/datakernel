@@ -95,7 +95,7 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	@Override
 	public final void setVisible(@NotNull String attrName) {
-		assert name.equals(attrName);
+		checkArgument(name.equals(attrName));
 		this.visible = true;
 	}
 
@@ -105,7 +105,7 @@ abstract class AttributeNodeForLeafAbstract implements AttributeNode {
 
 	@Override
 	public final void applyModifier(@NotNull String attrName, @NotNull AttributeModifier<?> modifier, @NotNull List<?> target) {
-		assert name.equals(attrName);
+		checkArgument(name.equals(attrName));
 		throw new UnsupportedOperationException(String.format(
 				"AttributeModifier can be applied only to POJO. Attribute \"%s\" is not a POJO.", attrName
 		));

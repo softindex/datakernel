@@ -16,12 +16,16 @@
 
 package io.datakernel.aggregation.measure;
 
+import io.datakernel.common.Check;
 import io.datakernel.common.HashUtils;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
 public final class HyperLogLog implements Comparable<HyperLogLog> {
+	private static final Boolean CHECK = Check.isEnabled(HyperLogLog.class);
+
 	private final byte[] registers;
 
 	public HyperLogLog(int registers) {
@@ -37,7 +41,7 @@ public final class HyperLogLog implements Comparable<HyperLogLog> {
 	}
 
 	public static HyperLogLog union(HyperLogLog a, HyperLogLog b) {
-		assert a.registers.length == b.registers.length;
+		if (CHECK) checkArgument(a.registers.length == b.registers.length, "Registers length mismatch");
 		byte[] buckets = new byte[a.registers.length];
 		for (int i = 0; i < a.registers.length; i++) {
 			buckets[i] = a.registers[i] > b.registers[i] ? a.registers[i] : b.registers[i];
@@ -46,7 +50,7 @@ public final class HyperLogLog implements Comparable<HyperLogLog> {
 	}
 
 	public void union(HyperLogLog another) {
-		assert this.registers.length == another.registers.length;
+		if (CHECK) checkArgument(this.registers.length == another.registers.length, "Registers length mismatch");
 		for (int i = 0; i < this.registers.length; i++) {
 			byte thisValue = this.registers[i];
 			byte thatValue = another.registers[i];

@@ -92,6 +92,7 @@ public abstract class AbstractHttpConnection {
 	protected ConnectionsLinkedList pool;
 	@Nullable
 	protected AbstractHttpConnection prev;
+	@Nullable
 	protected AbstractHttpConnection next;
 	protected long poolTimestamp;
 
@@ -206,17 +207,14 @@ public abstract class AbstractHttpConnection {
 		socket.read().whenComplete(startLineConsumer);
 	}
 
-	@SuppressWarnings({"UnnecessaryLabelOnContinueStatement", "UnnecessaryContinue", "UnnecessaryLabelOnBreakStatement"})
 	private void readHeaders() throws ParseException {
 		assert !isClosed();
-		PROCESS_HEADERS:
 		while (readQueue.hasRemaining()) {
 			ByteBuf buf = readQueue.peekBuf(0);
 			byte[] array = buf.array();
 			int head = buf.head();
 			int tail = buf.tail();
 			int i;
-			SEARCH_HEADER:
 			for (i = head; i < tail; i++) {
 				if (array[i] != LF) continue;
 
@@ -228,7 +226,7 @@ public abstract class AbstractHttpConnection {
 						processHeaderLine(array, head, limit);
 						readQueue.skip(i - head + 1, this::onHeaderBuf);
 						head = buf.head();
-						continue SEARCH_HEADER;
+						continue;
 					} else {
 						onHeaderBuf(buf);
 						readQueue.skip(i - head + 1);
@@ -236,18 +234,17 @@ public abstract class AbstractHttpConnection {
 						return;
 					}
 				}
-				break SEARCH_HEADER;
+				break;
 			}
 
 			if (i == tail && readQueue.remainingBufs() <= 1) {
-				break PROCESS_HEADERS; // cannot determine if this is multiline header or not, need more data
+				break; // cannot determine if this is multiline header or not, need more data
 			}
 
 			byte[] header = readHeaderEx(max(0, i - head - 1));
-			if (header == null) break PROCESS_HEADERS;
+			if (header == null) break;
 			if (header.length != 0) {
 				processHeaderLine(header, 0, header.length);
-				continue PROCESS_HEADERS;
 			} else {
 				readBody();
 				return;

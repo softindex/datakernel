@@ -3,22 +3,25 @@ package io.datakernel.memcache.server;
 import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.LongLongHashMap;
 import com.carrotsearch.hppc.ObjectLongHashMap;
+import io.datakernel.common.Check;
 import io.datakernel.eventloop.jmx.EventStats;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 
 import java.time.Duration;
 import java.util.Arrays;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.eventloop.jmx.MBeanFormat.formatTimestamp;
 import static java.lang.System.currentTimeMillis;
 
 /**
- * The implementation to handle the big amount of date
- * It works like cache, when you use it you shouldn`t rely on result.
- * Because it can be rewritten by new date, if the written date was oversize
+ * The implementation to handle the big amount of data
+ * It works like a cache, when you use it you shouldn't rely on the result,
+ * because it can be rewritten by the new data when it overfills
  */
 public final class RingBuffer implements RingBufferMBean {
+	private static final Boolean CHECK = Check.isEnabled(RingBuffer.class);
 
 	/**
 	 * The main class for the caching the byte-arrays
@@ -57,14 +60,6 @@ public final class RingBuffer implements RingBufferMBean {
 			indexBytes.clear();
 			position = 0;
 			timestamp = currentTimeMillis();
-		}
-
-		int capacity() {
-			return array.length;
-		}
-
-		int position() {
-			return position;
 		}
 
 		static int intValueOf(byte[] bytes) {
@@ -138,10 +133,12 @@ public final class RingBuffer implements RingBufferMBean {
 	private final EventStats statsMisses = EventStats.create(SMOOTHING_WINDOW);
 	private int countCycles = 0;
 
-	public static RingBuffer create(int amountBuffers, long bufferCapacity) {
+	public static RingBuffer create(int amountBuffers, int bufferCapacity) {
+		checkArgument(amountBuffers > 0, "Amount of buffers should be greater than 0");
+		checkArgument(bufferCapacity > 0, "Buffer caacity should be greater than 0");
 		Buffer[] ringBuffers = new Buffer[amountBuffers];
 		for (int i = 0; i < amountBuffers; i++) {
-			ringBuffers[i] = new Buffer((int) bufferCapacity);
+			ringBuffers[i] = new Buffer(bufferCapacity);
 		}
 		return new RingBuffer(ringBuffers);
 	}
@@ -187,6 +184,8 @@ public final class RingBuffer implements RingBufferMBean {
 	 * there are extra params to handle the {@param data}
 	 */
 	public void put(byte[] key, byte[] data, int offset, int length) {
+		if (CHECK) checkArgument(data.length <= ringBuffers[currentBuffer].array.length,
+				"Size of data is larger than the size of buffer");
 		statsPuts.recordEvent();
 		if (ringBuffers[currentBuffer].remaining() < length) {
 			if (currentBuffer == ringBuffers.length - 1) {

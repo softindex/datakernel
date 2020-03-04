@@ -23,6 +23,8 @@ import org.junit.runners.model.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.junit.Assert.assertEquals;
+
 /**
  * {@link TestRule} that fails if not all active promises have been completed either successfully or exceptionally.
  * Promises to be monitored should have either a {@link TestUtils#assertComplete()}
@@ -44,7 +46,7 @@ public final class ActivePromisesRule implements TestRule {
 				}
 				throw t;
 			}
-			assert TestUtils.getActivePromises() == 0 : "Some promises have not been completed";
+			assertEquals("Some promises have not been completed", 0, TestUtils.getActivePromises());
 		});
 	}
 }

@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.max;
 import static java.lang.System.currentTimeMillis;
@@ -377,7 +378,7 @@ public final class ByteBufPool {
 	 */
 	@NotNull
 	public static ByteBuf append(@NotNull ByteBuf to, @NotNull ByteBuf from) {
-		assert !to.isRecycled() && !from.isRecycled();
+		checkArgument(!to.isRecycled() && !from.isRecycled());
 		if (to.readRemaining() == 0) {
 			to.recycle();
 			return from;
@@ -406,7 +407,7 @@ public final class ByteBufPool {
 	 */
 	@NotNull
 	public static ByteBuf append(@NotNull ByteBuf to, @NotNull byte[] from, int offset, int length) {
-		assert !to.isRecycled();
+		checkArgument(!to.isRecycled());
 		to = ensureWriteRemaining(to, length);
 		to.put(from, offset, length);
 		return to;
@@ -564,7 +565,6 @@ public final class ByteBufPool {
 
 		@Override
 		public List<String> getPoolSlabs() {
-			assert slabs.length == 33;
 			List<String> result = new ArrayList<>(slabs.length + 1);
 			result.add("SlotSize,Created,Reused,InPool,Total(Kb)");
 			for (int i = 0; i < slabs.length; i++) {

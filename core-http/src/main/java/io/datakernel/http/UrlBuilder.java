@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.net.URLEncoder;
 import java.util.*;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class UrlBuilder {
@@ -80,7 +81,7 @@ public class UrlBuilder {
 	}
 
 	public UrlBuilder withAuthority(String host, int port) {
-		assert port >= 0 && port <= 49151; // exclude ephemeral ports (https://tools.ietf.org/html/rfc6335#section-6)
+		checkArgument(port >= 0 && port <= 49151, "Port should in range [0, 49151]"); // exclude ephemeral ports (https://tools.ietf.org/html/rfc6335#section-6)
 		this.port = Integer.toString(port);
 		return withAuthority(host);
 	}

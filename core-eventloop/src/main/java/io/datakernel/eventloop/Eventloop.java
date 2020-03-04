@@ -18,6 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.async.callback.Completable;
+import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.exception.AsyncTimeoutException;
@@ -55,6 +56,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Utils.nullToSupplier;
 import static io.datakernel.eventloop.util.ReflectionUtils.isPrivateApiAvailable;
 import static io.datakernel.eventloop.util.Utils.tryToOptimizeSelector;
@@ -79,6 +81,8 @@ import static java.util.Collections.emptyIterator;
  */
 public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
 	public static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
+	private static final Boolean CHECK = Check.isEnabled(Eventloop.class);
+
 	public static final boolean jigsawDisabled;
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
@@ -426,7 +430,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private long getTimeBeforeExecution(PriorityQueue<ScheduledRunnable> taskQueue) {
 		while (!taskQueue.isEmpty()) {
 			ScheduledRunnable first = taskQueue.peek();
-			assert first != null; // unreachable condition
 			if (first.isCancelled()) {
 				taskQueue.poll();
 				continue;
@@ -504,7 +507,6 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 
 		for (int i = 0; i < selectedKeys.size(); i++) {
 			SelectionKey key = selectedKeys.get(i);
-			assert key != null;
 			if (!key.isValid()) {
 				invalidKeys++;
 				continue;
@@ -807,7 +809,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	@NotNull
 	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @NotNull Consumer<SocketChannel> acceptCallback) throws IOException {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "listen(...) should be called from within eventloop thread");
 		ServerSocketChannel serverSocketChannel = null;
 		try {
 			serverSocketChannel = ServerSocketChannel.open();
@@ -882,7 +884,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
 	public void connect(@NotNull SocketAddress address, long timeout, @NotNull Callback<SocketChannel> cb) {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "connect(...) should be called from within eventloop thread");
 		SocketChannel channel;
 		try {
 			channel = SocketChannel.open();
@@ -927,7 +929,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public long tick() {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "tick() should be called from within eventloop thread");
 		return (long) loop << 32 | tick;
 	}
 
@@ -939,7 +941,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable runnable of this task
 	 */
 	public void post(@NotNull @Async.Schedule Runnable runnable) {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "post(...) should be called from within eventloop thread");
 		localTasks.addFirst(runnable);
 	}
 
@@ -949,7 +951,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable runnable of this task
 	 */
 	public void postLater(@NotNull @Async.Schedule Runnable runnable) {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "postLater(...) should be called from within eventloop thread");
 		localTasks.addLast(runnable);
 	}
 
@@ -978,7 +980,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@NotNull
 	@Override
 	public ScheduledRunnable schedule(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "schedule(...) should be called from within eventloop thread");
 		return addScheduledTask(timestamp, runnable, false);
 	}
 
@@ -994,7 +996,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@NotNull
 	@Override
 	public ScheduledRunnable scheduleBackground(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
-		assert inEventloopThread();
+		if (CHECK) checkState(inEventloopThread(), "scheduleBackground(...) should be called from within eventloop thread");
 		return addScheduledTask(timestamp, runnable, true);
 	}
 

@@ -16,7 +16,13 @@
 
 package io.datakernel.http;
 
+import io.datakernel.common.Check;
+
+import static io.datakernel.common.Preconditions.checkArgument;
+
 final class AddressLinkedList {
+	private static final Boolean CHECK = Check.isEnabled(AddressLinkedList.class);
+
 	private HttpClientConnection first;
 	private HttpClientConnection last;
 
@@ -40,7 +46,7 @@ final class AddressLinkedList {
 	}
 
 	public void addLastNode(HttpClientConnection node) {
-		assert node.addressPrev == null && node.addressNext == null;
+		if (CHECK) checkArgument(node.addressPrev == null && node.addressNext == null);
 		if (last != null) {
 			assert last.addressNext == null;
 			last.addressNext = node;

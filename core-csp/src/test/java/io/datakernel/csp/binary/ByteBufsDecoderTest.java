@@ -35,14 +35,14 @@ public final class ByteBufsDecoderTest {
 	public void testOfNullTerminatedBytes() throws ParseException {
 		ByteBufsDecoder<ByteBuf> decoder = ByteBufsDecoder.ofNullTerminatedBytes();
 		queue.add(ByteBuf.wrapForReading(new byte[]{1, 2, 3, 0, 4, 5, 6}));
-		ByteBuf beforeNull = decoder.tryDecoder(queue);
+		ByteBuf beforeNull = decoder.tryDecode(queue);
 		ByteBuf afterNull = queue.takeRemaining();
 
 		assertArrayEquals(new byte[]{1, 2, 3}, beforeNull.asArray());
 		assertArrayEquals(new byte[]{4, 5, 6}, afterNull.asArray());
 
 		queue.add(ByteBuf.wrapForReading(new byte[]{0, 1, 2, 3}));
-		beforeNull = decoder.tryDecoder(queue);
+		beforeNull = decoder.tryDecode(queue);
 		afterNull = queue.takeRemaining();
 
 		assertArrayEquals(new byte[]{}, beforeNull.asArray());

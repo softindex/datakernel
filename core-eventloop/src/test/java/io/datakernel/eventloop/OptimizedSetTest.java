@@ -39,11 +39,6 @@ public class OptimizedSetTest {
 
 		set.clear();
 		assertEquals(0, set.size());
-
-		for (int i = 0; i < size; i++) {
-			SelectionKey selectionKey = set.get(i);
-			assertNull(selectionKey);
-		}
 	}
 
 	@Test

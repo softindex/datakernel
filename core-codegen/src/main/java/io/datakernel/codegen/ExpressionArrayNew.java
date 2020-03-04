@@ -35,7 +35,6 @@ final class ExpressionArrayNew implements Expression {
 	public Type load(Context ctx) {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		length.load(ctx);
-		assert getType(type).getSort() == Type.ARRAY;
 		g.newArray(getType(getType(type).getDescriptor().substring(1)));
 		return getType(type);
 	}

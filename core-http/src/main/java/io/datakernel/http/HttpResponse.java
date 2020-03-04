@@ -16,6 +16,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSetCookies;
@@ -30,6 +31,8 @@ import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.putPositiveInt;
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.http.ContentTypes.*;
 import static io.datakernel.http.HttpHeaderValue.ofContentType;
 import static io.datakernel.http.HttpHeaders.*;
@@ -41,6 +44,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * usi it afterwards.
  */
 public final class HttpResponse extends HttpMessage implements Async<HttpResponse>, Initializable<HttpResponse> {
+	private static final Boolean CHECK = Check.isEnabled(HttpResponse.class);
+
 	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
@@ -68,7 +73,7 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 
 	@NotNull
 	public static HttpResponse ofCode(int code) {
-		assert code >= 100 && code < 600;
+		if (CHECK) checkArgument(code >= 100 && code < 600, "Code should be in range [100, 600)");
 		return new HttpResponse(code);
 	}
 
@@ -278,7 +283,7 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 	// endregion
 
 	public int getCode() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return code;
 	}
 

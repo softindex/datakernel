@@ -25,8 +25,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.common.Preconditions.checkArgument;
-
 public final class RpcStrategyRoundRobin implements RpcStrategy {
 	private final RpcStrategyList list;
 	private final int minActiveSubStrategies;
@@ -62,12 +60,12 @@ public final class RpcStrategyRoundRobin implements RpcStrategy {
 		return new Sender(subSenders);
 	}
 
-	static final class Sender implements RpcSender {
+	private static final class Sender implements RpcSender {
 		private int nextSender;
 		private final RpcSender[] subSenders;
 
 		Sender(@NotNull List<RpcSender> senders) {
-			checkArgument(senders.size() > 0, "List of senders must contain at least one sender");
+			assert senders.size() > 0;
 			this.subSenders = senders.toArray(new RpcSender[0]);
 			this.nextSender = 0;
 		}

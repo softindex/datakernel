@@ -73,7 +73,7 @@ public final class MultipartParser implements ByteBufsDecoder<MultipartFrame> {
 	 */
 	public ByteBufsDecoder<ByteBuf> ignoreHeaders() {
 		return bufs -> {
-			MultipartFrame frame = tryDecoder(bufs);
+			MultipartFrame frame = tryDecode(bufs);
 			if (frame == null || frame.isHeaders()) {
 				return null;
 			}
@@ -153,7 +153,7 @@ public final class MultipartParser implements ByteBufsDecoder<MultipartFrame> {
 
 	@Nullable
 	@Override
-	public MultipartFrame tryDecoder(ByteBufQueue bufs) {
+	public MultipartFrame tryDecode(ByteBufQueue bufs) {
 		if (finished) {
 			return null;
 		}
@@ -254,7 +254,6 @@ public final class MultipartParser implements ByteBufsDecoder<MultipartFrame> {
 		}
 
 		public ByteBuf getData() {
-			assert data != null : "Trying to get data out of header frame";
 			return data;
 		}
 
@@ -263,7 +262,6 @@ public final class MultipartParser implements ByteBufsDecoder<MultipartFrame> {
 		}
 
 		public Map<String, String> getHeaders() {
-			assert headers != null : "Trying to get headers out of data frame";
 			return headers;
 		}
 

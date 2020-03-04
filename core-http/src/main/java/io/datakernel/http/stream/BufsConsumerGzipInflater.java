@@ -164,10 +164,10 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 
 		while (bufs.hasRemaining()) {
 			ByteBuf src = bufs.peekBuf();
-			assert src != null;
+			assert src != null; // hasRemaining() succeeded above
 			inflater.setInput(src.array(), src.head(), src.readRemaining());
 			try {
-				inflate(queue);
+				inflate(queue, src);
 			} catch (DataFormatException e) {
 				queue.recycle();
 				close(e);
@@ -205,9 +205,7 @@ public final class BufsConsumerGzipInflater extends AbstractCommunicatingProcess
 				.whenException(this::close);
 	}
 
-	private void inflate(ByteBufQueue queue) throws DataFormatException {
-		ByteBuf src = bufs.peekBuf();
-		assert src != null;
+	private void inflate(ByteBufQueue queue, ByteBuf src) throws DataFormatException {
 		while (true) {
 			ByteBuf buf = ByteBufPool.allocate(max(src.readRemaining(), DEFAULT_BUF_SIZE));
 			int beforeInflation = inflater.getTotalIn();

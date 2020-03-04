@@ -47,7 +47,7 @@ public final class RecursiveType {
 	}
 
 	@NotNull
-	public static RecursiveType of(@NotNull Class clazz) {
+	public static RecursiveType of(@NotNull Class<?> clazz) {
 		return new RecursiveType(clazz, NO_TYPE_PARAMS, clazz.isArray() ? 1 : 0);
 	}
 
@@ -89,7 +89,7 @@ public final class RecursiveType {
 	}
 
 	@NotNull
-	public Class getRawType() {
+	public Class<?> getRawType() {
 		return clazz;
 	}
 

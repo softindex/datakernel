@@ -250,7 +250,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
-		assert eventloop.inEventloopThread();
 		if (expiredConnectionsCheck == null) {
 			scheduleExpiredConnectionsCheck();
 		}

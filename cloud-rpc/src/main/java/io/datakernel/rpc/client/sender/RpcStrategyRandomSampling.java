@@ -74,7 +74,7 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 		return new RandomSamplingSender(senderToWeight, seed);
 	}
 
-	static final class RandomSamplingSender implements RpcSender {
+	private static final class RandomSamplingSender implements RpcSender {
 		private final List<RpcSender> senders;
 		private final int[] cumulativeWeights;
 		private final int totalWeight;
@@ -82,7 +82,7 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 		private long lastRandomLong;
 
 		RandomSamplingSender(Map<RpcSender, Integer> senderToWeight, long seed) {
-			checkArgument(!senderToWeight.containsKey(null), "sender cannot be null");
+			assert !senderToWeight.containsKey(null);
 
 			senders = new ArrayList<>(senderToWeight.size());
 			cumulativeWeights = new int[senderToWeight.size()];

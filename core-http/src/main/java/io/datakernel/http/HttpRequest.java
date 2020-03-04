@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.*;
@@ -49,6 +51,8 @@ import static java.util.Collections.singletonList;
  * creating and configuring an HTTP request.
  */
 public final class HttpRequest extends HttpMessage implements Initializable<HttpRequest> {
+	private static final Boolean CHECK = Check.isEnabled(HttpRequest.class);
+
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
@@ -126,7 +130,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Override
 	public void addCookies(@NotNull List<HttpCookie> cookies) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		headers.add(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
 	}
 
@@ -163,13 +167,13 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	@NotNull
 	@Contract(pure = true)
 	public HttpMethod getMethod() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return method;
 	}
 
 	@Contract(pure = true)
 	public InetAddress getRemoteAddress() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return remoteAddress;
 	}
 
@@ -182,12 +186,12 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	UrlParser getUrl() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url;
 	}
 
 	void setUrl(@NotNull String url) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		this.url = UrlParser.of(url);
 		if (!this.url.isRelativePath()) {
 			assert this.url.getHostAndPort() != null; // sadly no advanced contracts yet
@@ -202,13 +206,13 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public String getPath() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url.getPath();
 	}
 
 	@NotNull
 	public String getPathAndQuery() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url.getPathAndQuery();
 	}
 
@@ -244,7 +248,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public Map<String, String> getQueryParameters() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		if (queryParameters != null) {
 			return queryParameters;
 		}
@@ -254,19 +258,19 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Nullable
 	public String getQueryParameter(@NotNull String key) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url.getQueryParameter(key);
 	}
 
 	@NotNull
 	public List<String> getQueryParameters(@NotNull String key) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url.getQueryParameters(key);
 	}
 
 	@NotNull
 	public Iterable<QueryParameter> getQueryParametersIterable() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url.getQueryParametersIterable();
 	}
 
@@ -303,13 +307,13 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public Map<String, String> getPathParameters() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return pathParameters != null ? pathParameters : emptyMap();
 	}
 
 	@NotNull
 	public String getPathParameter(@NotNull String key) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		if (pathParameters != null) {
 			String pathParameter = pathParameters.get(key);
 			if (pathParameter != null) {
@@ -342,13 +346,13 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public String getRelativePath() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		String partialPath = url.getPartialPath();
 		return partialPath.startsWith("/") ? partialPath.substring(1) : partialPath; // strip first '/'
 	}
 
 	String pollUrlPart() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		return url.pollUrlPart();
 	}
 

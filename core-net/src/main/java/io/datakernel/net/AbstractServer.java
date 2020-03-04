@@ -16,6 +16,7 @@
 
 package io.datakernel.net;
 
+import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.eventloop.Eventloop;
@@ -63,6 +64,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 @SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<Self extends AbstractServer<Self>> implements EventloopServer, WorkerServer, Initializable<Self>, EventloopJmxMBeanEx {
 	protected Logger logger = getLogger(getClass());
+	private static final Boolean CHECK = Check.isEnabled(AbstractServer.class);
 
 	@NotNull
 	protected final Eventloop eventloop;
@@ -218,7 +220,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	 */
 	@Override
 	public final void listen() throws IOException {
-		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (running) {
 			return;
 		}
@@ -249,7 +251,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 
 	@Override
 	public final Promise<?> close() {
-		checkState(eventloop.inEventloopThread(), "Cannot close server from different thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Cannot close server from different thread");
 		if (!running) return Promise.complete();
 		running = false;
 		closeServerSockets();
@@ -294,8 +296,6 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	}
 
 	private void doAccept(SocketChannel channel, InetSocketAddress localAddress, boolean ssl) {
-		assert eventloop.inEventloopThread();
-
 		InetAddress remoteAddress;
 		try {
 			remoteAddress = ((InetSocketAddress) channel.getRemoteAddress()).getAddress();
@@ -333,7 +333,7 @@ public abstract class AbstractServer<Self extends AbstractServer<Self>> implemen
 	@Override
 	public final void doAccept(SocketChannel socketChannel, InetSocketAddress localAddress, InetAddress remoteAddress,
 			boolean ssl, SocketSettings socketSettings) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		accepts.recordEvent();
 		if (ssl) acceptsSsl.recordEvent();
 		onAccept(socketChannel, localAddress, remoteAddress, ssl);

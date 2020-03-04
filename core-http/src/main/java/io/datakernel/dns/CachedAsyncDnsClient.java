@@ -16,6 +16,7 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.common.Check;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
@@ -32,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 /**
@@ -40,6 +42,7 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
  */
 public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CachedAsyncDnsClient.class);
+	private static final Boolean CHECK = Check.isEnabled(CachedAsyncDnsClient.class);
 
 	private final Eventloop eventloop;
 	private final AsyncDnsClient client;
@@ -90,7 +93,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		return new AsyncDnsClient() {
 			@Override
 			public Promise<DnsResponse> resolve(DnsQuery query) {
-				assert anotherEventloop.inEventloopThread();
+				if (CHECK) checkState(anotherEventloop.inEventloopThread());
 				DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 				if (fromQuery != null) {
 					logger.trace("{} already contained an IP address within itself", query);
@@ -117,7 +120,7 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 			@Override
 			public void close() {
-				assert anotherEventloop.inEventloopThread();
+				if (CHECK) checkState(anotherEventloop.inEventloopThread());
 				eventloop.execute(wrapContext(CachedAsyncDnsClient.this, CachedAsyncDnsClient.this::close));
 			}
 		};
@@ -146,7 +149,9 @@ public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 	@Override
 	public Promise<DnsResponse> resolve(DnsQuery query) {
-		assert eventloop.inEventloopThread() : "Concurrent resolves are not allowed, to reuse the cache use adaptToOtherEventloop";
+		if (CHECK) {
+			checkState(eventloop.inEventloopThread(), "Concurrent resolves are not allowed, to reuse the cache use adaptToOtherEventloop");
+		}
 
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {

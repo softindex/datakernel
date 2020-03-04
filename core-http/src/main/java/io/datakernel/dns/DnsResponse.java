@@ -20,6 +20,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.NO_ERROR;
+
 /**
  * Represents a response from DNS server.
  */
@@ -36,11 +39,11 @@ public final class DnsResponse {
 	}
 
 	public static DnsResponse of(DnsTransaction transactionId, DnsResourceRecord record) {
-		return new DnsResponse(transactionId, record, DnsProtocol.ResponseErrorCode.NO_ERROR);
+		return new DnsResponse(transactionId, record, NO_ERROR);
 	}
 
 	public static DnsResponse ofFailure(DnsTransaction transactionId, DnsProtocol.ResponseErrorCode errorCode) {
-		assert errorCode != DnsProtocol.ResponseErrorCode.NO_ERROR : "Creating failure DNS query response with NO_ERROR error code";
+		checkArgument(errorCode != NO_ERROR, "Creating failure DNS query response with NO_ERROR error code");
 		return new DnsResponse(transactionId, null, errorCode);
 	}
 

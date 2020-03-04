@@ -1157,8 +1157,7 @@ public final class TestDI {
 				.bind(String.class).to(i -> "str #" + i, Integer.class).export()
 				.bind(Integer.class).toInstance(123)
 				.transform(1, (bindings, scope, key, binding) -> {
-					//noinspection RedundantCast - does not compile without this
-					if (key.getRawType() != (Class) Integer.class) {
+					if (key.getRawType() != (Class<?>) Integer.class) {
 						return binding;
 					}
 					return binding.mapInstance(i -> ((Integer) i) * 2);

@@ -60,7 +60,7 @@ public interface ByteBufsCodec<I, O> {
 			@Nullable
 			@Override
 			public ByteBuf tryDecode(ByteBufQueue bufs) throws ParseException {
-				return delimiterIn.tryDecoder(bufs);
+				return delimiterIn.tryDecode(bufs);
 			}
 		};
 	}

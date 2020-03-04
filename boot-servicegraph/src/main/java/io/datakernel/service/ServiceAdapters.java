@@ -155,9 +155,12 @@ public final class ServiceAdapters {
 
 			@Override
 			public CompletableFuture<?> stop(Eventloop eventloop, Executor executor) {
-				CompletableFuture<?> future = new CompletableFuture<>();
 				Thread eventloopThread = eventloop.getEventloopThread();
-				assert eventloopThread != null;
+				if (eventloopThread == null) {
+					// already stopped
+					return CompletableFuture.completedFuture(null);
+				}
+				CompletableFuture<?> future = new CompletableFuture<>();
 				eventloop.execute(() -> {
 					eventloop.keepAlive(false);
 					logStopping(eventloop);

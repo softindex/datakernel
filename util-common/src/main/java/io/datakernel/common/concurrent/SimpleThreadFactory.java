@@ -17,11 +17,12 @@
 package io.datakernel.common.concurrent;
 
 import io.datakernel.common.Initializable;
-import io.datakernel.common.Preconditions;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class SimpleThreadFactory implements ThreadFactory, Initializable<SimpleThreadFactory> {
 	public static final String NAME_PATTERN = "{}";
@@ -59,8 +60,8 @@ public final class SimpleThreadFactory implements ThreadFactory, Initializable<S
 	}
 
 	public SimpleThreadFactory withPriority(int priority) {
-		Preconditions.checkArgument(priority == 0 || (priority >= Thread.MIN_PRIORITY && priority <= Thread.MAX_PRIORITY),
-				"Thread priority should either be 0 or in bounds [" + Thread.MIN_PRIORITY + '-' + Thread.MAX_PRIORITY + ']');
+		checkArgument(priority == 0 || (priority >= Thread.MIN_PRIORITY && priority <= Thread.MAX_PRIORITY),
+				() -> "Thread priority should either be 0 or in bounds [" + Thread.MIN_PRIORITY + '-' + Thread.MAX_PRIORITY + ']');
 		this.priority = priority;
 		return this;
 	}

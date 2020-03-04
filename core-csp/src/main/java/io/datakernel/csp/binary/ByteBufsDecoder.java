@@ -34,11 +34,11 @@ public interface ByteBufsDecoder<T> {
     ParseException NEGATIVE_SIZE = new InvalidSizeException(ByteBufsDecoder.class, "Invalid size of bytes to be read, should be greater than 0");
 
     @Nullable
-    T tryDecoder(ByteBufQueue bufs) throws ParseException;
+    T tryDecode(ByteBufQueue bufs) throws ParseException;
 
     default <V> ByteBufsDecoder<V> andThen(ParserFunction<? super T, ? extends V> after) {
         return bufs -> {
-            T maybeResult = tryDecoder(bufs);
+            T maybeResult = tryDecode(bufs);
             if (maybeResult == null) return null;
             return after.parse(maybeResult);
         };

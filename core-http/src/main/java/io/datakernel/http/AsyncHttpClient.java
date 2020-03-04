@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Check;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
@@ -70,7 +71,8 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
 public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
-	protected Logger logger = getLogger(getClass());
+	private static final Logger logger = getLogger(AsyncHttpClient.class);
+	private static final Boolean CHECK = Check.isEnabled(AsyncHttpClient.class);
 
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.createDefault();
 	public static final Duration CONNECT_TIMEOUT = ApplicationSettings.getDuration(AsyncHttpClient.class, "connectTimeout", Duration.ZERO);
@@ -346,8 +348,6 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 		assert connection.pool == poolKeepAlive;
 		assert connection.remoteAddress.equals(address);
 		connection.pool.removeNode(connection); // moving from keep-alive state to taken(null) state
-		//noinspection AssertWithSideEffects,ConstantConditions
-		assert (connection.pool = null) == null;
 		if (addresses.isEmpty()) {
 			this.addresses.remove(address);
 		}
@@ -371,7 +371,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 
 	@Override
 	public Promise<HttpResponse> request(HttpRequest request) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (inspector != null) inspector.onRequest(request);
 		String host = request.getUrl().getHost();
 
@@ -449,7 +449,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return Promise.complete();
 	}
 
@@ -466,7 +466,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 
 		SettablePromise<Void> promise = new SettablePromise<>();
 

@@ -124,7 +124,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 		if (!bufs.isEmpty()) {
 			T result;
 			try {
-				result = decoder.tryDecoder(bufs);
+				result = decoder.tryDecode(bufs);
 			} catch (Exception e) {
 				return Promise.ofException(e);
 			}
@@ -141,7 +141,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 					if (e == null) {
 						T result;
 						try {
-							result = decoder.tryDecoder(bufs);
+							result = decoder.tryDecode(bufs);
 						} catch (Exception e2) {
 							close(e2);
 							cb.setException(e2);

@@ -16,13 +16,18 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.common.Check;
 import io.datakernel.common.concurrent.ThreadLocalCharArray;
 import io.datakernel.common.parse.ParseException;
+
+import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
  * This class contains various fast string utilities for {@link ByteBuf ByteBufs} and byte arrays
  */
 public final class ByteBufStrings {
+	private static final Boolean CHECK = Check.isEnabled(ByteBufStrings.class);
+
 	public static final ParseException READ_PAST_LIMIT = new ParseException(ByteBufStrings.class, "Malformed utf-8 input: Read past end");
 	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException(ByteBufStrings.class, "Malformed utf-8 input");
 
@@ -69,7 +74,7 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeAscii(byte[] array, int pos, int len, char[] tmpBuffer) {
-		assert tmpBuffer.length >= len : "given char buffer was not big enough";
+		if (CHECK) checkArgument(tmpBuffer.length >= len, "given char buffer is not big enough");
 		int charIndex = 0, end = pos + len;
 		while (pos < end) {
 			int c = array[pos++] & 0xff;
@@ -131,7 +136,7 @@ public final class ByteBufStrings {
 			return false;
 		for (int i = 0; i < lowerCasePattern.length; i++) {
 			byte p = lowerCasePattern[i];
-			assert p < 'A' || p > 'Z';
+			if (CHECK) checkArgument(p < 'A' || p > 'Z');
 			byte a = array[offset + i];
 			if (a >= 'A' && a <= 'Z')
 				a += 'a' - 'A';
@@ -146,7 +151,7 @@ public final class ByteBufStrings {
 			return false;
 		for (int i = 0; i < upperCasePattern.length; i++) {
 			byte p = upperCasePattern[i];
-			assert p < 'a' || p > 'z';
+			if (CHECK) checkArgument(p < 'a' || p > 'z');
 			byte a = array[offset + i];
 			if (a >= 'a' && a <= 'z')
 				a += 'A' - 'z';

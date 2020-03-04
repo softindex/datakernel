@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.Check;
 import io.datakernel.common.collection.ConcurrentStack;
 import io.datakernel.common.parse.InvalidSizeException;
 import io.datakernel.common.parse.ParseException;
@@ -28,10 +29,14 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
+import static io.datakernel.common.Preconditions.checkArgument;
+
 /**
  * This class contains various utils for the DEFLATE algorithm.
  */
 public final class GzipProcessorUtils {
+	private static final Boolean CHECK = Check.isEnabled(GzipProcessorUtils.class);
+
 	// rfc 1952 section 2.3.1
 	private static final byte[] GZIP_HEADER = {(byte) 0x1f, (byte) 0x8b, Deflater.DEFLATED, 0, 0, 0, 0, 0, 0, 0};
 	private static final int GZIP_HEADER_SIZE = GZIP_HEADER.length;
@@ -60,7 +65,7 @@ public final class GzipProcessorUtils {
 	private static final ConcurrentStack<Deflater> compressors = new ConcurrentStack<>();
 
 	public static ByteBuf fromGzip(ByteBuf src, int maxMessageSize) throws ParseException {
-		assert src.readRemaining() > 0;
+		if (CHECK) checkArgument(src.readRemaining() > 0);
 
 		int expectedSize = readExpectedInputSize(src);
 		check(expectedSize >= 0, src, INCORRECT_UNCOMPRESSED_INPUT_SIZE);
@@ -86,7 +91,7 @@ public final class GzipProcessorUtils {
 	}
 
 	public static ByteBuf toGzip(ByteBuf src) {
-		assert src.readRemaining() > 0;
+		if (CHECK) checkArgument(src.readRemaining() > 0);
 
 		Deflater compressor = ensureCompressor();
 		compressor.setInput(src.array(), src.head(), src.readRemaining());

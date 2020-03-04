@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Check;
 import io.datakernel.common.concurrent.ThreadLocalCharArray;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.common.parse.ParseException;
@@ -33,6 +34,7 @@ import java.net.InetAddress;
 import java.util.Arrays;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMessage.MUST_LOAD_BODY;
@@ -44,6 +46,8 @@ import static io.datakernel.http.HttpMethod.*;
  * {@link AsyncServlet<HttpRequest> async servlet}.
  */
 final class HttpServerConnection extends AbstractHttpConnection {
+	private static final Boolean CHECK = Check.isEnabled(HttpServerConnection.class);
+
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
 	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
@@ -263,7 +267,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			servletResult = Promise.ofException(u.getCause());
 		}
 		servletResult.whenComplete((response, e) -> {
-			assert eventloop.inEventloopThread();
+			if (CHECK) checkState(eventloop.inEventloopThread());
 			if (isClosed()) {
 				request.recycle();
 				if (response != null) {

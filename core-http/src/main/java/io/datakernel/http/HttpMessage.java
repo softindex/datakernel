@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.Check;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.Recyclable;
 import io.datakernel.common.exception.UncheckedException;
@@ -36,6 +37,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.ChannelConsumers.recycling;
 import static java.util.Collections.emptySet;
 
@@ -44,6 +46,8 @@ import static java.util.Collections.emptySet;
  */
 @SuppressWarnings({"unused", "WeakerAccess", "PointlessBitwiseExpression"})
 public abstract class HttpMessage {
+	private static final Boolean CHECK = Check.isEnabled(HttpMessage.class);
+
 	/**
 	 * This flag means that the body of this message should not be streamed
 	 * and should be collected into a single body {@link ByteBuf}.
@@ -90,22 +94,22 @@ public abstract class HttpMessage {
 	}
 
 	public void addHeader(@NotNull HttpHeader header, @NotNull String string) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		addHeader(header, HttpHeaderValue.of(string));
 	}
 
 	public void addHeader(@NotNull HttpHeader header, @NotNull byte[] value) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		addHeader(header, HttpHeaderValue.ofBytes(value, 0, value.length));
 	}
 
 	public void addHeader(@NotNull HttpHeader header, @NotNull byte[] array, int off, int len) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		addHeader(header, HttpHeaderValue.ofBytes(array, off, len));
 	}
 
 	public void addHeader(@NotNull HttpHeader header, @NotNull HttpHeaderValue value) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		headers.add(header, value);
 	}
 
@@ -371,7 +375,7 @@ public abstract class HttpMessage {
 	}
 
 	final void recycle() {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		flags |= RECYCLED;
 		if (bufs != null) {
 			bufs.recycle();
@@ -385,7 +389,7 @@ public abstract class HttpMessage {
 	}
 
 	protected void writeHeaders(@NotNull ByteBuf buf) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		for (int i = 0; i < headers.kvPairs.length - 1; i += 2) {
 			HttpHeader k = (HttpHeader) headers.kvPairs[i];
 			if (k != null) {
@@ -405,7 +409,7 @@ public abstract class HttpMessage {
 	}
 
 	protected int estimateSize(int firstLineSize) {
-		assert !isRecycled();
+		if (CHECK) checkState(!isRecycled());
 		int size = firstLineSize;
 		// CR,LF,header,": ",value
 		for (int i = 0; i < headers.kvPairs.length - 1; i += 2) {

@@ -256,7 +256,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert !isClosed();
 		SettablePromise<HttpResponse> promise = new SettablePromise<>();
 		this.promise = promise;
-		assert pool == null;
 		(pool = client.poolReadWrite).addLastNode(this);
 		poolTimestamp = eventloop.currentTimeMillis();
 		HttpHeaderValue connectionHeader = CONNECTION_KEEP_ALIVE_HEADER;
@@ -325,8 +324,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		// (eg. if connection was in open(null) or taken(null) states)
 		//noinspection ConstantConditions
 		pool.removeNode(this);
-		//noinspection AssertWithSideEffects,ConstantConditions
-		assert (pool = null) == null;
 
 		client.onConnectionClosed();
 		if (response != null) {

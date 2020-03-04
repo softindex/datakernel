@@ -245,8 +245,6 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 							if (timestamp == -1 || fileTimestamp <= timestamp) {
 								return true;
 							}
-							long difference = fileTimestamp - timestamp;
-							assert difference > 0;
 							logger.trace("File {} timestamp {} > {}", file, fileTimestamp, timestamp);
 							skipped.inc();
 							return false;

@@ -240,10 +240,10 @@ public class OTLoadedGraph<K, D> {
 
 	@SuppressWarnings("unchecked")
 	private K doMerge(Set<K> nodes) throws OTException {
+		assert nodes.size() > 0;
 		if (nodes.size() == 1) return first(nodes);
 
 		Optional<K> min = nodes.stream().min(comparingInt((K node) -> findRoots(node).size()));
-		assert min.isPresent();
 		K pivotNode = min.get();
 
 		Map<K, List<? extends D>> pivotNodeParents = getParents(pivotNode);

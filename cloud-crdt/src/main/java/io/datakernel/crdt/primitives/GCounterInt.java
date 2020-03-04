@@ -16,13 +16,17 @@
 
 package io.datakernel.crdt.primitives;
 
+import io.datakernel.common.Check;
 import io.datakernel.serializer.BinaryInput;
 import io.datakernel.serializer.BinaryOutput;
 import io.datakernel.serializer.BinarySerializer;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Math.max;
 
 public final class GCounterInt implements CrdtMergable<GCounterInt> {
+	private static final Boolean CHECK = Check.isEnabled(GCounterInt.class);
+
 	public static final BinarySerializer<GCounterInt> SERIALIZER = new Serializer();
 
 	private final int[] state;
@@ -49,7 +53,7 @@ public final class GCounterInt implements CrdtMergable<GCounterInt> {
 
 	@Override
 	public GCounterInt merge(GCounterInt other) {
-		assert state.length == other.state.length;
+		if (CHECK) checkArgument(state.length == other.state.length);
 		int[] newState = new int[state.length];
 		for (int i = 0; i < newState.length; i++) {
 			newState[i] = max(state[i], other.state[i]);

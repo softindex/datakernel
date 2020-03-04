@@ -17,6 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.common.Check;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.common.parse.ParseException;
@@ -43,6 +44,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.promise.Promises.TIMEOUT_EXCEPTION;
 import static io.datakernel.promise.Promises.timeout;
 
@@ -52,6 +54,7 @@ import static io.datakernel.promise.Promises.timeout;
  */
 public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
+	private static final Boolean CHECK = Check.isEnabled(RemoteAsyncDnsClient.class);
 
 	public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
 	private static final int DNS_SERVER_PORT = 53;
@@ -122,7 +125,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 	@Override
 	public void close() {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (socket == null) {
 			return;
 		}
@@ -149,7 +152,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 
 	@Override
 	public Promise<DnsResponse> resolve(DnsQuery query) {
-		assert eventloop.inEventloopThread();
+		if (CHECK) checkState(eventloop.inEventloopThread());
 		DnsResponse fromQuery = AsyncDnsClient.resolveFromQuery(query);
 		if (fromQuery != null) {
 			logger.trace("{} already contained an IP address within itself", query);
