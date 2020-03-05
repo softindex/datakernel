@@ -916,8 +916,8 @@ public class ExpressionTest {
 	public void testNewArray() {
 		DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 		TestNewArray instance = ClassBuilder.create(definingClassLoader, TestNewArray.class)
-				.withMethod("ints", arrayNew(int[].class, arg(0)))
-				.withMethod("integers", arrayNew(String[].class, arg(0)))
+				.withMethod("ints", arrayNew(int.class, arg(0)))
+				.withMethod("integers", arrayNew(String.class, arg(0)))
 				.buildClassAndCreateNewInstance();
 		assertEquals(instance.ints(1).length, 1);
 		assertEquals(instance.integers(2).length, 2);

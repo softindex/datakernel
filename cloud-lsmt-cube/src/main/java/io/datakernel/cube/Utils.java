@@ -72,7 +72,7 @@ public final class Utils {
 				.withClassKey(recordClass, new HashSet<>(recordDimensions))
 				.withMethod("extractKey",
 						let(
-								arrayNew(Object[].class, value(recordDimensions.size())),
+								arrayNew(Object.class, value(recordDimensions.size())),
 								key -> sequence(expressions -> {
 									for (int i = 0; i < recordDimensions.size(); i++) {
 										String dimension = recordDimensions.get(i);

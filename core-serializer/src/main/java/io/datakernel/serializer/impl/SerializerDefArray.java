@@ -138,13 +138,13 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 		if (type.getComponentType() == Byte.TYPE) {
 			return let(readVarInt(in),
 					len -> !nullable ?
-							let(arrayNew(type, len),
+							let(arrayNew(type.getComponentType(), len),
 									array -> sequence(
 											readBytes(in, array),
 											array)) :
 							ifThenElse(cmpEq(len, value(0)),
 									nullRef(type),
-									let(arrayNew(type, dec(len)),
+									let(arrayNew(type.getComponentType(), dec(len)),
 											array -> sequence(
 													readBytes(in, array, value(0), dec(len)),
 													array))));
@@ -160,7 +160,7 @@ public final class SerializerDefArray implements SerializerDefWithNullable, Seri
 	}
 
 	private Expression doDecode(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel, Expression size) {
-		return let(arrayNew(type, size),
+		return let(arrayNew(type.getComponentType(), size),
 				array -> sequence(
 						loop(value(0), size,
 								i -> arraySet(array, i,

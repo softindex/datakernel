@@ -52,15 +52,15 @@ public final class ArrayExpressionsTest {
 	@Test
 	public void testMultidimensionalWithUnspecifiedLengths() throws ReflectiveOperationException {
 		Expression create = switchByKey(length(arg(1)), map(
-				value(0), multiArrayNew(Integer[][][][].class, arg(0)),
-				value(1), multiArrayNew(Integer[][][][].class,
+				value(0), multiArrayNew(Integer[][][].class, arg(0)),
+				value(1), multiArrayNew(Integer[][].class,
 						arg(0),
 						arrayGet(arg(1), value(0))),
-				value(2), multiArrayNew(Integer[][][][].class,
+				value(2), multiArrayNew(Integer[].class,
 						arg(0),
 						arrayGet(arg(1), value(0)),
 						arrayGet(arg(1), value(1))),
-				value(3), multiArrayNew(Integer[][][][].class,
+				value(3), multiArrayNew(Integer.class,
 						arg(0),
 						arrayGet(arg(1), value(0)),
 						arrayGet(arg(1), value(1)),
@@ -147,11 +147,7 @@ public final class ArrayExpressionsTest {
 	}
 
 	private Object createArrayTestObject(Class<Integer> cls) {
-		Class<?> arrayCls = Array.newInstance(cls, new int[1]).getClass();  // int[].class or Integer[].class
-		Class<?> array2Cls = Array.newInstance(cls, new int[2]).getClass(); // int[][].class or Integer[][].class
-		Class<?> array3Cls = Array.newInstance(cls, new int[3]).getClass(); // int[][][].class or Integer[][][].class
-
-		Expression getArray1Expr = let(arrayNew(arrayCls, value(6)), variable ->
+		Expression getArray1Expr = let(arrayNew(cls, value(6)), variable ->
 				sequence(arraySet(variable, value(0), getArrayValue(cls, 10)),
 						arraySet(variable, value(1), getArrayValue(cls, 11)),
 						arraySet(variable, value(2), getArrayValue(cls, 12)),
@@ -161,7 +157,7 @@ public final class ArrayExpressionsTest {
 						variable));
 
 		Expression getArray2Expr = let(
-				multiArrayNew(array2Cls, value(3), value(2)),
+				multiArrayNew(cls, value(3), value(2)),
 				variable -> sequence(
 						multiArraySet(variable, asList(value(0), value(0)), getArrayValue(cls, 10)),
 						multiArraySet(variable, asList(value(0), value(1)), getArrayValue(cls, 11)),
@@ -173,7 +169,7 @@ public final class ArrayExpressionsTest {
 		);
 
 		Expression getArray3Expr = let(
-				multiArrayNew(array3Cls, value(3), value(2), value(1)),
+				multiArrayNew(cls, value(3), value(2), value(1)),
 				variable -> sequence(
 						multiArraySet(variable, asList(value(0), value(0), value(0)), getArrayValue(cls, 10)),
 						multiArraySet(variable, asList(value(0), value(1), value(0)), getArrayValue(cls, 11)),
@@ -190,6 +186,10 @@ public final class ArrayExpressionsTest {
 
 		Expression getArray1 = arrayGet(arg(0), arg(1));
 		Expression getArray2 = multiArrayGet(arg(0), arg(1), arg(2));
+
+		Class<?> arrayCls = Array.newInstance(cls, new int[1]).getClass();  // int[].class or Integer[].class
+		Class<?> array2Cls = Array.newInstance(cls, new int[2]).getClass(); // int[][].class or Integer[][].class
+		Class<?> array3Cls = Array.newInstance(cls, new int[3]).getClass(); // int[][][].class or Integer[][][].class
 
 		ClassBuilder<?> classBuilder = ClassBuilder.create(DefiningClassLoader.create(),
 				cls.isPrimitive() ? ArraysOfPrimitives.class : ArraysOfObjects.class)

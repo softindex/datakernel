@@ -19,9 +19,9 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.lang.reflect.Array;
 import java.util.List;
 
-import static io.datakernel.common.Preconditions.checkArgument;
 import static org.objectweb.asm.Type.getType;
 
 final class ExpressionArrayNew implements Expression {
@@ -29,7 +29,7 @@ final class ExpressionArrayNew implements Expression {
 	private final List<Expression> lengths;
 
 	ExpressionArrayNew(Class<?> type, List<Expression> lengths) {
-		this.type = checkArgument(getType(checkArgument(type, Class::isArray)), t -> t.getDimensions() >= lengths.size());
+		this.type = getType(Array.newInstance(type, new int[lengths.size()]).getClass());
 		this.lengths = lengths;
 	}
 

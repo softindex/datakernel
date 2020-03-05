@@ -125,7 +125,7 @@ public final class SerializerDefList implements SerializerDefWithNullable {
 	}
 
 	private Expression doDecode(StaticDecoders staticDecoders, Expression in, int version, CompatibilityLevel compatibilityLevel, Expression len) {
-		return let(arrayNew(Object[].class, len),
+		return let(arrayNew(Object.class, len),
 				array -> sequence(
 						loop(value(0), len,
 								i -> arraySet(array, i,

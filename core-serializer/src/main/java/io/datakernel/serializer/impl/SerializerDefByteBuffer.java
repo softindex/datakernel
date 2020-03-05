@@ -88,7 +88,7 @@ public final class SerializerDefByteBuffer implements SerializerDefWithNullable 
 						length -> {
 							if (!nullable) {
 								return let(
-										arrayNew(byte[].class, length),
+										arrayNew(byte.class, length),
 										array ->
 												sequence(length,
 														readBytes(in, array),
@@ -97,7 +97,7 @@ public final class SerializerDefByteBuffer implements SerializerDefWithNullable 
 								return ifThenElse(cmpEq(length, value(0)),
 										nullRef(ByteBuffer.class),
 										let(
-												arrayNew(byte[].class, dec(length)),
+												arrayNew(byte.class, dec(length)),
 												array -> sequence(
 														readBytes(in, array),
 														staticCall(ByteBuffer.class, "wrap", array))));
