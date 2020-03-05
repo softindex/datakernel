@@ -31,7 +31,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -63,6 +65,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	@Nullable
 	private ClassKey classKey;
 	private Path bytecodeSaveDir;
+	private boolean ideaDebug;
 
 	private String className;
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
@@ -106,6 +109,20 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 
 	public ClassBuilder<T> withBytecodeSaveDir(Path bytecodeSaveDir) {
 		this.bytecodeSaveDir = bytecodeSaveDir;
+		return this;
+	}
+
+	public ClassBuilder<T> withIdeaDebug() {
+		this.ideaDebug = true;
+		if (this.bytecodeSaveDir == null) {
+			Class<?> implClass = superclass == Object.class ? interfaces.get(0) : superclass;
+			this.bytecodeSaveDir = Paths.get(System.getProperty("java.io.tmpdir")).resolve(implClass.getSimpleName());
+			try {
+				Files.createDirectories(bytecodeSaveDir);
+			} catch (IOException e) {
+				logger.warn("Failed to create directory", e);
+			}
+		}
 		return this;
 	}
 
@@ -337,8 +354,18 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 
 		if (bytecodeSaveDir != null) {
-			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(actualClassName + ".class").toFile())) {
-				fos.write(cw.toByteArray());
+			try {
+				Path path = bytecodeSaveDir.resolve(actualClassName + ".class");
+				try (FileOutputStream fos = new FileOutputStream(path.toFile())) {
+					fos.write(cw.toByteArray());
+				}
+				if (ideaDebug) {
+					try {
+						Runtime.getRuntime().exec("idea " + path.toAbsolutePath()).waitFor();
+					} catch (IOException | InterruptedException e) {
+						logger.warn("Could not open class in Intellij Idea", e);
+					}
+				}
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

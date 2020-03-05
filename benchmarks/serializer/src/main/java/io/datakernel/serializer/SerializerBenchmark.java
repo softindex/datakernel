@@ -29,7 +29,7 @@ public class SerializerBenchmark {
 	private static final DefiningClassLoader definingClassLoader = DefiningClassLoader.create();
 	private static final BinarySerializer<TestData> serializer = SerializerBuilder.create(definingClassLoader)
 			.withCompatibilityLevel(LEVEL_3_LE)
-			.withGeneratedBytecodePath(Paths.get("tmp").toAbsolutePath())
+			.withGeneratedBytecodePath(Paths.get(System.getProperty("java.io.tmpdir")).toAbsolutePath())
 			.build(TestData.class);
 	private static final byte[] array = new byte[10000];
 

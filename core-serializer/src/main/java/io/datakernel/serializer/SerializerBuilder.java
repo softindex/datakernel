@@ -57,6 +57,7 @@ public final class SerializerBuilder {
 	private String profile;
 	private int version = Integer.MAX_VALUE;
 	private Path saveBytecodePath;
+	private boolean ideaDebug;
 	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_3;
 	private Object[] classKey = null;
 
@@ -187,6 +188,11 @@ public final class SerializerBuilder {
 	 */
 	public SerializerBuilder withGeneratedBytecodePath(Path path) {
 		this.saveBytecodePath = path;
+		return this;
+	}
+
+	public SerializerBuilder withIdeaDebug() {
+		this.ideaDebug = true;
 		return this;
 	}
 
@@ -772,6 +778,9 @@ public final class SerializerBuilder {
 		ClassBuilder<BinarySerializer> classBuilder = ClassBuilder.create(classLoader, BinarySerializer.class).withClassKey(classKey);
 		if (saveBytecodePath != null) {
 			classBuilder.withBytecodeSaveDir(saveBytecodePath);
+		}
+		if (ideaDebug) {
+			classBuilder.withIdeaDebug();
 		}
 
 		Set<Integer> collectedVersions = new HashSet<>();
