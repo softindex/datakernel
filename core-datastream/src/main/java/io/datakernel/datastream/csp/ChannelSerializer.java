@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.ArrayDeque;
+import java.util.function.BiConsumer;
 
 import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
@@ -52,7 +53,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	private MemSize maxMessageSize = MAX_SIZE;
 	@Nullable
 	private Duration autoFlushInterval;
-	private boolean skipSerializationErrors = false;
+	private BiConsumer<T, Throwable> serializationErrorHandler = ($, e) -> close(e);
 
 	private Input input;
 	private ChannelConsumer<ByteBuf> output;
@@ -68,7 +69,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 
 	private void rebuild() {
 		if (input != null && input.buf != null) input.buf.recycle();
-		input = new Input(serializer, initialBufferSize.toInt(), maxMessageSize.toInt(), autoFlushInterval, skipSerializationErrors);
+		input = new Input(serializer, initialBufferSize.toInt(), maxMessageSize.toInt(), autoFlushInterval, serializationErrorHandler);
 	}
 
 	/**
@@ -99,11 +100,11 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	}
 
 	public ChannelSerializer<T> withSkipSerializationErrors() {
-		return withSkipSerializationErrors(true);
+		return withSerializationErrorHandler((item, e) -> logger.warn("Skipping serialization error for {} in {}", item, this, e));
 	}
 
-	public ChannelSerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
-		this.skipSerializationErrors = skipSerializationErrors;
+	public ChannelSerializer<T> withSerializationErrorHandler(BiConsumer<T, Throwable> handler) {
+		this.serializationErrorHandler = handler;
 		rebuild();
 		return this;
 	}
@@ -168,10 +169,10 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 
 		private final int autoFlushIntervalMillis;
 		private boolean flushPosted;
-		private final boolean skipSerializationErrors;
+		private final BiConsumer<T, Throwable> serializationErrorHandler;
 
-		public Input(@NotNull BinarySerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, boolean skipSerializationErrors) {
-			this.skipSerializationErrors = skipSerializationErrors;
+		public Input(@NotNull BinarySerializer<T> serializer, int initialBufferSize, int maxMessageSize, @Nullable Duration autoFlushInterval, BiConsumer<T, Throwable> serializationErrorHandler) {
+			this.serializationErrorHandler = serializationErrorHandler;
 			this.serializer = serializer;
 			this.maxMessageSize = maxMessageSize;
 			this.headerSize = varintSize(maxMessageSize - 1);
@@ -203,7 +204,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 					onUnderEstimate(positionBegin);
 					continue;
 				} catch (Exception e) {
-					onSerializationError(positionBegin, e);
+					onSerializationError(item, positionBegin, e);
 					return;
 				}
 				break;
@@ -214,7 +215,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 				if (messageSize < maxMessageSize) {
 					estimatedMessageSize = messageSize;
 				} else {
-					onMessageOverflow(positionBegin);
+					onSerializationError(item, positionBegin, OUT_OF_BOUNDS_EXCEPTION);
 					return;
 				}
 			}
@@ -259,22 +260,9 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			buf = ByteBufPool.allocate(max(initialBufferSize, writeRemaining + (writeRemaining >>> 1) + 1));
 		}
 
-		private void onMessageOverflow(int positionBegin) {
+		private void onSerializationError(T item, int positionBegin, Exception e) {
 			buf.tail(positionBegin);
-			handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
-		}
-
-		private void onSerializationError(int positionBegin, Exception e) {
-			buf.tail(positionBegin);
-			handleSerializationError(e);
-		}
-
-		private void handleSerializationError(Exception e) {
-			if (skipSerializationErrors) {
-				logger.warn("Skipping serialization error in {}", this, e);
-			} else {
-				close(e);
-			}
+			serializationErrorHandler.accept(item, e);
 		}
 
 		private void flush() {
