@@ -113,7 +113,7 @@ public final class GlobalForumModule extends AbstractModule {
 
 	@Provides
 	Executor executor(Config config) {
-		return getExecutor(config);
+		return getExecutor(config.getChild("executor"));
 	}
 
 	@Provides

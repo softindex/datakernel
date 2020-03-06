@@ -115,13 +115,13 @@ public class DiscoveryServiceLauncher extends Launcher {
 
 	@Provides
 	public ExecutorService executor(Config config) {
-		return ConfigConverters.getExecutor(config.getChild("fs.executor"));
+		return ConfigConverters.getExecutor(config.getChild("executor"));
 	}
 
 	@Provides
 	Config config() {
 		return Config.create()
-				.with("fs.executor.corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
+				.with("executor.corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
 				.overrideWith(ofClassPathProperties(PROPERTIES_FILE))
 				.overrideWith(Config.ofProperties(System.getProperties()).getChild("config"));
 	}

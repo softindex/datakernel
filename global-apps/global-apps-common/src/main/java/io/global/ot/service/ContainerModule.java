@@ -13,7 +13,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
-import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofEventloopTaskSchedule;
 import static io.global.launchers.GlobalConfigConverters.ofPrivKey;
@@ -31,13 +30,13 @@ public abstract class ContainerModule<C extends UserContainer> extends AbstractM
 	}
 
 	@Provides
-	KeyExchanger keyExchanger(Eventloop eventloop, Executor executor, Path containersPath) {
-		return FsKeyExchanger.create(eventloop, executor, containersPath, true);
+	KeyExchanger keyExchanger(Eventloop eventloop, Path containersPath) {
+		return FsKeyExchanger.create(eventloop, containersPath, true);
 	}
 
 	@Provides
 	ContainerManager<?> containerManager(Injector injector, Eventloop eventloop, KeyExchanger keyExchanger, Config config) {
-		Key<C> containerKey = new Key<C>(){};
+		Key<C> containerKey = new Key<C>() {};
 
 		PrivKey privKey = config.get(ofPrivKey(), "privateKey", null);
 		if (privKey == null) {

@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static java.nio.file.StandardCopyOption.ATOMIC_MOVE;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
@@ -27,29 +28,28 @@ public final class FsKeyExchanger implements KeyExchanger {
 	public static final String DEFAULT_ACTUAL_KEYS_FILE = "actual.dat";
 	public static final String DEFAULT_EXPECTED_KEYS_FILE = "expected.dat";
 
+	private final Executor executor = Executors.newSingleThreadExecutor();
 	private final Eventloop eventloop;
-	private final Executor executor;
 	private final Path containerDir;
 	private final Path incoming;
 	private final Path outgoing;
 
-	private FsKeyExchanger(Eventloop eventloop, Executor executor, Path containerDir, String incomingFilename, String outgoingFilename) {
+	private FsKeyExchanger(Eventloop eventloop, Path containerDir, String incomingFilename, String outgoingFilename) {
 		this.eventloop = eventloop;
-		this.executor = executor;
 		this.containerDir = containerDir;
 		this.incoming = containerDir.resolve(incomingFilename);
 		this.outgoing = containerDir.resolve(outgoingFilename);
 	}
 
-	public static FsKeyExchanger create(Eventloop eventloop, Executor executor, Path containersDir,
+	public static FsKeyExchanger create(Eventloop eventloop, Path containersDir,
 			String incomingFilename, String outgoingFileName) {
-		return new FsKeyExchanger(eventloop, executor, containersDir, incomingFilename, outgoingFileName);
+		return new FsKeyExchanger(eventloop, containersDir, incomingFilename, outgoingFileName);
 	}
 
-	public static FsKeyExchanger create(Eventloop eventloop, Executor executor, Path containersDir, boolean forApp) {
+	public static FsKeyExchanger create(Eventloop eventloop, Path containersDir, boolean forApp) {
 		return forApp ?
-				new FsKeyExchanger(eventloop, executor, containersDir, DEFAULT_EXPECTED_KEYS_FILE, DEFAULT_ACTUAL_KEYS_FILE) :
-				new FsKeyExchanger(eventloop, executor, containersDir, DEFAULT_ACTUAL_KEYS_FILE, DEFAULT_EXPECTED_KEYS_FILE);
+				new FsKeyExchanger(eventloop, containersDir, DEFAULT_EXPECTED_KEYS_FILE, DEFAULT_ACTUAL_KEYS_FILE) :
+				new FsKeyExchanger(eventloop, containersDir, DEFAULT_ACTUAL_KEYS_FILE, DEFAULT_EXPECTED_KEYS_FILE);
 	}
 
 	@Override

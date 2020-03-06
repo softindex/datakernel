@@ -9,7 +9,6 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
 import io.datakernel.http.loader.StaticLoader;
 import io.datakernel.ot.OTState;
 import io.datakernel.remotefs.FsClient;
@@ -125,7 +124,7 @@ public class GlobalVlogModule extends AbstractModule {
 
 	@Provides
 	Executor executor(Config config) {
-		return getExecutor(config);
+		return getExecutor(config.getChild("executor"));
 	}
 
 	@Provides
@@ -160,7 +159,7 @@ public class GlobalVlogModule extends AbstractModule {
 								}
 								result += "change vlog description from '" + prev.getDescription() + "' to '" + next.getDescription() + '\'';
 							}
-							if (result.isEmpty()){
+							if (result.isEmpty()) {
 								result += "nothing has been changed";
 							}
 							result += "" + ts(p.getTimestamp());

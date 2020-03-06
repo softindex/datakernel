@@ -73,7 +73,7 @@ public final class GlobalBlogApp extends Launcher {
 	@Provides
 	Config config() {
 		return Config.create()
-				.with("corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
+				.with("executor.corePoolSize", String.valueOf(Runtime.getRuntime().availableProcessors()))
 				.with("node.serverId", DEFAULT_SERVER_ID)
 				.with("fs.storage", DEFAULT_FS_STORAGE)
 				.with("ot.storage", DEFAULT_OT_STORAGE)

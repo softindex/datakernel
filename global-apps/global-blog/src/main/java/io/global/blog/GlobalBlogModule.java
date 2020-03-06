@@ -119,9 +119,8 @@ public final class GlobalBlogModule extends AbstractModule {
 
 	@Provides
 	Executor executor(Config config) {
-		return getExecutor(config);
+		return getExecutor(config.getChild("executor"));
 	}
-
 
 	@Provides
 	@ContainerScope

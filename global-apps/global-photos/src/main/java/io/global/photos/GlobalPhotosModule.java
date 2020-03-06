@@ -161,7 +161,7 @@ public class GlobalPhotosModule extends AbstractModule {
 
 	@Provides
 	Executor executor(Config config) {
-		return getExecutor(config);
+		return getExecutor(config.getChild("executor"));
 	}
 
 	@Provides
