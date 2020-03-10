@@ -24,7 +24,7 @@ import org.jetbrains.annotations.NotNull;
  * It sets its acknowledgement on supplier end of stream, and acts as if suspended when current consumer stops and acknowledges.
  */
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
-	private InternalSupplier internalSupplier;
+	private InternalSupplier internalSupplier = new InternalSupplier();
 
 	private StreamConsumerSwitcher() {
 	}
@@ -50,32 +50,23 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 
 		internalSupplierNew.streamTo(consumer);
 
-		if (internalSupplierOld != null) {
-			internalSupplierOld.sendEndOfStream();
-		}
+		internalSupplierOld.sendEndOfStream();
 	}
 
 	@Override
 	protected void onStarted() {
-		if (internalSupplier != null) {
-			resume(internalSupplier.getDataAcceptor());
-		}
+		resume(internalSupplier.getDataAcceptor());
 	}
 
 	@Override
 	protected void onEndOfStream() {
-		if (internalSupplier != null) {
-			internalSupplier.sendEndOfStream();
-		} else {
-			acknowledge();
-		}
+		internalSupplier.sendEndOfStream();
+		acknowledge();
 	}
 
 	@Override
 	protected void onError(Throwable e) {
-		if (internalSupplier != null) {
-			internalSupplier.closeEx(e);
-		}
+		internalSupplier.closeEx(e);
 	}
 
 	@Override

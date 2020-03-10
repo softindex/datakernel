@@ -452,28 +452,6 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, AsyncComputa
 
 	Promise<T> whenException(@NotNull Runnable action);
 
-	default Promise<T> filter(Supplier<Boolean> predicate) {
-		return filterEx((v, e) -> e != null || predicate.get());
-	}
-
-	default Promise<T> filter(Function<T, Boolean> predicate) {
-		return filterEx((v, e) -> e != null || predicate.apply(v));
-	}
-
-	default Promise<T> filterEx(Function<Throwable, Boolean> predicate) {
-		return filterEx((v, e) -> e == null || predicate.apply(e));
-	}
-
-	default Promise<T> filterEx(BiFunction<T, Throwable, Boolean> predicate) {
-		SettablePromise<T> filteredPromise = new SettablePromise<>();
-		whenComplete((v, e) -> {
-			if (predicate.apply(v, e)) {
-				filteredPromise.accept(v, e);
-			}
-		});
-		return filteredPromise;
-	}
-
 	/**
 	 * Returns a new {@code Promise} that, when this and the other
 	 * given {@code Promise} both complete, is executed with the two

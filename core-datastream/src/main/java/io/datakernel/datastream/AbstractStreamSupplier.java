@@ -44,7 +44,6 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	private StreamConsumer<T> consumer;
 
-	@SuppressWarnings("FieldCanBeLocal")
 	private boolean flushRequest;
 	private boolean flushRunning;
 	private int flushAsync;
@@ -64,10 +63,10 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		consumer.getAcknowledgement()
 				.whenResult(this::acknowledge)
 				.whenException(this::closeEx);
-		consumer.consume(this);
 		if (!isEndOfStream()) {
 			onStarted();
 		}
+		consumer.consume(this);
 		updateDataAcceptor();
 		return consumer.getAcknowledgement();
 	}
@@ -91,10 +90,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		StreamDataAcceptor<T> dataAcceptor = this.consumer.getDataAcceptor();
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
-		this.dataAcceptorSafe = dataAcceptor != null ? dataAcceptor : buffer::addLast;
-		if (isReady()) {
+		if (dataAcceptor != null) {
+			this.dataAcceptorSafe = dataAcceptor;
 			flush();
 		} else {
+			this.dataAcceptorSafe = buffer::addLast;
 			if (!isEndOfStream()) onSuspended();
 		}
 	}
@@ -110,13 +110,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	protected final void asyncResume() {
 		checkState(flushAsync > 0);
-		asyncEnd();
+		flushAsync--;
 		if (flushRunning) {
 			flushRequest = true;
-		} else {
-			if (isReady() && !isEndOfStream()) {
-				onResumed();
-			}
+		} else if (isReady() && !isEndOfStream()) {
+			onResumed();
 		}
 	}
 
@@ -135,7 +133,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * This operation is final and cannot be undone.
 	 * Only the first call causes any effect.
 	 */
-	public Promise<Void> sendEndOfStream() {
+	public final Promise<Void> sendEndOfStream() {
 		checkState(eventloop.inEventloopThread());
 		if (endOfStreamRequest) return flushPromise;
 		if (flushAsync > 0) {
@@ -227,6 +225,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return endOfStream;
 	}
 
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	public final boolean isEndOfStream() {
 		return endOfStreamRequest;
 	}
