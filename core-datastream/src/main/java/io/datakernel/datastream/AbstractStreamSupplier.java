@@ -46,28 +46,30 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@SuppressWarnings("FieldCanBeLocal")
 	private boolean flushRequest;
-	@Nullable
-	private FlushStatus flushStatus;
-
-	private enum FlushStatus {
-		STARTED,
-		STARTED_ASYNC
-	}
+	private boolean flushRunning;
+	private int flushAsync;
 
 	private boolean endOfStreamRequest;
-	private SettablePromise<Void> endOfStream = new SettablePromise<>();
+	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
+
+	private SettablePromise<Void> flushPromise;
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	@Override
-	public Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
+	public final Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
 		checkState(eventloop.inEventloopThread());
 		checkState(!isStarted());
 		this.consumer = consumer;
-		if (!this.getEndOfStream().isException() && !consumer.getAcknowledgement().isException()) {
+		consumer.getAcknowledgement()
+				.whenResult(this::acknowledge)
+				.whenException(this::closeEx);
+		consumer.consume(this);
+		if (!isEndOfStream()) {
 			onStarted();
 		}
-		return StreamSupplier.super.streamTo(consumer);
+		updateDataAcceptor();
+		return consumer.getAcknowledgement();
 	}
 
 	protected void onStarted() {
@@ -82,82 +84,40 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+	public final void updateDataAcceptor() {
 		checkState(eventloop.inEventloopThread());
+		if (!isStarted()) return;
 		if (endOfStream.isComplete()) return;
+		StreamDataAcceptor<T> dataAcceptor = this.consumer.getDataAcceptor();
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
 		this.dataAcceptorSafe = dataAcceptor != null ? dataAcceptor : buffer::addLast;
 		if (isReady()) {
 			flush();
 		} else {
-			onSuspended();
+			if (!isEndOfStream()) onSuspended();
 		}
 	}
 
 	protected final void asyncBegin() {
-		checkState(flushStatus == FlushStatus.STARTED || flushStatus == FlushStatus.STARTED_ASYNC);
-		flushStatus = FlushStatus.STARTED_ASYNC;
+		flushAsync++;
 	}
 
 	protected final void asyncEnd() {
-		checkState(flushStatus == FlushStatus.STARTED_ASYNC);
-		flushStatus = null;
+		checkState(flushAsync > 0);
+		flushAsync--;
 	}
 
 	protected final void asyncResume() {
-		checkState(flushStatus == FlushStatus.STARTED_ASYNC);
-		if (isReady()) {
-			onResumed();
+		checkState(flushAsync > 0);
+		asyncEnd();
+		if (flushRunning) {
+			flushRequest = true;
 		} else {
-			asyncEnd();
-		}
-	}
-
-	/**
-	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
-	 */
-	public final void flush() {
-		checkState(eventloop.inEventloopThread());
-		flushRequest = true;
-		if (flushStatus != null) return; // recursive call
-		if (endOfStream.isComplete()) return;
-		flushStatus = FlushStatus.STARTED;
-		while (flushRequest) {
-			flushRequest = false;
-			while (isReady() && !buffer.isEmpty()) {
-				T item = buffer.pollFirst();
-				this.dataAcceptor.accept(item);
-			}
-			if (isReady() && !endOfStreamRequest) {
+			if (isReady() && !isEndOfStream()) {
 				onResumed();
 			}
 		}
-
-		if (endOfStreamRequest && buffer.isEmpty()) {
-			dataAcceptor = null;
-			//noinspection unchecked
-			dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
-			if (endOfStream.trySet(null)) {
-				cleanup();
-			}
-			return;
-		}
-
-		if (flushStatus == FlushStatus.STARTED) {
-			flushStatus = null;
-		}
-	}
-
-	/**
-	 * Called when this supplier changes from suspended state to a normal one.
-	 */
-	protected abstract void onResumed();
-
-	/**
-	 * Called when this supplier changes a normal state to a suspended one.
-	 */
-	protected void onSuspended() {
 	}
 
 	/**
@@ -175,18 +135,77 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * This operation is final and cannot be undone.
 	 * Only the first call causes any effect.
 	 */
-	public final void sendEndOfStream() {
+	public Promise<Void> sendEndOfStream() {
 		checkState(eventloop.inEventloopThread());
-		if (endOfStream.isComplete()) return;
-		if (flushStatus == FlushStatus.STARTED_ASYNC) {
+		if (endOfStreamRequest) return flushPromise;
+		if (flushAsync > 0) {
 			asyncEnd();
 		}
 		endOfStreamRequest = true;
-		flush();
+		return flush();
 	}
 
 	/**
-	 * Returns current data acceptor (the last one set with the {@link #resume} method)
+	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
+	 */
+	public final Promise<Void> flush() {
+		checkState(eventloop.inEventloopThread());
+		flushRequest = true;
+		if (flushRunning || flushAsync > 0) return flushPromise; // recursive call
+		if (endOfStream.isComplete()) return endOfStream;
+		if (flushPromise == null) {
+			flushPromise = new SettablePromise<>();
+		}
+		if (!isStarted()) return flushPromise;
+
+		flushRunning = true;
+		while (flushRequest) {
+			flushRequest = false;
+			while (isReady() && !buffer.isEmpty()) {
+				T item = buffer.pollFirst();
+				this.dataAcceptor.accept(item);
+			}
+			if (isReady() && !isEndOfStream()) {
+				onResumed();
+			}
+		}
+		flushRunning = false;
+
+		if (flushAsync > 0) return flushPromise;
+		if (!buffer.isEmpty()) return flushPromise;
+		if (endOfStream.isComplete()) return flushPromise;
+
+		if (!endOfStreamRequest) {
+			SettablePromise<Void> flushPromise = this.flushPromise;
+			this.flushPromise = null;
+			flushPromise.set(null);
+			return flushPromise;
+		}
+
+		dataAcceptor = null;
+		//noinspection unchecked
+		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+
+		flushPromise.set(null);
+		endOfStream.set(null);
+		cleanup();
+		return flushPromise;
+	}
+
+	/**
+	 * Called when this supplier changes from suspended state to a normal one.
+	 */
+	protected void onResumed() {
+	}
+
+	/**
+	 * Called when this supplier changes a normal state to a suspended one.
+	 */
+	protected void onSuspended() {
+	}
+
+	/**
+	 * Returns current data acceptor (the last one set with the {@link #updateDataAcceptor()} method)
 	 * or <code>null</code> when this supplier is in a suspended state.
 	 */
 	@Nullable
@@ -208,16 +227,28 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return endOfStream;
 	}
 
-	public final boolean isClosed() {
-		return endOfStream.isComplete();
+	public final boolean isEndOfStream() {
+		return endOfStreamRequest;
+	}
+
+	private void acknowledge() {
+		onAcknowledge();
+		close();
+	}
+
+	protected void onAcknowledge() {
 	}
 
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
 		checkState(eventloop.inEventloopThread());
+		endOfStreamRequest = true;
 		dataAcceptor = null;
 		//noinspection unchecked
 		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+		if (flushPromise != null) {
+			flushPromise.trySetException(e);
+		}
 		if (endOfStream.trySetException(e)) {
 			onError(e);
 			cleanup();
@@ -234,10 +265,10 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		onComplete();
 		eventloop.post(this::onCleanup);
 		buffer.clear();
-		SettablePromise<Void> endOfStream = this.endOfStream;
-		this.endOfStream = new SettablePromise<>();
-		assert endOfStream.isComplete();
-		endOfStream.whenComplete(this.endOfStream);
+		endOfStream.resetCallbacks();
+		if (flushPromise != null) {
+			flushPromise.resetCallbacks();
+		}
 	}
 
 	protected void onComplete() {

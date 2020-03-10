@@ -23,7 +23,6 @@ import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -74,32 +73,34 @@ final class StreamConsumers {
 		}
 	}
 
-	static final class ClosingWithError<T> implements StreamConsumer<T> {
-		private final Promise<Void> acknowledgement;
-
+	static final class ClosingWithError<T> extends AbstractStreamConsumer<T> {
 		ClosingWithError(Throwable e) {
-			this.acknowledgement = Promise.ofException(e);
-		}
-
-		@Override
-		public void consume(@NotNull StreamSupplier<T> streamSupplier) {
-		}
-
-		@Override
-		public Promise<Void> getAcknowledgement() {
-			return acknowledgement;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
+			super();
+			closeEx(e);
 		}
 	}
 
 	static final class OfPromise<T> extends AbstractStreamConsumer<T> {
-		@Nullable
-		private StreamConsumer<T> consumer;
+		private Promise<? extends StreamConsumer<T>> promise;
+		private final InternalSupplier internalSupplier = new InternalSupplier();
+		private class InternalSupplier extends AbstractStreamSupplier<T> {
+			@Override
+			protected void onResumed() {
+				OfPromise.this.resume(getDataAcceptor());
+			}
+
+			@Override
+			protected void onSuspended() {
+				OfPromise.this.suspend();
+			}
+		}
 
 		public OfPromise(@NotNull Promise<? extends StreamConsumer<T>> promise) {
+			this.promise = promise;
+		}
+
+		@Override
+		protected void onStarted() {
 			promise
 					.whenResult(consumer -> {
 						consumer.getAcknowledgement()
@@ -107,26 +108,19 @@ final class StreamConsumers {
 								.whenException(this::closeEx);
 						this.getAcknowledgement()
 								.whenException(consumer::closeEx);
-						if (isClosed()) return;
-						this.consumer = consumer;
-						if (supplier != null) {
-							consumer.consume(supplier);
-						}
+						internalSupplier.streamTo(consumer);
 					})
 					.whenException(this::closeEx);
 		}
 
 		@Override
-		protected void onStarted() {
-			assert supplier != null;
-			if (consumer != null) {
-				consumer.consume(supplier);
-			}
+		protected void onEndOfStream() {
+			internalSupplier.sendEndOfStream();
 		}
 
 		@Override
-		protected void onComplete() {
-			consumer = null;
+		protected void onCleanup() {
+			promise = null;
 		}
 	}
 
@@ -157,7 +151,6 @@ final class StreamConsumers {
 				if (promise.isComplete()) return;
 				suspend();
 				promise.whenResult(() -> {
-					if (isClosed()) return;
 					if (!isEndOfStream()) {
 						flush();
 					} else {

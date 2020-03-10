@@ -16,7 +16,6 @@
 
 package io.datakernel.datastream.processor;
 
-import io.datakernel.common.exception.CloseException;
 import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamDataAcceptor;
@@ -32,8 +31,8 @@ import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static java.util.Arrays.asList;
-import static org.hamcrest.Matchers.instanceOf;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 
 public class StreamSplitterTest {
 
@@ -153,7 +152,6 @@ public class StreamSplitterTest {
 					}
 				});
 
-		Throwable e = awaitException(StreamSupplier.of(1, 2, 3, 4).streamTo(splitter.getInput()));
-		assertThat(e, instanceOf(CloseException.class));
+		await(StreamSupplier.of(1, 2, 3, 4).streamTo(splitter.getInput()));
 	}
 }

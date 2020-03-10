@@ -25,6 +25,7 @@ import io.datakernel.datastream.StreamConsumers.Skip;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -43,6 +44,9 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	 * This method must have no effect after {@link #getAcknowledgement() the acknowledgement} is set.
 	 */
 	void consume(@NotNull StreamSupplier<T> streamSupplier);
+
+	@Nullable
+	StreamDataAcceptor<T> getDataAcceptor();
 
 	/**
 	 * A signal promise of the <i>acknowledgement</i> state of this consumer - its completion means that

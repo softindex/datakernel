@@ -16,31 +16,47 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.exception.CloseException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
 import io.datakernel.csp.process.ChannelLZ4Decompressor;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.AbstractStreamSupplier;
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.net.AsyncTcpSocket;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
-public final class RpcStream implements AsyncCloseable {
+public final class RpcStream {
 	private static final CloseException RPC_CLOSE_EXCEPTION = new CloseException(RpcStream.class, "RPC Channel Closed");
 	private final ChannelDeserializer<RpcMessage> deserializer;
 	private final ChannelSerializer<RpcMessage> serializer;
-	private final SettablePromise<Void> serializerEndOfStream = new SettablePromise<>();
+	private Listener listener;
+
+	private final AbstractStreamConsumer<RpcMessage> internalConsumer = new AbstractStreamConsumer<RpcMessage>() {};
+
+	private final AbstractStreamSupplier<RpcMessage> internalSupplier = new AbstractStreamSupplier<RpcMessage>() {
+		@Override
+		protected void onResumed() {
+			deserializer.updateDataAcceptor();
+			listener.onSenderReady(getDataAcceptor());
+		}
+
+		@Override
+		protected void onSuspended() {
+			if (server) {
+				deserializer.updateDataAcceptor();
+			}
+			listener.onSenderSuspended();
+		}
+
+	};
 
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {
 		void onReceiverEndOfStream();
@@ -86,57 +102,34 @@ public final class RpcStream implements AsyncCloseable {
 			serializer.getOutput().set(ChannelConsumer.ofSocket(socket));
 		}
 
+		deserializer.streamTo(internalConsumer);
+
 		this.deserializer = deserializer;
 		this.serializer = serializer;
 	}
 
 	public void setListener(Listener listener) {
+		this.listener = listener;
 		deserializer.getEndOfStream()
 				.whenResult(listener::onReceiverEndOfStream)
 				.whenException(listener::onReceiverError);
 		serializer.getAcknowledgement()
 				.whenException(listener::onSenderError);
-		serializer.consume(new StreamSupplier<RpcMessage>() {
-			@Override
-			public void resume(@Nullable StreamDataAcceptor<RpcMessage> dataAcceptor) {
-				if (serializerEndOfStream.isComplete()) return;
-				if (dataAcceptor != null) {
-					deserializer.resume(listener);
-					listener.onSenderReady(dataAcceptor);
-				} else {
-					if (server) {
-						deserializer.resume(null);
-					}
-					listener.onSenderSuspended();
-				}
-			}
-
-			@Override
-			public Promise<Void> getEndOfStream() {
-				return serializerEndOfStream;
-			}
-
-			@Override
-			public void closeEx(@NotNull Throwable e) {
-				RpcStream.this.closeEx(e);
-			}
-		});
+		internalSupplier.streamTo(serializer);
+		internalConsumer.resume(listener);
 	}
 
 	public void sendEndOfStream() {
-		serializerEndOfStream.trySet(null);
+		internalSupplier.sendEndOfStream();
 	}
 
-	@Override
 	public void close() {
 		closeEx(RPC_CLOSE_EXCEPTION);
 	}
 
-	@Override
 	public void closeEx(@NotNull Throwable e) {
 		socket.closeEx(e);
 		serializer.closeEx(e);
 		deserializer.closeEx(e);
-		serializerEndOfStream.trySetException(e);
 	}
 }

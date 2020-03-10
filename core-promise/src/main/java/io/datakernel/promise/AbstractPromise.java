@@ -17,6 +17,7 @@
 package io.datakernel.promise;
 
 import io.datakernel.async.callback.Callback;
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.Async;
@@ -37,6 +38,7 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 @SuppressWarnings({"unchecked", "WeakerAccess", "unused"})
 abstract class AbstractPromise<T> implements Promise<T> {
 	private static final Object PROMISE_NOT_SET = new Object();
+	private static final boolean RESET_CALLBACKS = ApplicationSettings.getBoolean(AbstractPromise.class, "resetCallbacks", false);
 
 	protected T result = (T) PROMISE_NOT_SET;
 
@@ -45,6 +47,16 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@Nullable
 	protected Callback<? super T> next;
+
+	public void reset() {
+		this.result = (T) PROMISE_NOT_SET;
+		this.exception = null;
+		this.next = null;
+	}
+
+	public void resetCallbacks() {
+		this.next = null;
+	}
 
 	@Override
 	public final boolean isComplete() {
@@ -93,6 +105,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		result = value;
 		if (next != null) {
 			next.accept(value, null);
+			if (RESET_CALLBACKS) {
+				next = null;
+			}
 		}
 	}
 
@@ -103,6 +118,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		exception = e;
 		if (next != null) {
 			next.accept(null, e);
+			if (RESET_CALLBACKS) {
+				next = null;
+			}
 		}
 	}
 

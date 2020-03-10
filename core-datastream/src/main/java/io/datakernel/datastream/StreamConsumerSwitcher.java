@@ -17,7 +17,6 @@
 package io.datakernel.datastream;
 
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * A consumer that wraps around another consumer that can be hot swapped with some other consumer.
@@ -25,8 +24,7 @@ import org.jetbrains.annotations.Nullable;
  * It sets its acknowledgement on supplier end of stream, and acts as if suspended when current consumer stops and acknowledges.
  */
 public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
-	private @Nullable InternalStreamSupplier currentSupplier;
-	private @Nullable StreamConsumer<T> currentConsumer;
+	private InternalSupplier internalSupplier;
 
 	private StreamConsumerSwitcher() {
 	}
@@ -39,84 +37,79 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 	}
 
 	public void switchTo(@NotNull StreamConsumer<T> consumer) {
-		if (isEndOfStream()) {
-			StreamSupplier.<T>closing()
-					.streamTo(consumer);
-			return;
-		}
+		InternalSupplier internalSupplierOld = this.internalSupplier;
+		InternalSupplier internalSupplierNew = new InternalSupplier();
 
 		if (getAcknowledgement().isException()) {
-			StreamSupplier.<T>closingWithError(getAcknowledgement().getException())
-					.streamTo(consumer);
-			return;
+			internalSupplierNew.closeEx(getAcknowledgement().getException());
+		} else if (isEndOfStream()) {
+			internalSupplierNew.sendEndOfStream();
+		} else {
+			this.internalSupplier = internalSupplierNew;
 		}
 
-		InternalStreamSupplier oldSupplier = this.currentSupplier;
+		internalSupplierNew.streamTo(consumer);
 
-		this.currentSupplier = new InternalStreamSupplier();
-		this.currentConsumer = consumer;
-
-		if (oldSupplier != null) {
-			oldSupplier.sendEndOfStream();
+		if (internalSupplierOld != null) {
+			internalSupplierOld.sendEndOfStream();
 		}
-
-		this.currentConsumer.getAcknowledgement()
-				.whenComplete((v, e) -> {
-					if (this.currentConsumer == consumer) {
-						acknowledgement.trySet(v, e);
-					}
-				});
-
-		currentSupplier.streamTo(currentConsumer);
 	}
 
 	@Override
 	protected void onStarted() {
-		if (currentSupplier != null && currentSupplier.isReady()) {
-			resume(currentSupplier.getDataAcceptor());
+		if (internalSupplier != null) {
+			resume(internalSupplier.getDataAcceptor());
 		}
 	}
 
 	@Override
 	protected void onEndOfStream() {
-		if (currentSupplier == null) {
+		if (internalSupplier != null) {
+			internalSupplier.sendEndOfStream();
+		} else {
 			acknowledge();
-			return;
 		}
-		assert currentConsumer != null;
-		currentSupplier.sendEndOfStream();
-		currentConsumer.getAcknowledgement()
-				.whenResult(this::acknowledge)
-				.whenException(this::closeEx);
 	}
 
 	@Override
 	protected void onError(Throwable e) {
-		if (currentSupplier != null) {
-			currentSupplier.closeEx(e);
+		if (internalSupplier != null) {
+			internalSupplier.closeEx(e);
 		}
 	}
 
 	@Override
 	protected void onCleanup() {
-		currentSupplier = null;
-		currentConsumer = null;
+		internalSupplier = null;
 	}
 
-	private class InternalStreamSupplier extends AbstractStreamSupplier<T> {
+	private final class InternalSupplier extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onResumed() {
-			StreamConsumerSwitcher.this.resume(getDataAcceptor());
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.resume(getDataAcceptor());
+			}
 		}
 
 		@Override
 		protected void onSuspended() {
-			StreamConsumerSwitcher.this.suspend();
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.suspend();
+			}
+		}
+
+		@Override
+		protected void onAcknowledge() {
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.acknowledge();
+			}
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			StreamConsumerSwitcher.this.closeEx(e);
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.closeEx(e);
+			}
 		}
 	}
 }

@@ -99,7 +99,6 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 
 	private void sync() {
 		if (!started) return;
-		if (output.isClosed()) return;
 		if (inputs.stream().allMatch(Input::isEndOfStream)) {
 			output.sendEndOfStream();
 			return;

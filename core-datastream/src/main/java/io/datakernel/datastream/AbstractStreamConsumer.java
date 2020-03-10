@@ -29,8 +29,8 @@ import static io.datakernel.common.Preconditions.checkState;
  * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	protected StreamSupplier<T> supplier;
-	protected SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	private StreamSupplier<T> supplier;
+	private SettablePromise<Void> acknowledgement = new SettablePromise<>();
 	private boolean endOfStream;
 	private @Nullable StreamDataAcceptor<T> dataAcceptor;
 
@@ -40,8 +40,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		checkState(eventloop.inEventloopThread());
 		checkState(!isStarted());
-		if (acknowledgement.isComplete()) return;
-		if (endOfStream) return;
 		this.supplier = streamSupplier;
 		if (!streamSupplier.getEndOfStream().isException()) {
 			onStarted();
@@ -49,6 +47,12 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		streamSupplier.getEndOfStream()
 				.whenResult(this::endOfStream)
 				.whenException(this::closeEx);
+	}
+
+	@Nullable
+	@Override
+	public final StreamDataAcceptor<T> getDataAcceptor() {
+		return dataAcceptor;
 	}
 
 	/**
@@ -68,9 +72,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	private void endOfStream() {
 		checkState(eventloop.inEventloopThread());
-		checkState(isStarted());
-		checkState(!endOfStream);
-		if (acknowledgement.isComplete()) return;
+		if (endOfStream) return;
 		endOfStream = true;
 		onEndOfStream();
 	}
@@ -82,24 +84,15 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	/**
-	 * Returns <code>true</code> when associated supplier gets closed,
-	 * this may happen before {@link #getAcknowledgement() acknowledgement}.
-	 */
-	public final boolean isEndOfStream() {
-		return endOfStream;
-	}
-
-	/**
 	 * Begins receiving data into given acceptor, resumes the associated supplier to receive data from it.
 	 */
 	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
 		checkState(eventloop.inEventloopThread());
-		if (acknowledgement.isComplete()) return;
 		if (endOfStream) return;
-		if (supplier == null) return;
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
-		supplier.resume(dataAcceptor);
+		if (!isStarted()) return;
+		supplier.updateDataAcceptor();
 	}
 
 	/**
@@ -114,6 +107,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 */
 	public final void acknowledge() {
 		checkState(eventloop.inEventloopThread());
+		endOfStream = true;
 		if (acknowledgement.trySet(null)) {
 			cleanup();
 		}
@@ -125,17 +119,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return acknowledgement;
 	}
 
-	/**
-	 * Unlike {@link #isEndOfStream()}, returns <code>true</code> when this consumer
-	 * has its {@link #getAcknowledgement() acknowledgement} set, meaning that it is completely closed.
-	 */
-	public final boolean isClosed() {
-		return acknowledgement.isComplete();
+	public final boolean isEndOfStream() {
+		return endOfStream;
 	}
 
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
 		checkState(eventloop.inEventloopThread());
+		endOfStream = true;
 		if (acknowledgement.trySetException(e)) {
 			onError(e);
 			cleanup();
@@ -151,11 +142,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private void cleanup() {
 		onComplete();
 		eventloop.post(this::onCleanup);
-		supplier = null;
-		SettablePromise<Void> acknowledgement = this.acknowledgement;
-		this.acknowledgement = new SettablePromise<>();
-		assert acknowledgement.isComplete();
-		acknowledgement.whenComplete(this.acknowledgement);
+		acknowledgement.resetCallbacks();
+		dataAcceptor = null;
 	}
 
 	protected void onComplete() {

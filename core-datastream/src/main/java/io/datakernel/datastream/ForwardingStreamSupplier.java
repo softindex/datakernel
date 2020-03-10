@@ -18,7 +18,6 @@ package io.datakernel.datastream;
 
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * A wrapper class that delegates all calls to underlying {@link StreamSupplier}.
@@ -32,8 +31,13 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		supplier.resume(dataAcceptor);
+	public Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
+		return supplier.streamTo(consumer);
+	}
+
+	@Override
+	public void updateDataAcceptor() {
+		supplier.updateDataAcceptor();
 	}
 
 	@Override

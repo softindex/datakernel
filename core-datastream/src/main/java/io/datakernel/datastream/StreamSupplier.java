@@ -24,9 +24,7 @@ import io.datakernel.datastream.StreamSuppliers.Idle;
 import io.datakernel.datastream.StreamSuppliers.OfIterator;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
@@ -47,25 +45,19 @@ import static java.util.Arrays.asList;
  */
 public interface StreamSupplier<T> extends AsyncCloseable {
 	/**
-	 * Sets the {@link StreamDataAcceptor} to which this supplies must stream its data.
-	 * <p>
-	 * Calling this with <code>null</code> parameter is the same as calling {@link #suspend()}
-	 * and all suspension rules apply.
-	 * <p>
-	 * This method must have no effect after {@link #getEndOfStream() the end of stream} is set.
+	 * Bind this supplier to given {@link StreamConsumer} and start streaming
+	 * data through them following all the contracts.
 	 */
-	void resume(@Nullable StreamDataAcceptor<T> dataAcceptor);
+	Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer);
 
 	/**
-	 * Must put the supplier in a <i>suspended</i> state. Supplier in a suspended state
-	 * <b>must not</b> send data to any {@link StreamDataAcceptor} that it may have got
-	 * from the {@link #resume} method.
-	 * <p>
-	 * This method must have no effect after {@link #getEndOfStream() the end of stream} is set.
+	 * A shortcut for {@link #streamTo(StreamConsumer)} that uses a promise of a stream.
 	 */
-	default void suspend() {
-		resume(null);
+	default Promise<Void> streamTo(Promise<StreamConsumer<T>> consumerPromise) {
+		return streamTo(StreamConsumer.ofPromise(consumerPromise));
 	}
+
+	void updateDataAcceptor();
 
 	/**
 	 * A signal promise of the <i>end of stream</i> state of this supplier - its completion means that
@@ -76,25 +68,6 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * If promise completes with an error then this supplier closes with that error.
 	 */
 	Promise<Void> getEndOfStream();
-
-	/**
-	 * Bind this supplier to given {@link StreamConsumer} and start streaming
-	 * data through them following all the contracts.
-	 */
-	default Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
-		consumer.getAcknowledgement()
-				.whenResult(this::close)
-				.whenException(this::closeEx);
-		consumer.consume(this);
-		return Promises.all(this.getEndOfStream(), consumer.getAcknowledgement());
-	}
-
-	/**
-	 * A shortcut for {@link #streamTo(StreamConsumer)} that uses a promise of a stream.
-	 */
-	default Promise<Void> streamTo(Promise<StreamConsumer<T>> consumerPromise) {
-		return streamTo(StreamConsumer.ofPromise(consumerPromise));
-	}
 
 	/**
 	 * A shortcut for {@link #streamTo(StreamConsumer)} for {@link StreamConsumerWithResult}.

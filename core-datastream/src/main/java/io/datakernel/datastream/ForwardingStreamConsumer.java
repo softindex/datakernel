@@ -36,6 +36,11 @@ public abstract class ForwardingStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
+	public StreamDataAcceptor<T> getDataAcceptor() {
+		return consumer.getDataAcceptor();
+	}
+
+	@Override
 	public Promise<Void> getAcknowledgement() {
 		return consumer.getAcknowledgement();
 	}

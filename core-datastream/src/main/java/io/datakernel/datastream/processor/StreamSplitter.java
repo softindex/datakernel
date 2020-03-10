@@ -129,7 +129,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 	private void sync() {
 		if (!started) return;
 		if (outputs.stream().allMatch(Output::isReady)) {
-			input.resume(acceptorFactory.apply(this.dataAcceptors));
+			input.resume(acceptorFactory.apply(dataAcceptors));
 		} else {
 			input.suspend();
 		}

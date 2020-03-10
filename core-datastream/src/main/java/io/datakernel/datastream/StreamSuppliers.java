@@ -18,66 +18,27 @@ package io.datakernel.datastream;
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 
 final class StreamSuppliers {
 
-	static final class ClosingWithError<T> implements StreamSupplier<T> {
-		private final Promise<Void> endOfStream;
-
+	static final class ClosingWithError<T> extends AbstractStreamSupplier<T> {
 		ClosingWithError(Throwable e) {
-			this.endOfStream = Promise.ofException(e);
-		}
-
-		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
+			super();
+			closeEx(e);
 		}
 	}
 
-	static final class Closing<T> implements StreamSupplier<T> {
-		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return Promise.complete();
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
+	static final class Closing<T> extends AbstractStreamSupplier<T> {
+		public Closing() {
+			super();
+			sendEndOfStream();
 		}
 	}
 
-	static final class Idle<T> implements StreamSupplier<T> {
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		@Override
-		public void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public void closeEx(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
-		}
+	static final class Idle<T> extends AbstractStreamSupplier<T> {
 	}
 
 	static final class OfIterator<T> extends AbstractStreamSupplier<T> {
@@ -104,76 +65,74 @@ final class StreamSuppliers {
 	}
 
 	static final class OfPromise<T> extends AbstractStreamSupplier<T> {
-		@Nullable
-		private StreamSupplier<T> supplier;
+		private Promise<? extends StreamSupplier<T>> promise;
+		private final InternalConsumer internalConsumer = new InternalConsumer();
+		private class InternalConsumer extends AbstractStreamConsumer<T> {}
 
 		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
+			this.promise = promise;
+		}
+
+		@Override
+		protected void onStarted() {
 			promise
 					.whenResult(supplier -> {
+						this.getEndOfStream()
+								.whenException(supplier::closeEx);
 						supplier.getEndOfStream()
 								.whenResult(this::sendEndOfStream)
 								.whenException(this::closeEx);
-						this.getEndOfStream()
-								.whenException(supplier::closeEx);
-						if (isClosed()) return;
-
-						this.supplier = supplier;
-						this.supplier.resume(getDataAcceptor());
+						supplier.streamTo(internalConsumer);
 					})
 					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onResumed() {
-			if (supplier != null) {
-				supplier.resume(getDataAcceptor());
-			}
+			internalConsumer.resume(getDataAcceptor());
 		}
 
 		@Override
 		protected void onSuspended() {
-			if (supplier != null) {
-				supplier.suspend();
-			}
+			internalConsumer.suspend();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			if (supplier != null) {
-				supplier.closeEx(e);
-			}
+		protected void onAcknowledge() {
+			internalConsumer.acknowledge();
 		}
 
 		@Override
-		protected void onComplete() {
-			supplier = null;
+		protected void onCleanup() {
+			promise = null;
 		}
 	}
 
 	static final class Concat<T> extends AbstractStreamSupplier<T> {
 		private ChannelSupplier<StreamSupplier<T>> iterator;
-		@Nullable
-		private StreamSupplier<T> supplier;
+		private InternalConsumer internalConsumer = new InternalConsumer();
+		private class InternalConsumer extends AbstractStreamConsumer<T> {}
 
 		Concat(ChannelSupplier<StreamSupplier<T>> iterator) {
 			this.iterator = iterator;
+		}
+
+		@Override
+		protected void onStarted() {
 			next();
 		}
 
 		private void next() {
-			this.supplier = null;
+			internalConsumer.acknowledge();
+			internalConsumer = new InternalConsumer();
+			internalConsumer.resume(getDataAcceptor());
 			iterator.get()
 					.whenResult(supplier -> {
 						if (supplier != null) {
-							this.getEndOfStream()
-									.whenException(supplier::closeEx);
 							supplier.getEndOfStream()
 									.whenResult(this::next)
 									.whenException(this::closeEx);
-							if (supplier.getEndOfStream().isComplete()) return;
-
-							this.supplier = supplier;
-							this.supplier.resume(getDataAcceptor());
+							supplier.streamTo(internalConsumer);
 						} else {
 							sendEndOfStream();
 						}
@@ -183,30 +142,23 @@ final class StreamSuppliers {
 
 		@Override
 		protected void onResumed() {
-			if (supplier != null) {
-				supplier.resume(getDataAcceptor());
-			}
+			internalConsumer.resume(getDataAcceptor());
 		}
 
 		@Override
 		protected void onSuspended() {
-			if (supplier != null) {
-				supplier.suspend();
-			}
+			internalConsumer.suspend();
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			if (supplier != null) {
-				supplier.closeEx(e);
-			}
+			internalConsumer.closeEx(e);
 			iterator.closeEx(e);
 		}
 
 		@Override
-		protected void onComplete() {
+		protected void onCleanup() {
 			iterator = null;
-			supplier = null;
 		}
 	}
 
