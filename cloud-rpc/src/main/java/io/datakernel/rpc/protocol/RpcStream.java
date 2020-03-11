@@ -45,6 +45,7 @@ public final class RpcStream {
 		@Override
 		protected void onResumed() {
 			deserializer.updateDataAcceptor();
+			//noinspection ConstantConditions - dataAcceptorr is not null in onResumed state
 			listener.onSenderReady(getDataAcceptor());
 		}
 

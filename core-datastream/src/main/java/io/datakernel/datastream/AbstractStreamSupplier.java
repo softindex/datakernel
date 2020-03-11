@@ -91,11 +91,13 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
 		if (dataAcceptor != null) {
-			this.dataAcceptorSafe = dataAcceptor;
+			if (!isEndOfStream()) {
+				this.dataAcceptorSafe = dataAcceptor;
+			}
 			flush();
-		} else {
+		} else if (!isEndOfStream()) {
 			this.dataAcceptorSafe = buffer::addLast;
-			if (!isEndOfStream()) onSuspended();
+			onSuspended();
 		}
 	}
 
@@ -140,6 +142,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 			asyncEnd();
 		}
 		endOfStreamRequest = true;
+		//noinspection unchecked
+		this.dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
 		return flush();
 	}
 
@@ -225,7 +229,6 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return endOfStream;
 	}
 
-	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	public final boolean isEndOfStream() {
 		return endOfStreamRequest;
 	}

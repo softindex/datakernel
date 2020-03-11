@@ -18,6 +18,7 @@ package io.datakernel.datastream;
 
 import java.util.List;
 
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 public class TestUtils {
@@ -29,12 +30,30 @@ public class TestUtils {
 		assertTrue(streamConsumer.getAcknowledgement().isResult());
 	}
 
+	public static void assertEndOfStream(StreamSupplier<?> streamSupplier, StreamConsumer<?> streamConsumer) {
+		assertEndOfStream(streamSupplier);
+		assertEndOfStream(streamConsumer);
+	}
+
 	public static void assertClosedWithError(StreamSupplier<?> streamSupplier) {
 		assertTrue(streamSupplier.getEndOfStream().isException());
 	}
 
+	public static void assertClosedWithError(Throwable throwable, StreamSupplier<?> streamSupplier) {
+		assertSame(throwable, streamSupplier.getEndOfStream().getException());
+	}
+
 	public static void assertClosedWithError(StreamConsumer<?> streamConsumer) {
 		assertTrue(streamConsumer.getAcknowledgement().isException());
+	}
+
+	public static void assertClosedWithError(Throwable throwable, StreamConsumer<?> streamConsumer) {
+		assertSame(throwable, streamConsumer.getAcknowledgement().getException());
+	}
+
+	public static void assertClosedWithError(Throwable throwable, StreamSupplier<?> streamSupplier, StreamConsumer<?> streamConsumer) {
+		assertSame(throwable, streamSupplier.getEndOfStream().getException());
+		assertSame(throwable, streamConsumer.getAcknowledgement().getException());
 	}
 
 	public static void assertSuppliersEndOfStream(List<? extends StreamSupplier<?>> streamSuppliers) {
@@ -52,5 +71,4 @@ public class TestUtils {
 	public static void assertConsumersClosedWithError(List<? extends StreamConsumer<?>> streamConsumers) {
 		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isException()));
 	}
-
 }
