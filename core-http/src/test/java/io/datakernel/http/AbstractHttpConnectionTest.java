@@ -17,22 +17,28 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.common.MemSize;
+import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 
+import java.io.IOException;
 import java.time.Duration;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -67,7 +73,7 @@ public final class AbstractHttpConnectionTest {
 				request -> HttpResponse.ok200()
 						.withHeader(DATE, "Mon, 27 Jul 2009 12:28:53 GMT")
 						.withHeader(CONTENT_TYPE, "text/\n          html")
-						.withBody(ByteBufStrings.wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>")))
+						.withBody(wrapAscii("  <html>\n<body>\n<h1>Hello, World!</h1>\n</body>\n</html>")))
 				.withListenPort(PORT)
 				.withAcceptOnce();
 		server.listen();
@@ -124,6 +130,58 @@ public final class AbstractHttpConnectionTest {
 
 		assertNotNull(server.getAccepts());
 		checkMaxKeepAlive(5, server, server.getAccepts());
+	}
+
+	@Test
+	@Ignore("Takes a long time")
+	public void testHugeBodyStreams() throws IOException {
+		int size = 10_000;
+
+		SocketSettings socketSettings = SocketSettings.create()
+				.withSendBufferSize(MemSize.of(1))
+				.withReceiveBufferSize(MemSize.of(1))
+				.withImplReadBufferSize(MemSize.of(1));
+
+		AsyncHttpClient client = AsyncHttpClient.create(Eventloop.getCurrentEventloop())
+				.withSocketSettings(socketSettings);
+
+		// regular
+		doTestHugeStreams(client, socketSettings, size, httpMessage -> httpMessage.addHeader(CONTENT_LENGTH, String.valueOf(size)));
+
+		// chunked
+		doTestHugeStreams(client, socketSettings, size, httpMessage -> {});
+
+		// gzipped + chunked
+		doTestHugeStreams(client, socketSettings, size, HttpMessage::setBodyGzipCompression);
+	}
+
+	private static void doTestHugeStreams(AsyncHttpClient client, SocketSettings socketSettings, int size, Consumer<HttpMessage> decorator) throws IOException {
+		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
+				request -> {
+					HttpResponse httpResponse = HttpResponse.ok200().withBodyStream(request.getBodyStream());
+					decorator.accept(httpResponse);
+					return httpResponse;
+				})
+				.withListenPort(PORT)
+				.withSocketSettings(socketSettings);
+		server.listen();
+
+		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT)
+				.withBodyStream(ChannelSupplier.ofStream(Stream.generate(() -> ByteBufStrings.wrapAscii("a")).limit(size)));
+
+		decorator.accept(request);
+
+		String result = await(client.request(request)
+				.then(response -> response.getBodyStream()
+						.transformWith(ChannelByteChunker.create(MemSize.of(1), MemSize.of(1)))
+						.<CharSequence>map(ByteBufStrings::asAscii)
+						.toCollector(Collectors.joining()))
+				.whenComplete(server::close));
+
+		assertEquals(size, result.length());
+		for (char c : result.toCharArray()) {
+			assertEquals('a', c);
+		}
 	}
 
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {
