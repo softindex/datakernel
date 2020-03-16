@@ -46,6 +46,7 @@ function TodoListView({
               autoFocus
               placeholder="What needs to be done?"
               value={newItemName}
+              disabled={loading}
               onChange={onItemChange}
               variant="outlined"
               InputProps={{
@@ -126,11 +127,11 @@ function TodoList({classes, enqueueSnackbar}) {
 
     onSubmit(e) {
       e.preventDefault();
+      setNewItemName('');
       setLoading(true);
       listService.createItem(newItemName)
         .catch(errorHandler)
         .finally(() => {
-          setNewItemName('');
           setLoading(false);
         })
     },
