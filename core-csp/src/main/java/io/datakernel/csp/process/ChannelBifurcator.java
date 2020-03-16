@@ -34,7 +34,6 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 		return new ChannelBifurcator<>();
 	}
 
-	// TODO: change constructor, I am just lazy pig to provide more that two output sources.
 	public static <T> ChannelBifurcator<T> create(ChannelSupplier<T> supplier, ChannelConsumer<T> first, ChannelConsumer<T> second) {
 		return new ChannelBifurcator<T>().withInput(supplier).withOutputs(first, second);
 	}
