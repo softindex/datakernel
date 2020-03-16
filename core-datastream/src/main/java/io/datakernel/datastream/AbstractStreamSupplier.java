@@ -185,9 +185,6 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		}
 
 		dataAcceptor = null;
-		//noinspection unchecked
-		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
-
 		flushPromise.set(null);
 		endOfStream.set(null);
 		cleanup();

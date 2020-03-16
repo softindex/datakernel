@@ -30,7 +30,7 @@ import static io.datakernel.common.Preconditions.checkState;
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private StreamSupplier<T> supplier;
-	private SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 	private boolean endOfStream;
 	private @Nullable StreamDataAcceptor<T> dataAcceptor;
 
@@ -40,6 +40,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		checkState(eventloop.inEventloopThread());
 		checkState(!isStarted());
+		if (acknowledgement.isComplete()) return;
 		this.supplier = streamSupplier;
 		if (!streamSupplier.getEndOfStream().isException()) {
 			onStarted();
