@@ -1,30 +1,13 @@
-import React, {useMemo} from 'react';
+import React from 'react';
 import {withStyles} from '@material-ui/core';
 import mainLayoutStyles from "./mainLayoutStyles";
-import {withSnackbar} from "notistack";
 import Container from '@material-ui/core/Container';
-import ListService from "../../modules/list/ListService";
 import Icon from '@material-ui/core/Icon';
-import {RegisterDependency, checkAuth, connectService, AuthContext, initService} from "global-apps-common";
+import {connectService, AuthContext} from "global-apps-common";
 
-function MainLayout({classes, publicKey, logout, enqueueSnackbar, children}) {
-  const {listService} = useMemo(() => {
-    const listService = ListService.create();
-    return {
-      listService
-    }
-  }, [publicKey]);
-
-  function errorHandler(err) {
-    enqueueSnackbar(err.message, {
-      variant: 'error'
-    });
-  }
-
-  initService(listService, errorHandler);
-
+function MainLayout({classes, logout, children}) {
   return (
-    <RegisterDependency name={ListService} value={listService}>
+    <>
       <div
         color="inherit"
         onClick={logout}
@@ -38,21 +21,16 @@ function MainLayout({classes, publicKey, logout, enqueueSnackbar, children}) {
       >
         {children}
       </Container>
-    </RegisterDependency>
+    </>
   );
 }
 
-export default checkAuth(
-  connectService(
-    AuthContext, ({publicKey}, accountService) => ({
-      publicKey,
-      logout() {
-        accountService.logout();
-      }
-    })
-  )(
-    withSnackbar(
-      withStyles(mainLayoutStyles)(MainLayout)
-    )
-  )
+export default connectService(
+  AuthContext, (state, accountService) => ({
+    logout() {
+      accountService.logout();
+    }
+  })
+)(
+  withStyles(mainLayoutStyles)(MainLayout)
 );
