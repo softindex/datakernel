@@ -442,12 +442,14 @@ public abstract class AbstractHttpConnection {
 
 	protected void writeHttpMessageAsStream(HttpMessage httpMessage) {
 		ChannelSupplier<ByteBuf> bodyStream = httpMessage.bodyStream;
+		assert bodyStream != null;
 		httpMessage.bodyStream = null;
+
+		bodyStream = bodyStream.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
 
 		if ((httpMessage.flags & HttpMessage.USE_GZIP) != 0) {
 			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
-			//noinspection ConstantConditions
 			bodyStream.bindTo(deflater.getInput());
 			bodyStream = deflater.getOutput().getSupplier();
 		}
@@ -455,7 +457,6 @@ public abstract class AbstractHttpConnection {
 		if (httpMessage.headers.get(CONTENT_LENGTH) == null) {
 			httpMessage.addHeader(TRANSFER_ENCODING, ofBytes(TRANSFER_ENCODING_CHUNKED));
 			BufsConsumerChunkedEncoder chunker = BufsConsumerChunkedEncoder.create();
-			//noinspection ConstantConditions
 			bodyStream.bindTo(chunker.getInput());
 			bodyStream = chunker.getOutput().getSupplier();
 		}
