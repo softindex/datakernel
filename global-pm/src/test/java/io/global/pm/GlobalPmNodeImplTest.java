@@ -2,7 +2,6 @@ package io.global.pm;
 
 import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
@@ -31,6 +30,7 @@ import java.util.function.Function;
 
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.common.collection.CollectionUtils.set;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.promise.TestUtils.await;
 import static io.global.pm.util.BinaryDataFormats.RAW_MESSAGE_CODEC;
 import static io.global.pm.util.BinaryDataFormats.REGISTRY;
@@ -65,8 +65,7 @@ public final class GlobalPmNodeImplTest {
 	public void setUp() {
 		ANNOUNCEMENT_STORAGE.clear();
 		SHARED_KEY_STORAGE.clear();
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-		discoveryService = LocalDiscoveryService.create(eventloop, ANNOUNCEMENT_STORAGE, SHARED_KEY_STORAGE);
+		discoveryService = LocalDiscoveryService.create(getCurrentEventloop(), ANNOUNCEMENT_STORAGE, SHARED_KEY_STORAGE);
 		intermediateStorage = new MapMessageStorage();
 		master1Storage = new MapMessageStorage();
 		master2Storage = new MapMessageStorage();
@@ -221,9 +220,10 @@ public final class GlobalPmNodeImplTest {
 	}
 
 	private GlobalPmNodeImpl createNode(String serverId, MessageStorage messageStorage) {
-		return GlobalPmNodeImpl.create(new RawServerId(serverId), discoveryService, this::getNode, messageStorage)
+		return GlobalPmNodeImpl.create(getCurrentEventloop(),new RawServerId(serverId), discoveryService, this::getNode, messageStorage)
 				.withLatencyMargin(Duration.ZERO)
-				.withCurrentTimeProvider(now);
+				.withCurrentTimeProvider(now)
+				.withStreamMasterRepositories(false);
 	}
 
 	private SignedData<RawMessage> createMessage(long id, boolean tombstone) {

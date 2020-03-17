@@ -31,6 +31,11 @@ public final class FailingPmNode implements GlobalPmNode {
 	}
 
 	@Override
+	public Promise<ChannelSupplier<SignedData<RawMessage>>> stream(PubKey space, String mailBox, long timestamp) {
+		return Promise.ofException(FAILED);
+	}
+
+	@Override
 	public Promise<Set<String>> list(PubKey space) {
 		return Promise.ofException(FAILED);
 	}

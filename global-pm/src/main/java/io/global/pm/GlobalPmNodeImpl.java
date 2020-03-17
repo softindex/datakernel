@@ -1,11 +1,14 @@
 package io.global.pm;
 
 import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.service.EventloopService;
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.RetryPolicy;
@@ -18,6 +21,7 @@ import io.global.pm.GlobalPmNamespace.MailBox;
 import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.MessageStorage;
 import io.global.pm.api.RawMessage;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -29,25 +33,30 @@ import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static io.global.util.Utils.untilTrue;
 
-public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl, GlobalPmNamespace, GlobalPmNode> implements GlobalPmNode {
+public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl, GlobalPmNamespace, GlobalPmNode> implements GlobalPmNode, EventloopService {
 	public static final RetryPolicy DEFAULT_RETRY_POLICY = RetryPolicy.immediateRetry().withMaxTotalRetryCount(10);
 	public static final Duration DEFAULT_SYNC_MARGIN = Duration.ofMinutes(5);
+	public static final Boolean DEFAULT_STREAM_MASTER_REPOSITORIES = ApplicationSettings.getBoolean(GlobalPmNodeImpl.class, "streamMasterRepositories", true);
 
-	private Duration syncMargin = DEFAULT_SYNC_MARGIN;
 	private final MessageStorage storage;
+	private final Eventloop eventloop;
+
+	boolean streamMasterRepositories = DEFAULT_STREAM_MASTER_REPOSITORIES;
 	RetryPolicy retryPolicy = DEFAULT_RETRY_POLICY;
+	private Duration syncMargin = DEFAULT_SYNC_MARGIN;
 
 	// region creators
-	private GlobalPmNodeImpl(RawServerId id, DiscoveryService discoveryService,
+	private GlobalPmNodeImpl(Eventloop eventloop, RawServerId id, DiscoveryService discoveryService,
 			Function<RawServerId, GlobalPmNode> nodeFactory,
 			MessageStorage storage) {
 		super(id, discoveryService, nodeFactory);
+		this.eventloop = eventloop;
 		this.storage = storage;
 	}
 
-	public static GlobalPmNodeImpl create(RawServerId id, DiscoveryService discoveryService,
+	public static GlobalPmNodeImpl create(Eventloop eventloop, RawServerId id, DiscoveryService discoveryService,
 			Function<RawServerId, GlobalPmNode> nodeFactory, MessageStorage storage) {
-		return new GlobalPmNodeImpl(id, discoveryService, nodeFactory, storage);
+		return new GlobalPmNodeImpl(eventloop, id, discoveryService, nodeFactory, storage);
 	}
 
 	public GlobalPmNodeImpl withSyncMargin(Duration syncMargin) {
@@ -57,6 +66,11 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 
 	public GlobalPmNodeImpl withRetryPolicy(RetryPolicy retryPolicy) {
 		this.retryPolicy = retryPolicy;
+		return this;
+	}
+
+	public GlobalPmNodeImpl withStreamMasterRepositories(boolean streamMasterRepositories) {
+		this.streamMasterRepositories = streamMasterRepositories;
 		return this;
 	}
 	// endregion
@@ -145,6 +159,11 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 	}
 
 	@Override
+	public Promise<ChannelSupplier<SignedData<RawMessage>>> stream(PubKey space, String mailBox, long timestamp) {
+		return ensureNamespace(space).ensureMailBox(mailBox).stream(timestamp);
+	}
+
+	@Override
 	public Promise<Set<String>> list(PubKey space) {
 		return simpleMethod(space, node -> node.list(space), GlobalPmNamespace::list);
 	}
@@ -183,6 +202,26 @@ public final class GlobalPmNodeImpl extends AbstractGlobalNode<GlobalPmNodeImpl,
 
 	private Promise<Void> forEachMailBox(Function<MailBox, Promise<Void>> fn) {
 		return tolerantCollectVoid(new HashSet<>(namespaces.values()).stream().flatMap(entry -> entry.getMailBoxes().values().stream()), fn);
+	}
+
+	@Override
+	public @NotNull Eventloop getEventloop() {
+		return eventloop;
+	}
+
+	@Override
+	public @NotNull Promise<?> start() {
+		return Promise.complete();
+	}
+
+	@Override
+	public @NotNull Promise<?> stop() {
+		for (GlobalPmNamespace ns : namespaces.values()) {
+			for (MailBox mailBox : ns.getMailBoxes().values()) {
+				mailBox.stop();
+			}
+		}
+		return Promise.complete();
 	}
 
 	@Override

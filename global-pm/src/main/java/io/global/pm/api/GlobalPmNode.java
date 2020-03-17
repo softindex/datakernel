@@ -43,5 +43,13 @@ public interface GlobalPmNode {
 	// does not return tombstones
 	Promise<@Nullable SignedData<RawMessage>> poll(PubKey space, String mailBox);
 
+	default Promise<ChannelSupplier<SignedData<RawMessage>>> streamMessages(PubKey space, String mailBox, long timestamp) {
+		return stream(space, mailBox, timestamp)
+				.map(supplier -> supplier.filter(signedData -> signedData.getValue().isMessage()));
+	}
+
+	// endless supplier of messages
+	Promise<ChannelSupplier<SignedData<RawMessage>>> stream(PubKey space, String mailBox, long timestamp);
+
 	Promise<Set<String>> list(PubKey space);
 }

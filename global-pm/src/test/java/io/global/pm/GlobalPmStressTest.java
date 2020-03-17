@@ -83,7 +83,7 @@ public final class GlobalPmStressTest {
 				.withKeepAliveTimeout(Duration.ofSeconds(1));
 
 		for (int i = 0; i < INTERMEDIATE_COUNT; i++) {
-			GlobalPmNodeImpl intermediate = GlobalPmNodeImpl.create(new RawServerId("intermediate" + i),
+			GlobalPmNodeImpl intermediate = GlobalPmNodeImpl.create(eventloop, new RawServerId("intermediate" + i),
 					discoveryService, this::getNode, new MapMessageStorage());
 			intermediates.add(intermediate);
 		}
@@ -221,7 +221,7 @@ public final class GlobalPmStressTest {
 		AsyncHttpServer server;
 
 		NodeWithServer(RawServerId id, int port) {
-			this.node = GlobalPmNodeImpl.create(id, discoveryService, GlobalPmStressTest.this::getNode, new MapMessageStorage())
+			this.node = GlobalPmNodeImpl.create(getCurrentEventloop(), id, discoveryService, GlobalPmStressTest.this::getNode, new MapMessageStorage())
 					.withManagedPublicKey(KEYS.getPubKey());
 			this.port = port;
 			this.server = createServer();

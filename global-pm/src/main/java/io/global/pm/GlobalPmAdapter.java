@@ -30,6 +30,11 @@ public final class GlobalPmAdapter<T> implements PmClient<T> {
 	}
 
 	@Override
+	public Promise<ChannelSupplier<Message<T>>> stream(String mailBox) {
+		return driver.stream(keys, mailBox, 0);
+	}
+
+	@Override
 	public Promise<@Nullable Message<T>> poll(String mailBox) {
 		return driver.poll(keys, mailBox);
 	}

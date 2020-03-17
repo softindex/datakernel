@@ -18,6 +18,7 @@ package io.global.pm.util;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.TypeT;
 import io.datakernel.csp.binary.ByteBufsParser;
 import io.global.common.PubKey;
@@ -48,4 +49,17 @@ public final class BinaryDataFormats {
 	public static final StructuredCodec<PubKey> PUB_KEY_CODEC = REGISTRY.get(PubKey.class);
 
 	public static final ByteBufsParser<SignedData<RawMessage>> SIGNED_RAW_MSG_PARSER = ByteBufsParser.ofDecoder(SIGNED_RAW_MSG_CODEC);
+	public static final ByteBufsParser<SignedData<RawMessage>> SIGNED_RAW_MSG_PARSER_KEEP_ALIVE = bufs -> {
+		if (!bufs.hasRemainingBytes(1)) return null;
+		byte controlByte = bufs.getByte();
+		if (controlByte == 0) {
+			// keepAlive byte
+			return null;
+		} else if (controlByte == 1) {
+			// actual message
+			return SIGNED_RAW_MSG_PARSER.tryParse(bufs);
+		} else {
+			throw new ParseException();
+		}
+	};
 }

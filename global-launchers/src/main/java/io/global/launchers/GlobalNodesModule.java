@@ -123,8 +123,8 @@ public class GlobalNodesModule extends AbstractModule {
 	}
 
 	@Provides
-	GlobalPmNodeImpl globalPmNode(Config config, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
-		return GlobalPmNodeImpl.create(serverId, discoveryService, factory, storage)
+	GlobalPmNodeImpl globalPmNode(Config config, Eventloop eventloop, RawServerId serverId, DiscoveryService discoveryService, Function<RawServerId, GlobalPmNode> factory, MessageStorage storage) {
+		return GlobalPmNodeImpl.create(eventloop, serverId, discoveryService, factory, storage)
 				.initialize(ofAbstractGlobalNode(config.getChild("pm")))
 				.initialize(ofGlobalPmNodeImpl(config.getChild("pm")));
 	}

@@ -14,6 +14,8 @@ public interface PmClient<T> {
 
 	Promise<ChannelConsumer<T>> multisend(PubKey receiver, String mailBox);
 
+	Promise<ChannelSupplier<Message<T>>> stream(String mailBox);
+
 	Promise<@Nullable Message<T>> poll(String mailBox);
 
 	Promise<ChannelSupplier<Message<T>>> multipoll(String mailBox, long timestamp);

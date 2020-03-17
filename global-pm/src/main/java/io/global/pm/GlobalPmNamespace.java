@@ -1,14 +1,21 @@
 package io.global.pm;
 
 import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.ChannelSuppliers;
+import io.datakernel.csp.queue.ChannelQueue;
+import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.promise.Promise;
 import io.global.common.PubKey;
+import io.global.common.RawServerId;
 import io.global.common.SignedData;
 import io.global.common.api.AbstractGlobalNamespace;
 import io.global.pm.api.GlobalPmNode;
 import io.global.pm.api.RawMessage;
+import io.global.pm.util.PmStreamChannelBuffer;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -17,6 +24,9 @@ import java.util.function.Function;
 import static io.datakernel.async.function.AsyncSuppliers.coalesce;
 import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.async.process.AsyncExecutors.retry;
+import static io.datakernel.common.Utils.nullify;
+import static io.datakernel.common.collection.CollectionUtils.difference;
+import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
 import static io.datakernel.promise.Promises.toList;
 import static io.global.util.Utils.tolerantCollectVoid;
 import static java.util.stream.Collectors.toSet;
@@ -33,7 +43,11 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 	}
 
 	public MailBox ensureMailBox(String mailBox) {
-		return mailBoxes.computeIfAbsent(mailBox, MailBox::new);
+		return mailBoxes.computeIfAbsent(mailBox, box -> {
+			MailBox mailBoxEntry = new MailBox(box);
+			mailBoxEntry.start();
+			return mailBoxEntry;
+		});
 	}
 
 	public Map<String, MailBox> getMailBoxes() {
@@ -72,18 +86,58 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 	class MailBox {
 		private final AsyncSupplier<Void> fetch = reuse(this::doFetch);
 		private final AsyncSupplier<Void> push = coalesce(AsyncSupplier.cast(this::doPush).withExecutor(retry(node.retryPolicy)));
+		private final Map<RawServerId, PmMasterRepository> pmMasterRepos = new HashMap<>();
+		private ScheduledRunnable scheduledUpdateStreams;
 
 		private final String mailBox;
 
 		private long lastFetchTimestamp;
 		private long lastPushTimestamp;
 
+		private final Set<ChannelQueue<SignedData<RawMessage>>> buffers = new HashSet<>();
+
 		MailBox(String mailBox) {
 			this.mailBox = mailBox;
 		}
 
+		void start() {
+			if (node.streamMasterRepositories) {
+				updateStreams();
+			}
+		}
+
+		void stop() {
+			scheduledUpdateStreams = nullify(scheduledUpdateStreams, ScheduledRunnable::cancel);
+			pmMasterRepos.values().forEach(PmMasterRepository::closeStream);
+		}
+
+		private void updateStreams() {
+			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
+			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getSyncMargin().toMillis());
+			ensureMasterNodes()
+					.whenResult($1 -> {
+						difference(pmMasterRepos.keySet(), masterNodes.keySet())
+								.forEach(key -> pmMasterRepos.remove(key).closeStream());
+						difference(masterNodes.keySet(), pmMasterRepos.keySet())
+								.forEach(serverId -> {
+									PmMasterRepository masterRepository = new PmMasterRepository(serverId, space, mailBox, masterNodes.get(serverId));
+									pmMasterRepos.put(serverId, masterRepository);
+									masterRepository.createStream(fetchFromTimestamp)
+											.streamTo(upload())
+											.whenException(e -> pmMasterRepos.remove(serverId));
+								});
+					})
+					.whenComplete(() -> {
+						lastFetchTimestamp = currentTimestamp;
+						if (scheduledUpdateStreams != null) {
+							scheduledUpdateStreams = getCurrentEventloop().delay(node.getLatencyMargin(), this::updateStreams);
+						}
+					});
+		}
+
 		Promise<ChannelConsumer<SignedData<RawMessage>>> upload() {
-			return node.getStorage().upload(space, mailBox);
+			return node.getStorage().upload(space, mailBox)
+					.map(consumer -> consumer.peek(signedData -> buffers.forEach(buffer -> buffer.put(signedData))));
 		}
 
 		Promise<@Nullable SignedData<RawMessage>> poll() {
@@ -91,6 +145,7 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 		}
 
 		Promise<Boolean> send(SignedData<RawMessage> message) {
+			buffers.forEach(buffer -> buffer.put(message));
 			return node.getStorage().put(space, mailBox, message);
 		}
 
@@ -100,6 +155,26 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 
 		Promise<Void> fetch() {
 			return fetch.get();
+		}
+
+		Promise<ChannelSupplier<SignedData<RawMessage>>> stream(long timestamp) {
+			PmStreamChannelBuffer buffer = new PmStreamChannelBuffer(timestamp);
+			buffers.add(buffer);
+			return node.getStorage().download(space, mailBox, timestamp)
+					.map(downloadSupplier -> ChannelSuppliers.concat(
+							downloadSupplier == null ? ChannelSupplier.of() : downloadSupplier.peek(buffer::update),
+							new AbstractChannelSupplier<SignedData<RawMessage>>() {
+								@Override
+								protected Promise<SignedData<RawMessage>> doGet() {
+									return buffer.take();
+								}
+
+								@Override
+								protected void onClosed(@NotNull Throwable e) {
+									buffers.remove(buffer);
+									buffer.close(e);
+								}
+							}));
 		}
 
 		private Promise<Void> doPush() {
@@ -114,7 +189,7 @@ public final class GlobalPmNamespace extends AbstractGlobalNamespace<GlobalPmNam
 			long currentTimestamp = node.getCurrentTimeProvider().currentTimeMillis();
 			long fetchFromTimestamp = Math.max(0, lastFetchTimestamp - node.getSyncMargin().toMillis());
 			return ChannelSupplier.ofPromise(from.download(space, mailBox, fetchFromTimestamp))
-					.streamTo(node.getStorage().upload(space, mailBox))
+					.streamTo(upload())
 					.whenResult($ -> lastFetchTimestamp = currentTimestamp);
 		}
 

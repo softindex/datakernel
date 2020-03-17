@@ -9,6 +9,7 @@ public enum PmCommand implements HttpPathPart {
 	POLL,
 	LIST,
 	DROP,
+	STREAM,
 	MULTISEND,
 	MULTIPOLL,
 	MULTIDROP,

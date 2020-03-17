@@ -18,7 +18,6 @@ package io.global.pm;
 
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
@@ -78,7 +77,7 @@ public final class GlobalPmDriverTest {
 	@Before
 	public void setUp() throws IOException {
 		dir = temporaryFolder.newFolder().toPath();
-		storage = LocalFsClient.create(Eventloop.getCurrentEventloop(), dir).withRevisions();
+		storage = LocalFsClient.create(getCurrentEventloop(), dir).withRevisions();
 
 		discovery = LocalDiscoveryService.create(getCurrentEventloop(), storage.subfolder("discovery"));
 
@@ -88,7 +87,7 @@ public final class GlobalPmDriverTest {
 		clientFactory = new Function<RawServerId, GlobalPmNode>() {
 			@Override
 			public GlobalPmNode apply(RawServerId serverId) {
-				GlobalPmNode node = nodes.computeIfAbsent(serverId, id -> GlobalPmNodeImpl.create(serverId, discovery, this, messageStorage));
+				GlobalPmNode node = nodes.computeIfAbsent(serverId, id -> GlobalPmNodeImpl.create(getCurrentEventloop(), serverId, discovery, this, messageStorage));
 
 				AsyncServlet servlet = GlobalPmNodeServlet.create(node);
 				StubHttpClient client = StubHttpClient.of(RoutingServlet.create().map("/pm/*", servlet));

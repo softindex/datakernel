@@ -97,6 +97,11 @@ public final class GlobalPmDriver<T> {
 				.then(signedRawMessage -> signedRawMessage != null ? decrypt(keys.getPrivKey(), signedRawMessage) : Promise.of(null));
 	}
 
+	public Promise<ChannelSupplier<Message<T>>> stream(KeyPair keys, String mailBox, long timestamp) {
+		return node.streamMessages(keys.getPubKey(), mailBox, timestamp)
+				.map(supplier -> supplier.mapAsync(signedMessage -> decrypt(keys.getPrivKey(), signedMessage)));
+	}
+
 	public Promise<ChannelSupplier<Message<T>>> multipoll(KeyPair keys, String mailBox, long timestamp) {
 		PrivKey privKey = keys.getPrivKey();
 		return node.download(keys.getPubKey(), mailBox, timestamp)
@@ -109,11 +114,11 @@ public final class GlobalPmDriver<T> {
 		return multipoll(keys, mailBox, 0);
 	}
 
-	public Promise<List<Message<T>>> batchpoll(KeyPair keys, String mailBox, long timestamp){
+	public Promise<List<Message<T>>> batchpoll(KeyPair keys, String mailBox, long timestamp) {
 		return multipoll(keys, mailBox, timestamp).then(ChannelSupplier::toList);
 	}
 
-	public Promise<List<Message<T>>> batchpoll(KeyPair keys, String mailBox){
+	public Promise<List<Message<T>>> batchpoll(KeyPair keys, String mailBox) {
 		return batchpoll(keys, mailBox, 0);
 	}
 

@@ -22,8 +22,7 @@ import java.util.Set;
 import static io.datakernel.codec.binary.BinaryUtils.encodeWithSizePrefix;
 import static io.global.pm.http.GlobalPmNodeServlet.STRING_SET_CODEC;
 import static io.global.pm.http.PmCommand.*;
-import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_CODEC;
-import static io.global.pm.util.BinaryDataFormats.SIGNED_RAW_MSG_PARSER;
+import static io.global.pm.util.BinaryDataFormats.*;
 
 public class HttpGlobalPmNode implements GlobalPmNode {
 	private static final String PM_NODE_SUFFIX = "/pm/";
@@ -100,6 +99,21 @@ public class HttpGlobalPmNode implements GlobalPmNode {
 						.build()))
 				.then(response -> response.loadBody()
 						.then(body -> processResult(response, body, SIGNED_RAW_MSG_CODEC.nullable())));
+	}
+
+	@Override
+	public Promise<ChannelSupplier<SignedData<RawMessage>>> stream(PubKey space, String mailBox, long timestamp) {
+		return client.request(
+				HttpRequest.get(
+						url + UrlBuilder.relative()
+								.appendPathPart(STREAM)
+								.appendPathPart(space.asString())
+								.appendPathPart(mailBox)
+								.appendQuery("timestamp", timestamp)
+								.build()))
+				.then(response -> response.getCode() != 200 ?
+						Promise.ofException(HttpException.ofCode(response.getCode())) : Promise.of(response))
+				.map(response -> BinaryChannelSupplier.of(response.getBodyStream()).parseStream(SIGNED_RAW_MSG_PARSER_KEEP_ALIVE));
 	}
 
 	@Override

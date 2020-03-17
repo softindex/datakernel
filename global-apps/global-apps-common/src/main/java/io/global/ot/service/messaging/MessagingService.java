@@ -1,16 +1,16 @@
 package io.global.ot.service.messaging;
 
-import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.exception.StacklessException;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
-import io.datakernel.promise.SettablePromise;
 import io.global.common.KeyPair;
 import io.global.common.PubKey;
 import io.global.ot.api.CommitId;
@@ -21,15 +21,9 @@ import io.global.ot.shared.SharedReposOperation;
 import io.global.pm.api.Message;
 import io.global.pm.api.PmClient;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Set;
-
-import static io.datakernel.async.process.AsyncExecutors.retry;
-import static io.datakernel.promise.Promises.repeat;
-import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
-import static io.global.util.Utils.eitherComplete;
 
 @Inject
 public final class MessagingService implements EventloopService {
@@ -53,7 +47,7 @@ public final class MessagingService implements EventloopService {
 	@Inject
 	OTStateManager<CommitId, SharedReposOperation> stateManager;
 
-	private final SettablePromise<Message<CreateSharedRepo>> stopPromise = new SettablePromise<>();
+	private ChannelSupplier<Message<CreateSharedRepo>> messageSupplier;
 
 	@NotNull
 	@Override
@@ -71,7 +65,7 @@ public final class MessagingService implements EventloopService {
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
-		stopPromise.trySetException(STOPPED_EXCEPTION);
+		messageSupplier.close(STOPPED_EXCEPTION);
 		return Promise.complete();
 	}
 
@@ -82,31 +76,28 @@ public final class MessagingService implements EventloopService {
 
 	private void pollMessages() {
 		SharedReposOTState state = (SharedReposOTState) stateManager.getState();
-		AsyncSupplier<@Nullable Message<CreateSharedRepo>> messagesSupplier = AsyncSupplier.cast(() -> pmClient.poll(mailBox))
-				.withExecutor(retry(POLL_RETRY_POLICY));
-
-		repeat(() -> eitherComplete(stopPromise, messagesSupplier.get())
-				.then(message -> {
-					if (message != null) {
-						CreateSharedRepo createSharedRepo = message.getPayload();
-						SharedRepo sharedRepo = createSharedRepo.getSharedRepo();
-						return Promise.complete()
-								.then($ -> {
-									if (!state.getSharedRepos().contains(sharedRepo)) {
-										CreateOrDropRepo createOp = CreateOrDropRepo.create(sharedRepo);
-										stateManager.add(createOp);
-										return stateManager.sync()
-												.whenException(e -> stateManager.reset());
-									} else {
-										return Promise.complete();
-									}
-								})
-								.then($ -> pmClient.drop(mailBox, message.getId()))
-								.toTry()
-								.toVoid();
-					}
-					return Promises.delay(pollInterval, Promise.complete());
-				}));
+		messageSupplier = ChannelSupplier.ofPromise(pmClient.stream(mailBox));
+		messageSupplier.streamTo(ChannelConsumer.of(message -> {
+			if (message != null) {
+				CreateSharedRepo createSharedRepo = message.getPayload();
+				SharedRepo sharedRepo = createSharedRepo.getSharedRepo();
+				return Promise.complete()
+						.then($ -> {
+							if (!state.getSharedRepos().contains(sharedRepo)) {
+								CreateOrDropRepo createOp = CreateOrDropRepo.create(sharedRepo);
+								stateManager.add(createOp);
+								return stateManager.sync()
+										.whenException(e -> stateManager.reset());
+							} else {
+								return Promise.complete();
+							}
+						})
+						.then($ -> pmClient.drop(mailBox, message.getId()))
+						.toTry()
+						.toVoid();
+			}
+			return Promises.delay(pollInterval, Promise.complete());
+		}));
 	}
 
 }
