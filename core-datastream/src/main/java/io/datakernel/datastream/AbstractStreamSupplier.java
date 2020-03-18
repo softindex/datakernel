@@ -51,6 +51,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private boolean endOfStreamRequest;
 	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
 
+	@Nullable
 	private SettablePromise<Void> flushPromise;
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
@@ -113,6 +114,10 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	protected final void asyncResume() {
 		checkState(flushAsync > 0);
 		flushAsync--;
+		resume();
+	}
+
+	protected final void resume() {
 		if (flushRunning) {
 			flushRequest = true;
 		} else if (isReady() && !isEndOfStream()) {
@@ -144,21 +149,37 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		endOfStreamRequest = true;
 		//noinspection unchecked
 		this.dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
-		return flush();
+		flush();
+		return getFlushPromise();
+	}
+
+	/**
+	 * Returns a promise that will be completed when all data items are propagated
+	 * to the actual data acceptor
+	 */
+	@NotNull
+	public final Promise<Void> getFlushPromise() {
+		if (isEndOfStream()) {
+			return endOfStream;
+		} else if (flushPromise != null) {
+			return flushPromise;
+		} else if (dataAcceptor != null) {
+			return Promise.complete();
+		} else {
+			flushPromise = new SettablePromise<>();
+			return flushPromise;
+		}
 	}
 
 	/**
 	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
 	 */
-	public final Promise<Void> flush() {
+	private void flush() {
 		checkState(eventloop.inEventloopThread());
 		flushRequest = true;
-		if (flushRunning || flushAsync > 0) return flushPromise; // recursive call
-		if (endOfStream.isComplete()) return endOfStream;
-		if (flushPromise == null) {
-			flushPromise = new SettablePromise<>();
-		}
-		if (!isStarted()) return flushPromise;
+		if (flushRunning || flushAsync > 0) return; // recursive call
+		if (endOfStream.isComplete()) return;
+		if (!isStarted()) return;
 
 		flushRunning = true;
 		while (flushRequest) {
@@ -173,22 +194,25 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		}
 		flushRunning = false;
 
-		if (flushAsync > 0) return flushPromise;
-		if (!buffer.isEmpty()) return flushPromise;
-		if (endOfStream.isComplete()) return flushPromise;
+		if (flushAsync > 0) return;
+		if (!buffer.isEmpty()) return;
+		if (endOfStream.isComplete()) return;
 
 		if (!endOfStreamRequest) {
 			SettablePromise<Void> flushPromise = this.flushPromise;
 			this.flushPromise = null;
-			flushPromise.set(null);
-			return flushPromise;
+			if (flushPromise != null) {
+				flushPromise.set(null);
+			}
+			return;
 		}
 
 		dataAcceptor = null;
-		flushPromise.set(null);
+		if (flushPromise != null) {
+			flushPromise.set(null);
+		}
 		endOfStream.set(null);
 		cleanup();
-		return flushPromise;
 	}
 
 	/**

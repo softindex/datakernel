@@ -59,7 +59,7 @@ public class TestStreamTransformers {
 				return internalSupplier.getConsumer().getAcknowledgement();
 			}
 			internalSupplier.send(item);
-			return internalSupplier.flush();
+			return internalSupplier.getFlushPromise();
 		}
 
 		@Override

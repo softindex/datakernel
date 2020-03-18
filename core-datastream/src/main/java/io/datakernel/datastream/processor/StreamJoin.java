@@ -149,18 +149,18 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 			boolean wasEmpty = deque.isEmpty();
 			deque.addLast(item);
 			if (wasEmpty) {
-				output.flush();
+				output.join();
 			}
 		}
 
 		@Override
 		protected void onStarted() {
-			output.flush();
+			output.join();
 		}
 
 		@Override
 		protected void onEndOfStream() {
-			output.flush();
+			output.join();
 			output.getEndOfStream()
 					.whenResult(this::acknowledge)
 					.whenException(this::closeEx);
@@ -173,6 +173,11 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 	}
 
 	protected final class Output extends AbstractStreamSupplier<V> {
+
+		void join(){
+			resume();
+		}
+
 		@Override
 		protected void onResumed() {
 			StreamDataAcceptor<V> acceptor = this::send;

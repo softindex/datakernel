@@ -137,7 +137,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 				deque.offer(item);
 				if (deque.size() == bufferSize) {
 					suspend();
-					output.flush();
+					output.reduce();
 				}
 			}
 		}
@@ -148,7 +148,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 			if (headItem == null) {
 				streamsAwaiting--;
 			}
-			output.flush();
+			output.reduce();
 			output.getEndOfStream()
 					.whenComplete(this::acknowledge)
 					.whenException(this::closeEx);
@@ -166,9 +166,55 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
+
+		void reduce() {
+			resume();
+		}
+
 		@Override
 		protected void onResumed() {
-			AbstractStreamReducer.this.doProduce();
+			while (streamsAwaiting == 0) {
+				Input<Object> input = priorityQueue.poll();
+				if (input == null)
+					break;
+				//noinspection PointlessNullCheck intellij doesn't know
+				if (key != null && input.headKey.equals(key)) {
+					accumulator = input.reducer.onNextItem(outputSender, key, input.headItem, accumulator);
+				} else {
+					if (lastInput != null) {
+						lastInput.reducer.onComplete(outputSender, key, accumulator);
+					}
+					key = input.headKey;
+					accumulator = input.reducer.onFirstItem(outputSender, key, input.headItem);
+				}
+				input.headItem = input.deque.poll();
+				lastInput = input;
+				if (input.headItem != null) {
+					input.headKey = input.keyFunction.apply(input.headItem);
+					priorityQueue.offer(input);
+				} else {
+					if (!input.isEndOfStream()) {
+						streamsAwaiting++;
+						break;
+					}
+				}
+			}
+
+			for (Input input : inputs) {
+				if (input.deque.size() <= bufferSize / 2) {
+					input.resume(input);
+				}
+			}
+
+			if (streamsOpen == 0 && priorityQueue.isEmpty()) {
+				if (lastInput != null) {
+					lastInput.reducer.onComplete(outputSender, key, accumulator);
+					lastInput = null;
+					key = null;
+					accumulator = null;
+				}
+				output.sendEndOfStream();
+			}
 		}
 
 		@Override
@@ -183,50 +229,4 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 			priorityQueue.clear();
 		}
 	}
-
-	private void doProduce() {
-		while (streamsAwaiting == 0) {
-			Input<Object> input = priorityQueue.poll();
-			if (input == null)
-				break;
-			//noinspection PointlessNullCheck intellij doesn't know
-			if (key != null && input.headKey.equals(key)) {
-				accumulator = input.reducer.onNextItem(outputSender, key, input.headItem, accumulator);
-			} else {
-				if (lastInput != null) {
-					lastInput.reducer.onComplete(outputSender, key, accumulator);
-				}
-				key = input.headKey;
-				accumulator = input.reducer.onFirstItem(outputSender, key, input.headItem);
-			}
-			input.headItem = input.deque.poll();
-			lastInput = input;
-			if (input.headItem != null) {
-				input.headKey = input.keyFunction.apply(input.headItem);
-				priorityQueue.offer(input);
-			} else {
-				if (!input.isEndOfStream()) {
-					streamsAwaiting++;
-					break;
-				}
-			}
-		}
-
-		for (Input input : inputs) {
-			if (input.deque.size() <= bufferSize / 2) {
-				input.resume(input);
-			}
-		}
-
-		if (streamsOpen == 0 && priorityQueue.isEmpty()) {
-			if (lastInput != null) {
-				lastInput.reducer.onComplete(outputSender, key, accumulator);
-				lastInput = null;
-				key = null;
-				accumulator = null;
-			}
-			output.sendEndOfStream();
-		}
-	}
-
 }
