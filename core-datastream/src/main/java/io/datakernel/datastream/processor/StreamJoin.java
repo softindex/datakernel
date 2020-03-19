@@ -137,7 +137,7 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 		return new StreamJoin<>(keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
 
-	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
+	private final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
 		private final ArrayDeque<I> deque;
 
 		public Input(ArrayDeque<I> deque) {
@@ -172,7 +172,7 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<V> {
+	private final class Output extends AbstractStreamSupplier<V> {
 
 		void join(){
 			resume();

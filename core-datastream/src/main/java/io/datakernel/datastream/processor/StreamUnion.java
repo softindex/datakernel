@@ -35,7 +35,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 	private final Output output;
 	private boolean started;
 
-	public StreamUnion() {
+	private StreamUnion() {
 		this.output = new Output();
 	}
 
@@ -67,8 +67,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		return input;
 	}
 
-	public void start() {
-		checkState(!started);
+	private void start() {
 		started = true;
 		sync();
 	}

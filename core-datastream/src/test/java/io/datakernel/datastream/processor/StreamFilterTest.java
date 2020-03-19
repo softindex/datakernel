@@ -17,6 +17,7 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.common.exception.ExpectedException;
+import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
@@ -26,8 +27,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
-import static io.datakernel.datastream.TestStreamTransformers.decorate;
-import static io.datakernel.datastream.TestStreamTransformers.randomlySuspending;
+import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
@@ -97,6 +97,24 @@ public class StreamFilterTest {
 		assertClosedWithError(consumer);
 		assertClosedWithError(streamFilter.getInput());
 		assertClosedWithError(streamFilter.getOutput());
+	}
+
+	@Test
+	public void testFilterConsumer() {
+		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6);
+		StreamFilter<Integer> filter = StreamFilter.create(input -> input % 2 == 1);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+
+		StreamConsumer<Integer> transformedConsumer = consumer
+				.transformWith(filter)
+				.transformWith(randomlySuspending());
+
+		await(supplier.streamTo(transformedConsumer));
+
+		assertEquals(asList(1, 3, 5), consumer.getList());
+		assertEndOfStream(supplier);
+		assertEndOfStream(filter.getInput());
+		assertEndOfStream(filter.getOutput());
 	}
 
 }

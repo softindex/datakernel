@@ -53,7 +53,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		return output;
 	}
 
-	protected final class Input extends AbstractStreamConsumer<I> {
+	private final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
 			sync();
@@ -65,7 +65,7 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<O> {
+	private final class Output extends AbstractStreamSupplier<O> {
 		@Override
 		protected void onResumed() {
 			sync();

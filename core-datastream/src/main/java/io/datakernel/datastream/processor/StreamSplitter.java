@@ -80,8 +80,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		return outputs;
 	}
 
-	public void start() {
-		checkState(!started);
+	private void start() {
 		started = true;
 		dataAcceptors = Arrays.copyOf(dataAcceptors, outputs.size());
 		input.getAcknowledgement()
@@ -92,7 +91,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		sync();
 	}
 
-	protected final class Input extends AbstractStreamConsumer<I> {
+	private final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
 			sync();
@@ -106,7 +105,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<O> {
+	private final class Output extends AbstractStreamSupplier<O> {
 		final int index;
 
 		public Output(int index) {

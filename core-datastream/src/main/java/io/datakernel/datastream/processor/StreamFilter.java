@@ -55,7 +55,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	protected final class Input extends AbstractStreamConsumer<T> {
+	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
 			sync();
@@ -67,7 +67,7 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<T> {
+	private final class Output extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onResumed() {
 			sync();
