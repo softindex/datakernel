@@ -125,7 +125,7 @@ final class StreamSuppliers {
 		private void next() {
 			internalConsumer.acknowledge();
 			internalConsumer = new InternalConsumer();
-			internalConsumer.resume(getDataAcceptor());
+			resume();
 			iterator.get()
 					.whenResult(supplier -> {
 						if (supplier != null) {

@@ -50,7 +50,9 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 
 		internalSupplierNew.streamTo(consumer);
 
-		internalSupplierOld.sendEndOfStream();
+		if (internalSupplierOld != null) {
+			internalSupplierOld.sendEndOfStream();
+		}
 	}
 
 	@Override
