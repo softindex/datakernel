@@ -24,7 +24,7 @@ import io.global.common.KeyPair;
 import io.global.debug.DebugViewerModule;
 import io.global.fs.http.GlobalFsDriverServlet;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.api.KvClient;
+import io.datakernel.kv.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;

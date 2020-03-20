@@ -46,6 +46,7 @@
     <module>cloud-lsmt-cube</module>
     <module>cloud-etl</module>
     <module>cloud-dataflow</module>
+    <module>cloud-kv</module>
     <module>common</module>
     <module>launcher</module>
     <module>boot</module>

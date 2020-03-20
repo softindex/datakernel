@@ -25,7 +25,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import io.global.common.*;
 import io.global.kv.api.GlobalKvNode;
-import io.global.kv.api.KvItem;
+import io.datakernel.kv.KvItem;
 import io.global.kv.api.RawKvItem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

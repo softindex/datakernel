@@ -9,8 +9,8 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.session.SessionStore;
 import io.datakernel.promise.Promise;
-import io.global.kv.api.KvClient;
-import io.global.kv.api.KvItem;
+import io.datakernel.kv.KvClient;
+import io.datakernel.kv.KvItem;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

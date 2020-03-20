@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.crdt;
+package io.datakernel.kv;
 
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
@@ -45,8 +45,8 @@ import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings("rawtypes") // JMX
-public final class CrdtCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<CrdtCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
-	private static final Logger logger = LoggerFactory.getLogger(CrdtCluster.class);
+public final class KvCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtClient<K, S>, Initializable<KvCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
+	private static final Logger logger = LoggerFactory.getLogger(KvCluster.class);
 
 	private final Eventloop eventloop;
 	private final Map<I, CrdtClient<K, S>> clients;
@@ -73,7 +73,7 @@ public final class CrdtCluster<I extends Comparable<I>, K extends Comparable<K>,
 	// endregion
 
 	// region creators
-	private CrdtCluster(Eventloop eventloop, Map<I, CrdtClient<K, S>> clients, CrdtOperator<S> function) {
+	private KvCluster(Eventloop eventloop, Map<I, CrdtClient<K, S>> clients, CrdtOperator<S> function) {
 		this.eventloop = eventloop;
 		this.clients = clients;
 		this.aliveClients = new LinkedHashMap<>(clients); // to keep order for indexed sharding
@@ -82,32 +82,32 @@ public final class CrdtCluster<I extends Comparable<I>, K extends Comparable<K>,
 		shardingFunction = RendezvousHashSharder.create(orderedIds = new ArrayList<>(aliveClients.keySet()), replicationCount);
 	}
 
-	public static <I extends Comparable<I>, K extends Comparable<K>, S> CrdtCluster<I, K, S> create(
+	public static <I extends Comparable<I>, K extends Comparable<K>, S> KvCluster<I, K, S> create(
 			Eventloop eventloop, Map<I, ? extends CrdtClient<K, S>> clients, CrdtOperator<S> crdtOperator
 	) {
-		return new CrdtCluster<>(eventloop, new HashMap<>(clients), crdtOperator);
+		return new KvCluster<>(eventloop, new HashMap<>(clients), crdtOperator);
 	}
 
-	public static <I extends Comparable<I>, K extends Comparable<K>, S extends Crdt<S>> CrdtCluster<I, K, S> create(
+	public static <I extends Comparable<I>, K extends Comparable<K>, S extends Crdt<S>> KvCluster<I, K, S> create(
 			Eventloop eventloop, Map<I, ? extends CrdtClient<K, S>> clients
 	) {
-		return new CrdtCluster<>(eventloop, new HashMap<>(clients), CrdtOperator.ofCrdtType());
+		return new KvCluster<>(eventloop, new HashMap<>(clients), CrdtOperator.ofCrdtType());
 	}
 
-	public CrdtCluster<I, K, S> withPartition(I partitionId, CrdtClient<K, S> client) {
+	public KvCluster<I, K, S> withPartition(I partitionId, CrdtClient<K, S> client) {
 		clients.put(partitionId, client);
 		aliveClients.put(partitionId, client);
 		recompute();
 		return this;
 	}
 
-	public CrdtCluster<I, K, S> withReplicationCount(int replicationCount) {
+	public KvCluster<I, K, S> withReplicationCount(int replicationCount) {
 		this.replicationCount = replicationCount;
 		recompute();
 		return this;
 	}
 
-	public CrdtCluster<I, K, S> withFilter(Predicate<S> filter) {
+	public KvCluster<I, K, S> withFilter(Predicate<S> filter) {
 		this.filter = filter;
 		return this;
 	}
@@ -207,7 +207,7 @@ public final class CrdtCluster<I extends Comparable<I>, K extends Comparable<K>,
 							.map(Try::get)
 							.collect(toList());
 					if (successes.isEmpty()) {
-						return Promise.ofException(new StacklessException(CrdtCluster.class, "No successful connections"));
+						return Promise.ofException(new StacklessException(KvCluster.class, "No successful connections"));
 					}
 					return Promise.of(successes);
 				});

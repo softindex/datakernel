@@ -20,7 +20,7 @@ import io.global.comm.pojo.IpBanState;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.pojo.UserData;
 import io.global.fs.local.GlobalFsDriver;
-import io.global.kv.api.KvClient;
+import io.datakernel.kv.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.FsSyncModule;
 import io.global.launchers.sync.KvSyncModule;

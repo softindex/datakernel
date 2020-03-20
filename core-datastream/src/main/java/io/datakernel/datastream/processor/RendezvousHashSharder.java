@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.crdt;
+package io.datakernel.datastream.processor;
 
 import io.datakernel.common.HashUtils;
-import io.datakernel.datastream.processor.MultiSharder;
 
 import java.util.ArrayList;
 import java.util.Comparator;

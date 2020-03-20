@@ -25,7 +25,7 @@ import io.global.fs.api.GlobalFsCheckpoint;
 import io.global.fs.api.GlobalFsNode;
 import io.global.fs.local.GlobalFsDriver;
 import io.global.kv.api.GlobalKvNode;
-import io.global.kv.api.KvClient;
+import io.datakernel.kv.KvClient;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.api.CommitId;
 import io.global.ot.api.GlobalOTNode;

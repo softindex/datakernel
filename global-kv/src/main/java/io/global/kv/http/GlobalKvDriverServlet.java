@@ -29,7 +29,7 @@ import io.global.common.PrivKey;
 import io.global.common.PubKey;
 import io.global.common.SimKey;
 import io.global.kv.GlobalKvDriver;
-import io.global.kv.api.KvItem;
+import io.datakernel.kv.KvItem;
 
 import java.util.List;
 import java.util.Set;

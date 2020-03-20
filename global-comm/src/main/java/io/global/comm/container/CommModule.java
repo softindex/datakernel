@@ -14,25 +14,15 @@ import io.global.comm.ot.post.operation.ThreadOperation;
 import io.global.comm.pojo.ThreadMetadata;
 import io.global.comm.util.OTPagedAsyncMap;
 import io.global.comm.util.PagedAsyncMap;
-import io.global.debug.ObjectDisplayRegistry;
-import io.global.common.KeyPair;
-import io.global.kv.api.KvClient;
 import io.global.ot.OTGeneratorsModule;
 import io.global.ot.api.CommitId;
 import io.global.ot.map.MapOTStateListenerProxy;
 import io.global.ot.map.MapOperation;
 import io.global.ot.service.ContainerScope;
-import io.global.ot.session.UserId;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.TreeMap;
-import java.util.stream.Stream;
-import java.util.function.Function;
 
-import static io.global.debug.ObjectDisplayRegistryUtils.ts;
 import static java.util.stream.Collectors.joining;
-import static io.global.ot.OTUtils.POLL_RETRY_POLICY;
-import static java.util.Collections.emptySet;
 
 public final class CommModule extends AbstractModule {
 

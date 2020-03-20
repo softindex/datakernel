@@ -20,6 +20,8 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.RoutingServlet;
 import io.datakernel.http.StubHttpClient;
+import io.datakernel.kv.KvClient;
+import io.datakernel.kv.KvItem;
 import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;

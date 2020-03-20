@@ -6,7 +6,7 @@ import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.global.common.KeyPair;
 import io.global.kv.GlobalKvDriver;
-import io.global.kv.api.KvClient;
+import io.datakernel.kv.KvClient;
 import io.global.ot.TypedRepoNames;
 import io.global.ot.service.ContainerScope;
 import io.global.ot.session.UserId;

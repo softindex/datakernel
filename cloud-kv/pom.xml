@@ -9,27 +9,30 @@
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>global-kv</artifactId>
+  <artifactId>datakernel-kv</artifactId>
 
-  <name>Global: KV</name>
+  <name>DataKernel : KV</name>
   <description>
-
+    Key-value remote storage implementation for DataKernel Framework.
   </description>
 
   <dependencies>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>global-common</artifactId>
+      <artifactId>datakernel-datastream</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-kv</artifactId>
+      <artifactId>datakernel-fs</artifactId>
       <version>${project.version}</version>
+      <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.rocksdb</groupId>
-      <artifactId>rocksdbjni</artifactId>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-jmxapi</artifactId>
+      <version>${project.version}</version>
+      <optional>true</optional>
     </dependency>
 
     <dependency>
@@ -38,6 +41,27 @@
       <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.rocksdb</groupId>
+      <artifactId>rocksdbjni</artifactId>
+    </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifestEntries>
+              <Automatic-Module-Name>io.datakernel.crdt</Automatic-Module-Name>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 
 </project>

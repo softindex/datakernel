@@ -19,7 +19,7 @@ package io.global.kv.util;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.registry.CodecFactory;
 import io.global.common.Hash;
-import io.global.kv.api.KvItem;
+import io.datakernel.kv.KvItem;
 import io.global.kv.api.RawKvItem;
 
 import static io.datakernel.codec.StructuredCodecs.LONG_CODEC;

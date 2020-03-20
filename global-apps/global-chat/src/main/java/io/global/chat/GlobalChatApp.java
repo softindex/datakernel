@@ -15,7 +15,7 @@ import io.datakernel.service.ServiceGraphModule;
 import io.global.LocalNodeCommonModule;
 import io.global.chat.chatroom.operation.ChatRoomOperation;
 import io.global.debug.DebugViewerModule;
-import io.global.kv.api.KvClient;
+import io.datakernel.kv.KvClient;
 import io.global.launchers.GlobalNodesModule;
 import io.global.launchers.sync.KvSyncModule;
 import io.global.launchers.sync.PmSyncModule;
