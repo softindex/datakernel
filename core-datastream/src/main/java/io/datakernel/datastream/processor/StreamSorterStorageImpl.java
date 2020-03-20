@@ -127,15 +127,14 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 	@Override
 	public Promise<StreamConsumer<T>> write(int partition) {
 		Path path = partitionPath(partition);
-		return Promise.of(StreamConsumer.<T>ofSupplier(
+		return Promise.of(StreamConsumer.ofSupplier(
 				supplier -> supplier
 						.transformWith(ChannelSerializer.create(serializer)
 								.withInitialBufferSize(readBlockSize))
 						.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
 						.transformWith(ChannelLZ4Compressor.create(compressionLevel))
 						.transformWith(ChannelByteChunker.create(writeBlockSize.map(bytes -> bytes / 2), writeBlockSize))
-						.streamTo(ChannelFileWriter.open(executor, path)))
-				.withLateBinding());
+						.streamTo(ChannelFileWriter.open(executor, path))));
 	}
 
 	/**
@@ -151,8 +150,7 @@ public final class StreamSorterStorageImpl<T> implements StreamSorterStorage<T> 
 		return ChannelFileReader.open(executor, path)
 				.map(file -> file
 						.transformWith(ChannelLZ4Decompressor.create())
-						.transformWith(ChannelDeserializer.create(serializer))
-						.withLateBinding());
+						.transformWith(ChannelDeserializer.create(serializer)));
 	}
 
 	/**

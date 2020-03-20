@@ -87,11 +87,11 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 						.withAcknowledgement(ack ->
 								ack.whenException(e -> {
 									if (e != null && up.dec() < requiredSuccesses && extraCondition.get()) {
-										close(e);
+										closeEx(e);
 									}
 								})))));
 		return startProcess()
-				.then($ -> up.get() >= requiredSuccesses ?
+				.then(() -> up.get() >= requiredSuccesses ?
 						Promise.complete() :
 						Promise.ofException(new StacklessException(ChannelSplitter.class, "Not enough successes")));
 	}
@@ -144,23 +144,23 @@ public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 										if (e2 == null) {
 											doProcess();
 										} else {
-											close(e2);
+											closeEx(e2);
 										}
 									});
 							tryRecycle(item);
 						} else {
-							Promises.all(outputs.stream().map(output -> output.accept(null)))
-									.whenComplete(($, e1) -> completeProcess(e1));
+							Promises.all(outputs.stream().map(ChannelConsumer::acceptEndOfStream))
+									.whenComplete(($, e1) -> completeProcessEx(e1));
 						}
 					} else {
-						close(e);
+						closeEx(e);
 					}
 				});
 	}
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		outputs.forEach(output -> output.close(e));
+		input.closeEx(e);
+		outputs.forEach(output -> output.closeEx(e));
 	}
 }

@@ -16,14 +16,11 @@
 
 package io.datakernel.datastream.stats;
 
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.AbstractStreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamTransformer;
-import io.datakernel.promise.Promise;
-import org.jetbrains.annotations.NotNull;
-
-import java.util.Set;
-
-import static java.util.Collections.emptySet;
 
 public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	private final Input input;
@@ -35,6 +32,11 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		this.stats = stats;
 		this.input = new Input();
 		this.output = new Output();
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
 	}
 
 	public static <T> StreamStatsForwarder<T> create(StreamStats<T> stats) {
@@ -51,53 +53,41 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	private class Input extends AbstractStreamConsumer<T> {
+	protected final class Input extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onStarted() {
 			stats.onStarted();
+			resume(output.getDataAcceptor());
 		}
 
 		@Override
-		protected Promise<Void> onEndOfStream() {
+		protected void onEndOfStream() {
 			stats.onEndOfStream();
-			return output.sendEndOfStream();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			output.close(e);
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			StreamConsumer<T> consumer = output.getConsumer();
-			return consumer != null ? consumer.getCapabilities() : emptySet();
-		}
-	}
-
-	private class Output extends AbstractStreamSupplier<T> {
-		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			stats.onProduce();
-			input.getSupplier().resume(stats.createDataAcceptor(dataAcceptor));
-		}
-
-		@Override
-		protected void onSuspended() {
-			stats.onSuspend();
-			input.getSupplier().suspend();
+			output.sendEndOfStream();
 		}
 
 		@Override
 		protected void onError(Throwable e) {
 			stats.onError(e);
-			input.close(e);
+		}
+	}
+
+	protected final class Output extends AbstractStreamSupplier<T> {
+		@Override
+		protected void onResumed() {
+			stats.onProduce();
+			input.resume(getDataAcceptor());
 		}
 
 		@Override
-		public Set<StreamCapability> getCapabilities() {
-			StreamSupplier<T> supplier = input.getSupplier();
-			return supplier != null ? supplier.getCapabilities() : emptySet();
+		protected void onSuspended() {
+			stats.onSuspend();
+			input.suspend();
+		}
+
+		@Override
+		protected void onError(Throwable e) {
+			stats.onError(e);
 		}
 	}
 }

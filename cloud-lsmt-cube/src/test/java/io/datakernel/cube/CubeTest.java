@@ -112,7 +112,7 @@ public final class CubeTest {
 		return StreamSupplier.concat(StreamSupplier.of(item), StreamSupplier.of(items))
 				.streamTo(cube.consume(((Class<T>) item.getClass())))
 				.then(cubeDiff -> chunkStorage.finish(cubeDiff.<Long>addedChunks().collect(toSet()))
-						.whenResult($ -> cube.apply(cubeDiff)));
+						.whenResult(() -> cube.apply(cubeDiff)));
 	}
 
 	@Test

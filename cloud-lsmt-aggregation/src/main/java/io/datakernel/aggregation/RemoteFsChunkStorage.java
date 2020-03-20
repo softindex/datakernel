@@ -170,8 +170,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 						.transformWith(readDecompress)
 						.transformWith(ChannelDeserializer.create(
 								createBinarySerializer(aggregation, recordClass, aggregation.getKeys(), fields, classLoader)))
-						.transformWith((StreamStats<T>) (detailed ? readDeserializeDetailed : readDeserialize))
-						.withLateBinding());
+						.transformWith((StreamStats<T>) (detailed ? readDeserializeDetailed : readDeserialize)));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -213,7 +212,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		String tempBackupDir = backupDir + File.separator + backupId + "_tmp";
 
 		return Promises.all(chunkIds.stream().map(chunkId -> client.copy(chunkId + LOG, tempBackupDir + File.separator + chunkId + LOG)))
-				.then($ -> client.moveDir(tempBackupDir, backupDir + File.separator + backupId))
+				.then(() -> client.moveDir(tempBackupDir, backupDir + File.separator + backupId))
 				.whenComplete(promiseBackup.recordStats());
 	}
 
@@ -258,7 +257,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 							deleted.inc();
 							return client.delete(file.getName());
 						}))
-						.whenResult($ -> {
+						.whenResult(() -> {
 							cleanupPreservedFiles = preserveChunks.size();
 							cleanupDeletedFiles = deleted.get();
 							cleanupDeletedFilesTotal += deleted.get();

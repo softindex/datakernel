@@ -1,5 +1,7 @@
 import io.datakernel.config.Config;
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.AbstractStreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -11,12 +13,9 @@ import io.datakernel.launcher.Launcher;
 import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.EnumSet;
-import java.util.Set;
 import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
 import static io.datakernel.di.module.Modules.combine;
 
 @SuppressWarnings("WeakerAccess")
@@ -35,21 +34,11 @@ public class DatastreamBenchmark extends Launcher {
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
+		protected void onResumed() {
 			while (integer < limit) {
-				StreamDataAcceptor<Integer> dataAcceptor = getCurrentDataAcceptor();
-				dataAcceptor.accept(++integer);
+				send(++integer);
 			}
 			sendEndOfStream();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
 		}
 	}
 
@@ -118,10 +107,6 @@ public class DatastreamBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		benchmark("Datastream");
-	}
-
-	private void benchmark(String nameBenchmark) throws Exception {
 		long time = 0;
 		long bestTime = -1;
 		long worstTime = -1;
@@ -133,7 +118,7 @@ public class DatastreamBenchmark extends Launcher {
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; OPS : " + rps);
 		}
 
-		System.out.println("Start benchmarking " + nameBenchmark);
+		System.out.println("Start benchmarking...");
 
 		for (int i = 0; i < benchmarkRounds; i++) {
 			long roundTime = round();

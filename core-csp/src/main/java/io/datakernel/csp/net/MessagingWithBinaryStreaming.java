@@ -59,7 +59,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 								return Promise.ofException(UNEXPECTED_END_OF_STREAM_EXCEPTION);
 							}
 						})
-						.whenException(this::close),
+						.whenException(this::closeEx),
 				Promise::complete,
 				this);
 	}
@@ -83,15 +83,15 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 							closeIfDone();
 						}
 					})
-					.whenException(this::close);
+					.whenException(this::closeEx);
 		}
 	}
 
 	@Override
 	public Promise<I> receive() {
 		return bufsSupplier.parse(codec::tryDecode)
-				.whenResult($ -> prefetch())
-				.whenException(this::close);
+				.whenResult(this::prefetch)
+				.whenException(this::closeEx);
 	}
 
 	@Override
@@ -102,18 +102,18 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	@Override
 	public Promise<Void> sendEndOfStream() {
 		return socket.write(null)
-				.whenResult($ -> {
+				.whenResult(() -> {
 					writeDone = true;
 					closeIfDone();
 				})
-				.whenException(this::close);
+				.whenException(this::closeEx);
 	}
 
 	@Override
 	public ChannelConsumer<ByteBuf> sendBinaryStream() {
 		return ChannelConsumer.ofSocket(socket)
 				.withAcknowledgement(ack -> ack
-						.whenResult($ -> {
+						.whenResult(() -> {
 							writeDone = true;
 							closeIfDone();
 						}));
@@ -123,17 +123,17 @@ public final class MessagingWithBinaryStreaming<I, O> implements Messaging<I, O>
 	public ChannelSupplier<ByteBuf> receiveBinaryStream() {
 		return ChannelSuppliers.concat(ChannelSupplier.ofIterator(bufs.asIterator()), ChannelSupplier.ofSocket(socket))
 				.withEndOfStream(eos -> eos
-						.whenResult($ -> {
+						.whenResult(() -> {
 							readDone = true;
 							closeIfDone();
 						}));
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (isClosed()) return;
 		closedException = e;
-		socket.close(e);
+		socket.closeEx(e);
 		bufs.recycle();
 	}
 

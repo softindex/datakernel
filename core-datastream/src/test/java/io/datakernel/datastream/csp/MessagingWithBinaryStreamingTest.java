@@ -76,7 +76,7 @@ public final class MessagingWithBinaryStreamingTest {
 		messaging.receive()
 				.then(msg -> {
 					if (msg != null) {
-						return messaging.send(msg).whenResult($ -> pong(messaging));
+						return messaging.send(msg).whenResult(() -> pong(messaging));
 					}
 					messaging.close();
 					return Promise.complete();
@@ -86,7 +86,7 @@ public final class MessagingWithBinaryStreamingTest {
 
 	private static void ping(int n, Messaging<Integer, Integer> messaging) {
 		messaging.send(n)
-				.then($ -> messaging.receive())
+				.then(messaging::receive)
 				.whenResult(msg -> {
 					if (msg != null) {
 						if (msg > 0) {
@@ -139,8 +139,8 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, STRING_SERIALIZER);
 
 					return messaging.send("start")
-							.then($ -> messaging.sendEndOfStream())
-							.then($ -> messaging.receiveBinaryStream()
+							.then(messaging::sendEndOfStream)
+							.then(() -> messaging.receiveBinaryStream()
 									.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 									.toList());
 				}));
@@ -161,7 +161,7 @@ public final class MessagingWithBinaryStreamingTest {
 
 					messaging.receive()
 							.whenComplete(assertComplete(msg -> assertEquals("start", msg)))
-							.then($ ->
+							.then(() ->
 									messaging.receiveBinaryStream()
 											.transformWith(ChannelDeserializer.create(LONG_SERIALIZER))
 											.toList()
@@ -205,7 +205,7 @@ public final class MessagingWithBinaryStreamingTest {
 											.toList()
 											.then(list ->
 													messaging.send("ack")
-															.then($ -> messaging.sendEndOfStream())
+															.then(messaging::sendEndOfStream)
 															.map($ -> list)))
 							.whenComplete(assertComplete(list -> assertEquals(source, list)));
 				})
@@ -219,11 +219,11 @@ public final class MessagingWithBinaryStreamingTest {
 							MessagingWithBinaryStreaming.create(socket, serializer);
 
 					return messaging.send("start")
-							.then($ -> StreamSupplier.ofIterable(source)
+							.then(() -> StreamSupplier.ofIterable(source)
 									.transformWith(ChannelSerializer.create(LONG_SERIALIZER)
 											.withInitialBufferSize(MemSize.of(1)))
 									.streamTo(messaging.sendBinaryStream()))
-							.then($ -> messaging.receive())
+							.then(messaging::receive)
 							.whenComplete(messaging::close);
 				}));
 

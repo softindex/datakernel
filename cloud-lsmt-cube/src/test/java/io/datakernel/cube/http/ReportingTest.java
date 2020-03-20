@@ -41,6 +41,7 @@ import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.EventloopRule;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.*;
 import org.junit.rules.TemporaryFolder;
@@ -249,14 +250,16 @@ public final class ReportingTest {
 		}
 
 		@Override
-		protected StreamDataAcceptor<LogItem> createSplitter() {
+		protected StreamDataAcceptor<LogItem> createSplitter(@NotNull Context ctx) {
 			return new StreamDataAcceptor<LogItem>() {
-				private final StreamDataAcceptor<LogItem> dateAggregator = addOutput(cube.logStreamConsumer(
-						LogItem.class,
-						and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
-				private final StreamDataAcceptor<LogItem> dateAggregator2 = addOutput(cube.logStreamConsumer(
-						LogItem.class,
-						and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
+				private final StreamDataAcceptor<LogItem> dateAggregator = ctx.addOutput(
+						cube.logStreamConsumer(
+								LogItem.class,
+								and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))));
+				private final StreamDataAcceptor<LogItem> dateAggregator2 = ctx.addOutput(
+						cube.logStreamConsumer(
+								LogItem.class,
+								and(notEq("affiliate", EXCLUDE_AFFILIATE), notEq("site", EXCLUDE_SITE))));
 
 				@Override
 				public void accept(LogItem item) {

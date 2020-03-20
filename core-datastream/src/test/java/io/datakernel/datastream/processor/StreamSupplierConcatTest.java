@@ -19,7 +19,6 @@ package io.datakernel.datastream.processor;
 import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.TestStreamConsumers;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -27,7 +26,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.datastream.TestStreamConsumers.randomlySuspending;
+import static io.datakernel.datastream.TestStreamTransformers.randomlySuspending;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
@@ -66,7 +65,7 @@ public class StreamSupplierConcatTest {
 				StreamSupplier.of(4, 5, 6),
 				StreamSupplier.closingWithError(exception),
 				StreamSupplier.of(1, 2, 3))
-				.streamTo(consumer.transformWith(randomlySuspending())));
+				.streamTo(consumer));
 
 		assertSame(exception, e);
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
@@ -95,7 +94,7 @@ public class StreamSupplierConcatTest {
 				StreamSupplier.of(1, 2, 3),
 				StreamSupplier.of(4, 5, 6),
 				StreamSupplier.closingWithError(exception))
-				.streamTo(consumer.transformWith(TestStreamConsumers.oneByOne())));
+				.streamTo(consumer));
 
 		assertSame(exception, e);
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);

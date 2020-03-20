@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
+@SuppressWarnings("Convert2MethodRef")
 public final class CrdtExample {
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
 			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));
@@ -57,14 +58,14 @@ public final class CrdtExample {
 
 		StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#1", "#2", "#3", "#4")), new CrdtData<>("second", LWWSet.of("#3", "#4", "#5", "#6")))
 				.streamTo(StreamConsumer.ofPromise(one.upload()))
-				.then($ -> {
+				.then(() -> {
 					LWWSet<String> second = LWWSet.of("#2", "#4");
 					second.remove("#5");
 					second.remove("#6");
 					return StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#3", "#4", "#5", "#6")), new CrdtData<>("second", second))
 							.streamTo(StreamConsumer.ofPromise(two.upload()));
 				})
-				.then($ -> cluster.download())
+				.then(() -> cluster.download())
 				.then(StreamSupplier::toList)
 				.whenComplete((list, e) -> {
 					executor.shutdown();

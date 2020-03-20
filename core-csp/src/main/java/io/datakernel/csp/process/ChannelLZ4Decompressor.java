@@ -114,21 +114,21 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 		if (!bufs.hasRemainingBytes(HEADER_LENGTH)) {
 			for (int i = 0; i < min(bufs.remainingBytes(), MAGIC.length); i++) {
 				if (bufs.peekByte(i) != MAGIC[i]) {
-					close(STREAM_IS_CORRUPTED);
+					closeEx(STREAM_IS_CORRUPTED);
 					return;
 				}
 			}
 			input.needMoreData()
 					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
 					.thenEx(this::sanitize)
-					.whenResult($ -> processHeader());
+					.whenResult(this::processHeader);
 			return;
 		}
 
 		try (ByteBuf headerBuf = bufs.takeExactSize(HEADER_LENGTH)) {
 			readHeader(header, headerBuf.array(), headerBuf.head());
 		} catch (ParseException e) {
-			close(e);
+			closeEx(e);
 			return;
 		}
 
@@ -139,8 +139,8 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 
 		input.endOfStream()
 				.thenEx(this::sanitize)
-				.then($ -> output.accept(null))
-				.whenResult($ -> completeProcess());
+				.then(output::acceptEndOfStream)
+				.whenResult(this::completeProcess);
 	}
 
 	public void processBody() {
@@ -148,7 +148,7 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			input.needMoreData()
 					.thenEx(ChannelLZ4Decompressor::checkTruncatedDataException)
 					.thenEx(this::sanitize)
-					.whenResult($ -> processBody());
+					.whenResult(this::processBody);
 			return;
 		}
 
@@ -158,20 +158,20 @@ public final class ChannelLZ4Decompressor extends AbstractCommunicatingProcess
 			outputBuf = decompress(decompressor, checksum, header, inputBuf.array(), inputBuf.head());
 			if (inspector != null) inspector.onBlock(this, header, inputBuf, outputBuf);
 		} catch (ParseException e) {
-			close(e);
+			closeEx(e);
 			return;
 		} finally {
 			inputBuf.recycle();
 		}
 
 		output.accept(outputBuf)
-				.whenResult($ -> processHeader());
+				.whenResult(this::processHeader);
 	}
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 
 	public final static class Header {

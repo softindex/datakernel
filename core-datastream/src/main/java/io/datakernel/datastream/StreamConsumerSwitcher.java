@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,192 +16,92 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Set;
-
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static java.util.Collections.emptySet;
-
-public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
-	private InternalSupplier currentInternalSupplier;
-	private int pendingConsumers = 0;
+/**
+ * A consumer that wraps around another consumer that can be hot swapped with some other consumer.
+ * <p>
+ * It sets its acknowledgement on supplier end of stream, and acts as if suspended when current consumer stops and acknowledges.
+ */
+public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
+	private InternalSupplier internalSupplier = new InternalSupplier();
 
 	private StreamConsumerSwitcher() {
 	}
 
+	/**
+	 * Creates a new instance of this consumer.
+	 */
 	public static <T> StreamConsumerSwitcher<T> create() {
 		return new StreamConsumerSwitcher<>();
 	}
 
-	public static <T> StreamConsumerSwitcher<T> create(StreamConsumer<T> consumer) {
-		StreamConsumerSwitcher<T> switcher = new StreamConsumerSwitcher<>();
-		switcher.switchTo(consumer);
-		return switcher;
-	}
+	public void switchTo(@NotNull StreamConsumer<T> consumer) {
+		InternalSupplier internalSupplierOld = this.internalSupplier;
+		InternalSupplier internalSupplierNew = new InternalSupplier();
 
-	@Override
-	public final void accept(T item) {
-		currentInternalSupplier.onData(item);
-	}
-
-	@Override
-	protected Promise<Void> onEndOfStream() {
-		if (currentInternalSupplier != null) {
-			currentInternalSupplier.sendEndOfStream();
-		}
-		return getAcknowledgement();
-	}
-
-	@Override
-	protected final void onError(Throwable e) {
-		switchTo(StreamConsumer.idle());
-	}
-
-	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return currentInternalSupplier == null ? emptySet() : currentInternalSupplier.consumer.getCapabilities();
-	}
-
-	public void switchTo(StreamConsumer<T> newConsumer) {
-		if (getSupplier() != null && getSupplier().getEndOfStream().isException()) {
-			if (currentInternalSupplier != null) {
-				currentInternalSupplier.sendError(getAcknowledgement().getException());
-			}
-			currentInternalSupplier = new InternalSupplier(eventloop, StreamConsumer.idle());
-			StreamSupplier.<T>closingWithError(getAcknowledgement().getException()).streamTo(newConsumer);
-		} else if (getSupplier() != null && getSupplier().getEndOfStream().isComplete()) {
-			if (currentInternalSupplier != null) {
-				currentInternalSupplier.sendEndOfStream();
-			}
-			currentInternalSupplier = new InternalSupplier(eventloop, StreamConsumer.idle());
-			StreamSupplier.<T>of().streamTo(newConsumer);
+		if (getAcknowledgement().isException()) {
+			internalSupplierNew.closeEx(getAcknowledgement().getException());
+		} else if (isEndOfStream()) {
+			internalSupplierNew.sendEndOfStream();
 		} else {
-			if (currentInternalSupplier != null) {
-				currentInternalSupplier.sendEndOfStream();
-			}
-			currentInternalSupplier = new InternalSupplier(eventloop, newConsumer);
-			currentInternalSupplier.streamTo(newConsumer);
+			this.internalSupplier = internalSupplierNew;
+		}
+
+		internalSupplierNew.streamTo(consumer);
+
+		if (internalSupplierOld != null) {
+			internalSupplierOld.sendEndOfStream();
 		}
 	}
 
-	private class InternalSupplier implements StreamSupplier<T> {
-		private final Eventloop eventloop;
-		private final StreamConsumer<T> consumer;
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-		private StreamDataAcceptor<T> lastDataAcceptor;
-		private boolean suspended;
-		@Nullable
-		private ArrayList<T> pendingItems;
-		private boolean pendingEndOfStream;
+	@Override
+	protected void onStarted() {
+		resume(internalSupplier.getDataAcceptor());
+	}
 
-		public InternalSupplier(Eventloop eventloop, StreamConsumer<T> consumer) {
-			this.eventloop = eventloop;
-			this.consumer = consumer;
-			pendingConsumers++;
-		}
+	@Override
+	protected void onEndOfStream() {
+		internalSupplier.sendEndOfStream();
+		acknowledge();
+	}
 
+	@Override
+	protected void onError(Throwable e) {
+		internalSupplier.closeEx(e);
+	}
+
+	@Override
+	protected void onCleanup() {
+		internalSupplier = null;
+	}
+
+	private final class InternalSupplier extends AbstractStreamSupplier<T> {
 		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			assert consumer == this.consumer;
-			consumer.getAcknowledgement()
-					.whenException(this::close)
-					.post()
-					.whenResult($ -> {
-						if (--pendingConsumers == 0) {
-							acknowledge();
-						}
-					});
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			lastDataAcceptor = dataAcceptor;
-			suspended = false;
-
-			if (pendingItems != null) {
-				eventloop.post(wrapContext(this, () -> {
-					if (pendingItems.isEmpty()) {
-						return;
-					}
-
-					for (T item : pendingItems) {
-						lastDataAcceptor.accept(item);
-					}
-					pendingItems = null;
-
-					if (pendingEndOfStream) {
-						endOfStream.trySet(null);
-					}
-
-					if (currentInternalSupplier == this) {
-						if (!suspended) {
-							getSupplier().resume(StreamConsumerSwitcher.this);
-						} else {
-							getSupplier().suspend();
-						}
-					}
-				}));
-			} else {
-				if (currentInternalSupplier == this) {
-					StreamSupplier<T> supplier = getSupplier();
-					if (supplier != null) {
-						supplier.resume(StreamConsumerSwitcher.this);
-					}
-				}
+		protected void onResumed() {
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.resume(getDataAcceptor());
 			}
 		}
 
 		@Override
-		public void suspend() {
-			suspended = true;
-			if (currentInternalSupplier == this) {
-				getSupplier().suspend();
+		protected void onSuspended() {
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.suspend();
 			}
 		}
 
 		@Override
-		public void close(@NotNull Throwable e) {
-			StreamConsumerSwitcher.this.close(e);
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return getSupplier().getCapabilities();
-		}
-
-		public void onData(T item) {
-			if (lastDataAcceptor != null) {
-				lastDataAcceptor.accept(item);
-			} else {
-				if (pendingItems == null) {
-					pendingItems = new ArrayList<>();
-					getSupplier().suspend();
-				}
-				pendingItems.add(item);
+		protected void onAcknowledge() {
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.acknowledge();
 			}
 		}
 
-		public void sendError(Throwable e) {
-			lastDataAcceptor = item -> {};
-			endOfStream.trySetException(e);
-		}
-
-		public void sendEndOfStream() {
-			if (pendingItems == null) {
-				endOfStream.trySet(null);
-			} else {
-				pendingEndOfStream = true;
+		@Override
+		protected void onError(Throwable e) {
+			if (StreamConsumerSwitcher.this.internalSupplier == this) {
+				StreamConsumerSwitcher.this.closeEx(e);
 			}
 		}
 	}

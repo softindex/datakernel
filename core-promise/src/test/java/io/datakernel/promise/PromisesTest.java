@@ -259,8 +259,7 @@ public final class PromisesTest {
 		await(Promises.loop(0,
 				i -> i < 5,
 				i -> Promises.delay(10L, i + 1)
-						.whenResult(counter::set)
-						.whenResult(System.out::println)));
+						.whenResult(counter::set)));
 		assertEquals(5, counter.get());
 	}
 

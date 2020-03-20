@@ -16,85 +16,66 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.common.Recyclable;
-import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.EnumSet;
-import java.util.Set;
+import java.util.ArrayDeque;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static java.util.Collections.emptySet;
 
 /**
- * It is basic implementation of {@link StreamSupplier}
- *
- * @param <T> type of received item
+ * This is a helper partial implementation of the {@link StreamSupplier}
+ * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	public static final StreamDataAcceptor<?> NO_ACCEPTOR = item -> {};
 
-	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
-	private final long createTick = eventloop.tick();
+	@Nullable
+	private StreamDataAcceptor<T> dataAcceptor;
+	private StreamDataAcceptor<T> dataAcceptorSafe;
+	private final ArrayDeque<T> buffer = new ArrayDeque<>();
+
+	{
+		dataAcceptorSafe = buffer::addLast;
+	}
 
 	private StreamConsumer<T> consumer;
 
+	private boolean flushRequest;
+	private boolean flushRunning;
+	private int flushAsync;
+
+	private boolean endOfStreamRequest;
 	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 
 	@Nullable
-	private StreamDataAcceptor<T> currentDataAcceptor;
+	private SettablePromise<Void> flushPromise;
 
-	private StreamDataAcceptor<T> lastDataAcceptor = $ -> {
-		throw new IllegalStateException("Uninitialized data receiver");
-	};
+	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
-	private final AsyncProduceController controller = new AsyncProduceController();
-
-	private enum ProduceStatus {
-		POSTED,
-		STARTED,
-		STARTED_ASYNC
-	}
-
-	@Nullable
-	private ProduceStatus produceStatus;
-
-	/**
-	 * Sets consumer for this supplier. At the moment of calling this method supplier shouldn't have consumer,
-	 * as well as consumer shouldn't have supplier, otherwise there will be error
-	 *
-	 * @param consumer consumer for streaming
-	 */
 	@Override
-	public final void setConsumer(@NotNull StreamConsumer<T> consumer) {
-		checkState(this.consumer == null, "Consumer has already been set");
-
-		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
-				LATE_BINDING_ERROR_MESSAGE, this);
+	public final Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
+		checkState(eventloop.inEventloopThread());
+		checkState(!isStarted());
 		this.consumer = consumer;
-		onWired();
 		consumer.getAcknowledgement()
-				.whenException(this::close)
-				.whenComplete(acknowledgement);
-	}
-
-	protected void onWired() {
-		eventloop.post(wrapContext(this, this::onStarted));
+				.whenResult(this::acknowledge)
+				.whenException(this::closeEx);
+		if (!isEndOfStream()) {
+			onStarted();
+		}
+		consumer.consume(this);
+		updateDataAcceptor();
+		return consumer.getAcknowledgement();
 	}
 
 	protected void onStarted() {
 	}
 
-	public boolean isWired() {
+	public final boolean isStarted() {
 		return consumer != null;
 	}
 
@@ -102,154 +83,223 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		return consumer;
 	}
 
-	public final boolean isReceiverReady() {
-		return currentDataAcceptor != null;
-	}
-
-	protected void send(T item) {
-		lastDataAcceptor.accept(item);
-	}
-
-	@Nullable
-	public final StreamDataAcceptor<T> getCurrentDataAcceptor() {
-		return currentDataAcceptor;
-	}
-
-	public StreamDataAcceptor<T> getLastDataAcceptor() {
-		return lastDataAcceptor;
-	}
-
-	protected final class AsyncProduceController {
-		private AsyncProduceController() {
+	@Override
+	public final void updateDataAcceptor() {
+		checkState(eventloop.inEventloopThread());
+		if (!isStarted()) return;
+		if (endOfStream.isComplete()) return;
+		StreamDataAcceptor<T> dataAcceptor = this.consumer.getDataAcceptor();
+		if (this.dataAcceptor == dataAcceptor) return;
+		this.dataAcceptor = dataAcceptor;
+		if (dataAcceptor != null) {
+			if (!isEndOfStream()) {
+				this.dataAcceptorSafe = dataAcceptor;
+			}
+			flush();
+		} else if (!isEndOfStream()) {
+			this.dataAcceptorSafe = buffer::addLast;
+			onSuspended();
 		}
+	}
 
-		public void begin() {
-			produceStatus = ProduceStatus.STARTED_ASYNC;
+	protected final void asyncBegin() {
+		flushAsync++;
+	}
+
+	protected final void asyncEnd() {
+		checkState(flushAsync > 0);
+		flushAsync--;
+	}
+
+	protected final void asyncResume() {
+		checkState(flushAsync > 0);
+		flushAsync--;
+		resume();
+	}
+
+	protected final void resume() {
+		if (flushRunning) {
+			flushRequest = true;
+		} else if (isReady() && !isEndOfStream()) {
+			onResumed();
 		}
+	}
 
-		public void end() {
-			produceStatus = null;
+	/**
+	 * Sends given item through this supplier.
+	 * <p>
+	 * This method stores the item to an internal buffer if supplier is in a suspended state,
+	 * and must never be called when supplier reaches {@link #sendEndOfStream() end of stream}.
+	 */
+	public final void send(T item) {
+		dataAcceptorSafe.accept(item);
+	}
+
+	/**
+	 * Puts this supplier in closed state with no error.
+	 * This operation is final and cannot be undone.
+	 * Only the first call causes any effect.
+	 */
+	public final Promise<Void> sendEndOfStream() {
+		checkState(eventloop.inEventloopThread());
+		if (endOfStreamRequest) return flushPromise;
+		if (flushAsync > 0) {
+			asyncEnd();
 		}
+		endOfStreamRequest = true;
+		//noinspection unchecked
+		this.dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+		flush();
+		return getFlushPromise();
+	}
 
-		public void resume() {
-			if (isReceiverReady()) {
-				produce(this);
-			} else {
-				end();
+	/**
+	 * Returns a promise that will be completed when all data items are propagated
+	 * to the actual data acceptor
+	 */
+	@NotNull
+	public final Promise<Void> getFlushPromise() {
+		if (isEndOfStream()) {
+			return endOfStream;
+		} else if (flushPromise != null) {
+			return flushPromise;
+		} else if (dataAcceptor != null) {
+			return Promise.complete();
+		} else {
+			flushPromise = new SettablePromise<>();
+			return flushPromise;
+		}
+	}
+
+	/**
+	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
+	 */
+	private void flush() {
+		checkState(eventloop.inEventloopThread());
+		flushRequest = true;
+		if (flushRunning || flushAsync > 0) return; // recursive call
+		if (endOfStream.isComplete()) return;
+		if (!isStarted()) return;
+
+		flushRunning = true;
+		while (flushRequest) {
+			flushRequest = false;
+			while (isReady() && !buffer.isEmpty()) {
+				T item = buffer.pollFirst();
+				this.dataAcceptor.accept(item);
+			}
+			if (isReady() && !isEndOfStream()) {
+				onResumed();
 			}
 		}
-	}
+		flushRunning = false;
 
-	protected void produce(AsyncProduceController async) {
-	}
-
-	public final void tryProduce() {
-		if (!isReceiverReady())
-			return;
-		if (produceStatus != null)
-			return;
-		produceStatus = ProduceStatus.STARTED;
-		produce(controller);
-		if (produceStatus == ProduceStatus.STARTED) {
-			produceStatus = null;
-		}
-	}
-
-	public final void postProduce() {
-		if (produceStatus != null)
-			return; // recursive call from downstream - just hot-switch to another receiver
-		produceStatus = ProduceStatus.POSTED;
-		eventloop.post(wrapContext(this, () -> {
-			produceStatus = null;
-			tryProduce();
-		}));
-	}
-
-	protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		postProduce();
-	}
-
-	@Override
-	public final void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		if (logger.isTraceEnabled()) logger.trace("Start producing: {}", this);
-
-		if (currentDataAcceptor == dataAcceptor) return;
+		if (flushAsync > 0) return;
+		if (!buffer.isEmpty()) return;
 		if (endOfStream.isComplete()) return;
-		currentDataAcceptor = dataAcceptor;
-		lastDataAcceptor = dataAcceptor;
-		onProduce(dataAcceptor);
+
+		if (!endOfStreamRequest) {
+			if (this.flushPromise != null){
+				SettablePromise<Void> flushPromise = this.flushPromise;
+				this.flushPromise = null;
+				flushPromise.set(null);
+			}
+			return;
+		}
+
+		dataAcceptor = null;
+		if (flushPromise != null) {
+			flushPromise.set(null);
+		}
+		endOfStream.set(null);
+		cleanup();
 	}
 
-	protected boolean isClosed() {
-		return endOfStream.isComplete();
+	/**
+	 * Called when this supplier changes from suspended state to a normal one.
+	 */
+	protected void onResumed() {
 	}
 
+	/**
+	 * Called when this supplier changes a normal state to a suspended one.
+	 */
 	protected void onSuspended() {
 	}
 
-	@Override
-	public final void suspend() {
-		if (logger.isTraceEnabled()) logger.trace("Suspend supplier: {}", this);
-		if (!isReceiverReady())
-			return;
-		currentDataAcceptor = null;
-		onSuspended();
+	/**
+	 * Returns current data acceptor (the last one set with the {@link #updateDataAcceptor()} method)
+	 * or <code>null</code> when this supplier is in a suspended state.
+	 */
+	@Nullable
+	public final StreamDataAcceptor<T> getDataAcceptor() {
+		return dataAcceptor;
 	}
 
-	public Promise<Void> sendEndOfStream() {
-		checkState(consumer != null);
-		if (endOfStream.isComplete()) return endOfStream;
-		currentDataAcceptor = null;
-		lastDataAcceptor = Recyclable::tryRecycle;
-		endOfStream.set(null);
-		eventloop.post(wrapContext(this, this::cleanup));
-		return consumer.getAcknowledgement();
-	}
-
-	@Override
-	public final void close(@NotNull Throwable e) {
-		if (endOfStream.isComplete()) return;
-		if (!(e instanceof ExpectedException)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("StreamSupplier {} closed with error {}", this, e.toString());
-			}
-		}
-		currentDataAcceptor = null;
-		lastDataAcceptor = Recyclable::tryRecycle;
-		endOfStream.setException(e);
-		eventloop.post(wrapContext(this, this::cleanup));
-		onError(e);
-	}
-
-	protected abstract void onError(Throwable e);
-
-	protected void cleanup() {
+	/**
+	 * Returns <code>true</code> when this supplier is in normal state and
+	 * <cod>false</cod> when it is suspended or closed.
+	 */
+	public final boolean isReady() {
+		return dataAcceptor != null;
 	}
 
 	@Override
 	public final Promise<Void> getEndOfStream() {
+		checkState(eventloop.inEventloopThread());
 		return endOfStream;
 	}
 
-	public Promise<Void> getAcknowledgement() {
-		return acknowledgement;
+	public final boolean isEndOfStream() {
+		return endOfStreamRequest;
 	}
 
-	/**
-	 * This method is useful for stream transformers that might add some capability to the stream
-	 */
-	protected static Set<StreamCapability> extendCapabilities(@Nullable StreamSupplier<?> supplier,
-			StreamCapability capability, StreamCapability... capabilities) {
-		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
-		if (supplier != null) {
-			result.addAll(supplier.getCapabilities());
-		}
-		return result;
+	private void acknowledge() {
+		onAcknowledge();
+		close();
+	}
+
+	protected void onAcknowledge() {
 	}
 
 	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return emptySet();
+	public final void closeEx(@NotNull Throwable e) {
+		checkState(eventloop.inEventloopThread());
+		endOfStreamRequest = true;
+		dataAcceptor = null;
+		//noinspection unchecked
+		dataAcceptorSafe = (StreamDataAcceptor<T>) NO_ACCEPTOR;
+		if (flushPromise != null) {
+			flushPromise.trySetException(e);
+		}
+		if (endOfStream.trySetException(e)) {
+			onError(e);
+			cleanup();
+		}
 	}
 
+	/**
+	 * This method will be called when this supplier erroneously changes to the closed state.
+	 */
+	protected void onError(Throwable e) {
+	}
+
+	private void cleanup() {
+		onComplete();
+		eventloop.post(this::onCleanup);
+		buffer.clear();
+		endOfStream.resetCallbacks();
+		if (flushPromise != null) {
+			flushPromise.resetCallbacks();
+		}
+	}
+
+	protected void onComplete() {
+	}
+
+	/**
+	 * This method will be asynchronously called after this supplier changes to the closed state regardless of error.
+	 */
+	protected void onCleanup() {
+	}
 }

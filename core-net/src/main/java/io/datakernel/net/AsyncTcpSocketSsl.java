@@ -100,7 +100,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		if (e == null) {
 			return Promise.of(value);
 		} else {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 	}
@@ -113,7 +113,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			shouldReturnEndOfStream = false;
 			return Promise.of(null);
 		}
-		if (!isOpen()) return Promise.ofException(CLOSE_EXCEPTION);
+		if (isClosed()) return Promise.ofException(CLOSE_EXCEPTION);
 		if (engine2app.canRead()) {
 			ByteBuf readBuf = engine2app;
 			engine2app = ByteBuf.empty();
@@ -128,7 +128,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	@NotNull
 	@Override
 	public Promise<Void> write(@Nullable ByteBuf buf) {
-		if (!isOpen()) {
+		if (isClosed()) {
 			if (buf != null) {
 				buf.recycle();
 			}
@@ -152,7 +152,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		upstream.read()
 				.thenEx(this::sanitize)
 				.whenResult(buf -> {
-					if (!isOpen()) {
+					if (isClosed()) {
 						assert pendingUpstreamWrite != null;
 						tryRecycle(buf);
 						return;
@@ -170,7 +170,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 								this.read = null;
 								read.set(null);
 							}
-							close(new CloseWithoutNotifyException(AsyncTcpSocketSsl.class, "Peer closed without sending close_notify", e));
+							closeEx(new CloseWithoutNotifyException(AsyncTcpSocketSsl.class, "Peer closed without sending close_notify", e));
 						}
 					}
 				});
@@ -187,8 +187,8 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		writePromise
 				.thenEx(this::sanitize)
 				.whenComplete(() -> this.pendingUpstreamWrite = null)
-				.whenResult($ -> {
-					if (!isOpen()) {
+				.whenResult(() -> {
+					if (isClosed()) {
 						return;
 					}
 					if (engine.isOutboundDone()) {
@@ -224,7 +224,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		net2engine = recycleIfEmpty(net2engine);
 
 		dstBuf.ofWriteByteBuffer(dstBuffer);
-		if (isOpen() && dstBuf.canRead()) {
+		if (!isClosed() && dstBuf.canRead()) {
 			engine2app = ByteBufPool.append(engine2app, dstBuf);
 		} else {
 			dstBuf.recycle();
@@ -267,7 +267,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	 */
 	private void doHandshake() throws SSLException {
 		SSLEngineResult result = null;
-		while (isOpen()) {
+		while (!isClosed()) {
 			if (result != null && result.getStatus() == CLOSED) {
 				close();
 				return;
@@ -293,16 +293,16 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 	}
 
 	private void executeTasks() {
-		while (isOpen()) {
+		while (!isClosed()) {
 			Runnable task = engine.getDelegatedTask();
 			if (task == null) break;
 			Promise.ofBlockingRunnable(executor, task::run)
-					.whenResult($ -> {
-						if (!isOpen()) return;
+					.whenResult(() -> {
+						if (isClosed()) return;
 						try {
 							doHandshake();
 						} catch (SSLException e) {
-							close(e);
+							closeEx(e);
 						}
 					});
 		}
@@ -312,12 +312,12 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		try {
 			doSync();
 		} catch (SSLException e) {
-			close(e);
+			closeEx(e);
 		}
 	}
 
 	private void doSync() throws SSLException {
-		if (!isOpen()) return;
+		if (isClosed()) return;
 		SSLEngineResult result = null;
 		HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
 
@@ -331,10 +331,10 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			do {
 				result = tryToWrap();
 			}
-			while (isOpen() && app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
+			while (!isClosed() && app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 		}
 
-		if (!isOpen()) {
+		if (isClosed()) {
 			return;
 		}
 
@@ -363,7 +363,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			return;
 		}
 
-		if (isOpen() && (read != null || !engine2app.canRead())){
+		if (!isClosed() && (read != null || !engine2app.canRead())) {
 			doRead();
 		}
 	}
@@ -380,7 +380,7 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			engine.beginHandshake();
 			sync();
 		} catch (SSLException e) {
-			close(e);
+			closeEx(e);
 		}
 	}
 
@@ -399,13 +399,9 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		}
 	}
 
-	private boolean isOpen() {
-		return net2engine != null;
-	}
-
 	@Override
-	public void close(@NotNull Throwable e) {
-		if (!isOpen()) return;
+	public void closeEx(@NotNull Throwable e) {
+		if (isClosed()) return;
 		tryRecycle(net2engine);
 		tryRecycle(engine2app);
 		net2engine = engine2app = null;
@@ -413,9 +409,9 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 		tryRecycle(app2engine); // app2Engine is recycled later as it is used while sending close notify messages
 		app2engine = null;
 		if (pendingUpstreamWrite != null) {
-			pendingUpstreamWrite.whenResult($ -> upstream.close(e));
+			pendingUpstreamWrite.whenResult(() -> upstream.closeEx(e));
 		} else {
-			upstream.close(e);
+			upstream.closeEx(e);
 		}
 		if (write != null) {
 			write.setException(e);
@@ -430,5 +426,10 @@ public final class AsyncTcpSocketSsl implements AsyncTcpSocket {
 			}
 			read = null;
 		}
+	}
+
+	@Override
+	public boolean isClosed() {
+		return net2engine == null;
 	}
 }

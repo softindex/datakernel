@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 SoftIndex LLC.
+ * Copyright (C) 2015-2018 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,126 +16,143 @@
 
 package io.datakernel.datastream;
 
-import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.EnumSet;
-import java.util.Set;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static java.util.Collections.emptySet;
 
 /**
- * It is basic implementation of {@link StreamConsumer}
- *
- * @param <T> type of received item
+ * This is a helper partial implementation of the {@link StreamConsumer}
+ * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private final Logger logger = LoggerFactory.getLogger(getClass());
+	private StreamSupplier<T> supplier;
+	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
+	private boolean endOfStream;
+	private @Nullable StreamDataAcceptor<T> dataAcceptor;
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
-	private final long createTick = eventloop.tick();
-
-	private StreamSupplier<T> supplier;
-
-	private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
-
-	/**
-	 * Sets wired supplier. It will sent data to this consumer
-	 *
-	 * @param supplier stream supplier for setting
-	 */
 
 	@Override
-	public final void setSupplier(@NotNull StreamSupplier<T> supplier) {
-		checkState(this.supplier == null, "Supplier has already been set");
-		checkState(getCapabilities().contains(LATE_BINDING) || eventloop.tick() == createTick,
-				LATE_BINDING_ERROR_MESSAGE, this);
-		this.supplier = supplier;
-		onWired();
-		supplier.getEndOfStream()
-				.whenComplete(endOfStream)
-				.whenException(this::close)
-				.whenResult($1 -> onEndOfStream()
-						.whenException(this::close)
-						.post()
-						.whenResult($2 -> acknowledge()));
+	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
+		checkState(eventloop.inEventloopThread());
+		checkState(!isStarted());
+		if (acknowledgement.isComplete()) return;
+		this.supplier = streamSupplier;
+		if (!streamSupplier.getEndOfStream().isException()) {
+			onStarted();
+		}
+		streamSupplier.getEndOfStream()
+				.whenResult(this::endOfStream)
+				.whenException(this::closeEx);
 	}
 
-	protected void onWired() {
-		eventloop.post(wrapContext(this, this::onStarted));
+	@Nullable
+	@Override
+	public final StreamDataAcceptor<T> getDataAcceptor() {
+		return dataAcceptor;
 	}
 
+	/**
+	 * This method will be called when this consumer begins receiving items.
+	 * It may not be called if consumer never received anything getting closed.
+	 */
 	protected void onStarted() {
 	}
 
-	public boolean isWired() {
-		return supplier != null;
+	public final boolean isStarted() {
+		return this.supplier != null;
 	}
 
 	public final StreamSupplier<T> getSupplier() {
 		return supplier;
 	}
 
-	protected final void acknowledge() {
-		if (acknowledgement.isComplete()) return;
-		acknowledgement.set(null);
-		eventloop.post(wrapContext(this, this::cleanup));
+	private void endOfStream() {
+		checkState(eventloop.inEventloopThread());
+		if (endOfStream) return;
+		endOfStream = true;
+		onEndOfStream();
 	}
 
-	protected abstract Promise<Void> onEndOfStream();
+	/**
+	 * This method will be called when associated supplier closes.
+	 */
+	protected void onEndOfStream() {
+	}
 
-	@Override
-	public final void close(@NotNull Throwable e) {
-		if (acknowledgement.isComplete()) return;
-		acknowledgement.setException(e);
-		if (!(e instanceof ExpectedException)) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("StreamConsumer {} closed with error {}", this, e.toString());
-			}
+	/**
+	 * Begins receiving data into given acceptor, resumes the associated supplier to receive data from it.
+	 */
+	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
+		checkState(eventloop.inEventloopThread());
+		if (endOfStream) return;
+		if (this.dataAcceptor == dataAcceptor) return;
+		this.dataAcceptor = dataAcceptor;
+		if (!isStarted()) return;
+		supplier.updateDataAcceptor();
+	}
+
+	/**
+	 * Suspends the associated supplier.
+	 */
+	public final void suspend() {
+		resume(null);
+	}
+
+	/**
+	 * Triggers the {@link #getAcknowledgement() acknowledgement} of this consumer.
+	 */
+	public final void acknowledge() {
+		checkState(eventloop.inEventloopThread());
+		endOfStream = true;
+		if (acknowledgement.trySet(null)) {
+			cleanup();
 		}
-		onError(e);
-		eventloop.post(wrapContext(this, this::cleanup));
-	}
-
-	protected abstract void onError(Throwable e);
-
-	protected void cleanup() {
-	}
-
-	public Promise<Void> getEndOfStream() {
-		return endOfStream;
 	}
 
 	@Override
 	public final Promise<Void> getAcknowledgement() {
+		checkState(eventloop.inEventloopThread());
 		return acknowledgement;
 	}
 
-	/**
-	 * This method is useful for stream transformers that might add some capability to the stream
-	 */
-	protected static Set<StreamCapability> extendCapabilities(@Nullable StreamConsumer<?> consumer,
-			StreamCapability capability, StreamCapability... capabilities) {
-		EnumSet<StreamCapability> result = EnumSet.of(capability, capabilities);
-		if (consumer != null) {
-			result.addAll(consumer.getCapabilities());
-		}
-		return result;
+	public final boolean isEndOfStream() {
+		return endOfStream;
 	}
 
 	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return emptySet();
+	public final void closeEx(@NotNull Throwable e) {
+		checkState(eventloop.inEventloopThread());
+		endOfStream = true;
+		if (acknowledgement.trySetException(e)) {
+			onError(e);
+			cleanup();
+		}
 	}
 
+	/**
+	 * This method will be called when this consumer erroneously changes to the acknowledged state.
+	 */
+	protected void onError(Throwable e) {
+	}
+
+	private void cleanup() {
+		onComplete();
+		eventloop.post(this::onCleanup);
+		acknowledgement.resetCallbacks();
+		dataAcceptor = null;
+	}
+
+	protected void onComplete() {
+	}
+
+	/**
+	 * This method will be asynchronously called after this consumer changes to the acknowledged state regardless of error.
+	 */
+	protected void onCleanup() {
+	}
 }

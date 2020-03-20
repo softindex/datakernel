@@ -91,7 +91,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	}
 
 	@NotNull
-	public OTStateManager<K, D> withPoll(@NotNull RetryPolicy pollRetryPolicy) {
+	public OTStateManager<K, D> withPoll(@NotNull RetryPolicy<?> pollRetryPolicy) {
 		return withPoll(poll -> poll.withExecutor(AsyncExecutors.retry(pollRetryPolicy)));
 	}
 
@@ -111,7 +111,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 	@Override
 	public Promise<Void> start() {
 		return checkout()
-				.whenResult($ -> poll());
+				.whenResult(this::poll);
 	}
 
 	@NotNull
@@ -174,7 +174,7 @@ public final class OTStateManager<K, D> implements EventloopService {
 			poll.get()
 					.async()
 					.whenComplete(() -> isPolling = false)
-					.whenComplete(($, e) -> {
+					.whenComplete(() -> {
 						if (!isSyncing()) {
 							poll();
 						}

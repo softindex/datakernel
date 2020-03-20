@@ -57,8 +57,9 @@ public final class NodeSupplierOfIterable<T> implements Node {
 			supplier = StreamSupplier.ofIterator((Iterator<T>) object);
 		} else if (object instanceof Iterable) {
 			supplier = StreamSupplier.ofIterable((Iterable<T>) object);
-		} else
-			throw new IllegalArgumentException("Object at id " + iterableId + " is not an iterator or iterable, it is " + object);
+		} else {
+			throw new IllegalArgumentException("Object with id '" + iterableId + "' is not an iterator or iterable, it is " + object);
+		}
 		taskContext.export(output, supplier);
 	}
 
@@ -68,5 +69,10 @@ public final class NodeSupplierOfIterable<T> implements Node {
 
 	public StreamId getOutput() {
 		return output;
+	}
+
+	@Override
+	public String toString() {
+		return "NodeSupplierOfIterable{iterableId=" + iterableId + ", output=" + output + '}';
 	}
 }

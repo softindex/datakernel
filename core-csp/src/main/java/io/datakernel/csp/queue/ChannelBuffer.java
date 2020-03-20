@@ -137,19 +137,14 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		return size() <= bufferMinSize;
 	}
 
-	public boolean isPendingPut() {
+	@Override
+	public boolean isWaitingPut() {
 		return put != null;
 	}
 
-	public boolean isPendingTake() {
+	@Override
+	public boolean isWaitingTake() {
 		return take != null;
-	}
-
-	/**
-	 * Returns amount of elements in this buffer.
-	 */
-	public int size() {
-		return (tail - head) & (elements.length - 1);
 	}
 
 	/**
@@ -161,6 +156,13 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 */
 	public boolean isEmpty() {
 		return tail == head;
+	}
+
+	/**
+	 * Returns amount of elements in this buffer.
+	 */
+	public int size() {
+		return (tail - head) & (elements.length - 1);
 	}
 
 	/**
@@ -336,7 +338,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * @param e exception that is used to close buffer with
 	 */
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (exception != null) return;
 		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {

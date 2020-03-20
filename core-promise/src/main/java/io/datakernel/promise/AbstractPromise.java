@@ -18,6 +18,7 @@ package io.datakernel.promise;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.common.Check;
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.Async;
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 import static io.datakernel.common.Preconditions.checkState;
@@ -40,6 +42,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 	private static final Boolean CHECK = Check.isEnabled(AbstractPromise.class);
 
 	private static final Object PROMISE_NOT_SET = new Object();
+	private static final boolean RESET_CALLBACKS = ApplicationSettings.getBoolean(AbstractPromise.class, "resetCallbacks", false);
 
 	protected T result = (T) PROMISE_NOT_SET;
 
@@ -48,6 +51,16 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 	@Nullable
 	protected Callback<? super T> next;
+
+	public void reset() {
+		this.result = (T) PROMISE_NOT_SET;
+		this.exception = null;
+		this.next = null;
+	}
+
+	public void resetCallbacks() {
+		this.next = null;
+	}
 
 	@Override
 	public final boolean isComplete() {
@@ -96,6 +109,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		result = value;
 		if (next != null) {
 			next.accept(value, null);
+			if (RESET_CALLBACKS) {
+				next = null;
+			}
 		}
 	}
 
@@ -106,6 +122,9 @@ abstract class AbstractPromise<T> implements Promise<T> {
 		exception = e;
 		if (next != null) {
 			next.accept(null, e);
+			if (RESET_CALLBACKS) {
+				next = null;
+			}
 		}
 	}
 
@@ -179,7 +198,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String describe() {
-				return "Promise.map(" + formatToString(fn) + ')';
+				return ".map(" + formatToString(fn) + ')';
 			}
 		};
 		subscribe(resultPromise);
@@ -222,7 +241,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String describe() {
-				return "Promise.mapEx(" + formatToString(fn) + ')';
+				return ".mapEx(" + formatToString(fn) + ')';
 			}
 		};
 		subscribe(resultPromise);
@@ -258,7 +277,42 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String describe() {
-				return "Promise.then(" + formatToString(fn) + ')';
+				return ".then(" + formatToString(fn) + ')';
+			}
+		};
+		subscribe(resultPromise);
+		return resultPromise;
+	}
+
+	@Override
+	public @NotNull <U> Promise<U> then(@NotNull Supplier<? extends Promise<? extends U>> fn) {
+		if (isComplete()) {
+			try {
+				return isResult() ? (Promise<U>) fn.get() : (Promise<U>) this;
+			} catch (UncheckedException u) {
+				return Promise.ofException(u.getCause());
+			}
+		}
+		NextPromise<T, U> resultPromise = new NextPromise<T, U>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					Promise<? extends U> promise;
+					try {
+						promise = fn.get();
+					} catch (UncheckedException u) {
+						completeExceptionally(u.getCause());
+						return;
+					}
+					promise.whenComplete(this::complete);
+				} else {
+					completeExceptionally(e);
+				}
+			}
+
+			@Override
+			public String describe() {
+				return ".then(" + formatToString(fn) + ')';
 			}
 		};
 		subscribe(resultPromise);
@@ -301,7 +355,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String describe() {
-				return "Promise.thenEx(" + formatToString(fn) + ')';
+				return ".thenEx(" + formatToString(fn) + ')';
 			}
 		};
 		subscribe(resultPromise);
@@ -334,7 +388,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String toString() {
-				return "Promise.whenComplete(" + formatToString(action) + ')';
+				return ".whenComplete(" + formatToString(action) + ')';
 			}
 		});
 		return this;
@@ -357,7 +411,29 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String toString() {
-				return "Promise.whenResult(" + formatToString(action) + ')';
+				return ".whenResult(" + formatToString(action) + ')';
+			}
+		});
+		return this;
+	}
+
+	@Override
+	public Promise<T> whenResult(@NotNull Runnable action) {
+		if (isComplete()) {
+			if (isResult()) action.run();
+			return this;
+		}
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e == null) {
+					action.run();
+				}
+			}
+
+			@Override
+			public String toString() {
+				return ".whenResult(" + formatToString(action) + ')';
 			}
 		});
 		return this;
@@ -381,7 +457,31 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String toString() {
-				return "Promise.whenException(" + formatToString(action) + ')';
+				return ".whenException(" + formatToString(action) + ')';
+			}
+		});
+		return this;
+	}
+
+	@Override
+	public Promise<T> whenException(@NotNull Runnable action) {
+		if (isComplete()) {
+			if (isException()) {
+				action.run();
+			}
+			return this;
+		}
+		subscribe(new SimpleCallback<T>() {
+			@Override
+			public void accept(T result, @Nullable Throwable e) {
+				if (e != null) {
+					action.run();
+				}
+			}
+
+			@Override
+			public String toString() {
+				return ".whenException(" + formatToString(action) + ')';
 			}
 		});
 		return this;
@@ -465,7 +565,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 		@Override
 		public String describe() {
-			return "Promise.combine(" + formatToString(fn) + ')';
+			return ".combine(" + formatToString(fn) + ')';
 		}
 	}
 
@@ -500,7 +600,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 		@Override
 		public String describe() {
-			return "Promise.both()";
+			return ".both()";
 		}
 	}
 
@@ -535,7 +635,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 		@Override
 		public String describe() {
-			return "Promise.either()";
+			return ".either()";
 		}
 	}
 
@@ -557,7 +657,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String describe() {
-				return "Promise.toTry()";
+				return ".toTry()";
 			}
 		};
 		subscribe(resultPromise);
@@ -582,7 +682,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String describe() {
-				return "Promise.toVoid()";
+				return ".toVoid()";
 			}
 		};
 		subscribe(resultPromise);
@@ -614,7 +714,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 
 			@Override
 			public String toString() {
-				return "Promise.toCompletableFuture()";
+				return ".toCompletableFuture()";
 			}
 		});
 		return future;
@@ -664,7 +764,7 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				sb.append(((AbstractPromise<T>) callback).toString(indent));
 			} else if (!(callback instanceof SimpleCallback)) {
 				sb.append(indent)
-						.append("Promise.whenComplete(")
+						.append(".whenComplete(")
 						.append(formatToString(callback))
 						.append(')');
 			} else {
@@ -689,8 +789,6 @@ abstract class AbstractPromise<T> implements Promise<T> {
 				sb.append(exception.getClass().getSimpleName());
 			}
 			sb.append('}');
-		} else {
-			sb.append("<unset>");
 		}
 		appendChildren(sb, next, indent);
 		return sb.toString();

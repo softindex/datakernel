@@ -95,7 +95,7 @@ public interface FsClient {
 
 	default Promise<Void> truncate(@NotNull String name, long revision) {
 		return upload(name, 0, revision)
-				.then(consumer -> consumer.accept(null));
+				.then(ChannelConsumer::acceptEndOfStream);
 	}
 
 	// endregion
@@ -179,7 +179,7 @@ public interface FsClient {
 	 */
 	default Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return copy(name, target, targetRevision)
-				.then($ -> delete(name, tombstoneRevision));
+				.then(() -> delete(name, tombstoneRevision));
 	}
 
 	default Promise<Void> move(@NotNull String name, @NotNull String target) {

@@ -251,7 +251,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		scheduledReadTimeout = eventloop.delayBackground(readTimeout, wrapContext(this, () -> {
 			if (inspector != null) inspector.onReadTimeout();
 			scheduledReadTimeout = null;
-			close(TIMEOUT_EXCEPTION);
+			closeEx(TIMEOUT_EXCEPTION);
 		}));
 	}
 
@@ -260,12 +260,12 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		scheduledWriteTimeout = eventloop.delayBackground(writeTimeout, wrapContext(this, () -> {
 			if (inspector != null) inspector.onWriteTimeout();
 			scheduledWriteTimeout = null;
-			close(TIMEOUT_EXCEPTION);
+			closeEx(TIMEOUT_EXCEPTION);
 		}));
 	}
 
 	private void updateInterests() {
-		assert isOpen() && ops >= 0;
+		assert !isClosed() && ops >= 0;
 		byte newOps = (byte) (((readBuf == null && !readEndOfStream) ? SelectionKey.OP_READ : 0) | (writeBuf == null || writeEndOfStream ? 0 : SelectionKey.OP_WRITE));
 		if (key == null) {
 			ops = newOps;
@@ -273,7 +273,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 				key = channel.register(eventloop.ensureSelector(), ops, this);
 				CONNECTION_COUNT.incrementAndGet();
 			} catch (ClosedChannelException e) {
-				close(e);
+				closeEx(e);
 			}
 		} else {
 			if (ops != newOps) {
@@ -287,7 +287,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	@Override
 	public Promise<ByteBuf> read() {
 		if (CHECK) checkState(eventloop.inEventloopThread());
-		if (channel == null) return Promise.ofException(CLOSE_EXCEPTION);
+		if (isClosed()) return Promise.ofException(CLOSE_EXCEPTION);
 		read = null;
 		if (readBuf != null || readEndOfStream) {
 			ByteBuf readBuf = this.readBuf;
@@ -311,7 +311,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		try {
 			doRead();
 		} catch (IOException e) {
-			close(e);
+			closeEx(e);
 			return;
 		}
 		if (read != null && (readBuf != null || readEndOfStream)) {
@@ -321,7 +321,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 			this.readBuf = null;
 			read.set(readBuf);
 		}
-		if (!isOpen()) return;
+		if (isClosed()) return;
 		ops = (byte) (ops & 0x7f);
 		updateInterests();
 	}
@@ -378,7 +378,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 			checkState(eventloop.inEventloopThread());
 			checkState(!writeEndOfStream, "End of stream has already been sent");
 		}
-		if (channel == null) {
+		if (isClosed()) {
 			if (buf != null) buf.recycle();
 			return Promise.ofException(CLOSE_EXCEPTION);
 		}
@@ -402,7 +402,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		try {
 			doWrite();
 		} catch (IOException e) {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 
@@ -427,7 +427,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		try {
 			doWrite();
 		} catch (IOException e) {
-			close(e);
+			closeEx(e);
 			return;
 		}
 		if (writeBuf == null) {
@@ -435,7 +435,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 			this.write = null;
 			write.set(null);
 		}
-		if (!isOpen()) return;
+		if (isClosed()) return;
 		ops = (byte) (ops & 0x7f);
 		updateInterests();
 	}
@@ -477,9 +477,9 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (CHECK) checkState(eventloop.inEventloopThread());
-		if (channel == null) return;
+		if (isClosed()) return;
 		doClose();
 		readBuf = nullify(readBuf, ByteBuf::recycle);
 		writeBuf = nullify(writeBuf, ByteBuf::recycle);
@@ -495,8 +495,9 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 		CONNECTION_COUNT.decrementAndGet();
 	}
 
-	public boolean isOpen() {
-		return channel != null;
+	@Override
+	public boolean isClosed() {
+		return channel == null;
 	}
 
 	@Nullable

@@ -28,7 +28,7 @@ public final class ChannelExample {
 	private static void toCollector() {
 		ChannelSupplier.of(1, 2, 3, 4, 5)
 				.toCollector(Collectors.toList())
-				.whenResult(System.out::println);
+				.whenResult(x -> System.out.println(x));
 	}
 
 	private static void filter() {

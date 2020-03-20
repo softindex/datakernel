@@ -53,21 +53,18 @@ public final class AbstractServerTest {
 		SocketSettings settings = SocketSettings.create().withImplReadTimeout(Duration.ofMillis(100000L)).withImplWriteTimeout(Duration.ofMillis(100000L));
 
 		RefLong delay = new RefLong(5);
-		SimpleServer.create(socket -> {
-			Promises.<ByteBuf>until(null, $ ->
-							socket.read()
-									.whenResult(buf -> {
-										getCurrentEventloop().delay(delay.inc(), () -> {
-											socket.write(buf)
-													.whenComplete(($2, e) -> {
-														if (buf == null) {
-															socket.close();
-														}
-													});
-										});
-									}),
-					Objects::isNull);
-		})
+		SimpleServer.create(socket -> Promises.<ByteBuf>until(null,
+				$ ->
+						socket.read()
+								.whenResult(buf ->
+										getCurrentEventloop().delay(delay.inc(),
+												() -> socket.write(buf)
+														.whenComplete(() -> {
+															if (buf == null) {
+																socket.close();
+															}
+														}))),
+				Objects::isNull))
 				.withSocketSettings(settings)
 				.withListenAddress(address)
 				.withAcceptOnce()
@@ -76,8 +73,8 @@ public final class AbstractServerTest {
 		ByteBuf response = await(AsyncTcpSocketNio.connect(address)
 				.then(socket ->
 						socket.write(ByteBufStrings.wrapAscii(message))
-								.then($ -> socket.write(null))
-								.then($ -> {
+								.then(() -> socket.write(null))
+								.then(() -> {
 									ByteBufQueue queue = new ByteBufQueue();
 									return Promises.<ByteBuf>until(null,
 											$2 -> socket.read()

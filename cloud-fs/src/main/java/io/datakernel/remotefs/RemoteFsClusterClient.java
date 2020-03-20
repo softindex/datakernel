@@ -16,7 +16,7 @@
 
 package io.datakernel.remotefs;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.Initializable;
@@ -296,7 +296,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 					// check number of uploads only here, so even if there were less connections
 					// than replicationCount, they will still upload
 					return Promise.of(consumer.withAcknowledgement(ack -> ack
-							.then($ -> uploadResults)
+							.then(() -> uploadResults)
 							.then(ackTries -> {
 								long successCount = ackTries.stream().filter(Try::isSuccess).count();
 								// check number of uploads only here, so even if there were less connections
@@ -381,7 +381,7 @@ public final class RemoteFsClusterClient implements FsClient, Initializable<Remo
 												.withEndOfStream(eos -> eos
 														.whenException(e -> markIfDead(piwfs.getValue1(), e))
 														.whenComplete(downloadFinishPromise.recordStats())));
-							}), Cancellable::cancel);
+							}), AsyncCloseable::close);
 				})
 				.whenComplete(downloadStartPromise.recordStats());
 	}

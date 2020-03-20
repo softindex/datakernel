@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.dataflow.server.command;
+package io.datakernel.datastream;
 
-public final class DatagraphResponseAck extends DatagraphResponse {
+/**
+ * A separate interface for components that have some kind of output represented with a {@link StreamSupplier}.
+ */
+public interface HasStreamOutput<O> {
+	StreamSupplier<O> getOutput();
 }

@@ -2,7 +2,6 @@ import io.datakernel.async.callback.Callback;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
@@ -57,7 +56,7 @@ public class RpcBenchmarkClient extends Launcher {
 		return RpcClient.create(eventloop)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),
-						ChannelSerializer.MAX_SIZE_1,
+                        MemSize.bytes(128),
 						config.get(ofBoolean(), "rpc.compression", false))
 				.withMessageTypes(Integer.class)
 				.withStrategy(server(new InetSocketAddress(config.get(ofInteger(), "rpc.server.port"))));

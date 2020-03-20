@@ -59,10 +59,10 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 					if (buf != null) {
 						//noinspection ConstantConditions
 						ensureConsumer()
-								.then($ -> currentConsumer.accept(buf))
-								.whenResult($ -> doProcess());
+								.then(() -> currentConsumer.accept(buf))
+								.whenResult(this::doProcess);
 					} else {
-						flush().whenResult($ -> completeProcess());
+						flush().whenResult(this::completeProcess);
 					}
 				});
 	}
@@ -76,7 +76,7 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 
 	private Promise<Void> startNewChunk(LogFile newChunkName) {
 		return flush()
-				.then($ -> {
+				.then(() -> {
 					this.currentChunk = (currentChunk == null) ? newChunkName : new LogFile(newChunkName.getName(), 0);
 					return client.upload(namingScheme.path(logPartition, currentChunk))
 							.thenEx(this::sanitize)
@@ -90,15 +90,15 @@ final class LogStreamChunker extends AbstractCommunicatingProcess implements Cha
 		if (currentConsumer == null) {
 			return Promise.complete();
 		}
-		return currentConsumer.accept(null)
-				.whenResult($ -> currentConsumer = null);
+		return currentConsumer.acceptEndOfStream()
+				.whenResult(() -> currentConsumer = null);
 	}
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
+		input.closeEx(e);
 		if (currentConsumer != null) {
-			currentConsumer.close(e);
+			currentConsumer.closeEx(e);
 		}
 	}
 }

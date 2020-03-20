@@ -126,7 +126,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 
 					return null;
 				})
-				.whenException(this::close)
+				.whenException(this::closeEx)
 				.whenResult(chunkLength -> {
 					if (chunkLength != 0) {
 						consumeCRLF(chunkLength);
@@ -141,18 +141,18 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 		int newChunkLength = chunkLength - buf.readRemaining();
 		if (newChunkLength != 0) {
 			Promise.complete()
-					.then($ -> buf.canRead() ? output.accept(buf) : Promise.complete())
-					.then($ -> bufs.isEmpty() ? input.needMoreData() : Promise.complete())
-					.whenResult($ -> processData(newChunkLength));
+					.then(() -> buf.canRead() ? output.accept(buf) : Promise.complete())
+					.then(() -> bufs.isEmpty() ? input.needMoreData() : Promise.complete())
+					.whenResult(() -> processData(newChunkLength));
 			return;
 		}
 		input.parse(assertBytes(CRLF))
 				.whenException(e -> {
 					buf.recycle();
-					close(MALFORMED_CHUNK);
+					closeEx(MALFORMED_CHUNK);
 				})
-				.then($ -> output.accept(buf))
-				.whenResult($ -> processLength());
+				.then(() -> output.accept(buf))
+				.whenResult(this::processLength);
 	}
 
 	private void consumeCRLF(int chunkLength) {
@@ -165,8 +165,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					return maybeResult;
 				})
 				.whenResult(ByteBuf::recycle)
-				.whenException(this::close)
-				.whenResult($ -> processData(chunkLength));
+				.whenException(this::closeEx)
+				.whenResult(() -> processData(chunkLength));
 	}
 
 	private void validateLastChunk() {
@@ -180,8 +180,8 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 					bufs.skip(i + 4);
 
 					input.endOfStream()
-							.then($ -> output.accept(null))
-							.whenResult($ -> completeProcess());
+							.then(output::acceptEndOfStream)
+							.whenResult(this::completeProcess);
 					return;
 				}
 			}
@@ -190,12 +190,12 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 		}
 
 		input.needMoreData()
-				.whenResult($ -> validateLastChunk());
+				.whenResult(this::validateLastChunk);
 	}
 
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 }

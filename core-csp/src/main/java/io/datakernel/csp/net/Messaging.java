@@ -16,13 +16,13 @@
 
 package io.datakernel.csp.net;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 
-public interface Messaging<I, O> extends Cancellable {
+public interface Messaging<I, O> extends AsyncCloseable {
 	Promise<I> receive();
 
 	Promise<Void> send(O msg);

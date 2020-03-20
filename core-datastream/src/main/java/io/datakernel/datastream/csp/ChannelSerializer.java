@@ -22,6 +22,7 @@ import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
@@ -37,19 +38,53 @@ import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.max;
 
+/**
+ * An adapter that converts a {@link ChannelConsumer} of {@link ByteBuf ByteBufs} to a {@link StreamConsumer} of some type,
+ * that is serialized into binary data using given {@link BinarySerializer}.
+ */
 public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implements WithStreamToChannel<ChannelSerializer<T>, T, ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(ChannelSerializer.class);
-	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
-	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
 
+	/**
+	 * Binary format: 1-byte varlen message size + message, for messages with max size up to 128 bytes
+	 * This is the most efficient and fast binary representation for both serializer and deserializer.
+	 * <p>
+	 * It is still possible to change max size at any time, switching from 1-byte to 2-byte or 3-byte header size or vice versa,
+	 * because varlen encoding of message size is fully backward and forward compatible.
+	 */
 	public static final MemSize MAX_SIZE_1 = MemSize.bytes(128); // (1 << (1 * 7))
+
+	/**
+	 * Binary format: 2-byte varlen message size + message, for messages with max size up to 16KB
+	 */
 	public static final MemSize MAX_SIZE_2 = MemSize.kilobytes(16); // (1 << (2 * 7))
+
+	/**
+	 * Binary format: 3-byte varlen message size + message, for messages with max size up to 2MB
+	 * Messages with size >2MB are not supported
+	 */
 	public static final MemSize MAX_SIZE_3 = MemSize.megabytes(2); // (1 << (3 * 7))
+
+	/**
+	 * Default setting for max message size (2MB).
+	 * Messages with size >2MB are not supported
+	 * <p>
+	 * Because varlen encoding of message size is fully backward and forward compatible,
+	 * even for smaller messages it is possible to start with default max message size (2MB),
+	 * and fine-tune performance by switching to 1-byte or 2-byte encoding at later time.
+	 */
 	public static final MemSize MAX_SIZE = MAX_SIZE_3;
 
 	private final BinarySerializer<T> serializer;
+
+	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException("Message overflow");
+
+	public static final MemSize DEFAULT_INITIAL_BUFFER_SIZE = MemSize.kilobytes(16);
+
 	private MemSize initialBufferSize = DEFAULT_INITIAL_BUFFER_SIZE;
 	private MemSize maxMessageSize = MAX_SIZE;
+	private boolean explicitEndOfStream = false;
+
 	@Nullable
 	private Duration autoFlushInterval;
 	private boolean skipSerializationErrors = false;
@@ -72,64 +107,105 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	}
 
 	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param serializer specified BufferSerializer for this type
+	 * Creates a new instance of the serializer for type T
 	 */
 	public static <T> ChannelSerializer<T> create(BinarySerializer<T> serializer) {
 		return new ChannelSerializer<>(serializer);
 	}
 
+	/**
+	 * Sets the initial buffer size - a buffer of this size will
+	 * be allocated first when trying to serialize incoming item
+	 * <p>
+	 * Defaults to 16kb
+	 */
 	public ChannelSerializer<T> withInitialBufferSize(MemSize bufferSize) {
 		this.initialBufferSize = bufferSize;
 		rebuild();
 		return this;
 	}
 
+	/**
+	 * Sets the max message size - when a single message takes more
+	 * than this amount of memory to be serialized, this transformer
+	 * will be closed with {@link #OUT_OF_BOUNDS_EXCEPTION out of bounds excetion}
+	 * unless {@link #withSkipSerializationErrors} was used to ignore such errors.
+	 */
 	public ChannelSerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
 		this.maxMessageSize = maxMessageSize;
 		rebuild();
 		return this;
 	}
 
+	/**
+	 * Sets the auto flush interval - when this is set the
+	 * transformer will automatically flush itself at a given interval
+	 */
 	public ChannelSerializer<T> withAutoFlushInterval(@Nullable Duration autoFlushInterval) {
 		this.autoFlushInterval = autoFlushInterval;
 		rebuild();
 		return this;
 	}
 
-	public ChannelSerializer<T> withSkipSerializationErrors() {
-		return withSkipSerializationErrors(true);
-	}
-
+	/**
+	 * Enables or disables skipping serialization errors.
+	 * <p>
+	 * When this set to <code>true</code> the transformer ignores errors and just logs them,
+	 * otherwise it closes with the error.
+	 */
 	public ChannelSerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
 		this.skipSerializationErrors = skipSerializationErrors;
 		rebuild();
 		return this;
 	}
 
+	/**
+	 * @see #withSkipSerializationErrors(boolean)
+	 */
+	public ChannelSerializer<T> withSkipSerializationErrors() {
+		return withSkipSerializationErrors(true);
+	}
+
+	public ChannelSerializer<T> withExplicitEndOfStream() {
+		return withExplicitEndOfStream(true);
+	}
+
+	public ChannelSerializer<T> withExplicitEndOfStream(boolean explicitEndOfStream) {
+		this.explicitEndOfStream = explicitEndOfStream;
+		return this;
+	}
+
 	@Override
 	public ChannelOutput<ByteBuf> getOutput() {
-		return output -> this.output = output;
+		return output -> {
+			this.output = output;
+			resume(input);
+		};
 	}
 	// endregion
 
 	@Override
 	protected void onStarted() {
-		getSupplier().resume(input);
+		if (output != null) {
+			resume(input);
+		}
 	}
 
 	@Override
-	protected Promise<Void> onEndOfStream() {
+	protected void onEndOfStream() {
 		input.flush();
-		return getAcknowledgement();
 	}
 
 	@Override
 	protected void onError(Throwable e) {
+		output.closeEx(e);
+	}
+
+	@Override
+	protected void onCleanup() {
+		bufs.forEach(ByteBuf::recycle);
 		bufs.clear();
 		input.buf = nullify(input.buf, ByteBuf::recycle);
-		output.close(e);
 	}
 
 	private void doFlush() {
@@ -137,21 +213,22 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		if (!bufs.isEmpty()) {
 			flushing = true;
 			output.accept(bufs.poll())
-					.whenComplete(($, e) -> {
-						if (e == null) {
-							flushing = false;
-							doFlush();
-						} else {
-							close(e);
-						}
-					});
+					.whenResult(() -> {
+						flushing = false;
+						doFlush();
+					})
+					.whenException(this::closeEx);
 		} else {
-			if (getEndOfStream().isResult()) {
+			if (isEndOfStream()) {
 				flushing = true;
-				output.accept(null)
-						.whenResult($ -> acknowledge());
+				Promise.complete()
+						.then(() -> (explicitEndOfStream ?
+								output.accept(ByteBuf.wrapForReading(new byte[]{0})) :
+								Promise.complete()))
+						.then(output::acceptEndOfStream)
+						.whenResult(this::acknowledge);
 			} else {
-				getSupplier().resume(input);
+				resume(input);
 			}
 		}
 	}
@@ -180,12 +257,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			this.autoFlushIntervalMillis = autoFlushInterval == null ? -1 : (int) autoFlushInterval.toMillis();
 		}
 
-		/**
-		 * After receiving data it serializes it to buffer and adds it to the outputBuffer,
-		 * and flushes bytes depending on the autoFlushDelay
-		 *
-		 * @param item receiving item
-		 */
 		@Override
 		public void accept(T item) {
 			int positionBegin;
@@ -273,7 +344,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (skipSerializationErrors) {
 				logger.warn("Skipping serialization error in {}", this, e);
 			} else {
-				close(e);
+				closeEx(e);
 			}
 		}
 
@@ -281,7 +352,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (buf == null) return;
 			if (buf.canRead()) {
 				if (!bufs.isEmpty()) {
-					getSupplier().suspend();
+					suspend();
 				}
 				bufs.add(buf);
 				estimatedMessageSize -= estimatedMessageSize >>> 8;
@@ -313,5 +384,4 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	private static int varintSize(int value) {
 		return 1 + (31 - Integer.numberOfLeadingZeros(value)) / 7;
 	}
-
 }

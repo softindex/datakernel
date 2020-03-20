@@ -16,8 +16,8 @@
 
 package io.datakernel.csp;
 
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.process.AsyncProcess;
-import io.datakernel.async.process.Cancellable;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.promise.Promise;
@@ -59,17 +59,17 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	}
 
 	protected void completeProcess() {
-		completeProcess(null);
+		completeProcessEx(null);
 	}
 
-	protected void completeProcess(@Nullable Throwable e) {
+	protected void completeProcessEx(@Nullable Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		if (e == null) {
 			processCompletion.trySet(null);
 			afterProcess(null);
 		} else {
-			close(e);
+			closeEx(e);
 		}
 	}
 
@@ -113,7 +113,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	 * @param e exception that is used to close process with
 	 */
 	@Override
-	public final void close(@NotNull Throwable e) {
+	public final void closeEx(@NotNull Throwable e) {
 		if (isProcessComplete()) return;
 		processComplete = true;
 		doClose(e);
@@ -130,15 +130,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	protected abstract void doClose(Throwable e);
 
 	/**
-	 * Closes this process with {@link Cancellable#CANCEL_EXCEPTION}
-	 */
-	@Override
-	public final void cancel() {
-		AsyncProcess.super.cancel();
-	}
-
-	/**
-	 * Closes this process with {@link Cancellable#CLOSE_EXCEPTION}
+	 * Closes this process with {@link AsyncCloseable#CLOSE_EXCEPTION}
 	 */
 	@Override
 	public final void close() {
@@ -154,8 +146,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
-				supplier.close(e);
-				AbstractCommunicatingProcess.this.close(e);
+				supplier.closeEx(e);
+				AbstractCommunicatingProcess.this.closeEx(e);
 			}
 		};
 	}
@@ -169,8 +161,8 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
-				consumer.close(e);
-				AbstractCommunicatingProcess.this.close(e);
+				consumer.closeEx(e);
+				AbstractCommunicatingProcess.this.closeEx(e);
 			}
 		};
 	}
@@ -188,9 +180,9 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			}
 
 			@Override
-			public void close(@NotNull Throwable e) {
-				supplier.close(e);
-				AbstractCommunicatingProcess.this.close(e);
+			public void closeEx(@NotNull Throwable e) {
+				supplier.closeEx(e);
+				AbstractCommunicatingProcess.this.closeEx(e);
 			}
 		};
 	}
@@ -216,15 +208,15 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	protected final <T> Promise<T> sanitize(T value, @Nullable Throwable e) {
 		if (isProcessComplete()) {
 			tryRecycle(value);
-			if (value instanceof Cancellable) {
-				((Cancellable) value).close(ASYNC_PROCESS_IS_COMPLETE);
+			if (value instanceof AsyncCloseable) {
+				((AsyncCloseable) value).closeEx(ASYNC_PROCESS_IS_COMPLETE);
 			}
 			return Promise.ofException(ASYNC_PROCESS_IS_COMPLETE);
 		}
 		if (e == null) {
 			return Promise.of(value);
 		} else {
-			close(e);
+			closeEx(e);
 			return Promise.ofException(e);
 		}
 	}

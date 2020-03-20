@@ -92,23 +92,20 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return Promise.of(StreamConsumer.of(this::doPut)
-				.transformWith(detailedStats ? uploadStatsDetailed : uploadStats)
-				.withLateBinding());
+				.transformWith(detailedStats ? uploadStatsDetailed : uploadStats));
 	}
 
 	@Override
 	public Promise<StreamSupplier<CrdtData<K, S>>> download(long timestamp) {
 		return Promise.of(StreamSupplier.ofStream(extract(timestamp))
-				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats)
-				.withLateBinding());
+				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats));
 	}
 
 	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return Promise.of(StreamConsumer.<K>of(storage::remove)
-				.transformWith(detailedStats ? removeStatsDetailed : removeStats)
-				.withLateBinding());
+				.transformWith(detailedStats ? removeStatsDetailed : removeStats));
 	}
 
 	@Override

@@ -54,14 +54,17 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	 * @return {@code true} if either {@code put}
 	 * or {@code take} doesn't equal {@code null}
 	 */
+	@Override
 	public boolean isWaiting() {
 		return take != null || put != null;
 	}
 
+	@Override
 	public boolean isWaitingPut() {
 		return put != null;
 	}
 
+	@Override
 	public boolean isWaitingTake() {
 		return take != null;
 	}
@@ -150,7 +153,7 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	 * @param e exception that is used to close buffer with
 	 */
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 		if (exception != null) return;
 		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		if (put != null) {

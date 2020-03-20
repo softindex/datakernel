@@ -99,7 +99,7 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 
 	Promise<Boolean> process() {
 		return Promise.complete()
-				.then($ -> stateManager.sync())
+				.then(stateManager::sync)
 				.map($ -> stateManager.getCommitId())
 				.then(predicate::test)
 				.then(ok -> {
@@ -119,9 +119,9 @@ public final class CubeLogProcessorController<K, C> implements EventloopJmxMBean
 							.whenComplete(promiseProcessLogsImpl.recordStats())
 							.whenResult(this::cubeDiffJmx)
 							.then(diffs -> Promise.complete()
-									.whenResult($ -> stateManager.addAll(diffs))
-									.then($ -> chunkStorage.finish(addedChunks(diffs)))
-									.then($ -> stateManager.sync())
+									.whenResult(() -> stateManager.addAll(diffs))
+									.then(() -> chunkStorage.finish(addedChunks(diffs)))
+									.then(stateManager::sync)
 									.whenException(e -> stateManager.reset())
 									.map($ -> true));
 				})

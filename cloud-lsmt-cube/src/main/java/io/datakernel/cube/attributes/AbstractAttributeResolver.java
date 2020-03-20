@@ -51,7 +51,7 @@ public abstract class AbstractAttributeResolver<K, A> implements AttributeResolv
 
 	@Override
 	public final Promise<Void> resolveAttributes(List<Object> results, KeyFunction keyFunction, AttributesFunction attributesFunction) {
-		return prepareToResolveAttributes(results, keyFunction, attributesFunction).then($ ->
-				doResolveAttributes(results, keyFunction, attributesFunction));
+		return prepareToResolveAttributes(results, keyFunction, attributesFunction)
+				.then(() -> doResolveAttributes(results, keyFunction, attributesFunction));
 	}
 }

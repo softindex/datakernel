@@ -79,9 +79,9 @@ public class AsyncSuppliersTest {
 
 		Promise<Void>[] nextPromise = new Promise[3];
 		Promise<Void> promise1 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise[2] = subscribe.get())));
+				.whenComplete(() -> nextPromise[0] = subscribe.get()
+						.whenComplete(() -> nextPromise[1] = subscribe.get()
+								.whenComplete(() -> nextPromise[2] = subscribe.get())));
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get();
@@ -137,9 +137,9 @@ public class AsyncSuppliersTest {
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise[2] = subscribe.get())));
+				.whenComplete(() -> nextPromise[0] = subscribe.get()
+						.whenComplete(() -> nextPromise[1] = subscribe.get()
+								.whenComplete(() -> nextPromise[2] = subscribe.get())));
 		Promise<Void> promise4 = subscribe.get();
 
 		await(promise1);
@@ -169,13 +169,13 @@ public class AsyncSuppliersTest {
 
 		Promise<Void> promise2 = subscribe.get();
 		Promise<Void> promise3 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise1[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise1[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise1[2] = subscribe.get())));
+				.whenComplete(() -> nextPromise1[0] = subscribe.get()
+						.whenComplete(() -> nextPromise1[1] = subscribe.get()
+								.whenComplete(() -> nextPromise1[2] = subscribe.get())));
 		Promise<Void> promise4 = subscribe.get()
-				.whenComplete(($1, e1) -> nextPromise2[0] = subscribe.get()
-						.whenComplete(($2, e2) -> nextPromise2[1] = subscribe.get()
-								.whenComplete(($3, e3) -> nextPromise2[2] = subscribe.get())));
+				.whenComplete(() -> nextPromise2[0] = subscribe.get()
+						.whenComplete(() -> nextPromise2[1] = subscribe.get()
+								.whenComplete(() -> nextPromise2[2] = subscribe.get())));
 
 		await(promise1);
 

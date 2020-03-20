@@ -120,11 +120,11 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 				.thenEx(($, e2) -> {
 					if (isClosed()) return Promise.ofException(getException());
 					if (e2 != null) {
-						close(e2);
+						closeEx(e2);
 					}
 					return Promise.of($, e2);
 				})
-				.then($ -> {
+				.then(() -> {
 					buf.recycle();
 					return Promise.complete();
 				});

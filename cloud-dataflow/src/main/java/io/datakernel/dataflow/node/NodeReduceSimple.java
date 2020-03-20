@@ -95,5 +95,14 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 	public StreamId getOutput() {
 		return output;
 	}
+
+	@Override
+	public String toString() {
+		return "NodeReduceSimple{keyFunction=" + keyFunction.getClass().getSimpleName() +
+				", keyComparator=" + keyComparator.getClass().getSimpleName() +
+				", reducer=" + reducer.getClass().getSimpleName() +
+				", inputs=" + inputs +
+				", output=" + output + '}';
+	}
 }
 

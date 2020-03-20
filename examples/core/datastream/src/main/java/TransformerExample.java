@@ -1,7 +1,6 @@
 import io.datakernel.datastream.*;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -9,57 +8,53 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
  * Example of creating custom StreamTransformer, which takes strings from input stream
  * and transforms strings to their length if particular length is less than MAX_LENGTH
  */
+@SuppressWarnings("Convert2MethodRef")
 public final class TransformerExample implements StreamTransformer<String, Integer> {
 	private static final int MAX_LENGTH = 10;
 
 	//[START REGION_1]
-	private final AbstractStreamConsumer<String> inputConsumer = new AbstractStreamConsumer<String>() {
-
+	private final AbstractStreamConsumer<String> input = new AbstractStreamConsumer<String>() {
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			outputSupplier.sendEndOfStream();
-			return Promise.complete();
-		}
-
-		@Override
-		protected void onError(Throwable t) {
-			System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
+		protected void onEndOfStream() {
+			output.sendEndOfStream();
 		}
 	};
 
-	private final AbstractStreamSupplier<Integer> outputSupplier = new AbstractStreamSupplier<Integer>() {
+	private final AbstractStreamSupplier<Integer> output = new AbstractStreamSupplier<Integer>() {
+		@Override
+		protected void onResumed() {
+			input.resume(item -> {
+				int len = item.length();
+				if (len < MAX_LENGTH) {
+					output.send(len);
+				}
+			});
+		}
 
 		@Override
 		protected void onSuspended() {
-			inputConsumer.getSupplier().suspend();
-		}
-
-		@Override
-		protected void produce(AsyncProduceController async) {
-			inputConsumer.getSupplier()
-					.resume(item -> {
-						int len = item.length();
-						if (len < MAX_LENGTH) {
-							send(len);
-						}
-					});
-		}
-
-		@Override
-		protected void onError(Throwable t) {
-			System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
+			input.suspend();
 		}
 	};
 	//[END REGION_1]
 
+	{
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
+	}
+
+
 	@Override
 	public StreamConsumer<String> getInput() {
-		return inputConsumer;
+		return input;
 	}
 
 	@Override
 	public StreamSupplier<Integer> getOutput() {
-		return outputSupplier;
+		return output;
 	}
 
 	//[START REGION_2]
@@ -71,7 +66,7 @@ public final class TransformerExample implements StreamTransformer<String, Integ
 		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		source.transformWith(transformer).streamTo(consumer);
-		consumer.getResult().whenResult(System.out::println);
+		consumer.getResult().whenResult(v -> System.out.println(v));
 
 		eventloop.run();
 	}

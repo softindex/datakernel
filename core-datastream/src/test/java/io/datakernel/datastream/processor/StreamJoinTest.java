@@ -21,6 +21,7 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamJoin.ValueJoiner;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
@@ -29,7 +30,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.oneByOne;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
@@ -79,7 +81,7 @@ public class StreamJoinTest {
 				source1.streamTo(streamJoin.getLeft()),
 				source2.streamTo(streamJoin.getRight()),
 				streamJoin.getOutput().streamTo(
-						consumer.transformWith(randomlySuspending()))
+						consumer.transformWith(oneByOne()))
 		);
 
 		assertEquals(asList(
@@ -129,13 +131,8 @@ public class StreamJoinTest {
 		ExpectedException exception = new ExpectedException("Test Exception");
 		StreamConsumerToList<DataItemMasterDetail> consumerToList = StreamConsumerToList.create(list);
 		StreamConsumer<DataItemMasterDetail> consumer = consumerToList
-				.transformWith(decorator((context, dataAcceptor) ->
-						item -> {
-							dataAcceptor.accept(item);
-							if (list.size() == 1) {
-								context.closeWithError(exception);
-							}
-						}));
+				.transformWith(decorate(promise ->
+						promise.then(item -> Promise.ofException(exception))));
 
 		Throwable e = awaitException(
 				source1.streamTo(streamJoin.getLeft()),
@@ -145,7 +142,7 @@ public class StreamJoinTest {
 
 		assertSame(exception, e);
 		assertEquals(1, list.size());
-		assertClosedWithError(source1);
+		assertEndOfStream(source1);
 		assertEndOfStream(source2);
 	}
 

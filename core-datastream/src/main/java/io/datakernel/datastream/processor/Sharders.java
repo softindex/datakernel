@@ -16,41 +16,22 @@
 
 package io.datakernel.datastream.processor;
 
-/**
- * Static utility methods pertaining to Sharders
- */
+import static io.datakernel.common.Preconditions.checkArgument;
+
 public final class Sharders {
-
 	/**
-	 * Instance of this class shares objects by hashcode to shards
+	 * A sharder that distributes objects based on their hashcode
 	 */
-	public static final class HashSharder<K> implements Sharder<K> {
-		private final int partitions;
-
-		/**
-		 * Creates the sharder which contains specified number of parts
-		 *
-		 * @param partitions number of parts
-		 */
-		public HashSharder(int partitions) {
-			assert partitions >= 0;
-			this.partitions = partitions;
+	public static <T> Sharder<T> byHash(int partitions) {
+		checkArgument(partitions > 0, "Number of partitions cannot be zero or less");
+		int bits = partitions - 1;
+		if ((partitions & bits) == 0) {
+			return object -> object.hashCode() & bits;
 		}
-
-		/**
-		 * Returns number of part which must contains this object. It counts it with hash code
-		 *
-		 * @param object object for sharding
-		 */
-		@Override
-		public int shard(K object) {
+		return object -> {
 			int hash = object.hashCode();
 			int hashAbs = hash < 0 ? (hash == Integer.MIN_VALUE ? Integer.MAX_VALUE : -hash) : hash;
 			return hashAbs % partitions;
-		}
-
-		public int getPartitions() {
-			return partitions;
-		}
+		};
 	}
 }

@@ -33,7 +33,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 	}
 
 	protected final Promise<Void> sendEndOfStream() {
-		return output.accept(null);
+		return output.acceptEndOfStream();
 	}
 
 	protected abstract Promise<Void> onItem(I item);
@@ -59,7 +59,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 					if (e == null) {
 						loop();
 					} else {
-						close(e);
+						closeEx(e);
 					}
 				});
 	}
@@ -69,10 +69,10 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 				.then(item ->
 						item != null ?
 								onItem(item)
-										.whenResult($ -> loop()) :
+										.whenResult(this::loop) :
 								onProcessFinish()
-										.whenResult($ -> completeProcess()))
-				.whenException(this::close);
+										.whenResult(this::completeProcess))
+				.whenException(this::closeEx);
 	}
 
 	@SuppressWarnings("ConstantConditions")
@@ -96,7 +96,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 
 	@Override
 	protected final void doClose(Throwable e) {
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 }

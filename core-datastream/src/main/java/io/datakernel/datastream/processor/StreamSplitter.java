@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 SoftIndex LLC.
+ * Copyright (C) 2015 SoftIndex LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,138 +17,121 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
-import io.datakernel.promise.Promise;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promises;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.checkState;
 
 /**
- * Provides an ability to split stream into number of equivalent outputs.
- * {@link StreamSplitter} has one Input and an arbitrary number of Outputs.
+ * It is Stream Transformer which divides input stream  into groups with some key
+ * function, and sends obtained streams to consumers.
  *
- * @param <T>
+ * @param <I> type of input items
+ * @param <O> type of output items
  */
-public final class StreamSplitter<T> implements StreamInput<T>, StreamOutputs, StreamDataAcceptor<T> {
+@SuppressWarnings("unchecked")
+public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamOutputs<O> {
+	private final Function<StreamDataAcceptor<O>[], StreamDataAcceptor<I>> acceptorFactory;
 	private final Input input;
 	private final List<Output> outputs = new ArrayList<>();
 
-	@SuppressWarnings("unchecked")
-	private StreamDataAcceptor<T>[] dataAcceptors = new StreamDataAcceptor[0];
-	private int suspended = 0;
+	private StreamDataAcceptor<O>[] dataAcceptors = new StreamDataAcceptor[8];
 
-	private boolean lenient = false;
-	private final List<Throwable> lenientExceptions = new ArrayList<>();
+	private boolean started;
 
-	private StreamSplitter() {
-		input = new Input();
+	private StreamSplitter(Function<StreamDataAcceptor<O>[], StreamDataAcceptor<I>> acceptorFactory) {
+		this.acceptorFactory = acceptorFactory;
+		this.input = new Input();
 	}
 
-	public static <T> StreamSplitter<T> create() {
-		return new StreamSplitter<>();
+	public static <I, O> StreamSplitter<I, O> create(BiConsumer<I, StreamDataAcceptor<O>[]> action) {
+		return create(acceptors -> item -> action.accept(item, acceptors));
 	}
 
-	public StreamSplitter<T> lenient() {
-		lenient = true;
-		return this;
+	public static <I, O> StreamSplitter<I, O> create(Function<StreamDataAcceptor<O>[], StreamDataAcceptor<I>> acceptorFactory) {
+		StreamSplitter<I, O> streamSplitter = new StreamSplitter<>(acceptorFactory);
+		Eventloop.getCurrentEventloop().post(streamSplitter::start);
+		return streamSplitter;
 	}
 
-	public StreamSupplier<T> newOutput() {
+	public StreamSupplier<O> newOutput() {
+		checkState(!started);
 		Output output = new Output(outputs.size());
-		dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length + 1);
-		suspended++;
 		outputs.add(output);
+		if (outputs.size() > dataAcceptors.length) {
+			dataAcceptors = Arrays.copyOf(dataAcceptors, dataAcceptors.length * 2);
+		}
 		return output;
 	}
 
 	@Override
-	public StreamConsumer<T> getInput() {
+	public StreamConsumer<I> getInput() {
 		return input;
 	}
 
 	@Override
-	public List<? extends StreamSupplier<T>> getOutputs() {
+	public List<? extends StreamSupplier<O>> getOutputs() {
 		return outputs;
 	}
 
-	@Override
-	public void accept(T item) {
-		for (StreamDataAcceptor<T> dataAcceptor : dataAcceptors) {
-			if (dataAcceptor != null) {
-				dataAcceptor.accept(item);
+	private void start() {
+		started = true;
+		dataAcceptors = Arrays.copyOf(dataAcceptors, outputs.size());
+		input.getAcknowledgement()
+				.whenException(e -> outputs.forEach(output -> output.closeEx(e)));
+		Promises.all(outputs.stream().map(Output::getEndOfStream))
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
+		sync();
+	}
+
+	private final class Input extends AbstractStreamConsumer<I> {
+		@Override
+		protected void onStarted() {
+			sync();
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			for (Output output : outputs) {
+				output.sendEndOfStream();
 			}
 		}
 	}
 
-	final class Input extends AbstractStreamConsumer<T> {
-		@Override
-		protected void onStarted() {
-			checkState(!outputs.isEmpty(), "Splitter has no outputs");
-		}
+	private final class Output extends AbstractStreamSupplier<O> {
+		final int index;
 
-		@Override
-		protected Promise<Void> onEndOfStream() {
-			return Promises.all(outputs.stream().map(Output::sendEndOfStream));
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			outputs.forEach(output -> output.close(e));
-		}
-	}
-
-	final class Output extends AbstractStreamSupplier<T> {
-		private final int index;
-		private boolean isSuspended = false;
-
-		Output(int index) {
+		public Output(int index) {
 			this.index = index;
 		}
 
 		@Override
-		protected void onStarted() {
-			checkState(input.getSupplier() != null, "Splitter has no input");
+		protected void onResumed() {
+			dataAcceptors[index] = getDataAcceptor();
+			sync();
 		}
 
 		@Override
 		protected void onSuspended() {
-			suspended++;
-			isSuspended = true;
-			assert input.getSupplier() != null;
-			input.getSupplier().suspend();
-		}
-
-		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			dataAcceptors[index] = dataAcceptor;
-			isSuspended = false;
-			if (--suspended == 0) {
-				assert input.getSupplier() != null;
-				input.getSupplier().resume(StreamSplitter.this);
-			}
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			if (!lenient) {
-				input.close(e);
-				return;
-			}
-			dataAcceptors[index] = null;
-			if (isSuspended) {
-				suspended--;
-			}
-			outputs.remove(this);
-			if (!outputs.isEmpty()) {
-				lenientExceptions.add(e);
-				return;
-			}
-			lenientExceptions.forEach(e::addSuppressed);
-			input.close(e);
+			dataAcceptors[index] = getDataAcceptor();
+			sync();
 		}
 	}
+
+	private void sync() {
+		if (!started) return;
+		if (outputs.stream().allMatch(Output::isReady)) {
+			input.resume(acceptorFactory.apply(dataAcceptors));
+		} else {
+			input.suspend();
+		}
+	}
+
 }

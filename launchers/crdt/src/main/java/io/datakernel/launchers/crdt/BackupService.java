@@ -72,7 +72,7 @@ public final class BackupService<K extends Comparable<K>, S> implements Eventloo
 	@NotNull
 	@Override
 	public Promise<Void> start() {
-		return restore().then($ -> localFiles.consolidate());
+		return restore().then(localFiles::consolidate);
 	}
 
 	@NotNull

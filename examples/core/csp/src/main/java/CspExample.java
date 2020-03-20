@@ -32,13 +32,13 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 		input.get()
 				.whenComplete((data, e) -> {
 					if (data == null) {
-						output.accept(null)
-								.whenResult($ -> completeProcess());
+						output.acceptEndOfStream()
+								.whenResult(this::completeProcess);
 					} else {
 						data = data.toUpperCase() + '(' + data.length() + ')';
 
 						output.accept(data)
-								.whenResult($ -> doProcess());
+								.whenResult(this::doProcess);
 					}
 				});
 	}
@@ -47,8 +47,8 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 	@Override
 	protected void doClose(Throwable e) {
 		System.out.println("Process has been closed with exception: " + e);
-		input.close(e);
-		output.close(e);
+		input.closeEx(e);
+		output.closeEx(e);
 	}
 
 	public static void main(String[] args) {

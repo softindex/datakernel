@@ -71,10 +71,6 @@ public final class NodeFilter<T> implements Node {
 
 	@Override
 	public String toString() {
-		return "NodeFilter{" +
-				"predicate=" + predicate +
-				", input=" + input +
-				", output=" + output +
-				'}';
+		return "NodeFilter{predicate=" + predicate.getClass().getSimpleName() + ", input=" + input + ", output=" + output + '}';
 	}
 }

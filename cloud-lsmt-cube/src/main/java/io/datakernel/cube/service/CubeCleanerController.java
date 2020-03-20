@@ -155,7 +155,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 	Promise<Void> trySaveSnapshotAndCleanupChunks(K checkpointNode) {
 		return checkout(repository, otSystem, checkpointNode)
 				.then(checkpointDiffs -> repository.saveSnapshot(checkpointNode, checkpointDiffs)
-						.then($ -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
+						.then(() -> findSnapshot(singleton(checkpointNode), extraSnapshotsCount))
 						.then(lastSnapshot -> {
 							if (lastSnapshot.isPresent())
 								return Promises.toTuple(Tuple::new,
@@ -209,9 +209,9 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx
 
 	private Promise<Void> cleanup(K checkpointNode, Set<C> requiredChunks, Instant chunksCleanupTimestamp) {
 		return chunksStorage.checkRequiredChunks(requiredChunks)
-				.then($ -> repository.cleanup(checkpointNode)
+				.then(() -> repository.cleanup(checkpointNode)
 						.whenComplete(promiseCleanupRepository.recordStats()))
-				.then($ -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
+				.then(() -> chunksStorage.cleanup(requiredChunks, chunksCleanupTimestamp)
 						.whenComplete(promiseCleanupChunks.recordStats()))
 				.whenComplete(logger.isTraceEnabled() ?
 						toLogger(logger, TRACE, thisMethod(), checkpointNode, chunksCleanupTimestamp, requiredChunks) :

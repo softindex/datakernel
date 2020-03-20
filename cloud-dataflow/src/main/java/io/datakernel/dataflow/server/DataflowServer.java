@@ -37,6 +37,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.serializer.BinarySerializer;
+import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.time.Duration;
@@ -81,14 +82,24 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
 		public void onCommand(Messaging<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
+			if (logger.isTraceEnabled()) {
+				logger.trace("Processing onDownload: {}, {}", command, messaging);
+			}
 			StreamId streamId = command.getStreamId();
 			ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
 				logger.info("onDownload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 			} else {
-				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
 				forwarder = new ChannelZeroBuffer<>();
 				pendingStreams.put(streamId, forwarder);
+				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
+				messaging.receive()
+						.whenException(() -> {
+							ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
+							if (removed != null) {
+								logger.info("onDownload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
+							}
+						});
 			}
 			ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
 			forwarder.getSupplier().streamTo(consumer);
@@ -105,12 +116,43 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
 		public void onCommand(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
-			messaging.close();
-			TaskContext taskContext = new TaskContext(eventloop, DataflowEnvironment.extend(environment));
-			for (Node node : command.getNodes()) {
-				node.createAndBind(taskContext);
+			TaskContext task = new TaskContext(DataflowEnvironment.extend(environment));
+			try {
+				for (Node node : command.getNodes()) {
+					node.createAndBind(task);
+				}
+			} catch (Exception e) {
+				logger.error("Failed to createAndBind task: {}", command, e);
+				sendResponse(messaging, e);
+				return;
 			}
-			taskContext.wireAll();
+
+			task.execute()
+					.whenComplete(($, throwable) -> {
+						if (throwable == null) {
+							logger.info("Task executed successfully: {}", command);
+						} else {
+							logger.error("Failed to execute task: {}", command, throwable);
+						}
+						sendResponse(messaging, throwable);
+					});
+
+			messaging.receive()
+					.whenException(() -> {
+						if (!task.isExecuted()) {
+							logger.error("Client disconnected. Canceling task: {}", command);
+							task.cancel();
+						}
+					});
+		}
+
+		private void sendResponse(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, @Nullable Throwable throwable) {
+			String error = null;
+			if (throwable != null) {
+				error = throwable.getClass().getSimpleName() + ": " + throwable.getMessage();
+			}
+			messaging.send(new DatagraphResponse(error))
+					.whenComplete(messaging::close);
 		}
 	}
 
@@ -119,18 +161,26 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 
 		ChannelSerializer<T> streamSerializer = ChannelSerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))
-				.withAutoFlushInterval(Duration.ofSeconds(1));
+				.withAutoFlushInterval(Duration.ofSeconds(1))
+				.withExplicitEndOfStream();
 
 		ChannelQueue<ByteBuf> forwarder = pendingStreams.remove(streamId);
 		if (forwarder == null) {
-			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
 			forwarder = new ChannelZeroBuffer<>();
 			pendingStreams.put(streamId, forwarder);
+			logger.info("onUpload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
 		} else {
 			logger.info("onUpload: transferring {}, pending downloads: {}", streamId, pendingStreams.size());
 		}
-		streamSerializer.getOutput()
-				.set(forwarder.getConsumer());
+		streamSerializer.getOutput().set(forwarder.getConsumer());
+		streamSerializer.getAcknowledgement()
+				.whenException(() -> {
+					ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
+					if (removed != null) {
+						logger.info("onUpload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
+						removed.close();
+					}
+				});
 		return streamSerializer;
 	}
 

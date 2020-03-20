@@ -131,7 +131,7 @@ public final class ChannelConsumers {
 				try {
 					future.get();
 				} catch (InterruptedException e) {
-					eventloop.execute(wrapContext(channelConsumer, channelConsumer::cancel));
+					eventloop.execute(wrapContext(channelConsumer, channelConsumer::close));
 					throw new IOException(e);
 				} catch (ExecutionException e) {
 					Throwable cause = e.getCause();

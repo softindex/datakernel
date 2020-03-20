@@ -22,7 +22,7 @@ public final class ByteBufsDecoderExample {
 		};
 
 		BinaryChannelSupplier.of(ChannelSupplier.ofIterable(list)).parse(decoder)
-				.whenResult(System.out::println);
+				.whenResult(x -> System.out.println(x));
 	}
 }
 //[END EXAMPLE]

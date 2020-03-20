@@ -17,16 +17,13 @@
 package io.datakernel.datastream;
 
 /**
- * Callback which handle received results from other stream
- *
- * @param <T> type of received item
+ * A callback that receives actual data from stream suppliers.
  */
 @FunctionalInterface
 public interface StreamDataAcceptor<T> {
 	/**
-	 * Method which calling after each receiving result
-	 *
-	 * @param item received item
+	 * This is called with supplied items by the stream supplier
+	 * when it is not suspended and not closed.
 	 */
 	void accept(T item);
 }

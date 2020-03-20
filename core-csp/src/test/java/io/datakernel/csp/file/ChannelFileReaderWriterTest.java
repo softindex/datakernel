@@ -92,10 +92,10 @@ public final class ChannelFileReaderWriterTest {
 
 		Exception exception = new Exception("Test Exception");
 
-		writer.close(exception);
+		writer.closeEx(exception);
 		Throwable e = awaitException(ChannelSupplier.of(ByteBuf.wrapForReading(bytes))
 				.streamTo(writer)
-				.then($ -> writer.accept(ByteBuf.wrapForReading("abc".getBytes()))));
+				.then(() -> writer.accept(ByteBuf.wrapForReading("abc".getBytes()))));
 		assertSame(exception, e);
 	}
 
@@ -129,7 +129,7 @@ public final class ChannelFileReaderWriterTest {
 
 		ChannelFileReader serialFileReader = await(ChannelFileReader.open(newCachedThreadPool(), srcPath));
 
-		serialFileReader.close(testException);
+		serialFileReader.closeEx(testException);
 		assertSame(testException, awaitException(serialFileReader.toList()));
 	}
 

@@ -16,12 +16,12 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.StreamMapSplitter;
+import io.datakernel.datastream.processor.StreamSplitter;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.promise.Promise;
@@ -58,7 +58,8 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 						StreamSupplier<CrdtData<K, S>> downloader = all.getValue3().get();
 
 						int index = this.cluster.getOrderedIds().indexOf(localPartitionId);
-						StreamMapSplitter<CrdtData<K, S>> splitter = StreamMapSplitter.create(
+
+						StreamSplitter<CrdtData<K, S>, ?> splitter = StreamSplitter.create(
 								(data, acceptors) -> {
 									StreamDataAcceptor<Object> clusterAcceptor = acceptors[0];
 									StreamDataAcceptor<Object> removeAcceptor = acceptors[1];
@@ -71,14 +72,18 @@ public final class CrdtRepartitionController<I extends Comparable<I>, K extends 
 									}
 									removeAcceptor.accept(data.getKey());
 								});
-						splitter.<CrdtData<K, S>>newOutput().streamTo(cluster);
-						splitter.<K>newOutput().streamTo(remover);
+
+						//noinspection unchecked, rawtypes
+						((StreamSupplier) splitter.newOutput()).streamTo(cluster);
+						//noinspection unchecked, rawtypes
+						((StreamSupplier) splitter.newOutput()).streamTo(remover);
+
 						return downloader.streamTo(splitter.getInput());
 					} else {
 						StacklessException exception = new StacklessException("Repartition exceptions:");
-						all.getValue1().consume(Cancellable::cancel, exception::addSuppressed);
-						all.getValue2().consume(Cancellable::cancel, exception::addSuppressed);
-						all.getValue3().consume(Cancellable::cancel, exception::addSuppressed);
+						all.getValue1().consume(AsyncCloseable::close, exception::addSuppressed);
+						all.getValue2().consume(AsyncCloseable::close, exception::addSuppressed);
+						all.getValue3().consume(AsyncCloseable::close, exception::addSuppressed);
 						return Promise.ofException(exception);
 					}
 				});

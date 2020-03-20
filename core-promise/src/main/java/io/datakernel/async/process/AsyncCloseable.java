@@ -22,7 +22,7 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Describes methods that are used to handle exceptional behaviour or to handle closing.
  * <p>
- * After {@link #close()}, {@link #close(Throwable)} or {@link #cancel()} is called, the following things
+ * After {@link #close()}, {@link #closeEx(Throwable)} or {@link #close()} is called, the following things
  * should be done:
  * <ul>
  * <li>Resources held by an object should be freed</li>
@@ -30,9 +30,15 @@ import org.jetbrains.annotations.NotNull;
  * </ul>
  * All operations of this interface are idempotent.
  */
-public interface Cancellable {
-	CloseException CANCEL_EXCEPTION = new CloseException(Cancellable.class, "Cancelled");
-	CloseException CLOSE_EXCEPTION = new CloseException(Cancellable.class, "Closed");
+public interface AsyncCloseable {
+	CloseException CLOSE_EXCEPTION = new CloseException(AsyncCloseable.class, "Closed");
+
+	/**
+	 * Cancels the process.
+	 */
+	default void close() {
+		closeEx(CLOSE_EXCEPTION);
+	}
 
 	/**
 	 * Closes process exceptionally in case an exception
@@ -40,34 +46,6 @@ public interface Cancellable {
 	 *
 	 * @param e exception that is used to close process with
 	 */
-	void close(@NotNull Throwable e);
-
-	/**
-	 * Cancels the process.
-	 */
-	default void cancel() {
-		close(CANCEL_EXCEPTION);
-	}
-
-	/**
-	 * Closes process when it has finished.
-	 */
-	default void close() {
-		close(CLOSE_EXCEPTION);
-	}
-
-	static void tryCancel(Object item) {
-		if (item instanceof Cancellable) {
-			Cancellable cancellable = (Cancellable) item;
-			cancellable.cancel();
-		}
-	}
-
-	static void tryClose(Object item) {
-		if (item instanceof Cancellable) {
-			Cancellable cancellable = (Cancellable) item;
-			cancellable.close();
-		}
-	}
+	void closeEx(@NotNull Throwable e);
 
 }

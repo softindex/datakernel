@@ -229,7 +229,7 @@ public final class RemoteFsRepartitionController implements Initializable<Remote
 											logger.warn("failed uploading to partition " + partitionId + " (" + e + ')');
 											cluster.markDead(partitionId, e);
 										})
-										.whenResult($ -> logger.trace("file {} uploaded to '{}'", meta, partitionId))
+										.whenResult(() -> logger.trace("file {} uploaded to '{}'", meta, partitionId))
 										.toTry();
 							}))
 							.then(tries -> {

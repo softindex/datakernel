@@ -44,8 +44,8 @@ public final class AsyncFileServiceExample {
 			byte[] message3 = "This is the 3rd line in file".getBytes();
 
 			return fileService.write(channel, 0, message1, 0, message1.length)
-					.then($ -> fileService.write(channel, 0, message2, 0, message2.length))
-					.then($ -> fileService.write(channel, 0, message3, 0, message3.length))
+					.then(() -> fileService.write(channel, 0, message2, 0, message2.length))
+					.then(() -> fileService.write(channel, 0, message3, 0, message3.length))
 					.toVoid();
 		} catch (IOException e) {
 			return Promise.ofException(e);

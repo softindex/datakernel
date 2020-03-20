@@ -18,142 +18,30 @@ package io.datakernel.datastream;
 
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.EnumSet;
 import java.util.Iterator;
-import java.util.Set;
 
-import static io.datakernel.datastream.StreamCapability.LATE_BINDING;
-import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+final class StreamSuppliers {
 
-public final class StreamSuppliers {
-
-	/**
-	 * Represent supplier which sends specified exception to consumer.
-	 *
-	 * @param <T>
-	 */
-	static class ClosingWithErrorImpl<T> implements StreamSupplier<T> {
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		private final Throwable exception;
-
-		ClosingWithErrorImpl(Throwable e) {
-			this.exception = e;
-		}
-
-		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(wrapContext(endOfStream, () -> endOfStream.trySetException(exception)));
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			// do nothing
-		}
-
-		@Override
-		public void suspend() {
-			// do nothing
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
-		}
-
-		@Override
-		public void close(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
+	static final class ClosingWithError<T> extends AbstractStreamSupplier<T> {
+		ClosingWithError(Throwable e) {
+			super();
+			closeEx(e);
 		}
 	}
 
-	/**
-	 * Represent supplier which sends specified exception to consumer.
-	 *
-	 * @param <T>
-	 */
-	static class ClosingImpl<T> implements StreamSupplier<T> {
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			getCurrentEventloop().post(wrapContext(endOfStream, () -> endOfStream.trySet(null)));
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			// do nothing
-		}
-
-		@Override
-		public void suspend() {
-			// do nothing
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
-		}
-
-		@Override
-		public void close(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
+	static final class Closing<T> extends AbstractStreamSupplier<T> {
+		public Closing() {
+			super();
+			sendEndOfStream();
 		}
 	}
 
-	static final class IdleImpl<T> implements StreamSupplier<T> {
-		private final SettablePromise<Void> endOfStream = new SettablePromise<>();
-
-		@Override
-		public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-			consumer.getAcknowledgement()
-					.whenException(endOfStream::trySetException);
-		}
-
-		@Override
-		public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		}
-
-		@Override
-		public void suspend() {
-		}
-
-		@Override
-		public Promise<Void> getEndOfStream() {
-			return endOfStream;
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
-		}
-
-		@Override
-		public void close(@NotNull Throwable e) {
-			endOfStream.trySetException(e);
-		}
+	static final class Idle<T> extends AbstractStreamSupplier<T> {
 	}
 
-	/**
-	 * Represents a {@link AbstractStreamSupplier} which will send all values from iterator.
-	 *
-	 * @param <T> type of output data
-	 */
-	static class OfIteratorImpl<T> extends AbstractStreamSupplier<T> {
+	static final class OfIterator<T> extends AbstractStreamSupplier<T> {
 		private final Iterator<T> iterator;
 
 		/**
@@ -161,66 +49,147 @@ public final class StreamSuppliers {
 		 *
 		 * @param iterator iterator with object which need to send
 		 */
-		public OfIteratorImpl(@NotNull Iterator<T> iterator) {
+		public OfIterator(@NotNull Iterator<T> iterator) {
 			this.iterator = iterator;
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
-			while (iterator.hasNext()) {
-				StreamDataAcceptor<T> dataAcceptor = getCurrentDataAcceptor();
-				if (dataAcceptor == null) {
-					return;
-				}
-				T item = iterator.next();
-				dataAcceptor.accept(item);
+		protected void onResumed() {
+			while (isReady() && iterator.hasNext()) {
+				send(iterator.next());
 			}
-			sendEndOfStream();
+			if (!iterator.hasNext()) {
+				sendEndOfStream();
+			}
+		}
+	}
+
+	static final class OfPromise<T> extends AbstractStreamSupplier<T> {
+		private Promise<? extends StreamSupplier<T>> promise;
+		private final InternalConsumer internalConsumer = new InternalConsumer();
+		private class InternalConsumer extends AbstractStreamConsumer<T> {}
+
+		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
+			this.promise = promise;
+		}
+
+		@Override
+		protected void onStarted() {
+			promise
+					.whenResult(supplier -> {
+						this.getEndOfStream()
+								.whenException(supplier::closeEx);
+						supplier.getEndOfStream()
+								.whenResult(this::sendEndOfStream)
+								.whenException(this::closeEx);
+						supplier.streamTo(internalConsumer);
+					})
+					.whenException(this::closeEx);
+		}
+
+		@Override
+		protected void onResumed() {
+			internalConsumer.resume(getDataAcceptor());
+		}
+
+		@Override
+		protected void onSuspended() {
+			internalConsumer.suspend();
+		}
+
+		@Override
+		protected void onAcknowledge() {
+			internalConsumer.acknowledge();
+		}
+
+		@Override
+		protected void onCleanup() {
+			promise = null;
+		}
+	}
+
+	static final class Concat<T> extends AbstractStreamSupplier<T> {
+		private ChannelSupplier<StreamSupplier<T>> iterator;
+		private InternalConsumer internalConsumer = new InternalConsumer();
+		private class InternalConsumer extends AbstractStreamConsumer<T> {}
+
+		Concat(ChannelSupplier<StreamSupplier<T>> iterator) {
+			this.iterator = iterator;
+		}
+
+		@Override
+		protected void onStarted() {
+			next();
+		}
+
+		private void next() {
+			internalConsumer.acknowledge();
+			internalConsumer = new InternalConsumer();
+			resume();
+			iterator.get()
+					.whenResult(supplier -> {
+						if (supplier != null) {
+							supplier.getEndOfStream()
+									.whenResult(this::next)
+									.whenException(this::closeEx);
+							supplier.streamTo(internalConsumer);
+						} else {
+							sendEndOfStream();
+						}
+					})
+					.whenException(this::closeEx);
+		}
+
+		@Override
+		protected void onResumed() {
+			internalConsumer.resume(getDataAcceptor());
+		}
+
+		@Override
+		protected void onSuspended() {
+			internalConsumer.suspend();
 		}
 
 		@Override
 		protected void onError(Throwable e) {
+			internalConsumer.closeEx(e);
+			iterator.closeEx(e);
 		}
 
 		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
+		protected void onCleanup() {
+			iterator = null;
 		}
 	}
 
-	static class OfChannelSupplierImpl<T> extends AbstractStreamSupplier<T> {
+	static final class OfChannelSupplier<T> extends AbstractStreamSupplier<T> {
 		private final ChannelSupplier<T> supplier;
 
-		public OfChannelSupplierImpl(ChannelSupplier<T> supplier) {
+		public OfChannelSupplier(ChannelSupplier<T> supplier) {
 			this.supplier = supplier;
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
-			async.begin();
+		protected void onResumed() {
+			asyncBegin();
 			supplier.get()
 					.whenComplete((item, e) -> {
 						if (e == null) {
 							if (item != null) {
 								send(item);
-								async.resume();
+								asyncResume();
 							} else {
 								sendEndOfStream();
 							}
 						} else {
-							close(e);
+							closeEx(e);
 						}
 					});
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			supplier.close(e);
-		}
-
-		@Override
-		public Set<StreamCapability> getCapabilities() {
-			return EnumSet.of(LATE_BINDING);
+			supplier.closeEx(e);
 		}
 	}
 

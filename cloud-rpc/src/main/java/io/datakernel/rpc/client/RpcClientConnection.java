@@ -50,8 +50,9 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	private static final int BUCKET_CAPACITY = ApplicationSettings.getInt(RpcClientConnection.class, "bucketCapacity", 16);
 
-	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor = this::addIntoInitialBuffer;
+	private StreamDataAcceptor<RpcMessage> downstreamDataAcceptor = null;
 	private boolean overloaded = false;
+	private boolean closed;
 
 	public static final RpcException CONNECTION_CLOSED = new RpcException(RpcClientConnection.class, "Connection closed");
 	public static final RpcException CONNECTION_UNRESPONSIVE = new RpcException(RpcClientConnection.class, "Unresponsive connection");
@@ -282,10 +283,6 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 		doClose();
 	}
 
-	private void addIntoInitialBuffer(RpcMessage msg) {
-		initialBuffer.add(msg);
-	}
-
 	@Override
 	public void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor) {
 		if (isClosed()) return;
@@ -308,6 +305,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	private void doClose() {
 		if (isClosed()) return;
 		downstreamDataAcceptor = null;
+		closed = true;
 		rpcClient.removeConnection(address);
 
 		while (!activeRequests.isEmpty()) {
@@ -321,17 +319,12 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	}
 
 	public boolean isClosed() {
-		return downstreamDataAcceptor == null;
+		return closed;
 	}
 
 	public void shutdown() {
 		if (isClosed()) return;
 		stream.sendEndOfStream();
-	}
-
-	@Override
-	public String toString() {
-		return "RpcClientConnection{address=" + address + '}';
 	}
 
 	// JMX
@@ -429,4 +422,10 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 			}
 		}
 	}
+
+	@Override
+	public String toString() {
+		return "RpcClientConnection{address=" + address + '}';
+	}
+
 }

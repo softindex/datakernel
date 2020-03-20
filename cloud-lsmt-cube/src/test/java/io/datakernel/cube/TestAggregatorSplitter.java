@@ -21,6 +21,7 @@ import io.datakernel.cube.bean.TestPubRequest.TestAdvRequest;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.etl.LogDataConsumerSplitter;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -68,16 +69,16 @@ public class TestAggregatorSplitter extends LogDataConsumerSplitter<TestPubReque
 	}
 
 	@Override
-	protected StreamDataAcceptor<TestPubRequest> createSplitter() {
+	protected StreamDataAcceptor<TestPubRequest> createSplitter(@NotNull Context ctx) {
 		return new StreamDataAcceptor<TestPubRequest>() {
 			private final AggregationItem outputItem = new AggregationItem();
 
-			private final StreamDataAcceptor<AggregationItem> pubAggregator = addOutput(
+			private final StreamDataAcceptor<AggregationItem> pubAggregator = ctx.addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
 							keysToMap(PUB_DIMENSIONS.stream(), identity()),
 							keysToMap(PUB_METRICS.stream(), identity())));
 
-			private final StreamDataAcceptor<AggregationItem> advAggregator = addOutput(
+			private final StreamDataAcceptor<AggregationItem> advAggregator = ctx.addOutput(
 					cube.logStreamConsumer(AggregationItem.class,
 							keysToMap(ADV_DIMENSIONS.stream(), identity()),
 							keysToMap(ADV_METRICS.stream(), identity())));

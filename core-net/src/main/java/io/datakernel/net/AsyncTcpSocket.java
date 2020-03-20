@@ -16,7 +16,7 @@
 
 package io.datakernel.net;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
  * call to {@link #read()} or {@link #write(ByteBuf)}<i/></li>
  * </ul>
  */
-public interface AsyncTcpSocket extends Cancellable {
+public interface AsyncTcpSocket extends AsyncCloseable {
 	/**
 	 * Operation to read some data from network. Returns a promise of a bytebuf that represents some data received
 	 * from network.
@@ -58,4 +58,5 @@ public interface AsyncTcpSocket extends Cancellable {
 	@NotNull
 	Promise<Void> write(@Nullable ByteBuf buf);
 
+	boolean isClosed();
 }

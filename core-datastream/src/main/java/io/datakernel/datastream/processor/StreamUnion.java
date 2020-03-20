@@ -17,13 +17,12 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
-import io.datakernel.promise.Promise;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.common.Preconditions.checkState;
 
 /**
  * It is Stream Transformer which unions all input streams and streams it
@@ -31,17 +30,19 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
  *
  * @param <T> type of output data
  */
-public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
+public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs {
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;
+	private boolean started;
 
-	// region creators
 	private StreamUnion() {
 		this.output = new Output();
 	}
 
 	public static <T> StreamUnion<T> create() {
-		return new StreamUnion<>();
+		StreamUnion<T> union = new StreamUnion<>();
+		Eventloop.getCurrentEventloop().post(union::start);
+		return union;
 	}
 
 	@Override
@@ -55,50 +56,54 @@ public final class StreamUnion<T> implements StreamOutput<T>, StreamInputs {
 	}
 
 	public StreamConsumer<T> newInput() {
+		checkState(!started);
 		Input input = new Input();
 		inputs.add(input);
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
 		return input;
 	}
 
-	// endregion
+	private void start() {
+		started = true;
+		sync();
+	}
 
 	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			if (inputs.stream().allMatch(input -> input.getEndOfStream().isResult())) {
-				output.sendEndOfStream();
-			}
-			return output.getConsumer().getAcknowledgement();
+		protected void onStarted() {
+			sync();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			output.close(e);
+		protected void onEndOfStream() {
+			sync();
 		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<T> {
 		@Override
+		protected void onResumed() {
+			sync();
+		}
+
+		@Override
 		protected void onSuspended() {
-			for (Input input : inputs) {
-				input.getSupplier().suspend();
-			}
+			sync();
 		}
+	}
 
-		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			if (!inputs.isEmpty()) {
-				for (Input input : inputs) {
-					input.getSupplier().resume(dataAcceptor);
-				}
-			} else {
-				eventloop.post(wrapContext(this, this::sendEndOfStream));
-			}
+	private void sync() {
+		if (!started) return;
+		if (inputs.stream().allMatch(Input::isEndOfStream)) {
+			output.sendEndOfStream();
+			return;
 		}
-
-		@Override
-		protected void onError(Throwable e) {
-			inputs.forEach(input -> input.close(e));
+		for (Input input : inputs) {
+			input.resume(output.getDataAcceptor());
 		}
 	}
 

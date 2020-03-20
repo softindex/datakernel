@@ -132,21 +132,21 @@ public final class AbstractCommunicatingProcessTest {
 			input.get()
 					.whenComplete((data, e) -> {
 						if (data == null) {
-							output.accept(null)
-									.whenException(this::close)
-									.whenResult($ -> completeProcess());
+							output.acceptEndOfStream()
+									.whenResult(this::completeProcess)
+									.whenException(this::closeEx);
 						} else {
 							output.accept(data)
-									.whenException(this::close)
-									.whenResult($ -> doProcess());
+									.whenResult(this::doProcess)
+									.whenException(this::closeEx);
 						}
 					});
 		}
 
 		@Override
 		protected void doClose(Throwable e) {
-			output.close(e);
-			input.close(e);
+			output.closeEx(e);
+			input.closeEx(e);
 		}
 	}
 	// endregion

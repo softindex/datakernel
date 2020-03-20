@@ -17,9 +17,11 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.async.process.AsyncCollector;
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,9 +47,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 	private final Input input;
 	private final StreamSupplier<T> output;
-	private StreamConsumer<T> outputConsumer;
 
-	// region creators
 	private StreamSorter(StreamSorterStorage<T> storage,
 			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
 			int itemsInMemory) {
@@ -64,37 +64,30 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 
 		this.input = new Input();
 
-		this.output =
-				new ForwardingStreamSupplier<T>(StreamSupplier.ofPromise(
-						(this.temporaryStreamsCollector = AsyncCollector.create(new ArrayList<>()))
-								.run(input.getEndOfStream())
-								.get()
-								.map(streamIds -> {
-									input.list.sort(itemComparator);
-									Iterator<T> iterator = !distinct ?
-											input.list.iterator() :
-											new DistinctIterator<>(input.list, keyFunction, keyComparator);
-									StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
-									if (streamIds.isEmpty()) {
-										return listSupplier;
-									} else {
-										StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
-										listSupplier.streamTo(streamMerger.newInput());
-										streamIds.forEach(streamId ->
-												StreamSupplier.ofPromise(storage.read(streamId))
-														.streamTo(streamMerger.newInput()));
-										return streamMerger
-												.getOutput()
-												.withLateBinding();
-									}
-								})
-				)) {
-					@Override
-					public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-						super.setConsumer(consumer);
-						outputConsumer = consumer;
-					}
-				};
+		List<Integer> partitionIds = new ArrayList<>();
+		this.output = StreamSupplier.ofPromise(
+				(this.temporaryStreamsCollector = AsyncCollector.create(partitionIds))
+						.get()
+						.map(streamIds -> {
+							input.list.sort(itemComparator);
+							Iterator<T> iterator = !distinct ?
+									input.list.iterator() :
+									new DistinctIterator<>(input.list, keyFunction, keyComparator);
+							StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
+							if (streamIds.isEmpty()) {
+								return listSupplier;
+							} else {
+								StreamMerger<K, T> streamMerger = StreamMerger.create(keyFunction, keyComparator, distinct);
+								listSupplier.streamTo(streamMerger.newInput());
+								for (Integer streamId : streamIds) {
+									StreamSupplier.ofPromise(storage.read(streamId))
+											.streamTo(streamMerger.newInput());
+								}
+								return streamMerger.getOutput();
+							}
+						}));
+		this.output.getEndOfStream()
+				.whenComplete(() -> {if (!partitionIds.isEmpty()) storage.cleanup(partitionIds);});
 	}
 
 	private static final class DistinctIterator<K, T> implements Iterator<T> {
@@ -143,14 +136,13 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			int itemsInMemorySize) {
 		return new StreamSorter<>(storage, keyFunction, keyComparator, distinct, itemsInMemorySize);
 	}
-	// endregion
 
 	private final class Input extends AbstractStreamConsumer<T> implements StreamDataAcceptor<T> {
 		private ArrayList<T> list = new ArrayList<>();
 
 		@Override
 		protected void onStarted() {
-			getSupplier().resume(this);
+			resume(this);
 		}
 
 		@Override
@@ -159,10 +151,11 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			if (list.size() >= itemsInMemory) {
 				list.sort(itemComparator);
 				Iterator<T> iterator = !distinct ?
-						input.list.iterator() :
-						new DistinctIterator<>(input.list, keyFunction, keyComparator);
+						list.iterator() :
+						new DistinctIterator<>(list, keyFunction, keyComparator);
 				writeToTemporaryStorage(iterator)
-						.whenResult($ -> suspendOrResume());
+						.whenResult(this::suspendOrResume)
+						.whenException(this::closeEx);
 				suspendOrResume();
 				list = new ArrayList<>(itemsInMemory);
 			}
@@ -172,27 +165,35 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 			return temporaryStreamsCollector.addPromise(
 					storage.newPartitionId()
 							.then(partitionId -> storage.write(partitionId)
-									.then(consumer -> StreamSupplier.ofIterator(sortedList).streamTo(consumer)
-											.map($ -> partitionId))),
+									.then(consumer -> StreamSupplier.ofIterator(sortedList).streamTo(consumer))
+									.map($ -> partitionId)),
 					List::add);
 		}
 
 		private void suspendOrResume() {
 			if (temporaryStreamsCollector.getActivePromises() > 2) {
-				getSupplier().suspend();
+				suspend();
 			} else {
-				getSupplier().resume(this);
+				resume(this);
 			}
 		}
 
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			return outputConsumer.getAcknowledgement();
+		protected void onEndOfStream() {
+			temporaryStreamsCollector.run();
+			output.getEndOfStream()
+					.whenResult(this::acknowledge)
+					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			// do nothing
+			temporaryStreamsCollector.closeEx(e);
+		}
+
+		@Override
+		protected void onCleanup() {
+			list = null;
 		}
 	}
 

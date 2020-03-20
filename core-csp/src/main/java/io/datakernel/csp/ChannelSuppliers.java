@@ -16,7 +16,7 @@
 
 package io.datakernel.csp;
 
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.MemSize;
@@ -46,8 +46,8 @@ import java.util.function.ToIntFunction;
 import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
-import static java.lang.Math.min;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static java.lang.Math.min;
 
 /**
  * Provides additional functionality for managing {@link ChannelSupplier}s.
@@ -107,7 +107,7 @@ public final class ChannelSuppliers {
 								}
 							} else {
 								while (iterator.hasNext()) {
-									iterator.next().close(e);
+									iterator.next().closeEx(e);
 								}
 								return Promise.ofException(e);
 							}
@@ -116,9 +116,9 @@ public final class ChannelSuppliers {
 
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
-				current.close(e);
+				current.closeEx(e);
 				while (iterator.hasNext()) {
-					iterator.next().close(e);
+					iterator.next().closeEx(e);
 				}
 			}
 		};
@@ -164,7 +164,7 @@ public final class ChannelSuppliers {
 					accumulator.accept(accumulatedValue, item);
 				} catch (UncheckedException u) {
 					Throwable cause = u.getCause();
-					supplier.close(cause);
+					supplier.closeEx(cause);
 					cb.setException(cause);
 					return;
 				}
@@ -179,7 +179,7 @@ public final class ChannelSuppliers {
 						accumulator.accept(accumulatedValue, value);
 					} catch (UncheckedException u) {
 						Throwable cause = u.getCause();
-						supplier.close(cause);
+						supplier.closeEx(cause);
 						cb.setException(cause);
 						return;
 					}
@@ -204,8 +204,8 @@ public final class ChannelSuppliers {
 			return streamTo(supplier.get(), consumer.get());
 		}
 		StacklessException exception = new StacklessException("Channel stream failed");
-		supplier.consume(Cancellable::cancel, exception::addSuppressed);
-		consumer.consume(Cancellable::cancel, exception::addSuppressed);
+		supplier.consume(AsyncCloseable::close, exception::addSuppressed);
+		consumer.consume(AsyncCloseable::close, exception::addSuppressed);
 		return Promise.ofException(exception);
 	}
 
@@ -241,7 +241,7 @@ public final class ChannelSuppliers {
 				if (e == null) {
 					streamToImpl(supplier, consumer, cb);
 				} else {
-					supplier.close(e);
+					supplier.closeEx(e);
 					cb.trySetException(e);
 				}
 			});
@@ -259,12 +259,12 @@ public final class ChannelSuppliers {
 											cb.trySet(null);
 										}
 									} else {
-										supplier.close(e2);
+										supplier.closeEx(e2);
 										cb.trySetException(e2);
 									}
 								});
 					} else {
-						consumer.close(e1);
+						consumer.closeEx(e1);
 						cb.trySetException(e1);
 					}
 				});
@@ -381,7 +381,7 @@ public final class ChannelSuppliers {
 						try {
 							buf = future.get();
 						} catch (InterruptedException e) {
-							eventloop.execute(wrapContext(channelSupplier, channelSupplier::cancel));
+							eventloop.execute(wrapContext(channelSupplier, channelSupplier::close));
 							throw new IOException(e);
 						} catch (ExecutionException e) {
 							Throwable cause = e.getCause();

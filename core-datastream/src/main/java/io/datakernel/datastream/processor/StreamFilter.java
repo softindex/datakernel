@@ -17,30 +17,32 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
-import io.datakernel.promise.Promise;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Predicate;
 
 /**
- * Provides you to filter data for sending. It checks predicate's verity for inputting data and if
- * predicate is true sends data to the destination. It is a {@link StreamTransformer}
- * which receives specified type and streams result set to the destination .
- *
- * @param <T>
+ * Provides you apply function before sending data to the destination. It is a {@link StreamFilter}
+ * which receives specified type and streams set of function's result  to the destination .
  */
 public final class StreamFilter<T> implements StreamTransformer<T, T> {
-	public static final Predicate<Object> ALWAYS_TRUE = t -> true;
-
+	private final Predicate<T> predicate;
 	private final Input input;
 	private final Output output;
-	private final Predicate<T> predicate;
 
-	// region creators
 	private StreamFilter(Predicate<T> predicate) {
 		this.predicate = predicate;
 		this.input = new Input();
 		this.output = new Output();
+
+		input.getAcknowledgement()
+				.whenException(output::closeEx);
+		output.getEndOfStream()
+				.whenResult(input::acknowledge)
+				.whenException(input::closeEx);
+	}
+
+	public static <T> StreamFilter<T> create(Predicate<T> predicate) {
+		return new StreamFilter<>(predicate);
 	}
 
 	@Override
@@ -53,51 +55,42 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		return output;
 	}
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param predicate predicate for filtering data
-	 */
-	public static <T> StreamFilter<T> create(Predicate<T> predicate) {
-		return new StreamFilter<>(predicate);
-	}
-	// endregion
-
-	protected final class Input extends AbstractStreamConsumer<T> {
+	private final class Input extends AbstractStreamConsumer<T> {
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			return output.sendEndOfStream();
+		protected void onStarted() {
+			sync();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			output.close(e);
+		protected void onEndOfStream() {
+			output.sendEndOfStream();
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<T> {
+	private final class Output extends AbstractStreamSupplier<T> {
+		@Override
+		protected void onResumed() {
+			sync();
+		}
+
 		@Override
 		protected void onSuspended() {
-			input.getSupplier().suspend();
-		}
-
-		@Override
-		protected void onError(Throwable e) {
-			input.close(e);
-		}
-
-		@Override
-		protected void onProduce(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-			if (predicate.equals(ALWAYS_TRUE)) {
-				input.getSupplier().resume(dataAcceptor);
-			} else {
-				Predicate<T> predicate = StreamFilter.this.predicate;
-				input.getSupplier().resume(item -> {
-					if (predicate.test(item)) {
-						dataAcceptor.accept(item);
-					}
-				});
-			}
+			sync();
 		}
 	}
+
+	private void sync() {
+		final StreamDataAcceptor<T> dataAcceptor = output.getDataAcceptor();
+		if (dataAcceptor != null) {
+			final Predicate<T> predicate = this.predicate;
+			input.resume(item -> {
+				if (predicate.test(item)) {
+					dataAcceptor.accept(item);
+				}
+			});
+		} else {
+			input.suspend();
+		}
+	}
+
 }

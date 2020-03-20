@@ -88,8 +88,8 @@ public final class TestFsCopy {
 		await(sourceClient.delete("c.txt", 5));
 
 
-		await(targetClient.upload("a.txt", 0, 5)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
-		await(targetClient.upload("b.txt", 0, 15)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(targetClient.upload("a.txt", 0, 5)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(targetClient.upload("b.txt", 0, 15)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
 
 		await(Promises.sequence(Stream.of("a.txt", "b.txt", "c.txt", "zzz").map(name -> () -> copyFile(sourceClient, targetClient, name))));
 		// absent c.txt
@@ -103,18 +103,18 @@ public final class TestFsCopy {
 
 	@Test
 	public void sourceFile() {
-		await(sourceClient.upload("a.txt", 0, 10)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
-		await(sourceClient.upload("b.txt", 0, 10)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
-		await(sourceClient.upload("c.txt", 0, 5)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
-		await(sourceClient.upload("d.txt", 0, 10)).accept(ByteBuf.wrapForReading("hel".getBytes(UTF_8)), null);
-		await(sourceClient.upload("e.txt", 0, 10)).accept(ByteBuf.wrapForReading("hello_long".getBytes(UTF_8)), null);
+		await(sourceClient.upload("a.txt", 0, 10)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(sourceClient.upload("b.txt", 0, 10)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(sourceClient.upload("c.txt", 0, 5)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(sourceClient.upload("d.txt", 0, 10)).acceptAll(ByteBuf.wrapForReading("hel".getBytes(UTF_8)), null);
+		await(sourceClient.upload("e.txt", 0, 10)).acceptAll(ByteBuf.wrapForReading("hello_long".getBytes(UTF_8)), null);
 
 
-		await(targetClient.upload("a.txt", 0, 5)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
-		await(targetClient.upload("b.txt", 0, 15)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(targetClient.upload("a.txt", 0, 5)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(targetClient.upload("b.txt", 0, 15)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
 		// absent c.txt
-		await(sourceClient.upload("d.txt", 0, 10)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
-		await(sourceClient.upload("e.txt", 0, 10)).accept(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(sourceClient.upload("d.txt", 0, 10)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
+		await(sourceClient.upload("e.txt", 0, 10)).acceptAll(ByteBuf.wrapForReading("hello".getBytes(UTF_8)), null);
 
 		await(Promises.sequence(Stream.of("a.txt", "b.txt", "c.txt", "d.txt", "e.txt", "zzz").map(name -> () -> copyFile(sourceClient, targetClient, name))));
 

@@ -16,6 +16,15 @@
 
 package io.datakernel.datastream;
 
-public interface StreamInput<I> {
-	StreamConsumer<I> getInput();
+import java.util.List;
+
+/**
+ * A separate interface for components that have multiple outputs represented with a list of {@link StreamSupplier consumers}.
+ */
+public interface HasStreamOutputs<O> {
+	List<? extends StreamSupplier<O>> getOutputs();
+
+	default StreamSupplier<O> getOutput(int index) {
+		return getOutputs().get(index);
+	}
 }

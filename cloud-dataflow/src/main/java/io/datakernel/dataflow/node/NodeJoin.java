@@ -45,14 +45,14 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	private final Joiner<K, L, R, V> joiner;
 
 	public NodeJoin(StreamId left, StreamId right,
-			Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-			Joiner<K, L, R, V> joiner) {
+	                Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+	                Joiner<K, L, R, V> joiner) {
 		this(left, right, new StreamId(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
 
 	public NodeJoin(StreamId left, StreamId right, StreamId output,
-			Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-			Joiner<K, L, R, V> joiner) {
+	                Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+	                Joiner<K, L, R, V> joiner) {
 		this.left = left;
 		this.right = right;
 		this.output = output;
@@ -102,5 +102,16 @@ public final class NodeJoin<K, L, R, V> implements Node {
 
 	public Joiner<K, L, R, V> getJoiner() {
 		return joiner;
+	}
+
+	@Override
+	public String toString() {
+		return "NodeJoin{left=" + left +
+				", right=" + right +
+				", output=" + output +
+				", keyComparator=" + keyComparator.getClass().getSimpleName() +
+				", leftKeyFunction=" + leftKeyFunction.getClass().getSimpleName() +
+				", rightKeyFunction=" + rightKeyFunction.getClass().getSimpleName() +
+				", joiner=" + joiner.getClass().getSimpleName() + '}';
 	}
 }

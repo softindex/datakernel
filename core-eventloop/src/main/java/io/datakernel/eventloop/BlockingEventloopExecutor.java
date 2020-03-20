@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.callback.Completable;
+import io.datakernel.async.callback.AsyncComputation;
 import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.NotNull;
 
@@ -119,11 +119,11 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	@NotNull
 	@Override
-	public <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation) {
+	public <T> CompletableFuture<T> submit(Supplier<? extends AsyncComputation<T>> computation) {
 		CompletableFuture<T> future = new CompletableFuture<>();
 		post(() -> {
 			try {
-				computation.get().onComplete((result, e) -> {
+				computation.get().run((result, e) -> {
 					if (e == null) {
 						future.complete(result);
 					} else {

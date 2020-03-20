@@ -16,6 +16,7 @@
 
 package io.datakernel.net;
 
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.Check;
@@ -42,7 +43,6 @@ import java.nio.channels.SelectionKey;
 import java.time.Duration;
 import java.util.ArrayDeque;
 
-import static io.datakernel.async.process.Cancellable.CLOSE_EXCEPTION;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.deepRecycle;
 
@@ -168,7 +168,7 @@ public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventH
 	public Promise<UdpPacket> receive() {
 		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (!isOpen()) {
-			return Promise.ofException(CLOSE_EXCEPTION);
+			return Promise.ofException(AsyncCloseable.CLOSE_EXCEPTION);
 		}
 		UdpPacket polled = readBuffer.poll();
 		if (polled != null) {
@@ -221,7 +221,7 @@ public final class AsyncUdpSocketNio implements AsyncUdpSocket, NioChannelEventH
 	public Promise<Void> send(UdpPacket packet) {
 		if (CHECK) checkState(eventloop.inEventloopThread());
 		if (!isOpen()) {
-			return Promise.ofException(CLOSE_EXCEPTION);
+			return Promise.ofException(AsyncCloseable.CLOSE_EXCEPTION);
 		}
 		return Promise.ofCallback(cb -> {
 			writeQueue.add(new Tuple2<>(packet, cb));

@@ -23,6 +23,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
+/**
+ * A {@link StreamSupplier} that is bound with some {@link Promise}
+ * that represents some kind of result from the streaming process.
+ */
 public final class StreamSupplierWithResult<T, X> {
 	@NotNull
 	private final StreamSupplier<T> supplier;
@@ -45,12 +49,12 @@ public final class StreamSupplierWithResult<T, X> {
 
 	public <Y> Promise<Tuple2<X, Y>> streamTo(StreamConsumerWithResult<T, Y> consumer) {
 		return supplier.streamTo(consumer.getConsumer())
-				.then($ -> Promises.toTuple(result, consumer.getResult()));
+				.then(() -> Promises.toTuple(result, consumer.getResult()));
 	}
 
-	protected StreamSupplierWithResult<T, X> sanitize() {
+	public StreamSupplierWithResult<T, X> sanitize() {
 		return new StreamSupplierWithResult<>(supplier,
-				supplier.getEndOfStream().combine(result.whenException(supplier::close), ($, v) -> v).post());
+				supplier.getEndOfStream().combine(result.whenException(supplier::closeEx), ($, v) -> v).post());
 	}
 
 	public <T1, X1> StreamSupplierWithResult<T1, X1> transform(

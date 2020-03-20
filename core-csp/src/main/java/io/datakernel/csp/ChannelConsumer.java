@@ -17,8 +17,8 @@
 package io.datakernel.csp;
 
 import io.datakernel.async.function.AsyncConsumer;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.async.process.AsyncExecutor;
-import io.datakernel.async.process.Cancellable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
@@ -30,15 +30,14 @@ import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static io.datakernel.common.Recyclable.deepRecycle;
 import static io.datakernel.common.Recyclable.tryRecycle;
-import static io.datakernel.common.collection.CollectionUtils.asIterator;
 
 /**
  * This interface represents consumer of data items that should be used serially
@@ -48,7 +47,7 @@ import static io.datakernel.common.collection.CollectionUtils.asIterator;
  * After consumer is closed, all subsequent calls to {@link #accept(Object)} will
  * return a completed exceptionally promise.
  * <p>
- * If any exception is caught while consuming data items, {@link #close(Throwable)}
+ * If any exception is caught while consuming data items, {@link #closeEx(Throwable)}
  * method should be called. All resources should be freed and the caught exception
  * should be propagated to all related processes.
  * <p>
@@ -56,7 +55,7 @@ import static io.datakernel.common.collection.CollectionUtils.asIterator;
  * and means that no additional data should be consumed.
  */
 
-public interface ChannelConsumer<T> extends Cancellable {
+public interface ChannelConsumer<T> extends AsyncCloseable {
 	/**
 	 * Consumes a provided value and returns a
 	 * {@link Promise} as a marker of success.
@@ -64,23 +63,8 @@ public interface ChannelConsumer<T> extends Cancellable {
 	@NotNull
 	Promise<Void> accept(@Nullable T value);
 
-	/**
-	 * Accepts two items and returns a {@code Promise} as a
-	 * marker of completion. If the first item was accepted
-	 * with an exception, second item will be recycled and
-	 * a Promise of exception will be returned.
-	 */
-	@NotNull
-	default Promise<Void> accept(@Nullable T item1, @Nullable T item2) {
-		return accept(item1)
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return accept(item2);
-					} else {
-						tryRecycle(item2);
-						return Promise.ofException(e);
-					}
-				});
+	default Promise<Void> acceptEndOfStream() {
+		return accept(null);
 	}
 
 	/**
@@ -91,26 +75,8 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 */
 	@NotNull
 	@SuppressWarnings("unchecked")
-	default Promise<Void> accept(T item1, T item2, T... items) {
-		return accept(item1)
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return accept(item1);
-					} else {
-						tryRecycle(item2);
-						deepRecycle(items);
-						return Promise.ofException(e);
-					}
-				})
-				.thenEx(($, e) -> {
-					if (e == null) {
-						return accept(item2);
-					} else {
-						deepRecycle(items);
-						return Promise.ofException(e);
-					}
-				})
-				.then($ -> acceptAll(asIterator(items)));
+	default Promise<Void> acceptAll(T... items) {
+		return acceptAll(Arrays.asList(items));
 	}
 
 	/**
@@ -131,7 +97,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	/**
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
-	 * @see ChannelConsumer#of(AsyncConsumer, Cancellable)
+	 * @see ChannelConsumer#of(AsyncConsumer, AsyncCloseable)
 	 */
 	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer) {
 		return of(consumer, e -> {});
@@ -141,12 +107,12 @@ public interface ChannelConsumer<T> extends Cancellable {
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
 	 * @param consumer    AsyncConsumer to be wrapped
-	 * @param cancellable a Cancellable, which will be set to the returned ChannelConsumer
+	 * @param closeable a Cancellable, which will be set to the returned ChannelConsumer
 	 * @param <T>         type of data to be consumed
 	 * @return AbstractChannelConsumer which wraps AsyncConsumer
 	 */
-	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable Cancellable cancellable) {
-		return new AbstractChannelConsumer<T>(cancellable) {
+	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable AsyncCloseable closeable) {
+		return new AbstractChannelConsumer<T>(closeable) {
 			final AsyncConsumer<T> thisConsumer = consumer;
 
 			@Override
@@ -236,7 +202,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
-				promise.whenResult(supplier -> supplier.close(e));
+				promise.whenResult(supplier -> supplier.closeEx(e));
 			}
 		};
 	}
@@ -261,7 +227,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
 				if (consumer != null) {
-					consumer.close(e);
+					consumer.closeEx(e);
 				}
 			}
 		};
@@ -275,7 +241,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 	static ChannelConsumer<ByteBuf> ofSocket(AsyncTcpSocket socket) {
 		return ChannelConsumer.of(socket::write, socket)
 				.withAcknowledgement(ack -> ack
-						.then($ -> socket.write(null)));
+						.then(() -> socket.write(null)));
 	}
 
 	/**
@@ -354,12 +320,12 @@ public interface ChannelConsumer<T> extends Cancellable {
 					try {
 						newValue = fn.apply(value);
 					} catch (UncheckedException u) {
-						ChannelConsumer.this.close(u.getCause());
+						ChannelConsumer.this.closeEx(u.getCause());
 						return Promise.ofException(u.getCause());
 					}
 					return ChannelConsumer.this.accept(newValue);
 				} else {
-					return ChannelConsumer.this.accept(null);
+					return ChannelConsumer.this.acceptEndOfStream();
 				}
 			}
 		};
@@ -383,7 +349,7 @@ public interface ChannelConsumer<T> extends Cancellable {
 				return value != null ?
 						fn.apply(value)
 								.then(ChannelConsumer.this::accept) :
-						ChannelConsumer.this.accept(null);
+						ChannelConsumer.this.acceptEndOfStream();
 			}
 		};
 	}

@@ -316,7 +316,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 							return connect(address)
 									.thenEx(($, e) -> Promise.complete());
 						}))
-				.then($ -> !forcedStart && requestSender instanceof NoSenderAvailable ?
+				.then(() -> !forcedStart && requestSender instanceof NoSenderAvailable ?
 						Promise.ofException(START_EXCEPTION) :
 						Promise.complete());
 	}

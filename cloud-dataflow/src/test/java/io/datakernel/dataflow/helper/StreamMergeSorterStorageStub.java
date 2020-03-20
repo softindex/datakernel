@@ -16,11 +16,12 @@
 
 package io.datakernel.dataflow.helper;
 
+import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
+import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamSorterStorage;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 
 import java.util.ArrayList;
@@ -29,12 +30,18 @@ import java.util.List;
 import java.util.Map;
 
 public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
-	protected final Eventloop eventloop;
-	protected final Map<Integer, List<T>> storage = new HashMap<>();
-	protected int partition;
 
-	public StreamMergeSorterStorageStub(Eventloop eventloop) {
-		this.eventloop = eventloop;
+	public static final StreamSorterStorageFactory FACTORY_STUB = new StreamSorterStorageFactory() {
+		@Override
+		public <C> StreamSorterStorage<C> create(Class<C> type, DataflowEnvironment environment, Promise<Void> taskExecuted) {
+			return new StreamMergeSorterStorageStub<>();
+		}
+	};
+
+	private final Map<Integer, List<T>> storage = new HashMap<>();
+	private int partition;
+
+	private StreamMergeSorterStorageStub() {
 	}
 
 	@Override
@@ -48,14 +55,14 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 		List<T> list = new ArrayList<>();
 		storage.put(partition, list);
 		StreamConsumerToList<T> consumer = StreamConsumerToList.create(list);
-		return Promise.of(consumer.withLateBinding());
+		return Promise.of(consumer);
 	}
 
 	@Override
 	public Promise<StreamSupplier<T>> read(int partition) {
 		List<T> iterable = storage.get(partition);
 		StreamSupplier<T> supplier = StreamSupplier.ofIterable(iterable);
-		return Promise.of(supplier.withLateBinding());
+		return Promise.of(supplier);
 	}
 
 	@Override

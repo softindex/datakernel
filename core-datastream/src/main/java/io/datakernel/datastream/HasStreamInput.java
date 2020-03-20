@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.dataflow.server.command;
+package io.datakernel.datastream;
 
-import java.util.List;
-
-public final class DatagraphResponseExecute extends DatagraphResponse {
-	private final List<Integer> nodeIds;
-
-	public DatagraphResponseExecute(List<Integer> nodeIds) {
-		this.nodeIds = nodeIds;
-	}
-
-	public List<Integer> getNodeIds() {
-		return nodeIds;
-	}
-
+/**
+ * A separate interface for components that have some kind of input represented with a {@link StreamConsumer}.
+ */
+public interface HasStreamInput<I> {
+	StreamConsumer<I> getInput();
 }

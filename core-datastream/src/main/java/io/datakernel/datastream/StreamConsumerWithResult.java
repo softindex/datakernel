@@ -21,9 +21,14 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Function;
 
+/**
+ * A {@link StreamConsumer} that is bound with some {@link Promise}
+ * that represents some kind of result from the streaming process.
+ */
 public final class StreamConsumerWithResult<T, X> {
 	@NotNull
 	private final StreamConsumer<T> consumer;
+
 	@NotNull
 	private final Promise<X> result;
 
@@ -36,9 +41,9 @@ public final class StreamConsumerWithResult<T, X> {
 		return new StreamConsumerWithResult<>(consumer, result);
 	}
 
-	protected StreamConsumerWithResult<T, X> sanitize() {
+	public StreamConsumerWithResult<T, X> sanitize() {
 		return new StreamConsumerWithResult<>(consumer,
-				consumer.getAcknowledgement().combine(result.whenException(consumer::close), ($, v) -> v).post());
+				consumer.getAcknowledgement().combine(result.whenException(consumer::closeEx), ($, v) -> v).post());
 	}
 
 	public <T1, X1> StreamConsumerWithResult<T1, X1> transform(

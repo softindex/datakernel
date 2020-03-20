@@ -229,19 +229,19 @@ public interface AsyncServletDecorator {
 	static AsyncServletDecorator loadBody() {
 		return servlet ->
 				request -> request.loadBody()
-						.then($ -> servlet.serveAsync(request));
+						.then(() -> servlet.serveAsync(request));
 	}
 
 	static AsyncServletDecorator loadBody(MemSize maxBodySize) {
 		return servlet ->
 				request -> request.loadBody(maxBodySize)
-						.then($ -> servlet.serveAsync(request));
+						.then(() -> servlet.serveAsync(request));
 	}
 
 	static AsyncServletDecorator loadBody(int maxBodySize) {
 		return servlet ->
 				request -> request.loadBody(maxBodySize)
-						.then($ -> servlet.serveAsync(request));
+						.then(() -> servlet.serveAsync(request));
 	}
 
 	static AsyncServletDecorator logged() {

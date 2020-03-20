@@ -22,9 +22,8 @@ import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.crdt.primitives.CrdtType;
 import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.MultiSharder;
-import io.datakernel.datastream.processor.ShardingStreamSplitter;
 import io.datakernel.datastream.processor.StreamReducerSimple;
 import io.datakernel.datastream.processor.StreamReducers.BinaryAccumulatorReducer;
 import io.datakernel.datastream.processor.StreamSplitter;
@@ -47,6 +46,7 @@ import java.util.function.Function;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
+@SuppressWarnings("rawtypes") // JMX
 public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class);
 
@@ -132,7 +132,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 		return Collections.unmodifiableList(orderedIds);
 	}
 
-	public MultiSharder<K> getShardingFunction() {
+	public RendezvousHashSharder<I, K> getShardingFunction() {
 		return shardingFunction;
 	}
 	// endregion
@@ -219,13 +219,14 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return connect(CrdtStorage::upload)
 				.then(successes -> {
-					ShardingStreamSplitter<CrdtData<K, S>, K> shplitter = ShardingStreamSplitter.create(shardingFunction, CrdtData::getKey);
-
-					successes.forEach(consumer -> shplitter.newOutput().streamTo(consumer));
-
-					return Promise.of(shplitter.getInput()
-							.transformWith(detailedStats ? uploadStats : uploadStatsDetailed)
-							.withLateBinding());
+					StreamSplitter<CrdtData<K, S>, CrdtData<K, S>> splitter = StreamSplitter.create(
+							(item, acceptors) -> {
+								for (int index : shardingFunction.shard(item.getKey())) {
+									acceptors[index].accept(item);
+								}
+							});
+					successes.forEach(consumer -> splitter.newOutput().streamTo(consumer));
+					return Promise.of(splitter.getInput().transformWith(detailedStats ? uploadStats : uploadStatsDetailed));
 				});
 	}
 
@@ -241,8 +242,7 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 					successes.forEach(producer -> producer.streamTo(reducer.newInput()));
 
 					return Promise.of(reducer.getOutput()
-							.transformWith(detailedStats ? downloadStats : downloadStatsDetailed)
-							.withLateBinding());
+							.transformWith(detailedStats ? downloadStats : downloadStatsDetailed));
 				});
 	}
 
@@ -250,13 +250,14 @@ public final class CrdtStorageCluster<I extends Comparable<I>, K extends Compara
 	public Promise<StreamConsumer<K>> remove() {
 		return connect(CrdtStorage::remove)
 				.then(successes -> {
-					StreamSplitter<K> splitter = StreamSplitter.create();
-
+					StreamSplitter<K, K> splitter = StreamSplitter.create((item, acceptors) -> {
+						for (StreamDataAcceptor<K> acceptor : acceptors) {
+							acceptor.accept(item);
+						}
+					});
 					successes.forEach(consumer -> splitter.newOutput().streamTo(consumer));
-
 					return Promise.of(splitter.getInput()
-							.transformWith(detailedStats ? removeStats : removeStatsDetailed)
-							.withLateBinding());
+							.transformWith(detailedStats ? removeStats : removeStatsDetailed));
 				});
 	}
 

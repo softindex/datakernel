@@ -90,13 +90,13 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 									if (e1 == null) {
 										doProcess();
 									} else {
-										close(e1);
+										closeEx(e1);
 									}
 								});
 						tryRecycle(item);
 					} else {
-						first.accept(null).both(second.accept(null))
-								.whenComplete(($, e2) -> completeProcess(e2));
+						first.acceptEndOfStream().both(second.acceptEndOfStream())
+								.whenComplete(($, e2) -> completeProcessEx(e2));
 					}
 				});
 	}
@@ -110,9 +110,9 @@ public class ChannelBifurcator<T> extends AbstractCommunicatingProcess
 	//[START REGION_5]
 	@Override
 	protected void doClose(Throwable e) {
-		input.close(e);
-		first.close(e);
-		second.close(e);
+		input.closeEx(e);
+		first.closeEx(e);
+		second.closeEx(e);
 	}
 	//[END REGION_5]
 

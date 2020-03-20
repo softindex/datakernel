@@ -17,17 +17,14 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.common.exception.ExpectedException;
-import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
@@ -43,7 +40,8 @@ public class StreamSharderTest {
 
 	@Test
 	public void test1() {
-		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
+		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
+				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
@@ -67,7 +65,8 @@ public class StreamSharderTest {
 
 	@Test
 	public void test2() {
-		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
+		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
+				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
@@ -92,33 +91,25 @@ public class StreamSharderTest {
 
 	@Test
 	public void testWithError() {
-		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
+		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
+				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 
-		List<Integer> list1 = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create(list1);
-
-		List<Integer> list2 = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create(list2);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
+		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 		ExpectedException exception = new ExpectedException("Test Exception");
 
 		Throwable e = awaitException(
 				source.streamTo(streamSharder.getInput()),
 				streamSharder.newOutput().streamTo(consumer1),
 				streamSharder.newOutput().streamTo(
-						consumer2.transformWith(decorator((context, dataAcceptor) ->
-								item -> {
-									dataAcceptor.accept(item);
-									if (item == 3) {
-										context.closeWithError(exception);
-									}
-								})))
-		);
+						consumer2.transformWith(decorate(promise ->
+								promise.then(item -> item == 3 ? Promise.ofException(exception) : Promise.of(item))))));
 
 		assertSame(exception, e);
-		assertEquals(1, list1.size());
-		assertEquals(2, list2.size());
+		assertEquals(1, consumer1.getList().size());
+		assertEquals(2, consumer2.getList().size());
 		assertClosedWithError(source);
 		assertClosedWithError(source);
 		assertClosedWithError(streamSharder.getInput());
@@ -129,7 +120,9 @@ public class StreamSharderTest {
 
 	@Test
 	public void testSupplierWithError() {
-		StreamSharder<Integer> streamSharder = StreamSharder.create(SHARDER);
+		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
+				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
+
 		ExpectedException exception = new ExpectedException("Test Exception");
 
 		StreamSupplier<Integer> source = StreamSupplier.concat(
@@ -139,10 +132,8 @@ public class StreamSharderTest {
 				StreamSupplier.closingWithError(exception)
 		);
 
-		List<Integer> list1 = new ArrayList<>();
-		StreamConsumer<Integer> consumer1 = StreamConsumerToList.create(list1);
-		List<Integer> list2 = new ArrayList<>();
-		StreamConsumer<Integer> consumer2 = StreamConsumerToList.create(list2);
+		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
+		StreamConsumerToList<Integer> consumer2 = StreamConsumerToList.create();
 
 		Throwable e = awaitException(
 				source.streamTo(streamSharder.getInput()),
@@ -151,8 +142,8 @@ public class StreamSharderTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(1, list1.size());
-		assertEquals(2, list2.size());
+		assertEquals(1, consumer1.getList().size());
+		assertEquals(1, consumer2.getList().size());
 
 		assertClosedWithError(streamSharder.getInput());
 		assertSuppliersClosedWithError(streamSharder.getOutputs());

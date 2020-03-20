@@ -103,7 +103,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 	public Promise<StreamConsumer<T>> write(@NotNull String logPartition) {
 		validateLogPartition(logPartition);
 
-		return Promise.of(StreamConsumer.<T>ofSupplier(
+		return Promise.of(StreamConsumer.ofSupplier(
 				supplier -> supplier
 						.transformWith(ChannelSerializer.create(serializer)
 								.withAutoFlushInterval(autoFlushInterval)
@@ -112,8 +112,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 						.transformWith(ChannelLZ4Compressor.createFastCompressor())
 						.transformWith(streamWrites.register(logPartition))
 						.transformWith(streamWriteStats)
-						.bindTo(new LogStreamChunker(eventloop, client, namingScheme, logPartition)))
-				.withLateBinding());
+						.bindTo(new LogStreamChunker(eventloop, client, namingScheme, logPartition))));
 	}
 
 	@Override
@@ -155,7 +154,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 			@Override
 			public boolean hasNext() {
 				if (it.hasNext()) return true;
-				positionPromise.set(getLogPosition());
+				positionPromise.trySet(getLogPosition());
 				return false;
 			}
 
@@ -201,8 +200,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 																	Promise.ofException(e))))
 											.transformWith(ChannelDeserializer.create(serializer))
 											.withEndOfStream(eos ->
-													eos.whenComplete(($, e) -> log(e)))
-											.withLateBinding();
+													eos.whenComplete(($, e) -> log(e)));
 								}));
 			}
 
@@ -219,9 +217,7 @@ public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
 			}
 		};
 
-		return StreamSupplierWithResult.of(
-				StreamSupplier.concat(logFileStreams).withLateBinding(),
-				positionPromise);
+		return StreamSupplierWithResult.of(StreamSupplier.concat(logFileStreams), positionPromise);
 	}
 
 	private static void validateLogPartition(@NotNull String logPartition) {

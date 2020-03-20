@@ -18,7 +18,6 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
-import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,21 +27,20 @@ import java.util.function.Function;
 import static io.datakernel.common.Preconditions.checkArgument;
 
 /**
- * Perform aggregative functions on the elements from input streams. Searches key of item
- * with key function, selects elements with some key, reductions it and streams result sorted by key.
+ * Applies aggregative functions to the elements from input streams.
+ * <p>
+ * Searches key of item with key function, selects elements with some key, reductions it and streams result sorted by key.
+ * <p>
  * Elements from stream to input must be sorted by keys. It is Stream Transformer
  * because it represents few consumers and one supplier.
- *
- * @param <K> type of key of element
- * @param <O> type of output data
- * @param <A> type of accumulator
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, StreamOutput<O> {
+public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs, HasStreamOutput<O> {
 	public static final int DEFAULT_BUFFER_SIZE = 2000;
 
 	private final List<Input> inputs = new ArrayList<>();
 	private final Output output;
+	private final StreamDataAcceptor<O> outputSender;
 
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
 
@@ -64,6 +62,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 	 */
 	public AbstractStreamReducer(@NotNull Comparator<K> keyComparator) {
 		this.output = new Output();
+		this.outputSender = output::send;
 		this.priorityQueue = new PriorityQueue<>(1, (o1, o2) -> {
 			int compare = ((Comparator) keyComparator).compare(o1.headKey, o2.headKey);
 			if (compare != 0)
@@ -118,7 +117,7 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 
 		@Override
 		protected void onStarted() {
-			getSupplier().resume(this);
+			resume(this);
 		}
 
 		/**
@@ -137,86 +136,97 @@ public abstract class AbstractStreamReducer<K, O, A> implements StreamInputs, St
 			} else {
 				deque.offer(item);
 				if (deque.size() == bufferSize) {
-					getSupplier().suspend();
-					produce();
+					suspend();
+					output.reduce();
 				}
 			}
 		}
 
 		@Override
-		protected Promise<Void> onEndOfStream() {
+		protected void onEndOfStream() {
 			streamsOpen--;
 			if (headItem == null) {
 				streamsAwaiting--;
 			}
-			produce();
-			return output.getConsumer().getAcknowledgement();
+			output.reduce();
+			output.getEndOfStream()
+					.whenComplete(this::acknowledge)
+					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			output.close(e);
+			output.closeEx(e);
+		}
+
+		@Override
+		protected void onCleanup() {
+			deque.clear();
 		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
+
+		void reduce() {
+			resume();
+		}
+
+		@Override
+		protected void onResumed() {
+			while (streamsAwaiting == 0) {
+				Input<Object> input = priorityQueue.poll();
+				if (input == null)
+					break;
+				//noinspection PointlessNullCheck intellij doesn't know
+				if (key != null && input.headKey.equals(key)) {
+					accumulator = input.reducer.onNextItem(outputSender, key, input.headItem, accumulator);
+				} else {
+					if (lastInput != null) {
+						lastInput.reducer.onComplete(outputSender, key, accumulator);
+					}
+					key = input.headKey;
+					accumulator = input.reducer.onFirstItem(outputSender, key, input.headItem);
+				}
+				input.headItem = input.deque.poll();
+				lastInput = input;
+				if (input.headItem != null) {
+					input.headKey = input.keyFunction.apply(input.headItem);
+					priorityQueue.offer(input);
+				} else {
+					if (!input.isEndOfStream()) {
+						streamsAwaiting++;
+						break;
+					}
+				}
+			}
+
+			for (Input input : inputs) {
+				if (input.deque.size() <= bufferSize / 2) {
+					input.resume(input);
+				}
+			}
+
+			if (streamsOpen == 0 && priorityQueue.isEmpty()) {
+				if (lastInput != null) {
+					lastInput.reducer.onComplete(outputSender, key, accumulator);
+					lastInput = null;
+					key = null;
+					accumulator = null;
+				}
+				output.sendEndOfStream();
+			}
+		}
+
 		@Override
 		protected void onError(Throwable e) {
-			inputs.forEach(input -> input.close(e));
+			for (Input input : inputs) {
+				input.closeEx(e);
+			}
 		}
 
 		@Override
-		protected void produce(AsyncProduceController async) {
-			AbstractStreamReducer.this.produce();
+		protected void onCleanup() {
+			priorityQueue.clear();
 		}
 	}
-
-	private void produce() {
-		StreamDataAcceptor<O> dataAcceptor = output.getCurrentDataAcceptor();
-		if (dataAcceptor == null)
-			return;
-		while (streamsAwaiting == 0) {
-			Input<Object> input = priorityQueue.poll();
-			if (input == null)
-				break;
-			//noinspection PointlessNullCheck intellij doesn't know
-			if (key != null && input.headKey.equals(key)) {
-				accumulator = input.reducer.onNextItem(dataAcceptor, key, input.headItem, accumulator);
-			} else {
-				if (lastInput != null) {
-					lastInput.reducer.onComplete(dataAcceptor, key, accumulator);
-				}
-				key = input.headKey;
-				accumulator = input.reducer.onFirstItem(dataAcceptor, key, input.headItem);
-			}
-			input.headItem = input.deque.poll();
-			lastInput = input;
-			if (input.headItem != null) {
-				input.headKey = input.keyFunction.apply(input.headItem);
-				priorityQueue.offer(input);
-			} else {
-				if (!input.getEndOfStream().isResult()) {
-					streamsAwaiting++;
-					break;
-				}
-			}
-		}
-
-		for (Input input : inputs) {
-			if (input.deque.size() <= bufferSize / 2) {
-				input.getSupplier().resume(input);
-			}
-		}
-
-		if (streamsOpen == 0 && priorityQueue.isEmpty()) {
-			if (lastInput != null) {
-				lastInput.reducer.onComplete(dataAcceptor, key, accumulator);
-				lastInput = null;
-				key = null;
-				accumulator = null;
-			}
-			output.sendEndOfStream();
-		}
-	}
-
 }

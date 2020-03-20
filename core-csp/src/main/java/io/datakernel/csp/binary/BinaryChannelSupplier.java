@@ -17,7 +17,7 @@
 package io.datakernel.csp.binary;
 
 import io.datakernel.async.function.AsyncSupplier;
-import io.datakernel.async.process.Cancellable;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.parse.ParseException;
@@ -28,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 
-public abstract class BinaryChannelSupplier implements Cancellable {
+public abstract class BinaryChannelSupplier implements AsyncCloseable {
 	public static final Exception UNEXPECTED_DATA_EXCEPTION = new ParseException(BinaryChannelSupplier.class, "Unexpected data after end-of-stream");
 	public static final Exception UNEXPECTED_END_OF_STREAM_EXCEPTION = new ParseException(BinaryChannelSupplier.class, "Unexpected end-of-stream");
 
@@ -77,7 +77,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			public Promise<Void> endOfStream() {
 				if (!bufs.isEmpty()) {
 					bufs.recycle();
-					input.close(UNEXPECTED_DATA_EXCEPTION);
+					input.closeEx(UNEXPECTED_DATA_EXCEPTION);
 					return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 				}
 				return input.get()
@@ -86,22 +86,22 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 								return Promise.complete();
 							} else {
 								buf.recycle();
-								input.close(UNEXPECTED_DATA_EXCEPTION);
+								input.closeEx(UNEXPECTED_DATA_EXCEPTION);
 								return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 							}
 						});
 			}
 
 			@Override
-			public void close(@NotNull Throwable e) {
+			public void closeEx(@NotNull Throwable e) {
 				bufs.recycle();
-				input.close(e);
+				input.closeEx(e);
 			}
 		};
 	}
 
 	public static BinaryChannelSupplier ofProvidedQueue(ByteBufQueue queue,
-			AsyncSupplier<Void> get, AsyncSupplier<Void> complete, Cancellable cancellable) {
+			AsyncSupplier<Void> get, AsyncSupplier<Void> complete, AsyncCloseable closeable) {
 		return new BinaryChannelSupplier(queue) {
 			@Override
 			public Promise<Void> needMoreData() {
@@ -114,8 +114,8 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 			}
 
 			@Override
-			public void close(@NotNull Throwable e) {
-				cancellable.close(e);
+			public void closeEx(@NotNull Throwable e) {
+				closeable.closeEx(e);
 			}
 		};
 	}
@@ -143,7 +143,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 						try {
 							result = decoder.tryDecode(bufs);
 						} catch (Exception e2) {
-							close(e2);
+							closeEx(e2);
 							cb.setException(e2);
 							return;
 						}
@@ -162,7 +162,7 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 		return parse(decoder)
 				.then(result -> {
 					if (!bufs.isEmpty()) {
-						close(UNEXPECTED_DATA_EXCEPTION);
+						closeEx(UNEXPECTED_DATA_EXCEPTION);
 						return Promise.ofException(UNEXPECTED_DATA_EXCEPTION);
 					}
 					return endOfStream().map($ -> result);

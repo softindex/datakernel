@@ -15,6 +15,6 @@ public final class RecyclingChannelConsumer<T extends Recyclable> implements Cha
 	}
 
 	@Override
-	public void close(@NotNull Throwable e) {
+	public void closeEx(@NotNull Throwable e) {
 	}
 }

@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.callback.Completable;
+import io.datakernel.async.callback.AsyncComputation;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.concurrent.CompletableFuture;
@@ -40,5 +40,5 @@ public interface EventloopExecutor extends Executor {
 	 * Executes the given computation at some time in the future in some undelying eventloop
 	 * and returns its result in a {@link CompletableFuture future}.
 	 */
-	@NotNull <T> CompletableFuture<T> submit(Supplier<? extends Completable<T>> computation);
+	@NotNull <T> CompletableFuture<T> submit(Supplier<? extends AsyncComputation<T>> computation);
 }

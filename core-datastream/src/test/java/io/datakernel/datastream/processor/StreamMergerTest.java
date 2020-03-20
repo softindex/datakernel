@@ -18,16 +18,15 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamConsumers.*;
+import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
@@ -124,7 +123,7 @@ public class StreamMergerTest {
 				source1.streamTo(merger.newInput()),
 				source2.streamTo(merger.newInput()),
 				merger.getOutput()
-						.streamTo(consumer.transformWith(randomlySuspending()))
+						.streamTo(consumer.transformWith(oneByOne()))
 		);
 
 		assertEquals(asList(d0, //DataItem1(0,1,1,1)
@@ -143,13 +142,12 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicateWithError() {
-		StreamSupplier<Integer> source1 = StreamSupplier.of(7, 8, 3);
+		StreamSupplier<Integer> source1 = StreamSupplier.of(7, 8);
 		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 6);
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
-		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 		Exception exception = new Exception("Test Exception");
 
 		Throwable e = awaitException(
@@ -157,23 +155,18 @@ public class StreamMergerTest {
 				source2.streamTo(merger.newInput()),
 				merger.getOutput()
 						.streamTo(consumer
-								.transformWith(decorator((context, dataAcceptor) ->
-										item -> {
-											dataAcceptor.accept(item);
-											if (item == 8) {
-												context.closeWithError(exception);
-											}
-										})))
+								.transformWith(decorate(promise -> promise.then(
+										item -> item == 8 ? Promise.ofException(exception) : Promise.of(item)))))
 		);
 
 		assertSame(exception, e);
-//		assertEquals(5, list.size());
+		assertEquals(5, consumer.getList().size());
 		assertEndOfStream(source1);
 		assertEndOfStream(source2);
 		assertClosedWithError(consumer);
 		assertClosedWithError(merger.getOutput());
-		assertClosedWithError(merger.getInput(0));
-		assertClosedWithError(merger.getInput(1));
+		assertEndOfStream(merger.getInput(0));
+		assertEndOfStream(merger.getInput(1));
 	}
 
 	@Test
@@ -194,8 +187,7 @@ public class StreamMergerTest {
 
 		StreamMerger<Integer, Integer> merger = StreamMerger.create(Function.identity(), Integer::compareTo, true);
 
-		List<Integer> list = new ArrayList<>();
-		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
 
 		awaitException(
 				source1.streamTo(merger.newInput()),
@@ -204,11 +196,11 @@ public class StreamMergerTest {
 						.streamTo(consumer.transformWith(oneByOne()))
 		);
 
-		assertEquals(0, list.size());
+		assertEquals(0, consumer.getList().size());
 		assertClosedWithError(consumer);
 		assertClosedWithError(merger.getOutput());
 		assertClosedWithError(merger.getInput(0));
-		assertClosedWithError(merger.getInput(1));
+		assertEndOfStream(merger.getInput(1));
 	}
 
 }

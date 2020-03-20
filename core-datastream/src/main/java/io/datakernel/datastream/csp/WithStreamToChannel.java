@@ -6,8 +6,14 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.StreamSupplierTransformer;
 
-public interface WithStreamToChannel<B, I, O> extends
-		StreamConsumer<I>, WithChannelOutput<B, O>,
+/**
+ * This interface is a shortcut for implementing transformers that convert
+ * {@link StreamSupplier stream suppliers} to {@link ChannelSupplier channel suppliers}
+ * and are useful through both DSLs.
+ */
+public interface WithStreamToChannel<Self, I, O> extends
+		StreamConsumer<I>,
+		WithChannelOutput<Self, O>,
 		StreamSupplierTransformer<I, ChannelSupplier<O>> {
 
 	@Override
@@ -15,5 +21,4 @@ public interface WithStreamToChannel<B, I, O> extends
 		streamSupplier.streamTo(this);
 		return getOutput().getSupplier();
 	}
-
 }

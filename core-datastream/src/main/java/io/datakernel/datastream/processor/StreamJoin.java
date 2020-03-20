@@ -17,7 +17,6 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
-import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,64 +28,36 @@ import java.util.function.Function;
 import static java.util.Arrays.asList;
 
 /**
- * Represents a object which has left and right consumers, and one supplier. After receiving data
- * it can join it, available are inner join and left join. It work analogous joins from SQL.
+ * Represents an object which has left and right consumers and one supplier. After receiving data
+ * it can join it, or either does an inner-join or a left join. It works similar to joins from SQL.
  * It is a {@link StreamJoin} which receives specified type and streams
- * set of join's result  to the destination .
- *
- * @param <K> type of  keys
- * @param <L> type of data from left stream
- * @param <R> type of data from right stream
- * @param <V> type of output data
+ * set of join's result to the destination.
  */
-public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<V> {
+public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamOutput<V> {
 
 	/**
-	 * It is primary interface of joiner. It contains methods which will join streams
-	 *
-	 * @param <K> type of  keys
-	 * @param <L> type of data from left stream
-	 * @param <R> type of data from right stream
-	 * @param <V> type of output data
+	 * It is the primary interface of a joiner. It contains methods which will join streams
 	 */
 	public interface Joiner<K, L, R, V> {
 		/**
-		 * Streams objects with all fields from  both received streams as long as there is a match
+		 * Streams objects with all fields from both received streams as long as there is a match
 		 * between the keys in both items.
-		 *
-		 * @param key    on this key it will join
-		 * @param left   left stream
-		 * @param right  right stream
-		 * @param output callback for sending result
 		 */
 		void onInnerJoin(K key, L left, R right, StreamDataAcceptor<V> output);
 
 		/**
-		 * Streams objects with all fields from the left stream , with the matching key - fields in the
+		 * Streams objects with all fields from the left stream, with the matching key - fields in the
 		 * right stream. The field of result object is NULL in the right stream when there is no match.
-		 *
-		 * @param key    on this key it will join
-		 * @param left   left stream
-		 * @param output callback for sending result
 		 */
 		void onLeftJoin(K key, L left, StreamDataAcceptor<V> output);
 	}
 
 	/**
-	 * Represent joiner which produce only inner joins
-	 *
-	 * @param <K> type of  keys
-	 * @param <L> type of data from left stream
-	 * @param <R> type of data from right stream
-	 * @param <V> type of output data
+	 * Represents a joiner that produces only inner joins
 	 */
 	public static abstract class InnerJoiner<K, L, R, V> implements Joiner<K, L, R, V> {
 		/**
 		 * Left join does nothing for absence null fields in result inner join
-		 *
-		 * @param key    on this key it will join
-		 * @param left   left stream
-		 * @param output callback for sending result
 		 */
 		@Override
 		public void onLeftJoin(K key, L left, StreamDataAcceptor<V> output) {
@@ -95,29 +66,15 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 
 	/**
 	 * Simple implementation of Joiner, which does inner and left join
-	 *
-	 * @param <K> type of  keys
-	 * @param <L> type of data from left stream
-	 * @param <R> type of data from right stream
-	 * @param <V> type of output data
 	 */
 	public static abstract class ValueJoiner<K, L, R, V> implements Joiner<K, L, R, V> {
 		/**
 		 * Method which contains realization inner join.
-		 *
-		 * @param key   on this key it will join
-		 * @param left  left stream
-		 * @param right right stream
-		 * @return stream with joined streams
 		 */
 		public abstract V doInnerJoin(K key, L left, R right);
 
 		/**
 		 * Method which contains realization left join
-		 *
-		 * @param key  on this key it will join
-		 * @param left left stream
-		 * @return stream with joined streams
 		 */
 		@Nullable
 		public V doLeftJoin(K key, L left) {
@@ -154,7 +111,6 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 
 	private final Joiner<K, L, R, V> joiner;
 
-	// region creators
 	private StreamJoin(@NotNull Comparator<K> keyComparator,
 			@NotNull Function<L, K> leftKeyFunction, @NotNull Function<R, K> rightKeyFunction,
 			@NotNull Joiner<K, L, R, V> joiner) {
@@ -180,9 +136,8 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 			Joiner<K, L, R, V> joiner) {
 		return new StreamJoin<>(keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
-	// endregion
 
-	protected final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
+	private final class Input<I> extends AbstractStreamConsumer<I> implements StreamDataAcceptor<I> {
 		private final ArrayDeque<I> deque;
 
 		public Input(ArrayDeque<I> deque) {
@@ -191,51 +146,50 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 
 		@Override
 		public void accept(I item) {
-			deque.add(item);
-			output.tryProduce();
+			boolean wasEmpty = deque.isEmpty();
+			deque.addLast(item);
+			if (wasEmpty) {
+				output.join();
+			}
 		}
 
 		@Override
 		protected void onStarted() {
-			output.tryProduce();
+			output.join();
 		}
 
 		@Override
-		protected Promise<Void> onEndOfStream() {
-			output.tryProduce();
-			return output.getEndOfStream();
+		protected void onEndOfStream() {
+			output.join();
+			output.getEndOfStream()
+					.whenResult(this::acknowledge)
+					.whenException(this::closeEx);
 		}
 
 		@Override
 		protected void onError(Throwable e) {
-			output.close(e);
+			output.closeEx(e);
 		}
 	}
 
-	protected final class Output extends AbstractStreamSupplier<V> {
-		@Override
-		protected void onSuspended() {
-			left.getSupplier().suspend();
-			right.getSupplier().suspend();
+	private final class Output extends AbstractStreamSupplier<V> {
+
+		void join(){
+			resume();
 		}
 
 		@Override
-		protected void onError(Throwable e) {
-			left.close(e);
-			right.close(e);
-		}
-
-		@Override
-		protected void produce(AsyncProduceController async) {
-			if (isReceiverReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
+		protected void onResumed() {
+			StreamDataAcceptor<V> acceptor = this::send;
+			if (isReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();
 				K leftKey = leftKeyFunction.apply(leftValue);
 				R rightValue = rightDeque.peek();
 				K rightKey = rightKeyFunction.apply(rightValue);
-				for (; ; ) {
+				while (true) {
 					int compare = keyComparator.compare(leftKey, rightKey);
 					if (compare < 0) {
-						joiner.onLeftJoin(leftKey, leftValue, getCurrentDataAcceptor());
+						joiner.onLeftJoin(leftKey, leftValue, acceptor);
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
@@ -248,25 +202,40 @@ public final class StreamJoin<K, L, R, V> implements StreamInputs, StreamOutput<
 						rightValue = rightDeque.peek();
 						rightKey = rightKeyFunction.apply(rightValue);
 					} else {
-						joiner.onInnerJoin(leftKey, leftValue, rightValue, getCurrentDataAcceptor());
+						joiner.onInnerJoin(leftKey, leftValue, rightValue, acceptor);
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
-						if (!isReceiverReady())
+						if (!isReady())
 							break;
 						leftValue = leftDeque.peek();
 						leftKey = leftKeyFunction.apply(leftValue);
 					}
 				}
 			}
-			if (isReceiverReady()) {
-				if (left.getEndOfStream().isResult() && right.getEndOfStream().isResult()) {
+			if (isReady()) {
+				if (left.isEndOfStream() && right.isEndOfStream()) {
 					sendEndOfStream();
 				} else {
-					left.getSupplier().resume(left);
-					right.getSupplier().resume(right);
+					left.resume(left);
+					right.resume(right);
 				}
+			} else {
+				left.suspend();
+				right.suspend();
 			}
+		}
+
+		@Override
+		protected void onError(Throwable e) {
+			left.closeEx(e);
+			right.closeEx(e);
+		}
+
+		@Override
+		protected void onCleanup() {
+			leftDeque.clear();
+			rightDeque.clear();
 		}
 	}
 

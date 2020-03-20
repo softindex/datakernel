@@ -14,7 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.dataflow.server.command;
+package io.datakernel.datastream;
 
-public final class DatagraphResponseDisconnect extends DatagraphResponse {
+import java.util.List;
+
+/**
+ * A separate interface for components that have multiple inputs represented with a list of {@link StreamConsumer consumers}.
+ */
+public interface HasStreamInputs {
+	List<? extends StreamConsumer<?>> getInputs();
+
+	default StreamConsumer<?> getInput(int index) {
+		return getInputs().get(index);
+	}
 }

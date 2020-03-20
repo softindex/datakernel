@@ -19,8 +19,10 @@ package io.datakernel.datastream;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Set;
-
+/**
+ * A wrapper class that delegates all calls to underlying {@link StreamSupplier}.
+ * It exists for when one method of some supplier needs to be altered.
+ */
 public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	protected final StreamSupplier<T> supplier;
 
@@ -29,18 +31,13 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public void setConsumer(@NotNull StreamConsumer<T> consumer) {
-		supplier.setConsumer(consumer);
+	public Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
+		return supplier.streamTo(consumer);
 	}
 
 	@Override
-	public void resume(@NotNull StreamDataAcceptor<T> dataAcceptor) {
-		supplier.resume(dataAcceptor);
-	}
-
-	@Override
-	public void suspend() {
-		supplier.suspend();
+	public void updateDataAcceptor() {
+		supplier.updateDataAcceptor();
 	}
 
 	@Override
@@ -49,12 +46,7 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	@Override
-	public Set<StreamCapability> getCapabilities() {
-		return supplier.getCapabilities();
-	}
-
-	@Override
-	public void close(@NotNull Throwable e) {
-		supplier.close(e);
+	public void closeEx(@NotNull Throwable e) {
+		supplier.closeEx(e);
 	}
 }
