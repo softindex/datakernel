@@ -61,7 +61,7 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 	}
 
 	public StreamSupplier<O> newOutput() {
-		checkState(!started);
+		checkState(!started, "Cannot add new inputs after StreamUnion has been started");
 		Output output = new Output(outputs.size());
 		outputs.add(output);
 		if (outputs.size() > dataAcceptors.length) {

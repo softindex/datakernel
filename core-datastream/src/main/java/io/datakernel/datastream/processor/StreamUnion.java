@@ -56,7 +56,7 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 	}
 
 	public StreamConsumer<T> newInput() {
-		checkState(!started);
+		checkState(!started, "Cannot add new inputs after StreamUnion has been started");
 		Input input = new Input();
 		inputs.add(input);
 		input.getAcknowledgement()

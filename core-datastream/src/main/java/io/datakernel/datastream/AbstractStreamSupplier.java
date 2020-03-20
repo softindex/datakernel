@@ -16,6 +16,7 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.common.Check;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -31,6 +32,8 @@ import static io.datakernel.common.Preconditions.checkState;
  * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
+	private final boolean CHECK = Check.isEnabled(getClass());
+
 	public static final StreamDataAcceptor<?> NO_ACCEPTOR = item -> {};
 
 	@Nullable
@@ -58,7 +61,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkState(!isStarted());
 		this.consumer = consumer;
 		consumer.getAcknowledgement()
@@ -85,7 +88,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void updateDataAcceptor() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (!isStarted()) return;
 		if (endOfStream.isComplete()) return;
 		StreamDataAcceptor<T> dataAcceptor = this.consumer.getDataAcceptor();
@@ -141,7 +144,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * Only the first call causes any effect.
 	 */
 	public final Promise<Void> sendEndOfStream() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (endOfStreamRequest) return flushPromise;
 		if (flushAsync > 0) {
 			asyncEnd();
@@ -175,7 +178,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
 	 */
 	private void flush() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		flushRequest = true;
 		if (flushRunning || flushAsync > 0) return; // recursive call
 		if (endOfStream.isComplete()) return;
@@ -199,7 +202,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		if (endOfStream.isComplete()) return;
 
 		if (!endOfStreamRequest) {
-			if (this.flushPromise != null){
+			if (this.flushPromise != null) {
 				SettablePromise<Void> flushPromise = this.flushPromise;
 				this.flushPromise = null;
 				flushPromise.set(null);
@@ -246,7 +249,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final Promise<Void> getEndOfStream() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return endOfStream;
 	}
 
@@ -264,7 +267,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		endOfStreamRequest = true;
 		dataAcceptor = null;
 		//noinspection unchecked

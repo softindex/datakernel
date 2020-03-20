@@ -16,6 +16,7 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.common.Check;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -29,6 +30,8 @@ import static io.datakernel.common.Preconditions.checkState;
  * which helps to deal with state transitions and helps to implement basic behaviours.
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
+	private final boolean CHECK = Check.isEnabled(getClass());
+
 	private StreamSupplier<T> supplier;
 	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 	private boolean endOfStream;
@@ -38,7 +41,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	@Override
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkState(!isStarted());
 		if (acknowledgement.isComplete()) return;
 		this.supplier = streamSupplier;
@@ -72,7 +75,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	private void endOfStream() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (endOfStream) return;
 		endOfStream = true;
 		onEndOfStream();
@@ -88,7 +91,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * Begins receiving data into given acceptor, resumes the associated supplier to receive data from it.
 	 */
 	public final void resume(@Nullable StreamDataAcceptor<T> dataAcceptor) {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (endOfStream) return;
 		if (this.dataAcceptor == dataAcceptor) return;
 		this.dataAcceptor = dataAcceptor;
@@ -107,7 +110,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * Triggers the {@link #getAcknowledgement() acknowledgement} of this consumer.
 	 */
 	public final void acknowledge() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		endOfStream = true;
 		if (acknowledgement.trySet(null)) {
 			cleanup();
@@ -116,7 +119,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	@Override
 	public final Promise<Void> getAcknowledgement() {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return acknowledgement;
 	}
 
@@ -126,7 +129,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
-		checkState(eventloop.inEventloopThread());
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		endOfStream = true;
 		if (acknowledgement.trySetException(e)) {
 			onError(e);

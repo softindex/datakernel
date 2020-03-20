@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.ArrayDeque;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.max;
@@ -132,6 +133,8 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	 * unless {@link #withSkipSerializationErrors} was used to ignore such errors.
 	 */
 	public ChannelSerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
+		checkArgument(maxMessageSize.toLong() > 0 && maxMessageSize.toLong() <= MAX_SIZE_3.toLong(),
+				"Maximum message size cannot be less than 0 bytes or larger than 2 megabytes");
 		this.maxMessageSize = maxMessageSize;
 		rebuild();
 		return this;
