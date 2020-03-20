@@ -203,6 +203,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 
 	@Override
 	protected void onCleanup() {
+		bufs.forEach(ByteBuf::recycle);
 		bufs.clear();
 		input.buf = nullify(input.buf, ByteBuf::recycle);
 	}

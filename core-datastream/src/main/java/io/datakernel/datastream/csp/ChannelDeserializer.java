@@ -110,6 +110,7 @@ public final class ChannelDeserializer<T> extends AbstractStreamSupplier<T> impl
 					.whenResult(buf -> {
 						if (buf != null) {
 							if (endOfStream) {
+								buf.recycle();
 								closeEx(new UnknownFormatException(ChannelDeserializer.class, format("Unexpected data after end-of-stream, %s : %s", this, queue)));
 								return;
 							}

@@ -31,6 +31,8 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,15 +40,15 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
-import static io.datakernel.datastream.TestStreamTransformers.decorate;
-import static io.datakernel.datastream.TestStreamTransformers.oneByOne;
+import static io.datakernel.datastream.TestStreamTransformers.*;
+import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
+import static io.datakernel.datastream.processor.FailingStreamSorterStorageStub.STORAGE_EXCEPTION;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
+import static org.junit.Assert.*;
 
 public final class StreamSorterTest {
 	@Rule
@@ -100,9 +102,11 @@ public final class StreamSorterTest {
 		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
 
 		await(source.transformWith(sorter)
-				.streamTo(consumerToList));
+				.streamTo(consumerToList.transformWith(randomlySuspending())));
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
+		assertEndOfStream(source, consumerToList);
+		assertEndOfStream(sorter.getOutput(), sorter.getInput());
 	}
 
 	@Test
@@ -127,6 +131,9 @@ public final class StreamSorterTest {
 		);
 
 		assertSame(exception, e);
+		assertEndOfStream(source);
+		assertClosedWithError(exception, consumer);
+		assertClosedWithError(exception, sorter.getOutput(), sorter.getInput());
 	}
 
 	@Test
@@ -135,7 +142,7 @@ public final class StreamSorterTest {
 		ExpectedException exception = new ExpectedException();
 
 		StreamSupplier<Integer> source = StreamSupplier.concat(
-//				StreamSupplier.of(3, 1, 3, 2),
+				StreamSupplier.of(3, 1, 3, 2),
 				StreamSupplier.closingWithError(exception)
 		);
 
@@ -150,5 +157,95 @@ public final class StreamSorterTest {
 
 		assertSame(exception, e);
 		assertEquals(0, consumerToList.getList().size());
+		assertClosedWithError(exception, source, consumerToList);
+		assertClosedWithError(exception, sorter.getOutput(), sorter.getInput());
 	}
+
+	@Test
+	public void testCleanup() throws IOException {
+		StreamSupplier<Integer> source = StreamSupplier.of(6, 5, 4, 3, 2, 1);
+
+		Executor executor = Executors.newSingleThreadExecutor();
+		Path storagePath = tempFolder.newFolder().toPath();
+		StreamSorterStorage<Integer> storage = StreamSorterStorageImpl.create(executor, INT_SERIALIZER, storagePath);
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(storage, Function.identity(), Integer::compareTo, true, 0);
+
+		List<Integer> list = new ArrayList<>();
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create(list);
+
+		assertFalse(Files.list(storagePath).findAny().isPresent());
+
+		Promise<Void> inputPromise = source.streamTo(sorter.getInput());
+
+		// wait some time till files are actually created
+		await(Promise.complete().async());
+
+		assertEquals(6, Files.list(storagePath).count());
+
+		await(inputPromise, sorter.getOutput().streamTo(consumer.transformWith(randomlySuspending())));
+
+		assertFalse(Files.list(storagePath).findAny().isPresent());
+	}
+
+	@Test
+	public void testErrorsOnStorage() throws IOException {
+		FailingStreamSorterStorageStub<Integer> failingNewPartitionStorage = FailingStreamSorterStorageStub.<Integer>create().withFailNewPartition();
+		doTestFailingStorage(failingNewPartitionStorage, (streamPromise, sorter, supplier, consumerToList) -> {
+			Throwable exception = awaitException(streamPromise);
+			assertSame(STORAGE_EXCEPTION, exception);
+			assertClosedWithError(STORAGE_EXCEPTION, sorter.getOutput(), sorter.getInput());
+			assertClosedWithError(STORAGE_EXCEPTION, supplier, consumerToList);
+			assertTrue(consumerToList.getList().isEmpty());
+		});
+
+		FailingStreamSorterStorageStub<Integer> failingWriteStorage = FailingStreamSorterStorageStub.<Integer>create().withFailWrite();
+		doTestFailingStorage(failingWriteStorage, (streamPromise, sorter, supplier, consumerToList) -> {
+			Throwable exception = awaitException(streamPromise);
+			assertSame(STORAGE_EXCEPTION, exception);
+			assertClosedWithError(STORAGE_EXCEPTION, sorter.getOutput(), sorter.getInput());
+			assertClosedWithError(STORAGE_EXCEPTION, supplier, consumerToList);
+			assertTrue(consumerToList.getList().isEmpty());
+		});
+
+		FailingStreamSorterStorageStub<Integer> failingReadStorage = FailingStreamSorterStorageStub.<Integer>create().withFailRead();
+		doTestFailingStorage(failingReadStorage, (streamPromise, sorter, supplier, consumerToList) -> {
+			Throwable exception = awaitException(streamPromise);
+			assertSame(STORAGE_EXCEPTION, exception);
+			assertClosedWithError(STORAGE_EXCEPTION, sorter.getOutput(), sorter.getInput());
+			assertEndOfStream(supplier);
+			assertClosedWithError(STORAGE_EXCEPTION, consumerToList);
+			assertTrue(consumerToList.getList().isEmpty());
+		});
+
+		FailingStreamSorterStorageStub<Integer> failingCleanup = FailingStreamSorterStorageStub.<Integer>create().withFailCleanup();
+		doTestFailingStorage(failingCleanup, (streamPromise, sorter, supplier, consumerToList) -> {
+			await(streamPromise);
+			assertEndOfStream(sorter.getOutput(), sorter.getInput());
+			assertEndOfStream(supplier, consumerToList);
+			assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
+		});
+	}
+
+	private void doTestFailingStorage(FailingStreamSorterStorageStub<Integer> failingStorage, StreamSorterValidator<Integer, Integer> validator) throws IOException {
+		StreamSupplier<Integer> source = StreamSupplier.of(3, 1, 3, 2, 5, 1, 4, 3, 2);
+
+		Executor executor = Executors.newSingleThreadExecutor();
+		Path path = tempFolder.newFolder().toPath();
+		failingStorage.setStorage(StreamSorterStorageImpl.create(executor, INT_SERIALIZER, path));
+		StreamSorter<Integer, Integer> sorter = StreamSorter.create(failingStorage, Function.identity(), Integer::compareTo, true, 2);
+
+		StreamConsumerToList<Integer> consumerToList = StreamConsumerToList.create();
+
+		Promise<Void> streamPromise = source.transformWith(sorter)
+				.streamTo(consumerToList.transformWith(randomlySuspending()));
+
+		validator.validate(streamPromise, sorter, source, consumerToList);
+
+		assertEquals(failingStorage.failCleanup, Files.list(path).findAny().isPresent());
+	}
+
+	private interface StreamSorterValidator<K, T> {
+		void validate(Promise<Void> streamPromise, StreamSorter<K, T> sorter, StreamSupplier<T> supplier, StreamConsumerToList<T> consumerToList);
+	}
+
 }

@@ -199,9 +199,9 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		if (endOfStream.isComplete()) return;
 
 		if (!endOfStreamRequest) {
-			SettablePromise<Void> flushPromise = this.flushPromise;
-			this.flushPromise = null;
-			if (flushPromise != null) {
+			if (this.flushPromise != null){
+				SettablePromise<Void> flushPromise = this.flushPromise;
+				this.flushPromise = null;
 				flushPromise.set(null);
 			}
 			return;
