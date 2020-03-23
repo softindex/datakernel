@@ -183,6 +183,8 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 
 	/**
 	 * Creates a supplier that supplies items from given suppliers consecutively and only then closes.
+	 * In case iterator is eager and exception occurs, caller of this method is required to appropriately close
+	 * all of the created stream suppliers
 	 */
 	static <T> StreamSupplier<T> concat(Iterator<StreamSupplier<T>> iterator) {
 		return new StreamSuppliers.Concat<>(ChannelSupplier.ofIterator(iterator));
@@ -190,6 +192,8 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 
 	/**
 	 * Creates a supplier that supplies items from given suppliers consecutively and only then closes.
+	 * In case channel supplier is eager and exception occurs, caller of this method is required to appropriately close
+	 * all of the created stream suppliers
 	 */
 	static <T> StreamSupplier<T> concat(ChannelSupplier<StreamSupplier<T>> supplier) {
 		return new StreamSuppliers.Concat<>(supplier);
@@ -197,6 +201,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 
 	/**
 	 * A shortcut for {@link #concat(Iterator)} that uses a list of suppliers
+	 * In case exception occurs, caller of this method is required to appropriately close all of the passed stream suppliers
 	 */
 	static <T> StreamSupplier<T> concat(List<StreamSupplier<T>> suppliers) {
 		return concat(suppliers.iterator());
@@ -204,6 +209,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 
 	/**
 	 * A shortcut for {@link #concat(Iterator)} that uses given suppliers
+	 * In case exception occurs, caller of this method is required to appropriately close all of the passed stream suppliers
 	 */
 	@SafeVarargs
 	static <T> StreamSupplier<T> concat(StreamSupplier<T>... suppliers) {

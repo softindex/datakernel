@@ -53,7 +53,7 @@ public final class NodeDownload<T> implements Node {
 
 	@Override
 	public Collection<StreamId> getOutputs() {
-		return singletonList(streamId);
+		return singletonList(output);
 	}
 
 	@Override

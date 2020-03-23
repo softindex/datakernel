@@ -43,6 +43,7 @@ import java.net.InetAddress;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
 
@@ -93,23 +94,25 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 				forwarder = new ChannelZeroBuffer<>();
 				pendingStreams.put(streamId, forwarder);
 				logger.info("onDownload: waiting {}, pending downloads: {}", streamId, pendingStreams.size());
-				messaging.receive()
-						.whenException(() -> {
-							ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
-							if (removed != null) {
-								logger.info("onDownload: removing {}, pending downloads: {}", streamId, pendingStreams.size());
-							}
-						});
+
+				handleMalformedClient(messaging, reason -> {
+					ChannelQueue<ByteBuf> removed = pendingStreams.remove(streamId);
+					if (removed != null) {
+						logger.error("{} - onDownload: removing {}, pending downloads: {}", reason, streamId, pendingStreams.size());
+						removed.close();
+					}
+				});
 			}
-			ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream();
+
+			ChannelConsumer<ByteBuf> consumer = messaging.sendBinaryStream()
+					.withAcknowledgement(ack ->
+							ack.whenComplete(($, e) -> {
+								if (e != null) {
+									logger.warn("Exception occurred while trying to send data");
+								}
+								messaging.close();
+							}));
 			forwarder.getSupplier().streamTo(consumer);
-			consumer.withAcknowledgement(ack ->
-					ack.whenComplete(($, e) -> {
-						if (e != null) {
-							logger.warn("Exception occurred while trying to send data");
-						}
-						messaging.close();
-					}));
 		}
 	}
 
@@ -137,13 +140,12 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 						sendResponse(messaging, throwable);
 					});
 
-			messaging.receive()
-					.whenException(() -> {
-						if (!task.isExecuted()) {
-							logger.error("Client disconnected. Canceling task: {}", command);
-							task.cancel();
-						}
-					});
+			handleMalformedClient(messaging, reason -> {
+				if (!task.isExecuted()) {
+					logger.error("{} - Canceling task: {}", reason, command);
+					task.cancel();
+				}
+			});
 		}
 
 		private void sendResponse(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, @Nullable Throwable throwable) {
@@ -184,18 +186,24 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 		return streamSerializer;
 	}
 
+	private void handleMalformedClient(Messaging<? extends DatagraphCommand, DatagraphResponse> messaging, Consumer<String> handler) {
+		messaging.receiveBinaryStream().get()
+				.whenComplete((buf, e) -> {
+					if (buf != null) {
+						buf.recycle();
+						handler.accept("Unexpected data");
+					} else {
+						handler.accept("Client disconnected");
+					}
+					messaging.close();
+				});
+	}
+
 	@Override
 	protected void serve(AsyncTcpSocket socket, InetAddress remoteAddress) {
 		Messaging<DatagraphCommand, DatagraphResponse> messaging = MessagingWithBinaryStreaming.create(socket, codec);
 		messaging.receive()
-				.whenResult(msg -> {
-					if (msg != null) {
-						doRead(messaging, msg);
-					} else {
-						logger.warn("unexpected end of stream");
-						messaging.close();
-					}
-				})
+				.whenResult(msg -> doRead(messaging, msg))
 				.whenException(e -> {
 					logger.error("received error while trying to read", e);
 					messaging.close();
