@@ -22,7 +22,7 @@ import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 
-public final class MemSize {
+public final class MemSize implements Comparable<MemSize> {
 	public static final MemSize ZERO = new MemSize(0);
 
 	public static final long KB = 1024;
@@ -96,6 +96,11 @@ public final class MemSize {
 	}
 
 	@Override
+	public int compareTo(@NotNull MemSize o) {
+		return Long.compare(bytes, o.bytes);
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
@@ -103,6 +108,11 @@ public final class MemSize {
 		MemSize memSize = (MemSize) o;
 
 		return bytes == memSize.bytes;
+	}
+
+	@Override
+	public int hashCode() {
+		return Long.hashCode(bytes);
 	}
 
 	@NotNull

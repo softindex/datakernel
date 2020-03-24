@@ -19,6 +19,7 @@ package io.datakernel.http.stream;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.common.MemSize;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import org.jetbrains.annotations.NotNull;
@@ -63,9 +64,9 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 		return this;
 	}
 
-	public BufsConsumerGzipDeflater withMaxBufSize(int maxBufSize) {
-		checkArgument(maxBufSize > 0, "Cannot use buf size that is less than 0");
-		this.maxBufSize = maxBufSize;
+	public BufsConsumerGzipDeflater withMaxBufSize(MemSize maxBufSize) {
+		checkArgument(maxBufSize.compareTo(MemSize.ZERO) > 0, "Cannot use buf size that is less than 0");
+		this.maxBufSize = maxBufSize.toInt();
 		return this;
 	}
 

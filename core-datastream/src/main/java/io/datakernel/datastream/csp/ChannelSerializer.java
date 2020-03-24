@@ -133,7 +133,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	 * unless {@link #withSkipSerializationErrors} was used to ignore such errors.
 	 */
 	public ChannelSerializer<T> withMaxMessageSize(MemSize maxMessageSize) {
-		checkArgument(maxMessageSize.toLong() > 0 && maxMessageSize.toLong() <= MAX_SIZE_3.toLong(),
+		checkArgument(maxMessageSize.compareTo(MemSize.ZERO) > 0 && maxMessageSize.compareTo(MAX_SIZE_3) <= 0,
 				"Maximum message size cannot be less than 0 bytes or larger than 2 megabytes");
 		this.maxMessageSize = maxMessageSize;
 		rebuild();
