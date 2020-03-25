@@ -35,14 +35,20 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	private StreamSupplier<T> supplier;
 	private final SettablePromise<Void> acknowledgement = new SettablePromise<>();
 	private boolean endOfStream;
+	private boolean initialized;
 	private @Nullable StreamDataAcceptor<T> dataAcceptor;
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+
+	{
+		eventloop.post(this::tryInitialize);
+	}
 
 	@Override
 	public final void consume(@NotNull StreamSupplier<T> streamSupplier) {
 		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		checkState(!isStarted());
+		tryInitialize();
 		if (acknowledgement.isComplete()) return;
 		this.supplier = streamSupplier;
 		if (!streamSupplier.getEndOfStream().isException()) {
@@ -57,6 +63,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	@Override
 	public final StreamDataAcceptor<T> getDataAcceptor() {
 		return dataAcceptor;
+	}
+
+	/**
+	 * 	 This method will be called exactly once: either in the next eventloop tick after creation of this supplier
+	 * 	 or right before {@link #onStarted()} or {@link #onError(Throwable)} calls
+	 */
+	protected void onInit() {
 	}
 
 	/**
@@ -113,6 +126,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		endOfStream = true;
 		if (acknowledgement.trySet(null)) {
+			tryInitialize();
 			cleanup();
 		}
 	}
@@ -132,6 +146,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		endOfStream = true;
 		if (acknowledgement.trySetException(e)) {
+			tryInitialize();
 			onError(e);
 			cleanup();
 		}
@@ -141,6 +156,16 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * This method will be called when this consumer erroneously changes to the acknowledged state.
 	 */
 	protected void onError(Throwable e) {
+	}
+
+	/**
+	 * Initializes this consumer by calling {@link #onInit()} only if it has not already been initialized.
+	 */
+	private void tryInitialize() {
+		if (!initialized) {
+			initialized = true;
+			onInit();
+		}
 	}
 
 	private void cleanup() {

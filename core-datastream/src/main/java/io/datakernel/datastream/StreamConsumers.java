@@ -28,6 +28,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
 
+import static io.datakernel.common.Utils.nullify;
+
 final class StreamConsumers {
 
 	static final class Idle<T> extends AbstractStreamConsumer<T> {
@@ -74,15 +76,22 @@ final class StreamConsumers {
 	}
 
 	static final class ClosingWithError<T> extends AbstractStreamConsumer<T> {
+		private Throwable error;
+
 		ClosingWithError(Throwable e) {
-			super();
-			closeEx(e);
+			this.error = e;
+		}
+
+		@Override
+		protected void onInit() {
+			error = nullify(error, this::closeEx);
 		}
 	}
 
 	static final class OfPromise<T> extends AbstractStreamConsumer<T> {
 		private Promise<? extends StreamConsumer<T>> promise;
 		private final InternalSupplier internalSupplier = new InternalSupplier();
+
 		private class InternalSupplier extends AbstractStreamSupplier<T> {
 			@Override
 			protected void onResumed() {
@@ -100,7 +109,7 @@ final class StreamConsumers {
 		}
 
 		@Override
-		protected void onStarted() {
+		protected void onInit() {
 			promise
 					.whenResult(consumer -> {
 						consumer.getAcknowledgement()
@@ -135,6 +144,10 @@ final class StreamConsumers {
 		OfChannelConsumer(ChannelQueue<T> queue, ChannelConsumer<T> consumer) {
 			this.queue = queue;
 			this.consumer = consumer;
+		}
+
+		@Override
+		protected void onInit() {
 			queue.getSupplier().streamTo(consumer)
 					.whenResult(this::acknowledge)
 					.whenException(this::closeEx);
@@ -184,16 +197,17 @@ final class StreamConsumers {
 		private Collector<T, A, R> collector;
 		private A accumulator;
 
-		{
-			resultPromise.whenComplete(this::acknowledge);
-		}
-
 		public ToCollector(Collector<T, A, R> collector) {
 			this.collector = collector;
 		}
 
 		public Promise<R> getResult() {
 			return resultPromise;
+		}
+
+		@Override
+		protected void onInit() {
+			resultPromise.whenComplete(this::acknowledge);
 		}
 
 		@Override

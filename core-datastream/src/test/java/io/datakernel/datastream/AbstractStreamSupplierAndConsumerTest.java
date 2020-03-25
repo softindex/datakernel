@@ -59,8 +59,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -76,8 +76,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -92,8 +92,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -109,8 +109,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		assertSame(EXPECTED_EXCEPTION, exception);
 		assertClosedWithError(EXPECTED_EXCEPTION, supplier, consumer);
 
-		supplier.assertStatuses(ERROR, COMPLETE, CLEANUP);
-		consumer.assertStatuses(ERROR, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -127,8 +127,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		assertSame(EXPECTED_EXCEPTION, exception);
 		assertClosedWithError(EXPECTED_EXCEPTION, supplier, consumer);
 
-		supplier.assertStatuses(START, RESUME_SUSPEND, ERROR, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, ERROR, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, START, RESUME_SUSPEND, ERROR, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, ERROR, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -145,8 +145,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		assertSame(EXPECTED_EXCEPTION, exception);
 		assertClosedWithError(EXPECTED_EXCEPTION, supplier, consumer);
 
-		supplier.assertStatuses(ERROR, COMPLETE, CLEANUP);
-		consumer.assertStatuses(ERROR, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -167,8 +167,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		assertSame(EXPECTED_EXCEPTION, exception);
 		assertClosedWithError(EXPECTED_EXCEPTION, supplier, consumer);
 
-		supplier.assertStatuses(ERROR, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, ERROR, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, ERROR, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -188,8 +188,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -208,8 +208,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -228,8 +228,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -249,8 +249,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -270,8 +270,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		dataAcceptor.assertAccepted(5);
 		assertEndOfStream(supplier, consumer);
 
-		supplier.assertStatuses(START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, END_OF_STREAM, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, START, RESUME_SUSPEND, ACKNOWLEDGE, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, END_OF_STREAM, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -290,8 +290,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		assertSame(EXPECTED_EXCEPTION, exception);
 		assertClosedWithError(EXPECTED_EXCEPTION, supplier, consumer);
 
-		supplier.assertStatuses(ERROR, COMPLETE, CLEANUP);
-		consumer.assertStatuses(ERROR, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, ERROR, COMPLETE, CLEANUP);
 	}
 
 	@Test
@@ -311,8 +311,8 @@ public final class AbstractStreamSupplierAndConsumerTest {
 		assertSame(EXPECTED_EXCEPTION, exception);
 		assertClosedWithError(EXPECTED_EXCEPTION, supplier, consumer);
 
-		supplier.assertStatuses(START, RESUME_SUSPEND, ERROR, COMPLETE, CLEANUP);
-		consumer.assertStatuses(START, ERROR, COMPLETE, CLEANUP);
+		supplier.assertStatuses(INIT, START, RESUME_SUSPEND, ERROR, COMPLETE, CLEANUP);
+		consumer.assertStatuses(INIT, START, ERROR, COMPLETE, CLEANUP);
 	}
 
 	private void closeEither() {
@@ -338,7 +338,7 @@ public final class AbstractStreamSupplierAndConsumerTest {
 	}
 
 	enum Status {
-		START, RESUME, SUSPEND, RESUME_SUSPEND, ACKNOWLEDGE, END_OF_STREAM, ERROR, COMPLETE, CLEANUP
+		INIT, START, RESUME, SUSPEND, RESUME_SUSPEND, ACKNOWLEDGE, END_OF_STREAM, ERROR, COMPLETE, CLEANUP
 	}
 
 	private final class StatusAssertingSupplier extends AbstractStreamSupplier<Integer> {
@@ -371,6 +371,11 @@ public final class AbstractStreamSupplierAndConsumerTest {
 				}
 			}
 			assertEquals(i, statuses.size());
+		}
+
+		@Override
+		protected void onInit() {
+			statuses.add(INIT);
 		}
 
 		@Override
@@ -414,6 +419,11 @@ public final class AbstractStreamSupplierAndConsumerTest {
 
 		void assertStatuses(Status... expectedStatuses) {
 			assertEquals(asList(expectedStatuses), statuses);
+		}
+
+		@Override
+		protected void onInit() {
+			statuses.add(INIT);
 		}
 
 		@Override

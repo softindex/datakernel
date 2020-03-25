@@ -12,14 +12,14 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	public static final Duration DEFAULT_BASIC_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final EventStats started = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
-	private final EventStats produce = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
+	private final EventStats resume = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final EventStats suspend = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final EventStats endOfStream = EventStats.create(DEFAULT_BASIC_SMOOTHING_WINDOW);
 	private final ExceptionStats error = ExceptionStats.create();
 
 	public StreamStatsBasic<T> withBasicSmoothingWindow(Duration smoothingWindow) {
 		started.setSmoothingWindow(smoothingWindow);
-		produce.setSmoothingWindow(smoothingWindow);
+		resume.setSmoothingWindow(smoothingWindow);
 		suspend.setSmoothingWindow(smoothingWindow);
 		endOfStream.setSmoothingWindow(smoothingWindow);
 		return this;
@@ -36,8 +36,8 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	}
 
 	@Override
-	public void onProduce() {
-		produce.recordEvent();
+	public void onResume() {
+		resume.recordEvent();
 	}
 
 	@Override
@@ -61,8 +61,8 @@ public class StreamStatsBasic<T> implements StreamStats<T> {
 	}
 
 	@JmxAttribute
-	public EventStats getProduce() {
-		return produce;
+	public EventStats getResume() {
+		return resume;
 	}
 
 	@JmxAttribute

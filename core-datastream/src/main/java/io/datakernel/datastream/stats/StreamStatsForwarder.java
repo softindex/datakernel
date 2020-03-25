@@ -75,7 +75,7 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	protected final class Output extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onResumed() {
-			stats.onProduce();
+			stats.onResume();
 			input.resume(getDataAcceptor());
 		}
 

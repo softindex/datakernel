@@ -16,10 +16,6 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> {
 	private final SettablePromise<List<T>> resultPromise = new SettablePromise<>();
 	private final List<T> list;
 
-	{
-		resultPromise.whenComplete(this::acknowledge);
-	}
-
 	private StreamConsumerToList(List<T> list) {
 		this.list = list;
 	}
@@ -38,6 +34,11 @@ public final class StreamConsumerToList<T> extends AbstractStreamConsumer<T> {
 
 	public final List<T> getList() {
 		return list;
+	}
+
+	@Override
+	protected void onInit() {
+		resultPromise.whenComplete(this::acknowledge);
 	}
 
 	@Override

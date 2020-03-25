@@ -13,7 +13,7 @@ public interface StreamStats<T> extends
 
 	void onStarted();
 
-	void onProduce();
+	void onResume();
 
 	void onSuspend();
 

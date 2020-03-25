@@ -22,18 +22,26 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 
+import static io.datakernel.common.Utils.nullify;
+
 final class StreamSuppliers {
 
 	static final class ClosingWithError<T> extends AbstractStreamSupplier<T> {
+		private Throwable error;
+
 		ClosingWithError(Throwable e) {
-			super();
-			closeEx(e);
+			this.error = e;
+		}
+
+		@Override
+		protected void onInit() {
+			error = nullify(error, this::closeEx);
 		}
 	}
 
 	static final class Closing<T> extends AbstractStreamSupplier<T> {
-		public Closing() {
-			super();
+		@Override
+		protected void onInit() {
 			sendEndOfStream();
 		}
 	}
@@ -74,7 +82,7 @@ final class StreamSuppliers {
 		}
 
 		@Override
-		protected void onStarted() {
+		protected void onInit() {
 			promise
 					.whenResult(supplier -> {
 						this.getEndOfStream()

@@ -99,12 +99,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	// region creators
 	private ChannelSerializer(BinarySerializer<T> serializer) {
 		this.serializer = serializer;
-		rebuild();
-	}
-
-	private void rebuild() {
-		if (input != null && input.buf != null) input.buf.recycle();
-		input = new Input(serializer, initialBufferSize.toInt(), maxMessageSize.toInt(), autoFlushInterval, skipSerializationErrors);
 	}
 
 	/**
@@ -122,7 +116,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	 */
 	public ChannelSerializer<T> withInitialBufferSize(MemSize bufferSize) {
 		this.initialBufferSize = bufferSize;
-		rebuild();
 		return this;
 	}
 
@@ -136,7 +129,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		checkArgument(maxMessageSize.compareTo(MemSize.ZERO) > 0 && maxMessageSize.compareTo(MAX_SIZE_3) <= 0,
 				"Maximum message size cannot be less than 0 bytes or larger than 2 megabytes");
 		this.maxMessageSize = maxMessageSize;
-		rebuild();
 		return this;
 	}
 
@@ -146,7 +138,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	 */
 	public ChannelSerializer<T> withAutoFlushInterval(@Nullable Duration autoFlushInterval) {
 		this.autoFlushInterval = autoFlushInterval;
-		rebuild();
 		return this;
 	}
 
@@ -158,7 +149,6 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 	 */
 	public ChannelSerializer<T> withSkipSerializationErrors(boolean skipSerializationErrors) {
 		this.skipSerializationErrors = skipSerializationErrors;
-		rebuild();
 		return this;
 	}
 
@@ -186,6 +176,11 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 		};
 	}
 	// endregion
+
+	@Override
+	protected void onInit() {
+		input = new Input(serializer, initialBufferSize.toInt(), maxMessageSize.toInt(), autoFlushInterval, skipSerializationErrors);
+	}
 
 	@Override
 	protected void onStarted() {

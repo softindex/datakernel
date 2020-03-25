@@ -41,14 +41,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	private StreamDataAcceptor<T> dataAcceptorSafe;
 	private final ArrayDeque<T> buffer = new ArrayDeque<>();
 
-	{
-		dataAcceptorSafe = buffer::addLast;
-	}
-
 	private StreamConsumer<T> consumer;
 
 	private boolean flushRequest;
 	private boolean flushRunning;
+	private boolean initialized;
 	private int flushAsync;
 
 	private boolean endOfStreamRequest;
@@ -59,6 +56,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
+	{
+		dataAcceptorSafe = buffer::addLast;
+		eventloop.post(this::tryInitialize);
+	}
+
 	@Override
 	public final Promise<Void> streamTo(@NotNull StreamConsumer<T> consumer) {
 		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
@@ -67,12 +69,20 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		consumer.getAcknowledgement()
 				.whenResult(this::acknowledge)
 				.whenException(this::closeEx);
+		tryInitialize();
 		if (!isEndOfStream()) {
 			onStarted();
 		}
 		consumer.consume(this);
 		updateDataAcceptor();
 		return consumer.getAcknowledgement();
+	}
+
+	/**
+	 * This method will be called exactly once: either in the next eventloop tick after creation of this supplier
+	 * or right before {@link #onStarted()} or {@link #onError(Throwable)} calls
+	 */
+	protected void onInit() {
 	}
 
 	protected void onStarted() {
@@ -175,6 +185,16 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	/**
+	 * Initializes this supplier by calling {@link #onInit()} only if it has not already been initialized.
+	 */
+	private void tryInitialize() {
+		if (!initialized) {
+			initialized = true;
+			onInit();
+		}
+	}
+
+	/**
 	 * Causes this supplier to try to supply its buffered items and updates the current state accordingly.
 	 */
 	private void flush() {
@@ -258,6 +278,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	}
 
 	private void acknowledge() {
+		tryInitialize();
 		onAcknowledge();
 		close();
 	}
@@ -276,6 +297,7 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 			flushPromise.trySetException(e);
 		}
 		if (endOfStream.trySetException(e)) {
+			tryInitialize();
 			onError(e);
 			cleanup();
 		}
