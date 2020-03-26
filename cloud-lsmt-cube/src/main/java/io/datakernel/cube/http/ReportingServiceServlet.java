@@ -25,7 +25,6 @@ import io.datakernel.common.parse.ParseException;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.cube.ICube;
 import io.datakernel.cube.QueryResult;
-import io.datakernel.cube.ReportType;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.promise.Promise;
@@ -165,15 +164,15 @@ public final class ReportingServiceServlet extends AsyncServletWithStats {
 
 		parameter = request.getQueryParameter(LIMIT_PARAM);
 		if (parameter != null)
-			query.withLimit(Integer.valueOf(parameter));// TODO throws ParseException
+			query.withLimit(parseNonNegativeInteger(parameter));
 
 		parameter = request.getQueryParameter(OFFSET_PARAM);
 		if (parameter != null)
-			query.withOffset(Integer.valueOf(parameter));
+			query.withOffset(parseNonNegativeInteger(parameter));
 
 		parameter = request.getQueryParameter(REPORT_TYPE_PARAM);
 		if (parameter != null)
-			query.withReportType(ReportType.valueOf(parameter.toUpperCase()));
+			query.withReportType(parseReportType(parameter));
 
 		return query;
 	}
