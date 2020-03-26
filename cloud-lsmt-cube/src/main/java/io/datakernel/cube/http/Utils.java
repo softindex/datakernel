@@ -20,9 +20,11 @@ import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.cube.CubeQuery.Ordering;
+import io.datakernel.cube.ReportType;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -76,6 +78,24 @@ class Utils {
 			}
 		}
 		return result;
+	}
+
+	static int parseNonNegativeInteger(String parameter) throws ParseException {
+		try {
+			int value = Integer.parseInt(parameter);
+			if (value < 0 ) throw new ParseException("Must be non negative value: " + parameter);
+			return value;
+		} catch (NumberFormatException e) {
+			throw new ParseException("Could not parse: " + parameter, e);
+		}
+	}
+
+	static ReportType parseReportType(String parameter) throws ParseException{
+		try {
+			return ReportType.valueOf(parameter.toUpperCase());
+		} catch (IllegalArgumentException e) {
+			throw new ParseException("'" + parameter + "' neither of: " + Arrays.toString(ReportType.values()), e);
+		}
 	}
 
 	public static final CodecFactory CUBE_TYPES = CodecRegistry.createDefault()
