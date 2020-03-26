@@ -207,12 +207,14 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 									return Promise.of(queryResult);
 								}
 								if (e == TIMEOUT_EXCEPTION) {
+									if (inspector != null) {
+										inspector.onDnsQueryExpiration(query);
+									}
 									logger.trace("{} timed out", query);
 									e = new DnsQueryException(RemoteAsyncDnsClient.class, DnsResponse.ofFailure(transaction, DnsProtocol.ResponseErrorCode.TIMED_OUT));
 									transactions.remove(transaction);
 									closeIfDone();
-								}
-								if (inspector != null) {
+								} else if (inspector != null) {
 									inspector.onDnsQueryError(query, e);
 								}
 								return Promise.ofException(e);
@@ -224,7 +226,7 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		if (!transactions.isEmpty()) {
 			return;
 		}
-		logger.trace("All queries complete, closing UDP socket");
+		logger.trace("All queries are completed, closing UDP socket");
 		close(); // transactions is empty so no loops here
 	}
 
@@ -235,6 +237,8 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		void onDnsQueryResult(DnsQuery query, DnsResponse result);
 
 		void onDnsQueryError(DnsQuery query, Throwable e);
+
+		void onDnsQueryExpiration(DnsQuery query);
 	}
 
 	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
@@ -259,6 +263,11 @@ public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxM
 		@Override
 		public void onDnsQueryError(DnsQuery query, Throwable e) {
 			failedQueries.recordEvent();
+		}
+
+		@Override
+		public void onDnsQueryExpiration(DnsQuery query) {
+			expirations.recordEvent();
 		}
 
 		@JmxAttribute
