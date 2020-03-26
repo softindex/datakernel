@@ -32,7 +32,6 @@ import org.junit.*;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
@@ -43,11 +42,8 @@ import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.assertComplete;
-import static java.util.stream.Collectors.joining;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
-@Ignore
 public final class AsyncDnsClientTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -82,9 +78,7 @@ public final class AsyncDnsClientTest {
 		DnsResponse result = await(cachedDnsClient.resolve4("www.google.com"));
 
 		assertNotNull(result.getRecord());
-		System.out.println(Arrays.stream(result.getRecord().getIps())
-				.map(InetAddress::toString)
-				.collect(joining(", ", "Resolved: ", ".")));
+		assertArrayEquals(ips, result.getRecord().getIps());
 	}
 
 	@Test
@@ -98,6 +92,7 @@ public final class AsyncDnsClientTest {
 	}
 
 	@Test
+	@Ignore("sends dns query")
 	public void testDnsClient() {
 		AsyncDnsClient dnsClient = RemoteAsyncDnsClient.create(Eventloop.getCurrentEventloop());
 
@@ -116,6 +111,7 @@ public final class AsyncDnsClientTest {
 	}
 
 	@Test
+	@Ignore("sends dns query")
 	public void testDnsNameError() {
 		AsyncDnsClient dnsClient = RemoteAsyncDnsClient.create(Eventloop.getCurrentEventloop());
 
@@ -124,7 +120,7 @@ public final class AsyncDnsClientTest {
 	}
 
 	@Test
-	@Ignore
+	@Ignore("sends dns query")
 	public void testAdaptedClientsInMultipleThreads() {
 		int threadCount = 10;
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
