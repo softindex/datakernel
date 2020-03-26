@@ -27,6 +27,7 @@ import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
+import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -35,11 +36,13 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.lang.ClassLoader.getSystemClassLoader;
@@ -111,4 +114,59 @@ public final class RpcBinaryProtocolTest {
 			assertEquals(testMessage, data);
 		}
 	}
+
+	@Test
+	public void testSerializationErrorOnClient() throws IOException {
+		String testMessage = "12345";
+
+		RpcClient client = RpcClient.create(Eventloop.getCurrentEventloop())
+				.withMessageTypes(String.class)
+				.withStreamProtocol(MemSize.bytes(1), MemSize.bytes(3), false)
+				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
+
+		RpcServer server = RpcServer.create(Eventloop.getCurrentEventloop())
+				.withMessageTypes(String.class)
+				.withHandler(String.class, String.class, Promise::of)
+				.withListenPort(LISTEN_PORT);
+		server.listen();
+
+		ArrayIndexOutOfBoundsException e = awaitException(client.start()
+				.then($ -> client.<String, String>sendRequest(testMessage))
+				.whenComplete(() -> {
+					client.stop();
+					server.close();
+				}));
+
+		assertEquals(e.getMessage(), "Message overflow");
+	}
+
+	@Test
+	public void testSerializationErrorOnServer() throws IOException {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 1000; i++) {
+			sb.append("test");
+		}
+
+		RpcClient client = RpcClient.create(Eventloop.getCurrentEventloop())
+				.withMessageTypes(String.class)
+				.withStrategy(server(new InetSocketAddress("localhost", LISTEN_PORT)));
+
+		RpcServer server = RpcServer.create(Eventloop.getCurrentEventloop())
+				.withMessageTypes(String.class)
+				.withStreamProtocol(MemSize.bytes(100), MemSize.bytes(1000), false)
+				.withHandler(String.class, String.class, Promise::of)
+				.withListenPort(LISTEN_PORT);
+		server.listen();
+
+		RpcRemoteException e = awaitException(client.start()
+				.then($ -> client.<String, String>sendRequest(sb.toString()))
+				.whenComplete(() -> {
+					client.stop();
+					server.close();
+				}));
+
+		assertEquals("Message overflow", e.getCauseMessage());
+		assertEquals(ArrayIndexOutOfBoundsException.class.getName(), e.getCauseClassName());
+	}
+
 }

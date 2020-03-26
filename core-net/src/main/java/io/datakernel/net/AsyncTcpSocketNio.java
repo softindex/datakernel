@@ -386,6 +386,7 @@ public final class AsyncTcpSocketNio implements AsyncTcpSocket, NioChannelEventH
 
 		if (writeBuf == null) {
 			if (buf != null && !buf.canRead()) {
+				buf.recycle();
 				return Promise.complete();
 			}
 			writeBuf = buf;

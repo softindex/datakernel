@@ -268,7 +268,7 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	@Override
 	public void onReceiverError(@NotNull Throwable e) {
 		if (isClosed()) return;
-		logger.error("Receiver error: " + address, e);
+		logger.error("Receiver error: {}", address, e);
 		rpcClient.getLastProtocolError().recordException(e, address);
 		stream.close();
 		doClose();
@@ -277,10 +277,18 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 	@Override
 	public void onSenderError(@NotNull Throwable e) {
 		if (isClosed()) return;
-		logger.error("Sender error: " + address, e);
+		logger.error("Sender error: {}", address, e);
 		rpcClient.getLastProtocolError().recordException(e, address);
 		stream.close();
 		doClose();
+	}
+
+	@Override
+	public void onSerializationError(RpcMessage message, @NotNull Throwable e) {
+		if (isClosed()) return;
+		logger.error("Serialization error: {} for data {}", address, message.getData(), e);
+		rpcClient.getLastProtocolError().recordException(e, address);
+		activeRequests.remove(message.getCookie()).accept(null, e);
 	}
 
 	@Override
@@ -335,10 +343,6 @@ public final class RpcClientConnection implements RpcStream.Listener, RpcSender,
 
 	public void stopMonitoring() {
 		monitoring = false;
-	}
-
-	private boolean isMonitoring() {
-		return monitoring;
 	}
 
 	@JmxAttribute(name = "")

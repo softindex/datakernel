@@ -198,5 +198,10 @@ public final class AsyncDnsClientTest {
 		public void onDnsQueryError(DnsQuery query, Throwable e) {
 
 		}
+
+		@Override
+		public void onDnsQueryExpiration(DnsQuery query) {
+
+		}
 	}
 }

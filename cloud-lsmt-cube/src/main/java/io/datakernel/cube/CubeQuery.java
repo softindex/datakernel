@@ -20,13 +20,15 @@ import io.datakernel.aggregation.AggregationPredicate;
 import io.datakernel.aggregation.AggregationPredicates;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import static java.util.Arrays.asList;
 
 public final class CubeQuery {
-	private List<String> attributes = new ArrayList<>();
-	private List<String> measures = new ArrayList<>();
+	private Set<String> attributes = new LinkedHashSet<>();
+	private Set<String> measures = new LinkedHashSet<>();
 	private AggregationPredicate where = AggregationPredicates.alwaysTrue();
 	private AggregationPredicate having = AggregationPredicates.alwaysTrue();
 	private Integer limit = null;
@@ -43,7 +45,7 @@ public final class CubeQuery {
 
 	// region builders
 	public CubeQuery withMeasures(List<String> measures) {
-		this.measures = measures;
+		this.measures = new LinkedHashSet<>(measures);
 		return this;
 	}
 
@@ -52,7 +54,7 @@ public final class CubeQuery {
 	}
 
 	public CubeQuery withAttributes(List<String> attributes) {
-		this.attributes = attributes;
+		this.attributes = new LinkedHashSet<>(attributes);
 		return this;
 	}
 
@@ -107,11 +109,11 @@ public final class CubeQuery {
 	// endregion
 
 	// region getters
-	public List<String> getAttributes() {
+	public Set<String> getAttributes() {
 		return attributes;
 	}
 
-	public List<String> getMeasures() {
+	public Set<String> getMeasures() {
 		return measures;
 	}
 

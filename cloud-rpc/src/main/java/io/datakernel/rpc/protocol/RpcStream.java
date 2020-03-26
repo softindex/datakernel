@@ -64,11 +64,13 @@ public final class RpcStream {
 
 		void onReceiverError(@NotNull Throwable e);
 
+		void onSenderError(@NotNull Throwable e);
+
+		void onSerializationError(RpcMessage message, @NotNull Throwable e);
+
 		void onSenderReady(@NotNull StreamDataAcceptor<RpcMessage> acceptor);
 
 		void onSenderSuspended();
-
-		void onSenderError(@NotNull Throwable e);
 	}
 
 	private final boolean server;
@@ -85,7 +87,7 @@ public final class RpcStream {
 				.withInitialBufferSize(initialBufferSize)
 				.withMaxMessageSize(maxMessageSize)
 				.withAutoFlushInterval(autoFlushInterval)
-				.withSkipSerializationErrors();
+				.withSerializationErrorHandler((message, e) -> listener.onSerializationError(message, e));
 		ChannelDeserializer<RpcMessage> deserializer = ChannelDeserializer.create(messageSerializer)
 				.withMaxMessageSize(maxMessageSize);
 
