@@ -194,9 +194,9 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 		Object[] newElements = new Object[elements.length << 1];
 		System.arraycopy(elements, head, newElements, 0, r);
 		System.arraycopy(elements, 0, newElements, r, head);
-		elements = newElements;
 		head = 0;
 		tail = elements.length;
+		elements = newElements;
 	}
 
 	/**
