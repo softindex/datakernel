@@ -17,6 +17,7 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -170,6 +171,15 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 		protected void onError(Throwable e) {
 			output.closeEx(e);
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(getInputs(), output, StreamJoin.class);
+			}
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<V> {
@@ -236,6 +246,15 @@ public final class StreamJoin<K, L, R, V> implements HasStreamInputs, HasStreamO
 		protected void onCleanup() {
 			leftDeque.clear();
 			rightDeque.clear();
+		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (getInputs().stream().anyMatch(visitor::unseen)) {
+				getInputs().forEach(input -> input.accept(visitor));
+				visitor.visitTransformer(getInputs(), output, StreamFilter.class);
+			}
 		}
 	}
 

@@ -20,6 +20,7 @@ import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -102,6 +103,15 @@ final class StreamConsumers {
 			protected void onSuspended() {
 				OfPromise.this.suspend();
 			}
+
+			@Override
+			public void accept(StreamVisitor visitor) {
+				super.accept(visitor);
+				visitor.visitImplicit(OfPromise.this, this);
+				if (visitor.unseen(OfPromise.this)) {
+					OfPromise.this.accept(visitor);
+				}
+			}
 		}
 
 		public OfPromise(@NotNull Promise<? extends StreamConsumer<T>> promise) {
@@ -115,7 +125,7 @@ final class StreamConsumers {
 						consumer.getAcknowledgement()
 								.whenResult(this::acknowledge)
 								.whenException(this::closeEx);
-						this.getAcknowledgement()
+						getAcknowledgement()
 								.whenException(consumer::closeEx);
 						internalSupplier.streamTo(consumer);
 					})
@@ -130,6 +140,14 @@ final class StreamConsumers {
 		@Override
 		protected void onCleanup() {
 			promise = null;
+		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(internalSupplier)) {
+				internalSupplier.accept(visitor);
+			}
 		}
 	}
 

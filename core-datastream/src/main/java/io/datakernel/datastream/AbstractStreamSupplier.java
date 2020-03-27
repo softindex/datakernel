@@ -17,6 +17,7 @@
 package io.datakernel.datastream;
 
 import io.datakernel.common.Check;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -326,5 +327,14 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 	 * This method will be asynchronously called after this supplier changes to the closed state regardless of error.
 	 */
 	protected void onCleanup() {
+	}
+
+	@Override
+	public void accept(StreamVisitor visitor) {
+		visitor.visit(this);
+		if (consumer != null && visitor.unseen(consumer)) {
+			consumer.accept(visitor);
+			visitor.visitStream(this, consumer);
+		}
 	}
 }

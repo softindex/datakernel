@@ -27,6 +27,7 @@ import io.datakernel.datastream.AbstractStreamSupplier;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
@@ -39,7 +40,15 @@ public final class RpcStream {
 	private final ChannelSerializer<RpcMessage> serializer;
 	private Listener listener;
 
-	private final AbstractStreamConsumer<RpcMessage> internalConsumer = new AbstractStreamConsumer<RpcMessage>() {};
+	private final AbstractStreamConsumer<RpcMessage> internalConsumer = new AbstractStreamConsumer<RpcMessage>() {
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(internalSupplier)) {
+				internalSupplier.accept(visitor);
+			}
+		}
+	};
 
 	private final AbstractStreamSupplier<RpcMessage> internalSupplier = new AbstractStreamSupplier<RpcMessage>() {
 		@Override
@@ -57,6 +66,13 @@ public final class RpcStream {
 			listener.onSenderSuspended();
 		}
 
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(internalConsumer)) {
+				internalConsumer.accept(visitor);
+			}
+		}
 	};
 
 	public interface Listener extends StreamDataAcceptor<RpcMessage> {

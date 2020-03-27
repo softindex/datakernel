@@ -16,6 +16,7 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.datastream.visitor.StreamVisitor;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -76,6 +77,14 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		internalSupplier = null;
 	}
 
+	@Override
+	public void accept(StreamVisitor visitor) {
+		super.accept(visitor);
+		if (visitor.unseen(internalSupplier)) {
+			internalSupplier.accept(visitor);
+		}
+	}
+
 	private final class InternalSupplier extends AbstractStreamSupplier<T> {
 		@Override
 		protected void onResumed() {
@@ -102,6 +111,15 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		protected void onError(Throwable e) {
 			if (StreamConsumerSwitcher.this.internalSupplier == this) {
 				StreamConsumerSwitcher.this.closeEx(e);
+			}
+		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			visitor.visitImplicit(StreamConsumerSwitcher.this, this);
+			if (visitor.unseen(StreamConsumerSwitcher.this)) {
+				StreamConsumerSwitcher.this.accept(visitor);
 			}
 		}
 	}

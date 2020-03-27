@@ -17,6 +17,7 @@
 package io.datakernel.datastream;
 
 import io.datakernel.common.Check;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -66,8 +67,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	/**
-	 * 	 This method will be called exactly once: either in the next eventloop tick after creation of this supplier
-	 * 	 or right before {@link #onStarted()} or {@link #onError(Throwable)} calls
+	 * This method will be called exactly once: either in the next eventloop tick after creation of this supplier
+	 * or right before {@link #onStarted()} or {@link #onError(Throwable)} calls
 	 */
 	protected void onInit() {
 	}
@@ -182,5 +183,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * This method will be asynchronously called after this consumer changes to the acknowledged state regardless of error.
 	 */
 	protected void onCleanup() {
+	}
+
+	@Override
+	public void accept(StreamVisitor visitor) {
+		visitor.visit(this);
+		if (supplier != null && visitor.unseen(supplier)) {
+			supplier.accept(visitor);
+			visitor.visitStream(supplier, this);
+		}
 	}
 }

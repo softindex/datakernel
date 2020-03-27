@@ -23,6 +23,7 @@ import io.datakernel.datastream.StreamConsumers.Idle;
 import io.datakernel.datastream.StreamConsumers.OfChannelConsumer;
 import io.datakernel.datastream.StreamConsumers.Skip;
 import io.datakernel.datastream.processor.StreamTransformer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -139,5 +140,18 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 				return newAcknowledgement;
 			}
 		};
+	}
+
+	default StreamConsumer<T> withLabel(String label) {
+		return new ForwardingStreamConsumer<T>(this, "withLabel(\"" + label + "\")") {};
+	}
+
+	@Nullable
+	default String getLabel() {
+		return null;
+	}
+
+	default void accept(StreamVisitor visitor) {
+		visitor.visit(this);
 	}
 }

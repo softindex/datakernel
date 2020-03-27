@@ -21,6 +21,7 @@ import io.datakernel.datastream.AbstractStreamConsumer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 
 import java.util.ArrayList;
@@ -86,7 +87,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 								return streamMerger.getOutput();
 							}
 						}));
-		this.output.getEndOfStream()
+		output.getEndOfStream()
 				.whenComplete(() -> {if (!partitionIds.isEmpty()) storage.cleanup(partitionIds);});
 	}
 
@@ -195,6 +196,15 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		protected void onCleanup() {
 			list = null;
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(this, output, StreamSorter.class);
+			}
+		}
 	}
 
 	@Override
@@ -206,5 +216,4 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	public StreamSupplier<T> getOutput() {
 		return output;
 	}
-
 }

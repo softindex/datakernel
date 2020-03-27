@@ -80,8 +80,7 @@ public class StreamJoinTest {
 		await(
 				source1.streamTo(streamJoin.getLeft()),
 				source2.streamTo(streamJoin.getRight()),
-				streamJoin.getOutput().streamTo(
-						consumer.transformWith(oneByOne()))
+				streamJoin.getOutput().streamTo(consumer.transformWith(oneByOne()))
 		);
 
 		assertEquals(asList(
@@ -250,12 +249,24 @@ public class StreamJoinTest {
 
 		@Override
 		public boolean equals(Object o) {
-			DataItemMasterDetail that = (DataItemMasterDetail) o;
-			if (id != that.id) return false;
-			if (detailId != that.detailId) return false;
-			if (!Objects.equals(detail, that.detail)) return false;
-			if (!Objects.equals(master, that.master)) return false;
-			return true;
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			DataItemMasterDetail detail1 = (DataItemMasterDetail) o;
+
+			return id == detail1.id
+					&& detailId == detail1.detailId
+					&& master.equals(detail1.master)
+					&& Objects.equals(detail, detail1.detail);
+		}
+
+		@Override
+		public int hashCode() {
+			int result = id;
+			result = 31 * result + detailId;
+			result = 31 * result + master.hashCode();
+			result = 31 * result + (detail != null ? detail.hashCode() : 0);
+			return result;
 		}
 
 		@Override

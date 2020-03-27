@@ -17,6 +17,7 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promises;
 
@@ -103,6 +104,15 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 				output.sendEndOfStream();
 			}
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (outputs.stream().anyMatch(visitor::unseen)) {
+				outputs.forEach(output -> output.accept(visitor));
+				visitor.visitTransformer(this, outputs, StreamSplitter.class);
+			}
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
@@ -123,6 +133,15 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 			dataAcceptors[index] = getDataAcceptor();
 			sync();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(input)) {
+				input.accept(visitor);
+				visitor.visitTransformer(input, outputs, StreamSplitter.class);
+			}
+		}
 	}
 
 	private void sync() {
@@ -133,5 +152,4 @@ public final class StreamSplitter<I, O> implements HasStreamInput<I>, HasStreamO
 			input.suspend();
 		}
 	}
-
 }

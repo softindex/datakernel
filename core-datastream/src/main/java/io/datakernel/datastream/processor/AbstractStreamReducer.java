@@ -18,6 +18,7 @@ package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -163,6 +164,15 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		protected void onCleanup() {
 			deque.clear();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(getInputs(), output, AbstractStreamReducer.this.getClass());
+			}
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
@@ -227,6 +237,15 @@ public abstract class AbstractStreamReducer<K, O, A> implements HasStreamInputs,
 		@Override
 		protected void onCleanup() {
 			priorityQueue.clear();
+		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (getInputs().stream().anyMatch(visitor::unseen)) {
+				getInputs().forEach(input -> input.accept(visitor));
+				visitor.visitTransformer(getInputs(), output, AbstractStreamReducer.class);
+			}
 		}
 	}
 }

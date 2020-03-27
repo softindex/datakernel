@@ -50,7 +50,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 			AggregationChunkStorage<C> storage,
 			DefiningClassLoader classLoader,
 			int chunkSize) {
-		super(switcher);
+		super(switcher, "AggregationChunker");
 		this.switcher = switcher;
 		this.aggregation = aggregation;
 		this.fields = fields;
@@ -58,7 +58,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.classLoader = classLoader;
-		(this.chunksCollector = AsyncCollector.create(new ArrayList<>()))
+		(chunksCollector = AsyncCollector.create(new ArrayList<>()))
 				.run(switcher.getAcknowledgement());
 		this.chunkSize = chunkSize;
 		chunksCollector.get().whenComplete(result::trySet);
@@ -95,7 +95,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 
 		public ChunkWriter(StreamConsumer<T> actualConsumer,
 				C chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
-			super(actualConsumer);
+			super(actualConsumer, "ChunkWriter");
 			this.chunkSize = chunkSize;
 			this.partitionPredicate = partitionPredicate;
 			actualConsumer.getAcknowledgement()

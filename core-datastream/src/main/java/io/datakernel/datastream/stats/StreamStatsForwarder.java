@@ -21,6 +21,7 @@ import io.datakernel.datastream.AbstractStreamSupplier;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamTransformer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 
 public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 	private final Input input;
@@ -70,6 +71,15 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		protected void onError(Throwable e) {
 			stats.onError(e);
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(this, output, StreamStatsForwarder.class);
+			}
+		}
 	}
 
 	protected final class Output extends AbstractStreamSupplier<T> {
@@ -88,6 +98,15 @@ public class StreamStatsForwarder<T> implements StreamTransformer<T, T> {
 		@Override
 		protected void onError(Throwable e) {
 			stats.onError(e);
+		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(input)) {
+				input.accept(visitor);
+				visitor.visitTransformer(input, this, StreamStatsForwarder.class);
+			}
 		}
 	}
 }

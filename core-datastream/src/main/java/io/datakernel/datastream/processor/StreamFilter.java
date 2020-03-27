@@ -17,6 +17,7 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.visitor.StreamVisitor;
 
 import java.util.function.Predicate;
 
@@ -65,6 +66,15 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		protected void onEndOfStream() {
 			output.sendEndOfStream();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(this, output, StreamFilter.class);
+			}
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<T> {
@@ -77,12 +87,21 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 		protected void onSuspended() {
 			sync();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(input)) {
+				input.accept(visitor);
+				visitor.visitTransformer(input, this, StreamFilter.class);
+			}
+		}
 	}
 
 	private void sync() {
-		final StreamDataAcceptor<T> dataAcceptor = output.getDataAcceptor();
+		StreamDataAcceptor<T> dataAcceptor = output.getDataAcceptor();
 		if (dataAcceptor != null) {
-			final Predicate<T> predicate = this.predicate;
+			Predicate<T> predicate = this.predicate;
 			input.resume(item -> {
 				if (predicate.test(item)) {
 					dataAcceptor.accept(item);
@@ -92,5 +111,4 @@ public final class StreamFilter<T> implements StreamTransformer<T, T> {
 			input.suspend();
 		}
 	}
-
 }

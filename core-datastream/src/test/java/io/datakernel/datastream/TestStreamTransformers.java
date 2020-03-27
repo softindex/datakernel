@@ -1,7 +1,7 @@
 package io.datakernel.datastream;
 
 import io.datakernel.csp.AbstractChannelConsumer;
-import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,26 +26,40 @@ public class TestStreamTransformers {
 	}
 
 	public static <T> StreamConsumerTransformer<T, StreamConsumer<T>> decorate(Function<Promise<T>, Promise<T>> fn) {
-		return consumer ->
-				StreamConsumer.ofChannelConsumer(
-						asStreamConsumer(consumer)
-								.transformWith(channelConsumer -> new AbstractChannelConsumer<T>(channelConsumer) {
-									@Override
-									protected Promise<Void> doAccept(@Nullable T value) {
-										return fn.apply(channelConsumer.accept(value).map($ -> value)).toVoid();
-									}
-								}));
+		return c -> {
+			AsChannelConsumer<T> channel = asChannelConsumer(c);
+			StreamConsumer<T> decorated = StreamConsumer.ofChannelConsumer(channel
+					.transformWith(channelConsumer -> new AbstractChannelConsumer<T>(channelConsumer) {
+						@Override
+						protected Promise<Void> doAccept(@Nullable T value) {
+							return fn.apply(channelConsumer.accept(value).map($ -> value)).toVoid();
+						}
+					}));
+			return new ForwardingStreamConsumer<T>(decorated, "TestStreamTransformers.decorate") {
+				@Override
+				public void accept(StreamVisitor visitor) {
+					super.accept(visitor);
+					c.accept(visitor);
+					visitor.visitImplicit(decorated, channel.internalSupplier);
+				}
+			};
+		};
 	}
 
-	static <T> ChannelConsumer<T> asStreamConsumer(StreamConsumer<T> consumer) {
+	static <T> AsChannelConsumer<T> asChannelConsumer(StreamConsumer<T> consumer) {
 		return new AsChannelConsumer<>(consumer);
 	}
 
 	static final class AsChannelConsumer<T> extends AbstractChannelConsumer<T> {
-		private final AbstractStreamSupplier<T> internalSupplier = new AbstractStreamSupplier<T>() {};
+		private final AbstractStreamSupplier<T> internalSupplier = new AbstractStreamSupplier<T>() {
+			@Override
+			public String getLabel() {
+				return "AsChannelConsumer.internalSupplier";
+			}
+		};
 
 		AsChannelConsumer(StreamConsumer<T> consumer) {
-			this.internalSupplier.streamTo(consumer);
+			internalSupplier.streamTo(consumer);
 
 			consumer.getAcknowledgement()
 					.whenResult(this::close)
@@ -67,5 +81,4 @@ public class TestStreamTransformers {
 			internalSupplier.closeEx(e);
 		}
 	}
-
 }

@@ -17,6 +17,7 @@
 package io.datakernel.datastream;
 
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
@@ -75,7 +76,17 @@ final class StreamSuppliers {
 	static final class OfPromise<T> extends AbstractStreamSupplier<T> {
 		private Promise<? extends StreamSupplier<T>> promise;
 		private final InternalConsumer internalConsumer = new InternalConsumer();
-		private class InternalConsumer extends AbstractStreamConsumer<T> {}
+
+		private class InternalConsumer extends AbstractStreamConsumer<T> {
+			@Override
+			public void accept(StreamVisitor visitor) {
+				super.accept(visitor);
+				visitor.visitImplicit(this, OfPromise.this);
+				if (visitor.unseen(OfPromise.this)) {
+					OfPromise.this.accept(visitor);
+				}
+			}
+		}
 
 		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
 			this.promise = promise;
@@ -85,7 +96,7 @@ final class StreamSuppliers {
 		protected void onInit() {
 			promise
 					.whenResult(supplier -> {
-						this.getEndOfStream()
+						getEndOfStream()
 								.whenException(supplier::closeEx);
 						supplier.getEndOfStream()
 								.whenResult(this::sendEndOfStream)
@@ -114,11 +125,20 @@ final class StreamSuppliers {
 		protected void onCleanup() {
 			promise = null;
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(internalConsumer)) {
+				internalConsumer.accept(visitor);
+			}
+		}
 	}
 
 	static final class Concat<T> extends AbstractStreamSupplier<T> {
 		private ChannelSupplier<StreamSupplier<T>> iterator;
 		private InternalConsumer internalConsumer = new InternalConsumer();
+
 		private class InternalConsumer extends AbstractStreamConsumer<T> {}
 
 		Concat(ChannelSupplier<StreamSupplier<T>> iterator) {

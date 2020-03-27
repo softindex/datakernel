@@ -23,8 +23,10 @@ import io.datakernel.datastream.StreamSuppliers.ClosingWithError;
 import io.datakernel.datastream.StreamSuppliers.Idle;
 import io.datakernel.datastream.StreamSuppliers.OfIterator;
 import io.datakernel.datastream.processor.StreamTransformer;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
 import java.util.List;
@@ -236,7 +238,7 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 		if (endOfStream == suppliedEndOfStream) {
 			return this;
 		}
-		return new ForwardingStreamSupplier<T>(this) {
+		return new ForwardingStreamSupplier<T>(this, "withEndOfStream") {
 			@Override
 			public Promise<Void> getEndOfStream() {
 				return suppliedEndOfStream;
@@ -244,4 +246,16 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 		};
 	}
 
+	default StreamSupplier<T> withLabel(String label) {
+		return new ForwardingStreamSupplier<T>(this, "withLabel(\"" + label + "\")") {};
+	}
+
+	@Nullable
+	default String getLabel() {
+		return null;
+	}
+
+	default void accept(StreamVisitor visitor) {
+		visitor.visit(this);
+	}
 }

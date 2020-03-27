@@ -17,6 +17,7 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
@@ -82,6 +83,15 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		protected void onEndOfStream() {
 			sync();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(inputs, output, StreamUnion.class);
+			}
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<T> {
@@ -93,6 +103,15 @@ public final class StreamUnion<T> implements HasStreamOutput<T>, HasStreamInputs
 		@Override
 		protected void onSuspended() {
 			sync();
+		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (inputs.stream().anyMatch(visitor::unseen)) {
+				inputs.forEach(input -> input.accept(visitor));
+				visitor.visitTransformer(inputs, this, StreamUnion.class);
+			}
 		}
 	}
 

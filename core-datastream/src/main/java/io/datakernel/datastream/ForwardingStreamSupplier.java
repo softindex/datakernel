@@ -16,8 +16,10 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.datastream.visitor.StreamVisitor;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A wrapper class that delegates all calls to underlying {@link StreamSupplier}.
@@ -26,8 +28,16 @@ import org.jetbrains.annotations.NotNull;
 public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	protected final StreamSupplier<T> supplier;
 
-	public ForwardingStreamSupplier(StreamSupplier<T> supplier) {
+	@Nullable
+	private final String label;
+
+	public ForwardingStreamSupplier(StreamSupplier<T> supplier, @Nullable String label) {
 		this.supplier = supplier;
+		this.label = label;
+	}
+
+	public ForwardingStreamSupplier(StreamSupplier<T> supplier) {
+		this(supplier, null);
 	}
 
 	@Override
@@ -48,5 +58,12 @@ public abstract class ForwardingStreamSupplier<T> implements StreamSupplier<T> {
 	@Override
 	public void closeEx(@NotNull Throwable e) {
 		supplier.closeEx(e);
+	}
+
+	@Override
+	public void accept(StreamVisitor visitor) {
+		visitor.visit(this, label);
+		supplier.accept(visitor);
+		visitor.visitForwarder(this, supplier);
 	}
 }

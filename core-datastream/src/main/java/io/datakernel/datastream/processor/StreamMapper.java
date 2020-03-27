@@ -17,6 +17,7 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.visitor.StreamVisitor;
 
 import java.util.function.Function;
 
@@ -63,6 +64,15 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		protected void onEndOfStream() {
 			output.sendEndOfStream();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(output)) {
+				output.accept(visitor);
+				visitor.visitTransformer(this, output, StreamMapper.class);
+			}
+		}
 	}
 
 	private final class Output extends AbstractStreamSupplier<O> {
@@ -75,6 +85,15 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 		protected void onSuspended() {
 			sync();
 		}
+
+		@Override
+		public void accept(StreamVisitor visitor) {
+			super.accept(visitor);
+			if (visitor.unseen(input)) {
+				input.accept(visitor);
+				visitor.visitTransformer(input, this, StreamMapper.class);
+			}
+		}
 	}
 
 	private void sync() {
@@ -86,5 +105,4 @@ public final class StreamMapper<I, O> implements StreamTransformer<I, O> {
 			input.suspend();
 		}
 	}
-
 }
