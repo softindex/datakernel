@@ -341,6 +341,12 @@ public abstract class AbstractHttpConnection {
 	private void readBody() {
 		assert !isClosed();
 		if ((flags & CHUNKED) == 0) {
+			if (contentLength == 0) {
+				onHeadersReceived(ByteBuf.empty(), null);
+				if (isClosed()) return;
+				onBodyReceived();
+				return;
+			}
 			if (contentLength == UNSET_CONTENT_LENGTH) {
 				onNoContentLength();
 				return;

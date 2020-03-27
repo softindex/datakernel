@@ -86,7 +86,7 @@ public final class GzipProcessorUtils {
 	}
 
 	public static ByteBuf toGzip(ByteBuf src) {
-		assert src.readRemaining() > 0;
+		assert src.readRemaining() >= 0;
 
 		Deflater compressor = ensureCompressor();
 		compressor.setInput(src.array(), src.head(), src.readRemaining());
