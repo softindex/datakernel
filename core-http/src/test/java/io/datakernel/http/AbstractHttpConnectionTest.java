@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelSupplier;
@@ -32,6 +33,7 @@ import org.junit.*;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -44,8 +46,8 @@ import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static java.util.Arrays.asList;
+import static org.junit.Assert.*;
 
 public final class AbstractHttpConnectionTest {
 	private static final int PORT = getFreePort();
@@ -153,6 +155,85 @@ public final class AbstractHttpConnectionTest {
 
 		// gzipped + chunked
 		doTestHugeStreams(client, socketSettings, size, HttpMessage::setBodyGzipCompression);
+	}
+
+	@Test
+	public void testEmptyRequestResponse() {
+		List<Consumer<HttpMessage>> messageDecorators = asList(
+				message -> {},
+				HttpMessage::setBodyGzipCompression,
+				message -> message.addHeader(CONTENT_LENGTH, "0"),
+				message -> {
+					message.setBodyGzipCompression();
+					message.addHeader(CONTENT_LENGTH, "0");
+				},
+				message -> message.setBody(ByteBuf.empty()),
+				message -> {
+					message.setBody(ByteBuf.empty());
+					message.setBodyGzipCompression();
+				},
+				message -> {
+					message.setBody(ByteBuf.empty());
+					message.addHeader(CONTENT_LENGTH, "0");
+				},
+				message -> {
+					message.setBody(ByteBuf.empty());
+					message.setBodyGzipCompression();
+					message.addHeader(CONTENT_LENGTH, "0");
+				},
+				message -> message.setBodyStream(ChannelSupplier.of()),
+				message -> {
+					message.setBodyStream(ChannelSupplier.of());
+					message.setBodyGzipCompression();
+				},
+				message -> {
+					message.setBodyStream(ChannelSupplier.of());
+					message.addHeader(CONTENT_LENGTH, "0");
+				},
+				message -> {
+					message.setBodyStream(ChannelSupplier.of());
+					message.setBodyGzipCompression();
+					message.addHeader(CONTENT_LENGTH, "0");
+				}
+		);
+
+		doTestEmptyRequestResponsePermutations(messageDecorators);
+	}
+
+	private void doTestEmptyRequestResponsePermutations(List<Consumer<HttpMessage>> messageDecorators) {
+		for (int i = 0; i < messageDecorators.size(); i++) {
+			for (int j = 0; j < messageDecorators.size(); j++) {
+				try {
+					Consumer<HttpMessage> responseDecorator = messageDecorators.get(j);
+					AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
+							$ -> {
+								HttpResponse response = HttpResponse.ok200();
+								responseDecorator.accept(response);
+								return response;
+							})
+							.withListenPort(PORT)
+							.withAcceptOnce(true);
+
+					try {
+						server.listen();
+					} catch (IOException e) {
+						throw new AssertionError(e);
+					}
+
+					HttpRequest request = HttpRequest.post(URL);
+					messageDecorators.get(i).accept(request);
+
+					String responseText = await(client.request(request)
+							.then(HttpMessage::loadBody)
+							.map(buf -> buf.getString(UTF_8)));
+
+					assertTrue(responseText.isEmpty());
+				} catch (AssertionError e) {
+					System.out.println("Error while testing request decorator #" + i + " with response decorator #" + j);
+					throw e;
+				}
+			}
+		}
 	}
 
 	private static void doTestHugeStreams(AsyncHttpClient client, SocketSettings socketSettings, int size, Consumer<HttpMessage> decorator) throws IOException {
