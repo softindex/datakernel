@@ -25,7 +25,7 @@ public final class BuiltinNodesExample {
 	//[END REGION_1]
 
 	//[START REGION_2]
-	private static void sharder() {
+	private static void splitter() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
 		Sharder<Object> hashSharder = Sharders.byHash(3);
@@ -68,12 +68,39 @@ public final class BuiltinNodesExample {
 	}
 	//[END REGION_3]
 
+	//[START REGION_4]
+	private static void union() {
+		//creating three suppliers of numbers
+		StreamSupplier<Integer> source0 = StreamSupplier.of(1, 2);
+		StreamSupplier<Integer> source1 = StreamSupplier.of();
+		StreamSupplier<Integer> source2 = StreamSupplier.of(3, 4, 5);
+
+		//creating a unifying transformer
+		StreamUnion<Integer> streamUnion = StreamUnion.create();
+
+		//creating a consumer which converts received values to list
+		StreamConsumerToList<Integer> consumer = StreamConsumerToList.create();
+
+		//stream the sources into new inputs of the unifier
+		source0.streamTo(streamUnion.newInput());
+		source1.streamTo(streamUnion.newInput());
+		source2.streamTo(streamUnion.newInput());
+
+		//and stream the output of the unifier into the consumer
+		streamUnion.getOutput().streamTo(consumer);
+
+		//when consumer completes receiving values, the result is printed out
+		consumer.getResult().whenResult(v -> System.out.println(v));
+	}
+	//[END REGION_4]
+
 	public static void main(String[] args) {
 		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
 
 		filter();
-		sharder();
+		splitter();
 		mapper();
+		union();
 
 		eventloop.run();
 	}
