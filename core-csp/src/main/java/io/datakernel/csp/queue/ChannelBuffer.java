@@ -24,6 +24,8 @@ import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.tryRecycle;
+import static java.lang.Integer.numberOfLeadingZeros;
+import static java.lang.Math.max;
 
 /**
  * Represents a queue of elements which you can {@code put} and {@code take}.
@@ -58,7 +60,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 
 	/**
 	 * Creates a ChannelBuffer with the buffer size of the next highest
-	 * power of 2 (for example, if {@code bufferMaxSize = 113}, a buffer
+	 * power of 2 (for example, if {@code bufferMinxSize = 113}, a buffer
 	 * of 128 elements will be created).
 	 *
 	 * @param bufferMinSize a minimal amount of elements in the buffer
@@ -67,24 +69,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	public ChannelBuffer(int bufferMinSize, int bufferMaxSize) {
 		this.bufferMinSize = bufferMinSize + 1;
 		this.bufferMaxSize = bufferMaxSize;
-		//This code computes the next highest power of 2 for a 32-bit integer bufferMaxSize
-		//If x is greater than 2^31, IllegalArgumentException will be thrown
-		int x = bufferMaxSize;
-		if (x > 0) {
-			x--;
-			x |= x >> 1;
-			x |= x >> 2;
-			x |= x >> 4;
-			x |= x >> 8;
-			x |= x >> 16;
-			x++;
-			if (x < 0) {
-				throw new IllegalArgumentException("Integer overflow");
-			}
-			this.elements = new Object[x];
-		} else {
-			this.elements = new Object[1];
-		}
+		this.elements = new Object[1 << (32 - numberOfLeadingZeros(max(16, this.bufferMinSize) - 1))];
 	}
 
 	/**
@@ -94,6 +79,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * @return {@code true} if this buffer size is greater
 	 * than {@code bufferMaxSize}, otherwise returns {@code false}
 	 */
+	@Override
 	public boolean isSaturated() {
 		return size() > bufferMaxSize;
 	}
@@ -119,6 +105,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * smaller than {@code bufferMinSize},
 	 * otherwise returns {@code false}
 	 */
+	@Override
 	public boolean isExhausted() {
 		return size() < bufferMinSize;
 	}
@@ -135,16 +122,6 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 */
 	public boolean willBeExhausted() {
 		return size() <= bufferMinSize;
-	}
-
-	@Override
-	public boolean isWaitingPut() {
-		return put != null;
-	}
-
-	@Override
-	public boolean isWaitingTake() {
-		return take != null;
 	}
 
 	/**
@@ -261,23 +238,23 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * will be set directly to the {@code set}, without
 	 * adding to the buffer.
 	 *
-	 * @param value a value passed to the buffer
+	 * @param item a value passed to the buffer
 	 * @return promise of {@code null} or {@code exception}
 	 * as a marker of completion
 	 */
 	@Override
-	public Promise<Void> put(@Nullable T value) {
+	public Promise<Void> put(@Nullable T item) {
 		if (CHECK) checkState(put == null, "Previous put() has not finished yet");
 		if (exception == null) {
 			if (take != null) {
 				assert isEmpty();
 				SettablePromise<T> take = this.take;
 				this.take = null;
-				take.set(value);
+				take.set(item);
 				return Promise.complete();
 			}
 
-			doAdd(value);
+			doAdd(item);
 
 			if (isSaturated()) {
 				put = new SettablePromise<>();
@@ -286,7 +263,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 				return Promise.complete();
 			}
 		} else {
-			tryRecycle(value);
+			tryRecycle(item);
 			return Promise.ofException(exception);
 		}
 	}

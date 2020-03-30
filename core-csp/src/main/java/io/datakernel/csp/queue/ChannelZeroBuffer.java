@@ -47,26 +47,14 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	@Nullable
 	private SettablePromise<T> take;
 
-	/**
-	 * Shows if this buffer is waiting for take
-	 * or put operation to be completed.
-	 *
-	 * @return {@code true} if either {@code put}
-	 * or {@code take} doesn't equal {@code null}
-	 */
 	@Override
-	public boolean isWaiting() {
-		return take != null || put != null;
-	}
-
-	@Override
-	public boolean isWaitingPut() {
+	public boolean isSaturated() {
 		return put != null;
 	}
 
 	@Override
-	public boolean isWaitingTake() {
-		return take != null;
+	public boolean isExhausted() {
+		return put == null;
 	}
 
 	/**
@@ -82,28 +70,28 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 	 * {@code value} will be recycled and a promise of the
 	 * exception will be returned.
 	 *
-	 * @param value a value passed to the buffer
+	 * @param item a value passed to the buffer
 	 * @return {@code put} if current {@code take} is {@code null},
 	 * otherwise returns a successfully completed promise. If
 	 * current {@code exception} is not {@code null}, a promise of
 	 * the {@code exception} will be returned.
 	 */
 	@Override
-	public Promise<Void> put(@Nullable T value) {
+	public Promise<Void> put(@Nullable T item) {
 		if (CHECK) checkState(put == null, "Previous put() has not finished yet");
 		if (exception == null) {
 			if (take != null) {
 				SettablePromise<T> take = this.take;
 				this.take = null;
-				take.set(value);
+				take.set(item);
 				return Promise.complete();
 			}
 
-			this.value = value;
+			this.value = item;
 			this.put = new SettablePromise<>();
 			return put;
 		} else {
-			tryRecycle(value);
+			tryRecycle(item);
 			return Promise.ofException(exception);
 		}
 	}

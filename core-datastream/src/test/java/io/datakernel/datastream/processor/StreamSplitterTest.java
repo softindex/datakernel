@@ -135,7 +135,7 @@ public class StreamSplitterTest {
 		);
 
 		assertSame(exception, e);
-		assertEquals(1, consumer1.getList().size());
+		assertEquals(3, consumer1.getList().size());
 		assertEquals(3, consumer2.getList().size());
 		assertEquals(3, consumer3.getList().size());
 

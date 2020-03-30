@@ -18,8 +18,6 @@ package io.datakernel.datastream;
 
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.queue.ChannelQueue;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -134,23 +132,11 @@ final class StreamConsumers {
 	}
 
 	static final class OfChannelConsumer<T> extends AbstractStreamConsumer<T> {
-		private final ChannelQueue<T> queue;
 		private final ChannelConsumer<T> consumer;
+		private boolean working;
 
 		OfChannelConsumer(ChannelConsumer<T> consumer) {
-			this(new ChannelZeroBuffer<>(), consumer);
-		}
-
-		OfChannelConsumer(ChannelQueue<T> queue, ChannelConsumer<T> consumer) {
-			this.queue = queue;
 			this.consumer = consumer;
-		}
-
-		@Override
-		protected void onInit() {
-			queue.getSupplier().streamTo(consumer)
-					.whenResult(this::acknowledge)
-					.whenException(this::closeEx);
 		}
 
 		@Override
@@ -160,10 +146,13 @@ final class StreamConsumers {
 
 		private void flush() {
 			resume(item -> {
-				Promise<Void> promise = queue.put(item);
+				Promise<Void> promise = consumer.accept(item)
+						.whenException(this::closeEx);
 				if (promise.isComplete()) return;
 				suspend();
+				working = true;
 				promise.whenResult(() -> {
+					working = false;
 					if (!isEndOfStream()) {
 						flush();
 					} else {
@@ -177,13 +166,15 @@ final class StreamConsumers {
 		protected void onEndOfStream() {
 			// end of stream is sent either from here or from queues waiting put promise
 			// callback, but not from both and this condition ensures that
-			if (!queue.isWaitingPut()) {
+			if (!working) {
 				sendEndOfStream();
 			}
 		}
 
 		private void sendEndOfStream() {
-			queue.put(null);
+			consumer.acceptEndOfStream()
+					.whenResult(this::acknowledge)
+					.whenException(this::closeEx);
 		}
 
 		@Override

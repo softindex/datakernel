@@ -17,13 +17,13 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface ChannelQueue<T> extends AsyncCloseable {
 	/**
-	 * Puts a value in the queue and returns a
+	 * Puts a item in the queue and returns a
 	 * {@code promise} of {@code null} as a marker of completion.
 	 *
-	 * @param value a value passed to the queue
+	 * @param item a item passed to the queue
 	 * @return {@code promise} of {@code null} as a marker of completion
 	 */
-	Promise<Void> put(@Nullable T value);
+	Promise<Void> put(@Nullable T item);
 
 	/**
 	 * Takes an element of this queue and wraps it in {@code promise}.
@@ -32,13 +32,9 @@ public interface ChannelQueue<T> extends AsyncCloseable {
 	 */
 	Promise<T> take();
 
-	default boolean isWaiting() {
-		return isWaitingPut() || isWaitingTake();
-	}
+	boolean isSaturated();
 
-	boolean isWaitingPut();
-
-	boolean isWaitingTake();
+	boolean isExhausted();
 
 	/**
 	 * Returns a {@code ChannelConsumer} which puts value in
