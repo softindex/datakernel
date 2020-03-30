@@ -40,7 +40,7 @@ public final class DatasetLocalSort<K, T> extends LocallySortedDataset<K, T> {
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<StreamId> streamIds = input.channels(graph);
 		for (StreamId streamId : streamIds) {
-			NodeSort<K, T> node = new NodeSort<>(input.valueType(), keyFunction(), keyComparator(), false, 10, streamId);
+			NodeSort<K, T> node = new NodeSort<>(input.valueType(), keyFunction(), keyComparator(), false, 1_000_000, streamId);
 			graph.addNode(graph.getPartition(streamId), node);
 			outputStreamIds.add(node.getOutput());
 		}

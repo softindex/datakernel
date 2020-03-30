@@ -22,12 +22,15 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.promise.Promise;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
+
+import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Represent {@link StreamTransformer} which receives data and saves it in collection, when it
@@ -37,6 +40,7 @@ import java.util.function.Function;
  * @param <T> type of objects
  */
 public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
+	private static final Logger logger = getLogger(StreamSorter.class);
 	private final AsyncCollector<? extends List<Integer>> temporaryStreamsCollector;
 	private final StreamSorterStorage<T> storage;
 	private final Function<T, K> keyFunction;
@@ -49,8 +53,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	private final StreamSupplier<T> output;
 
 	private StreamSorter(StreamSorterStorage<T> storage,
-			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
-			int itemsInMemory) {
+	                     Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
+	                     int itemsInMemory) {
 		this.storage = storage;
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
@@ -74,6 +78,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 									input.list.iterator() :
 									new DistinctIterator<>(input.list, keyFunction, keyComparator);
 							StreamSupplier<T> listSupplier = StreamSupplier.ofIterator(iterator);
+							logger.info("Items in memory: {}, files: {}", input.list.size(), streamIds.size());
 							if (streamIds.isEmpty()) {
 								return listSupplier;
 							} else {
@@ -132,8 +137,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	 * @param itemsInMemorySize size of elements which can be saved in RAM before sorting
 	 */
 	public static <K, T> StreamSorter<K, T> create(StreamSorterStorage<T> storage,
-			Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
-			int itemsInMemorySize) {
+	                                               Function<T, K> keyFunction, Comparator<K> keyComparator, boolean distinct,
+	                                               int itemsInMemorySize) {
 		return new StreamSorter<>(storage, keyFunction, keyComparator, distinct, itemsInMemorySize);
 	}
 
