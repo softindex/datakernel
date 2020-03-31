@@ -75,6 +75,7 @@ final class StreamSuppliers {
 	static final class OfPromise<T> extends AbstractStreamSupplier<T> {
 		private Promise<? extends StreamSupplier<T>> promise;
 		private final InternalConsumer internalConsumer = new InternalConsumer();
+
 		private class InternalConsumer extends AbstractStreamConsumer<T> {}
 
 		public OfPromise(Promise<? extends StreamSupplier<T>> promise) {
@@ -85,8 +86,9 @@ final class StreamSuppliers {
 		protected void onInit() {
 			promise
 					.whenResult(supplier -> {
+						//noinspection Convert2MethodRef does not compile on JDK 8
 						this.getEndOfStream()
-								.whenException(supplier::closeEx);
+								.whenException(e -> supplier.closeEx(e));
 						supplier.getEndOfStream()
 								.whenResult(this::sendEndOfStream)
 								.whenException(this::closeEx);
@@ -119,6 +121,7 @@ final class StreamSuppliers {
 	static final class Concat<T> extends AbstractStreamSupplier<T> {
 		private ChannelSupplier<StreamSupplier<T>> iterator;
 		private InternalConsumer internalConsumer = new InternalConsumer();
+
 		private class InternalConsumer extends AbstractStreamConsumer<T> {}
 
 		Concat(ChannelSupplier<StreamSupplier<T>> iterator) {
