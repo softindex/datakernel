@@ -33,7 +33,7 @@ import static io.datakernel.common.Preconditions.checkState;
 @SuppressWarnings("unchecked")
 public abstract class LogDataConsumerSplitter<T, D> implements LogDataConsumer<T, D> {
 
-	protected final class Context {
+	public final class Context {
 		private final List<LogDataConsumer<?, D>> logDataConsumers = new ArrayList<>();
 		private Iterator<? extends StreamDataAcceptor<?>> acceptors;
 
