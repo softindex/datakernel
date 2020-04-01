@@ -54,6 +54,7 @@ public final class FileUploadExample extends Launcher {
 		return ServiceGraphModule.create();
 	}
 
+	//[START EXAMPLE]
 	@Override
 	protected void run() throws Exception {
 		ExecutorService executor = newSingleThreadExecutor();
@@ -66,6 +67,7 @@ public final class FileUploadExample extends Launcher {
 		future.get();
 		executor.shutdown();
 	}
+	//[END EXAMPLE]
 
 	public static void main(String[] args) throws Exception {
 		FileUploadExample example = new FileUploadExample();

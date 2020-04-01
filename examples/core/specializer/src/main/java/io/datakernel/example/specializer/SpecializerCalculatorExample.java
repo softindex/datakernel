@@ -31,6 +31,7 @@ public final class SpecializerCalculatorExample {
 					UNKNOWN
 			);
 
+	//[START REGION_1]
 	private static final Parser<CalculatorExpression> EXPRESSION = new OperatorTable<CalculatorExpression>()
 			.infixl(DELIMITERS.token("+").retn(Sum::new), 10)
 			.infixl(DELIMITERS.token("-").retn(Sub::new), 10)
@@ -40,6 +41,7 @@ public final class SpecializerCalculatorExample {
 			.prefix(DELIMITERS.token("-").retn(Neg::new), 30)
 			.infixr(DELIMITERS.token("^").retn(Pow::new), 40)
 			.build(ATOM);
+	//[END REGION_1]
 
 	static {
 		EXPRESSION_REF.set(EXPRESSION);
@@ -49,6 +51,7 @@ public final class SpecializerCalculatorExample {
 
 	private static final Specializer SPECIALIZER = Specializer.create();
 
+	//[START REGION_2]
 	public static void main(String[] args) {
 		double x = -1;
 
@@ -66,6 +69,7 @@ public final class SpecializerCalculatorExample {
 		CalculatorExpression specialized = SPECIALIZER.specialize(expression);
 		System.out.println(specialized.evaluate(x));
 	}
+	//[END REGION_2]
 
 	public interface CalculatorExpression {
 		double evaluate(double x);

@@ -37,6 +37,7 @@ public final class CodegenCalculatorExample {
 					UNKNOWN
 			);
 
+	//[START REGION_1]
 	private static final Parser<Expression> EXPRESSION = new OperatorTable<Expression>()
 			.infixl(DELIMITERS.token("+").retn(Expressions::add), 10)
 			.infixl(DELIMITERS.token("-").retn(Expressions::sub), 10)
@@ -46,7 +47,7 @@ public final class CodegenCalculatorExample {
 			.prefix(DELIMITERS.token("-").retn(Expressions::neg), 30)
 			.infixr(DELIMITERS.token("^").retn((left, right) -> Expressions.staticCall(Math.class, "pow", left, right)), 40)
 			.build(ATOM);
-
+	//[END REGION_1]
 	static {
 		EXPRESSION_REF.set(EXPRESSION);
 	}
@@ -55,12 +56,15 @@ public final class CodegenCalculatorExample {
 
 	private static final DefiningClassLoader DEFINING_CLASS_LOADER = DefiningClassLoader.create();
 
+	//[START REGION_2]
 	public static Class<DoubleUnaryOperator> compile(String expression) {
 		return ClassBuilder.create(DEFINING_CLASS_LOADER, DoubleUnaryOperator.class)
 				.withMethod("applyAsDouble", PARSER.parse(expression))
 				.build();
 	}
+	//[END REGION_2]
 
+	//[START REGION_3]
 	public static void main(String[] args) throws Exception {
 		double x = -1;
 
@@ -69,7 +73,8 @@ public final class CodegenCalculatorExample {
 
 		DoubleUnaryOperator instance = compile("((2 + 2 * 2) * -x) + 5 + 1024 / (100 + 58) * 50 * 37 - 100 + 2 * x ^ 2 % 3").newInstance();
 
-		// generated instance evaluation, literally equivalent to manual code (with a method call around it), except that is was dynamically generated
+		// generated instance evaluation, literally equivalent to manual code (with a method call around it), except it was dynamically generated
 		System.out.println(instance.applyAsDouble(x));
 	}
+	//[END REGION_3]
 }
