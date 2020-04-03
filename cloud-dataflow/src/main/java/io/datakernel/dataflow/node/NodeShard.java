@@ -24,8 +24,11 @@ import io.datakernel.datastream.processor.Sharders;
 import io.datakernel.datastream.processor.StreamSplitter;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which splits (duplicates) data items from a single input to many outputs.
@@ -78,6 +81,11 @@ public final class NodeShard<K, T> implements Node {
 
 	public void setInput(StreamId input) {
 		this.input = input;
+	}
+
+	@Override
+	public Collection<StreamId> getInputs() {
+		return singletonList(input);
 	}
 
 	@Override

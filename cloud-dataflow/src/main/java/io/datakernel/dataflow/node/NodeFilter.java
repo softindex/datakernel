@@ -46,6 +46,11 @@ public final class NodeFilter<T> implements Node {
 	}
 
 	@Override
+	public Collection<StreamId> getInputs() {
+		return singletonList(input);
+	}
+
+	@Override
 	public Collection<StreamId> getOutputs() {
 		return singletonList(output);
 	}

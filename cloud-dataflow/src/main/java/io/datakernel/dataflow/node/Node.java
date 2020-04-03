@@ -21,16 +21,29 @@ import io.datakernel.dataflow.graph.TaskContext;
 
 import java.util.Collection;
 
+import static java.util.Collections.emptyList;
+
 /**
  * Defines a node in a single server.
  */
 public interface Node {
 	/**
+	 * Returns a list of ids of inputs of this node.
+	 *
+	 * @return ids of inputs of this node
+	 */
+	default Collection<StreamId> getInputs() {
+		return emptyList();
+	}
+
+	/**
 	 * Returns a list of ids of outputs of this node.
 	 *
 	 * @return ids of outputs of this node
 	 */
-	Collection<StreamId> getOutputs();
+	default Collection<StreamId> getOutputs() {
+		return emptyList();
+	}
 
 	/**
 	 * Defines internal node logic and binds it to the task context.

@@ -23,8 +23,9 @@ import io.datakernel.datastream.StreamConsumerToList;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which saves data items in a given list.
@@ -47,8 +48,8 @@ public final class NodeConsumerToList<T> implements Node {
 	}
 
 	@Override
-	public Collection<StreamId> getOutputs() {
-		return Collections.emptyList();
+	public Collection<StreamId> getInputs() {
+		return singletonList(input);
 	}
 
 	@SuppressWarnings("unchecked")

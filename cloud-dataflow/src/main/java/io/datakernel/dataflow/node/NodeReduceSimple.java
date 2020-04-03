@@ -62,6 +62,11 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 	}
 
 	@Override
+	public List<StreamId> getInputs() {
+		return inputs;
+	}
+
+	@Override
 	public Collection<StreamId> getOutputs() {
 		return singletonList(output);
 	}
@@ -86,10 +91,6 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 
 	public Reducer<K, I, O, A> getReducer() {
 		return reducer;
-	}
-
-	public List<StreamId> getInputs() {
-		return inputs;
 	}
 
 	public StreamId getOutput() {

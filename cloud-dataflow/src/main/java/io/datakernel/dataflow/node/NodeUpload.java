@@ -21,7 +21,8 @@ import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.dataflow.server.DataflowServer;
 
 import java.util.Collection;
-import java.util.Collections;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a node, which uploads data to a stream.
@@ -41,8 +42,8 @@ public final class NodeUpload<T> implements Node {
 	}
 
 	@Override
-	public Collection<StreamId> getOutputs() {
-		return Collections.emptyList();
+	public Collection<StreamId> getInputs() {
+		return singletonList(streamId);
 	}
 
 	@Override

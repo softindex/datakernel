@@ -19,7 +19,10 @@ package io.datakernel.dataflow.graph;
 import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.common.collection.Try;
+import io.datakernel.common.ref.RefInt;
 import io.datakernel.dataflow.node.Node;
+import io.datakernel.dataflow.node.NodeDownload;
+import io.datakernel.dataflow.node.NodeUpload;
 import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowClient.Session;
 import io.datakernel.dataflow.server.DataflowSerialization;
@@ -148,6 +151,124 @@ public class DataflowGraph {
 		return serialization;
 	}
 
+	public String toGraphViz(boolean streamLabels) {
+		StringBuilder sb = new StringBuilder("digraph {\n\n");
+
+		RefInt nodeCounter = new RefInt(0);
+		RefInt clusterCounter = new RefInt(0);
+
+		Map<Node, String> nodeIds = new HashMap<>();
+		Set<String> notFound = new HashSet<>();
+
+		Map<StreamId, Node> nodesByInput = new HashMap<>();
+		Map<StreamId, StreamId> network = new HashMap<>();
+
+		List<NodeUpload<?>> uploads = new ArrayList<>();
+
+		// collect network streams and populate the nodesByInput lookup map
+		for (Node node : nodePartitions.keySet()) {
+			if (node instanceof NodeDownload) {
+				NodeDownload<?> download = (NodeDownload<?>) node;
+				network.put(download.getStreamId(), download.getOutput());
+			} else if (node instanceof NodeUpload) {
+				uploads.add((NodeUpload<?>) node);
+			} else {
+				node.getInputs().forEach(input -> nodesByInput.put(input, node));
+			}
+		}
+		// check for upload nodes not connected to download ones, add them
+		for (NodeUpload<?> upload : uploads) {
+			StreamId streamId = upload.getStreamId();
+			if (!network.containsKey(streamId)) {
+				nodesByInput.put(streamId, upload);
+			}
+		}
+
+		// define nodes and group them by partitions using graphviz clusters
+		getNodesByPartition().forEach((partition, nodes) -> {
+			sb.append("  subgraph cluster_")
+					.append(++clusterCounter.value)
+					.append(" {\n")
+					.append("    label=\"")
+					.append(partition.getAddress())
+					.append("\";\n    style=rounded;\n\n");
+			for (Node node : nodes) {
+				if ((node instanceof NodeDownload || (node instanceof NodeUpload && network.containsKey(((NodeUpload<?>) node).getStreamId())))) {
+					continue;
+				}
+				String nodeId = "n" + ++nodeCounter.value;
+				sb.append("    ")
+						.append(nodeId)
+						.append(" [label=\"")
+						.append(node.getClass().getSimpleName())
+						.append("\"];\n");
+				nodeIds.put(node, nodeId);
+			}
+			sb.append("  }\n\n");
+		});
+
+		// walk over each node outputs and build the connections
+		for (Node node : nodePartitions.keySet()) {
+			// upload and download nodes have no common connections
+			// download nodes are never drawn, and upload only has an input
+			if (node instanceof NodeUpload || node instanceof NodeDownload) {
+				continue;
+			}
+			String id = nodeIds.get(node);
+			for (StreamId output : node.getOutputs()) {
+				Node outputNode = nodesByInput.get(output);
+				boolean net = false;
+				boolean forceLabel = false;
+				// check if unbound stream is a network one
+				if (outputNode == null) {
+					StreamId through = network.get(output);
+					if (through != null) {
+						output = through;
+						// connect to network stream output and
+						// set the 'net' flag to true for dashed arrow
+						outputNode = nodesByInput.get(output);
+						net = outputNode != null;
+					}
+				}
+				String nodeId = nodeIds.get(outputNode);
+				// if still unbound, draw as point and force the stream label
+				if (nodeId == null) {
+					nodeId = "s" + output.getId();
+					notFound.add(nodeId);
+					forceLabel = true;
+				}
+				sb.append("  ")
+						.append(id)
+						.append(" -> ")
+						.append(nodeId)
+						.append(" [");
+
+				if (streamLabels || forceLabel) {
+					sb.append("xlabel=\"")
+							.append(output)
+							.append("\"");
+					if (net) {
+						sb.append(", ");
+					}
+				}
+				if (net) {
+					sb.append("style=dashed");
+				}
+				sb.append("];\n");
+			}
+		}
+
+		// draw the nodes that were never defined as points that still have connections
+		if (!notFound.isEmpty()) {
+			sb.append('\n');
+			notFound.forEach(id -> sb.append("  ").append(id).append(" [shape=point];\n"));
+		}
+
+		sb.append("}");
+
+		return sb.toString();
+	}
+
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
@@ -160,5 +281,4 @@ public class DataflowGraph {
 		}
 		return sb.toString();
 	}
-
 }

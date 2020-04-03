@@ -96,5 +96,4 @@ public class DataflowSerializationTest {
 
 		System.out.println(fromJson(serialization.getCommandCodec(), str));
 	}
-
 }

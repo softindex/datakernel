@@ -52,6 +52,7 @@ public final class NodeUnion<T> implements Node {
 		taskContext.export(output, streamUnion.getOutput());
 	}
 
+	@Override
 	public List<StreamId> getInputs() {
 		return inputs;
 	}

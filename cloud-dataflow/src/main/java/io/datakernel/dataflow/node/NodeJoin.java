@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.function.Function;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 /**
@@ -45,14 +46,14 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	private final Joiner<K, L, R, V> joiner;
 
 	public NodeJoin(StreamId left, StreamId right,
-	                Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-	                Joiner<K, L, R, V> joiner) {
+			Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+			Joiner<K, L, R, V> joiner) {
 		this(left, right, new StreamId(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
 	}
 
 	public NodeJoin(StreamId left, StreamId right, StreamId output,
-	                Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
-	                Joiner<K, L, R, V> joiner) {
+			Comparator<K> keyComparator, Function<L, K> leftKeyFunction, Function<R, K> rightKeyFunction,
+			Joiner<K, L, R, V> joiner) {
 		this.left = left;
 		this.right = right;
 		this.output = output;
@@ -60,6 +61,11 @@ public final class NodeJoin<K, L, R, V> implements Node {
 		this.leftKeyFunction = leftKeyFunction;
 		this.rightKeyFunction = rightKeyFunction;
 		this.joiner = joiner;
+	}
+
+	@Override
+	public Collection<StreamId> getInputs() {
+		return asList(left, right);
 	}
 
 	@Override

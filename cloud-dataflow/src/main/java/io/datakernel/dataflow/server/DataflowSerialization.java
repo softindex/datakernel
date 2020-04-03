@@ -294,7 +294,7 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 									in.readKey("output", STREAM_ID_CODEC)),
 							(StructuredOutput out, NodeReduce v) -> {
 								out.writeKey("keyComparator", comparator.get(), v.getKeyComparator());
-								out.writeKey("inputs", nodeReduceInput.get(), (Map<StreamId, NodeReduce.Input>) v.getInputs());
+								out.writeKey("inputs", nodeReduceInput.get(), (Map<StreamId, NodeReduce.Input>) v.getInputMap());
 								out.writeKey("output", STREAM_ID_CODEC, v.getOutput());
 							}))
 
@@ -414,12 +414,13 @@ public final class DataflowSerialization implements Initializable<DataflowSerial
 	@SuppressWarnings("unchecked")
 	public synchronized <T> BinarySerializer<T> getBinarySerializer(Class<T> type) {
 		BinarySerializer<T> serializer = (BinarySerializer<T>) serializers.get(type);
-		if (serializer == null) {
-			logger.info("Creating serializer for {}", type);
-			serializer = SerializerBuilder.create(DefiningClassLoader.create(getSystemClassLoader()))
-					.build(type);
-			serializers.put(type, serializer);
+		if (serializer != null) {
+			return serializer;
 		}
+		logger.info("Creating serializer for {}", type);
+		serializer = SerializerBuilder.create(DefiningClassLoader.create(getSystemClassLoader()))
+				.build(type);
+		serializers.put(type, serializer);
 		return serializer;
 	}
 }

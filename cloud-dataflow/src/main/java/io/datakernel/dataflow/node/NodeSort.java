@@ -51,12 +51,12 @@ public final class NodeSort<K, T> implements Node {
 	private final StreamId output;
 
 	public NodeSort(Class<T> type, Function<T, K> keyFunction, Comparator<K> keyComparator,
-	                boolean deduplicate, int itemsInMemorySize, StreamId input) {
+			boolean deduplicate, int itemsInMemorySize, StreamId input) {
 		this(type, keyFunction, keyComparator, deduplicate, itemsInMemorySize, input, new StreamId());
 	}
 
 	public NodeSort(Class<T> type, Function<T, K> keyFunction, Comparator<K> keyComparator,
-	                boolean deduplicate, int itemsInMemorySize, StreamId input, StreamId output) {
+			boolean deduplicate, int itemsInMemorySize, StreamId input, StreamId output) {
 		this.type = type;
 		this.keyFunction = keyFunction;
 		this.keyComparator = keyComparator;
@@ -64,6 +64,11 @@ public final class NodeSort<K, T> implements Node {
 		this.itemsInMemorySize = itemsInMemorySize;
 		this.input = input;
 		this.output = output;
+	}
+
+	@Override
+	public Collection<StreamId> getInputs() {
+		return singletonList(input);
 	}
 
 	@Override

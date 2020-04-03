@@ -58,6 +58,11 @@ public final class NodeMerge<K, T> implements Node {
 	}
 
 	@Override
+	public List<StreamId> getInputs() {
+		return inputs;
+	}
+
+	@Override
 	public Collection<StreamId> getOutputs() {
 		return singletonList(output);
 	}
@@ -81,10 +86,6 @@ public final class NodeMerge<K, T> implements Node {
 
 	public boolean isDeduplicate() {
 		return deduplicate;
-	}
-
-	public List<StreamId> getInputs() {
-		return inputs;
 	}
 
 	public StreamId getOutput() {

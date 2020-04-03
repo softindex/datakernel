@@ -83,6 +83,11 @@ public final class NodeReduce<K, O, A> implements Node {
 	}
 
 	@Override
+	public Collection<StreamId> getInputs() {
+		return inputs.keySet();
+	}
+
+	@Override
 	public Collection<StreamId> getOutputs() {
 		return singletonList(output);
 	}
@@ -105,7 +110,7 @@ public final class NodeReduce<K, O, A> implements Node {
 		return keyComparator;
 	}
 
-	public Map<StreamId, Input<K, O, A>> getInputs() {
+	public Map<StreamId, Input<K, O, A>> getInputMap() {
 		return inputs;
 	}
 
