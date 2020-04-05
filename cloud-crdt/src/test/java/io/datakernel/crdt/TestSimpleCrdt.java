@@ -87,12 +87,11 @@ public final class TestSimpleCrdt {
 		assertEquals(47, checkNotNull(remoteStorage.get("only_local")).getState().intValue());
 	}
 
-	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
 	public void testDownload() {
 		CrdtStorageMap<String, TimestampContainer<Integer>> localStorage = CrdtStorageMap.create(getCurrentEventloop(), TimestampContainer.createCrdtFunction(Integer::max));
 
-		await(client.download().then(supplierWithResult -> supplierWithResult
+		await(client.download().then(supplier -> supplier
 				.streamTo(StreamConsumer.of(localStorage::put))
 				.whenComplete(server::close)));
 

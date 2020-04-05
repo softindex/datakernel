@@ -80,7 +80,6 @@ public final class TestCrdtCluster {
 		});
 	}
 
-	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Test
 	public void testDownload() throws IOException {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();

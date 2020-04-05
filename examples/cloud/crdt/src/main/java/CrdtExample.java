@@ -1,89 +1,97 @@
-import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtStorage;
-import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFs;
-import io.datakernel.crdt.primitives.LWWSet;
+import io.datakernel.crdt.*;
+import io.datakernel.crdt.local.CrdtStorageMap;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.LocalFsClient;
 
-import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.io.IOException;
+import java.net.InetSocketAddress;
 
+import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 
-@SuppressWarnings("Convert2MethodRef")
 public final class CrdtExample {
-	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
-			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));
+	private static final CrdtDataSerializer<String, TimestampContainer<Integer>> INTEGER_SERIALIZER =
+			new CrdtDataSerializer<>(UTF8_SERIALIZER, TimestampContainer.createSerializer(INT_SERIALIZER));
 
-	public static void main(String[] args) {
-		Eventloop eventloop = Eventloop.create()
-				.withCurrentThread();
+	private static final CrdtFunction<TimestampContainer<Integer>> CRDT_FUNCTION =
+			TimestampContainer.createCrdtFunction(Integer::max);
 
-		ExecutorService executor = Executors.newSingleThreadExecutor();
+	private static final InetSocketAddress ADDRESS = new InetSocketAddress(5555);
 
-		Map<Integer, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
+	public static void main(String[] args) throws IOException {
+		Eventloop eventloop = Eventloop.create().withCurrentThread();
 
-		for (int i = 0; i < 8; i++) {
-			clients.put(i, createClient(eventloop, executor, i));
-		}
+		// create the 'remote' storage
+		CrdtStorageMap<String, TimestampContainer<Integer>> remoteStorage = CrdtStorageMap.create(eventloop, CRDT_FUNCTION);
 
-		CrdtStorageFs<String, LWWSet<String>> one = createClient(eventloop, executor, 8);
-		CrdtStorageFs<String, LWWSet<String>> two = createClient(eventloop, executor, 9);
+		// put some default data into that storage
+		remoteStorage.put("mx", TimestampContainer.now(2));
+		remoteStorage.put("test", TimestampContainer.now(3));
+		remoteStorage.put("test", TimestampContainer.now(5));
+		remoteStorage.put("only_remote", TimestampContainer.now(35));
+		remoteStorage.put("only_remote", TimestampContainer.now(4));
 
-		CrdtStorageCluster<Integer, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients)
-				.withPartition(8, one)
-				.withPartition(9, two)
-				.withReplicationCount(5);
+		// and also output it for later comparison
+		System.out.println("Data at 'remote' storage:");
+		remoteStorage.iterator().forEachRemaining(System.out::println);
+		System.out.println();
 
-		// * first replica:
-		//   first = [#1, #2, #3, #4]
-		//   second = ["#3", "#4", "#5", "#6"]
-		//
-		// * second replica:
-		//   first = [#3, #4, #5, #6]
-		//   second = [#2, #4, <removed> #5, <removed> #6]
-		//
-		// * expected result from the cluster:
-		//   first = [#1, #2, #3, #4, #5, #6]
-		//   second = [#2, #3, #4]
+		// create and run a server for the 'remote' storage
+		CrdtServer<String, TimestampContainer<Integer>> server = CrdtServer.create(eventloop, remoteStorage, INTEGER_SERIALIZER)
+				.withListenAddress(ADDRESS);
+		server.listen();
 
-		StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#1", "#2", "#3", "#4")), new CrdtData<>("second", LWWSet.of("#3", "#4", "#5", "#6")))
-				.streamTo(StreamConsumer.ofPromise(one.upload()))
-				.then(() -> {
-					LWWSet<String> second = LWWSet.of("#2", "#4");
-					second.remove("#5");
-					second.remove("#6");
-					return StreamSupplier.of(new CrdtData<>("first", LWWSet.of("#3", "#4", "#5", "#6")), new CrdtData<>("second", second))
-							.streamTo(StreamConsumer.ofPromise(two.upload()));
-				})
-				.then(() -> cluster.download())
-				.then(StreamSupplier::toList)
-				.whenComplete((list, e) -> {
-					executor.shutdown();
-					if (e != null) {
-						throw new AssertionError(e);
-					}
-					System.out.println(list);
+		// now crate the client for that 'remote' storage
+		CrdtStorage<String, TimestampContainer<Integer>> client =
+				CrdtStorageClient.create(eventloop, ADDRESS, INTEGER_SERIALIZER);
+
+		// and also create the local storage
+		CrdtStorageMap<String, TimestampContainer<Integer>> localStorage =
+				CrdtStorageMap.create(eventloop, CRDT_FUNCTION);
+
+		// and fill it with some other values
+		localStorage.put("mx", TimestampContainer.now(22));
+		// duplicate keys will be resolved with the crdt function
+		localStorage.put("mx", TimestampContainer.now(2));
+		// so the actual value will be the max of all puts at that key
+		localStorage.put("mx", TimestampContainer.now(23));
+		localStorage.put("test", TimestampContainer.now(1));
+		localStorage.put("test", TimestampContainer.now(2));
+		localStorage.put("test", TimestampContainer.now(4));
+		localStorage.put("test", TimestampContainer.now(3));
+		localStorage.put("only_local", TimestampContainer.now(47));
+		localStorage.put("only_local", TimestampContainer.now(12));
+
+		// and output it too for later comparison
+		System.out.println("Data at the local storage:");
+		localStorage.iterator().forEachRemaining(System.out::println);
+		System.out.println("\n");
+
+		// now stream the local storage into the remote one through the TCP client-server pair
+		StreamSupplier.ofPromise(localStorage.download())
+				.streamTo(StreamConsumer.ofPromise(client.upload()))
+				.whenComplete(() -> {
+
+					// check what is now at the 'remote' storage, the output should differ
+					System.out.println("Synced data at 'remote' storage:");
+					remoteStorage.iterator().forEachRemaining(System.out::println);
+					System.out.println();
+
+					// and now do the reverse process
+					StreamSupplier.ofPromise(client.download())
+							.streamTo(StreamConsumer.ofPromise(localStorage.upload()))
+							.whenComplete(() -> {
+								// now output the local storage, should be identical to the remote one
+								System.out.println("Synced data at the local storage:");
+								localStorage.iterator().forEachRemaining(System.out::println);
+								System.out.println();
+
+								// also stop the server to let the program finish
+								server.close();
+							});
 				});
 
 		eventloop.run();
 	}
-
-	private static CrdtStorageFs<String, LWWSet<String>> createClient(Eventloop eventloop, Executor executor, int n) {
-		FsClient storage = LocalFsClient.create(eventloop, executor, Paths.get("/tmp/TESTS/crdt_" + n));
-		return CrdtStorageFs.create(eventloop, storage, SERIALIZER);
-	}
 }
-
-
-
-

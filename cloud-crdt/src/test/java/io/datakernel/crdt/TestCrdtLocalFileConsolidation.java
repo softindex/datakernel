@@ -57,7 +57,8 @@ public final class TestCrdtLocalFileConsolidation {
 
 	private Set<Integer> union(Set<Integer> first, Set<Integer> second) {
 		Set<Integer> res = new HashSet<>(Math.max((int) ((first.size() + second.size()) / .75f) + 1, 16));
-		first.addAll(second);
+		res.addAll(first);
+		res.addAll(second);
 		return res;
 	}
 
