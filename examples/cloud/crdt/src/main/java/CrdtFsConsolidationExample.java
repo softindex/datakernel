@@ -82,7 +82,7 @@ public final class CrdtFsConsolidationExample {
 		Promises.all(firstUpload, secondUpload)
 				.whenComplete(() -> {
 
-					// All the operations are async, but we simply run them in order
+					// all the operations are async, but we run them sequentially
 					// because we need to see the file list exactly before and after
 					// consolidation process
 					Promises.sequence(

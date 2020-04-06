@@ -46,7 +46,7 @@ public final class CrdtExample {
 		server.listen();
 		//[END REGION_1]
 
-		//[START_REGION_3]
+		//[START REGION_3]
 		// now crate the client for that 'remote' storage
 		CrdtStorage<String, TimestampContainer<Integer>> client =
 				CrdtStorageClient.create(eventloop, ADDRESS, INTEGER_SERIALIZER);
@@ -57,9 +57,9 @@ public final class CrdtExample {
 
 		// and fill it with some other values
 		localStorage.put("mx", TimestampContainer.now(22));
-		// duplicate keys will be resolved with the crdt function
+		// conflicting keys will be resolved with the crdt function
 		localStorage.put("mx", TimestampContainer.now(2));
-		// so the actual value will be the max of all puts at that key
+		// so the actual value will be the max of all values of that key
 		localStorage.put("mx", TimestampContainer.now(23));
 		localStorage.put("test", TimestampContainer.now(1));
 		localStorage.put("test", TimestampContainer.now(2));

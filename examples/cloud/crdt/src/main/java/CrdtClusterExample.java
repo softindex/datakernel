@@ -85,7 +85,7 @@ public final class CrdtClusterExample {
 		set.remove("#5");
 		set.remove("#6");
 		CrdtData<String, LWWSet<String>> secondOn6 = new CrdtData<>("second", set);
-		//[END_REGION_2]
+		//[END REGION_2]
 
 		//[START REGION_3]
 		// then upload these sets to both partition3 and partition6
@@ -105,6 +105,6 @@ public final class CrdtClusterExample {
 		// actually run the eventloop and then shutdown the executor allowing the program to finish
 		eventloop.run();
 		executor.shutdown();
-		//[END_REGION_3]
+		//[END REGION_3]
 	}
 }
