@@ -36,6 +36,7 @@ public final class CrdtFsConsolidationExample {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
+		//[START REGION_1]
 		// create our storage dir and an fs client which operates on that dir
 		Path storage = Paths.get("storage");
 		Files.createDirectories(storage);
@@ -53,7 +54,9 @@ public final class CrdtFsConsolidationExample {
 		// create an FS-based CRDT client
 		CrdtStorageFs<String, TimestampContainer<Set<Integer>>> client =
 				CrdtStorageFs.create(eventloop, fsClient, serializer, crdtFunction);
+		//[END REGION_1]
 
+		//[START REGION_2]
 		// upload two streams of items to it in parallel
 		Promise<Void> firstUpload =
 				StreamSupplier.ofStream(Stream.of(
@@ -72,7 +75,9 @@ public final class CrdtFsConsolidationExample {
 						new CrdtData<>("12_test_1", TimestampContainer.now(set(123, 542, 125, 2))),
 						new CrdtData<>("12_test_2", TimestampContainer.now(set(12, 13)))).sorted())
 						.streamTo(StreamConsumer.ofPromise(client.upload()));
+		//[END REGION_2]
 
+		//[START REGION_3]
 		// and wait for both of uploads to finish
 		Promises.all(firstUpload, secondUpload)
 				.whenComplete(() -> {
@@ -102,5 +107,6 @@ public final class CrdtFsConsolidationExample {
 		// shutdown the executor after the eventloop finishes (meaning there is no more work to do)
 		// because executor waits for 60 seconds of being idle until it shuts down on its own
 		executor.shutdown();
+		//[END REGION_3]
 	}
 }

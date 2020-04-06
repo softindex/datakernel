@@ -30,6 +30,7 @@ public final class CrdtClusterExample {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
+		//[START REGION_1]
 		// we create a list of 10 local partitions with string partition ids and string keys
 		// normally all of them would be network clients for remote partitions
 		Map<String, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
@@ -46,10 +47,11 @@ public final class CrdtClusterExample {
 
 		// create a cluster with string keys, string partition ids,
 		// and with replication count of 5 meaning that uploading items to the
-		// cluster will make a 5 copies of them across known partitions
+		// cluster will make 5 copies of them across known partitions
 		CrdtStorageCluster<String, String, LWWSet<String>> cluster = CrdtStorageCluster.create(eventloop, clients)
 				.withReplicationCount(5);
 
+		//[END REGION_1]
 		// Here we will prepopulate two partitions with some sets of items
 		//
 		// * partition3:
@@ -64,6 +66,7 @@ public final class CrdtClusterExample {
 		//   first = {#1, #2, #3, #4, #5, #6}
 		//   second = {#2, #3, #4}
 
+		//[START REGION_2]
 		// sets on partition3
 		CrdtData<String, LWWSet<String>> firstOn3 = new CrdtData<>("first", LWWSet.of("#1", "#2", "#3", "#4"));
 		CrdtData<String, LWWSet<String>> secondOn3 = new CrdtData<>("second", LWWSet.of("#3", "#4", "#5", "#6"));
@@ -82,7 +85,9 @@ public final class CrdtClusterExample {
 		set.remove("#5");
 		set.remove("#6");
 		CrdtData<String, LWWSet<String>> secondOn6 = new CrdtData<>("second", set);
+		//[END_REGION_2]
 
+		//[START REGION_3]
 		// then upload these sets to both partition3 and partition6
 		Promise<Void> uploadTo3 = StreamSupplier.of(firstOn3, secondOn3).streamTo(StreamConsumer.ofPromise(partition3.upload()));
 		Promise<Void> uploadTo6 = StreamSupplier.of(firstOn6, secondOn6).streamTo(StreamConsumer.ofPromise(partition6.upload()));
@@ -100,5 +105,6 @@ public final class CrdtClusterExample {
 		// actually run the eventloop and then shutdown the executor allowing the program to finish
 		eventloop.run();
 		executor.shutdown();
+		//[END_REGION_3]
 	}
 }
