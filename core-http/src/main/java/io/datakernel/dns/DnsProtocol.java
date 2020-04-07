@@ -193,13 +193,17 @@ public final class DnsProtocol {
 
 				// check for message compression (RFC 1035 section 4.1.4. Message compression, https://tools.ietf.org/rfc/rfc1035#section-4.1.4)
 				byte b = payload.readByte();
-				if ((b & 0xFF) >> 6 == 0b11) {
-					payload.moveHead(1); // skip domain pointer (second byte of 2 bytes)
-				} else {
-					// skip the fqdn
-					while (b != 0) {
+				while (b != 0) {
+					int twoBits = (b & 0xFF) >> 6;
+					if (twoBits == 0b11) {
+						payload.moveHead(1); // skip domain pointer (second byte of 2 bytes)
+						break;
+					} else if (twoBits == 0b00) {
+						// skip the fqdn
 						payload.moveHead(b);
 						b = payload.readByte();
+					} else {
+						throw new ParseException("Unsupported compression method");
 					}
 				}
 
