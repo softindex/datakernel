@@ -29,10 +29,10 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventStats;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -88,7 +88,6 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 		return eventloop;
 	}
 
-	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public Promise<StreamConsumer<CrdtData<K, S>>> upload() {
 		return Promise.of(StreamConsumer.of(this::doPut)
@@ -101,7 +100,6 @@ public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtSto
 				.transformWith(detailedStats ? downloadStatsDetailed : downloadStats));
 	}
 
-	@SuppressWarnings("deprecation") // StreamConsumer#of
 	@Override
 	public Promise<StreamConsumer<K>> remove() {
 		return Promise.of(StreamConsumer.<K>of(storage::remove)

@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.stats;
 
+import io.datakernel.common.jmx.MBeanFormat;
 import io.datakernel.jmx.api.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
 

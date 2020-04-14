@@ -16,12 +16,11 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.MBeanWrapperFactory;
 import io.datakernel.jmx.helper.JmxStatsStub;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.helper.StubWrapperFactory;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,7 +34,6 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 import java.util.*;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
@@ -45,7 +43,6 @@ import static org.junit.Assert.*;
 public class DynamicMBeanFactoryImplAttributesTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
-	public static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
 	public void retreivesProperMBeanInfo() {
@@ -345,7 +342,8 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	public static final class MBeanWithListAttr implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanWithListAttr {
 		private final List<String> list;
 
 		public MBeanWithListAttr(List<String> list) {
@@ -356,15 +354,10 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		public List<String> getList() {
 			return list;
 		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		}
 	}
 
-	public static final class MBeanWithSingleIntAttr implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanWithSingleIntAttr {
 		private final int value;
 
 		public MBeanWithSingleIntAttr(int value) {
@@ -375,15 +368,10 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		public int getValue() {
 			return value;
 		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		}
 	}
 
-	public static final class MBeanWithJmxStats implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanWithJmxStats {
 		private final JmxStatsStub jmxStatsStub;
 
 		public MBeanWithJmxStats(JmxStatsStub jmxStatsStub) {
@@ -394,15 +382,10 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		public JmxStatsStub getJmxStatsStub() {
 			return jmxStatsStub;
 		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-		}
 	}
 
-	public static final class MBeanWithMap implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanWithMap {
 		private final Map<String, Integer> nameToNumber;
 
 		public MBeanWithMap(Map<String, Integer> nameToNumber) {
@@ -412,12 +395,6 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		@JmxAttribute
 		public Map<String, Integer> getNameToNumber() {
 			return nameToNumber;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -609,18 +586,12 @@ public class DynamicMBeanFactoryImplAttributesTest {
 	}
 
 	// classes for default attribute test (@JmxAttribute get())
-	public static final class MBeanWithPojoWithDefaultGetter implements EventloopJmxMBean {
+	public static final class MBeanWithPojoWithDefaultGetter implements ConcurrentJmxMBean {
 		private final PojoWithDefaultGetter pojo = new PojoWithDefaultGetter();
 
 		@JmxAttribute
 		public PojoWithDefaultGetter getPojo() {
 			return pojo;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
 		}
 	}
 

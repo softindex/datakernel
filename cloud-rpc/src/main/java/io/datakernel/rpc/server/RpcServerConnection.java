@@ -18,11 +18,11 @@ package io.datakernel.rpc.server;
 
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.eventloop.jmx.EventStats;
-import io.datakernel.eventloop.jmx.ExceptionStats;
-import io.datakernel.eventloop.jmx.JmxRefreshable;
-import io.datakernel.eventloop.jmx.ValueStats;
 import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxRefreshable;
+import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.protocol.RpcControlMessage;
 import io.datakernel.rpc.protocol.RpcMessage;

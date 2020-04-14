@@ -14,31 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.util;
+package io.datakernel.common.reflection;
 
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.ref.RefBoolean;
-import io.datakernel.eventloop.jmx.JmxRefreshableStats;
-import io.datakernel.eventloop.jmx.JmxStats;
-import io.datakernel.eventloop.jmx.JmxStatsWithReset;
-import io.datakernel.eventloop.jmx.JmxStatsWithSmoothingWindow;
-import io.datakernel.jmx.api.JmxAttribute;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.management.MXBean;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.common.collection.CollectionUtils.first;
-import static java.util.stream.Collectors.toSet;
 
 public final class ReflectionUtils {
 
@@ -74,14 +64,6 @@ public final class ReflectionUtils {
 
 	public static boolean isThrowable(Class<?> cls) {
 		return Throwable.class.isAssignableFrom(cls);
-	}
-
-	public static boolean isJmxStats(Class<?> cls) {
-		return JmxStats.class.isAssignableFrom(cls);
-	}
-
-	public static boolean isJmxRefreshableStats(Class<?> cls) {
-		return JmxRefreshableStats.class.isAssignableFrom(cls);
 	}
 
 	public static boolean isGetter(Method method) {
@@ -175,47 +157,6 @@ public final class ReflectionUtils {
 		}
 	}
 
-	private static void visitFields(Object instance, Predicate<Object> action) {
-		if (instance == null) {
-			return;
-		}
-		for (Method method : instance.getClass().getMethods()) {
-			if (method.getParameters().length != 0 || !Modifier.isPublic(method.getModifiers())) {
-				continue;
-			}
-			Class<?> returnType = method.getReturnType();
-			if (returnType == void.class || isSimpleType(returnType)) {
-				continue;
-			}
-			if (Arrays.stream(method.getAnnotations()).noneMatch(a -> a.annotationType() == JmxAttribute.class)) {
-				continue;
-			}
-			Object fieldValue;
-			try {
-				fieldValue = method.invoke(instance);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				continue;
-			}
-			if (fieldValue == null) {
-				continue;
-			}
-			if (action.test(fieldValue)) {
-				continue;
-			}
-			if (Map.class.isAssignableFrom(returnType)) {
-				for (Object item : ((Map<?, ?>) fieldValue).values()) {
-					visitFields(item, action);
-				}
-			} else if (Collection.class.isAssignableFrom(returnType)) {
-				for (Object item : (Collection<?>) fieldValue) {
-					visitFields(item, action);
-				}
-			} else {
-				visitFields(fieldValue, action);
-			}
-		}
-	}
-
 	public static List<Class<?>> getAllInterfaces(Class<?> cls) {
 		Set<Class<?>> interfacesFound = new LinkedHashSet<>();
 		getAllInterfaces(cls, interfacesFound);
@@ -236,90 +177,26 @@ public final class ReflectionUtils {
 		}
 	}
 
-	private static boolean isBeanInterface(Class<?> cls) {
-		String name = cls.getName();
-		return name.endsWith("MBean") || name.endsWith("MXBean") || cls.isAnnotationPresent(MXBean.class);
-	}
-
-	public static boolean isBean(Class<?> cls) {
-		return getAllInterfaces(cls).stream().anyMatch(ReflectionUtils::isBeanInterface);
-	}
-
-	public static Map<String, Object> getJmxAttributes(@Nullable Object instance) {
-		Map<String, Object> result = new LinkedHashMap<>();
-		getJmxAttributes(instance, "", result);
-		return result;
-	}
-
-	private static boolean getJmxAttributes(@Nullable Object instance, String rootName, Map<String, Object> attrs) {
-		if (instance == null) {
-			return false;
-		}
-		Set<String> attributeNames = getAllInterfaces(instance.getClass()).stream()
-				.filter(ReflectionUtils::isBeanInterface)
-				.flatMap(i -> Arrays.stream(i.getMethods())
-						.filter(ReflectionUtils::isGetter)
-						.map(Method::getName))
-				.collect(toSet());
-		RefBoolean changed = new RefBoolean(false);
-		Arrays.stream(instance.getClass().getMethods())
-				.filter(method -> isGetter(method) && (attributeNames.contains(method.getName())
-						|| Arrays.stream(method.getAnnotations()).anyMatch(a -> a.annotationType() == JmxAttribute.class)))
-				.sorted(Comparator.comparing(Method::getName))
-				.forEach(method -> {
-					Object fieldValue;
-					method.setAccessible(true); // anonymous classes do not work without this, wow
-					try {
-						fieldValue = method.invoke(instance);
-					} catch (IllegalAccessException | InvocationTargetException e) {
-						return;
-					}
-					changed.set(true);
-					JmxAttribute annotation = method.getAnnotation(JmxAttribute.class);
-					String name = annotation == null || annotation.name().equals(JmxAttribute.USE_GETTER_NAME) ?
-							extractFieldNameFromGetter(method) :
-							annotation.name();
-					name = rootName.isEmpty() ? name : rootName + (name.isEmpty() ? "" : "_" + name);
-					if (fieldValue != instance && !attrs.containsKey(name) && !getJmxAttributes(fieldValue, name, attrs)) {
-						attrs.put(name, fieldValue);
-					}
-				});
-		return changed.get();
-	}
-
-	public static void resetStats(Object instance) {
-		visitFields(instance, item -> {
-			if (item instanceof JmxStatsWithReset) {
-				((JmxStatsWithReset) item).resetStats();
-				return true;
-			}
-			return false;
-		});
-	}
-
-	public static void setSmoothingWindow(Object instance, Duration smoothingWindowSeconds) {
-		visitFields(instance, item -> {
-			if (item instanceof JmxStatsWithSmoothingWindow) {
-				((JmxStatsWithSmoothingWindow) item).setSmoothingWindow(smoothingWindowSeconds);
-				return true;
-			}
-			return false;
-		});
+	@Nullable
+	public static Annotation deepFindAnnotation(Class<?> cls, Predicate<Annotation> predicate) {
+		return doDeepFindAnnotation(cls, predicate, new HashSet<>());
 	}
 
 	@Nullable
-	public static Duration getSmoothingWindow(Object instance) {
-		Set<Duration> result = new HashSet<>();
-		visitFields(instance, item -> {
-			if (item instanceof JmxStatsWithSmoothingWindow) {
-				Duration smoothingWindow = ((JmxStatsWithSmoothingWindow) item).getSmoothingWindow();
-				result.add(smoothingWindow);
-				return true;
+	private static Annotation doDeepFindAnnotation(Class<?> cls, Predicate<Annotation> predicate, Set<Class<?>> visited) {
+		if (cls == Object.class || !visited.add(cls)) return null;
+		for (Annotation annotation : cls.getAnnotations()) {
+			if (predicate.test(annotation)){
+				return annotation;
 			}
-			return false;
-		});
-		if (result.size() == 1) {
-			return first(result);
+		}
+		for (Class<?> anInterface : cls.getInterfaces()) {
+			Annotation annotation = doDeepFindAnnotation(anInterface, predicate, visited);
+			if (annotation != null) return annotation;
+		}
+		Class<?> superclass = cls.getSuperclass();
+		if (superclass != null) {
+			return doDeepFindAnnotation(superclass, predicate, visited);
 		}
 		return null;
 	}

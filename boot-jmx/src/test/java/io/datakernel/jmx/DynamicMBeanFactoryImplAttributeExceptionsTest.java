@@ -16,17 +16,13 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.eventloop.jmx.JmxRefreshableStats;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.stats.JmxRefreshableStats;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 
@@ -35,10 +31,9 @@ public class DynamicMBeanFactoryImplAttributeExceptionsTest {
 	public ExpectedException expectedException = ExpectedException.none();
 
 	@Test
-	public void concurrentJmxMBeansAreNotAllowedToBeInPool_OnlyEventloopJmxMBeansAreAllowedToBeInPool() {
+	public void concurrentJmxMBeansAreNotAllowedToBeInPool() {
 		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("ConcurrentJmxMBeans cannot be used in pool. " +
-				"Only EventloopJmxMBeans can be used in pool");
+		expectedException.expectMessage("ConcurrentJmxMBeans cannot be used in pool");
 
 		DynamicMBeanFactoryImpl.create()
 				.createDynamicMBean(
@@ -94,34 +89,22 @@ public class DynamicMBeanFactoryImplAttributeExceptionsTest {
 		}
 	}
 
-	public static final class MBeanWithInterfaceAsJmxStatsAttributes implements EventloopJmxMBean {
+	public static final class MBeanWithInterfaceAsJmxStatsAttributes implements ConcurrentJmxMBean {
 
 		@JmxAttribute
 		public JmxStatsAdditionalInterface getStats() {
 			return null;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
 	public interface JmxStatsAdditionalInterface extends JmxRefreshableStats<JmxStatsAdditionalInterface> {
 	}
 
-	public static final class MBeanWithAbstractClassAsJmxStatsAttributes implements EventloopJmxMBean {
+	public static final class MBeanWithAbstractClassAsJmxStatsAttributes implements ConcurrentJmxMBean {
 
 		@JmxAttribute
 		public JmxStatsAbstractClass getStats() {
 			return null;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 
@@ -129,17 +112,11 @@ public class DynamicMBeanFactoryImplAttributeExceptionsTest {
 
 	}
 
-	public static final class MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor implements EventloopJmxMBean {
+	public static final class MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor implements ConcurrentJmxMBean {
 
 		@JmxAttribute
 		public JmxStatsWithNoPublicNoArgConstructor getStats() {
 			return null;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 		}
 	}
 

@@ -16,24 +16,20 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxReducer;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.api.MBeanWrapperFactory;
+import io.datakernel.jmx.helper.StubWrapperFactory;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import java.util.List;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class DynamicMBeanFactoryImplAttributeReducersTest {
-
-	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	// region simple type reducers
 	@Test
@@ -47,7 +43,8 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 		assertEquals(ConstantValueReducer.CONSTANT_VALUE, mbean.getAttribute("attr"));
 	}
 
-	public static final class MBeanWithCustomReducer implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanWithCustomReducer {
 		private final int attr;
 
 		public MBeanWithCustomReducer(int attr) {
@@ -57,12 +54,6 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 		@JmxAttribute(reducer = ConstantValueReducer.class)
 		public int getAttr() {
 			return attr;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return EVENTLOOP;
 		}
 	}
 
@@ -91,7 +82,8 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 		assertEquals("abcxz", mbean.getAttribute("pojo_name"));
 	}
 
-	public static final class MBeanWithPojoReducer implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanWithPojoReducer {
 		private final PojoStub pojo;
 
 		public MBeanWithPojoReducer(PojoStub pojo) {
@@ -103,11 +95,6 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 			return pojo;
 		}
 
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return EVENTLOOP;
-		}
 	}
 
 	public static final class PojoStub {

@@ -16,11 +16,11 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.eventloop.jmx.JmxRefreshableStats;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.api.MBeanWrapperFactory;
+import io.datakernel.jmx.helper.StubWrapperFactory;
+import io.datakernel.jmx.stats.JmxRefreshableStats;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -29,7 +29,6 @@ import javax.management.MBeanInfo;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
@@ -38,8 +37,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DynamicMBeanFactoryImplAttributesHidingTest {
-	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 	// region pojos
 	@Test
 	public void omitsNullPojoAttributesInSingleton() {
@@ -95,7 +92,8 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		}
 	}
 
-	public static final class MBeanStubOne implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanStubOne {
 		private final PojoStub pojoStub;
 
 		public MBeanStubOne(PojoStub pojoStub) {
@@ -105,12 +103,6 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		@JmxAttribute
 		public PojoStub getPojoStub() {
 			return pojoStub;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
 		}
 	}
 	// endregion
@@ -172,7 +164,8 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		}
 	}
 
-	public static final class MBeanStubTwo implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static final class MBeanStubTwo {
 		private final JmxStatsStub jmxStatsStub;
 
 		public MBeanStubTwo(JmxStatsStub jmxStatsStub) {
@@ -182,12 +175,6 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		@JmxAttribute
 		public JmxStatsStub getJmxStatsStub() {
 			return jmxStatsStub;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
 		}
 	}
 	// endregion
@@ -224,7 +211,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		}
 	}
 
-	public static final class MBeanStubThree implements EventloopJmxMBean {
+	public static final class MBeanStubThree implements ConcurrentJmxMBean {
 		private final PojoStubThree pojoStubThree;
 
 		public MBeanStubThree(PojoStubThree pojoStubThree) {
@@ -234,12 +221,6 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		@JmxAttribute
 		public PojoStubThree getPojoStubThree() {
 			return pojoStubThree;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
 		}
 	}
 	// endregion

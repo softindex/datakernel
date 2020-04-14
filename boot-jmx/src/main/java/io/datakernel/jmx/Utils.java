@@ -1,11 +1,24 @@
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.common.ref.RefBoolean;
+import io.datakernel.common.reflection.ReflectionUtils;
+import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxRefreshHandler;
+import io.datakernel.jmx.api.JmxWrapperFactory;
+import io.datakernel.jmx.api.MBeanWrapperFactory;
+import org.jetbrains.annotations.Nullable;
 
 import javax.management.DynamicMBean;
 import javax.management.MXBean;
-import java.util.List;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import static io.datakernel.common.reflection.ReflectionUtils.*;
+import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("WeakerAccess")
 class Utils {
@@ -72,7 +85,7 @@ class Utils {
 	}
 
 	static boolean isJmxMBean(Class<?> clazz) {
-		return ConcurrentJmxMBean.class.isAssignableFrom(clazz) || EventloopJmxMBean.class.isAssignableFrom(clazz);
+		return deepFindAnnotation(clazz, annotation -> annotation.annotationType() == MBeanWrapperFactory.class) != null;
 	}
 
 	static boolean isDynamicMBean(Class<?> clazz) {
@@ -81,5 +94,70 @@ class Utils {
 
 	static boolean isMBean(Class<?> clazz) {
 		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz) || isDynamicMBean(clazz);
+	}
+
+	private static boolean isBeanInterface(Class<?> cls) {
+		String name = cls.getName();
+		return name.endsWith("MBean") || name.endsWith("MXBean") || cls.isAnnotationPresent(MXBean.class);
+	}
+
+	public static boolean isBean(Class<?> cls) {
+		return getAllInterfaces(cls).stream().anyMatch(Utils::isBeanInterface);
+	}
+
+	@Nullable
+	static Class<? extends JmxWrapperFactory> getWrapperFactoryClass(Class<?> clazz){
+		Annotation wrapperFactoryAnnotation = deepFindAnnotation(clazz, annotation -> annotation.annotationType() == MBeanWrapperFactory.class);
+		if (wrapperFactoryAnnotation == null) return null;
+		return ((MBeanWrapperFactory) wrapperFactoryAnnotation).value();
+	}
+
+	static Collection<Integer> extractRefreshStats(Collection<JmxWrapperFactory> wrappers, Function<JmxRefreshHandler, Collection<Integer>> statsExtractor) {
+		return wrappers.stream()
+				.filter(jmxWrapperFactory -> jmxWrapperFactory instanceof JmxRefreshHandler)
+				.flatMap(jmxWrapperFactory -> statsExtractor.apply((JmxRefreshHandler) jmxWrapperFactory).stream())
+				.collect(Collectors.toList());
+	}
+
+	public static Map<String, Object> getJmxAttributes(@Nullable Object instance) {
+		Map<String, Object> result = new LinkedHashMap<>();
+		getJmxAttributes(instance, "", result);
+		return result;
+	}
+
+	private static boolean getJmxAttributes(@Nullable Object instance, String rootName, Map<String, Object> attrs) {
+		if (instance == null) {
+			return false;
+		}
+		Set<String> attributeNames = getAllInterfaces(instance.getClass()).stream()
+				.filter(Utils::isBeanInterface)
+				.flatMap(i -> Arrays.stream(i.getMethods())
+						.filter(ReflectionUtils::isGetter)
+						.map(Method::getName))
+				.collect(toSet());
+		RefBoolean changed = new RefBoolean(false);
+		Arrays.stream(instance.getClass().getMethods())
+				.filter(method -> isGetter(method) && (attributeNames.contains(method.getName())
+						|| Arrays.stream(method.getAnnotations()).anyMatch(a -> a.annotationType() == JmxAttribute.class)))
+				.sorted(Comparator.comparing(Method::getName))
+				.forEach(method -> {
+					Object fieldValue;
+					method.setAccessible(true); // anonymous classes do not work without this, wow
+					try {
+						fieldValue = method.invoke(instance);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						return;
+					}
+					changed.set(true);
+					JmxAttribute annotation = method.getAnnotation(JmxAttribute.class);
+					String name = annotation == null || annotation.name().equals(JmxAttribute.USE_GETTER_NAME) ?
+							extractFieldNameFromGetter(method) :
+							annotation.name();
+					name = rootName.isEmpty() ? name : rootName + (name.isEmpty() ? "" : "_" + name);
+					if (fieldValue != instance && !attrs.containsKey(name) && !getJmxAttributes(fieldValue, name, attrs)) {
+						attrs.put(name, fieldValue);
+					}
+				});
+		return changed.get();
 	}
 }

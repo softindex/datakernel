@@ -14,12 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.api;
 
-import java.time.Duration;
-
-public interface JmxStatsWithSmoothingWindow {
-	void setSmoothingWindow(Duration smoothingWindowSeconds);
-
-	Duration getSmoothingWindow();
+public interface JmxRefreshable {
+	void refresh(long timestamp);
 }

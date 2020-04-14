@@ -35,7 +35,7 @@ import java.util.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.StringFormatUtils.parseDuration;
-import static io.datakernel.eventloop.util.ReflectionUtils.getAnnotationString;
+import static io.datakernel.common.reflection.ReflectionUtils.getAnnotationString;
 import static io.datakernel.jmx.Utils.*;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
@@ -101,7 +101,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			mbean = singletonInstance;
 		} else {
 			logger.trace(format("Instance with key %s was not registered to jmx, " +
-					"because its type does not implement ConcurrentJmxMBean, EventloopJmxMBean " +
+					"because its type is not annotated with annotation annotated with @JmxWrapperFactory " +
 					"and does not implement neither *MBean nor *MXBean interface", key.toString()));
 			return;
 		}
@@ -169,8 +169,8 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		if (!isJmxMBean(poolInstances.get(0).getClass())) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
-					"because instances' type implements neither ConcurrentJmxMBean " +
-					"nor EventloopJmxMBean interface", key.toString()));
+					"because instances' type is not annotated with annotation annotated with @JmxWrapperFactory",
+					key.toString()));
 			return;
 		}
 
@@ -440,7 +440,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	@Override
 	public double[] getEffectiveRefreshPeriods() {
 		List<Integer> effectivePeriods =
-				new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getEffectiveRefreshPeriods().values());
+				new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getEffectiveRefreshPeriods());
 		double[] effectivePeriodsSeconds = new double[effectivePeriods.size()];
 		for (int i = 0; i < effectivePeriods.size(); i++) {
 			int periodMillis = effectivePeriods.get(i);
@@ -452,7 +452,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public int[] getRefreshableStatsCount() {
-		List<Integer> counts = new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getRefreshableStatsCounts().values());
+		List<Integer> counts = new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getRefreshableStatsCounts());
 		int[] refreshableStatsCountsArr = new int[counts.size()];
 		for (int i = 0; i < counts.size(); i++) {
 			Integer count = counts.get(i);

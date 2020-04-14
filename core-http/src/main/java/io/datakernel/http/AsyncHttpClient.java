@@ -28,13 +28,13 @@ import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.eventloop.jmx.EventStats;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.eventloop.jmx.ExceptionStats;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
@@ -56,8 +56,8 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.common.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static io.datakernel.net.AsyncTcpSocketSsl.wrapClientSocket;
 import static org.slf4j.LoggerFactory.getLogger;
@@ -186,7 +186,7 @@ public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService
 			if (SSLException.class == e.getClass()) {
 				sslErrors.recordEvent();
 			}
-			// when connection is in keep-alive state, it means that the response already happenned,
+			// when connection is in keep-alive state, it means that the response already happened,
 			// so error of keep-alive connection is not a response error
 			if (!keepAliveConnection) {
 				responsesErrors++;

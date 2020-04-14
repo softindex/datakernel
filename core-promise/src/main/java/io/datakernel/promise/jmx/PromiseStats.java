@@ -18,11 +18,11 @@ package io.datakernel.promise.jmx;
 
 import io.datakernel.async.callback.Callback;
 import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.common.jmx.MBeanFormat;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.ExceptionStats;
-import io.datakernel.eventloop.jmx.MBeanFormat;
-import io.datakernel.eventloop.jmx.ValueStats;
 import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 

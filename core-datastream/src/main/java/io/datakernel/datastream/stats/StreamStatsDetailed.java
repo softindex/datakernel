@@ -1,10 +1,10 @@
 package io.datakernel.datastream.stats;
 
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.eventloop.jmx.JmxStatsWithReset;
-import io.datakernel.eventloop.util.ReflectionUtils;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.stats.JmxStatsWithReset;
+import io.datakernel.jmx.stats.StatsUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -63,6 +63,6 @@ public final class StreamStatsDetailed<T> extends StreamStatsBasic<T> implements
 	@Override
 	public void resetStats() {
 		count = totalSize = 0;
-		ReflectionUtils.resetStats(this);
+		StatsUtils.resetStats(this);
 	}
 }

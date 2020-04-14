@@ -16,22 +16,19 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.api.MBeanWrapperFactory;
+import io.datakernel.jmx.helper.StubWrapperFactory;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 
 public class DynamicMBeanFactoryImplAttributesArraysTest {
-	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
 
 	@Test
 	public void properlyGetsArrayOfInts() throws Exception {
@@ -63,17 +60,12 @@ public class DynamicMBeanFactoryImplAttributesArraysTest {
 	}
 
 	// region helper classes
-	public static class MBeanWithIntArray implements EventloopJmxMBean {
+	@MBeanWrapperFactory(StubWrapperFactory.class)
+	public static class MBeanWithIntArray {
 
 		@JmxAttribute
 		public int[] getIntegerNumbers() {
 			return new int[]{1, 2, 3};
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
 		}
 	}
 

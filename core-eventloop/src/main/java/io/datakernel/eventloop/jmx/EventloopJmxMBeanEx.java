@@ -16,9 +16,9 @@
 
 package io.datakernel.eventloop.jmx;
 
-import io.datakernel.eventloop.util.ReflectionUtils;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.stats.StatsUtils;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -27,18 +27,18 @@ public interface EventloopJmxMBeanEx extends EventloopJmxMBean {
 
 	@JmxOperation
 	default void resetStats() {
-		ReflectionUtils.resetStats(this);
+		StatsUtils.resetStats(this);
 	}
 
 	@JmxAttribute
 	@Nullable
 	default Duration getSmoothingWindow() {
-		return ReflectionUtils.getSmoothingWindow(this);
+		return StatsUtils.getSmoothingWindow(this);
 	}
 
 	@JmxAttribute
 	default void setSmoothingWindow(Duration smoothingWindowSeconds) {
-		ReflectionUtils.setSmoothingWindow(this, smoothingWindowSeconds);
+		StatsUtils.setSmoothingWindow(this, smoothingWindowSeconds);
 	}
 
 }

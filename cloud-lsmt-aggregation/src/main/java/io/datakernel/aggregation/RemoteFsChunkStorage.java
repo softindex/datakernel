@@ -35,11 +35,11 @@ import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.eventloop.jmx.ExceptionStats;
-import io.datakernel.eventloop.jmx.ValueStats;
-import io.datakernel.eventloop.util.ReflectionUtils;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.StatsUtils;
+import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.ot.util.IdGenerator;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
@@ -452,7 +452,7 @@ public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>
 		cleanupDeletedFilesTotal = 0;
 		cleanupSkippedFiles = 0;
 		cleanupSkippedFilesTotal = 0;
-		ReflectionUtils.resetStats(this);
+		StatsUtils.resetStats(this);
 	}
 	// endregion
 }

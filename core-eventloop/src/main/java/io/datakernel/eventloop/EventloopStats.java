@@ -18,9 +18,9 @@ package io.datakernel.eventloop;
 
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.inspector.ForwardingInspector;
-import io.datakernel.eventloop.jmx.*;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.stats.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.eventloop.Eventloop.DEFAULT_SMOOTHING_WINDOW;
-import static io.datakernel.eventloop.jmx.ValueStats.POWERS_OF_TWO;
+import static io.datakernel.jmx.stats.ValueStats.POWERS_OF_TWO;
 
 @SuppressWarnings("unused")
 public final class EventloopStats extends ForwardingInspector<EventloopInspector> implements EventloopInspector {

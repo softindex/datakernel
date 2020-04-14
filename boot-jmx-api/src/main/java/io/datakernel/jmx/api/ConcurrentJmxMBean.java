@@ -19,5 +19,6 @@ package io.datakernel.jmx.api;
 /**
  * Marker interface to denote that class publishes thread-safe jmx operations and jmx attribute setters
  */
+@MBeanWrapperFactory(ConcurrentJmxMBeanFactory.class)
 public interface ConcurrentJmxMBean {
 }

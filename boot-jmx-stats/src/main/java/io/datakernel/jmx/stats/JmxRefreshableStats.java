@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.stats;
 
-public interface JmxStatsWithReset {
-	void resetStats();
+import io.datakernel.jmx.api.JmxRefreshable;
+
+public interface JmxRefreshableStats<T extends JmxRefreshableStats<?>> extends JmxStats<T>, JmxRefreshable {
+
 }

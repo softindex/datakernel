@@ -30,7 +30,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static io.datakernel.common.collection.CollectionUtils.difference;
-import static io.datakernel.eventloop.jmx.MBeanFormat.formatListAsMultilineString;
+import static io.datakernel.common.jmx.MBeanFormat.formatListAsMultilineString;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;

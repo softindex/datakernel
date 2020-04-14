@@ -42,7 +42,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;
-import static io.datakernel.eventloop.util.ReflectionUtils.extractFieldNameFromGetter;
+import static io.datakernel.common.reflection.ReflectionUtils.extractFieldNameFromGetter;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class Utils {

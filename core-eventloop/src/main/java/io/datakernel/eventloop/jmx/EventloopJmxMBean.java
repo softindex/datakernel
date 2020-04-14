@@ -17,8 +17,10 @@
 package io.datakernel.eventloop.jmx;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.api.MBeanWrapperFactory;
 import org.jetbrains.annotations.NotNull;
 
+@MBeanWrapperFactory(EventloopJmxMbeanFactory.class)
 public interface EventloopJmxMBean {
 	@NotNull
 	Eventloop getEventloop();

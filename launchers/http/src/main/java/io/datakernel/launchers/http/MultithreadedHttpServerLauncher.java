@@ -29,7 +29,6 @@ import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.jmx.JmxModuleInitializers.ofGlobalEventloopStats;
 import static io.datakernel.launchers.initializers.Initializers.*;
 import static java.util.stream.Collectors.joining;
 

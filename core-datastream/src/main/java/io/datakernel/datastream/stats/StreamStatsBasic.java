@@ -1,10 +1,10 @@
 package io.datakernel.datastream.stats;
 
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.eventloop.jmx.EventStats;
-import io.datakernel.eventloop.jmx.ExceptionStats;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.ExceptionStats;
 
 import java.time.Duration;
 

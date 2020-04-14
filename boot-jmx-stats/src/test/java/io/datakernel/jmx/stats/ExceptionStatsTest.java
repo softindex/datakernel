@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.stats;
 
 import org.junit.Before;
 import org.junit.Test;

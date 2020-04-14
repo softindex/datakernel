@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.stats;
 
-public interface JmxStats<T extends JmxStats<?>> {
-	void add(T another);
+public interface JmxStatsWithReset {
+	void resetStats();
 }

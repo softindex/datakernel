@@ -17,14 +17,11 @@
 package io.datakernel.jmx;
 
 import io.datakernel.common.ref.Ref;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.eventloop.jmx.JmxRefreshable;
-import io.datakernel.eventloop.jmx.JmxRefreshableStats;
-import io.datakernel.eventloop.jmx.JmxStats;
-import io.datakernel.eventloop.util.ReflectionUtils;
+import io.datakernel.common.reflection.ReflectionUtils;
 import io.datakernel.jmx.api.*;
 import io.datakernel.jmx.api.JmxReducers.JmxReducerDistinct;
+import io.datakernel.jmx.stats.JmxRefreshableStats;
+import io.datakernel.jmx.stats.JmxStats;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -37,7 +34,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
@@ -45,10 +41,9 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static io.datakernel.eventloop.util.ReflectionUtils.*;
-import static io.datakernel.jmx.Utils.allInstancesAreOfSameType;
-import static java.lang.Math.ceil;
+import static io.datakernel.common.reflection.ReflectionUtils.*;
+import static io.datakernel.jmx.Utils.*;
+import static io.datakernel.jmx.stats.StatsUtils.isJmxStats;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -63,9 +58,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 500;
 	private int maxJmxRefreshesPerOneCycle;
 	private Duration specifiedRefreshPeriod;
-	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
-	private final Map<Eventloop, Integer> refreshableStatsCounts = new ConcurrentHashMap<>();
-	private final Map<Eventloop, Integer> effectiveRefreshPeriods = new ConcurrentHashMap<>();
+	private final Map<Class<? extends JmxWrapperFactory>, JmxWrapperFactory> wrapperFactoryRegistry = new HashMap<>();
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducerDistinct();
 
@@ -91,12 +84,12 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	// endregion
 
 	// region exportable stats for JmxRegistry
-	public Map<Eventloop, Integer> getRefreshableStatsCounts() {
-		return refreshableStatsCounts;
+	public Collection<Integer> getRefreshableStatsCounts() {
+		return extractRefreshStats(wrapperFactoryRegistry.values(), JmxRefreshHandler::getRefreshableStatsCounts);
 	}
 
-	public Map<Eventloop, Integer> getEffectiveRefreshPeriods() {
-		return effectiveRefreshPeriods;
+	public Collection<Integer> getEffectiveRefreshPeriods() {
+		return extractRefreshStats(wrapperFactoryRegistry.values(), JmxRefreshHandler::getEffectiveRefreshPeriods);
 	}
 
 	public Duration getSpecifiedRefreshPeriod() {
@@ -128,21 +121,15 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		Object firstMBean = monitorables.get(0);
 		Class<?> mbeanClass = firstMBean.getClass();
 
-		boolean isRefreshEnabled = enableRefresh;
-
 		List<MBeanWrapper> mbeanWrappers = new ArrayList<>(monitorables.size());
-		if (ConcurrentJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			checkArgument(monitorables.size() == 1, "ConcurrentJmxMBeans cannot be used in pool. " +
-					"Only EventloopJmxMBeans can be used in pool");
-			isRefreshEnabled = false;
-			mbeanWrappers.add(new ConcurrentJmxMBeanWrapper((ConcurrentJmxMBean) monitorables.get(0)));
-		} else if (EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			for (Object monitorable : monitorables) {
-				mbeanWrappers.add(new EventloopJmxMBeanWrapper((EventloopJmxMBean) monitorable));
-			}
+		JmxWrapperFactory wrapperFactory = ensureWrapperFactory(mbeanClass);
+		if (wrapperFactory.getClass().equals(ConcurrentJmxMBeanFactory.class)) {
+			checkArgument(monitorables.size() == 1, "ConcurrentJmxMBeans cannot be used in pool");
+			mbeanWrappers.add(wrapperFactory.wrap(firstMBean));
 		} else {
-			throw new IllegalArgumentException("MBeans should implement either ConcurrentJmxMBean " +
-					"or EventloopJmxMBean interface");
+			for (Object monitorable : monitorables) {
+				mbeanWrappers.add(wrapperFactory.wrap(monitorable));
+			}
 		}
 
 		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass, setting.getCustomTypes());
@@ -172,16 +159,34 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		// TODO(vmykhalko): maybe try to get all attributes and log warn message in case of exception? (to prevent potential errors during viewing jmx stats using jconsole)
 //		tryGetAllAttributes(mbean);
 
-		if (isRefreshEnabled) {
-			handleJmxRefreshables(mbeanWrappers, rootNode);
+		if (enableRefresh && wrapperFactory instanceof JmxRefreshHandler) {
+			((JmxRefreshHandler) wrapperFactory).handleRefresh(mbeanWrappers, rootNode::getAllRefreshables);
 		}
 		return mbean;
 	}
 
+	JmxWrapperFactory ensureWrapperFactory(Class<?> clazz) {
+		Class<? extends JmxWrapperFactory> wrapperFactoryClass = getWrapperFactoryClass(clazz);
+		if (wrapperFactoryClass == null) {
+			throw new NoSuchElementException("Class or its superclass or any of implemented interfaces should be annotated with @JmxWrapperFactory annotation");
+		}
+		return wrapperFactoryRegistry.computeIfAbsent(wrapperFactoryClass, $ -> {
+			try {
+				JmxWrapperFactory jmxWrapperFactory = wrapperFactoryClass.newInstance();
+				if (jmxWrapperFactory instanceof JmxRefreshHandler) {
+					((JmxRefreshHandler) jmxWrapperFactory).init(specifiedRefreshPeriod, maxJmxRefreshesPerOneCycle);
+				}
+				return jmxWrapperFactory;
+			} catch (InstantiationException | IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+		});
+	}
+
 	// region building tree of AttributeNodes
 	private List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
-			String[] includedOptionalAttrs, @Nullable Method getter,
-			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+											   String[] includedOptionalAttrs, @Nullable Method getter,
+											   Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 
 		Set<String> includedOptionals = new HashSet<>(asList(includedOptionalAttrs));
 		List<AttributeDescriptor> attrDescriptors = fetchAttributeDescriptors(clazz, customTypes);
@@ -410,10 +415,12 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	}
 
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {
+		Class<? extends JmxWrapperFactory> wrapperFactoryClass = getWrapperFactoryClass(mbeanClass);
 		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
-				!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			logger.warn("JmxRefreshableStats won't be refreshed when used in classes that do not implement" +
-					" EventloopJmxMBean. MBean class: " + mbeanClass.getName());
+				(wrapperFactoryClass == null || !JmxRefreshHandler.class.isAssignableFrom(wrapperFactoryClass))
+		) {
+			logger.warn("JmxRefreshableStats won't be refreshed when MBean wrapper factory does not implement JmxRefreshHandler. " +
+					"MBean class: " + mbeanClass.getName());
 		}
 
 		if (returnClass.isInterface()) {
@@ -443,9 +450,9 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	}
 
 	private AttributeNode createNodeForParametrizedType(String attrName, @Nullable String attrDescription,
-			ParameterizedType pType, boolean included,
-			@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
-			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+														ParameterizedType pType, boolean included,
+														@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
+														Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
 
@@ -543,64 +550,6 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	}
 	// endregion
 
-	// region refreshing jmx
-	private void handleJmxRefreshables(List<MBeanWrapper> mbeanWrappers, AttributeNodeForPojo rootNode) {
-		for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-			Eventloop eventloop = mbeanWrapper.getEventloop();
-			List<JmxRefreshable> currentRefreshables = rootNode.getAllRefreshables(mbeanWrapper.getMBean());
-			if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
-				eventloopToJmxRefreshables.put(eventloop, currentRefreshables);
-				eventloop.execute(wrapContext(this, createRefreshTask(eventloop, null, 0)));
-			} else {
-				List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
-				List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);
-				allRefreshables.addAll(currentRefreshables);
-				eventloopToJmxRefreshables.put(eventloop, allRefreshables);
-			}
-
-			refreshableStatsCounts.put(eventloop, eventloopToJmxRefreshables.get(eventloop).size());
-		}
-	}
-
-	private Runnable createRefreshTask(Eventloop eventloop, @Nullable List<JmxRefreshable> previousList, int previousRefreshes) {
-		return () -> {
-			long currentTime = eventloop.currentTimeMillis();
-
-			List<JmxRefreshable> jmxRefreshableList = previousList;
-			if (jmxRefreshableList == null) {
-				// list might be updated in case of several mbeans in one eventloop
-				jmxRefreshableList = eventloopToJmxRefreshables.get(eventloop);
-				effectiveRefreshPeriods.put(eventloop, (int) computeEffectiveRefreshPeriod(jmxRefreshableList.size()));
-			}
-
-			int currentRefreshes = 0;
-			while (currentRefreshes < maxJmxRefreshesPerOneCycle) {
-				int index = currentRefreshes + previousRefreshes;
-				if (index == jmxRefreshableList.size()) {
-					break;
-				}
-				jmxRefreshableList.get(index).refresh(currentTime);
-				currentRefreshes++;
-			}
-
-			long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(jmxRefreshableList.size());
-			int totalRefreshes = currentRefreshes + previousRefreshes;
-			if (totalRefreshes == jmxRefreshableList.size()) {
-				eventloop.scheduleBackground(nextTimestamp, wrapContext(this, createRefreshTask(eventloop, null, 0)));
-			} else {
-				eventloop.scheduleBackground(nextTimestamp, wrapContext(this, createRefreshTask(eventloop, jmxRefreshableList, totalRefreshes)));
-			}
-		};
-	}
-
-	private long computeEffectiveRefreshPeriod(int jmxRefreshablesCount) {
-		if (jmxRefreshablesCount == 0) {
-			return specifiedRefreshPeriod.toMillis();
-		}
-		double ratio = ceil(jmxRefreshablesCount / (double) maxJmxRefreshesPerOneCycle);
-		return (long) (specifiedRefreshPeriod.toMillis() / ratio);
-	}
-
 	/**
 	 * Creates attribute tree of Jmx attributes for clazz.
 	 */
@@ -608,7 +557,6 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null, customTypes);
 		return new AttributeNodeForPojo("", null, true, new ValueFetcherDirect(), null, subNodes);
 	}
-	// endregion
 
 	// region creating jmx metadata - MBeanInfo
 	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode, Class<?> monitorableClass) {
@@ -816,7 +764,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		private final Map<OperationKey, Method> opkeyToMethod;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
-				AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
+									  AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
 			this.mBeanInfo = mBeanInfo;
 			this.mbeanWrappers = mbeanWrappers;
 
@@ -1005,60 +953,6 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		}
 	}
 
-	private interface MBeanWrapper {
-		void execute(Runnable command);
-
-		Object getMBean();
-
-		Eventloop getEventloop();
-	}
-
-	private static final class ConcurrentJmxMBeanWrapper implements MBeanWrapper {
-		private final ConcurrentJmxMBean mbean;
-
-		public ConcurrentJmxMBeanWrapper(ConcurrentJmxMBean mbean) {
-			this.mbean = mbean;
-		}
-
-		@Override
-		public void execute(Runnable command) {
-			command.run();
-		}
-
-		@Override
-		public Object getMBean() {
-			return mbean;
-		}
-
-		@Nullable
-		@Override
-		public Eventloop getEventloop() {
-			return null;
-		}
-	}
-
-	private static final class EventloopJmxMBeanWrapper implements MBeanWrapper {
-		private final EventloopJmxMBean mbean;
-
-		public EventloopJmxMBeanWrapper(EventloopJmxMBean mbean) {
-			this.mbean = mbean;
-		}
-
-		@Override
-		public void execute(Runnable command) {
-			mbean.getEventloop().execute(command);
-		}
-
-		@Override
-		public Object getMBean() {
-			return mbean;
-		}
-
-		@Override
-		public Eventloop getEventloop() {
-			return mbean.getEventloop();
-		}
-	}
 
 	static class JmxCustomTypeAdapter<T> {
 		@Nullable

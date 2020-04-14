@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.common.jmx;
 
 import io.datakernel.common.StringFormatUtils;
 import org.jetbrains.annotations.Nullable;

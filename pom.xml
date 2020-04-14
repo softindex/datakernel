@@ -31,6 +31,7 @@
     <module>boot-triggers</module>
     <module>boot-jmx</module>
     <module>boot-jmx-api</module>
+    <module>boot-jmx-stats</module>
     <module>core-eventloop</module>
     <module>core-bytebuf</module>
     <module>core-codegen</module>

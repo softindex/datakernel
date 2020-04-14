@@ -16,11 +16,9 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.eventloop.jmx.JmxRefreshableStats;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.stats.JmxRefreshableStats;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -79,48 +77,30 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		assertEquals("stats_sum", attributesInfoArr[0].getName());
 	}
 
-	public static class MBeanWithNoExtraSubAttributes implements EventloopJmxMBean {
+	public static class MBeanWithNoExtraSubAttributes implements ConcurrentJmxMBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
 		@JmxAttribute
 		public JmxStatsWithOptionalAttributes getStats() {
 			return stats;
 		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			throw new UnsupportedOperationException();
-		}
 	}
 
-	public static class MBeanWithExtraSubAttributes implements EventloopJmxMBean {
+	public static class MBeanWithExtraSubAttributes implements ConcurrentJmxMBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
 		@JmxAttribute(extraSubAttributes = "count")
 		public JmxStatsWithOptionalAttributes getStats() {
 			return stats;
 		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			throw new UnsupportedOperationException();
-		}
 	}
 
-	public static class MBeansStubWithInvalidExtraAttrName implements EventloopJmxMBean {
+	public static class MBeansStubWithInvalidExtraAttrName implements ConcurrentJmxMBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
 		@JmxAttribute(extraSubAttributes = "QWERTY") // QWERTY subAttribute doesn't exist
 		public JmxStatsWithOptionalAttributes getStats() {
 			return stats;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			throw new UnsupportedOperationException();
 		}
 	}
 

@@ -16,15 +16,15 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.eventloop.jmx.EventStats;
-import io.datakernel.eventloop.jmx.ExceptionStats;
-import io.datakernel.eventloop.jmx.JmxRefreshable;
-import io.datakernel.eventloop.jmx.ValueStats;
 import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.JmxRefreshable;
+import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.ValueStats;
 
 import java.time.Duration;
 
-import static io.datakernel.eventloop.jmx.ValueStats.POWERS_OF_TWO;
+import static io.datakernel.jmx.stats.ValueStats.POWERS_OF_TWO;
 
 public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats totalRequests;

@@ -16,12 +16,10 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.eventloop.jmx.JmxStats;
 import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.stats.JmxStats;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
@@ -33,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
@@ -41,8 +38,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DynamicMBeanFactoryImplSettingsTest {
-	public static final Eventloop EVENTLOOP = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 	private static final Set<String> NO_MONITORABLES = Collections.emptySet();
 	private static final Map<String, AttributeModifier<?>> NO_MODIFIERS = Collections.emptyMap();
 	private static final Map<Type, JmxCustomTypeAdapter<?>> NO_CUSTOM_TYPES = Collections.emptyMap();
@@ -61,18 +56,12 @@ public class DynamicMBeanFactoryImplSettingsTest {
 		assertTrue(attrs.containsKey("stats_text"));
 	}
 
-	public static final class MBeanStubOne implements EventloopJmxMBean {
+	public static final class MBeanStubOne implements ConcurrentJmxMBean {
 		private final JmxStatsStub stats = new JmxStatsStub();
 
 		@JmxAttribute
 		public JmxStatsStub getStats() {
 			return stats;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return EVENTLOOP;
 		}
 	}
 
@@ -113,18 +102,12 @@ public class DynamicMBeanFactoryImplSettingsTest {
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}
 
-	private static final class MBeanStubTwo implements EventloopJmxMBean {
+	private static final class MBeanStubTwo implements ConcurrentJmxMBean {
 		private final ConfigurableStats stats = new ConfigurableStats();
 
 		@JmxAttribute
 		public ConfigurableStats getStats() {
 			return stats;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return EVENTLOOP;
 		}
 	}
 

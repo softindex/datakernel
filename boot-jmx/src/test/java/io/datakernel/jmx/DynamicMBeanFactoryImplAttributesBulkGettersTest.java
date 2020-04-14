@@ -16,11 +16,9 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.helper.Utils;
-import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
 import javax.management.*;
@@ -28,7 +26,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -36,8 +33,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class DynamicMBeanFactoryImplAttributesBulkGettersTest {
-	private static final Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
 	@Test
 	public void bulkGetOmitsAttributesWithExceptionButReturnsValidAttributes() {
 		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
@@ -68,7 +63,7 @@ public class DynamicMBeanFactoryImplAttributesBulkGettersTest {
 		mbean.getAttribute("value");
 	}
 
-	public static final class MBeanStub implements EventloopJmxMBean {
+	public static final class MBeanStub implements ConcurrentJmxMBean {
 
 		@JmxAttribute
 		public String getText() {
@@ -83,12 +78,6 @@ public class DynamicMBeanFactoryImplAttributesBulkGettersTest {
 		@JmxAttribute
 		public long getNumber() {
 			return 100L;
-		}
-
-		@NotNull
-		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
 		}
 	}
 

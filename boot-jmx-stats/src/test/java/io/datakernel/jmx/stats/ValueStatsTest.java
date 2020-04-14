@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.stats;
 
 import org.junit.Test;
 
@@ -747,7 +747,7 @@ public class ValueStatsTest {
 
 		int log = (int) floor(log10(stats.getSmoothedMax() - stats.getSmoothedMin()) - 3);
 		int numberOfDigits = log > 0 ? 0 : -log;
-		numberOfDigits = numberOfDigits > 6 ? 6 : numberOfDigits;
+		numberOfDigits = Math.min(numberOfDigits, 6);
 		DecimalFormat format = new DecimalFormat("0");
 		format.setMaximumFractionDigits(numberOfDigits);
 

@@ -4,7 +4,7 @@ import com.carrotsearch.hppc.IntLongHashMap;
 import com.carrotsearch.hppc.LongLongHashMap;
 import com.carrotsearch.hppc.ObjectLongHashMap;
 import io.datakernel.common.Check;
-import io.datakernel.eventloop.jmx.EventStats;
+import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
 
 import java.time.Duration;
@@ -12,7 +12,7 @@ import java.util.Arrays;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
-import static io.datakernel.eventloop.jmx.MBeanFormat.formatTimestamp;
+import static io.datakernel.common.jmx.MBeanFormat.formatTimestamp;
 import static java.lang.System.currentTimeMillis;
 
 /**
@@ -135,7 +135,7 @@ public final class RingBuffer implements RingBufferMBean {
 
 	public static RingBuffer create(int amountBuffers, int bufferCapacity) {
 		checkArgument(amountBuffers > 0, "Amount of buffers should be greater than 0");
-		checkArgument(bufferCapacity > 0, "Buffer caacity should be greater than 0");
+		checkArgument(bufferCapacity > 0, "Buffer capacity should be greater than 0");
 		Buffer[] ringBuffers = new Buffer[amountBuffers];
 		for (int i = 0; i < amountBuffers; i++) {
 			ringBuffers[i] = new Buffer(bufferCapacity);
