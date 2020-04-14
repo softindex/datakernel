@@ -1,6 +1,9 @@
 package io.datakernel.launchers.http;
 
-import io.datakernel.di.annotation.*;
+import io.datakernel.di.annotation.Eager;
+import io.datakernel.di.annotation.Named;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.ScopeAnnotation;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.Module;
@@ -22,6 +25,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.net.InetSocketAddress;
 
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -144,7 +148,8 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Modules.combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				WorkerPoolModule.create(Worker.class, MyWorker.class),
 				JmxModule.create()
 						.withScopes(false),

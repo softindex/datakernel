@@ -18,6 +18,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 public class RpcBenchmarkServer extends Launcher {
 	private final static int SERVICE_PORT = 25565;
@@ -53,7 +54,8 @@ public class RpcBenchmarkServer extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})

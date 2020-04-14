@@ -41,8 +41,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
-import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
+import static io.datakernel.launchers.initializers.Initializers.*;
 import static io.datakernel.launchers.remotefs.Initializers.*;
 import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -121,7 +120,8 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()

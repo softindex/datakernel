@@ -22,6 +22,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.lang.Math.min;
 
@@ -72,7 +73,8 @@ public class RpcBenchmarkClient extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				ConfigModule.create()
 						.printEffectiveConfig()
 						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})

@@ -11,6 +11,8 @@ import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
+
 //[START REGION_1]
 public class MemcacheLikeServer extends Launcher {
 	@Inject
@@ -31,7 +33,8 @@ public class MemcacheLikeServer extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Module.create()
-				.install(ServiceGraphModule.create())
+				.install(ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()))
 				.install(MemcacheMultiServerModule.create())
 				.install(WorkerPoolModule.create());
 	}

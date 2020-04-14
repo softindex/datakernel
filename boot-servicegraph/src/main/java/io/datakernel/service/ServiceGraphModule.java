@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Initializer;
 import io.datakernel.di.annotation.Optional;
@@ -26,10 +25,7 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.ScopedValue;
 import io.datakernel.di.util.Trie;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.net.BlockingSocketServer;
 import io.datakernel.launcher.LauncherService;
-import io.datakernel.net.EventloopServer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
@@ -115,7 +111,6 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 		return new ServiceGraphModule()
 				.register(Service.class, forService())
 				.register(BlockingService.class, forBlockingService())
-				.register(BlockingSocketServer.class, forBlockingSocketServer())
 				.register(Closeable.class, forCloseable())
 				.register(ExecutorService.class, forExecutorService())
 				.register(Timer.class, forTimer())
@@ -125,10 +120,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 						module.register(DataSource.class, forDataSource());
 					} catch (ClassNotFoundException ignored) {
 					}
-				})
-				.register(EventloopService.class, forEventloopService())
-				.register(EventloopServer.class, forEventloopServer())
-				.register(Eventloop.class, forEventloop());
+				});
 	}
 
 	/**

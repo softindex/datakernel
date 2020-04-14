@@ -11,6 +11,7 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.util.stream.IntStream.range;
 
 public class AdvancedRpcClientApp extends Launcher {
@@ -23,7 +24,8 @@ public class AdvancedRpcClientApp extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Module.create()
-				.install(ServiceGraphModule.create())
+				.install(ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()))
 				.install(AdvancedRpcClientModule.create());
 	}
 

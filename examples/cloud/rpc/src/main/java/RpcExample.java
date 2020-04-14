@@ -16,6 +16,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 
 //[START EXAMPLE]
@@ -60,7 +61,8 @@ public class RpcExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create();
+		return ServiceGraphModule.create()
+				.initialize(ofAsyncComponents());
 	}
 
 	@Override

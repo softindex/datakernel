@@ -37,6 +37,7 @@ import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.remotefs.Initializers.ofRemoteFsServer;
 
@@ -76,7 +77,8 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()

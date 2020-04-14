@@ -54,7 +54,8 @@ public abstract class DataflowServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()

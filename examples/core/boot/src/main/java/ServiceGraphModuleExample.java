@@ -7,6 +7,8 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.launchers.adapters.ServiceAdapters.forEventloop;
+
 //[START EXAMPLE]
 public final class ServiceGraphModuleExample extends AbstractModule {
 	@Provides
@@ -15,7 +17,9 @@ public final class ServiceGraphModuleExample extends AbstractModule {
 	}
 
 	public static void main(String[] args) throws ExecutionException, InterruptedException {
-		Injector injector = Injector.of(ServiceGraphModule.create(), new ServiceGraphModuleExample());
+		ServiceGraphModule serviceGraphModule = ServiceGraphModule.create()
+				.register(Eventloop.class, forEventloop());
+		Injector injector = Injector.of(serviceGraphModule, new ServiceGraphModuleExample());
 		Eventloop eventloop = injector.getInstance(Eventloop.class);
 
 		eventloop.execute(() -> System.out.println("Hello World"));

@@ -16,20 +16,25 @@
 
 package io.datakernel.launchers.initializers;
 
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.di.core.Key;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.net.BlockingSocketServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModuleSettings;
 import io.datakernel.net.AbstractServer;
+import io.datakernel.net.EventloopServer;
 import io.datakernel.net.PrimaryServer;
+import io.datakernel.service.ServiceGraphModule;
 
 import java.time.Duration;
 
 import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.launchers.adapters.ServiceAdapters.*;
 
 public class Initializers {
 	public static final String GLOBAL_EVENTLOOP_NAME = "GlobalEventloopStats";
@@ -88,6 +93,14 @@ public class Initializers {
 				.withOptional(GLOBAL_EVENTLOOP_KEY, "idleLoops_smoothedRate")
 				.withOptional(GLOBAL_EVENTLOOP_KEY, "selectOverdues_totalCount")
 				.withOptional(GLOBAL_EVENTLOOP_KEY, "selectOverdues_smoothedRate");
+	}
+
+	public static Initializer<ServiceGraphModule> ofAsyncComponents() {
+		return serviceGraphModule -> serviceGraphModule
+				.register(BlockingSocketServer.class, forBlockingSocketServer())
+				.register(EventloopService.class, forEventloopService())
+				.register(EventloopServer.class, forEventloopServer())
+				.register(Eventloop.class, forEventloop());
 	}
 
 }

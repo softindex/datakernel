@@ -19,6 +19,16 @@
       <artifactId>datakernel-boot</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-launchers-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-promise</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
 
   <build>

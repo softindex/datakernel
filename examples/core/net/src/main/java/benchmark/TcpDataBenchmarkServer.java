@@ -15,6 +15,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.function.Function;
 
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 
 public class TcpDataBenchmarkServer extends Launcher {
@@ -37,7 +38,8 @@ public class TcpDataBenchmarkServer extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create();
+		return ServiceGraphModule.create()
+				.initialize(ofAsyncComponents());
 	}
 
 	@Override

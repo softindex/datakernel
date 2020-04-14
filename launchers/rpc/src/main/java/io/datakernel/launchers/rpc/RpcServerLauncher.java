@@ -39,6 +39,7 @@ import java.util.concurrent.CompletionStage;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 
 public abstract class RpcServerLauncher extends Launcher {
@@ -66,7 +67,8 @@ public abstract class RpcServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
 						.printEffectiveConfig()

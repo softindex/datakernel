@@ -8,6 +8,7 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletableFuture;
 
 import static io.datakernel.di.module.Modules.combine;
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 // [START EXAMPLE]
 public class ClientLauncher extends Launcher {
@@ -22,7 +23,8 @@ public class ClientLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create(),
+				ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()),
 				new ClientModule());
 	}
 

@@ -15,6 +15,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.di.core.Binding.to;
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 //[START EXAMPLE]
 public class ModuleRebindExample extends Launcher {
@@ -44,7 +45,8 @@ public class ModuleRebindExample extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Module.create()
-				.install(ServiceGraphModule.create())
+				.install(ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()))
 				.install(new ServerModule()
 						.rebindImport(Config.class, to(rootConfig -> rootConfig.getChild("config1"), Config.class))
 						.rebindExport(AsyncHttpServer.class, Key.of(AsyncHttpServer.class, "server1")))

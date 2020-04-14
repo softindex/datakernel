@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.promise.Promises.sequence;
 import static java.util.stream.IntStream.range;
 
@@ -49,7 +50,8 @@ public class MemcacheLikeClient extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Module.create()
-				.install(ServiceGraphModule.create())
+				.install(ServiceGraphModule.create()
+						.initialize(ofAsyncComponents()))
 				.install(MemcacheClientModule.create())
 				.install(ConfigModule.create()
 						.printEffectiveConfig()

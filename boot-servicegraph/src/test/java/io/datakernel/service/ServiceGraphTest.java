@@ -16,16 +16,12 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.service.EventloopService;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import org.hamcrest.core.IsSame;
-import org.jetbrains.annotations.NotNull;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -37,7 +33,7 @@ public class ServiceGraphTest {
 	@Test
 	public void testProperClosingForFailingServiceOneComponent() throws Exception {
 		Injector injector = Injector.of(new FailingModule());
-		injector.getInstance(Key.of(EventloopService.class, "TopService1"));
+		injector.getInstance(Key.of(BlockingService.class, "TopService1"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();
@@ -46,8 +42,8 @@ public class ServiceGraphTest {
 	@Test
 	public void testProperClosingForFailingServiceTwoComponents() throws Exception {
 		Injector injector = Injector.of(new FailingModule());
-		injector.getInstance(Key.of(EventloopService.class, "TopService1"));
-		injector.getInstance(Key.of(EventloopService.class, "TopService2"));
+		injector.getInstance(Key.of(BlockingService.class, "TopService1"));
+		injector.getInstance(Key.of(BlockingService.class, "TopService2"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();
@@ -63,58 +59,37 @@ public class ServiceGraphTest {
 		}
 
 		@Provides
-		Eventloop eventloop() {
-			return Eventloop.create();
-		}
-
-		@Provides
 		@Named("FailService")
-		EventloopService failService(Eventloop eventloop) {
-			return new EventloopServiceEmpty(eventloop) {
-				@NotNull
+		BlockingService failService() {
+			return new BlockingServiceEmpty() {
 				@Override
-				public Promise<Void> start() {
-					return Promise.ofException(INTERRUPTED);
+				public void start() throws Exception{
+					throw INTERRUPTED;
 				}
 			};
 		}
 
 		@Provides
 		@Named("TopService1")
-		EventloopService service1(Eventloop eventloop, @Named("FailService") EventloopService failService) {
-			return new EventloopServiceEmpty(eventloop);
+		BlockingService service1(@Named("FailService") BlockingService failService) {
+			return new BlockingServiceEmpty();
 		}
 
 		@Provides
 		@Named("TopService2")
-		EventloopService service2(Eventloop eventloop, @Named("FailService") EventloopService failService) {
-			return new EventloopServiceEmpty(eventloop);
+		BlockingService service2(@Named("FailService") BlockingService failService) {
+			return new BlockingServiceEmpty();
 		}
 	}
 
-	public static class EventloopServiceEmpty implements EventloopService {
-		private final Eventloop eventloop;
-
-		EventloopServiceEmpty(Eventloop eventloop) {this.eventloop = eventloop;}
-
-		@NotNull
+	public static class BlockingServiceEmpty implements BlockingService {
 		@Override
-		public Eventloop getEventloop() {
-			return eventloop;
+		public void start() throws Exception {
 		}
 
-		@NotNull
 		@Override
-		public Promise<Void> start() {
-			return Promise.complete();
+		public void stop() {
 		}
-
-		@NotNull
-		@Override
-		public Promise<Void> stop() {
-			return Promise.complete();
-		}
-
 	}
 	// endregion
 }
