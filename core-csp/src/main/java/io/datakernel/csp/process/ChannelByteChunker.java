@@ -22,6 +22,7 @@ import io.datakernel.common.MemSize;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Math.min;
 
 public final class ChannelByteChunker extends AbstractChannelTransformer<ChannelByteChunker, ByteBuf, ByteBuf> {
@@ -31,8 +32,8 @@ public final class ChannelByteChunker extends AbstractChannelTransformer<Channel
 	private final int maxChunkSize;
 
 	private ChannelByteChunker(int minChunkSize, int maxChunkSize) {
-		this.minChunkSize = minChunkSize;
-		this.maxChunkSize = maxChunkSize;
+		this.minChunkSize = checkArgument(minChunkSize, minSize -> minSize > 0, "Minimal chunk size should be greater than 0");
+		this.maxChunkSize = checkArgument(maxChunkSize, maxSize -> maxSize >= minChunkSize, "Maximal chunk size cannot be less than minimal chunk size");
 	}
 
 	public static ChannelByteChunker create(MemSize minChunkSize, MemSize maxChunkSize) {
