@@ -17,9 +17,12 @@ public class OptionalGeneratorModuleTest {
 
 		Key<Optional<InstanceProvider<String>>> key = new Key<java.util.Optional<InstanceProvider<String>>>() {};
 
-		Injector injector = Injector.of(OptionalGeneratorModule.create(), Module.create()
-				.bind(String.class).to(() -> "str_" + mut.incrementAndGet())
-				.bind(key));
+		Injector injector = Injector.of(
+				OptionalGeneratorModule.create(),
+				ModuleBuilder.create()
+						.bind(String.class).to(() -> "str_" + mut.incrementAndGet())
+						.bind(key)
+						.build());
 
 		// OptionalGeneratorModule calls mapInstance on provider binding and it causes it to compile
 		// an intermediate transient binding for the InstanceProvider

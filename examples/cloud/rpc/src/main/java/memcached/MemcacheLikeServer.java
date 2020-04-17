@@ -4,6 +4,7 @@ import io.datakernel.config.Config;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
@@ -32,11 +33,12 @@ public class MemcacheLikeServer extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return Module.create()
+		return ModuleBuilder.create()
 				.install(ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()))
 				.install(MemcacheMultiServerModule.create())
-				.install(WorkerPoolModule.create());
+				.install(WorkerPoolModule.create())
+				.build();
 	}
 
 	@Override

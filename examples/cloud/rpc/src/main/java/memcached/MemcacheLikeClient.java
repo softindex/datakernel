@@ -4,18 +4,16 @@ import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.client.RawMemcacheClient;
 import io.datakernel.promise.Promises;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
@@ -49,14 +47,13 @@ public class MemcacheLikeClient extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return Module.create()
+		return ModuleBuilder.create()
 				.install(ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()))
 				.install(MemcacheClientModule.create())
 				.install(ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {},
-								new Key<CompletionStage<Void>>(OnStart.class) {}));
+						.withEffectiveConfigLogger())
+				.build();
 	}
 
 	@Override

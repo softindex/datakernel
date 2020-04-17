@@ -11,7 +11,6 @@ import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.UnaryOperator;
 
 import static io.datakernel.di.util.Utils.checkState;
@@ -64,7 +63,7 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> ModuleBuilderBinder<T> bind(@NotNull Key<T> key) {
+	protected final <T> ModuleBuilder0<T> bind(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bind(key);
 	}
@@ -72,7 +71,7 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type) {
+	protected final <T> ModuleBuilder0<T> bind(Class<T> type) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bind(type);
 	}
@@ -80,7 +79,7 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type, Name name) {
+	protected final <T> ModuleBuilder0<T> bind(Class<T> type, Name name) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bind(type, name);
 	}
@@ -88,7 +87,7 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type, String name) {
+	protected final <T> ModuleBuilder0<T> bind(Class<T> type, String name) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bind(type, name);
 	}
@@ -96,29 +95,29 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> ModuleBuilderBinder<T> bind(Class<T> type, Class<? extends Annotation> annotationType) {
+	protected final <T> ModuleBuilder0<T> bind(Class<T> type, Class<? extends Annotation> annotationType) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
 		return builder.bind(type, annotationType);
 	}
 
-	protected final <T> ModuleBuilder bindInstanceProvider(@NotNull Class<T> key) {
+	protected final <T> void bindInstanceProvider(@NotNull Class<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bindInstanceProvider(key);
+		builder.bindInstanceProvider(key);
 	}
 
-	protected final <T> ModuleBuilder bindInstanceProvider(@NotNull Key<T> key) {
+	protected final <T> void bindInstanceProvider(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bindInstanceProvider(key);
+		builder.bindInstanceProvider(key);
 	}
 
-	protected final <T> ModuleBuilder bindInstanceInjector(@NotNull Class<T> key) {
+	protected final <T> void bindInstanceInjector(@NotNull Class<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bindInstanceInjector(key);
+		builder.bindInstanceInjector(key);
 	}
 
-	protected final <T> ModuleBuilder bindInstanceInjector(@NotNull Key<T> key) {
+	protected final <T> void bindInstanceInjector(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bindInstanceInjector(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
+		builder.bindInstanceInjector(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
 	}
 
 	/**
@@ -225,7 +224,8 @@ public abstract class AbstractModule implements Module {
 			return;
 		}
 
-		ModuleBuilder b = new ModuleBuilderImpl<>(getName(), location).scan(getClass().getSuperclass(), this);
+		ModuleBuilderImpl<?> b = new ModuleBuilderImpl<>(getName(), location);
+		b.scan(getClass().getSuperclass(), this);
 		ReflectionUtils.scanClassInto(getClass(), this, b); // so that provider methods and dsl bindings are in one 'export area'
 
 		builder = b;
@@ -277,61 +277,6 @@ public abstract class AbstractModule implements Module {
 	@Override
 	public Module transformWith(UnaryOperator<Module> fn) {
 		return Module.super.transformWith(fn);
-	}
-
-	@Override
-	public Module export(Key<?> key, Key<?>... keys) {
-		return Module.super.export(key, keys);
-	}
-
-	@Override
-	public Module export(Set<Key<?>> keys) {
-		return Module.super.export(keys);
-	}
-
-	@Override
-	public <V> Module rebindExport(Key<V> from, Key<? extends V> to) {
-		return Module.super.rebindExport(from, to);
-	}
-
-	@Override
-	public <V> Module rebindImport(Key<V> from, Key<? extends V> to) {
-		return Module.super.rebindImport(from, to);
-	}
-
-	@Override
-	public <V> Module rebindImport(Key<V> from, Binding<? extends V> binding) {
-		return Module.super.rebindImport(from, binding);
-	}
-
-	@Override
-	public Module rebindExports(@NotNull Map<Key<?>, Key<?>> mapping) {
-		return Module.super.rebindExports(mapping);
-	}
-
-	@Override
-	public Module rebindImports(@NotNull Map<Key<?>, Binding<?>> mapping) {
-		return Module.super.rebindImports(mapping);
-	}
-
-	@Override
-	public Module rebindImportKeys(@NotNull Map<Key<?>, Key<?>> mapping) {
-		return Module.super.rebindImportKeys(mapping);
-	}
-
-	@Override
-	public <T, V> Module rebindImportDependencies(Key<T> key, Key<V> dependency, Key<? extends V> to) {
-		return Module.super.rebindImportDependencies(key, dependency, to);
-	}
-
-	@Override
-	public <T> Module rebindImportDependencies(Key<T> key, @NotNull Map<Key<?>, Key<?>> dependencyMapping) {
-		return Module.super.rebindImportDependencies(key, dependencyMapping);
-	}
-
-	@Override
-	public Module rebindImports(BiFunction<Key<?>, Binding<?>, Binding<?>> rebinder) {
-		return Module.super.rebindImports(rebinder);
 	}
 
 	// endregion

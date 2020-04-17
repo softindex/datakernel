@@ -5,7 +5,7 @@ import io.datakernel.di.core.BindingType;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.core.Scope;
 
-import static io.datakernel.di.core.BindingType.COMMON;
+import static io.datakernel.di.core.BindingType.REGULAR;
 import static io.datakernel.di.core.Scope.UNSCOPED;
 
 public final class BindingDesc {
@@ -13,14 +13,12 @@ public final class BindingDesc {
 	private Binding<?> binding;
 	private Scope[] scope;
 	private BindingType type;
-	private boolean exported;
 
 	public BindingDesc(Key<?> key, Binding<?> binding) {
 		this.key = key;
 		this.binding = binding;
 		this.scope = UNSCOPED;
-		this.type = COMMON;
-		this.exported = false;
+		this.type = REGULAR;
 	}
 
 	public Key<?> getKey() {
@@ -45,14 +43,6 @@ public final class BindingDesc {
 
 	public void setScope(Scope[] scope) {
 		this.scope = scope;
-	}
-
-	public boolean isExported() {
-		return exported;
-	}
-
-	public void setExported() {
-		exported = true;
 	}
 
 	public BindingType getType() {

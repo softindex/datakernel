@@ -1,7 +1,6 @@
 package io.datakernel.memcache.server;
 
 import io.datakernel.config.Config;
-import io.datakernel.di.annotation.Export;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -36,7 +35,6 @@ public class MemcacheServerModule extends AbstractModule {
 	}
 
 	@Provides
-	@Export
 	RpcServer server(Eventloop eventloop, Config config, RingBuffer storage) {
 		return RpcServer.create(eventloop)
 				.withHandler(GetRequest.class, GetResponse.class,

@@ -10,7 +10,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.memcache.client.MemcacheClientModule;
 import io.datakernel.memcache.client.RawMemcacheClient;
 import io.datakernel.memcache.protocol.MemcacheRpcMessage.Slice;
@@ -23,7 +22,6 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.service.ServiceGraphModuleSettings;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
@@ -85,8 +83,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 				ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.withEffectiveConfigLogger(),
 				MemcacheServerModule.create(),
 				MemcacheClientModule.create()
 		);

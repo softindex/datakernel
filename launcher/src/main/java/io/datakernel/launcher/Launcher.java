@@ -20,6 +20,7 @@ import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.InstanceInjector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.di.util.Types;
 import io.datakernel.jmx.api.ConcurrentJmxMBeanFactory;
 import io.datakernel.jmx.api.JmxAttribute;
@@ -279,7 +280,7 @@ public abstract class Launcher {
 		Class<Launcher> launcherClass = (Class<Launcher>) getClass();
 		Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 
-		return Module.create()
+		return ModuleBuilder.create()
 				.bind(String[].class).annotatedWith(Args.class).toInstance(args)
 
 				.bind(Launcher.class).to(launcherClass)
@@ -291,7 +292,8 @@ public abstract class Launcher {
 				.bind(completionStageKey.named(OnRun.class)).toInstance(onRunFuture)
 				.bind(completionStageKey.named(OnComplete.class)).toInstance(onCompleteFuture)
 
-				.scan(Launcher.this);
+				.scan(Launcher.this)
+				.build();
 	}
 
 	/**

@@ -8,17 +8,13 @@ import io.datakernel.dataflow.server.DataflowServer;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
-
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.*;
@@ -58,8 +54,7 @@ public abstract class DataflowServerLauncher extends Launcher {
 						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.withEffectiveConfigLogger(),
 				getBusinessLogicModule()
 		);
 	}

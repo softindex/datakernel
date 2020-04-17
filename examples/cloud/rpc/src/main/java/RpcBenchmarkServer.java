@@ -4,16 +4,12 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
-
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
@@ -36,7 +32,7 @@ public class RpcBenchmarkServer extends Launcher {
 		return RpcServer.create(eventloop)
 				.withStreamProtocol(
 						config.get(ofMemSize(), "rpc.defaultPacketSize", MemSize.kilobytes(256)),
-                        MemSize.bytes(128),
+						MemSize.bytes(128),
 						config.get(ofBoolean(), "rpc.compression", false))
 				.withListenPort(config.get(ofInteger(), "rpc.server.port"))
 				.withMessageTypes(Integer.class)
@@ -57,9 +53,7 @@ public class RpcBenchmarkServer extends Launcher {
 				ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
-		);
+						.withEffectiveConfigLogger());
 	}
 
 	@Override

@@ -50,8 +50,7 @@ public class ScopeServlet implements AsyncServlet {
 	}
 
 	protected Module getModule() {
-		return Module.create()
-				.install(PromiseGeneratorModule.create());
+		return PromiseGeneratorModule.create();
 	}
 
 	@Override

@@ -20,6 +20,7 @@ import io.datakernel.common.Initializable;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.launcher.OnStart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,7 +105,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		return this;
 	}
 
-	public ConfigModule writeEffectiveConfigTo(Writer writer) {
+	public ConfigModule withEffectiveConfigLogger(Writer writer) {
 		return withEffectiveConfigConsumer(effectiveConfig -> {
 			try {
 				writer.write(effectiveConfig);
@@ -114,11 +115,11 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 		});
 	}
 
-	public ConfigModule writeEffectiveConfigTo(PrintStream writer) {
+	public ConfigModule withEffectiveConfigLogger(PrintStream writer) {
 		return withEffectiveConfigConsumer(writer::print);
 	}
 
-	public ConfigModule printEffectiveConfig() {
+	public ConfigModule withEffectiveConfigLogger() {
 		return withEffectiveConfigConsumer(effectiveConfig ->
 				logger.info("Effective Config:\n\n" + effectiveConfig));
 	}
@@ -130,7 +131,7 @@ public final class ConfigModule extends AbstractModule implements Initializable<
 			if (!key.equals(KEY_OF_CONFIG)) {
 				return binding;
 			}
-			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
+			Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>(OnStart.class) {};
 			return ((Binding<Config>) (Binding) binding)
 					.addDependencies(completionStageKey)
 					.mapInstance(singletonList(completionStageKey), (args, config) -> {

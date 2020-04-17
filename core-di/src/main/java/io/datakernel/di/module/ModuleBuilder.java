@@ -14,11 +14,15 @@ import java.util.Set;
 
 /**
  * This interface is used to restrict the DSL.
- * Basically, it disallows any methods from {@link ModuleBuilderBinder} not listed below
+ * Basically, it disallows any methods from {@link ModuleBuilder0} not listed below
  * to be called without previously calling {@link #bind bind(...)}.
  */
 @SuppressWarnings("UnusedReturnValue")
-public interface ModuleBuilder extends Module {
+public interface ModuleBuilder {
+	static ModuleBuilder create() {
+		return new ModuleBuilderImpl<>();
+	}
+
 	/**
 	 * Adds all bindings, transformers, generators and multibinders from given modules to this one.
 	 * <p>
@@ -58,28 +62,28 @@ public interface ModuleBuilder extends Module {
 	/**
 	 * @see #bind(Key)
 	 */
-	default <T> ModuleBuilderBinder<T> bind(Class<T> cls) {
+	default <T> ModuleBuilder0<T> bind(Class<T> cls) {
 		return bind(Key.of(cls));
 	}
 
 	/**
 	 * @see #bind(Key)
 	 */
-	default <T> ModuleBuilderBinder<T> bind(Class<T> cls, Name name) {
+	default <T> ModuleBuilder0<T> bind(Class<T> cls, Name name) {
 		return bind(Key.of(cls, name));
 	}
 
 	/**
 	 * @see #bind(Key)
 	 */
-	default <T> ModuleBuilderBinder<T> bind(Class<T> cls, String name) {
+	default <T> ModuleBuilder0<T> bind(Class<T> cls, String name) {
 		return bind(Key.of(cls, name));
 	}
 
 	/**
 	 * @see #bind(Key)
 	 */
-	default <T> ModuleBuilderBinder<T> bind(Class<T> cls, Class<? extends Annotation> annotationType) {
+	default <T> ModuleBuilder0<T> bind(Class<T> cls, Class<? extends Annotation> annotationType) {
 		return bind(Key.of(cls, annotationType));
 	}
 
@@ -90,7 +94,7 @@ public interface ModuleBuilder extends Module {
 	 * And you need to subclass the module at the usage point to 'bake' those generics
 	 * into subclass bytecode so that they could be fetched by this bind call.
 	 */
-	<T> ModuleBuilderBinder<T> bind(@NotNull Key<T> key);
+	<T> ModuleBuilder0<T> bind(@NotNull Key<T> key);
 
 	default <T> ModuleBuilder bindInstanceProvider(Class<T> type) {
 		return bindInstanceProvider(Key.of(type));
@@ -165,4 +169,6 @@ public interface ModuleBuilder extends Module {
 	default <K, V> ModuleBuilder multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
 		return multibind(Key.ofType(Types.parameterized(Map.class, keyType, valueType), name), Multibinder.toMap());
 	}
+
+	Module build();
 }

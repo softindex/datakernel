@@ -26,7 +26,7 @@ import static io.datakernel.di.util.Utils.checkArgument;
  * After that, you can use your annotation in our DSL's and then make keys programmaticaly with created Name instances.
  */
 public final class Name extends AbstractAnnotation {
-	protected Name(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {
+	protected <A extends Annotation> Name(@NotNull Class<A> annotationType, @Nullable A annotation) {
 		super(annotationType, annotation);
 	}
 
@@ -44,7 +44,8 @@ public final class Name extends AbstractAnnotation {
 	 * Creates a Name from a real (or its custom surrogate impl) annotation instance.
 	 */
 	public static Name of(Annotation annotation) {
-		Class<? extends Annotation> annotationType = annotation.annotationType();
+		//noinspection unchecked
+		Class<Annotation> annotationType = (Class<Annotation>) annotation.annotationType();
 		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class),
 				"Only annotations annotated with @NameAnnotation meta-annotation are allowed");
 		return isMarker(annotationType) ?
@@ -75,6 +76,8 @@ public final class Name extends AbstractAnnotation {
 
 	@SuppressWarnings("ClassExplicitlyAnnotation")
 	private static final class NamedImpl implements Named {
+		private static final int VALUE_HASHCODE = 127 * "value".hashCode();
+
 		@NotNull
 		private final String value;
 
@@ -91,7 +94,7 @@ public final class Name extends AbstractAnnotation {
 		@Override
 		public int hashCode() {
 			// This is specified in java.lang.Annotation.
-			return (127 * "value".hashCode()) ^ value.hashCode();
+			return VALUE_HASHCODE ^ value.hashCode();
 		}
 
 		@Override

@@ -126,7 +126,7 @@ public final class Preprocessor {
 			}
 
 			// common by default
-			type = BindingType.COMMON;
+			type = BindingType.REGULAR;
 		}
 
 		// transform it (once!)

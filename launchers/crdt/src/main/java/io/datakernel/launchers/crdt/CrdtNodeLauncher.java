@@ -21,16 +21,12 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.launchers.crdt.CrdtNodeLogicModule.Cluster;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule;
-
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
@@ -62,8 +58,7 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.withEffectiveConfigLogger(),
 				getBusinessLogicModule());
 	}
 

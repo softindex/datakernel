@@ -2,6 +2,7 @@ package advancedrpc;
 
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.promise.Promises;
@@ -23,10 +24,11 @@ public class AdvancedRpcClientApp extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return Module.create()
+		return ModuleBuilder.create()
 				.install(ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()))
-				.install(AdvancedRpcClientModule.create());
+				.install(AdvancedRpcClientModule.create())
+				.build();
 	}
 
 	@Override

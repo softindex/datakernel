@@ -8,7 +8,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import io.datakernel.rpc.client.RpcClient;
@@ -18,7 +17,6 @@ import io.datakernel.service.ServiceGraphModuleSettings;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
@@ -106,9 +104,7 @@ public class RpcBenchmark extends Launcher {
 				ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
-		);
+						.withEffectiveConfigLogger());
 	}
 
 	private int warmupRounds;

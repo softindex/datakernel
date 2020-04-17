@@ -45,7 +45,7 @@ import static java.util.stream.Collectors.toMap;
  * Branches of the trie are used to {@link #enterScope enter scopes}.
  */
 @SuppressWarnings({"unused", "WeakerAccess", "rawtypes"})
-public final class Injector {
+public final class Injector implements ResourceLocator {
 	private static final class ScopeLocalData {
 		final Scope[] scope;
 		final Map<Key<?>, BindingInfo> bindingInfo;
@@ -139,7 +139,7 @@ public final class Injector {
 	 */
 	public static Injector of(@NotNull Trie<Scope, Map<Key<?>, Binding<?>>> bindings) {
 		return compile(null, UNSCOPED,
-				bindings.map(map -> map.entrySet().stream().collect(toMap(Entry::getKey, entry -> new BindingSet<>(singleton(entry.getValue()), COMMON)))),
+				bindings.map(map -> map.entrySet().stream().collect(toMap(Entry::getKey, entry -> new BindingSet<>(singleton(entry.getValue()), REGULAR)))),
 				ERROR_ON_DUPLICATE,
 				IDENTITY,
 				REFUSING);
@@ -359,6 +359,7 @@ public final class Injector {
 	 * This method throws an exception if a binding was not bound for given key,
 	 * or if a binding refused to make an instance for some reason (returned <code>null</code>).
 	 */
+	@Override
 	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T> T getInstance(@NotNull Key<T> key) {
@@ -376,6 +377,7 @@ public final class Injector {
 	/**
 	 * @see #getInstance(Key)
 	 */
+	@Override
 	@NotNull
 	public <T> T getInstance(@NotNull Class<T> type) {
 		return getInstance(Key.ofType(type));
@@ -384,6 +386,7 @@ public final class Injector {
 	/**
 	 * Same as {@link #getInstance(Key)} except that it returns <code>null</code> instead of throwing an exception.
 	 */
+	@Override
 	@SuppressWarnings("unchecked")
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Key<T> key) {
@@ -394,6 +397,7 @@ public final class Injector {
 	/**
 	 * @see #getInstanceOrNull(Key)
 	 */
+	@Override
 	@Nullable
 	public <T> T getInstanceOrNull(@NotNull Class<T> type) {
 		return getInstanceOrNull(Key.of(type));
@@ -402,6 +406,7 @@ public final class Injector {
 	/**
 	 * Same as {@link #getInstanceOrNull(Key)}, but replaces <code>null</code> with given default value.
 	 */
+	@Override
 	public <T> T getInstanceOr(@NotNull Key<T> key, T defaultValue) {
 		T instance = getInstanceOrNull(key);
 		return instance != null ? instance : defaultValue;
@@ -410,6 +415,7 @@ public final class Injector {
 	/**
 	 * @see #getInstanceOr(Key, Object)
 	 */
+	@Override
 	public <T> T getInstanceOr(@NotNull Class<T> type, T defaultValue) {
 		return getInstanceOr(Key.of(type), defaultValue);
 	}

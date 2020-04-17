@@ -2,6 +2,7 @@ package io.datakernel.test;
 
 import io.datakernel.di.core.*;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.di.module.Modules;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Types;
@@ -112,7 +113,7 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 
 		Key<InstanceInjector<Object>> instanceInjectorKey = Key.ofType(Types.parameterized(InstanceInjector.class, getTestClass().getJavaClass()));
 
-		currentInjector = Injector.of(currentModule, Module.create()
+		currentInjector = Injector.of(currentModule, ModuleBuilder.create()
 				// scan the test class for @Provide's
 				.scan(instance)
 
@@ -125,7 +126,8 @@ public class DatakernelRunner extends BlockJUnit4ClassRunner {
 				.bind(self).toInstance(instance)
 
 				// and generate one of those to handle @Inject's
-				.bind(instanceInjectorKey));
+				.bind(instanceInjectorKey)
+				.build());
 
 		// creating eager stuff right away
 		currentInjector.createEagerInstances();

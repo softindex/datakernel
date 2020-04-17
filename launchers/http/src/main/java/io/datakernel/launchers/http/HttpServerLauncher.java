@@ -5,7 +5,6 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
@@ -15,11 +14,9 @@ import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.CompletionStage;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
@@ -67,8 +64,7 @@ public abstract class HttpServerLauncher extends Launcher {
 						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.withEffectiveConfigLogger(),
 				getBusinessLogicModule()
 		);
 	}

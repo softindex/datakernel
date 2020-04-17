@@ -5,6 +5,7 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
@@ -228,7 +229,7 @@ public class DkDirectScopebindBenchmark {
 
 	@Setup
 	public void setup() {
-		cookbook = Module.create()
+		cookbook = ModuleBuilder.create()
 				.bind(Kitchen.class).to(Kitchen::new)
 				.bind(Sugar.class).to(() -> new Sugar("WhiteSugar", 10.f)).in(OrderScope.class)
 				.bind(Butter.class).to(() -> new Butter("PerfectButter", 20.0f)).in(OrderScope.class)
@@ -241,7 +242,8 @@ public class DkDirectScopebindBenchmark {
 				.bind(Cookie5.class).to(Cookie5::new, Pastry.class).in(OrderScope.class)
 				.bind(Cookie6.class).to(Cookie6::new, Pastry.class).in(OrderScope.class)
 				.bind(CookieBucket.class).to(CookieBucket::new, Cookie1.class, Cookie2.class,
-						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class);
+						Cookie3.class, Cookie4.class, Cookie5.class, Cookie6.class).in(OrderScope.class)
+				.build();
 
 		if (SPECIALIZE) {
 			Injector.useSpecializer();

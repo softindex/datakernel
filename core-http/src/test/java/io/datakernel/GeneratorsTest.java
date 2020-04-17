@@ -3,6 +3,7 @@ package io.datakernel;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.di.module.OptionalGeneratorModule;
 import io.datakernel.http.di.PromiseGeneratorModule;
 import io.datakernel.promise.Promise;
@@ -18,13 +19,15 @@ import static junit.framework.TestCase.*;
 public final class GeneratorsTest {
 	@Test
 	public void promiseGeneratorTest() {
-		Module module = Module.create()
+		Module module = ModuleBuilder.create()
 				.bind(String.class).to(() -> "Hello, World")
-				.bind(new Key<Promise<String>>() {});
+				.bind(new Key<Promise<String>>() {})
+				.build();
 
-		Module module1 = Module.create()
+		Module module1 = ModuleBuilder.create()
 				.install(module)
-				.install(PromiseGeneratorModule.create());
+				.install(PromiseGeneratorModule.create())
+				.build();
 
 		Injector injector = Injector.of(module1);
 		Promise<String> instance = injector.getInstance(new Key<Promise<String>>() {});
@@ -34,13 +37,15 @@ public final class GeneratorsTest {
 
 	@Test
 	public void optionalGeneratorTest() {
-		Module module = Module.create()
+		Module module = ModuleBuilder.create()
 				.bind(String.class).to(() -> "Hello, World")
-				.bind(new Key<Optional<String>>() {});
+				.bind(new Key<Optional<String>>() {})
+				.build();
 
-		Module module1 = Module.create()
+		Module module1 = ModuleBuilder.create()
 				.install(module)
-				.install(OptionalGeneratorModule.create());
+				.install(OptionalGeneratorModule.create())
+				.build();
 
 		Injector injector = Injector.of(module1);
 		Optional<String> instance = injector.getInstance(new Key<Optional<String>>() {});

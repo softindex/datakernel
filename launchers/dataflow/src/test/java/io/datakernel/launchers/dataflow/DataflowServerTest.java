@@ -19,6 +19,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
@@ -325,9 +326,10 @@ public class DataflowServerTest {
 
 		@Override
 		protected Module getOverrideModule() {
-			return Module.create()
+			return ModuleBuilder.create()
 					.bind(Config.class).toInstance(Config.create().with("dataflow.server.listenAddresses", String.valueOf(port)))
-					.bind(Eventloop.class).toInstance(Eventloop.create().withCurrentThread());
+					.bind(Eventloop.class).toInstance(Eventloop.create().withCurrentThread())
+					.build();
 		}
 
 		@Provides

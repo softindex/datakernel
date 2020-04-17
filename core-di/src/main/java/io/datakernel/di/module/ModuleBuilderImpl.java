@@ -17,10 +17,9 @@ import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("UnusedReturnValue")
-final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
+final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 	private static final Binding<?> TO_BE_GENERATED = new Binding<>(emptySet(), (compiledBindings, threadsafe, scope, slot) -> missingOptionalBinding());
 
 	private final List<BindingDesc> bindingDescs = new ArrayList<>();
@@ -62,11 +61,11 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public <U> ModuleBuilderBinder<U> bind(@NotNull Key<U> key) {
+	public <U> ModuleBuilder0<U> bind(@NotNull Key<U> key) {
 		checkState(!configured.get(), "Cannot bind after the module builder was used as a module");
 		completeCurrent();
 		current = new BindingDesc(key, TO_BE_GENERATED);
-		return (ModuleBuilderBinder<U>) this;
+		return (ModuleBuilder0<U>) this;
 	}
 
 	private BindingDesc ensureCurrent() {
@@ -77,7 +76,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> named(@NotNull Name name) {
+	public ModuleBuilder0<T> named(@NotNull Name name) {
 		BindingDesc desc = ensureCurrent();
 		Key<?> key = desc.getKey();
 		if (key.getName() != null) {
@@ -88,7 +87,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> in(@NotNull Scope[] scope) {
+	public ModuleBuilder0<T> in(@NotNull Scope[] scope) {
 		BindingDesc desc = ensureCurrent();
 		if (desc.getScope().length != 0) {
 			throw new IllegalStateException("Already bound to scope " + getScopeDisplayString(desc.getScope()));
@@ -98,7 +97,7 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> in(@NotNull Scope scope, @NotNull Scope... scopes) {
+	public ModuleBuilder0<T> in(@NotNull Scope scope, @NotNull Scope... scopes) {
 		Scope[] joined = new Scope[scopes.length + 1];
 		joined[0] = scope;
 		System.arraycopy(scopes, 0, joined, 1, scopes.length);
@@ -107,12 +106,12 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public final ModuleBuilderBinder<T> in(@NotNull Class<? extends Annotation> annotationClass, @NotNull Class<?>... annotationClasses) {
+	public final ModuleBuilder0<T> in(@NotNull Class<? extends Annotation> annotationClass, @NotNull Class<?>... annotationClasses) {
 		return in(Stream.concat(Stream.of(annotationClass), Arrays.stream((Class<? extends Annotation>[]) annotationClasses)).map(Scope::of).toArray(Scope[]::new));
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> to(@NotNull Binding<? extends T> binding) {
+	public ModuleBuilder0<T> to(@NotNull Binding<? extends T> binding) {
 		BindingDesc desc = ensureCurrent();
 		checkState(desc.getBinding() == TO_BE_GENERATED, "Already mapped to a binding");
 		if (binding.getLocation() == null) {
@@ -123,25 +122,17 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> export() {
+	public ModuleBuilder0<T> asEager() {
 		BindingDesc current = ensureCurrent();
-		checkState(!current.isExported(), "Binding was already exported");
-		current.setExported();
-		return this;
-	}
-
-	@Override
-	public ModuleBuilderBinder<T> asEager() {
-		BindingDesc current = ensureCurrent();
-		checkState(current.getType() == COMMON, "Binding was already set to eager or transient");
+		checkState(current.getType() == REGULAR, "Binding was already set to eager or transient");
 		current.setType(EAGER);
 		return this;
 	}
 
 	@Override
-	public ModuleBuilderBinder<T> asTransient() {
+	public ModuleBuilder0<T> asTransient() {
 		BindingDesc current = ensureCurrent();
-		checkState(current.getType() == COMMON, "Binding was already set to transient or eager");
+		checkState(current.getType() == REGULAR, "Binding was already set to transient or eager");
 		current.setType(TRANSIENT);
 		return this;
 	}
@@ -150,6 +141,11 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 	public ModuleBuilder scan(@NotNull Class<?> moduleClass, @Nullable Object module) {
 		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
 		return install(scanClassHierarchy(moduleClass, module).values());
+	}
+
+	@Override
+	public Module build() {
+		return this;
 	}
 
 	@Override
@@ -229,34 +225,18 @@ final class ModuleBuilderImpl<T> implements ModuleBuilderBinder<T> {
 		}
 		completeCurrent(); // finish the last binding
 
-		bindingDescs.forEach(b -> {
+		for (BindingDesc desc : bindingDescs) {
 			BindingSet<?> bindingSet = bindings
-					.computeIfAbsent(b.getScope(), $1 -> new HashMap<>())
+					.computeIfAbsent(desc.getScope(), $ -> new HashMap<>())
 					.get()
-					.computeIfAbsent(b.getKey(), $ -> new BindingSet<>(new HashSet<>(), COMMON));
+					.computeIfAbsent(desc.getKey(), $ -> new BindingSet<>(new HashSet<>(), REGULAR));
 
-			bindingSet.setType(b.getType());
+			bindingSet.setType(desc.getType());
 
-			Binding<?> binding = b.getBinding();
+			Binding<?> binding = desc.getBinding();
 			if (binding != TO_BE_GENERATED) {
 				bindingSet.getBindings().add((Binding) binding);
 			}
-		});
-
-		Set<Key<?>> exportedKeys = bindingDescs.stream()
-				.filter(BindingDesc::isExported)
-				.map(BindingDesc::getKey)
-				.collect(toSet());
-
-		if (!exportedKeys.isEmpty()) {
-			Module exported = Modules.export(this, exportedKeys);
-			// it would not recurse because we have the `finished` flag
-			// and it's ok to reassign all of that below in the last moment
-
-			bindings = exported.getBindings();
-			bindingTransformers = exported.getBindingTransformers();
-			bindingGenerators = exported.getBindingGenerators();
-			multibinders = exported.getMultibinders();
 		}
 	}
 

@@ -22,18 +22,15 @@ import io.datakernel.crdt.CrdtServer;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.remotefs.LocalFsClient;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.TriggersModule;
 
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
@@ -80,8 +77,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {}),
+						.withEffectiveConfigLogger(),
 				getBusinessLogicModule());
 	}
 

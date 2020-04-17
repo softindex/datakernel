@@ -22,17 +22,14 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.remotefs.RemoteFsServer;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.ofPath;
@@ -81,9 +78,7 @@ public abstract class RemoteFsServerLauncher extends Launcher {
 						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
-		);
+						.withEffectiveConfigLogger());
 	}
 
 	@Override

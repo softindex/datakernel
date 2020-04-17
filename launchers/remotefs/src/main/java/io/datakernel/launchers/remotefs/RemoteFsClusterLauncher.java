@@ -23,19 +23,16 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.remotefs.*;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.common.Utils.nullToDefault;
@@ -124,9 +121,7 @@ public abstract class RemoteFsClusterLauncher extends Launcher {
 						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
-		);
+						.withEffectiveConfigLogger());
 	}
 
 	@Override

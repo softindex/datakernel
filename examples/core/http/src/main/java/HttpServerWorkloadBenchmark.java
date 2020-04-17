@@ -4,7 +4,6 @@ import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
@@ -12,14 +11,12 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.launcher.OnStart;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.*;
@@ -96,9 +93,7 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 				ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()),
 				ConfigModule.create()
-						.printEffectiveConfig()
-						.rebindImport(new Key<CompletionStage<Void>>() {}, new Key<CompletionStage<Void>>(OnStart.class) {})
-		);
+						.withEffectiveConfigLogger());
 	}
 
 	@Override

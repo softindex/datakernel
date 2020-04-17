@@ -10,7 +10,7 @@ import io.datakernel.di.impl.CompiledBindingInitializer;
 import io.datakernel.di.module.BindingDesc;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
-import io.datakernel.di.module.ModuleBuilderBinder;
+import io.datakernel.di.module.ModuleBuilder0;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -466,7 +466,7 @@ public final class ReflectionUtils {
 	}
 
 	public static Module scanClass(@NotNull Class<?> moduleClass, @Nullable Object module) {
-		return scanClassInto(moduleClass, module, Module.create());
+		return scanClassInto(moduleClass, module, ModuleBuilder.create());
 	}
 
 	public static Module scanClassInto(@NotNull Class<?> moduleClass, @Nullable Object module, ModuleBuilder builder) {
@@ -479,7 +479,6 @@ public final class ReflectionUtils {
 				Name name = nameOf(method);
 				Scope[] methodScope = getScope(method);
 
-				boolean isExported = method.isAnnotationPresent(Export.class);
 				boolean isEager = method.isAnnotationPresent(Eager.class);
 				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
@@ -489,10 +488,7 @@ public final class ReflectionUtils {
 				if (typeVars.length == 0) {
 					Key<Object> key = Key.ofType(returnType, name);
 
-					ModuleBuilderBinder<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
-					if (isExported) {
-						binder.export();
-					}
+					ModuleBuilder0<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
 					if (isEager) {
 						binder.asEager();
 					}
@@ -506,9 +502,6 @@ public final class ReflectionUtils {
 						.collect(toSet());
 				if (!unused.isEmpty()) {
 					throw new DIException("Generic type variables " + unused + " are not used in return type of templated provider method " + method);
-				}
-				if (isExported) {
-					throw new DIException("@Export annotation is not applicable for templated methods because they are generators and thus are always exported, method " + method);
 				}
 				if (isEager) {
 					throw new DIException("@Eager annotation is not applicable for templated methods because they are generators and cannot be eagerly created. " +
@@ -532,7 +525,6 @@ public final class ReflectionUtils {
 				Type type = Types.resolveTypeVariables(method.getGenericReturnType(), module != null ? module.getClass() : moduleClass, module);
 				Scope[] methodScope = getScope(method);
 
-				boolean isExported = method.isAnnotationPresent(Export.class);
 				boolean isEager = method.isAnnotationPresent(Eager.class);
 				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
@@ -548,10 +540,7 @@ public final class ReflectionUtils {
 					binding.at(LocationInfo.from(module, method));
 				}
 
-				ModuleBuilderBinder<Set<Object>> setBinder = builder.bind(setKey).to(binding).in(methodScope);
-				if (isExported) {
-					setBinder.export();
-				}
+				ModuleBuilder0<Set<Object>> setBinder = builder.bind(setKey).to(binding).in(methodScope);
 				if (isEager) {
 					setBinder.asEager();
 				}
@@ -562,7 +551,7 @@ public final class ReflectionUtils {
 			}
 		}
 
-		return builder;
+		return builder.build();
 	}
 
 	public static Map<Class<?>, Module> scanClassHierarchy(@NotNull Class<?> moduleClass, @Nullable Object module) {
