@@ -618,7 +618,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 
 	@JmxAttribute(optional = true)
 	public long getCount() {
-		return totalCount;
+		return totalCount + lastCountInteger + lastCountDouble;
 	}
 
 	@Nullable
