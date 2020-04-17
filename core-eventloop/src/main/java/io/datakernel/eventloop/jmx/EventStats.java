@@ -193,7 +193,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	 */
 	@JmxAttribute(optional = true)
 	public long getTotalCount() {
-		return totalCount;
+		return totalCount + lastCount;
 	}
 
 	@Override

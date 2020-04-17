@@ -192,6 +192,27 @@ public final class AsyncHttpClientTest {
 	}
 
 	@Test
+	public void testActiveRequestsCounterWithoutRefresh() throws IOException {
+		Eventloop eventloop = Eventloop.getCurrentEventloop();
+
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request -> HttpResponse.ok200())
+				.withAcceptOnce()
+				.withListenPort(PORT);
+
+		server.listen();
+
+		JmxInspector inspector = new JmxInspector();
+		AsyncHttpClient httpClient = AsyncHttpClient.create(eventloop)
+				.withInspector(inspector);
+
+		Promise<HttpResponse> requestPromise = httpClient.request(HttpRequest.get("http://127.0.0.1:" + PORT));
+		assertEquals(1, inspector.getActiveRequests());
+		await(requestPromise);
+		assertEquals(0, inspector.getActiveRequests());
+	}
+
+	@Test
 	public void testClientNoContentLength() throws Exception {
 		String text = "content";
 		ByteBuf req = ByteBuf.wrapForReading(encodeAscii("HTTP/1.1 200 OK\r\n\r\n" + text));
