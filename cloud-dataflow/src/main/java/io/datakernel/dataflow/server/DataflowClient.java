@@ -17,9 +17,15 @@
 package io.datakernel.dataflow.server;
 
 import io.datakernel.async.process.AsyncCloseable;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
+import io.datakernel.csp.queue.ChannelBufferWithFallback;
+import io.datakernel.csp.queue.ChannelFileBuffer;
+import io.datakernel.csp.queue.ChannelQueue;
+import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.server.command.DatagraphCommand;
@@ -36,10 +42,13 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -48,19 +57,27 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public final class DataflowClient {
 	private static final Logger logger = getLogger(DataflowClient.class);
-	private final DataflowSerialization serialization;
-	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
 
 	private final SocketSettings socketSettings = SocketSettings.createDefault();
 
-	/**
-	 * Constructs a datagraph client that runs in a given event loop and uses the specified DatagraphSerialization object for various serialization purposes.
-	 *
-	 * @param serialization DatagraphSerialization object used for serialization
-	 */
-	public DataflowClient(DataflowSerialization serialization) {
-		this.serialization = serialization;
-		this.codec = nullTerminatedJson(serialization.getResponseCodec(), serialization.getCommandCodec());
+	private final Executor executor;
+	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
+	private final BinarySerializers serializers;
+
+	private final AtomicInteger secondaryId = new AtomicInteger(Math.abs(ThreadLocalRandom.current().nextInt()));
+
+	@Nullable
+	private Path secondaryPath;
+
+	public DataflowClient(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
+		this.executor = executor;
+		this.codec = codec;
+		this.serializers = serializers;
+	}
+
+	public DataflowClient withSecondaryBufferPath(Path secondaryPath) {
+		this.secondaryPath = secondaryPath;
+		return this;
 	}
 
 	public <T> Promise<StreamSupplier<T>> download(InetSocketAddress address, StreamId streamId, Class<T> type) {
@@ -70,13 +87,23 @@ public final class DataflowClient {
 					DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
 
 					return messaging.send(commandDownload)
-							.map($ -> messaging.receiveBinaryStream()
-									.transformWith(ChannelDeserializer.create(serialization.getBinarySerializer(type))
-											.withExplicitEndOfStream())
-									.transformWith(new StreamTraceCounter<>(streamId, address))
-									.withEndOfStream(eos -> eos
-											.whenComplete(messaging::close))
-							);
+							.map($ -> {
+								ChannelQueue<ByteBuf> buffer;
+								if (secondaryPath != null) {
+									buffer = new ChannelBufferWithFallback<>(
+											new ChannelZeroBuffer<>(),
+											() -> ChannelFileBuffer.create(executor, secondaryPath.resolve(secondaryId.getAndIncrement() + ".bin")));
+								} else {
+									buffer = new ChannelZeroBuffer<>();
+								}
+								return messaging.receiveBinaryStream()
+										.transformWith(buffer)
+										.transformWith(ChannelDeserializer.create(serializers.get(type))
+												.withExplicitEndOfStream())
+										.transformWith(new StreamTraceCounter<>(streamId, address))
+										.withEndOfStream(eos -> eos
+												.whenComplete(messaging::close));
+							});
 				});
 	}
 

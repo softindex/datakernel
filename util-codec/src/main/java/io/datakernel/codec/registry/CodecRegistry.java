@@ -16,14 +16,20 @@
 
 package io.datakernel.codec.registry;
 
+import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.codec.StructuredInput;
+import io.datakernel.codec.StructuredOutput;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.common.tuple.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.common.Preconditions.checkNotNull;
@@ -134,6 +140,31 @@ public final class CodecRegistry implements CodecFactory {
 		return this;
 	}
 
+	public <T> CodecRegistry withSubtypesOf(Class<T> type) {
+		return withSubtypesOf(type, $ -> null);
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> CodecRegistry withSubtypesOf(Class<T> type, Function<Class<? extends T>, @Nullable String> subtypeNameFactory) {
+		return withGeneric(type, (self, $) ->
+				new LazyCodec<>(() -> {
+					CodecSubtype<T> subtypeCodec = CodecSubtype.create();
+					for (Class<?> subtype : map.keySet()) {
+						if (type == subtype || !type.isAssignableFrom(subtype)) {
+							continue;
+						}
+
+						String name = subtypeNameFactory.apply((Class<? extends T>) subtype);
+						if (name != null) {
+							subtypeCodec.with(subtype, name, self.get((Type) subtype));
+						} else {
+							subtypeCodec.with(subtype, self.get((Type) subtype));
+						}
+					}
+					return subtypeCodec;
+				}));
+	}
+
 	@Override
 	public <T> StructuredCodec<T> get(Type type) {
 		return doGet(RecursiveType.of(type));
@@ -156,5 +187,30 @@ public final class CodecRegistry implements CodecFactory {
 		}
 
 		return (StructuredCodec<T>) fn.apply(this, subCodecs);
+	}
+
+	private static final class LazyCodec<T> implements StructuredCodec<T> {
+		private StructuredCodec<T> ref;
+		private final Supplier<StructuredCodec<T>> supplier;
+
+		LazyCodec(Supplier<StructuredCodec<T>> supplier) {
+			this.supplier = supplier;
+		}
+
+		@Override
+		public T decode(StructuredInput in) throws ParseException {
+			if (ref == null) {
+				ref = supplier.get();
+			}
+			return ref.decode(in);
+		}
+
+		@Override
+		public void encode(StructuredOutput out, T item) {
+			if (ref == null) {
+				ref = supplier.get();
+			}
+			ref.encode(out, item);
+		}
 	}
 }

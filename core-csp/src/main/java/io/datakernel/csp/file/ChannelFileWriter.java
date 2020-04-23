@@ -96,6 +96,10 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	}
 	// endregion
 
+	public long getPosition() {
+		return position;
+	}
+
 	@Override
 	protected void onClosed(@NotNull Throwable e) {
 		closeFile();

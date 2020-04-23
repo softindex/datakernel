@@ -164,25 +164,25 @@ public final class Datasets {
 	}
 
 	public static <K, T> Dataset<T> splitSortReduce_Repartition_Reduce(Dataset<T> dataset,
-	                                                                   ReducerToResult<K, T, T, T> reducer,
-	                                                                   Function<T, K> keyFunction,
-	                                                                   Comparator<K> keyComparator) {
+			ReducerToResult<K, T, T, T> reducer,
+			Function<T, K> keyFunction,
+			Comparator<K> keyComparator) {
 		return splitSortReduce_Repartition_Reduce(dataset, reducer,
 				keyFunction, keyComparator,
 				dataset.valueType(), keyFunction, dataset.valueType()
 		);
 	}
 
-	public static <T> Dataset<T> datasetOfList(Object dataId, Class<T> resultType) {
+	public static <T> Dataset<T> datasetOfList(String dataId, Class<T> resultType) {
 		return new DatasetListSupplier<>(dataId, resultType);
 	}
 
-	public static <K, T> SortedDataset<K, T> sortedDatasetOfList(Object dataId, Class<T> resultType, Class<K> keyType,
-	                                                             Function<T, K> keyFunction, Comparator<K> keyComparator) {
+	public static <K, T> SortedDataset<K, T> sortedDatasetOfList(String dataId, Class<T> resultType, Class<K> keyType,
+			Function<T, K> keyFunction, Comparator<K> keyComparator) {
 		return castToSorted(datasetOfList(dataId, resultType), keyType, keyFunction, keyComparator);
 	}
 
-	public static <T> DatasetListConsumer<T> listConsumer(Dataset<T> input, Object listId) {
+	public static <T> DatasetListConsumer<T> listConsumer(Dataset<T> input, String listId) {
 		return new DatasetListConsumer<>(input, listId);
 	}
 }

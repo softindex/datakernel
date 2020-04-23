@@ -25,11 +25,11 @@ import io.datakernel.dataflow.node.NodeConsumerToList;
 import java.util.List;
 
 public final class DatasetListConsumer<T> {
-	private final Object listId;
+	private final String listId;
 
 	private final Dataset<T> input;
 
-	public DatasetListConsumer(Dataset<T> input, Object listId) {
+	public DatasetListConsumer(Dataset<T> input, String listId) {
 		this.listId = listId;
 		this.input = input;
 	}

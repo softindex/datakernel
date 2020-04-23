@@ -16,15 +16,14 @@
 
 package io.datakernel.dataflow.graph;
 
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Represents a unique id of the stream.
  */
 public final class StreamId {
-	//	private static final AtomicLong seed = new AtomicLong(1000);
-	private static final AtomicLong seed = new AtomicLong(new Random().nextInt() & (Integer.MAX_VALUE >>> 1));
+	private static final AtomicLong seed = new AtomicLong(0);
+//	private static final AtomicLong seed = new AtomicLong(new Random().nextInt() & (Integer.MAX_VALUE >>> 1));
 
 	private final long id;
 

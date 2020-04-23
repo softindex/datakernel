@@ -5,6 +5,7 @@ import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.AbstractChannelSupplier;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.dsl.ChannelTransformer;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
 
@@ -15,7 +16,7 @@ import org.jetbrains.annotations.Nullable;
  *
  * @param <T> type of values stored in the queue
  */
-public interface ChannelQueue<T> extends AsyncCloseable {
+public interface ChannelQueue<T> extends ChannelTransformer<T, T>, AsyncCloseable {
 	/**
 	 * Puts a item in the queue and returns a
 	 * {@code promise} of {@code null} as a marker of completion.
@@ -91,4 +92,15 @@ public interface ChannelQueue<T> extends AsyncCloseable {
 		};
 	}
 
+	@Override
+	default ChannelConsumer<T> transform(ChannelConsumer<T> consumer) {
+		Promise<Void> stream = getSupplier().streamTo(consumer);
+		return getConsumer().withAcknowledgement(ack -> ack.both(stream));
+	}
+
+	@Override
+	default ChannelSupplier<T> transform(ChannelSupplier<T> supplier) {
+		Promise<Void> stream = supplier.streamTo(getConsumer());
+		return getSupplier().withEndOfStream(eos -> eos.both(stream));
+	}
 }

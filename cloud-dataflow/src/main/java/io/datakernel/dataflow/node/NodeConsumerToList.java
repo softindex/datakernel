@@ -21,7 +21,6 @@ import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -33,7 +32,7 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeConsumerToList<T> implements Node {
-	private final Object listId;
+	private final String listId;
 	private final StreamId input;
 
 	/**
@@ -42,7 +41,7 @@ public final class NodeConsumerToList<T> implements Node {
 	 * @param input  id of input stream
 	 * @param listId id of output list
 	 */
-	public NodeConsumerToList(StreamId input, Object listId) {
+	public NodeConsumerToList(StreamId input, String listId) {
 		this.listId = listId;
 		this.input = input;
 	}
@@ -55,11 +54,7 @@ public final class NodeConsumerToList<T> implements Node {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		Object object = taskContext.environment().get(listId);
-		if (object == null) {
-			object = new ArrayList<>();
-			taskContext.environment().with(listId, object);
-		}
+		Object object = taskContext.get(listId);
 		StreamConsumer<T> consumer;
 		if (object instanceof List) {
 			consumer = StreamConsumerToList.create((List<T>) object);

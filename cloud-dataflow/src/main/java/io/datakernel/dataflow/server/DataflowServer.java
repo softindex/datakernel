@@ -24,6 +24,7 @@ import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.dataflow.node.Node;
@@ -33,6 +34,7 @@ import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.csp.ChannelSerializer;
+import io.datakernel.di.core.Injector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.AsyncTcpSocket;
@@ -44,17 +46,17 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.dataflow.server.Utils.nullTerminatedJson;
-
 /**
  * Server for processing JSON commands.
  */
 @SuppressWarnings("rawtypes")
 public final class DataflowServer extends AbstractServer<DataflowServer> {
-	private final DataflowEnvironment environment;
 	private final Map<StreamId, ChannelQueue<ByteBuf>> pendingStreams = new HashMap<>();
-	private final ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec;
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
+
+	private final ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec;
+	private final BinarySerializers serializers;
+	private final Injector environment;
 
 	{
 		handlers.put(DatagraphCommandDownload.class, new DownloadCommandHandler());
@@ -65,18 +67,11 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 		void onCommand(Messaging<I, O> messaging, I command);
 	}
 
-	/**
-	 * Constructs a datagraph server with the given environment that runs in the specified event loop.
-	 *
-	 * @param eventloop   event loop which runs the server
-	 * @param environment datagraph environment to use
-	 */
-	public DataflowServer(Eventloop eventloop, DataflowEnvironment environment) {
+	public DataflowServer(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializers serializers, Injector environment) {
 		super(eventloop);
-		this.environment = DataflowEnvironment.extend(environment)
-				.with(DataflowServer.class, this);
-		DataflowSerialization serialization = environment.getInstance(DataflowSerialization.class);
-		this.codec = nullTerminatedJson(serialization.getCommandCodec(), serialization.getResponseCodec());
+		this.codec = codec;
+		this.serializers = serializers;
+		this.environment = environment;
 	}
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
@@ -116,7 +111,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
 		public void onCommand(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
-			TaskContext task = new TaskContext(DataflowEnvironment.extend(environment));
+			TaskContext task = new TaskContext(environment);
 			try {
 				for (Node node : command.getNodes()) {
 					node.createAndBind(task);
@@ -157,7 +152,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	}
 
 	public <T> StreamConsumer<T> upload(StreamId streamId, Class<T> type) {
-		BinarySerializer<T> serializer = environment.getInstance(DataflowSerialization.class).getBinarySerializer(type);
+		BinarySerializer<T> serializer = serializers.get(type);
 
 		ChannelSerializer<T> streamSerializer = ChannelSerializer.create(serializer)
 				.withInitialBufferSize(MemSize.kilobytes(256))

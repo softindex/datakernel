@@ -16,34 +16,58 @@
 
 package io.datakernel.dataflow.stream;
 
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.di.BinarySerializersModule;
+import io.datakernel.dataflow.di.CodecsModule.Subtypes;
+import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
+import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
-import io.datakernel.dataflow.server.*;
+import io.datakernel.dataflow.server.Collector;
+import io.datakernel.dataflow.server.DataflowClient;
+import io.datakernel.dataflow.server.DataflowServer;
+import io.datakernel.dataflow.server.command.DatagraphCommand;
+import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
@@ -60,40 +84,86 @@ public final class DataflowTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
+	@ClassRule
+	public static final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private ExecutorService executor;
+
+	@Before
+	public void setUp() {
+		executor = Executors.newSingleThreadExecutor();
+	}
+
+	@After
+	public void tearDown() {
+		executor.shutdownNow();
+	}
+
+	private ModuleBuilder createCommon(List<Partition> graphPartitions) {
+		return ModuleBuilder.create()
+				.install(DataflowModule.create())
+				.bind(Executor.class).toInstance(executor)
+				.bind(Eventloop.class).toInstance(Eventloop.getCurrentEventloop())
+				.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
+				.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
+				.bind(new Key<StructuredCodec<TestPredicate>>() {}).toInstance(ofObject(TestPredicate::new))
+				.scan(new Object() {
+
+					@Provides
+					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
+						return new DataflowServer(eventloop, codec, serializers, environment);
+					}
+
+					@Provides
+					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) throws IOException {
+						return new DataflowClient(executor, codec, serializers)
+								.withSecondaryBufferPath(temporaryFolder.newFolder().toPath());
+					}
+
+					@Provides
+					DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
+						return new DataflowGraph(client, graphPartitions, nodeCodec);
+					}
+				});
+	}
+
 	@Test
 	public void testForward() throws Exception {
-		DataflowSerialization serialization = DataflowSerialization.create()
-				.withCodec(TestComparator.class, ofObject(TestComparator::new))
-				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
+
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+
+		Module common = createCommon(asList(new Partition(address1), new Partition(address2))).build();
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DataflowClient client = new DataflowClient(serialization);
-
-		DataflowEnvironment environment = DataflowEnvironment.create()
-				.setInstance(DataflowSerialization.class, serialization);
-		DataflowEnvironment environment1 = environment.extend()
-				.with("items", asList(
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(3),
 						new TestItem(5)))
-				.with("result", result1);
-		DataflowEnvironment environment2 = environment.extend()
-				.with("items", asList(
+				.bind(slot("result")).toInstance(result1)
+				.build();
+
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(2),
 						new TestItem(4),
-						new TestItem(6)))
-				.with("result", result2);
+						new TestItem(6)
+				))
+				.bind(slot("result")).toInstance(result2)
+				.build();
 
-		InetSocketAddress address1 = getFreeListenAddress();
-		InetSocketAddress address2 = getFreeListenAddress();
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
 		server1.listen();
 		server2.listen();
 
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
+		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
@@ -108,41 +178,47 @@ public final class DataflowTest {
 
 	@Test
 	public void testRepartitionAndSort() throws Exception {
-		DataflowSerialization serialization = DataflowSerialization.create()
-				.withCodec(TestComparator.class, ofObject(TestComparator::new))
-				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new));
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+
+		Module common = createCommon(asList(new Partition(address1), new Partition(address2))).build();
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DataflowClient client = new DataflowClient(serialization);
-
-		DataflowEnvironment environment = DataflowEnvironment.create()
-				.setInstance(DataflowSerialization.class, serialization)
-				.setInstance(DataflowClient.class, client);
-		DataflowEnvironment environment1 = environment.extend()
-				.with("items", asList(
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(4),
 						new TestItem(5),
 						new TestItem(6)))
-				.with("result", result1);
-		DataflowEnvironment environment2 = environment.extend()
-				.with("items", asList(
+				.bind(slot("result")).toInstance(result1)
+				.build();
+
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(6)))
-				.with("result", result2);
+				.bind(slot("result")).toInstance(result2)
+				.build();
 
-		InetSocketAddress address1 = getFreeListenAddress();
-		InetSocketAddress address2 = getFreeListenAddress();
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
 		server1.listen();
 		server2.listen();
 
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
+		Module clientModule = ModuleBuilder.create()
+				.install(common)
+				.bind(DataflowGraph.class)
+				.bind(new Key<List<Partition>>() {}).toInstance(asList(new Partition(address1), new Partition(address2)))
+				.build();
+
+		DataflowGraph graph = Injector.of(clientModule).getInstance(DataflowGraph.class);
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
 				TestItem.class, Long.class, new TestKeyFunction(), new TestComparator()));
@@ -158,45 +234,45 @@ public final class DataflowTest {
 
 	@Test
 	public void testFilter() throws Exception {
-		DataflowSerialization serialization = DataflowSerialization.create()
-				.withCodec(TestComparator.class, ofObject(TestComparator::new))
-				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
-				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+
+		Module common = createCommon(asList(new Partition(address1), new Partition(address2)))
+				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
+				.build();
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
 
-		DataflowClient client = new DataflowClient(serialization);
-
-		DataflowEnvironment environment = DataflowEnvironment.create()
-				.setInstance(DataflowSerialization.class, serialization)
-				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
-		DataflowEnvironment environment1 = environment.extend()
-				.with("items", asList(
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(6),
 						new TestItem(4),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(1)))
-				.with("result", result1);
-		DataflowEnvironment environment2 = environment.extend()
-				.with("items", asList(
+				.bind(slot("result")).toInstance(result1)
+				.build();
+
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(7),
 						new TestItem(7),
 						new TestItem(8),
 						new TestItem(2),
 						new TestItem(5)))
-				.with("result", result2);
+				.bind(slot("result")).toInstance(result2)
+				.build();
 
-		InetSocketAddress address1 = getFreeListenAddress();
-		InetSocketAddress address2 = getFreeListenAddress();
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
 		server1.listen();
 		server2.listen();
 
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
+		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 		LocallySortedDataset<Long, TestItem> sortedDataset = localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
@@ -212,51 +288,54 @@ public final class DataflowTest {
 
 	@Test
 	public void testCollector() throws Exception {
-		DataflowSerialization serialization = DataflowSerialization.create()
-				.withCodec(TestComparator.class, ofObject(TestComparator::new))
-				.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
-				.withCodec(TestPredicate.class, ofObject(TestPredicate::new));
-
 		StreamConsumerToList<TestItem> resultConsumer = StreamConsumerToList.create();
 
-		DataflowClient client = new DataflowClient(serialization);
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
 
-		DataflowEnvironment environment = DataflowEnvironment.create()
-				.setInstance(DataflowSerialization.class, serialization)
-				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
-		DataflowEnvironment environment1 = environment.extend()
-				.with("items", asList(
+		Module common = createCommon(asList(new Partition(address1), new Partition(address2)))
+				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
+				.build();
+
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(4),
-						new TestItem(5)));
-		DataflowEnvironment environment2 = environment.extend()
-				.with("items", asList(
+						new TestItem(5)))
+				.build();
+
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new TestItem(6),
 						new TestItem(7),
 						new TestItem(8),
 						new TestItem(9),
-						new TestItem(10)
-				));
+						new TestItem(10)))
+				.build();
 
-		InetSocketAddress address1 = getFreeListenAddress();
-		InetSocketAddress address2 = getFreeListenAddress();
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
 		server1.listen();
 		server2.listen();
 
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
+		Injector clientInjector = Injector.of(common);
+		DataflowClient client = clientInjector.getInstance(DataflowClient.class);
+		DataflowGraph graph = clientInjector.getInstance(DataflowGraph.class);
 
 		Dataset<TestItem> filterDataset = filter(datasetOfList("items", TestItem.class), new TestPredicate());
 		LocallySortedDataset<Long, TestItem> sortedDataset = localSort(filterDataset, long.class, new TestKeyFunction(), new TestComparator());
+
 		Collector<TestItem> collector = new Collector<>(sortedDataset, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
-		resultSupplier.streamTo(resultConsumer);
 
-		System.out.println(graph);
+		resultSupplier.streamTo(resultConsumer).whenException(Throwable::printStackTrace);
+
+		System.out.println(graph.toGraphViz(true));
 		await(cleanUp(graph.execute()));
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), resultConsumer.getList());
@@ -289,7 +368,7 @@ public final class DataflowTest {
 		}
 	}
 
-	private static class TestComparator implements Comparator<Long> {
+	public static class TestComparator implements Comparator<Long> {
 		@Override
 		public int compare(Long o1, Long o2) {
 			return o1.compareTo(o2);

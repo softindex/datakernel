@@ -31,14 +31,14 @@ import static java.util.Collections.singletonList;
  * @param <T> data items type
  */
 public final class NodeSupplierOfIterable<T> implements Node {
-	private final Object iterableId;
+	private final String iterableId;
 	private final StreamId output;
 
-	public NodeSupplierOfIterable(Object iterableId) {
+	public NodeSupplierOfIterable(String iterableId) {
 		this(iterableId, new StreamId());
 	}
 
-	public NodeSupplierOfIterable(Object iterableId, StreamId output) {
+	public NodeSupplierOfIterable(String iterableId, StreamId output) {
 		this.iterableId = iterableId;
 		this.output = output;
 	}
@@ -52,7 +52,7 @@ public final class NodeSupplierOfIterable<T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamSupplier<T> supplier;
-		Object object = taskContext.environment().get(iterableId);
+		Object object = taskContext.get(iterableId);
 		if (object instanceof Iterator) {
 			supplier = StreamSupplier.ofIterator((Iterator<T>) object);
 		} else if (object instanceof Iterable) {

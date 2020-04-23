@@ -16,36 +16,56 @@
 
 package io.datakernel.dataflow.stream;
 
+import io.datakernel.codec.StructuredCodec;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.di.BinarySerializersModule;
+import io.datakernel.dataflow.di.CodecsModule.Subtypes;
+import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
+import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
 import io.datakernel.dataflow.server.DataflowClient;
-import io.datakernel.dataflow.server.DataflowEnvironment;
-import io.datakernel.dataflow.server.DataflowSerialization;
 import io.datakernel.dataflow.server.DataflowServer;
+import io.datakernel.dataflow.server.command.DatagraphCommand;
+import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.processor.StreamJoin.InnerJoiner;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
+import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
 import io.datakernel.test.rules.EventloopRule;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
@@ -62,6 +82,21 @@ public class PageRankTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	@ClassRule
+	public static final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private ExecutorService executor;
+
+	@Before
+	public void setUp() {
+		executor = Executors.newSingleThreadExecutor();
+	}
+
+	@After
+	public void tearDown() {
+		executor.shutdownNow();
+	}
 
 	public static class Page {
 		@Serialize(order = 0)
@@ -222,43 +257,80 @@ public class PageRankTest {
 
 	@Test
 	public void test() throws Exception {
-		DataflowSerialization serialization = DataflowSerialization.create()
-				.withCodec(PageKeyFunction.class, ofObject(PageKeyFunction::new))
-				.withCodec(RankKeyFunction.class, ofObject(RankKeyFunction::new))
-				.withCodec(RankAccumulatorKeyFunction.class, ofObject(RankAccumulatorKeyFunction::new))
-				.withCodec(LongComparator.class, ofObject(LongComparator::new))
-				.withCodec(PageToRankFunction.class, ofObject(PageToRankFunction::new))
-				.withCodec(RankAccumulatorReducer.class, ofObject(RankAccumulatorReducer::new))
-				.withCodec(PageRankJoiner.class, ofObject(PageRankJoiner::new));
+
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+
+		Module common = ModuleBuilder.create()
+				.install(DataflowModule.create())
+				.bind(Executor.class).toInstance(executor)
+				.bind(Eventloop.class).toInstance(Eventloop.getCurrentEventloop())
+
+				.scan(new Object() {
+
+					@Provides
+					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
+						return new DataflowServer(eventloop, codec, serializers, environment);
+					}
+
+					@Provides
+					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) throws IOException {
+						return new DataflowClient(executor, codec, serializers)
+								.withSecondaryBufferPath(temporaryFolder.newFolder().toPath());
+					}
+
+					@Provides
+					DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
+						return new DataflowGraph(client, asList(new Partition(address1), new Partition(address2)), nodeCodec);
+					}
+				})
+
+				.bind(new Key<StructuredCodec<PageKeyFunction>>() {}).toInstance(ofObject(PageKeyFunction::new))
+				.bind(new Key<StructuredCodec<RankKeyFunction>>() {}).toInstance(ofObject(RankKeyFunction::new))
+				.bind(new Key<StructuredCodec<RankAccumulatorKeyFunction>>() {}).toInstance(ofObject(RankAccumulatorKeyFunction::new))
+				.bind(new Key<StructuredCodec<LongComparator>>() {}).toInstance(ofObject(LongComparator::new))
+				.bind(new Key<StructuredCodec<PageToRankFunction>>() {}).toInstance(ofObject(PageToRankFunction::new))
+				.bind(new Key<StructuredCodec<RankAccumulatorReducer>>() {}).toInstance(ofObject(RankAccumulatorReducer::new))
+				.bind(new Key<StructuredCodec<PageRankJoiner>>() {}).toInstance(ofObject(PageRankJoiner::new))
+
+				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
+
+				.build();
 
 		StreamConsumerToList<Rank> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
 
-		DataflowClient client = new DataflowClient(serialization);
-
-		DataflowEnvironment environment = DataflowEnvironment.create()
-				.setInstance(DataflowSerialization.class, serialization)
-				.setInstance(DataflowClient.class, client)
-				.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB);
-
-		DataflowEnvironment environment1 = environment.extend()
-				.with("items", asList(
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
 						new Page(1, new long[]{1, 2, 3}),
 						new Page(3, new long[]{1})))
-				.with("result", result1);
-		DataflowEnvironment environment2 = environment.extend()
-				.with("items", singletonList(
-						new Page(2, new long[]{1})))
-				.with("result", result2);
+				.bind(slot("result")).toInstance(result1)
 
-		InetSocketAddress address1 = getFreeListenAddress();
-		InetSocketAddress address2 = getFreeListenAddress();
-		server1 = new DataflowServer(Eventloop.getCurrentEventloop(), environment1).withListenAddress(address1);
-		server2 = new DataflowServer(Eventloop.getCurrentEventloop(), environment2).withListenAddress(address2);
+				.build();
+
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(singletonList(
+						new Page(2, new long[]{1})))
+				.bind(slot("result")).toInstance(result2)
+
+				.build();
+
+		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
 		server1.listen();
 		server2.listen();
 
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(new Partition(address1), new Partition(address2)));
+		Module clientModule = ModuleBuilder.create()
+				.install(common)
+				.bind(DataflowGraph.class)
+				.bind(new Key<List<Partition>>() {}).toInstance(asList(new Partition(address1), new Partition(address2)))
+
+				.build();
+
+		DataflowGraph graph = Injector.of(clientModule).getInstance(DataflowGraph.class);
 
 		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
 				Page.class, Long.class, new PageKeyFunction(), new LongComparator()));

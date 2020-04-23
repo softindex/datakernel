@@ -26,9 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class DatasetListSupplier<T> extends Dataset<T> {
-	private final Object listId;
+	private final String listId;
 
-	public DatasetListSupplier(Object listId, Class<T> resultType) {
+	public DatasetListSupplier(String listId, Class<T> resultType) {
 		super(resultType);
 		this.listId = listId;
 	}

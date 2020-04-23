@@ -2,13 +2,17 @@ package io.datakernel.launchers.dataflow;
 
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
-import io.datakernel.dataflow.server.DataflowEnvironment;
-import io.datakernel.dataflow.server.DataflowSerialization;
+import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
+import io.datakernel.dataflow.di.DataflowModule;
+import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowServer;
+import io.datakernel.dataflow.server.command.DatagraphCommand;
+import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
@@ -16,6 +20,10 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
+import java.nio.file.Paths;
+import java.util.concurrent.Executor;
+
+import static io.datakernel.config.ConfigConverters.getExecutor;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.*;
 
@@ -34,10 +42,25 @@ public abstract class DataflowServerLauncher extends Launcher {
 	}
 
 	@Provides
-	DataflowServer server(Eventloop eventloop, DataflowEnvironment environment, Config config) {
-		return new DataflowServer(eventloop, environment)
+	Executor executor(Config config) {
+		return getExecutor(config);
+	}
+
+	@Provides
+	DataflowServer server(Eventloop eventloop, Config config, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializers serializers, Injector environment) {
+		return new DataflowServer(eventloop, codec, serializers, environment)
 				.initialize(ofAbstractServer(config.getChild("dataflow.server")))
 				.initialize(s -> s.withSocketSettings(s.getSocketSettings().withTcpNoDelay(true)));
+	}
+
+	@Provides
+	DataflowClient client(Executor executor, Config config, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
+		DataflowClient client = new DataflowClient(executor, codec, serializers);
+		String path = config.get("dataflow.secondaryBufferPath", null);
+		if (path != null) {
+			client.withSecondaryBufferPath(Paths.get(path));
+		}
+		return client;
 	}
 
 	@Provides
@@ -53,6 +76,7 @@ public abstract class DataflowServerLauncher extends Launcher {
 				ServiceGraphModule.create()
 						.initialize(ofAsyncComponents()),
 				JmxModule.create(),
+				DataflowModule.create(),
 				ConfigModule.create()
 						.withEffectiveConfigLogger(),
 				getBusinessLogicModule()
@@ -76,13 +100,7 @@ public abstract class DataflowServerLauncher extends Launcher {
 
 		Module businessLogicModule = businessLogicModuleName != null ?
 				(Module) Class.forName(businessLogicModuleName).newInstance() :
-				new AbstractModule() {
-					@Provides
-					public DataflowEnvironment environment() {
-						return DataflowEnvironment.create()
-								.setInstance(DataflowSerialization.class, DataflowSerialization.create());
-					}
-				};
+				Module.empty();
 
 		Launcher launcher = new DataflowServerLauncher() {
 			@Override

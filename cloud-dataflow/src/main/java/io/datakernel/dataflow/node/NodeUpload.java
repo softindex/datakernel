@@ -48,7 +48,7 @@ public final class NodeUpload<T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		DataflowServer server = taskContext.environment().getInstance(DataflowServer.class);
+		DataflowServer server = taskContext.get(DataflowServer.class);
 		taskContext.bindChannel(streamId, server.upload(streamId, type));
 	}
 

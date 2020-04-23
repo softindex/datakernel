@@ -16,8 +16,8 @@
 
 package io.datakernel.dataflow.helper;
 
+import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
-import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
@@ -33,7 +33,7 @@ public class StreamMergeSorterStorageStub<T> implements StreamSorterStorage<T> {
 
 	public static final StreamSorterStorageFactory FACTORY_STUB = new StreamSorterStorageFactory() {
 		@Override
-		public <C> StreamSorterStorage<C> create(Class<C> type, DataflowEnvironment environment, Promise<Void> taskExecuted) {
+		public <C> StreamSorterStorage<C> create(Class<C> type, TaskContext context, Promise<Void> taskExecuted) {
 			return new StreamMergeSorterStorageStub<>();
 		}
 	};

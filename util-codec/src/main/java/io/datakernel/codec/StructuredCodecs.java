@@ -612,5 +612,4 @@ public final class StructuredCodecs {
 						map -> constructor.create((T1) map.get(field1), (T2) map.get(field2), (T3) map.get(field3), (T4) map.get(field4), (T5) map.get(field5), (T6) map.get(field6)),
 						item -> map(field1, getter1.apply(item), field2, getter2.apply(item), field3, getter3.apply(item), field4, getter4.apply(item), field5, getter5.apply(item), field6, getter6.apply(item)));
 	}
-
 }

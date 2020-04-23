@@ -16,9 +16,9 @@
 
 package io.datakernel.dataflow.graph;
 
-import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.di.core.Injector;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
+import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -35,17 +36,22 @@ import static java.util.stream.Collectors.toList;
  * Provides functionality to alter context and wire components.
  */
 public final class TaskContext {
-	private final DataflowEnvironment environment;
 	private final Map<StreamId, StreamSupplier<?>> suppliers = new LinkedHashMap<>();
 	private final Map<StreamId, StreamConsumer<?>> consumers = new LinkedHashMap<>();
 	private final SettablePromise<Void> executionPromise = new SettablePromise<>();
 
-	public TaskContext(DataflowEnvironment environment) {
+	private final Injector environment;
+
+	public TaskContext(Injector environment) {
 		this.environment = environment;
 	}
 
-	public DataflowEnvironment environment() {
-		return environment;
+	public Object get(String key) {
+		return environment.getInstance(slot(key));
+	}
+
+	public <T> T get(Class<T> cls) {
+		return environment.getInstance(cls);
 	}
 
 	public <T> void bindChannel(StreamId streamId, StreamConsumer<T> consumer) {

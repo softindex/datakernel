@@ -18,7 +18,6 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.dataflow.server.DataflowEnvironment;
 import io.datakernel.datastream.processor.StreamSorter;
 import io.datakernel.datastream.processor.StreamSorterStorage;
 import io.datakernel.promise.Promise;
@@ -38,7 +37,7 @@ import static java.util.Collections.singletonList;
 public final class NodeSort<K, T> implements Node {
 
 	public interface StreamSorterStorageFactory {
-		<T> StreamSorterStorage<T> create(Class<T> type, DataflowEnvironment environment, Promise<Void> taskExecuted);
+		<T> StreamSorterStorage<T> create(Class<T> type, TaskContext context, Promise<Void> taskExecuted);
 	}
 
 	private final Class<T> type;
@@ -78,9 +77,8 @@ public final class NodeSort<K, T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		DataflowEnvironment environment = taskContext.environment();
-		StreamSorterStorageFactory storageFactory = environment.getInstance(StreamSorterStorageFactory.class);
-		StreamSorterStorage<T> storage = storageFactory.create(type, environment, taskContext.getExecutionPromise());
+		StreamSorterStorageFactory storageFactory = taskContext.get(StreamSorterStorageFactory.class);
+		StreamSorterStorage<T> storage = storageFactory.create(type, taskContext, taskContext.getExecutionPromise());
 		StreamSorter<K, T> streamSorter = StreamSorter.create(storage, keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 		taskContext.bindChannel(input, streamSorter.getInput());
 		taskContext.export(output, streamSorter.getOutput());

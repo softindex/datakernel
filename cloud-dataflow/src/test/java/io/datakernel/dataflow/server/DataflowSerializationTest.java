@@ -16,12 +16,20 @@
 
 package io.datakernel.dataflow.server;
 
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.common.parse.ParseException;
+import io.datakernel.dataflow.di.CodecsModule.Subtypes;
+import io.datakernel.dataflow.di.DataflowCodecs;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.*;
+import io.datakernel.dataflow.server.command.DatagraphCommand;
 import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
+import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.Key;
+import io.datakernel.di.module.Module;
+import io.datakernel.di.module.ModuleBuilder;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -74,13 +82,17 @@ public class DataflowSerializationTest {
 		}
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Test
 	public void test2() throws UnknownHostException, ParseException {
-		DataflowSerialization serialization = DataflowSerialization.create()
-				.withCodec(TestComparator.class, ofObject(TestComparator::new))
-				.withCodec(TestReducer.class, ofObject(TestReducer::new))
-				.withCodec(TestFunction.class, ofObject(TestFunction::new))
-				.withCodec(TestIdentityFunction.class, ofObject(TestIdentityFunction::new));
+
+		Module serialization = ModuleBuilder.create()
+				.install(DataflowCodecs.create())
+				.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
+				.bind(new Key<StructuredCodec<TestFunction>>() {}).toInstance(ofObject(TestFunction::new))
+				.bind(new Key<StructuredCodec<TestIdentityFunction>>() {}).toInstance(ofObject(TestIdentityFunction::new))
+				.bind(new Key<StructuredCodec<TestReducer>>() {}).toInstance(ofObject(TestReducer::new))
+				.build();
 
 		NodeReduce<Integer, Integer, Integer> reducer = new NodeReduce<>(new TestComparator());
 		reducer.addInput(new StreamId(), new TestIdentityFunction<>(), new TestReducer());
@@ -91,9 +103,11 @@ public class DataflowSerializationTest {
 				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);
 
-		String str = toJson(serialization.getCommandCodec(), new DatagraphCommandExecute(nodes));
+		StructuredCodec<DatagraphCommand> commandCodec = Injector.of(serialization).getInstance(new Key<StructuredCodec<DatagraphCommand>>() {}.named(Subtypes.class));
+
+		String str = toJson(commandCodec, new DatagraphCommandExecute(nodes));
 		System.out.println(str);
 
-		System.out.println(fromJson(serialization.getCommandCodec(), str));
+		System.out.println(fromJson(commandCodec, str));
 	}
 }

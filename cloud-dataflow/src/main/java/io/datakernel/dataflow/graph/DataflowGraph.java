@@ -25,7 +25,6 @@ import io.datakernel.dataflow.node.NodeDownload;
 import io.datakernel.dataflow.node.NodeUpload;
 import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowClient.Session;
-import io.datakernel.dataflow.server.DataflowSerialization;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
@@ -33,27 +32,24 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
-import static io.datakernel.codec.json.JsonUtils.indent;
 import static io.datakernel.codec.json.JsonUtils.toJson;
 import static java.util.stream.Collectors.*;
 
 /**
  * Represents a graph of partitions, nodes and streams in datagraph system.
  */
-public class DataflowGraph {
-	private final DataflowClient client;
-	private final DataflowSerialization serialization;
-	private final List<Partition> availablePartitions;
+public final class DataflowGraph {
 	private final Map<Node, Partition> nodePartitions = new LinkedHashMap<>();
 	private final Map<StreamId, Node> streams = new LinkedHashMap<>();
 
-	private final StructuredCodec<List<Node>> listNodeCodecs;
+	private final DataflowClient client;
+	private final List<Partition> availablePartitions;
+	private final StructuredCodec<List<Node>> listNodeCodec;
 
-	public DataflowGraph(DataflowClient client, DataflowSerialization serialization, List<Partition> availablePartitions) {
+	public DataflowGraph(DataflowClient client, List<Partition> availablePartitions, StructuredCodec<Node> nodeCodec) {
 		this.client = client;
-		this.serialization = serialization;
 		this.availablePartitions = availablePartitions;
-		this.listNodeCodecs = indent(ofList(serialization.getNodeCodec()), "  ");
+		this.listNodeCodec = ofList(nodeCodec);
 	}
 
 	public List<Partition> getAvailablePartitions() {
@@ -147,10 +143,6 @@ public class DataflowGraph {
 		return partitions;
 	}
 
-	public DataflowSerialization getSerialization() {
-		return serialization;
-	}
-
 	public String toGraphViz(boolean streamLabels) {
 		StringBuilder sb = new StringBuilder("digraph {\n\n");
 
@@ -220,9 +212,11 @@ public class DataflowGraph {
 				boolean net = false;
 				boolean forceLabel = false;
 				// check if unbound stream is a network one
+				StreamId prev = null;
 				if (outputNode == null) {
 					StreamId through = network.get(output);
 					if (through != null) {
+						prev = output;
 						output = through;
 						// connect to network stream output and
 						// set the 'net' flag to true for dashed arrow
@@ -244,9 +238,17 @@ public class DataflowGraph {
 						.append(" [");
 
 				if (streamLabels || forceLabel) {
-					sb.append("xlabel=\"")
-							.append(output)
-							.append("\"");
+					if (prev != null) {
+						sb.append("taillabel=\"")
+								.append(prev)
+								.append("\", headlabel=\"")
+								.append(output)
+								.append("\"");
+					} else {
+						sb.append("xlabel=\"")
+								.append(output)
+								.append("\"");
+					}
 					if (net) {
 						sb.append(", ");
 					}
@@ -276,7 +278,7 @@ public class DataflowGraph {
 		for (Partition partition : map.keySet()) {
 			List<Node> nodes = map.get(partition);
 			sb.append("--- ").append(partition).append("\n\n");
-			sb.append(toJson(listNodeCodecs, nodes));
+			sb.append(toJson(listNodeCodec, nodes));
 			sb.append("\n\n");
 		}
 		return sb.toString();

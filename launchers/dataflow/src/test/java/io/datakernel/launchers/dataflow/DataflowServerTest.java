@@ -1,15 +1,21 @@
 package io.datakernel.launchers.dataflow;
 
+import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
+import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.di.BinarySerializersModule;
+import io.datakernel.dataflow.di.CodecsModule.Subtypes;
+import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
+import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
 import io.datakernel.dataflow.server.Collector;
 import io.datakernel.dataflow.server.DataflowClient;
-import io.datakernel.dataflow.server.DataflowEnvironment;
-import io.datakernel.dataflow.server.DataflowSerialization;
+import io.datakernel.dataflow.server.command.DatagraphCommand;
+import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.Sharder;
@@ -17,7 +23,7 @@ import io.datakernel.datastream.processor.Sharders;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToAccumulator;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
-import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
@@ -26,24 +32,31 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
+import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.launchers.dataflow.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.groupingBy;
 import static java.util.stream.Collectors.toList;
 import static org.hamcrest.Matchers.containsString;
@@ -55,14 +68,25 @@ public class DataflowServerTest {
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
+	@ClassRule
+	public static final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private ExecutorService executor;
+
 	private static final int PORT_1 = getFreePort();
 	private static final int PORT_2 = getFreePort();
 
 	private TestServerLauncher serverLauncher1;
 	private TestServerLauncher serverLauncher2;
 
+	@Before
+	public void setUp() {
+		executor = Executors.newSingleThreadExecutor();
+	}
+
 	@After
 	public void tearDown() {
+		executor.shutdownNow();
 		serverLauncher1.shutdown();
 		serverLauncher2.shutdown();
 	}
@@ -142,13 +166,14 @@ public class DataflowServerTest {
 	}
 
 	// region stubs & helpers
-	private Promise<Void> mapReduce(List<StringCount> result) throws UnknownHostException {
-		Injector injector = Injector.of(new DatagraphSerializationModule());
-		DataflowSerialization serialization = injector.getInstance(DataflowSerialization.class);
-		DataflowClient client = new DataflowClient(serialization);
+	private Promise<Void> mapReduce(List<StringCount> result) throws IOException {
 		Partition partition1 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_1));
 		Partition partition2 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2));
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(partition1, partition2));
+
+		Injector injector = Injector.of(createModule(asList(partition1, partition2)));
+
+		DataflowClient client = injector.getInstance(DataflowClient.class);
+		DataflowGraph graph = injector.getInstance(DataflowGraph.class);
 
 		Dataset<String> items = datasetOfList("items", String.class);
 		Dataset<StringCount> mappedItems = map(items, new TestMapFunction(), StringCount.class);
@@ -162,13 +187,13 @@ public class DataflowServerTest {
 		return graph.execute().whenException(resultConsumer::closeEx);
 	}
 
-	private Promise<Void> repartitionAndSort() throws UnknownHostException {
-		Injector injector = Injector.of(new DatagraphSerializationModule());
-		DataflowSerialization serialization = injector.getInstance(DataflowSerialization.class);
-		DataflowClient client = new DataflowClient(serialization);
+	private Promise<Void> repartitionAndSort() throws IOException {
 		Partition partition1 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_1));
 		Partition partition2 = new Partition(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), PORT_2));
-		DataflowGraph graph = new DataflowGraph(client, serialization, asList(partition1, partition2));
+
+		Injector injector = Injector.of(createModule(asList(partition1, partition2)));
+
+		DataflowGraph graph = injector.getInstance(DataflowGraph.class);
 
 		Dataset<String> items = datasetOfList("items", String.class);
 		Dataset<String> sorted = repartition_Sort(localSort(items, String.class, new StringFunction(), new TestComparator()));
@@ -292,16 +317,29 @@ public class DataflowServerTest {
 		}
 	}
 
-	public static class DatagraphSerializationModule extends AbstractModule {
-		@Provides
-		private DataflowSerialization serialization() {
-			return DataflowSerialization.create()
-					.withCodec(TestKeyFunction.class, ofObject(TestKeyFunction::new))
-					.withCodec(TestMapFunction.class, ofObject(TestMapFunction::new))
-					.withCodec(TestComparator.class, ofObject(TestComparator::new))
-					.withCodec(TestReducer.class, ofObject(TestReducer::new))
-					.withCodec(StringFunction.class, ofObject(StringFunction::new));
-		}
+	public static Module createModule(List<Partition> partitions) {
+		return DataflowModule.create()
+				.overrideWith(
+						ModuleBuilder.create()
+								.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
+								.bind(new Key<StructuredCodec<TestMapFunction>>() {}).toInstance(ofObject(TestMapFunction::new))
+								.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
+								.bind(new Key<StructuredCodec<TestReducer>>() {}).toInstance(ofObject(TestReducer::new))
+								.bind(new Key<StructuredCodec<StringFunction>>() {}).toInstance(ofObject(StringFunction::new))
+								.bind(Executor.class).toInstance(Executors.newSingleThreadExecutor())
+								.scan(new Object() {
+
+									@Provides
+									DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) {
+										return new DataflowClient(executor, codec, serializers);
+									}
+
+									@Provides
+									DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
+										return new DataflowGraph(client, partitions, nodeCodec);
+									}
+								})
+								.build());
 	}
 
 	private static final class TestServerLauncher extends DataflowServerLauncher {
@@ -320,26 +358,20 @@ public class DataflowServerTest {
 		}
 
 		@Override
-		protected Module getBusinessLogicModule() {
-			return new DatagraphSerializationModule();
-		}
-
-		@Override
 		protected Module getOverrideModule() {
-			return ModuleBuilder.create()
-					.bind(Config.class).toInstance(Config.create().with("dataflow.server.listenAddresses", String.valueOf(port)))
-					.bind(Eventloop.class).toInstance(Eventloop.create().withCurrentThread())
-					.build();
+			return createModule(emptyList())
+					.overrideWith(ModuleBuilder.create()
+							.bind(malformed ? slot("") : slot("items")).toInstance(words)
+							.bind(Config.class).toInstance(Config.create().with("dataflow.server.listenAddresses", String.valueOf(port)))
+							.bind(Eventloop.class).toInstance(Eventloop.create().withCurrentThread())
+							.bind(Executor.class).toInstance(Executors.newSingleThreadExecutor())
+							.bind(slot("result")).toInstance(StreamConsumerToList.create(result))
+							.build());
 		}
 
 		@Provides
-		public DataflowEnvironment environment(DataflowSerialization serialization) {
-			return DataflowEnvironment.create()
-					.setInstance(DataflowSerialization.class, serialization)
-					.setInstance(DataflowClient.class, new DataflowClient(serialization))
-					.setInstance(StreamSorterStorageFactory.class, FACTORY_STUB)
-					.with(malformed ? "" : "items", words)
-					.with("result", StreamConsumerToList.create(result));
+		StreamSorterStorageFactory storage() {
+			return FACTORY_STUB;
 		}
 
 		@Override

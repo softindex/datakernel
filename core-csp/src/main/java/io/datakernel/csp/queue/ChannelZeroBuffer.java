@@ -49,7 +49,7 @@ public final class ChannelZeroBuffer<T> implements ChannelQueue<T> {
 
 	@Override
 	public boolean isSaturated() {
-		return put != null;
+		return take == null;
 	}
 
 	@Override

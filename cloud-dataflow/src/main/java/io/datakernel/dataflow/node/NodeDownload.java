@@ -58,7 +58,7 @@ public final class NodeDownload<T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		DataflowClient client = taskContext.environment().getInstance(DataflowClient.class);
+		DataflowClient client = taskContext.get(DataflowClient.class);
 		StreamSupplier<T> stream = StreamSupplier.ofPromise(client.download(address, streamId, type));
 		taskContext.export(output, stream);
 	}
