@@ -18,6 +18,8 @@ package io.datakernel.jmx;
 
 import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.core.Key;
+import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.JmxAttribute;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -30,6 +32,10 @@ import java.lang.annotation.RetentionPolicy;
 
 import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
+import static java.util.Collections.singletonList;
+import static org.hamcrest.Matchers.containsString;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 
 public class DynamicMBeanRegistrationTest {
 
@@ -52,6 +58,27 @@ public class DynamicMBeanRegistrationTest {
 
 		Key<?> key = Key.of(CustomKeyClass.class, createCustomAnnotation("Global"));
 		jmxRegistry.registerSingleton(key, service, defaultSettings());
+	}
+
+	@Test
+	public void itShouldThrowExceptionForNonPublicMBeans() throws Exception {
+		NonPublicMBean instance = new NonPublicMBean();
+
+		try {
+			DynamicMBeanFactoryImpl.create()
+					.createDynamicMBean(singletonList(instance), defaultSettings(), false);
+			fail();
+		} catch (IllegalStateException e) {
+			assertThat(e.getMessage(), containsString("A class '" + NonPublicMBean.class.getName() +
+					"' containing methods annotated with @JmxAttribute should be declared public"));
+		}
+	}
+
+	@Test
+	public void itShouldNotThrowExceptionForNonPublicMBeansWithNoJmxFields() throws Exception {
+		NonPublicMBeanSubclass instance = new NonPublicMBeanSubclass();
+		DynamicMBeanFactoryImpl.create()
+				.createDynamicMBean(singletonList(instance), defaultSettings(), false);
 	}
 
 	// region helper classes
@@ -86,6 +113,23 @@ public class DynamicMBeanRegistrationTest {
 		public MBeanInfo getMBeanInfo() {
 			return null;
 		}
+	}
+
+	static class NonPublicMBean implements ConcurrentJmxMBean {
+		@JmxAttribute
+		public int getValue() {
+			return 123;
+		}
+	}
+
+	public static class PublicMBean implements ConcurrentJmxMBean {
+		@JmxAttribute
+		public int getValue() {
+			return 123;
+		}
+	}
+
+	static class NonPublicMBeanSubclass extends PublicMBean {
 	}
 
 	public static class CustomKeyClass {

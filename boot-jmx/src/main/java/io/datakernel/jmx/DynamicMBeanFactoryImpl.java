@@ -229,8 +229,9 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 
 	private List<AttributeDescriptor> fetchAttributeDescriptors(Class<?> clazz, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		Map<String, AttributeDescriptor> nameToAttr = new HashMap<>();
-		for (Method method : clazz.getMethods()) {
+		for (Method method : getAllMethods(clazz)) {
 			if (method.isAnnotationPresent(JmxAttribute.class)) {
+				validateJmxMethod(method, JmxAttribute.class);
 				if (isGetter(method)) {
 					processGetter(nameToAttr, method);
 				} else if (isSetter(method)) {
@@ -243,6 +244,17 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			}
 		}
 		return new ArrayList<>(nameToAttr.values());
+	}
+
+	private static void validateJmxMethod(Method method, Class<? extends Annotation> annotationClass) {
+		if (!isPublic(method)) {
+			throw new IllegalStateException("A method '" + method.getName() + "' in class '" + method.getDeclaringClass().getName() +
+					"' annotated with @" + annotationClass.getSimpleName() + " should be declared public");
+		}
+		if (!isPublic(method.getDeclaringClass())) {
+			throw new IllegalStateException("A class '" + method.getDeclaringClass().getName() +
+					"' containing methods annotated with @" + annotationClass.getSimpleName() + " should be declared public");
+		}
 	}
 
 	private static void processGetter(Map<String, AttributeDescriptor> nameToAttr, Method getter) {
@@ -667,9 +679,10 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 
 	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass) {
 		List<MBeanOperationInfo> operations = new ArrayList<>();
-		Method[] methods = monitorableClass.getMethods();
+		List<Method> methods = getAllMethods(monitorableClass);
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
+				validateJmxMethod(method, JmxOperation.class);
 				JmxOperation annotation = method.getAnnotation(JmxOperation.class);
 				String opName = annotation.name();
 				if (opName.equals("")) {
@@ -717,7 +730,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	// region jmx operations fetching
 	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<?> mbeanClass) {
 		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
-		Method[] methods = mbeanClass.getMethods();
+		List<Method> methods = getAllMethods(mbeanClass);
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
 				JmxOperation annotation = method.getAnnotation(JmxOperation.class);

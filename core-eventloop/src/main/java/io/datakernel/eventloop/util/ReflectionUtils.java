@@ -33,6 +33,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -84,16 +85,22 @@ public final class ReflectionUtils {
 		return JmxRefreshableStats.class.isAssignableFrom(cls);
 	}
 
+	public static boolean isPublic(Class<?> cls) {
+		return Modifier.isPublic(cls.getModifiers());
+	}
+
+	public static boolean isPublic(Method method) {
+		return Modifier.isPublic(method.getModifiers());
+	}
+
 	public static boolean isGetter(Method method) {
-		return Modifier.isPublic(method.getModifiers())
-				&& method.getName().length() > 2
+		return method.getName().length() > 2
 				&& (method.getName().startsWith("get") && method.getReturnType() != void.class
 				|| method.getName().startsWith("is") && (method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class));
 	}
 
 	public static boolean isSetter(Method method) {
-		return Modifier.isPublic(method.getModifiers())
-				&& method.getName().length() > 3
+		return method.getName().length() > 3
 				&& method.getName().startsWith("set")
 				&& method.getReturnType() == void.class
 				&& method.getParameterCount() == 1;
@@ -218,22 +225,39 @@ public final class ReflectionUtils {
 
 	public static List<Class<?>> getAllInterfaces(Class<?> cls) {
 		Set<Class<?>> interfacesFound = new LinkedHashSet<>();
-		getAllInterfaces(cls, interfacesFound);
+		traverseInheritanceTree(cls, aClass -> {
+			if (aClass.isInterface()) {
+				interfacesFound.add(aClass);
+			}
+		});
 		return new ArrayList<>(interfacesFound);
 	}
 
-	private static void getAllInterfaces(Class<?> cls, Set<Class<?>> found) {
-		while (cls != null) {
-			if (cls.isInterface()) {
-				found.add(cls);
-			}
-			for (Class<?> interfaceCls : cls.getInterfaces()) {
-				if (found.add(interfaceCls)) {
-					getAllInterfaces(interfaceCls, found);
-				}
-			}
-			cls = cls.getSuperclass();
+	/**
+	 * Returns a list containing {@code Method} objects reflecting all the
+	 * methods of the class or interface represented by this {@code
+	 * Class} object, including those declared by the class or interface and
+	 * those from superclasses and superinterfaces.
+	 */
+	public static List<Method> getAllMethods(Class<?> cls) {
+		Set<Method> methodsFound = new LinkedHashSet<>();
+		traverseInheritanceTree(cls, aClass -> methodsFound.addAll(Arrays.asList(aClass.getDeclaredMethods())));
+		return new ArrayList<>(methodsFound);
+	}
+
+	public static void traverseInheritanceTree(Class<?> cls, Consumer<Class<?>> consumer) {
+		doTraverseInheritanceTree(cls, consumer, new HashSet<>());
+	}
+
+	private static void doTraverseInheritanceTree(Class<?> cls, Consumer<Class<?>> consumer, Set<Class<?>> visited) {
+		if (cls == null || !visited.add(cls)) {
+			return;
 		}
+		consumer.accept(cls);
+		for (Class<?> interfaceCls : cls.getInterfaces()) {
+			doTraverseInheritanceTree(interfaceCls, consumer, visited);
+		}
+		doTraverseInheritanceTree(cls.getSuperclass(), consumer, visited);
 	}
 
 	private static boolean isBeanInterface(Class<?> cls) {
@@ -259,11 +283,12 @@ public final class ReflectionUtils {
 				.filter(ReflectionUtils::isBeanInterface)
 				.flatMap(i -> Arrays.stream(i.getMethods())
 						.filter(ReflectionUtils::isGetter)
+						.filter(ReflectionUtils::isPublic)
 						.map(Method::getName))
 				.collect(toSet());
 		RefBoolean changed = new RefBoolean(false);
 		Arrays.stream(instance.getClass().getMethods())
-				.filter(method -> isGetter(method) && (attributeNames.contains(method.getName())
+				.filter(method -> isGetter(method) && isPublic(method) && (attributeNames.contains(method.getName())
 						|| Arrays.stream(method.getAnnotations()).anyMatch(a -> a.annotationType() == JmxAttribute.class)))
 				.sorted(Comparator.comparing(Method::getName))
 				.forEach(method -> {

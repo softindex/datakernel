@@ -113,7 +113,7 @@ public class DynamicMBeanFactoryImplSettingsTest {
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}
 
-	private static final class MBeanStubTwo implements EventloopJmxMBean {
+	public static final class MBeanStubTwo implements EventloopJmxMBean {
 		private final ConfigurableStats stats = new ConfigurableStats();
 
 		@JmxAttribute

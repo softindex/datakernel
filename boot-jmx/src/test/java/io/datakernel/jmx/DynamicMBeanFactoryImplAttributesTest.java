@@ -40,6 +40,7 @@ import static io.datakernel.jmx.MBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
 public class DynamicMBeanFactoryImplAttributesTest {
@@ -293,6 +294,19 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		assertEquals("summary", mbean.getAttribute("pojo"));
 	}
 
+	@Test
+	public void itShouldThrowExceptionForNonPublicAttributes() {
+		MBeanWithNonPublicAttributes instance = new MBeanWithNonPublicAttributes();
+		try {
+			DynamicMBeanFactoryImpl.create()
+					.createDynamicMBean(singletonList(instance), defaultSettings(), false);
+			fail();
+		} catch (IllegalStateException e) {
+			assertThat(e.getMessage(), containsString( "A method 'getValue' in class '" + MBeanWithNonPublicAttributes.class.getName() +
+					"' annotated with @JmxAttribute should be declared public"));
+		}
+	}
+
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
 		return DynamicMBeanFactoryImpl.create()
@@ -418,6 +432,20 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		@Override
 		public Eventloop getEventloop() {
 			return Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+		}
+	}
+
+	public static class MBeanWithNonPublicAttributes implements ConcurrentJmxMBean {
+		private int value;
+
+		@JmxAttribute
+		public void setValue(int value) {
+			this.value = value;
+		}
+
+		@JmxAttribute
+		int getValue() {
+			return value;
 		}
 	}
 
