@@ -15,7 +15,6 @@ import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 /**
@@ -53,8 +52,7 @@ public final class FileDownloadExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create()
-				.initialize(ofAsyncComponents());
+		return ServiceGraphModule.create();
 	}
 
 	@Override

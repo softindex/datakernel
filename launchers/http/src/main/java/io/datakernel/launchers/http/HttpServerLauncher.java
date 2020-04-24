@@ -22,7 +22,8 @@ import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.*;
+import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
+import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;
 
 /**
  * Preconfigured Http server launcher.
@@ -60,8 +61,7 @@ public abstract class HttpServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
 				ConfigModule.create()
 						.withEffectiveConfigLogger(),

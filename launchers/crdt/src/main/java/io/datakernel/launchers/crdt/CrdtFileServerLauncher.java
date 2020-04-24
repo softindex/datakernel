@@ -39,7 +39,6 @@ import static io.datakernel.config.ConfigConverters.ofExecutor;
 import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends Launcher {
 	public static final String PROPERTIES_FILE = "crdt-file-server.properties";
@@ -72,8 +71,7 @@ public abstract class CrdtFileServerLauncher<K extends Comparable<K>, S> extends
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create()

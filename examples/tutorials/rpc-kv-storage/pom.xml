@@ -25,11 +25,6 @@
       <version>3.2-SNAPSHOT</version>
     </dependency>
     <dependency>
-      <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-launchers-common</artifactId>
-      <version>3.2-SNAPSHOT</version>
-    </dependency>
-    <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <version>1.2.3</version>

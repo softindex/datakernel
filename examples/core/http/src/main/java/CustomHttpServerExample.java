@@ -9,8 +9,6 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
-
 //[START EXAMPLE]
 public final class CustomHttpServerExample extends Launcher {
 	private static final int PORT = 8080;
@@ -34,8 +32,7 @@ public final class CustomHttpServerExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create()
-				.initialize(ofAsyncComponents());
+		return ServiceGraphModule.create();
 	}
 
 	@Override

@@ -19,7 +19,6 @@ import java.util.concurrent.ExecutionException;
 import static io.datakernel.config.ConfigConverters.ofDuration;
 import static io.datakernel.config.ConfigConverters.ofInetAddress;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
@@ -57,8 +56,7 @@ public final class HttpClientExample extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.withEffectiveConfigLogger());
 	}

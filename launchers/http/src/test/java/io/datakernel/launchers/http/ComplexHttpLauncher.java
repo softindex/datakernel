@@ -25,7 +25,6 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
@@ -148,8 +147,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return Modules.combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				WorkerPoolModule.create(Worker.class, MyWorker.class),
 				JmxModule.create()
 						.withScopes(false),

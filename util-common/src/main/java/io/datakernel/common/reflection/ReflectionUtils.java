@@ -157,6 +157,19 @@ public final class ReflectionUtils {
 		}
 	}
 
+	public static boolean isClassPresent(String fullClassName) {
+		return isClassPresent(fullClassName, ReflectionUtils.class.getClassLoader());
+	}
+
+	public static boolean isClassPresent(String fullClassName, ClassLoader classLoader) {
+		try {
+			Class.forName(fullClassName, false, classLoader);
+			return true;
+		} catch (ClassNotFoundException e) {
+			return false;
+		}
+	}
+
 	public static List<Class<?>> getAllInterfaces(Class<?> cls) {
 		Set<Class<?>> interfacesFound = new LinkedHashSet<>();
 		getAllInterfaces(cls, interfacesFound);
@@ -186,7 +199,7 @@ public final class ReflectionUtils {
 	private static Annotation doDeepFindAnnotation(Class<?> cls, Predicate<Annotation> predicate, Set<Class<?>> visited) {
 		if (cls == Object.class || !visited.add(cls)) return null;
 		for (Annotation annotation : cls.getAnnotations()) {
-			if (predicate.test(annotation)){
+			if (predicate.test(annotation)) {
 				return annotation;
 			}
 		}

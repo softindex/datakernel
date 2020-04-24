@@ -19,7 +19,6 @@ import java.util.concurrent.Executor;
 import static io.datakernel.config.ConfigConverters.ofInteger;
 import static io.datakernel.config.ConfigConverters.ofString;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class WebappLauncher extends Launcher {
@@ -74,8 +73,7 @@ public class WebappLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.withEffectiveConfigLogger());
 	}

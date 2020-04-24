@@ -5,7 +5,6 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 // [START EXAMPLE]
 public class ServerLauncher extends Launcher {
@@ -15,8 +14,7 @@ public class ServerLauncher extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				new ServerModule());
 	}
 

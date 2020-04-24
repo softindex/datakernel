@@ -23,7 +23,6 @@ import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 
 @SuppressWarnings("WeakerAccess")
@@ -63,8 +62,7 @@ public class TcpDataBenchmarkClient extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create()
-				.initialize(ofAsyncComponents());
+		return ServiceGraphModule.create();
 	}
 
 	@Override

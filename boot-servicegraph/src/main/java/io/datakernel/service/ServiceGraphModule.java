@@ -16,6 +16,7 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.service.EventloopService;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Initializer;
 import io.datakernel.di.annotation.Optional;
@@ -25,7 +26,10 @@ import io.datakernel.di.core.*;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.ScopedValue;
 import io.datakernel.di.util.Trie;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.net.BlockingSocketServer;
 import io.datakernel.launcher.LauncherService;
+import io.datakernel.net.EventloopServer;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;
@@ -43,6 +47,7 @@ import java.util.function.Supplier;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.common.collection.CollectionUtils.intersection;
+import static io.datakernel.common.reflection.ReflectionUtils.isClassPresent;
 import static io.datakernel.di.core.BindingType.TRANSIENT;
 import static io.datakernel.service.ServiceAdapters.*;
 import static io.datakernel.service.util.Utils.combineAll;
@@ -108,7 +113,7 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 	 * @return default service graph
 	 */
 	public static ServiceGraphModule create() {
-		return new ServiceGraphModule()
+		ServiceGraphModule serviceGraphModule = new ServiceGraphModule()
 				.register(Service.class, forService())
 				.register(BlockingService.class, forBlockingService())
 				.register(Closeable.class, forCloseable())
@@ -121,6 +126,10 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 					} catch (ClassNotFoundException ignored) {
 					}
 				});
+
+		tryRegisterAsyncComponents(serviceGraphModule);
+
+		return serviceGraphModule;
 	}
 
 	/**
@@ -247,6 +256,22 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 		@Override
 		public String toString() {
 			return key.toString() + (workerPool == null ? "" : ":" + workerPool.getId());
+		}
+	}
+
+	//  Registers service adapters for asynchronous components if they are present in classpath
+	private static void tryRegisterAsyncComponents(ServiceGraphModule serviceGraphModule) {
+		if (isClassPresent("io.datakernel.eventloop.Eventloop")) {
+			// 'eventloop' module is present
+			serviceGraphModule
+					.register(Eventloop.class, forEventloop())
+					.register(EventloopService.class, forEventloopService());
+		}
+		if (isClassPresent("io.datakernel.net.EventloopServer")) {
+			// 'net' module is present
+			serviceGraphModule
+					.register(BlockingSocketServer.class, forBlockingSocketServer())
+					.register(EventloopServer.class, forEventloopServer());
 		}
 	}
 
@@ -464,14 +489,20 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 		private final List<Service> services;
 		private final List<Service> startedServices = new ArrayList<>();
 
-		private CombinedService(List<Service> services) {this.services = services;}
+		private CombinedService(List<Service> services) {
+			this.services = services;
+		}
 
 		@Override
 		public CompletableFuture<?> start() {
 			return combineAll(
 					services.stream()
 							.map(service -> safeCall(service::start)
-									.thenRun(() -> {synchronized (this) {startedServices.add(service);}}))
+									.thenRun(() -> {
+										synchronized (this) {
+											startedServices.add(service);
+										}
+									}))
 							.collect(toList()))
 					.thenApply(v -> (@Nullable Throwable) null)
 					.exceptionally(e -> e)

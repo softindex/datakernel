@@ -11,8 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
-
 //[START EXAMPLE]
 public class EventloopServiceExample extends Launcher {
 
@@ -34,8 +32,7 @@ public class EventloopServiceExample extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create()
-				.initialize(ofAsyncComponents());
+		return ServiceGraphModule.create();
 	}
 
 	@Override

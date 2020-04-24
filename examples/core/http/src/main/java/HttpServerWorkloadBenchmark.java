@@ -21,7 +21,6 @@ import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 import static java.lang.Math.min;
 
 public class HttpServerWorkloadBenchmark extends Launcher {
@@ -90,8 +89,7 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.withEffectiveConfigLogger());
 	}

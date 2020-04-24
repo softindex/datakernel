@@ -7,7 +7,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.launchers.adapters.ServiceAdapters.forEventloop;
+import static io.datakernel.service.ServiceAdapters.forEventloop;
 
 //[START EXAMPLE]
 public final class ServiceGraphModuleExample extends AbstractModule {

@@ -9,8 +9,6 @@ import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
 
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
-
 public class AdvancedRpcServerApp extends Launcher {
 	@Provides
 	WorkerPool workerPool(WorkerPools workerPools) {
@@ -20,8 +18,7 @@ public class AdvancedRpcServerApp extends Launcher {
 	@Override
 	protected Module getModule() {
 		return ModuleBuilder.create()
-				.install(ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()))
+				.install(ServiceGraphModule.create())
 				.install(WorkerPoolModule.create())
 				.install(AdvancedRpcServerModule.create())
 				.build();

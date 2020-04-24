@@ -15,7 +15,6 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.function.Function;
 
 import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 @SuppressWarnings("WeakerAccess")
 public class CspBenchmark extends Launcher {
@@ -76,8 +75,7 @@ public class CspBenchmark extends Launcher {
 
 	@Override
 	protected Module getModule() {
-		return ServiceGraphModule.create()
-				.initialize(ofAsyncComponents());
+		return ServiceGraphModule.create();
 	}
 
 	private int warmupRounds;

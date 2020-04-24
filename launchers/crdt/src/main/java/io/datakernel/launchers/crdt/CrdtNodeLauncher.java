@@ -31,7 +31,6 @@ import io.datakernel.trigger.TriggersModule;
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launcher {
 	public static final String PROPERTIES_FILE = "crdt-node.properties";
@@ -53,8 +52,7 @@ public abstract class CrdtNodeLauncher<K extends Comparable<K>, S> extends Launc
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				JmxModule.create(),
 				TriggersModule.create(),
 				ConfigModule.create()

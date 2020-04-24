@@ -84,8 +84,7 @@ public abstract class MultithreadedHttpServerLauncher extends Launcher {
 	@Override
 	protected final Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				WorkerPoolModule.create(),
 				JmxModule.create()
 						.initialize(ofGlobalEventloopStats()),

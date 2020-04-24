@@ -14,7 +14,6 @@ import io.datakernel.service.ServiceGraphModule;
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
-import static io.datakernel.launchers.initializers.Initializers.ofAsyncComponents;
 
 public class RpcBenchmarkServer extends Launcher {
 	private final static int SERVICE_PORT = 25565;
@@ -50,8 +49,7 @@ public class RpcBenchmarkServer extends Launcher {
 	@Override
 	protected Module getModule() {
 		return combine(
-				ServiceGraphModule.create()
-						.initialize(ofAsyncComponents()),
+				ServiceGraphModule.create(),
 				ConfigModule.create()
 						.withEffectiveConfigLogger());
 	}
