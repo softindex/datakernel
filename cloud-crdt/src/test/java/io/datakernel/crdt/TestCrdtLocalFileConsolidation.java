@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 import static io.datakernel.common.collection.CollectionUtils.set;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.serializer.BinarySerializers.*;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public final class TestCrdtLocalFileConsolidation {
 	private LocalFsClient fsClient;
@@ -52,7 +53,7 @@ public final class TestCrdtLocalFileConsolidation {
 
 	@Before
 	public void setup() throws IOException {
-		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder().toPath());
+		fsClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), newSingleThreadExecutor(), temporaryFolder.newFolder().toPath());
 	}
 
 	private Set<Integer> union(Set<Integer> first, Set<Integer> second) {

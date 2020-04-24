@@ -81,7 +81,7 @@ public final class LogToCubeTest {
 		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("pub", ofInt())
 				.withDimension("adv", ofInt())
@@ -103,7 +103,7 @@ public final class LogToCubeTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<TestPubRequest> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, logsDir),
+				LocalFsClient.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(TestPubRequest.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

@@ -75,7 +75,7 @@ public class CubeIntegrationTest {
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
 
-	@SuppressWarnings({"ConstantConditions", "unchecked", "rawtypes"})
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	@Test
 	public void test() throws Exception {
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
@@ -85,7 +85,7 @@ public class CubeIntegrationTest {
 		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		RemoteFsChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -118,7 +118,7 @@ public class CubeIntegrationTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, logsDir),
+				LocalFsClient.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

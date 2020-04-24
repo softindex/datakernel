@@ -91,8 +91,8 @@ public final class TestCachedFsClient {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		Executor executor = Executors.newSingleThreadExecutor();
 
-		main = LocalFsClient.create(eventloop, serverStorage);
-		cache = LocalFsClient.create(eventloop, cacheStorage);
+		main = LocalFsClient.create(eventloop, executor, serverStorage);
+		cache = LocalFsClient.create(eventloop, executor, cacheStorage);
 		cacheRemote = CachedFsClient.create(main, cache, CachedFsClient.lruCompare())
 				.with(MemSize.kilobytes(50));
 	}

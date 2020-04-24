@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.regex.Pattern;
 
 import static io.datakernel.promise.TestUtils.await;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -49,7 +50,7 @@ public final class TestFsAlgebra {
 
 	@Before
 	public void setup() throws IOException {
-		local = LocalFsClient.create(Eventloop.getCurrentEventloop(), temporaryFolder.newFolder("test").toPath());
+		local = LocalFsClient.create(Eventloop.getCurrentEventloop(), newSingleThreadExecutor(), temporaryFolder.newFolder("test").toPath());
 	}
 
 	private void upload(FsClient client, String filename) {

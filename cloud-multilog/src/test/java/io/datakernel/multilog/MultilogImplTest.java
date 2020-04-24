@@ -19,6 +19,7 @@ import java.util.List;
 import static io.datakernel.multilog.LogNamingScheme.NAME_PARTITION_REMAINDER_SEQ;
 import static io.datakernel.promise.TestUtils.await;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.assertEquals;
 
 public class MultilogImplTest {
@@ -35,7 +36,7 @@ public class MultilogImplTest {
 	public void testConsumer() {
 		Eventloop eventloop = Eventloop.getCurrentEventloop();
 		Multilog<String> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, temporaryFolder.getRoot().toPath()),
+				LocalFsClient.create(eventloop, newSingleThreadExecutor(), temporaryFolder.getRoot().toPath()),
 				BinarySerializers.UTF8_SERIALIZER,
 				NAME_PARTITION_REMAINDER_SEQ);
 		String testPartition = "testPartition";
@@ -47,7 +48,7 @@ public class MultilogImplTest {
 
 		StreamConsumerToList<String> listConsumer = StreamConsumerToList.create();
 		await(StreamSupplierWithResult.ofPromise(
-				multilog.read(testPartition, new LogFile("", 0), (long) 0, null))
+				multilog.read(testPartition, new LogFile("", 0), 0, null))
 				.getSupplier()
 				.streamTo(listConsumer));
 

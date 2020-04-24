@@ -13,6 +13,8 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import static io.datakernel.promise.TestUtils.await;
@@ -37,8 +39,9 @@ public final class TestFsCopy {
 
 	@Before
 	public void setup() throws IOException {
-		sourceClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), tmpFolder.newFolder("source").toPath()).withRevisions();
-		targetClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), tmpFolder.newFolder("target").toPath()).withRevisions();
+		Executor executor = Executors.newSingleThreadExecutor();
+		sourceClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor, tmpFolder.newFolder("source").toPath()).withRevisions();
+		targetClient = LocalFsClient.create(Eventloop.getCurrentEventloop(), executor,tmpFolder.newFolder("target").toPath()).withRevisions();
 	}
 
 		/*

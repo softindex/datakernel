@@ -116,8 +116,8 @@ public final class CrdtClusterTest {
 				}
 
 				@Provides
-				FsClient fsClient(Eventloop eventloop, Config config) {
-					return LocalFsClient.create(eventloop, config.get(ofPath(), "crdt.local.path"));
+				FsClient fsClient(Eventloop eventloop, Executor executor, Config config) {
+					return LocalFsClient.create(eventloop, executor, config.get(ofPath(), "crdt.local.path"));
 				}
 			};
 		}

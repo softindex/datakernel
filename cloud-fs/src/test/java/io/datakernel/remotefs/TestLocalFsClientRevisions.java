@@ -19,6 +19,7 @@ import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.remotefs.FsClient.OFFSET_TOO_BIG;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static org.junit.Assert.*;
 
 public final class TestLocalFsClientRevisions {
@@ -36,7 +37,7 @@ public final class TestLocalFsClientRevisions {
 
 	@Before
 	public void setUp() throws IOException {
-		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), tmpFolder.newFolder("storage").toPath()).withRevisions();
+		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), newSingleThreadExecutor(), tmpFolder.newFolder("storage").toPath()).withRevisions();
 	}
 
 	@Test

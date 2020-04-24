@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import static io.datakernel.codec.StructuredCodecs.*;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public class CrdtNodeLauncherTest {
 	@Test
@@ -35,7 +36,7 @@ public class CrdtNodeLauncherTest {
 
 					@Provides
 					FsClient fsClient() {
-						return LocalFsClient.create(Eventloop.create(), Paths.get(""));
+						return LocalFsClient.create(Eventloop.create(), newSingleThreadExecutor(), Paths.get(""));
 					}
 				};
 			}

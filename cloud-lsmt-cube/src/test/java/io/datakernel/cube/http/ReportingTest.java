@@ -226,7 +226,7 @@ public final class ReportingTest {
 		}
 
 		public LogItem(int date, int advertiser, int campaign, int banner, long impressions, long clicks,
-				long conversions, double revenue, int userId, int errors, int affiliate, String site) {
+					   long conversions, double revenue, int userId, int errors, int affiliate, String site) {
 			this.date = date;
 			this.advertiser = advertiser;
 			this.campaign = campaign;
@@ -283,7 +283,7 @@ public final class ReportingTest {
 		Executor executor = Executors.newCachedThreadPool();
 		DefiningClassLoader classLoader = DefiningClassLoader.create();
 
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withClassLoaderCache(CubeClassLoaderCache.create(classLoader, 5))
 				.initialize(cube -> DIMENSIONS_CUBE.forEach(cube::addDimension))
@@ -321,7 +321,7 @@ public final class ReportingTest {
 		OTStateManager<Long, LogDiff<CubeDiff>> logCubeStateManager = OTStateManager.create(eventloop, otSystem, node, cubeDiffLogOTState);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, temporaryFolder.getRoot().toPath()),
+				LocalFsClient.create(eventloop, executor, temporaryFolder.getRoot().toPath()),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 

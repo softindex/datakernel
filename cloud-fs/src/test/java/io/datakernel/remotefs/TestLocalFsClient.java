@@ -40,8 +40,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.common.collection.CollectionUtils.set;
@@ -53,6 +51,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.concurrent.Executors.newCachedThreadPool;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.stream.Collectors.toSet;
 import static org.junit.Assert.*;
 
@@ -113,7 +112,7 @@ public final class TestLocalFsClient {
 		} catch (IOException ignored) {
 		}
 
-		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), storagePath);
+		client = LocalFsClient.create(Eventloop.getCurrentEventloop(), newSingleThreadExecutor(), storagePath);
 	}
 
 	@Test

@@ -103,17 +103,17 @@ public class CubeMeasureRemovalTest {
 		executor = Executors.newCachedThreadPool();
 		classLoader = DefiningClassLoader.create();
 		dataSource = dataSource("test.properties");
-		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		BinarySerializer<LogItem> serializer = SerializerBuilder.create(classLoader).build(LogItem.class);
 		multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, logsDir),
+				LocalFsClient.create(eventloop, executor, logsDir),
 				serializer,
 				NAME_PARTITION_REMAINDER_SEQ);
 	}
 
 	@Test
 	public void test() throws Exception {
-		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, aggregationsDir));
+		AggregationChunkStorage<Long> aggregationChunkStorage = RemoteFsChunkStorage.create(eventloop, ChunkIdCodec.ofLong(), new IdGeneratorStub(), LocalFsClient.create(eventloop, executor, aggregationsDir));
 		Cube cube = Cube.create(eventloop, executor, classLoader, aggregationChunkStorage)
 				.withDimension("date", ofLocalDate())
 				.withDimension("advertiser", ofInt())
@@ -142,7 +142,7 @@ public class CubeMeasureRemovalTest {
 		initializeRepository(repository);
 
 		Multilog<LogItem> multilog = MultilogImpl.create(eventloop,
-				LocalFsClient.create(eventloop, logsDir),
+				LocalFsClient.create(eventloop, executor, logsDir),
 				SerializerBuilder.create(classLoader).build(LogItem.class),
 				NAME_PARTITION_REMAINDER_SEQ);
 
