@@ -121,6 +121,9 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	@Nullable
 	private ScheduledRunnable scheduledTask;
 
+	@Nullable
+	private Promise<Void> currentPromise;
+
 	private EventloopTaskScheduler(Eventloop eventloop, AsyncSupplier<?> task) {
 		this.eventloop = eventloop;
 		//noinspection unchecked
@@ -197,9 +200,12 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 
 	private Promise<Void> doCall() {
 		lastStartTime = eventloop.currentTimeMillis();
-		return (retryPolicy == null ? task.get() : retry(task, retryPolicy))
+		return currentPromise = (retryPolicy == null ?
+				task.get() :
+				retry(task, ($, e) -> e == null || !enabled, retryPolicy))
 				.whenComplete(stats.recordStats())
 				.whenComplete((result, e) -> {
+					if (!enabled) return;
 					lastCompleteTime = eventloop.currentTimeMillis();
 					if (e == null) {
 						lastException = null;
@@ -230,8 +236,12 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	@NotNull
 	@Override
 	public Promise<Void> stop() {
+		enabled = false;
 		scheduledTask = nullify(scheduledTask, ScheduledRunnable::cancel);
-		return Promise.complete();
+		if (currentPromise == null) {
+			return Promise.complete();
+		}
+		return currentPromise.mapEx(($, e) -> null);
 	}
 
 	public void setSchedule(Schedule schedule) {
