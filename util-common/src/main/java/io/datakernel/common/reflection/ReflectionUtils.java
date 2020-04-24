@@ -17,6 +17,7 @@
 package io.datakernel.common.reflection;
 
 import io.datakernel.common.exception.UncheckedException;
+import io.datakernel.common.ref.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -170,48 +171,45 @@ public final class ReflectionUtils {
 		}
 	}
 
-	public static List<Class<?>> getAllInterfaces(Class<?> cls) {
-		Set<Class<?>> interfacesFound = new LinkedHashSet<>();
-		getAllInterfaces(cls, interfacesFound);
-		return new ArrayList<>(interfacesFound);
+	public static void walkOverHierarchy(Class<?> leaf, Predicate<Class<?>> callback) {
+		walkOverHierarchy(leaf, callback, new HashSet<>());
 	}
 
-	private static void getAllInterfaces(Class<?> cls, Set<Class<?>> found) {
-		while (cls != null) {
-			if (cls.isInterface()) {
-				found.add(cls);
-			}
-			for (Class<?> interfaceCls : cls.getInterfaces()) {
-				if (found.add(interfaceCls)) {
-					getAllInterfaces(interfaceCls, found);
+	private static void walkOverHierarchy(Class<?> leaf, Predicate<Class<?>> callback, Set<Class<?>> visited) {
+		while (leaf != null && callback.test(leaf)) {
+			for (Class<?> iface : leaf.getInterfaces()) {
+				if (visited.add(iface)) {
+					walkOverHierarchy(iface, callback, visited);
 				}
 			}
-			cls = cls.getSuperclass();
+			leaf = leaf.getSuperclass();
 		}
+	}
+
+	public static List<Class<?>> getAllInterfaces(Class<?> cls) {
+		Set<Class<?>> found = new LinkedHashSet<>();
+		walkOverHierarchy(cls, ancestor -> {
+			if (ancestor.isInterface()) {
+				found.add(ancestor);
+			}
+			return true;
+		});
+		return new ArrayList<>(found);
 	}
 
 	@Nullable
 	public static Annotation deepFindAnnotation(Class<?> cls, Predicate<Annotation> predicate) {
-		return doDeepFindAnnotation(cls, predicate, new HashSet<>());
-	}
-
-	@Nullable
-	private static Annotation doDeepFindAnnotation(Class<?> cls, Predicate<Annotation> predicate, Set<Class<?>> visited) {
-		if (cls == Object.class || !visited.add(cls)) return null;
-		for (Annotation annotation : cls.getAnnotations()) {
-			if (predicate.test(annotation)) {
-				return annotation;
+		Ref<Annotation> found = new Ref<>(null);
+		walkOverHierarchy(cls, ancestor -> {
+			for (Annotation annotation : ancestor.getAnnotations()) {
+				if (predicate.test(annotation)) {
+					found.set(annotation);
+					return false;
+				}
 			}
-		}
-		for (Class<?> anInterface : cls.getInterfaces()) {
-			Annotation annotation = doDeepFindAnnotation(anInterface, predicate, visited);
-			if (annotation != null) return annotation;
-		}
-		Class<?> superclass = cls.getSuperclass();
-		if (superclass != null) {
-			return doDeepFindAnnotation(superclass, predicate, visited);
-		}
-		return null;
+			return true;
+		});
+		return found.get();
 	}
 
 	public static String getAnnotationString(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) throws ReflectiveOperationException {
