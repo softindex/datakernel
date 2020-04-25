@@ -68,21 +68,22 @@ public final class ChannelFileReader extends AbstractChannelSupplier<ByteBuf> {
 	}
 
 	public static Promise<ChannelFileReader> open(Executor executor, Path path) {
-		return Promise.ofBlockingCallable(executor, () -> openBlocking(executor, path, DEFAULT_OPTIONS));
+		return open(executor, path, DEFAULT_OPTIONS);
 	}
 
 	public static Promise<ChannelFileReader> open(Executor executor, Path path, OpenOption... openOptions) {
-		return Promise.ofBlockingCallable(executor, () -> openBlocking(executor, path, openOptions));
-	}
-
-	public static ChannelFileReader openBlocking(Executor executor, Path path, OpenOption... openOptions) throws IOException {
-		FileChannel channel = FileChannel.open(path, openOptions);
-		return new ChannelFileReader(new ExecutorAsyncFileService(executor), channel);
+		return Promise.ofBlockingCallable(executor, () -> FileChannel.open(path, openOptions))
+				.map(channel -> create(executor, channel));
 	}
 
 	public static ChannelFileReader openBlocking(Executor executor, Path path) throws IOException {
 		FileChannel channel = FileChannel.open(path, DEFAULT_OPTIONS);
-		return new ChannelFileReader(new ExecutorAsyncFileService(executor), channel);
+		return create(executor, channel);
+	}
+
+	public static ChannelFileReader openBlocking(Executor executor, Path path, OpenOption... openOptions) throws IOException {
+		FileChannel channel = FileChannel.open(path, openOptions);
+		return create(executor, channel);
 	}
 
 	public ChannelFileReader withBufferSize(MemSize bufferSize) {

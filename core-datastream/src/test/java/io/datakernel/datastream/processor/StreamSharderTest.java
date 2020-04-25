@@ -24,6 +24,8 @@ import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import java.util.function.ToIntFunction;
+
 import static io.datakernel.datastream.TestStreamTransformers.*;
 import static io.datakernel.datastream.TestUtils.*;
 import static io.datakernel.promise.TestUtils.await;
@@ -33,7 +35,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 public class StreamSharderTest {
-	private static final Sharder<Integer> SHARDER = object -> object % 2;
+	private static final ToIntFunction<Integer> SHARDER = object -> (object.hashCode() & Integer.MAX_VALUE) % 2;
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -41,7 +43,7 @@ public class StreamSharderTest {
 	@Test
 	public void test1() {
 		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
-				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
+				(item, acceptors) -> acceptors[SHARDER.applyAsInt(item)].accept(item));
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
@@ -66,7 +68,7 @@ public class StreamSharderTest {
 	@Test
 	public void test2() {
 		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
-				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
+				(item, acceptors) -> acceptors[SHARDER.applyAsInt(item)].accept(item));
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 		StreamConsumerToList<Integer> consumer1 = StreamConsumerToList.create();
@@ -92,7 +94,7 @@ public class StreamSharderTest {
 	@Test
 	public void testWithError() {
 		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
-				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
+				(item, acceptors) -> acceptors[SHARDER.applyAsInt(item)].accept(item));
 
 		StreamSupplier<Integer> source = StreamSupplier.of(1, 2, 3, 4);
 
@@ -121,7 +123,7 @@ public class StreamSharderTest {
 	@Test
 	public void testSupplierWithError() {
 		StreamSplitter<Integer, Integer> streamSharder = StreamSplitter.create(
-				(item, acceptors) -> acceptors[SHARDER.shard(item)].accept(item));
+				(item, acceptors) -> acceptors[SHARDER.applyAsInt(item)].accept(item));
 
 		ExpectedException exception = new ExpectedException("Test Exception");
 

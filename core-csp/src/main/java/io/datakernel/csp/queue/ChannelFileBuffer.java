@@ -2,6 +2,7 @@ package io.datakernel.csp.queue;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.promise.Promise;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Executor;
@@ -46,15 +48,21 @@ public final class ChannelFileBuffer implements ChannelQueue<ByteBuf> {
 	}
 
 	public static Promise<ChannelFileBuffer> create(Executor executor, Path path, @Nullable MemSize limit) {
-		return Promise.ofBlockingCallable(executor, () -> {
-			Files.createDirectories(path.getParent());
-			ChannelFileWriter writer = ChannelFileWriter.openBlocking(executor, path, CREATE, WRITE);
-			ChannelFileReader reader = ChannelFileReader.openBlocking(executor, path, CREATE, READ);
-			if (limit != null) {
-				reader.withLength(limit.toLong());
-			}
-			return new ChannelFileBuffer(reader, writer, executor, path);
-		});
+		return Promise.ofBlockingCallable(executor,
+				() -> {
+					Files.createDirectories(path.getParent());
+					FileChannel writerChannel = FileChannel.open(path, CREATE, WRITE);
+					FileChannel readerChannel = FileChannel.open(path, CREATE, READ);
+					return new Tuple2<>(writerChannel, readerChannel);
+				})
+				.map(tuple2 -> {
+					ChannelFileWriter writer = ChannelFileWriter.create(executor, tuple2.getValue1());
+					ChannelFileReader reader = ChannelFileReader.create(executor, tuple2.getValue2());
+					if (limit != null) {
+						reader.withLength(limit.toLong());
+					}
+					return new ChannelFileBuffer(reader, writer, executor, path);
+				});
 	}
 
 	@Override

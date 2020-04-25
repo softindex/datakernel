@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -72,10 +73,10 @@ public interface ChannelSupplier<T> extends AsyncCloseable {
 	 * Wraps {@link AsyncSupplier} in ChannelSupplier, when {@code get()}
 	 * is called, {@code AsyncSupplier}'s {@code get()} will be executed.
 	 *
-	 * @param supplier    an {@code AsyncSupplier} to be wrapped in ChannelSupplier
+	 * @param supplier  an {@code AsyncSupplier} to be wrapped in ChannelSupplier
 	 * @param closeable a {@code Cancellable} which will be set
-	 *                    for the ChannelSupplier wrapper
-	 * @param <T>         data type wrapped in {@code AsyncSupplier} and ChannelSupplier
+	 *                  for the ChannelSupplier wrapper
+	 * @param <T>       data type wrapped in {@code AsyncSupplier} and ChannelSupplier
 	 * @return ChannelSupplier which wraps {@code AsyncSupplier}
 	 */
 	static <T> ChannelSupplier<T> of(AsyncSupplier<T> supplier, @Nullable AsyncCloseable closeable) {
@@ -209,6 +210,26 @@ public interface ChannelSupplier<T> extends AsyncCloseable {
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
 				promise.whenResult(supplier -> supplier.closeEx(e));
+			}
+		};
+	}
+
+	static <T> ChannelSupplier<T> ofAnotherEventloop(@NotNull Eventloop anotherEventloop,
+			@NotNull ChannelSupplier<T> anotherEventloopConsumer) {
+		return new AbstractChannelSupplier<T>() {
+			@Override
+			protected Promise<T> doGet() {
+				SettablePromise<T> promise = new SettablePromise<>();
+				anotherEventloop.execute(() ->
+						anotherEventloopConsumer.get()
+								.whenComplete((item, e) ->
+										eventloop.execute(() -> promise.accept(item, e))));
+				return promise;
+			}
+
+			@Override
+			protected void onClosed(@NotNull Throwable e) {
+				anotherEventloop.execute(() -> anotherEventloopConsumer.closeEx(e));
 			}
 		};
 	}

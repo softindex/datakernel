@@ -24,6 +24,7 @@ import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -106,9 +107,9 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 	/**
 	 * Wraps {@link AsyncConsumer} in {@code ChannelConsumer}.
 	 *
-	 * @param consumer    AsyncConsumer to be wrapped
+	 * @param consumer  AsyncConsumer to be wrapped
 	 * @param closeable a Cancellable, which will be set to the returned ChannelConsumer
-	 * @param <T>         type of data to be consumed
+	 * @param <T>       type of data to be consumed
 	 * @return AbstractChannelConsumer which wraps AsyncConsumer
 	 */
 	static <T> ChannelConsumer<T> of(@NotNull AsyncConsumer<T> consumer, @Nullable AsyncCloseable closeable) {
@@ -203,6 +204,26 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 			protected void onClosed(@NotNull Throwable e) {
 				exception = e;
 				promise.whenResult(supplier -> supplier.closeEx(e));
+			}
+		};
+	}
+
+	static <T> ChannelConsumer<T> ofAnotherEventloop(@NotNull Eventloop anotherEventloop,
+			@NotNull ChannelConsumer<T> anotherEventloopConsumer) {
+		return new AbstractChannelConsumer<T>() {
+			@Override
+			protected Promise<Void> doAccept(@Nullable T value) {
+				SettablePromise<Void> promise = new SettablePromise<>();
+				anotherEventloop.execute(() ->
+						anotherEventloopConsumer.accept(value)
+								.whenComplete((v, e) ->
+										eventloop.execute(() -> promise.accept(v, e))));
+				return promise;
+			}
+
+			@Override
+			protected void onClosed(@NotNull Throwable e) {
+				anotherEventloop.execute(() -> anotherEventloopConsumer.closeEx(e));
 			}
 		};
 	}

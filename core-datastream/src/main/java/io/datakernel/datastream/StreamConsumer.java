@@ -23,6 +23,7 @@ import io.datakernel.datastream.StreamConsumers.Idle;
 import io.datakernel.datastream.StreamConsumers.OfChannelConsumer;
 import io.datakernel.datastream.StreamConsumers.Skip;
 import io.datakernel.datastream.processor.StreamTransformer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -57,6 +58,18 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 	 * If promise completes with an error then this consumer closes with that error.
 	 */
 	Promise<Void> getAcknowledgement();
+
+	default boolean isComplete() {
+		return getAcknowledgement().isComplete();
+	}
+
+	default boolean isResult() {
+		return getAcknowledgement().isResult();
+	}
+
+	default boolean isException() {
+		return getAcknowledgement().isException();
+	}
 
 	/**
 	 * Creates a consumer which does not consume anything.
@@ -119,6 +132,11 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 				.withAcknowledgement(ack -> ack.both(extraAcknowledge));
 	}
 
+	static <T> StreamConsumer<T> ofAnotherEventloop(@NotNull Eventloop anotherEventloop,
+			@NotNull StreamConsumer<T> anotherEventloopConsumer) {
+		return new StreamConsumers.OfAnotherEventloop<>(anotherEventloop, anotherEventloopConsumer);
+	}
+
 	/**
 	 * Transforms this supplier with a given transformer.
 	 */
@@ -140,4 +158,5 @@ public interface StreamConsumer<T> extends AsyncCloseable {
 			}
 		};
 	}
+
 }

@@ -46,10 +46,7 @@ import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.time.Duration;
-import java.util.ArrayDeque;
-import java.util.Iterator;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -101,6 +98,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * Collection of local tasks which were added from this thread.
 	 */
 	private final ArrayDeque<Runnable> localTasks = new ArrayDeque<>();
+
+	private final ArrayList<Runnable> nextTasks = new ArrayList<>();
 
 	/**
 	 * Collection of concurrent tasks which were added from other threads.
@@ -260,6 +259,26 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		Eventloop eventloop = CURRENT_EVENTLOOP.get();
 		if (eventloop != null) return eventloop;
 		throw new IllegalStateException(NO_CURRENT_EVENTLOOP_ERROR);
+	}
+
+	public static void initWithEventloop(@NotNull Eventloop anotherEventloop, @NotNull Runnable runnable) {
+		Eventloop eventloop = CURRENT_EVENTLOOP.get();
+		try {
+			CURRENT_EVENTLOOP.set(anotherEventloop);
+			runnable.run();
+		} finally {
+			CURRENT_EVENTLOOP.set(eventloop);
+		}
+	}
+
+	public static <T> T initWithEventloop(@NotNull Eventloop anotherEventloop, @NotNull Supplier<T> callable) {
+		Eventloop eventloop = CURRENT_EVENTLOOP.get();
+		try {
+			CURRENT_EVENTLOOP.set(anotherEventloop);
+			return callable.get();
+		} finally {
+			CURRENT_EVENTLOOP.set(eventloop);
+		}
 	}
 
 	private void openSelector() {
@@ -586,6 +605,9 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 			localTasks++;
 		}
 
+		this.localTasks.addAll(nextTasks);
+		this.nextTasks.clear();
+
 		if (localTasks != 0) {
 			long loopTime = refreshTimestampAndGet() - startTimestamp;
 			if (inspector != null) inspector.onUpdateLocalTasksStats(localTasks, loopTime);
@@ -809,7 +831,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 */
 	@NotNull
 	public ServerSocketChannel listen(@Nullable InetSocketAddress address, @NotNull ServerSocketSettings serverSocketSettings, @NotNull Consumer<SocketChannel> acceptCallback) throws IOException {
-		if (CHECK) checkState(inEventloopThread(), "listen(...) should be called from within eventloop thread");
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
 		ServerSocketChannel serverSocketChannel = null;
 		try {
 			serverSocketChannel = ServerSocketChannel.open();
@@ -884,7 +906,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param timeout the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 */
 	public void connect(@NotNull SocketAddress address, long timeout, @NotNull Callback<SocketChannel> cb) {
-		if (CHECK) checkState(inEventloopThread(), "connect(...) should be called from within eventloop thread");
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
 		SocketChannel channel;
 		try {
 			channel = SocketChannel.open();
@@ -929,7 +951,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	}
 
 	public long tick() {
-		if (CHECK) checkState(inEventloopThread(), "tick() should be called from within eventloop thread");
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
 		return (long) loop << 32 | tick;
 	}
 
@@ -941,7 +963,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 * @param runnable runnable of this task
 	 */
 	public void post(@NotNull @Async.Schedule Runnable runnable) {
-		if (CHECK) checkState(inEventloopThread(), "post(...) should be called from within eventloop thread");
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
 		localTasks.addFirst(runnable);
 	}
 
@@ -950,9 +972,14 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	 *
 	 * @param runnable runnable of this task
 	 */
-	public void postLater(@NotNull @Async.Schedule Runnable runnable) {
-		if (CHECK) checkState(inEventloopThread(), "postLater(...) should be called from within eventloop thread");
+	public void postLast(@NotNull @Async.Schedule Runnable runnable) {
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
 		localTasks.addLast(runnable);
+	}
+
+	public void postNext(@NotNull @Async.Schedule Runnable runnable) {
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
+		nextTasks.add(runnable);
 	}
 
 	/**
@@ -980,7 +1007,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@NotNull
 	@Override
 	public ScheduledRunnable schedule(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
-		if (CHECK) checkState(inEventloopThread(), "schedule(...) should be called from within eventloop thread");
+		if (CHECK) checkState(inEventloopThread(), "Not in eventloop thread");
 		return addScheduledTask(timestamp, runnable, false);
 	}
 
@@ -997,7 +1024,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@Override
 	public ScheduledRunnable scheduleBackground(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
 		if (CHECK)
-			checkState(inEventloopThread(), "scheduleBackground(...) should be called from within eventloop thread");
+			checkState(inEventloopThread(), "Not in eventloop thread");
 		return addScheduledTask(timestamp, runnable, true);
 	}
 

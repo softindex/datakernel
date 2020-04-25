@@ -27,7 +27,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.function.ToIntFunction;
 
+import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.HashUtils.murmur3hash;
 import static java.util.Collections.singletonList;
 
@@ -96,6 +98,14 @@ public final class NodeShard<K, T> implements Node {
 
 	public void setOutputs(List<StreamId> outputs) {
 		this.outputs = outputs;
+	}
+
+	static <T> ToIntFunction<T> byHash(int partitions) {
+		checkArgument(partitions > 0, "Number of partitions cannot be zero or less");
+		int bits = partitions - 1;
+		return (partitions & bits) == 0 ?
+				object -> object.hashCode() & bits :
+				object -> (object.hashCode() & Integer.MAX_VALUE) % partitions;
 	}
 
 	public int getNonce() {

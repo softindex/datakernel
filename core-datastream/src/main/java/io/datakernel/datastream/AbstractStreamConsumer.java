@@ -51,7 +51,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		tryInitialize();
 		if (acknowledgement.isComplete()) return;
 		this.supplier = streamSupplier;
-		if (!streamSupplier.getEndOfStream().isException()) {
+		if (!streamSupplier.isException()) {
 			onStarted();
 		}
 		streamSupplier.getEndOfStream()

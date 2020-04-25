@@ -23,6 +23,7 @@ import io.datakernel.datastream.StreamSuppliers.ClosingWithError;
 import io.datakernel.datastream.StreamSuppliers.Idle;
 import io.datakernel.datastream.StreamSuppliers.OfIterator;
 import io.datakernel.datastream.processor.StreamTransformer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 
@@ -68,6 +69,18 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	 * If promise completes with an error then this supplier closes with that error.
 	 */
 	Promise<Void> getEndOfStream();
+
+	default boolean isComplete() {
+		return getEndOfStream().isComplete();
+	}
+
+	default boolean isResult() {
+		return getEndOfStream().isResult();
+	}
+
+	default boolean isException() {
+		return getEndOfStream().isException();
+	}
 
 	/**
 	 * A shortcut for {@link #streamTo(StreamConsumer)} for {@link StreamConsumerWithResult}.
@@ -172,6 +185,11 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	static <T> StreamSupplier<T> ofPromise(Promise<? extends StreamSupplier<T>> promise) {
 		if (promise.isResult()) return promise.getResult();
 		return new StreamSuppliers.OfPromise<>(promise);
+	}
+
+	static <T> StreamSupplier<T> ofAnotherEventloop(@NotNull Eventloop anotherEventloop,
+			@NotNull StreamSupplier<T> anotherEventloopConsumer) {
+		return new StreamSuppliers.OfAnotherEventloop<>(anotherEventloop, anotherEventloopConsumer);
 	}
 
 	/**

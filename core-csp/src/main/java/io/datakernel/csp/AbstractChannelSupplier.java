@@ -18,11 +18,18 @@ package io.datakernel.csp;
 
 import io.datakernel.async.process.AbstractAsyncCloseable;
 import io.datakernel.async.process.AsyncCloseable;
+import io.datakernel.common.Check;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.common.Preconditions.checkState;
+
 public abstract class AbstractChannelSupplier<T> extends AbstractAsyncCloseable implements ChannelSupplier<T> {
+	protected static final Boolean CHECK = Check.isEnabled(AbstractChannelSupplier.class);
+	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+
 	// region creators
 	protected AbstractChannelSupplier() {
 		setCloseable(null);
@@ -38,6 +45,7 @@ public abstract class AbstractChannelSupplier<T> extends AbstractAsyncCloseable 
 	@NotNull
 	@Override
 	public final Promise<T> get() {
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		return isClosed() ? Promise.ofException(getException()) : doGet();
 	}
 }

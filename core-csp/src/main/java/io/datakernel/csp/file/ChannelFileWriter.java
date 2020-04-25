@@ -51,9 +51,7 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 
 	private long position = 0;
 
-	// region creators
-
-	public ChannelFileWriter(AsyncFileService fileService, FileChannel channel) {
+	private ChannelFileWriter(AsyncFileService fileService, FileChannel channel) {
 		this.fileService = fileService;
 		this.channel = channel;
 	}
@@ -62,8 +60,8 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 		return create(new ExecutorAsyncFileService(executor), channel);
 	}
 
-	public static ChannelFileWriter create(ExecutorAsyncFileService asyncFileService, FileChannel channel) {
-		return new ChannelFileWriter(asyncFileService, channel);
+	public static ChannelFileWriter create(AsyncFileService fileService, FileChannel channel) {
+		return new ChannelFileWriter(fileService, channel);
 	}
 
 	public static Promise<ChannelFileWriter> open(Executor executor, Path path) {
@@ -71,7 +69,8 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 	}
 
 	public static Promise<ChannelFileWriter> open(Executor executor, Path path, OpenOption... openOptions) {
-		return Promise.ofBlockingCallable(executor, () -> openBlocking(executor, path, openOptions));
+		return Promise.ofBlockingCallable(executor, () -> FileChannel.open(path, openOptions))
+				.map(channel -> create(executor, channel));
 	}
 
 	public static ChannelFileWriter openBlocking(Executor executor, Path path) throws IOException {
@@ -94,7 +93,6 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 		startingOffset = offset;
 		return this;
 	}
-	// endregion
 
 	public long getPosition() {
 		return position;

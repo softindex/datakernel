@@ -1,7 +1,12 @@
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.*;
+import io.datakernel.datastream.processor.StreamFilter;
+import io.datakernel.datastream.processor.StreamMapper;
+import io.datakernel.datastream.processor.StreamSplitter;
+import io.datakernel.datastream.processor.StreamUnion;
 import io.datakernel.eventloop.Eventloop;
+
+import java.util.function.ToIntFunction;
 
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 
@@ -28,10 +33,10 @@ public final class BuiltinNodesExample {
 	private static void splitter() {
 		StreamSupplier<Integer> supplier = StreamSupplier.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
 
-		Sharder<Object> hashSharder = Sharders.byHash(3);
+		ToIntFunction<Object> hashSharder = item -> (item.hashCode() & Integer.MAX_VALUE) % 3;
 		//creating a sharder of three parts for three consumers
 		StreamSplitter<Integer, Integer> sharder = StreamSplitter.create(
-				(item, acceptors) -> acceptors[hashSharder.shard(item)].accept(item));
+				(item, acceptors) -> acceptors[hashSharder.applyAsInt(item)].accept(item));
 
 		StreamConsumerToList<Integer> first = StreamConsumerToList.create();
 		StreamConsumerToList<Integer> second = StreamConsumerToList.create();

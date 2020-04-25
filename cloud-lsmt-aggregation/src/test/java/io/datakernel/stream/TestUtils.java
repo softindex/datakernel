@@ -25,35 +25,35 @@ import static org.junit.Assert.assertTrue;
 
 public class TestUtils {
 	public static void assertEndOfStream(StreamSupplier<?> streamSupplier) {
-		assertTrue(streamSupplier.getEndOfStream().isResult());
+		assertTrue(streamSupplier.isResult());
 	}
 
 	public static void assertEndOfStream(StreamConsumer<?> streamConsumer) {
-		assertTrue(streamConsumer.getAcknowledgement().isResult());
+		assertTrue(streamConsumer.isResult());
 	}
 
 	public static void assertClosedWithError(StreamSupplier<?> streamSupplier) {
-		assertTrue(streamSupplier.getEndOfStream().isException());
+		assertTrue(streamSupplier.isException());
 	}
 
 	public static void assertClosedWithError(StreamConsumer<?> streamConsumer) {
-		assertTrue(streamConsumer.getAcknowledgement().isException());
+		assertTrue(streamConsumer.isException());
 	}
 
 	public static void assertSuppliersEndOfStream(List<? extends StreamSupplier<?>> streamSuppliers) {
-		assertTrue(streamSuppliers.stream().allMatch(v -> v.getEndOfStream().isResult()));
+		assertTrue(streamSuppliers.stream().allMatch(StreamSupplier::isResult));
 	}
 
 	public static void assertConsumersEndOfStream(List<? extends StreamConsumer<?>> streamConsumers) {
-		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isResult()));
+		assertTrue(streamConsumers.stream().allMatch(StreamConsumer::isResult));
 	}
 
 	public static void assertSuppliersClosedWithError(List<? extends StreamSupplier<?>> streamSuppliers) {
-		assertTrue(streamSuppliers.stream().allMatch(v -> v.getEndOfStream().isException()));
+		assertTrue(streamSuppliers.stream().allMatch(StreamSupplier::isException));
 	}
 
 	public static void assertConsumersClosedWithError(List<? extends StreamConsumer<?>> streamConsumers) {
-		assertTrue(streamConsumers.stream().allMatch(v -> v.getAcknowledgement().isException()));
+		assertTrue(streamConsumers.stream().allMatch(StreamConsumer::isException));
 	}
 
 }

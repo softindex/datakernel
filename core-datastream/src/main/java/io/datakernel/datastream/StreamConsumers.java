@@ -18,10 +18,15 @@ package io.datakernel.datastream;
 
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collector;
@@ -222,6 +227,145 @@ final class StreamConsumers {
 		@Override
 		protected void onComplete() {
 			accumulator = null;
+		}
+
+	}
+
+	static final class OfAnotherEventloop<T> extends AbstractStreamConsumer<T> {
+		private static final Iterator<?> END_OF_STREAM = Collections.emptyIterator();
+
+		private List<T> list = new ArrayList<>();
+		private final StreamDataAcceptor<T> toList = item -> list.add(item);
+
+		private final StreamConsumer<T> anotherEventloopConsumer;
+		private final InternalSupplier internalSupplier;
+		private volatile boolean wakingUp;
+
+		public OfAnotherEventloop(@NotNull Eventloop anotherEventloop, @NotNull StreamConsumer<T> anotherEventloopConsumer) {
+			this.anotherEventloopConsumer = anotherEventloopConsumer;
+			this.internalSupplier = Eventloop.initWithEventloop(anotherEventloop, InternalSupplier::new);
+		}
+
+		void execute(Runnable runnable) {
+			eventloop.execute(runnable);
+		}
+
+		void wakeUp() {
+			if (wakingUp) return;
+			wakingUp = true;
+			execute(this::onWakeUp);
+		}
+
+		void onWakeUp() {
+			if (isComplete()) return;
+			wakingUp = false;
+			flush();
+			if (internalSupplier.isReady) {
+				resume(toList);
+			} else {
+				suspend();
+			}
+		}
+
+		@Override
+		protected void onStarted() {
+			internalSupplier.execute(() ->
+					internalSupplier.streamTo(anotherEventloopConsumer));
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			flush();
+		}
+
+		private void flush() {
+			if (internalSupplier.iterator != null) return;
+			if (this.isEndOfStream() && this.list.isEmpty()) {
+				//noinspection unchecked
+				internalSupplier.iterator = (Iterator<T>) END_OF_STREAM;
+			} else if (!this.list.isEmpty()) {
+				internalSupplier.iterator = this.list.iterator();
+				this.list = new ArrayList<>();
+			} else {
+				return;
+			}
+			internalSupplier.wakeUp();
+		}
+
+		@Override
+		protected void onError(Throwable e) {
+			internalSupplier.execute(() -> internalSupplier.closeEx(e));
+		}
+
+		@Override
+		protected void onCleanup() {
+			this.list = null;
+		}
+
+		final class InternalSupplier extends AbstractStreamSupplier<T> {
+			volatile Iterator<T> iterator;
+			volatile boolean isReady;
+			volatile boolean wakingUp;
+
+			void execute(Runnable runnable) {
+				eventloop.execute(runnable);
+			}
+
+			void wakeUp() {
+				if (wakingUp) return;
+				wakingUp = true;
+				execute(this::onWakeUp);
+			}
+
+			void onWakeUp() {
+				if (isComplete()) return;
+				wakingUp = false;
+				flush();
+			}
+
+			@Override
+			protected void onResumed() {
+				isReady = true;
+				flush();
+			}
+
+			@Override
+			protected void onSuspended() {
+				isReady = false;
+				OfAnotherEventloop.this.wakeUp();
+			}
+
+			private void flush() {
+				if (iterator == null) {
+					OfAnotherEventloop.this.wakeUp();
+					return;
+				}
+				Iterator<T> iterator = this.iterator;
+				while (isReady() && iterator.hasNext()) {
+					send(iterator.next());
+				}
+				if (iterator == END_OF_STREAM) {
+					sendEndOfStream();
+				} else {
+					this.iterator = null;
+					OfAnotherEventloop.this.wakeUp();
+				}
+			}
+
+			@Override
+			protected void onAcknowledge() {
+				OfAnotherEventloop.this.execute(OfAnotherEventloop.this::acknowledge);
+			}
+
+			@Override
+			protected void onError(Throwable e) {
+				OfAnotherEventloop.this.execute(() -> OfAnotherEventloop.this.closeEx(e));
+			}
+
+			@Override
+			protected void onCleanup() {
+				this.iterator = null;
+			}
 		}
 
 	}

@@ -355,7 +355,7 @@ public final class ChannelSerializer<T> extends AbstractStreamConsumer<T> implem
 			if (autoFlushIntervalMillis == -1)
 				return;
 			if (autoFlushIntervalMillis == 0) {
-				eventloop.postLater(wrapContext(this, () -> {
+				eventloop.postLast(wrapContext(this, () -> {
 					flushPosted = false;
 					flush();
 				}));
