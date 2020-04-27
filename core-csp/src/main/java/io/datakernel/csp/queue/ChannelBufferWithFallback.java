@@ -1,6 +1,6 @@
 package io.datakernel.csp.queue;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -20,12 +20,14 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 	@Nullable
 	private Exception exception;
 
+	private boolean finished = false;
+
 	public ChannelBufferWithFallback(ChannelQueue<T> queue, Supplier<Promise<? extends ChannelQueue<T>>> bufferFactory) {
 		this.queue = queue;
 		this.bufferFactory = bufferFactory;
 	}
 
-	private SettablePromise<ByteBuf> bufferTake;
+	private SettablePromise<Void> waitingForBuffer;
 
 	@Override
 	public Promise<Void> put(@Nullable T item) {
@@ -33,26 +35,18 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 			tryRecycle(item);
 			return Promise.ofException(exception);
 		}
-		if (buffer != null) {
-			if (buffer.isExhausted()) {
-				buffer.close();
-				buffer = null;
-			} else {
-				return buffer.put(item);
-			}
+		if (item == null) {
+			finished = true;
 		}
-		if (!queue.isSaturated()) {
-			return queue.put(item);
+		if (buffer == null) {
+			return primaryPut(item);
 		}
-		SettablePromise<ByteBuf> promise = new SettablePromise<>();
-		bufferTake = promise;
-		return bufferFactory.get()
-				.then(buffer -> {
-					this.buffer = buffer;
-					promise.set(null);
-					bufferTake = null;
-					return buffer.put(item);
-				});
+		if (!buffer.isSaturated()) {
+			return secondaryPut(item);
+		}
+		buffer.close();
+		buffer = null;
+		return primaryPut(item);
 	}
 
 	@Override
@@ -60,25 +54,71 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 		if (exception != null) {
 			return Promise.ofException(exception);
 		}
-		if (buffer == null) {
-			if (bufferTake != null) {
-				return bufferTake.then($ -> buffer.take());
-			}
-			return queue.take();
+		if (buffer != null) {
+			return secondaryTake();
 		}
-		if (buffer.isExhausted()) {
-			buffer.close();
-			buffer = null;
-			return queue.take();
+		if (waitingForBuffer != null) {
+			return waitingForBuffer.then($ -> secondaryTake());
 		}
+		return primaryTake();
+	}
+
+	private Promise<T> primaryTake() {
+		return finished && queue.isExhausted() ?
+				Promise.of(null) :
+				queue.take();
+	}
+
+	private Promise<Void> primaryPut(@Nullable T item) {
+		if (!queue.isSaturated()) {
+			return queue.put(item);
+		}
+		SettablePromise<Void> waitingForBuffer = new SettablePromise<>();
+		this.waitingForBuffer = waitingForBuffer;
+		return bufferFactory.get()
+				.then(buffer -> {
+					this.buffer = buffer;
+					waitingForBuffer.set(null);
+					this.waitingForBuffer = null;
+					return secondaryPut(item);
+				});
+	}
+
+	private Promise<T> secondaryTake() {
+		assert buffer != null;
 		return buffer.take()
-				.then(item -> {
-					if (item != null) {
+				.thenEx((item, e) -> {
+					if (e != null) {
+						if (e != AsyncCloseable.CLOSE_EXCEPTION) {
+							return Promise.ofException(e);
+						}
+					} else if (item != null) {
 						return Promise.of(item);
+					} else {
+						// here item was null and we had no exception
+						buffer.close();
 					}
-					buffer.close();
+					// here either we had a close excation or item was null
+					// so we retry the whole thing (same as in secondaryPut)
 					buffer = null;
-					return queue.take();
+					return primaryTake();
+				});
+	}
+
+	private Promise<Void> secondaryPut(@Nullable T item) {
+		assert buffer != null;
+		return buffer.put(item)
+				.thenEx(($, e) -> {
+					if (e == null) {
+						return Promise.complete();
+					}
+					if (e != AsyncCloseable.CLOSE_EXCEPTION) {
+						return Promise.ofException(e);
+					}
+					// buffer was already closed for whatever reason,
+					// retry the whole thing (may cause loops, but should not)
+					buffer = null;
+					return primaryPut(item);
 				});
 	}
 

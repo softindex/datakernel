@@ -24,7 +24,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
@@ -50,12 +49,11 @@ import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class MapReduceTest {
-	private static DataflowServer server1;
-	private static DataflowServer server2;
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -162,8 +160,8 @@ public class MapReduceTest {
 						"cat"))
 				.build();
 
-		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
-		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
 
 		server1.listen();
 		server2.listen();
@@ -179,10 +177,14 @@ public class MapReduceTest {
 		Collector<StringCount> collector = new Collector<>(reducedItems, client);
 		StreamSupplier<StringCount> resultSupplier = collector.compile(graph);
 		StreamConsumerToList<StringCount> resultConsumer = StreamConsumerToList.create();
-		resultSupplier.streamTo(resultConsumer);
 
-		System.out.println(graph);
-		await(cleanUp(graph.execute()));
+		resultSupplier.streamTo(resultConsumer).whenComplete(assertComplete());
+
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), resultConsumer.getList());
 	}
@@ -225,12 +227,5 @@ public class MapReduceTest {
 		public int compare(String s1, String s2) {
 			return s1.compareTo(s2);
 		}
-	}
-
-	private static <T> Promise<T> cleanUp(Promise<T> promise) {
-		return promise.whenComplete(() -> {
-			server1.close();
-			server2.close();
-		});
 	}
 }

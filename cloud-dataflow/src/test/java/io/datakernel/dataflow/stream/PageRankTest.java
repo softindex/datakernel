@@ -42,7 +42,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
@@ -69,14 +68,12 @@ import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
 public class PageRankTest {
-	private static DataflowServer server1;
-	private static DataflowServer server2;
-
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
 
@@ -317,8 +314,8 @@ public class PageRankTest {
 
 				.build();
 
-		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
-		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
 
 		server1.listen();
 		server2.listen();
@@ -338,18 +335,17 @@ public class PageRankTest {
 		SortedDataset<Long, Rank> pageRanks = pageRank(pages);
 
 		DatasetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
+
 		consumerNode.compileInto(graph);
 
-		await(cleanUp(graph.execute()));
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(singletonList(new Rank(2, 0.6069)), result1.getList());
 		assertEquals(asList(new Rank(1, 1.7861), new Rank(3, 0.6069)), result2.getList());
 	}
 
-	private static <T> Promise<T> cleanUp(Promise<T> promise) {
-		return promise.whenComplete(() -> {
-			server1.close();
-			server2.close();
-		});
-	}
 }

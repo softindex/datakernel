@@ -45,6 +45,7 @@ import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
 import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -144,12 +145,11 @@ public class ReducerDeadlockTest {
 
 		consumerNode.compileInto(graph);
 
-		System.out.println(graph.toGraphViz(true));
-
-		await(graph.execute().whenComplete(() -> {
-			server1.close();
-			server2.close();
-		}));
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(result1.getList(), list1);
 		assertEquals(result2.getList(), list2);

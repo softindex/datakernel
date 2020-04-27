@@ -88,7 +88,7 @@ public final class ChannelBufferWithFallbackTest {
 		assertEquals("hello world, this is a byte buffer\nsecond: hello world, this is a byte buffer", taken);
 		assertEquals("another input\nsecond buffer and a third one", taken2);
 
-		assertEquals(2, counter.value);
+		assertEquals(1, counter.value);
 
 		q.close();
 	}

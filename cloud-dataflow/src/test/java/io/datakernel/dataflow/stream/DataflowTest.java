@@ -42,7 +42,6 @@ import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.test.rules.ByteBufRule;
@@ -70,13 +69,12 @@ import static io.datakernel.dataflow.dataset.Datasets.*;
 import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public final class DataflowTest {
-	private static DataflowServer server1;
-	private static DataflowServer server2;
 
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
@@ -157,8 +155,8 @@ public final class DataflowTest {
 				.bind(slot("result")).toInstance(result2)
 				.build();
 
-		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
-		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
 
 		server1.listen();
 		server2.listen();
@@ -169,8 +167,11 @@ public final class DataflowTest {
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
 
-		System.out.println(graph);
-		await(cleanUp(graph.execute()));
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(asList(new TestItem(1), new TestItem(3), new TestItem(5)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result2.getList());
@@ -206,8 +207,8 @@ public final class DataflowTest {
 				.bind(slot("result")).toInstance(result2)
 				.build();
 
-		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
-		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
 
 		server1.listen();
 		server2.listen();
@@ -225,8 +226,11 @@ public final class DataflowTest {
 		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
 
-		System.out.println(graph);
-		await(cleanUp(graph.execute()));
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), result2.getList());
@@ -266,8 +270,8 @@ public final class DataflowTest {
 				.bind(slot("result")).toInstance(result2)
 				.build();
 
-		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
-		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
 
 		server1.listen();
 		server2.listen();
@@ -279,8 +283,11 @@ public final class DataflowTest {
 		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
 		consumerNode.compileInto(graph);
 
-		System.out.println(graph);
-		await(cleanUp(graph.execute()));
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
 		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
@@ -317,8 +324,8 @@ public final class DataflowTest {
 						new TestItem(10)))
 				.build();
 
-		server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
-		server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
 
 		server1.listen();
 		server2.listen();
@@ -333,10 +340,13 @@ public final class DataflowTest {
 		Collector<TestItem> collector = new Collector<>(sortedDataset, client);
 		StreamSupplier<TestItem> resultSupplier = collector.compile(graph);
 
-		resultSupplier.streamTo(resultConsumer).whenException(Throwable::printStackTrace);
+		resultSupplier.streamTo(resultConsumer).whenComplete(assertComplete());
 
-		System.out.println(graph.toGraphViz(true));
-		await(cleanUp(graph.execute()));
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
 
 		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(8), new TestItem(10)), resultConsumer.getList());
 	}
@@ -387,13 +397,6 @@ public final class DataflowTest {
 		public boolean test(TestItem input) {
 			return input.value % 2 == 0;
 		}
-	}
-
-	private static <T> Promise<T> cleanUp(Promise<T> promise) {
-		return promise.whenComplete(() -> {
-			server1.close();
-			server2.close();
-		});
 	}
 
 	static InetSocketAddress getFreeListenAddress() throws UnknownHostException {

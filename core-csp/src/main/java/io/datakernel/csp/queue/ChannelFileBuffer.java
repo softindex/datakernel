@@ -111,6 +111,11 @@ public final class ChannelFileBuffer implements ChannelQueue<ByteBuf> {
 		writer.closeEx(e);
 		reader.closeEx(e);
 
+		if (take != null) {
+			take.setException(e);
+			take = null;
+		}
+
 		// each queue should operate on files with unique names
 		// to avoid races due to this
 		executor.execute(() -> {
