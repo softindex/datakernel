@@ -113,7 +113,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		@Override
 		public StreamDataAcceptor<T> getDataAcceptor() {
 			this.dataAcceptor = super.getDataAcceptor();
-			return this;
+			return this.dataAcceptor != null ? this : null;
 		}
 
 		@Override
@@ -137,24 +137,17 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 	}
 
 	private void startNewChunk() {
-		StreamConsumer<T> consumer = StreamConsumer.ofPromise(
+		switcher.switchTo(StreamConsumer.ofPromise(
 				storage.createId()
 						.then(chunkId -> storage.write(aggregation, fields, recordClass, chunkId, classLoader)
-								.map(streamConsumer -> {
-									ChunkWriter chunkWriter = new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate);
-
-									chunksCollector.addPromise(
-											chunkWriter.getResult(),
-											(accumulator, newChunk) -> {
-												if (newChunk != null && newChunk.getCount() != 0) {
-													accumulator.add(newChunk);
-												}
-											});
-
-									return chunkWriter;
-								})));
-
-		switcher.switchTo(consumer);
+								.map(streamConsumer -> new ChunkWriter(streamConsumer, chunkId, chunkSize, partitionPredicate))
+								.whenResult(chunkWriter -> chunksCollector.addPromise(
+										chunkWriter.getResult(),
+										(accumulator, newChunk) -> {
+											if (newChunk != null && newChunk.getCount() != 0) {
+												accumulator.add(newChunk);
+											}
+										})))));
 	}
 
 }
