@@ -41,20 +41,17 @@ public final class ComplexHttpLauncher extends Launcher {
 
 	// region primary eventloops
 	@Provides
-	@Eager
 	Eventloop eventloop1() {
 		return Eventloop.create();
 	}
 
 	@Provides
-	@Eager
 	@Named("Second")
 	Eventloop eventloop2() {
 		return Eventloop.create();
 	}
 
 	@Provides
-	@Eager
 	@Named("Third")
 	Eventloop eventloop3() {
 		return Eventloop.create();
@@ -83,6 +80,7 @@ public final class ComplexHttpLauncher extends Launcher {
 
 	// region primary servers
 	@Provides
+	@Eager
 	@Named("First")
 	PrimaryServer server1(Eventloop eventloop, @Named("First") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
 		return PrimaryServer.create(eventloop, serverInstances)
@@ -90,6 +88,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	}
 
 	@Provides
+	@Eager
 	@Named("Second")
 	PrimaryServer server2(@Named("Second") Eventloop eventloop, @Named("Second") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
 		return PrimaryServer.create(eventloop, serverInstances)
@@ -97,6 +96,7 @@ public final class ComplexHttpLauncher extends Launcher {
 	}
 
 	@Provides
+	@Eager
 	@Named("Third")
 	PrimaryServer server3(@Named("Third") Eventloop eventloop, @Named("Third") WorkerPool.Instances<AsyncHttpServer> serverInstances) {
 		return PrimaryServer.create(eventloop, serverInstances)
@@ -152,9 +152,9 @@ public final class ComplexHttpLauncher extends Launcher {
 				JmxModule.create()
 						.withScopes(false),
 				TriggersModule.create()
-						.with(Key.of(PrimaryServer.class, "First"), Severity.HIGH, "server1", TriggerResult::ofValue)
-						.with(Key.of(PrimaryServer.class, "Second"), Severity.HIGH, "server2", TriggerResult::ofValue)
-						.with(Key.of(PrimaryServer.class, "Third"), Severity.HIGH, "server3", TriggerResult::ofValue)
+						.with(Key.ofName(PrimaryServer.class, "First"), Severity.HIGH, "server1", TriggerResult::ofValue)
+						.with(Key.ofName(PrimaryServer.class, "Second"), Severity.HIGH, "server2", TriggerResult::ofValue)
+						.with(Key.ofName(PrimaryServer.class, "Third"), Severity.HIGH, "server3", TriggerResult::ofValue)
 						.with(Key.of(Eventloop.class), Severity.HIGH, "eventloop", TriggerResult::ofValue)
 		);
 	}

@@ -16,7 +16,7 @@
 
 package io.datakernel.launcher;
 
-import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.QualifierAnnotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -25,6 +25,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
-@NameAnnotation
+@QualifierAnnotation
 public @interface OnRun {
 }

@@ -29,7 +29,7 @@ import org.junit.Test;
 import static io.datakernel.service.ServiceAdapters.combinedAdapter;
 import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
 
-public final class WorkerNameTest {
+public final class WorkerQualifierTest {
 	public static final int WORKERS = 4;
 
 	@ClassRule
@@ -64,7 +64,7 @@ public final class WorkerNameTest {
 
 		@Provides
 		Element2 primaryServer(@Named("Primary") Element1 primaryEventloop, WorkerPool workerPool) {
-			WorkerPool.Instances<Element4> unusedList = workerPool.getInstances(Key.of(Element4.class, "First"));
+			WorkerPool.Instances<Element4> unusedList = workerPool.getInstances(Key.ofName(Element4.class, "First"));
 			return new Element2();
 		}
 

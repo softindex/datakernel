@@ -1,8 +1,10 @@
 package io.datakernel.di.util;
 
 import io.datakernel.di.core.*;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.annotation.Annotation;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
@@ -87,7 +89,6 @@ public final class Utils {
 		return transformBindingMultimap(multimap, UnaryOperator.identity(), fn);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static Map<Key<?>, BindingSet<?>> transformBindingMultimap(Map<Key<?>, BindingSet<?>> multimap, UnaryOperator<Key<?>> fnKey, BiFunction<Key<?>, Binding<?>, Binding<?>> fnValue) {
 		return multimap.entrySet()
 				.stream()
@@ -95,7 +96,7 @@ public final class Utils {
 						entry -> fnKey.apply(entry.getKey()),
 						entry -> {
 							BindingSet<?> bindingSet = entry.getValue();
-							return new BindingSet(
+							return new BindingSet<>(
 									bindingSet
 											.getBindings()
 											.stream()
@@ -242,9 +243,31 @@ public final class Utils {
 	}
 
 	public static int getKeyDisplayCenter(Key<?> key) {
-		Name name = key.getName();
-		int nameOffset = name != null ? name.getDisplayString().length() + 1 : 0;
+		Object qualifier = key.getQualifier();
+		int nameOffset = qualifier != null ? getDisplayString(qualifier).length() + 1 : 0;
 		return nameOffset + (key.getDisplayString().length() - nameOffset) / 2;
+	}
+
+	@NotNull
+	public static String getDisplayString(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) {
+		if (annotation == null) {
+			return "@" + ReflectionUtils.getDisplayName(annotationType);
+		}
+		String typeName = annotationType.getName();
+		String str = annotation.toString();
+		return str.startsWith("@" + typeName) ? "@" + ReflectionUtils.getDisplayName(annotationType) + str.substring(typeName.length() + 1) : str;
+	}
+
+	public static String getDisplayString(@NotNull Object object){
+		if (object instanceof Class && ((Class<?>) object).isAnnotation()){
+			//noinspection unchecked
+			return getDisplayString((Class<? extends Annotation>) object, null);
+		}
+		if (object instanceof Annotation){
+			Annotation annotation = (Annotation) object;
+			return getDisplayString(annotation.annotationType(), annotation);
+		}
+		return object.toString();
 	}
 
 	public static String drawCycle(Key<?>[] cycle) {

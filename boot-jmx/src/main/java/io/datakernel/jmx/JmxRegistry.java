@@ -17,9 +17,8 @@
 package io.datakernel.jmx;
 
 import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Name;
 import io.datakernel.di.core.Scope;
-import io.datakernel.di.module.UniqueNameImpl;
+import io.datakernel.di.module.UniqueQualifierImpl;
 import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.NotNull;
@@ -340,24 +339,24 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			return keyToObjectNames.get(key);
 		}
 		Class<?> rawType = key.getRawType();
-		Name keyName = key.getName();
-		if (keyName != null && keyName.getAnnotation() instanceof UniqueNameImpl) {
-			keyName = ((UniqueNameImpl) keyName.getAnnotation()).getOriginalName();
+		Object keyQualifier = key.getQualifier();
+		if (keyQualifier instanceof UniqueQualifierImpl) {
+			keyQualifier = ((UniqueQualifierImpl) keyQualifier).getOriginalQualifier();
 		}
 		Package domainPackage = rawType.getPackage();
 		String domain = domainPackage == null ? ROOT_PACKAGE_NAME : domainPackage.getName();
 		String name = domain + ":" + "type=" + rawType.getSimpleName();
 
-		if (keyName != null) { // with annotation
+		if (keyQualifier != null) { // with annotation
 			name += ',';
-			String annotationString = getAnnotationString(keyName.getAnnotationType(), keyName.getAnnotation());
-			if (!annotationString.contains("(")) {
-				name += "annotation=" + annotationString;
-			} else if (!annotationString.startsWith("(")) {
-				name += annotationString.substring(0, annotationString.indexOf('('));
-				name += '=' + annotationString.substring(annotationString.indexOf('(') + 1, annotationString.length() - 1);
+			String qualifierString = getQualifierString(keyQualifier);
+			if (!qualifierString.contains("(")) {
+				name += "annotation=" + qualifierString;
+			} else if (!qualifierString.startsWith("(")) {
+				name += qualifierString.substring(0, qualifierString.indexOf('('));
+				name += '=' + qualifierString.substring(qualifierString.indexOf('(') + 1, qualifierString.length() - 1);
 			} else {
-				name += annotationString.substring(1, annotationString.length() - 1);
+				name += qualifierString.substring(1, qualifierString.length() - 1);
 			}
 		}
 		if (pool != null) {
@@ -366,9 +365,9 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 				name += format(",scope=%s", getAnnotationString(scope.getAnnotationType(), scope.getAnnotation()));
 			}
 			Key<?> poolKey = workerPoolKeys.get(pool);
-			if (poolKey != null && poolKey.getName() != null) {
-				String annotationString = getAnnotationString(poolKey.getName().getAnnotationType(), poolKey.getName().getAnnotation());
-				name += format(",workerPool=WorkerPool@%s", annotationString);
+			if (poolKey != null && poolKey.getQualifier() != null) {
+				String qualifierString = getQualifierString(poolKey.getQualifier());
+				name += format(",workerPool=WorkerPool@%s", qualifierString);
 			}
 		}
 		return addGenericParamsInfo(name, key);

@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -231,18 +231,18 @@ public class JmxRegistryTest {
 
 	// annotations
 	@Retention(RetentionPolicy.RUNTIME)
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface BasicService {
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface Group {
 		String value() default "";
 	}
 
 	@Retention(RetentionPolicy.RUNTIME)
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface ComplexAnnotation {
 		int threadId() default -1;
 

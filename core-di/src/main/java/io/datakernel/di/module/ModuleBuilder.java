@@ -6,7 +6,6 @@ import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
@@ -69,22 +68,8 @@ public interface ModuleBuilder {
 	/**
 	 * @see #bind(Key)
 	 */
-	default <T> ModuleBuilder0<T> bind(Class<T> cls, Name name) {
-		return bind(Key.of(cls, name));
-	}
-
-	/**
-	 * @see #bind(Key)
-	 */
-	default <T> ModuleBuilder0<T> bind(Class<T> cls, String name) {
-		return bind(Key.of(cls, name));
-	}
-
-	/**
-	 * @see #bind(Key)
-	 */
-	default <T> ModuleBuilder0<T> bind(Class<T> cls, Class<? extends Annotation> annotationType) {
-		return bind(Key.of(cls, annotationType));
+	default <T> ModuleBuilder0<T> bind(Class<T> cls, Object qualifier) {
+		return bind(Key.of(cls, qualifier));
 	}
 
 	/**
@@ -101,7 +86,7 @@ public interface ModuleBuilder {
 	}
 
 	default <T> ModuleBuilder bindInstanceProvider(Key<T> key) {
-		return bind(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getName()));
+		return bind(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getQualifier()));
 	}
 
 	default <T> ModuleBuilder bindInstanceInjector(Class<T> type) {
@@ -109,7 +94,7 @@ public interface ModuleBuilder {
 	}
 
 	default <T> ModuleBuilder bindInstanceInjector(Key<T> key) {
-		return bind(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
+		return bind(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getQualifier()));
 	}
 
 	/**
@@ -146,28 +131,20 @@ public interface ModuleBuilder {
 		return multibindToSet(Key.of(type));
 	}
 
-	default <V> ModuleBuilder multibindToSet(Class<V> type, String name) {
-		return multibindToSet(Key.of(type, name));
-	}
-
-	default <V> ModuleBuilder multibindToSet(Class<V> type, Name name) {
-		return multibindToSet(Key.of(type, name));
+	default <V> ModuleBuilder multibindToSet(Class<V> type, Object qualifier) {
+		return multibindToSet(Key.of(type, qualifier));
 	}
 
 	default <V> ModuleBuilder multibindToSet(Key<V> key) {
-		return multibind(Key.ofType(Types.parameterized(Set.class, key.getType()), key.getName()), Multibinder.toSet());
+		return multibind(Key.ofType(Types.parameterized(Set.class, key.getType()), key.getQualifier()), Multibinder.toSet());
 	}
 
 	default <K, V> ModuleBuilder multibindToMap(Class<K> keyType, Class<V> valueType) {
-		return multibindToMap(keyType, valueType, (Name) null);
+		return multibindToMap(keyType, valueType, null);
 	}
 
-	default <K, V> ModuleBuilder multibindToMap(Class<K> keyType, Class<V> valueType, String name) {
-		return multibindToMap(keyType, valueType, Name.of(name));
-	}
-
-	default <K, V> ModuleBuilder multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
-		return multibind(Key.ofType(Types.parameterized(Map.class, keyType, valueType), name), Multibinder.toMap());
+	default <K, V> ModuleBuilder multibindToMap(Class<K> keyType, Class<V> valueType, Object qualifier) {
+		return multibind(Key.ofType(Types.parameterized(Map.class, keyType, valueType), qualifier), Multibinder.toMap());
 	}
 
 	Module build();

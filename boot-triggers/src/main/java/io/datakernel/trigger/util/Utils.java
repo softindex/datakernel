@@ -25,6 +25,16 @@ import java.lang.reflect.Type;
 
 public final class Utils {
 
+	public static String prettyPrintQualifier(Object qualifier) {
+		if (qualifier instanceof Annotation) {
+			return prettyPrintAnnotation((Annotation) qualifier);
+		}
+		if (qualifier instanceof Class && ((Class<?>) qualifier).isAnnotation()) {
+			return "@" + RecursiveType.of((Class<?>) qualifier).getSimpleName();
+		}
+		return qualifier.toString();
+	}
+
 	public static String prettyPrintAnnotation(Annotation annotation) {
 		StringBuilder sb = new StringBuilder();
 		Method[] methods = annotation.annotationType().getDeclaredMethods();
@@ -54,11 +64,9 @@ public final class Utils {
 
 	public static String prettyPrintSimpleKeyName(Key<?> key) {
 		Type type = key.getType();
-		return (key.getAnnotation() != null ?
-				prettyPrintAnnotation(key.getAnnotation()) + " " :
-				key.getAnnotationType() != null ?
-						"@" + RecursiveType.of(key.getAnnotationType()).getSimpleName() + " " :
-						"") + RecursiveType.of(type).getSimpleName();
+		return (key.getQualifier() != null ?
+				prettyPrintQualifier(key.getQualifier()) + " " :
+				"") + RecursiveType.of(type).getSimpleName();
 	}
 
 }

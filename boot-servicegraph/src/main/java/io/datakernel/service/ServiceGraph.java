@@ -19,7 +19,6 @@ package io.datakernel.service;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.collection.CollectionUtils;
-import io.datakernel.di.core.Name;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxOperation;
@@ -39,6 +38,7 @@ import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.collection.CollectionUtils.concat;
 import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.di.util.ReflectionUtils.getDisplayName;
+import static io.datakernel.di.util.Utils.getDisplayString;
 import static io.datakernel.di.util.Utils.union;
 import static io.datakernel.service.util.Utils.combineAll;
 import static java.lang.System.currentTimeMillis;
@@ -62,7 +62,7 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 		Type getType();
 
 		@Nullable
-		Name getName();
+		Object getQualifier();
 
 		@Nullable
 		String getSuffix();
@@ -502,10 +502,10 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private String keyToString(Key key) {
-		Name name = key.getName();
+		Object qualifier = key.getQualifier();
 		String keySuffix = key.getSuffix();
 		String keyIndex = key.getIndex();
-		return (name != null ? name.toString() + " " : "") +
+		return (qualifier != null ? qualifier.toString() + " " : "") +
 				key.getType().getTypeName() +
 				(keySuffix == null ? "" :
 						"[" + keySuffix + "]") +
@@ -521,11 +521,11 @@ public final class ServiceGraph implements Initializable<ServiceGraph>, Concurre
 	}
 
 	private String keyToLabel(Key key) {
-		Name name = key.getName();
+		Object qualifier = key.getQualifier();
 		String keySuffix = key.getSuffix();
 		String keyIndex = key.getIndex();
 		NodeStatus status = nodeStatuses.get(key);
-		String label = (name != null ? name.getDisplayString() + "\\n" : "") +
+		String label = (qualifier != null ? getDisplayString(qualifier) + "\\n" : "") +
 				getDisplayName(key.getType()) +
 				(keySuffix == null ? "" :
 						"[" + keySuffix + "]") +

@@ -6,6 +6,7 @@ import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxRefreshHandler;
 import io.datakernel.jmx.api.JmxWrapperFactory;
 import io.datakernel.jmx.api.MBeanWrapperFactory;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.management.DynamicMBean;
@@ -106,7 +107,7 @@ class Utils {
 	}
 
 	@Nullable
-	static Class<? extends JmxWrapperFactory> getWrapperFactoryClass(Class<?> clazz){
+	static Class<? extends JmxWrapperFactory> getWrapperFactoryClass(Class<?> clazz) {
 		Annotation wrapperFactoryAnnotation = deepFindAnnotation(clazz, annotation -> annotation.annotationType() == MBeanWrapperFactory.class);
 		if (wrapperFactoryAnnotation == null) return null;
 		return ((MBeanWrapperFactory) wrapperFactoryAnnotation).value();
@@ -159,5 +160,17 @@ class Utils {
 					}
 				});
 		return changed.get();
+	}
+
+	static String getQualifierString(@NotNull Object qualifier) throws ReflectiveOperationException {
+		if (qualifier instanceof Class) {
+			if (((Class<?>) qualifier).isAnnotation()) {
+				//noinspection unchecked
+				return getAnnotationString((Class<? extends Annotation>) qualifier, null);
+			}
+		} else if (qualifier instanceof Annotation) {
+			return getAnnotationString((Annotation) qualifier);
+		}
+		return qualifier.toString();
 	}
 }

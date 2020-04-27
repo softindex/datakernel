@@ -24,8 +24,8 @@ import io.datakernel.crdt.CrdtStorage;
 import io.datakernel.crdt.CrdtStorageCluster;
 import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.local.CrdtStorageMap;
-import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
@@ -58,13 +58,13 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 		List<RecursiveType> typeArgs = Arrays.stream(typeArguments).map(RecursiveType::of).collect(toList());
 		@NotNull Type supertype = RecursiveType.of(CrdtStorage.class, typeArgs).getType();
 
-		bind((Key) Key.ofType(supertype, InMemory.class))
+		bind((Key<?>) Key.ofType(supertype, InMemory.class))
 				.to(Key.ofType(RecursiveType.of(CrdtStorageMap.class, typeArgs).getType()));
-		bind((Key) Key.ofType(supertype, Persistent.class))
+		bind((Key<?>) Key.ofType(supertype, Persistent.class))
 				.to(Key.ofType(RecursiveType.of(CrdtStorageFs.class, typeArgs).getType()));
 
 		typeArgs.add(0, RecursiveType.of(String.class));
-		bind((Key) Key.ofType(supertype, Cluster.class))
+		bind((Key<?>) Key.ofType(supertype, Cluster.class))
 				.to(Key.ofType(RecursiveType.of(CrdtStorageCluster.class, typeArgs).getType()));
 	}
 
@@ -114,16 +114,16 @@ public abstract class CrdtNodeLogicModule<K extends Comparable<K>, S> extends Ab
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface InMemory {}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface Persistent {}
 
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
-	@NameAnnotation
+	@QualifierAnnotation
 	public @interface Cluster {}
 }

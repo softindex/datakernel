@@ -281,16 +281,16 @@ public abstract class Launcher {
 		Key<CompletionStage<Void>> completionStageKey = new Key<CompletionStage<Void>>() {};
 
 		return ModuleBuilder.create()
-				.bind(String[].class).annotatedWith(Args.class).toInstance(args)
+				.bind(String[].class).qualified(Args.class).toInstance(args)
 
 				.bind(Launcher.class).to(launcherClass)
 				.bind(launcherClass).toInstance(this)
 
 				.bindIntoSet(INSTANCE_INJECTORS_KEY.getTypeParameter(0), Key.ofType(Types.parameterized(InstanceInjector.class, launcherClass)))
 
-				.bind(completionStageKey.named(OnStart.class)).toInstance(onStartFuture)
-				.bind(completionStageKey.named(OnRun.class)).toInstance(onRunFuture)
-				.bind(completionStageKey.named(OnComplete.class)).toInstance(onCompleteFuture)
+				.bind(completionStageKey.qualified(OnStart.class)).toInstance(onStartFuture)
+				.bind(completionStageKey.qualified(OnRun.class)).toInstance(onRunFuture)
+				.bind(completionStageKey.qualified(OnComplete.class)).toInstance(onCompleteFuture)
 
 				.scan(Launcher.this)
 				.build();

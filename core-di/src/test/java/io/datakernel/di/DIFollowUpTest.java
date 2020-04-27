@@ -334,9 +334,9 @@ public class DIFollowUpTest {
 
 		Injector injector = Injector.of(cookbook);
 
-		float normalWeight = injector.getInstance(Key.of(Cookie.class, "normal"))
+		float normalWeight = injector.getInstance(Key.ofName(Cookie.class, "normal"))
 				.getPastry().getSugar().getWeight();
-		float zerosugarWeight = injector.getInstance(Key.of(Cookie.class, "zerosugar"))
+		float zerosugarWeight = injector.getInstance(Key.ofName(Cookie.class, "zerosugar"))
 				.getPastry().getSugar().getWeight();
 
 		assertEquals(10.f, normalWeight);
@@ -346,14 +346,14 @@ public class DIFollowUpTest {
 
 	@Test
 	//[START REGION_10]
-	public void moduleBuilderWithNamedBindsSnippet() {
+	public void moduleBuilderWithQualifiedBindsSnippet() {
 		Module cookbook = ModuleBuilder.create()
 				.bind(Key.of(Sugar.class, "zerosugar")).to(() -> new Sugar("SugarFree", 0.f))
 				.bind(Key.of(Sugar.class, "normal")).to(() -> new Sugar("WhiteSugar", 10.f))
-				.bind(Key.of(Pastry.class, "zerosugar")).to(Pastry::new, Key.of(Sugar.class).named("zerosugar"), Key.of(Butter.class), Key.of(Flour.class))
-				.bind(Key.of(Pastry.class, "normal")).to(Pastry::new, Key.of(Sugar.class).named("normal"), Key.of(Butter.class), Key.of(Flour.class))
-				.bind(Key.of(Cookie.class, "zerosugar")).to(Cookie::new, Key.of(Pastry.class).named("zerosugar"))
-				.bind(Key.of(Cookie.class, "normal")).to(Cookie::new, Key.of(Pastry.class).named("normal"))
+				.bind(Key.of(Pastry.class, "zerosugar")).to(Pastry::new, Key.of(Sugar.class).qualified("zerosugar"), Key.of(Butter.class), Key.of(Flour.class))
+				.bind(Key.of(Pastry.class, "normal")).to(Pastry::new, Key.of(Sugar.class).qualified("normal"), Key.of(Butter.class), Key.of(Flour.class))
+				.bind(Key.of(Cookie.class, "zerosugar")).to(Cookie::new, Key.of(Pastry.class).qualified("zerosugar"))
+				.bind(Key.of(Cookie.class, "normal")).to(Cookie::new, Key.of(Pastry.class).qualified("normal"))
 				.build();
 
 		Injector injector = Injector.of(cookbook);

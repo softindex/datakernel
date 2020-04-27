@@ -33,7 +33,7 @@ public class ServiceGraphTest {
 	@Test
 	public void testProperClosingForFailingServiceOneComponent() throws Exception {
 		Injector injector = Injector.of(new FailingModule());
-		injector.getInstance(Key.of(BlockingService.class, "TopService1"));
+		injector.getInstance(Key.ofName(BlockingService.class, "TopService1"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();
@@ -42,8 +42,8 @@ public class ServiceGraphTest {
 	@Test
 	public void testProperClosingForFailingServiceTwoComponents() throws Exception {
 		Injector injector = Injector.of(new FailingModule());
-		injector.getInstance(Key.of(BlockingService.class, "TopService1"));
-		injector.getInstance(Key.of(BlockingService.class, "TopService2"));
+		injector.getInstance(Key.ofName(BlockingService.class, "TopService1"));
+		injector.getInstance(Key.ofName(BlockingService.class, "TopService2"));
 		ServiceGraph graph = injector.getInstance(ServiceGraph.class);
 		expected.expectCause(IsSame.sameInstance(FailingModule.INTERRUPTED));
 		graph.startFuture().get();

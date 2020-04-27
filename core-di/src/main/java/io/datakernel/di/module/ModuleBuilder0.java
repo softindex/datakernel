@@ -11,29 +11,15 @@ import java.util.function.Supplier;
 
 public interface ModuleBuilder0<T> extends ModuleBuilder {
 	/**
-	 * If bound key does not have a name already then sets it to a given one
+	 * If bound key does not have a qualifier already then sets it to a given one
 	 */
-	ModuleBuilder0<T> named(@NotNull Name name);
+	ModuleBuilder0<T> qualified(@NotNull Object qualifier);
 
 	/**
-	 * @see #named(Name)
+	 * If bound key does not have a qualifier already then sets it to @Named annotation with given value
 	 */
 	default ModuleBuilder0<T> named(@NotNull String name) {
-		return named(Name.of(name));
-	}
-
-	/**
-	 * @see #named(Name)
-	 */
-	default ModuleBuilder0<T> annotatedWith(@NotNull Annotation annotation) {
-		return named(Name.of(annotation));
-	}
-
-	/**
-	 * @see #named(Name)
-	 */
-	default ModuleBuilder0<T> annotatedWith(@NotNull Class<? extends Annotation> annotationType) {
-		return named(Name.of(annotationType));
+		return qualified(Qualifier.named(name));
 	}
 
 	/**

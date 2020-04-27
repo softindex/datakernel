@@ -1,6 +1,6 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.core.Name;
+import io.datakernel.di.core.Qualifier;
 import io.datakernel.di.core.Scope;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -13,7 +13,7 @@ import java.util.Objects;
  * <p>
  * You don't need to extend it yourself.
  *
- * @see Name
+ * @see Qualifier
  * @see Scope
  */
 public abstract class AbstractAnnotation {
@@ -47,12 +47,7 @@ public abstract class AbstractAnnotation {
 	}
 
 	public String getDisplayString() {
-		if (annotation == null) {
-			return "@" + ReflectionUtils.getDisplayName(annotationType);
-		}
-		String typeName = annotationType.getName();
-		String str = annotation.toString();
-		return str.startsWith("@" + typeName) ? "@" + ReflectionUtils.getDisplayName(annotationType) + str.substring(typeName.length() + 1) : str;
+		return Utils.getDisplayString(annotationType, annotation);
 	}
 
 	@Override

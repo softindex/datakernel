@@ -76,13 +76,13 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 	}
 
 	@Override
-	public ModuleBuilder0<T> named(@NotNull Name name) {
+	public ModuleBuilder0<T> qualified(@NotNull Object qualifier) {
 		BindingDesc desc = ensureCurrent();
 		Key<?> key = desc.getKey();
-		if (key.getName() != null) {
-			throw new IllegalStateException("Already annotated with " + key.getName().getDisplayString());
+		if (key.getQualifier() != null) {
+			throw new IllegalStateException("Already qualified with " + getDisplayString(qualifier));
 		}
-		desc.setKey(key.named(name));
+		desc.setKey(key.qualified(qualifier));
 		return this;
 	}
 
@@ -167,7 +167,7 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 
 		completeCurrent();
 
-		Key<Set<S>> set = Key.ofType(Types.parameterized(Set.class, setOf.getType()), setOf.getName());
+		Key<Set<S>> set = Key.ofType(Types.parameterized(Set.class, setOf.getType()), setOf.getQualifier());
 
 		bindingDescs.add(new BindingDesc(set, binding.mapInstance(Collections::singleton)));
 

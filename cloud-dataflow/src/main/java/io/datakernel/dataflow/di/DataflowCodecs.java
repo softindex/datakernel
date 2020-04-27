@@ -51,7 +51,7 @@ public final class DataflowCodecs extends AbstractModule {
 	protected void configure() {
 		install(CodecsModule.create());
 
-		bind(new Key<StructuredCodec<DatagraphCommand>>() {}).annotatedWith(Subtypes.class);
+		bind(new Key<StructuredCodec<DatagraphCommand>>() {}).qualified(Subtypes.class);
 	}
 
 	@Provides

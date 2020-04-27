@@ -231,8 +231,8 @@ public final class ServiceGraphModule extends AbstractModule implements ServiceG
 
 		@Nullable
 		@Override
-		public Name getName() {
-			return key.getName();
+		public Object getQualifier() {
+			return key.getQualifier();
 		}
 
 		@Override

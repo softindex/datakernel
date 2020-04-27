@@ -3,8 +3,8 @@ package io.datakernel.dataflow.di;
 import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.common.tuple.*;
-import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Provides;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Dependency;
 import io.datakernel.di.core.Injector;
@@ -31,7 +31,7 @@ public final class CodecsModule extends AbstractModule {
 		return new CodecsModule();
 	}
 
-	@NameAnnotation
+	@QualifierAnnotation
 	@Target({FIELD, PARAMETER, METHOD})
 	@Retention(RUNTIME)
 	public @interface Subtypes {
@@ -70,7 +70,7 @@ public final class CodecsModule extends AbstractModule {
 		bind(new Key<StructuredCodec<Class<?>>>() {}).toInstance(CLASS_CODEC);
 
 		generate(StructuredCodec.class, (bindings, scope, key) -> {
-			if (key.getAnnotationType() != Subtypes.class) {
+			if (key.getQualifier() != Subtypes.class) {
 				return null;
 			}
 			Class<?> type = key.getTypeParameter(0).getRawType();

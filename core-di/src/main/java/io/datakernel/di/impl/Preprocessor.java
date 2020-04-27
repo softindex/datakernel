@@ -1,7 +1,7 @@
 package io.datakernel.di.impl;
 
 import io.datakernel.di.core.*;
-import io.datakernel.di.module.UniqueNameImpl;
+import io.datakernel.di.module.UniqueQualifierImpl;
 import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Utils;
@@ -333,19 +333,19 @@ public final class Preprocessor {
 					return null;
 				}
 
-				Name missingName = missing.getName();
+				Object missingQualifier = missing.getQualifier();
 				Type missingType = missing.getType();
 
 				Key<?> priv = Stream.concat(bindings.get().keySet().stream(), upperKnown.stream())
-						.filter(k -> k.getAnnotation() instanceof UniqueNameImpl
+						.filter(k -> k.getQualifier() instanceof UniqueQualifierImpl
 								&& k.getType().equals(missingType)
-								&& Objects.equals(missingName, ((UniqueNameImpl) k.getAnnotation()).getOriginalName()))
+								&& Objects.equals(missingQualifier, ((UniqueQualifierImpl) k.getQualifier()).getOriginalQualifier()))
 						.findAny()
 						.orElse(null);
 				if (priv == null) {
 					return null;
 				}
-				return "instance injectors cannot inject non-exported keys (found private key " + priv.getDisplayString() + " " + Utils.getLocation(bindings.get().get(priv)) + ")";
+				return "instance injectors cannot inject private keys (found private key " + priv.getDisplayString() + " " + Utils.getLocation(bindings.get().get(priv)) + ")";
 			}
 	);
 }

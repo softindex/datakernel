@@ -10,9 +10,9 @@ import java.lang.annotation.Annotation;
 import static io.datakernel.di.util.Utils.checkArgument;
 
 /**
- * Scopes work with annotations in just the same way {@link Name Names} work with them.
+ * Scopes work with annotations in just the same way {@link Qualifier Qualifiers} work with them.
  *
- * @see Name
+ * @see Qualifier
  */
 public final class Scope extends AbstractAnnotation {
 	public static final Scope[] UNSCOPED = new Scope[0];

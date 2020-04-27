@@ -7,7 +7,6 @@ import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.annotation.Annotation;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,25 +78,9 @@ public abstract class AbstractModule implements Module {
 	/**
 	 * @see ModuleBuilder#bind(Key)
 	 */
-	protected final <T> ModuleBuilder0<T> bind(Class<T> type, Name name) {
+	protected final <T> ModuleBuilder0<T> bind(Class<T> type, Object qualifier) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bind(type, name);
-	}
-
-	/**
-	 * @see ModuleBuilder#bind(Key)
-	 */
-	protected final <T> ModuleBuilder0<T> bind(Class<T> type, String name) {
-		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bind(type, name);
-	}
-
-	/**
-	 * @see ModuleBuilder#bind(Key)
-	 */
-	protected final <T> ModuleBuilder0<T> bind(Class<T> type, Class<? extends Annotation> annotationType) {
-		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		return builder.bind(type, annotationType);
+		return builder.bind(type, qualifier);
 	}
 
 	protected final <T> void bindInstanceProvider(@NotNull Class<T> key) {
@@ -117,7 +100,7 @@ public abstract class AbstractModule implements Module {
 
 	protected final <T> void bindInstanceInjector(@NotNull Key<T> key) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		builder.bindInstanceInjector(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
+		builder.bindInstanceInjector(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getQualifier()));
 	}
 
 	/**
@@ -157,14 +140,9 @@ public abstract class AbstractModule implements Module {
 		builder.multibindToSet(type);
 	}
 
-	protected final <V> void multibindToSet(Class<V> type, String name) {
+	protected final <V> void multibindToSet(Class<V> type, Object qualifier) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		builder.multibindToSet(type, name);
-	}
-
-	protected final <V> void multibindToSet(Class<V> type, Name name) {
-		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		builder.multibindToSet(type, name);
+		builder.multibindToSet(type, qualifier);
 	}
 
 	protected final <V> void multibindToSet(Key<V> key) {
@@ -177,14 +155,9 @@ public abstract class AbstractModule implements Module {
 		builder.multibindToMap(keyType, valueType);
 	}
 
-	protected final <K, V> void multibindToMap(Class<K> keyType, Class<V> valueType, String name) {
+	protected final <K, V> void multibindToMap(Class<K> keyType, Class<V> valueType, Object qualifier) {
 		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		builder.multibindToMap(keyType, valueType, name);
-	}
-
-	protected final <K, V> void multibindToMap(Class<K> keyType, Class<V> valueType, Name name) {
-		checkState(builder != null, "Cannot add bindings before or after configure() call");
-		builder.multibindToMap(keyType, valueType, name);
+		builder.multibindToMap(keyType, valueType, qualifier);
 	}
 
 	/**

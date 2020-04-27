@@ -22,7 +22,8 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.Name.uniqueName;
+import static io.datakernel.di.core.Qualifier.uniqueQualifier;
+import static io.datakernel.di.util.AbstractAnnotation.isMarker;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -86,15 +87,20 @@ public final class ReflectionUtils {
 	}
 
 	@Nullable
-	public static Name nameOf(AnnotatedElement annotatedElement) {
+	public static Object qualifierOf(AnnotatedElement annotatedElement) {
 		Set<Annotation> names = Arrays.stream(annotatedElement.getDeclaredAnnotations())
-				.filter(annotation -> annotation.annotationType().isAnnotationPresent(NameAnnotation.class))
+				.filter(annotation -> annotation.annotationType().isAnnotationPresent(QualifierAnnotation.class))
 				.collect(toSet());
 		switch (names.size()) {
 			case 0:
 				return null;
 			case 1:
-				return Name.of(names.iterator().next());
+				Annotation annotation = names.iterator().next();
+				Class<? extends Annotation> annotationType = annotation.annotationType();
+				if (isMarker(annotationType)) {
+					return annotationType;
+				}
+				return annotation;
 			default:
 				throw new DIException("More than one name annotation on " + annotatedElement);
 		}
@@ -106,7 +112,7 @@ public final class ReflectionUtils {
 
 	public static <T> Key<T> keyOf(@Nullable Type container, @Nullable Object containerInstance, Type type, AnnotatedElement annotatedElement) {
 		Type resolved = container != null ? Types.resolveTypeVariables(type, container, containerInstance) : type;
-		return Key.ofType(resolved, nameOf(annotatedElement));
+		return Key.ofType(resolved, qualifierOf(annotatedElement));
 	}
 
 	public static Scope[] getScope(AnnotatedElement annotatedElement) {
@@ -398,8 +404,8 @@ public final class ReflectionUtils {
 		Dependency[] dependencies = Arrays.stream(method.getParameters())
 				.map(parameter -> {
 					Type type = Types.resolveTypeVariables(parameter.getParameterizedType(), mapping);
-					Name name = nameOf(parameter);
-					return Dependency.toKey(Key.ofType(type, name), !parameter.isAnnotationPresent(Optional.class));
+					Object qualifier = qualifierOf(parameter);
+					return Dependency.toKey(Key.ofType(type, qualifier), !parameter.isAnnotationPresent(Optional.class));
 				})
 				.toArray(Dependency[]::new);
 
@@ -476,7 +482,7 @@ public final class ReflectionUtils {
 					throw new DIException("Found non-static provider method while scanning for statics, method " + method);
 				}
 
-				Name name = nameOf(method);
+				Object qualifier = qualifierOf(method);
 				Scope[] methodScope = getScope(method);
 
 				boolean isEager = method.isAnnotationPresent(Eager.class);
@@ -486,7 +492,7 @@ public final class ReflectionUtils {
 				TypeVariable<Method>[] typeVars = method.getTypeParameters();
 
 				if (typeVars.length == 0) {
-					Key<Object> key = Key.ofType(returnType, name);
+					Key<Object> key = Key.ofType(returnType, qualifier);
 
 					ModuleBuilder0<Object> binder = builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
 					if (isEager) {
@@ -512,7 +518,7 @@ public final class ReflectionUtils {
 							"You can bind real key transiently though. Method " + method);
 				}
 
-				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, name, method, module, returnType));
+				builder.generate(method.getReturnType(), new TemplatedProviderGenerator(methodScope, qualifier, method, module, returnType));
 
 			} else if (method.isAnnotationPresent(ProvidesIntoSet.class)) {
 				if (module == null && !Modifier.isStatic(method.getModifiers())) {
@@ -528,11 +534,11 @@ public final class ReflectionUtils {
 				boolean isEager = method.isAnnotationPresent(Eager.class);
 				boolean isTransient = method.isAnnotationPresent(Transient.class);
 
-				Key<Object> key = Key.ofType(type, uniqueName());
+				Key<Object> key = Key.ofType(type, uniqueQualifier());
 
 				builder.bind(key).to(bindingFromMethod(module, method)).in(methodScope);
 
-				Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), nameOf(method));
+				Key<Set<Object>> setKey = Key.ofType(Types.parameterized(Set.class, type), qualifierOf(method));
 
 				Binding<Set<Object>> binding = Binding.to(Collections::singleton, key);
 
@@ -567,15 +573,15 @@ public final class ReflectionUtils {
 	private static class TemplatedProviderGenerator implements BindingGenerator<Object> {
 		private final Scope[] methodScope;
 		@Nullable
-		private final Name name;
+		private final Object qualifier;
 		private final Method method;
 
 		private final Object module;
 		private final Type returnType;
 
-		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Name name, Method method, Object module, Type returnType) {
+		private TemplatedProviderGenerator(Scope[] methodScope, @Nullable Object qualifier, Method method, Object module, Type returnType) {
 			this.methodScope = methodScope;
-			this.name = name;
+			this.qualifier = qualifier;
 			this.method = method;
 			this.module = module;
 			this.returnType = returnType;
@@ -583,7 +589,7 @@ public final class ReflectionUtils {
 
 		@Override
 		public @Nullable Binding<Object> generate(BindingLocator bindings, Scope[] scope, Key<Object> key) {
-			if (scope.length < methodScope.length || (name != null && !name.equals(key.getName())) || !Types.matches(key.getType(), returnType)) {
+			if (scope.length < methodScope.length || (qualifier != null && !qualifier.equals(key.getQualifier())) || !Types.matches(key.getType(), returnType)) {
 				return null;
 			}
 			for (int i = 0; i < methodScope.length; i++) {
@@ -602,13 +608,13 @@ public final class ReflectionUtils {
 			TemplatedProviderGenerator generator = (TemplatedProviderGenerator) o;
 
 			if (!Arrays.equals(methodScope, generator.methodScope)) return false;
-			if (!Objects.equals(name, generator.name)) return false;
+			if (!Objects.equals(qualifier, generator.qualifier)) return false;
 			return method.equals(generator.method);
 		}
 
 		@Override
 		public int hashCode() {
-			return 961 * Arrays.hashCode(methodScope) + 31 * (name != null ? name.hashCode() : 0) + method.hashCode();
+			return 961 * Arrays.hashCode(methodScope) + 31 * (qualifier != null ? qualifier.hashCode() : 0) + method.hashCode();
 		}
 	}
 }

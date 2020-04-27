@@ -21,6 +21,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
+import static io.datakernel.di.core.Qualifier.named;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.printGraphVizGraph;
@@ -626,7 +627,7 @@ public final class TestDI {
 			protected void configure() {
 				super.configure();
 				bind(Integer.class).toInstance(42);
-				bind(Integer.class, "namedGeneric").toInstance(-42);
+				bind(Integer.class, named("namedGeneric")).toInstance(-42);
 				bind(new Key<List<Integer>>() {}).toInstance(asList(1, 2, 3));
 			}
 		});
@@ -634,7 +635,7 @@ public final class TestDI {
 		Utils.printGraphVizGraph(injector.getBindingsTrie());
 
 		assertEquals("str: 42", injector.getInstance(String.class));
-		assertEquals("str: [1, 2, 3]", injector.getInstance(Key.of(String.class, "second")));
+		assertEquals("str: [1, 2, 3]", injector.getInstance(Key.ofName(String.class, "second")));
 		assertEquals(-42, injector.getInstance(new Key<AndAContainerToo<Integer>>() {}).object.intValue());
 	}
 
@@ -855,7 +856,7 @@ public final class TestDI {
 
 		Injector injector = Injector.of(ModuleBuilder.create()
 				.bind(String.class).toInstance("hello")
-				.bind(new Key<Container<String>>(Name.of("hello")) {})
+				.bind(new Key<Container<String>>(named("hello")) {})
 				.scan(new Object() {
 
 					@Provides
@@ -866,7 +867,7 @@ public final class TestDI {
 				})
 				.build());
 
-		System.out.println(injector.getInstance(new Key<Container<String>>(Name.of("hello")) {}).peer);
+		System.out.println(injector.getInstance(new Key<Container<String>>(named("hello")) {}).peer);
 	}
 
 	@Test
@@ -1141,8 +1142,8 @@ public final class TestDI {
 				})
 				.build());
 
-		assertEquals(5, Stream.generate(() -> injector.getInstance(Key.of(String.class, "t"))).limit(5).collect(toSet()).size());
-		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.of(String.class, "nt"))).limit(5).collect(toSet()).size());
+		assertEquals(5, Stream.generate(() -> injector.getInstance(Key.ofName(String.class, "t"))).limit(5).collect(toSet()).size());
+		assertEquals(1, Stream.generate(() -> injector.getInstance(Key.ofName(String.class, "nt"))).limit(5).collect(toSet()).size());
 		assertEquals(7, injector.getInstance(Integer.class).intValue());
 		assertEquals(1, counter.get());
 	}
@@ -1209,7 +1210,7 @@ public final class TestDI {
 				.bind(new Key<Set<String>>() {}).asTransient()
 
 				.multibindToSet(String.class)
-				.multibindToSet(Key.of(String.class, "nt"))
+				.multibindToSet(Key.ofName(String.class, "nt"))
 				.build());
 
 		assertEquals(5, Stream.generate(() -> injector.getInstance(setKey)).limit(5).collect(toSet()).size());

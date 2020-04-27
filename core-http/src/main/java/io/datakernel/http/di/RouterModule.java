@@ -1,6 +1,6 @@
 package io.datakernel.http.di;
 
-import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Injector;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -25,19 +25,19 @@ public class RouterModule extends AbstractModule {
 		List<Key<? extends AsyncServlet>> mappedKeys = new ArrayList<>();
 
 		transform(0, (bindings, scope, key, binding) -> {
-			if (scope.length == 0 && key.getAnnotationType() == Mapped.class && AsyncServlet.class.isAssignableFrom(key.getRawType())) {
+			if (scope.length == 0 && key.getQualifier() instanceof Mapped && AsyncServlet.class.isAssignableFrom(key.getRawType())) {
 				mappedKeys.add((Key<AsyncServlet>) (Key) key);
 			}
 			return binding;
 		});
 
 		bind(AsyncServlet.class)
-				.annotatedWith(Router.class)
+				.qualified(Router.class)
 				.to(injector -> {
 					RoutingServlet router = RoutingServlet.create();
 					for (Key<? extends AsyncServlet> key : mappedKeys) {
 						AsyncServlet servlet = injector.getInstance(key);
-						Mapped mapped = (Mapped) key.getAnnotation();
+						Mapped mapped = (Mapped) key.getQualifier();
 						assert mapped != null;
 						router.map(mapped.method().getHttpMethod(), mapped.value(), servlet);
 					}
@@ -45,7 +45,7 @@ public class RouterModule extends AbstractModule {
 				}, Injector.class);
 	}
 
-	@NameAnnotation
+	@QualifierAnnotation
 	@Target({FIELD, PARAMETER, METHOD})
 	@Retention(RUNTIME)
 	public @interface Mapped {
@@ -54,7 +54,7 @@ public class RouterModule extends AbstractModule {
 		String value();
 	}
 
-	@NameAnnotation
+	@QualifierAnnotation
 	@Target({FIELD, PARAMETER, METHOD})
 	@Retention(RUNTIME)
 	public @interface Router {
@@ -68,7 +68,7 @@ public class RouterModule extends AbstractModule {
 
 		@Nullable
 		HttpMethod getHttpMethod() {
-			return this == ALL? null : HttpMethod.values()[ordinal()];
+			return this == ALL ? null : HttpMethod.values()[ordinal()];
 		}
 	}
 }

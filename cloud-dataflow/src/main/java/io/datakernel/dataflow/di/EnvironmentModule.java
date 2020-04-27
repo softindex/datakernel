@@ -1,6 +1,6 @@
 package io.datakernel.dataflow.di;
 
-import io.datakernel.di.annotation.NameAnnotation;
+import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.core.Binding;
 import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
@@ -28,19 +28,19 @@ public final class EnvironmentModule extends AbstractModule {
 	protected void configure() {
 		Map<Slot, Key<?>> slots = new HashMap<>();
 		transform(0, (bindings, scope, key, binding) -> {
-			if (key.getAnnotationType() == Slot.class) {
-				slots.put((Slot) key.getAnnotation(), key);
+			if (key.getQualifier() instanceof Slot) {
+				slots.put((Slot) key.getQualifier(), key);
 			}
 			return binding;
 		});
 
 		// when someone provides @Slot("id") T, but we request just @Slot("id") Object
 		generate(Object.class, (bindings, scope, key) -> {
-			if (key.getAnnotationType() != Slot.class) {
+			if (!(key.getQualifier() instanceof Slot)) {
 				return null;
 			}
 			@SuppressWarnings("SuspiciousMethodCalls") // we've checked it just above
-					Key<?> mapped = slots.get(key.getAnnotation());
+					Key<?> mapped = slots.get(key.getQualifier());
 			return mapped != null ? Binding.to(mapped) : null;
 		});
 	}
@@ -49,7 +49,7 @@ public final class EnvironmentModule extends AbstractModule {
 		return Key.of(Object.class, new SlotImpl(id));
 	}
 
-	@NameAnnotation
+	@QualifierAnnotation
 	@Target({FIELD, PARAMETER, METHOD})
 	@Retention(RUNTIME)
 	public @interface Slot {

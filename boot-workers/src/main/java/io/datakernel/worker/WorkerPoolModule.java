@@ -45,14 +45,14 @@ public final class WorkerPoolModule extends AbstractModule {
 		bind(WorkerPools.class).to(WorkerPools::new, Injector.class);
 
 		for (Class<? extends Annotation> scope : workerScopes) {
-			bind(int.class).annotatedWith(WorkerId.class).in(scope).to(() -> {
+			bind(int.class).qualified(WorkerId.class).in(scope).to(() -> {
 				throw new AssertionError("Worker ID constructor must never be called since it's instance is always put in the cache manually");
 			});
 		}
 
 		generate(WorkerPool.Instances.class, (bindings, scope, key) -> {
 			Key<Object> requestedKey = key.getTypeParameter(0);
-			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getName()));
+			return Binding.to(wp -> wp.getInstances(requestedKey), Key.of(WorkerPool.class, key.getQualifier()));
 		});
 	}
 }

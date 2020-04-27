@@ -103,7 +103,7 @@ public class DataflowSerializationTest {
 				new NodeDownload<>(Integer.class, new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 1571), new StreamId(Long.MAX_VALUE))
 		);
 
-		StructuredCodec<DatagraphCommand> commandCodec = Injector.of(serialization).getInstance(new Key<StructuredCodec<DatagraphCommand>>() {}.named(Subtypes.class));
+		StructuredCodec<DatagraphCommand> commandCodec = Injector.of(serialization).getInstance(new Key<StructuredCodec<DatagraphCommand>>() {}.qualified(Subtypes.class));
 
 		String str = toJson(commandCodec, new DatagraphCommandExecute(nodes));
 		System.out.println(str);

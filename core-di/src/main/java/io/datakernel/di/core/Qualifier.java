@@ -1,15 +1,14 @@
 package io.datakernel.di.core;
 
-import io.datakernel.di.annotation.NameAnnotation;
 import io.datakernel.di.annotation.Named;
-import io.datakernel.di.module.UniqueName;
-import io.datakernel.di.module.UniqueNameImpl;
-import io.datakernel.di.util.AbstractAnnotation;
+import io.datakernel.di.annotation.QualifierAnnotation;
+import io.datakernel.di.module.UniqueQualifierImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 
+import static io.datakernel.di.util.AbstractAnnotation.isMarker;
 import static io.datakernel.di.util.Utils.checkArgument;
 
 /**
@@ -19,59 +18,50 @@ import static io.datakernel.di.util.Utils.checkArgument;
  * and this class is merely a wrapper around them.
  * <p>
  * Creating a custom stateless name annotation is as easy as creating your own annotation with no parameters and then using the
- * {@link #of Name.of} constructor on it.
+ * {@link #named Qualifier.of} constructor on it.
  * <p>
  * If you want to create a stateful annotation, you need to get an instance of it with compatible equals method
- * (you can use {@link NamedImpl} as an example) and then call {@link #of Name.of} constructor on it too.
+ * (you can use {@link NamedImpl} as an example) and then call {@link #named Qualifier.of} constructor on it too.
  * After that, you can use your annotation in our DSL's and then make keys programmaticaly with created Name instances.
  */
-public final class Name extends AbstractAnnotation {
-	protected <A extends Annotation> Name(@NotNull Class<A> annotationType, @Nullable A annotation) {
-		super(annotationType, annotation);
-	}
+public final class Qualifier {
 
 	/**
-	 * Creates a Name from a marker (or stateless) annotation, only identified by its class.
+	 * Validates a marker (or stateless) annotation, only identified by its class.
 	 */
-	public static Name of(Class<? extends Annotation> annotationType) {
+	public static Object validate(Class<? extends Annotation> annotationType) {
 		checkArgument(isMarker(annotationType), "Name by annotation type only accepts marker annotations with no arguments");
-		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class),
-				"Only annotations annotated with @NameAnnotation meta-annotation are allowed");
-		return new Name(annotationType, null);
+		checkArgument(annotationType.isAnnotationPresent(QualifierAnnotation.class),
+				"Only annotations annotated with @QualifierAnnotation meta-annotation are allowed");
+		return annotationType;
 	}
 
 	/**
-	 * Creates a Name from a real (or its custom surrogate impl) annotation instance.
+	 * Validates a qualifier from a real (or its custom surrogate impl) annotation instance and returns a valid qualifier
 	 */
-	public static Name of(Annotation annotation) {
+	public static Object validate(Annotation annotation) {
 		//noinspection unchecked
 		Class<Annotation> annotationType = (Class<Annotation>) annotation.annotationType();
-		checkArgument(annotationType.isAnnotationPresent(NameAnnotation.class),
-				"Only annotations annotated with @NameAnnotation meta-annotation are allowed");
+		checkArgument(annotationType.isAnnotationPresent(QualifierAnnotation.class),
+				"Only annotations annotated with @QualifierAnnotation meta-annotation are allowed");
 		return isMarker(annotationType) ?
-				new Name(annotationType, null) :
-				new Name(annotationType, annotation);
+				annotationType :
+				annotation;
 	}
 
 	/**
-	 * A shortcut for creating names based on {@link Named} built-in annotation.
+	 * A shortcut for creating qualifiers based on {@link Named} built-in annotation.
 	 */
-	public static Name of(String name) {
-		return new Name(Named.class, new NamedImpl(name));
+	public static Object named(String name) {
+		return new NamedImpl(name);
 	}
 
-	public static Name uniqueName() {
-		return new Name(UniqueName.class, new UniqueNameImpl());
+	public static Object uniqueQualifier() {
+		return new UniqueQualifierImpl();
 	}
 
-	public static Name uniqueName(@Nullable Name name) {
-		return name != null && name.isUnique() ?
-				name :
-				new Name(UniqueName.class, new UniqueNameImpl(name));
-	}
-
-	public boolean isUnique() {
-		return getAnnotation() instanceof UniqueNameImpl;
+	public static Object uniqueQualifier(@Nullable Object qualifier) {
+		return qualifier instanceof UniqueQualifierImpl ? qualifier : new UniqueQualifierImpl(qualifier);
 	}
 
 	@SuppressWarnings("ClassExplicitlyAnnotation")

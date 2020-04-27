@@ -425,7 +425,7 @@ public final class Injector implements ResourceLocator {
 	 */
 	@NotNull
 	public <T> InstanceProvider<T> getInstanceProvider(@NotNull Key<T> key) {
-		return getInstance(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getName()));
+		return getInstance(Key.ofType(Types.parameterized(InstanceProvider.class, key.getType()), key.getQualifier()));
 	}
 
 	/**
@@ -441,7 +441,7 @@ public final class Injector implements ResourceLocator {
 	 */
 	@NotNull
 	public <T> InstanceInjector<T> getInstanceInjector(@NotNull Key<T> key) {
-		return getInstance(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getName()));
+		return getInstance(Key.ofType(Types.parameterized(InstanceInjector.class, key.getType()), key.getQualifier()));
 	}
 
 	/**

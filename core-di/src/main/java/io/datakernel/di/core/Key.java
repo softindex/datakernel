@@ -2,6 +2,7 @@ package io.datakernel.di.core;
 
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Types;
+import io.datakernel.di.util.Utils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,44 +30,29 @@ public abstract class Key<T> {
 	@NotNull
 	private final Type type;
 	@Nullable
-	private final Name name;
+	private final Object qualifier;
 
 	public Key() {
 		this.type = ensureEquality(getTypeParameter());
-		this.name = null;
+		this.qualifier = null;
 	}
 
-	public Key(@Nullable Name name) {
+	public Key(@Nullable Object qualifier) {
 		this.type = ensureEquality(getTypeParameter());
-		this.name = name;
+		this.qualifier = qualifier;
 	}
 
-	public Key(@NotNull String name) {
-		this.type = ensureEquality(getTypeParameter());
-		this.name = Name.of(name);
-	}
-
-	public Key(@NotNull Class<? extends Annotation> annotationType) {
-		this.type = ensureEquality(getTypeParameter());
-		this.name = Name.of(annotationType);
-	}
-
-	public Key(@NotNull Annotation annotation) {
-		this.type = ensureEquality(getTypeParameter());
-		this.name = Name.of(annotation);
-	}
-
-	Key(@NotNull Type type, @Nullable Name name) {
+	Key(@NotNull Type type, @Nullable Object qualifier) {
 		this.type = ensureEquality(type);
-		this.name = name;
+		this.qualifier = qualifier;
 	}
 
 	/**
 	 * A default subclass to be used by {@link #of Key.of*} and {@link #ofType Key.ofType*} constructors
 	 */
 	private static final class KeyImpl<T> extends Key<T> {
-		private KeyImpl(Type type, Name name) {
-			super(type, name);
+		private KeyImpl(Type type, Object qualifier) {
+			super(type, qualifier);
 		}
 	}
 
@@ -76,23 +62,13 @@ public abstract class Key<T> {
 	}
 
 	@NotNull
-	public static <T> Key<T> of(@NotNull Class<T> type, @Nullable Name name) {
-		return new KeyImpl<>(type, name);
+	public static <T> Key<T> of(@NotNull Class<T> type, @Nullable Object qualifier) {
+		return new KeyImpl<>(type, qualifier);
 	}
 
 	@NotNull
-	public static <T> Key<T> of(@NotNull Class<T> type, @NotNull String name) {
-		return new KeyImpl<>(type, Name.of(name));
-	}
-
-	@NotNull
-	public static <T> Key<T> of(@NotNull Class<T> type, @NotNull Class<? extends Annotation> annotationType) {
-		return new KeyImpl<>(type, Name.of(annotationType));
-	}
-
-	@NotNull
-	public static <T> Key<T> of(@NotNull Class<T> type, @NotNull Annotation annotation) {
-		return new KeyImpl<>(type, Name.of(annotation));
+	public static <T> Key<T> ofName(@NotNull Class<T> type, @NotNull String name) {
+		return new KeyImpl<>(type, Qualifier.named(name));
 	}
 
 	@NotNull
@@ -101,51 +77,32 @@ public abstract class Key<T> {
 	}
 
 	@NotNull
-	public static <T> Key<T> ofType(@NotNull Type type, @Nullable Name name) {
-		return new KeyImpl<>(type, name);
+	public static <T> Key<T> ofType(@NotNull Type type, @Nullable Object qualifier) {
+		return new KeyImpl<>(type, qualifier);
 	}
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @NotNull String name) {
-		return new KeyImpl<>(type, Name.of(name));
+		return new KeyImpl<>(type, Qualifier.named(name));
 	}
 
 	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @NotNull Class<? extends Annotation> annotationType) {
-		return new KeyImpl<>(type, Name.of(annotationType));
-	}
-
-	@NotNull
-	public static <T> Key<T> ofType(@NotNull Type type, @NotNull Annotation annotation) {
-		return new KeyImpl<>(type, Name.of(annotation));
+		return new KeyImpl<>(type, annotationType);
 	}
 
 	/**
-	 * Returns a new key with same type but the name replaced with a given one
+	 * Returns a new key with same type but the qualifier replaced with a given one
 	 */
-	public Key<T> named(Name name) {
-		return new KeyImpl<>(type, name);
+	public Key<T> qualified(Object qualifier) {
+		return new KeyImpl<>(type, qualifier);
 	}
 
 	/**
-	 * @see #named(Name)
+	 * Returns a new key with same type but the qualifier replaced with @Named annotation with given value
 	 */
 	public Key<T> named(String name) {
-		return new KeyImpl<>(type, Name.of(name));
-	}
-
-	/**
-	 * @see #named(Name)
-	 */
-	public Key<T> named(@NotNull Class<? extends Annotation> annotationType) {
-		return new KeyImpl<>(type, Name.of(annotationType));
-	}
-
-	/**
-	 * @see #named(Name)
-	 */
-	public Key<T> named(@NotNull Annotation annotation) {
-		return new KeyImpl<>(type, Name.of(annotation));
+		return new KeyImpl<>(type, Qualifier.named(name));
 	}
 
 	@NotNull
@@ -184,25 +141,9 @@ public abstract class Key<T> {
 		throw new IllegalStateException("Expected type from key " + getDisplayString() + " to be parameterized");
 	}
 
-	/**
-	 * Null-checked shortcut for <code>key.getName()?.getAnnotationType()</code>.
-	 */
 	@Nullable
-	public Class<? extends Annotation> getAnnotationType() {
-		return name != null ? name.getAnnotationType() : null;
-	}
-
-	/**
-	 * Null-checked shortcut for <code>key.getName()?.getAnnotation()</code>.
-	 */
-	@Nullable
-	public Annotation getAnnotation() {
-		return name != null ? name.getAnnotation() : null;
-	}
-
-	@Nullable
-	public Name getName() {
-		return name;
+	public Object getQualifier() {
+		return qualifier;
 	}
 
 	/**
@@ -210,7 +151,7 @@ public abstract class Key<T> {
 	 * and prepended name display string if this key has a name.
 	 */
 	public String getDisplayString() {
-		return (name != null ? name.getDisplayString() + " " : "") + ReflectionUtils.getDisplayName(type);
+		return (qualifier != null ? Utils.getDisplayString(qualifier) + " " : "") + ReflectionUtils.getDisplayName(type);
 	}
 
 	@Override
@@ -222,16 +163,16 @@ public abstract class Key<T> {
 			return false;
 		}
 		Key<?> that = (Key<?>) o;
-		return type.equals(that.type) && Objects.equals(name, that.name);
+		return type.equals(that.type) && Objects.equals(qualifier, that.qualifier);
 	}
 
 	@Override
 	public int hashCode() {
-		return 31 * type.hashCode() + (name == null ? 0 : name.hashCode());
+		return 31 * type.hashCode() + (qualifier == null ? 0 : qualifier.hashCode());
 	}
 
 	@Override
 	public String toString() {
-		return (name != null ? name.toString() + " " : "") + type.getTypeName();
+		return (qualifier != null ? qualifier.toString() + " " : "") + type.getTypeName();
 	}
 }

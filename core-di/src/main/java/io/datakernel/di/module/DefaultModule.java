@@ -43,7 +43,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for provider requests
 		generators.put(InstanceProvider.class, singleton(
 				(bindings, $, key) -> {
-					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
+					Key<Object> instanceKey = key.getTypeParameter(0).qualified(key.getQualifier());
 					Binding<Object> instanceBinding = bindings.get(instanceKey);
 					if (instanceBinding == null) {
 						return null;
@@ -80,7 +80,7 @@ public final class DefaultModule implements Module {
 		// generating bindings for injector requests
 		generators.put(InstanceInjector.class, singleton(
 				(bindings, scope, key) -> {
-					Key<Object> instanceKey = key.getTypeParameter(0).named(key.getName());
+					Key<Object> instanceKey = key.getTypeParameter(0).qualified(key.getQualifier());
 					BindingInitializer<Object> bindingInitializer = generateInjectingInitializer(instanceKey);
 					return new Binding<>(
 							bindingInitializer.getDependencies(),
