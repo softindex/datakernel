@@ -34,7 +34,6 @@ import java.util.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.StringFormatUtils.formatDuration;
 import static io.datakernel.common.StringFormatUtils.parseDuration;
-import static io.datakernel.common.reflection.ReflectionUtils.getAnnotationString;
 import static io.datakernel.jmx.Utils.*;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
@@ -362,7 +361,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		if (pool != null) {
 			if (withScopes) {
 				Scope scope = pool.getScope();
-				name += format(",scope=%s", getAnnotationString(scope.getAnnotationType(), scope.getAnnotation()));
+				name += format(",scope=%s", scope.getDisplayString());
 			}
 			Key<?> poolKey = workerPoolKeys.get(pool);
 			if (poolKey != null && poolKey.getQualifier() != null) {

@@ -8,21 +8,13 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 
-import static io.datakernel.di.util.AbstractAnnotation.isMarker;
 import static io.datakernel.di.util.Utils.checkArgument;
+import static io.datakernel.di.util.Utils.isMarker;
 
 /**
- * This class is used as an additional tag in to distinguish different {@link Key keys} that have same type.
+ * This class holds utility methods used for validating and creating objects used as qualifiers.
+ * Qualifiers serve as additional tags to distinguish different {@link Key keys} that have same type.
  * <p>
- * Since annotations could be placed almost in every place a type could occur in Java language, they are used as names
- * and this class is merely a wrapper around them.
- * <p>
- * Creating a custom stateless name annotation is as easy as creating your own annotation with no parameters and then using the
- * {@link #named Qualifier.of} constructor on it.
- * <p>
- * If you want to create a stateful annotation, you need to get an instance of it with compatible equals method
- * (you can use {@link NamedImpl} as an example) and then call {@link #named Qualifier.of} constructor on it too.
- * After that, you can use your annotation in our DSL's and then make keys programmaticaly with created Name instances.
  */
 public final class Qualifier {
 

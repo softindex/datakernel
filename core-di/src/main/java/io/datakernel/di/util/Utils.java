@@ -277,4 +277,8 @@ public final class Utils {
 		String line = new String(new char[cycleString.length() - offset]).replace('\0', '-');
 		return cycleString + " -,\n\t" + indent + "^" + line + "'";
 	}
+
+	public static boolean isMarker(Class<? extends Annotation> annotationType) {
+		return annotationType.getDeclaredMethods().length == 0;
+	}
 }

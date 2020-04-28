@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.core.Qualifier.uniqueQualifier;
-import static io.datakernel.di.util.AbstractAnnotation.isMarker;
+import static io.datakernel.di.util.Utils.isMarker;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
@@ -305,6 +305,7 @@ public final class ReflectionUtils {
 				singleton(Dependency.toKey(key, required)),
 				compiledBindings -> {
 					CompiledBinding<Object> binding = compiledBindings.get(key);
+					//noinspection Convert2Lambda
 					return new CompiledBindingInitializer<T>() {
 						@Override
 						public void initInstance(T instance, AtomicReferenceArray[] instances, int synchronizedScope) {
@@ -335,6 +336,7 @@ public final class ReflectionUtils {
 					CompiledBinding[] argBindings = Stream.of(dependencies)
 							.map(dependency -> compiledBindings.get(dependency.getKey()))
 							.toArray(CompiledBinding[]::new);
+					//noinspection Convert2Lambda
 					return new CompiledBindingInitializer<T>() {
 						@Override
 						public void initInstance(T instance, AtomicReferenceArray[] instances, int synchronizedScope) {

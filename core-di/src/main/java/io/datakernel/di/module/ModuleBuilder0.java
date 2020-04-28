@@ -17,6 +17,8 @@ public interface ModuleBuilder0<T> extends ModuleBuilder {
 
 	/**
 	 * If bound key does not have a qualifier already then sets it to @Named annotation with given value
+	 * <p>
+	 * <b>This is not the same as qualifying a {@link Key key} with {@link String} qualifier</b>
 	 */
 	default ModuleBuilder0<T> named(@NotNull String name) {
 		return qualified(Qualifier.named(name));

@@ -82,11 +82,6 @@ public abstract class Key<T> {
 	}
 
 	@NotNull
-	public static <T> Key<T> ofType(@NotNull Type type, @NotNull String name) {
-		return new KeyImpl<>(type, Qualifier.named(name));
-	}
-
-	@NotNull
 	public static <T> Key<T> ofType(@NotNull Type type, @NotNull Class<? extends Annotation> annotationType) {
 		return new KeyImpl<>(type, annotationType);
 	}
@@ -100,6 +95,8 @@ public abstract class Key<T> {
 
 	/**
 	 * Returns a new key with same type but the qualifier replaced with @Named annotation with given value
+	 * <p>
+	 * <b>This is not the same as a {@link Key} with {@link String} qualifier</b>
 	 */
 	public Key<T> named(String name) {
 		return new KeyImpl<>(type, Qualifier.named(name));
@@ -130,7 +127,7 @@ public abstract class Key<T> {
 	}
 
 	/**
-	 * Returns a type parameter of the underlying type wrapped as a key with no name.
+	 * Returns a type parameter of the underlying type wrapped as a key with no qualifier.
 	 *
 	 * @throws IllegalStateException when underlying type is not a parameterized one.
 	 */
@@ -148,7 +145,7 @@ public abstract class Key<T> {
 
 	/**
 	 * Returns an underlying type with display string formatting (package names stripped)
-	 * and prepended name display string if this key has a name.
+	 * and prepended qualifier display string if this key has a qualifier.
 	 */
 	public String getDisplayString() {
 		return (qualifier != null ? Utils.getDisplayString(qualifier) + " " : "") + ReflectionUtils.getDisplayName(type);
