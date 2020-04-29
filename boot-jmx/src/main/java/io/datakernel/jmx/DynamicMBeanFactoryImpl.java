@@ -1046,7 +1046,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 
 		@Override
 		public void execute(Runnable command) {
-			mbean.getEventloop().execute(command);
+			mbean.getEventloop().execute(wrapContext(mbean, command));
 		}
 
 		@Override

@@ -196,7 +196,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 			Eventloop eventloop = Eventloop.getCurrentEventloop();
 			eventloop.startExternalTask();
 			try {
-				executor.execute(() -> {
+				executor.execute(wrapContext(cb, () -> {
 					try {
 						T value = future.get();
 						eventloop.execute(wrapContext(cb, () -> cb.set(value)));
@@ -209,7 +209,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 					} finally {
 						eventloop.completeExternalTask();
 					}
-				});
+				}));
 			} catch (RejectedExecutionException e) {
 				eventloop.completeExternalTask();
 				cb.setException(e);
@@ -236,7 +236,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 			Eventloop eventloop = Eventloop.getCurrentEventloop();
 			eventloop.startExternalTask();
 			try {
-				executor.execute(() -> {
+				executor.execute(wrapContext(cb, () -> {
 					try {
 						T result = callable.call();
 						eventloop.execute(wrapContext(cb, () -> cb.set(result)));
@@ -251,7 +251,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 					} finally {
 						eventloop.completeExternalTask();
 					}
-				});
+				}));
 			} catch (RejectedExecutionException e) {
 				eventloop.completeExternalTask();
 				cb.setException(e);
@@ -274,7 +274,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 			Eventloop eventloop = Eventloop.getCurrentEventloop();
 			eventloop.startExternalTask();
 			try {
-				executor.execute(() -> {
+				executor.execute(wrapContext(cb, () -> {
 					try {
 						runnable.run();
 						eventloop.execute(wrapContext(cb, () -> cb.set(null)));
@@ -289,7 +289,7 @@ public interface Promise<T> extends io.datakernel.promise.Async<T>, Completable<
 					} finally {
 						eventloop.completeExternalTask();
 					}
-				});
+				}));
 			} catch (RejectedExecutionException e) {
 				eventloop.completeExternalTask();
 				cb.setException(e);

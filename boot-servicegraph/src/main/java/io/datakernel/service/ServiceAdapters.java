@@ -57,28 +57,28 @@ public final class ServiceAdapters {
 		@Override
 		public final CompletableFuture<?> start(S instance, Executor executor) {
 			CompletableFuture<?> future = new CompletableFuture<>();
-			(startConcurrently ? executor : (Executor) Runnable::run).execute(() -> {
+			(startConcurrently ? executor : (Executor) Runnable::run).execute(wrapContext(instance, () -> {
 				try {
 					start(instance);
 					future.complete(null);
 				} catch (Exception e) {
 					future.completeExceptionally(e);
 				}
-			});
+			}));
 			return future;
 		}
 
 		@Override
 		public final CompletableFuture<?> stop(S instance, Executor executor) {
 			CompletableFuture<?> future = new CompletableFuture<>();
-			(stopConcurrently ? executor : (Executor) Runnable::run).execute(() -> {
+			(stopConcurrently ? executor : (Executor) Runnable::run).execute(wrapContext(instance, () -> {
 				try {
 					stop(instance);
 					future.complete(null);
 				} catch (Exception e) {
 					future.completeExceptionally(e);
 				}
-			});
+			}));
 			return future;
 		}
 	}
@@ -163,14 +163,14 @@ public final class ServiceAdapters {
 					logStopping(eventloop);
 					Eventloop.logger.info("Waiting for " + eventloop);
 				});
-				executor.execute(() -> {
+				executor.execute(wrapContext(eventloop, () -> {
 					try {
 						eventloopThread.join();
 						future.complete(null);
 					} catch (InterruptedException e) {
 						future.completeExceptionally(e);
 					}
-				});
+				}));
 				return future;
 			}
 
