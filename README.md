@@ -4,7 +4,7 @@
 
 ## Introduction
 
-DataKernel is a full-featured alternative web and big data Java framework built from the ground up. It does not use Netty, Jetty, Spring/Guice DI, RxJava etc. Instead, it features a full application stack: Event Loop, Promises, HTTP, DI and others, including decentralized big-data technologies and map-reduce algorithms.
+DataKernel is a full-featured alternative web and big data Java framework built from the ground up. It does not use Netty, Jetty, Spring/Guice DI, RxJava, etc. Instead, it features a full application stack: Event Loop, Promises, HTTP, DI, and others, including decentralized big-data technologies and map-reduce algorithms.
 
 No overhead of intermediate abstractions, legacy standards and third-party libraries makes the framework minimalistic, streamlined and lightning-fast!
 
@@ -37,11 +37,11 @@ public final class HelloWorldExample {
     }
 }
 ```
-`AsyncHttpServer` is a built-in implementation of an HTTP server which asynchronously runs in a Node.js-inspired Event Loop.
+`AsyncHttpServer` is a built-in implementation of an HTTP server that runs asynchronously in a Node.js-inspired Event Loop.
 
 - *`AsyncHttpServer` is up to 20% faster than [multithreaded Vert.x server](https://github.com/networknt/microservices-framework-benchmark/tree/master/vertx), with 1/2 of CPU usage, on a single core!*
 
-### Full-featured embedded web application server, with Dependency Injection:
+### Full-featured embedded web application server with Dependency Injection:
 ```java
 public final class HttpHelloWorldExample extends HttpServerLauncher { 
     @Provides
@@ -55,7 +55,7 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
     }
 }
 ```
-`HttpServerLauncher` - a predefined DataKernel [Launcher](https://datakernel.io/docs/core/launcher.html) which takes care of the application lifecycle and provides needed components for our server
+`HttpServerLauncher` - a predefined DataKernel [Launcher](https://datakernel.io/docs/core/launcher.html) that takes care of the application lifecycle and provides needed components for our server
 
 `@Provides` - one of the [DataKernel DI](https://datakernel.io/docs/core/di.html) annotations
 
@@ -63,8 +63,8 @@ public final class HttpHelloWorldExample extends HttpServerLauncher {
 
 `Promise` - Node.js-inspired async single-threaded Promises, an alternative to `CompletableFuture`
 
-- *The JAR file size of this example is only 723KB, with no extra dependencies*
-- *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.1 second.*
+- *The JAR file size of this example is only 1.4 MB. In comparison, minimal Spring web app size is 17 MB*
+- *This example utilizes quite a few components - [Eventloop](https://datakernel.io/docs/core/eventloop.html), [DI](https://datakernel.io/docs/core/di.html), [Promise](https://datakernel.io/docs/core/promise.html), [HTTP](https://datakernel.io/docs/core/http.html), [Launcher](https://datakernel.io/docs/core/launcher.html). Yet, it builds and starts in 0.65 sec.*
 - *DataKernel [DI](https://datakernel.io/docs/core/di.html) is 5.5 times faster than Guice and 100s times faster than Spring.*
 - *DataKernel [Promise](https://datakernel.io/docs/core/promise.html) is 7 times faster than Java `CompletableFuture`.*
 
@@ -77,10 +77,10 @@ public RpcServer rpcServer(Eventloop eventloop) {
             .withHandler(Integer.class, Integer.class, req -> Promise.of(req * 2));
 }
 ```
-- *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on a single core*.
+- *This RPC server handles up to [15M requests](https://datakernel.io/docs/cloud/rpc.html#benchmarks) per second on a single CPU core*.
 
 ## Documentation
-See the docs, examples and tutorials on [our website](https://datakernel.io).
+See the docs, examples, and tutorials on [our website](https://datakernel.io).
 
 ## Need help or found a bug?
 Feel free to open a [GitHub issue](https://github.com/softindex/datakernel/issues).
