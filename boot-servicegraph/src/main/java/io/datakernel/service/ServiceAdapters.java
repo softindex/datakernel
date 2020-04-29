@@ -252,13 +252,11 @@ public final class ServiceAdapters {
 
 			@Override
 			protected void stop(ExecutorService instance) throws Exception {
-				List<Runnable> runnables = instance.shutdownNow();
-				if (!runnables.isEmpty()) {
-					logger.warn("Cancelled tasks: " + runnables);
-				}
+				instance.shutdown();
 				if (!instance.isTerminated()) {
-					logger.warn("Awaiting termination of " + instance + " ...");
+					logger.warn("Awaiting termination of {} ...", instance);
 					instance.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+					logger.info("Instance {} has been terminated", instance);
 				}
 			}
 		};
