@@ -52,12 +52,11 @@ import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.Comparator;
-import java.util.List;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -97,41 +96,14 @@ public final class DataflowTest {
 		executor.shutdownNow();
 	}
 
-	private ModuleBuilder createCommon(List<Partition> graphPartitions) {
-		return ModuleBuilder.create()
-				.install(DataflowModule.create())
-				.bind(Executor.class).toInstance(executor)
-				.bind(Eventloop.class).toInstance(Eventloop.getCurrentEventloop())
-				.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
-				.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
-				.bind(new Key<StructuredCodec<TestPredicate>>() {}).toInstance(ofObject(TestPredicate::new))
-				.scan(new Object() {
-
-					@Provides
-					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
-						return new DataflowServer(eventloop, codec, serializers, environment);
-					}
-
-					@Provides
-					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) throws IOException {
-						return new DataflowClient(executor, codec, serializers)
-								.withSecondaryBufferPath(temporaryFolder.newFolder().toPath());
-					}
-
-					@Provides
-					DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
-						return new DataflowGraph(client, graphPartitions, nodeCodec);
-					}
-				});
-	}
-
 	@Test
 	public void testForward() throws Exception {
 
 		InetSocketAddress address1 = getFreeListenAddress();
 		InetSocketAddress address2 = getFreeListenAddress();
 
-		Module common = createCommon(asList(new Partition(address1), new Partition(address2))).build();
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2)))
+				.build();
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
@@ -182,7 +154,7 @@ public final class DataflowTest {
 		InetSocketAddress address1 = getFreeListenAddress();
 		InetSocketAddress address2 = getFreeListenAddress();
 
-		Module common = createCommon(asList(new Partition(address1), new Partition(address2))).build();
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2))).build();
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
 		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
@@ -213,13 +185,7 @@ public final class DataflowTest {
 		server1.listen();
 		server2.listen();
 
-		Module clientModule = ModuleBuilder.create()
-				.install(common)
-				.bind(DataflowGraph.class)
-				.bind(new Key<List<Partition>>() {}).toInstance(asList(new Partition(address1), new Partition(address2)))
-				.build();
-
-		DataflowGraph graph = Injector.of(clientModule).getInstance(DataflowGraph.class);
+		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
 
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
 				TestItem.class, Long.class, new TestKeyFunction(), new TestComparator()));
@@ -232,8 +198,20 @@ public final class DataflowTest {
 					server2.close();
 				})));
 
-		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6), new TestItem(6)), result1.getList());
-		assertEquals(asList(new TestItem(1), new TestItem(1), new TestItem(3), new TestItem(5)), result2.getList());
+		List<TestItem> results = new ArrayList<>();
+		results.addAll(result1.getList());
+		results.addAll(result2.getList());
+		results.sort(Comparator.comparingLong(item -> item.value));
+
+		assertEquals(asList(
+				new TestItem(1),
+				new TestItem(1),
+				new TestItem(2),
+				new TestItem(3),
+				new TestItem(4),
+				new TestItem(5),
+				new TestItem(6),
+				new TestItem(6)), results);
 	}
 
 	@Test
@@ -241,7 +219,7 @@ public final class DataflowTest {
 		InetSocketAddress address1 = getFreeListenAddress();
 		InetSocketAddress address2 = getFreeListenAddress();
 
-		Module common = createCommon(asList(new Partition(address1), new Partition(address2)))
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2)))
 				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
 				.build();
 
@@ -300,7 +278,7 @@ public final class DataflowTest {
 		InetSocketAddress address1 = getFreeListenAddress();
 		InetSocketAddress address2 = getFreeListenAddress();
 
-		Module common = createCommon(asList(new Partition(address1), new Partition(address2)))
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2)))
 				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
 				.build();
 
@@ -397,6 +375,33 @@ public final class DataflowTest {
 		public boolean test(TestItem input) {
 			return input.value % 2 == 0;
 		}
+	}
+
+	static ModuleBuilder createCommon(Executor executor, Path secondaryPath, List<Partition> graphPartitions) {
+		return ModuleBuilder.create()
+				.install(DataflowModule.create())
+				.bind(Executor.class).toInstance(executor)
+				.bind(Eventloop.class).toInstance(Eventloop.getCurrentEventloop())
+				.scan(new Object() {
+
+					@Provides
+					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
+						return new DataflowServer(eventloop, codec, serializers, environment);
+					}
+
+					@Provides
+					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) {
+						return new DataflowClient(executor, secondaryPath, codec, serializers);
+					}
+
+					@Provides
+					DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
+						return new DataflowGraph(client, graphPartitions, nodeCodec);
+					}
+				})
+				.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
+				.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
+				.bind(new Key<StructuredCodec<TestPredicate>>() {}).toInstance(ofObject(TestPredicate::new));
 	}
 
 	static InetSocketAddress getFreeListenAddress() throws UnknownHostException {

@@ -19,8 +19,11 @@ package io.datakernel.datastream.processor;
 import static io.datakernel.common.Preconditions.checkArgument;
 
 public final class Sharders {
+
 	/**
-	 * A sharder that distributes objects based on their hashcode
+	 * A sharder that distributes objects based on their hashcode.
+	 * <p>
+	 * It is optimized for when the number of partitions is a power of two.
 	 */
 	public static <T> Sharder<T> byHash(int partitions) {
 		checkArgument(partitions > 0, "Number of partitions cannot be zero or less");

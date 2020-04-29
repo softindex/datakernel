@@ -20,6 +20,7 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 	@Nullable
 	private Exception exception;
 
+	private SettablePromise<Void> waitingForBuffer;
 	private boolean finished = false;
 
 	public ChannelBufferWithFallback(ChannelQueue<T> queue, Supplier<Promise<? extends ChannelQueue<T>>> bufferFactory) {
@@ -27,26 +28,13 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 		this.bufferFactory = bufferFactory;
 	}
 
-	private SettablePromise<Void> waitingForBuffer;
-
 	@Override
 	public Promise<Void> put(@Nullable T item) {
 		if (exception != null) {
 			tryRecycle(item);
 			return Promise.ofException(exception);
 		}
-		if (item == null) {
-			finished = true;
-		}
-		if (buffer == null) {
-			return primaryPut(item);
-		}
-		if (!buffer.isSaturated()) {
-			return secondaryPut(item);
-		}
-		buffer.close();
-		buffer = null;
-		return primaryPut(item);
+		return doPut(item);
 	}
 
 	@Override
@@ -54,25 +42,25 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 		if (exception != null) {
 			return Promise.ofException(exception);
 		}
+		return doTake();
+	}
+
+	private Promise<Void> doPut(@Nullable T item) {
+		if (item == null) {
+			finished = true;
+		}
 		if (buffer != null) {
-			return secondaryTake();
+			return secondaryPut(item);
 		}
 		if (waitingForBuffer != null) {
-			return waitingForBuffer.then($ -> secondaryTake());
+			// no buffer, *yet*
+			return waitingForBuffer.then($ -> secondaryPut(item));
 		}
-		return primaryTake();
-	}
-
-	private Promise<T> primaryTake() {
-		return finished && queue.isExhausted() ?
-				Promise.of(null) :
-				queue.take();
-	}
-
-	private Promise<Void> primaryPut(@Nullable T item) {
+		// try to push into primary
 		if (!queue.isSaturated()) {
 			return queue.put(item);
 		}
+		// primary is saturated, creating secondary buffer
 		SettablePromise<Void> waitingForBuffer = new SettablePromise<>();
 		this.waitingForBuffer = waitingForBuffer;
 		return bufferFactory.get()
@@ -84,25 +72,18 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 				});
 	}
 
-	private Promise<T> secondaryTake() {
-		assert buffer != null;
-		return buffer.take()
-				.thenEx((item, e) -> {
-					if (e != null) {
-						if (e != AsyncCloseable.CLOSE_EXCEPTION) {
-							return Promise.ofException(e);
-						}
-					} else if (item != null) {
-						return Promise.of(item);
-					} else {
-						// here item was null and we had no exception
-						buffer.close();
-					}
-					// here either we had a close excation or item was null
-					// so we retry the whole thing (same as in secondaryPut)
-					buffer = null;
-					return primaryTake();
-				});
+	public Promise<T> doTake() {
+		if (buffer != null) {
+			return secondaryTake();
+		}
+		if (waitingForBuffer != null) {
+			return waitingForBuffer.then($ -> secondaryTake());
+		}
+		// we already received null and have no items left
+		if (finished && queue.isExhausted()) {
+			return Promise.of(null);
+		}
+		return queue.take();
 	}
 
 	private Promise<Void> secondaryPut(@Nullable T item) {
@@ -118,7 +99,30 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 					// buffer was already closed for whatever reason,
 					// retry the whole thing (may cause loops, but should not)
 					buffer = null;
-					return primaryPut(item);
+					return doPut(item);
+				});
+	}
+
+	private Promise<T> secondaryTake() {
+		if (buffer == null) {
+			return doTake();
+		}
+		return buffer.take()
+				.thenEx((item, e) -> {
+					if (e != null) {
+						if (e != AsyncCloseable.CLOSE_EXCEPTION) {
+							return Promise.ofException(e);
+						}
+					} else if (item != null) {
+						return Promise.of(item);
+					} else {
+						// here item was null and we had no exception
+						buffer.close();
+					}
+					// here either we had a close exception or item was null
+					// so we retry the whole thing (same as in secondaryPut)
+					buffer = null;
+					return doTake();
 				});
 	}
 
@@ -137,6 +141,12 @@ public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 		if (exception != null) return;
 		exception = e instanceof Exception ? (Exception) e : new RuntimeException(e);
 		queue.closeEx(e);
+		if (waitingForBuffer != null) {
+			waitingForBuffer.whenResult(() -> {
+				assert buffer != null;
+				buffer.closeEx(e);
+			});
+		}
 		if (buffer != null) {
 			buffer.closeEx(e);
 		}

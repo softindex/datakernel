@@ -153,6 +153,6 @@ public final class ChannelFileWriter extends AbstractChannelConsumer<ByteBuf> {
 
 	@Override
 	public String toString() {
-		return "ChannelFileWriter{}";
+		return "ChannelFileWriter{pos=" + position + '}';
 	}
 }

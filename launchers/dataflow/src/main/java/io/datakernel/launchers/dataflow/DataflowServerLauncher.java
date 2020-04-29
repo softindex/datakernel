@@ -20,10 +20,10 @@ import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
-import java.nio.file.Paths;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.config.ConfigConverters.getExecutor;
+import static io.datakernel.config.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
@@ -56,12 +56,7 @@ public abstract class DataflowServerLauncher extends Launcher {
 
 	@Provides
 	DataflowClient client(Executor executor, Config config, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
-		DataflowClient client = new DataflowClient(executor, codec, serializers);
-		String path = config.get("dataflow.secondaryBufferPath", null);
-		if (path != null) {
-			client.withSecondaryBufferPath(Paths.get(path));
-		}
-		return client;
+		return new DataflowClient(executor, config.get(ofPath(), "dataflow.secondaryBufferPath"), codec, serializers);
 	}
 
 	@Provides

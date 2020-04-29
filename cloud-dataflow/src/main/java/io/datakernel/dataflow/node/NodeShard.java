@@ -18,16 +18,17 @@ package io.datakernel.dataflow.node;
 
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
+import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.Sharder;
-import io.datakernel.datastream.processor.Sharders;
 import io.datakernel.datastream.processor.StreamSplitter;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+import static io.datakernel.common.HashUtils.murmur3hash;
 import static java.util.Collections.singletonList;
 
 /**
@@ -42,19 +43,6 @@ public final class NodeShard<K, T> implements Node {
 	private StreamId input;
 	private List<StreamId> outputs;
 
-	public StreamId newPartition() {
-		StreamId newOutput = new StreamId();
-		outputs.add(newOutput);
-		return newOutput;
-	}
-
-	public StreamId getOutput(int partition) {
-		return outputs.get(partition);
-	}
-
-	public NodeShard() {
-	}
-
 	public NodeShard(Function<T, K> keyFunction, StreamId input) {
 		this.keyFunction = keyFunction;
 		this.input = input;
@@ -65,6 +53,16 @@ public final class NodeShard<K, T> implements Node {
 		this.keyFunction = keyFunction;
 		this.input = input;
 		this.outputs = outputs;
+	}
+
+	public StreamId newPartition() {
+		StreamId newOutput = new StreamId();
+		outputs.add(newOutput);
+		return newOutput;
+	}
+
+	public StreamId getOutput(int partition) {
+		return outputs.get(partition);
 	}
 
 	public Function<T, K> getKeyFunction() {
@@ -99,9 +97,19 @@ public final class NodeShard<K, T> implements Node {
 
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		Sharder<K> hashSharder = Sharders.byHash(outputs.size());
-		StreamSplitter<T, T> streamSharder = StreamSplitter.create(
-				(item, acceptors) -> acceptors[hashSharder.shard(keyFunction.apply(item))].accept(item));
+		int nonce = taskContext.getNonce();
+		int partitions = outputs.size();
+		int bits = partitions - 1;
+		BiConsumer<T, StreamDataAcceptor<T>[]> splitter = (partitions & bits) == 0 ?
+				(item, acceptors) -> acceptors[murmur3hash(keyFunction.apply(item).hashCode() + nonce) & bits].accept(item) :
+				(item, acceptors) -> {
+					int hash = murmur3hash(keyFunction.apply(item).hashCode() + nonce);
+					int hashAbs = hash < 0 ? hash == Integer.MIN_VALUE ? Integer.MAX_VALUE : -hash : hash;
+					acceptors[hashAbs % partitions].accept(item);
+				};
+
+		StreamSplitter<T, T> streamSharder = StreamSplitter.create(splitter);
+
 		taskContext.bindChannel(input, streamSharder.getInput());
 		for (StreamId streamId : outputs) {
 			StreamSupplier<T> supplier = streamSharder.newOutput();
@@ -113,6 +121,7 @@ public final class NodeShard<K, T> implements Node {
 	public String toString() {
 		return "NodeShard{keyFunction=" + keyFunction.getClass().getSimpleName() +
 				", input=" + input +
-				", outputs=" + outputs + '}';
+				", outputs=" + outputs +
+				'}';
 	}
 }

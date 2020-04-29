@@ -21,10 +21,16 @@ import io.datakernel.dataflow.node.Node;
 import java.util.List;
 
 public final class DatagraphCommandExecute extends DatagraphCommand {
+	private final int nonce;
 	private final List<Node> nodes;
 
-	public DatagraphCommandExecute(List<Node> nodes) {
+	public DatagraphCommandExecute(int nonce, List<Node> nodes) {
+		this.nonce = nonce;
 		this.nodes = nodes;
+	}
+
+	public int getNonce() {
+		return nonce;
 	}
 
 	public List<Node> getNodes() {

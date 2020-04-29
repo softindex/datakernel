@@ -21,10 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
-import io.datakernel.csp.queue.ChannelBufferWithFallback;
-import io.datakernel.csp.queue.ChannelFileBuffer;
-import io.datakernel.csp.queue.ChannelQueue;
-import io.datakernel.csp.queue.ChannelZeroBuffer;
+import io.datakernel.csp.queue.*;
 import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.Node;
@@ -38,7 +35,6 @@ import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.net.InetSocketAddress;
@@ -61,22 +57,25 @@ public final class DataflowClient {
 	private final SocketSettings socketSettings = SocketSettings.createDefault();
 
 	private final Executor executor;
+	private final Path secondaryPath;
+
 	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
 	private final BinarySerializers serializers;
 
 	private final AtomicInteger secondaryId = new AtomicInteger(Math.abs(ThreadLocalRandom.current().nextInt()));
 
-	@Nullable
-	private Path secondaryPath;
+	private int bufferMinSize, bufferMaxSize;
 
-	public DataflowClient(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
+	public DataflowClient(Executor executor, Path secondaryPath, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
 		this.executor = executor;
+		this.secondaryPath = secondaryPath;
 		this.codec = codec;
 		this.serializers = serializers;
 	}
 
-	public DataflowClient withSecondaryBufferPath(Path secondaryPath) {
-		this.secondaryPath = secondaryPath;
+	public DataflowClient withBufferSizes(int bufferMinSize, int bufferMaxSize) {
+		this.bufferMinSize = bufferMinSize;
+		this.bufferMaxSize = bufferMaxSize;
 		return this;
 	}
 
@@ -88,14 +87,15 @@ public final class DataflowClient {
 
 					return messaging.send(commandDownload)
 							.map($ -> {
-								ChannelQueue<ByteBuf> buffer;
-								if (secondaryPath != null) {
-									buffer = new ChannelBufferWithFallback<>(
-											new ChannelZeroBuffer<>(),
-											() -> ChannelFileBuffer.create(executor, secondaryPath.resolve(secondaryId.getAndIncrement() + ".bin")));
-								} else {
-									buffer = new ChannelZeroBuffer<>();
-								}
+								ChannelQueue<ByteBuf> primaryBuffer =
+										bufferMinSize == 0 && bufferMaxSize == 0 ?
+												new ChannelZeroBuffer<>() :
+												new ChannelBuffer<>(bufferMinSize, bufferMaxSize);
+
+								ChannelQueue<ByteBuf> buffer = new ChannelBufferWithFallback<>(
+										primaryBuffer,
+										() -> ChannelFileBuffer.create(executor, secondaryPath.resolve(secondaryId.getAndIncrement() + ".bin")));
+
 								return messaging.receiveBinaryStream()
 										.transformWith(buffer)
 										.transformWith(ChannelDeserializer.create(serializers.get(type))
@@ -175,8 +175,8 @@ public final class DataflowClient {
 			this.messaging = MessagingWithBinaryStreaming.create(socket, codec);
 		}
 
-		public Promise<Void> execute(Collection<Node> nodes) {
-			return messaging.send(new DatagraphCommandExecute(new ArrayList<>(nodes)))
+		public Promise<Void> execute(int nonce, Collection<Node> nodes) {
+			return messaging.send(new DatagraphCommandExecute(nonce, new ArrayList<>(nodes)))
 					.then(messaging::receive)
 					.then(response -> {
 						messaging.close();

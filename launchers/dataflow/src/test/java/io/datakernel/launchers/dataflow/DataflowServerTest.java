@@ -5,7 +5,7 @@ import io.datakernel.config.Config;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
-import io.datakernel.dataflow.di.BinarySerializersModule;
+import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
@@ -18,8 +18,6 @@ import io.datakernel.dataflow.server.command.DatagraphCommand;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.processor.Sharder;
-import io.datakernel.datastream.processor.Sharders;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToAccumulator;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
@@ -54,6 +52,7 @@ import static io.datakernel.dataflow.di.EnvironmentModule.slot;
 import static io.datakernel.launchers.dataflow.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
+import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -96,24 +95,28 @@ public class DataflowServerTest {
 		launchServers(asList("dog", "cat", "horse", "cat"), asList("dog", "cat"), false);
 		List<StringCount> result = new ArrayList<>();
 		await(mapReduce(result));
+		System.out.println("AWAITED");
+		result.sort(StringCount.COMPARATOR);
 		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), result);
 	}
 
 	@Test
-	public void testMapReduceOneMillionStrings() throws Exception {
-		List<String> words1 = createOneMillionStrings();
-		List<String> words2 = createOneMillionStrings();
+	public void testMapReduceBig() throws Exception {
+		List<String> words1 = createStrings(100_000, 10_000);
+		List<String> words2 = createStrings(100_000, 10_000);
 		launchServers(words1, words2, false);
 		List<StringCount> result = new ArrayList<>();
+
 		await(mapReduce(result));
 
-		// manual map reduce for assertion
-		Sharder<String> sharder = Sharders.byHash(2);
+		result.sort(StringCount.COMPARATOR);
+
 		List<StringCount> expected = Stream.concat(words1.stream(), words2.stream())
 				.collect(groupingBy(Function.identity()))
-				.values().stream()
-				.map(strings -> new StringCount(strings.get(0), strings.size()))
-				.sorted(Comparator.<StringCount, Integer>comparing(stringCount -> sharder.shard(stringCount.s)).thenComparing(stringCount -> stringCount.s))
+				.entrySet()
+				.stream()
+				.map(e -> new StringCount(e.getKey(), e.getValue().size()))
+				.sorted(StringCount.COMPARATOR)
 				.collect(toList());
 
 		assertEquals(expected, result);
@@ -134,27 +137,35 @@ public class DataflowServerTest {
 		launchServers(asList("dog", "cat", "horse", "cat", "cow"), asList("dog", "cat", "cow"), result1, result2, false);
 		await(repartitionAndSort());
 
-		assertEquals(asList("cat", "cat", "cat", "dog", "dog"), result1);
-		assertEquals(asList("cow", "cow", "horse"), result2);
+		List<String> result = new ArrayList<>();
+		result.addAll(result1);
+		result.addAll(result2);
+		result.sort(Comparator.naturalOrder());
+
+		assertEquals(asList("cat", "cat", "cat", "cow", "cow", "dog", "dog", "horse"), result);
 	}
 
 	@Test
-	public void testRepartitionAndSortOneMillionStrings() throws Exception {
+	public void testRepartitionAndSortBig() throws Exception {
 		List<String> result1 = new ArrayList<>();
 		List<String> result2 = new ArrayList<>();
-		List<String> words1 = createOneMillionStrings();
-		List<String> words2 = createOneMillionStrings();
+		List<String> words1 = createStrings(100_000, 10_000);
+		List<String> words2 = createStrings(100_000, 10_000);
 		launchServers(words1, words2, result1, result2, false);
 		await(repartitionAndSort());
 
-		// manual repartition and sort for assertion
-		Sharder<String> sharder = Sharders.byHash(2);
-		Map<Integer, List<String>> expected = Stream.concat(words1.stream(), words2.stream())
-				.sorted()
-				.collect(groupingBy(sharder::shard, LinkedHashMap::new, toList()));
+		List<String> expected = new ArrayList<>(words1.size() + words2.size());
+		expected.addAll(words1);
+		expected.addAll(words2);
+		expected.sort(Comparator.naturalOrder());
 
-		assertEquals(expected.get(0), result1);
-		assertEquals(expected.get(1), result2);
+
+		List<String> result = new ArrayList<>(words1.size() + words2.size());
+		result.addAll(result1);
+		result.addAll(result2);
+		result.sort(Comparator.naturalOrder());
+
+		assertEquals(expected, result);
 	}
 
 	@Test
@@ -177,14 +188,16 @@ public class DataflowServerTest {
 
 		Dataset<String> items = datasetOfList("items", String.class);
 		Dataset<StringCount> mappedItems = map(items, new TestMapFunction(), StringCount.class);
-		Dataset<StringCount> reducedItems = splitSortReduce_Repartition_Reduce(mappedItems,
-				new TestReducer(), new TestKeyFunction(), new TestComparator());
+		Dataset<StringCount> reducedItems = splitSortReduce_Repartition_Reduce(mappedItems, new TestReducer(), new TestKeyFunction(), new TestComparator());
 		Collector<StringCount> collector = new Collector<>(reducedItems, client);
 		StreamSupplier<StringCount> resultSupplier = collector.compile(graph);
 		StreamConsumerToList<StringCount> resultConsumer = StreamConsumerToList.create(result);
-		resultSupplier.streamTo(resultConsumer);
 
-		return graph.execute().whenException(resultConsumer::closeEx);
+		resultSupplier.streamTo(resultConsumer).whenComplete(assertComplete());
+
+		return graph.execute()
+				.whenException(resultConsumer::closeEx)
+				.whenComplete(assertComplete());
 	}
 
 	private Promise<Void> repartitionAndSort() throws IOException {
@@ -204,13 +217,14 @@ public class DataflowServerTest {
 		return graph.execute();
 	}
 
-	private static List<String> createOneMillionStrings() {
-		List<String> list = new ArrayList<>(1_000_000);
+	@SuppressWarnings("SameParameterValue")
+	private static List<String> createStrings(int howMany, int bound) {
+		String[] strings = new String[howMany];
 		Random random = new Random();
-		for (int i = 0; i < 1_000_000; i++) {
-			list.add(Integer.toString(random.nextInt(100_000)));
+		for (int i = 0; i < howMany; i++) {
+			strings[i] = Integer.toString(random.nextInt(bound));
 		}
-		return list;
+		return Arrays.asList(strings);
 	}
 
 	private void launchServers(List<String> server1Words, List<String> server2Words, boolean oneMalformed) {
@@ -241,6 +255,8 @@ public class DataflowServerTest {
 	}
 
 	public static class StringCount {
+		static final Comparator<StringCount> COMPARATOR = Comparator.<StringCount, String>comparing(item -> item.s).thenComparingInt(item -> item.count);
+
 		@Serialize(order = 0)
 		public final String s;
 		@Serialize(order = 1)
@@ -318,28 +334,26 @@ public class DataflowServerTest {
 	}
 
 	public static Module createModule(List<Partition> partitions) {
-		return DataflowModule.create()
-				.overrideWith(
-						ModuleBuilder.create()
-								.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
-								.bind(new Key<StructuredCodec<TestMapFunction>>() {}).toInstance(ofObject(TestMapFunction::new))
-								.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
-								.bind(new Key<StructuredCodec<TestReducer>>() {}).toInstance(ofObject(TestReducer::new))
-								.bind(new Key<StructuredCodec<StringFunction>>() {}).toInstance(ofObject(StringFunction::new))
-								.bind(Executor.class).toInstance(Executors.newSingleThreadExecutor())
-								.scan(new Object() {
+		return ModuleBuilder.create()
+				.install(DataflowModule.create())
+				.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
+				.bind(new Key<StructuredCodec<TestMapFunction>>() {}).toInstance(ofObject(TestMapFunction::new))
+				.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
+				.bind(new Key<StructuredCodec<TestReducer>>() {}).toInstance(ofObject(TestReducer::new))
+				.bind(new Key<StructuredCodec<StringFunction>>() {}).toInstance(ofObject(StringFunction::new))
+				.scan(new Object() {
 
-									@Provides
-									DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) {
-										return new DataflowClient(executor, codec, serializers);
-									}
+					@Provides
+					DataflowClient client(ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) throws IOException {
+						return new DataflowClient(Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath(), codec, serializers);
+					}
 
-									@Provides
-									DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
-										return new DataflowGraph(client, partitions, nodeCodec);
-									}
-								})
-								.build());
+					@Provides
+					DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
+						return new DataflowGraph(client, partitions, nodeCodec);
+					}
+				})
+				.build();
 	}
 
 	private static final class TestServerLauncher extends DataflowServerLauncher {

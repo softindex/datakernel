@@ -1,29 +1,17 @@
 package io.datakernel.dataflow.stream;
 
-import io.datakernel.codec.StructuredCodec;
-import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
-import io.datakernel.dataflow.di.BinarySerializersModule;
-import io.datakernel.dataflow.di.CodecsModule.Subtypes;
-import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
-import io.datakernel.dataflow.node.Node;
-import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowServer;
-import io.datakernel.dataflow.server.command.DatagraphCommand;
-import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.dataflow.stream.DataflowTest.TestComparator;
 import io.datakernel.dataflow.stream.DataflowTest.TestItem;
 import io.datakernel.dataflow.stream.DataflowTest.TestKeyFunction;
 import io.datakernel.datastream.StreamConsumerToList;
-import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.After;
 import org.junit.Before;
@@ -37,18 +25,17 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
 import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.stream.DataflowTest.createCommon;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 public class ReducerDeadlockTest {
 
@@ -76,33 +63,7 @@ public class ReducerDeadlockTest {
 		InetSocketAddress address1 = getFreeListenAddress();
 		InetSocketAddress address2 = getFreeListenAddress();
 
-		Module common = ModuleBuilder.create()
-				.install(DataflowModule.create())
-				.bind(Executor.class).toInstance(executor)
-				.bind(Eventloop.class).toInstance(Eventloop.getCurrentEventloop())
-
-				.scan(new Object() {
-
-					@Provides
-					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
-						return new DataflowServer(eventloop, codec, serializers, environment);
-					}
-
-					@Provides
-					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) throws IOException {
-						return new DataflowClient(executor, codec, serializers)
-								.withSecondaryBufferPath(temporaryFolder.newFolder().toPath());
-					}
-
-					@Provides
-					DataflowGraph graph(DataflowClient client, @Subtypes StructuredCodec<Node> nodeCodec) {
-						return new DataflowGraph(client, asList(new Partition(address1), new Partition(address2)), nodeCodec);
-					}
-				})
-
-				.bind(new Key<StructuredCodec<TestComparator>>() {}).toInstance(ofObject(TestComparator::new))
-				.bind(new Key<StructuredCodec<TestKeyFunction>>() {}).toInstance(ofObject(TestKeyFunction::new))
-
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2)))
 				.build();
 
 		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
@@ -151,8 +112,9 @@ public class ReducerDeadlockTest {
 					server2.close();
 				})));
 
-		assertEquals(result1.getList(), list1);
-		assertEquals(result2.getList(), list2);
+		// the sharder nonce is random, so with an *effectively zero* chance these asserts may fail
+		assertNotEquals(result1.getList(), list1);
+		assertNotEquals(result2.getList(), list2);
 	}
 
 	static InetSocketAddress getFreeListenAddress() throws UnknownHostException {

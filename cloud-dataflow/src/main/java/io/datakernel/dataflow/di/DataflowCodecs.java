@@ -87,13 +87,15 @@ public final class DataflowCodecs extends AbstractModule {
 	}
 
 	@Provides
-	StructuredCodec<DatagraphCommandExecute> datagraphCommandExecute(@Subtypes StructuredCodec<Node> node) {
+	StructuredCodec<DatagraphCommandExecute> datagraphCommandExecute(@Subtypes StructuredCodec<Node> node, StructuredCodec<Integer> integer) {
 		return object(DatagraphCommandExecute::new,
+				"nonce", DatagraphCommandExecute::getNonce, integer,
 				"nodes", DatagraphCommandExecute::getNodes, ofList(node));
 	}
 
 	@Provides
 	StructuredCodec<DatagraphResponse> datagraphResponse(StructuredCodec<String> string) {
+		//noinspection ConstantConditions - intellji false positive
 		return object(DatagraphResponse::new,
 				"error", DatagraphResponse::getError, string.nullable());
 	}

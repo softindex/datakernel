@@ -105,7 +105,7 @@ public class DataflowSerializationTest {
 
 		StructuredCodec<DatagraphCommand> commandCodec = Injector.of(serialization).getInstance(new Key<StructuredCodec<DatagraphCommand>>() {}.qualified(Subtypes.class));
 
-		String str = toJson(commandCodec, new DatagraphCommandExecute(nodes));
+		String str = toJson(commandCodec, new DatagraphCommandExecute(1234, nodes));
 		System.out.println(str);
 
 		System.out.println(fromJson(commandCodec, str));

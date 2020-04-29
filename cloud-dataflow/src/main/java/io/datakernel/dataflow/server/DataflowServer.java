@@ -34,7 +34,7 @@ import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.csp.ChannelSerializer;
-import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.ResourceLocator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.AsyncTcpSocket;
@@ -56,7 +56,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 
 	private final ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec;
 	private final BinarySerializers serializers;
-	private final Injector environment;
+	private final ResourceLocator environment;
 
 	{
 		handlers.put(DatagraphCommandDownload.class, new DownloadCommandHandler());
@@ -67,7 +67,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 		void onCommand(Messaging<I, O> messaging, I command);
 	}
 
-	public DataflowServer(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializers serializers, Injector environment) {
+	public DataflowServer(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializers serializers, ResourceLocator environment) {
 		super(eventloop);
 		this.codec = codec;
 		this.serializers = serializers;
@@ -111,7 +111,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
 		public void onCommand(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
-			TaskContext task = new TaskContext(environment);
+			TaskContext task = new TaskContext(environment, command.getNonce());
 			try {
 				for (Node node : command.getNodes()) {
 					node.createAndBind(task);

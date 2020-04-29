@@ -30,6 +30,7 @@ import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -45,6 +46,8 @@ public final class DataflowGraph {
 	private final DataflowClient client;
 	private final List<Partition> availablePartitions;
 	private final StructuredCodec<List<Node>> listNodeCodec;
+
+	private final int nonce = ThreadLocalRandom.current().nextInt();
 
 	public DataflowGraph(DataflowClient client, List<Partition> availablePartitions, StructuredCodec<Node> nodeCodec) {
 		this.client = client;
@@ -78,8 +81,8 @@ public final class DataflowGraph {
 			this.session = session;
 		}
 
-		public Promise<Void> execute(List<Node> nodes) {
-			return session.execute(nodes);
+		public Promise<Void> execute(int nonce, List<Node> nodes) {
+			return session.execute(nonce, nodes);
 		}
 
 		@Override
@@ -100,7 +103,7 @@ public final class DataflowGraph {
 								sessions.stream()
 										.map(session -> {
 											List<Node> nodes = nodesByPartition.get(session.partition);
-											return session.execute(nodes);
+											return session.execute(nonce, nodes);
 										}))
 								.whenException(() -> sessions.forEach(PartitionSession::close))
 				);
@@ -143,14 +146,23 @@ public final class DataflowGraph {
 		return partitions;
 	}
 
+	public String toGraphViz() {
+		return toGraphViz(false, 2);
+	}
+
 	public String toGraphViz(boolean streamLabels) {
+		return toGraphViz(streamLabels, 2);
+	}
+
+	public String toGraphViz(int maxPartitions) {
+		return toGraphViz(false, maxPartitions);
+	}
+
+	public String toGraphViz(boolean streamLabels, int maxPartitions) {
 		StringBuilder sb = new StringBuilder("digraph {\n\n");
 
 		RefInt nodeCounter = new RefInt(0);
 		RefInt clusterCounter = new RefInt(0);
-
-		Map<Node, String> nodeIds = new HashMap<>();
-		Set<String> notFound = new HashSet<>();
 
 		Map<StreamId, Node> nodesByInput = new HashMap<>();
 		Map<StreamId, StreamId> network = new HashMap<>();
@@ -176,37 +188,41 @@ public final class DataflowGraph {
 			}
 		}
 
+		Map<Node, String> nodeIds = new HashMap<>();
+
 		// define nodes and group them by partitions using graphviz clusters
-		getNodesByPartition().forEach((partition, nodes) -> {
-			sb.append("  subgraph cluster_")
-					.append(++clusterCounter.value)
-					.append(" {\n")
-					.append("    label=\"")
-					.append(partition.getAddress())
-					.append("\";\n    style=rounded;\n\n");
-			for (Node node : nodes) {
-				if ((node instanceof NodeDownload || (node instanceof NodeUpload && network.containsKey(((NodeUpload<?>) node).getStreamId())))) {
-					continue;
-				}
-				String nodeId = "n" + ++nodeCounter.value;
-				sb.append("    ")
-						.append(nodeId)
-						.append(" [label=\"")
-						.append(node.getClass().getSimpleName())
-						.append("\"];\n");
-				nodeIds.put(node, nodeId);
-			}
-			sb.append("  }\n\n");
-		});
+		getNodesByPartition()
+				.entrySet()
+				.stream()
+				.limit(maxPartitions)
+				.forEach(e -> {
+					sb.append("  subgraph cluster_")
+							.append(++clusterCounter.value)
+							.append(" {\n")
+							.append("    label=\"")
+							.append(e.getKey().getAddress())
+							.append("\";\n    style=rounded;\n\n");
+					for (Node node : e.getValue()) {
+						// upload and download nodes have no common connections
+						// download nodes are never drawn, and upload only has an input
+						if ((node instanceof NodeDownload || (node instanceof NodeUpload && network.containsKey(((NodeUpload<?>) node).getStreamId())))) {
+							continue;
+						}
+						String nodeId = "n" + ++nodeCounter.value;
+						sb.append("    ")
+								.append(nodeId)
+								.append(" [label=\"")
+								.append(node.getClass().getSimpleName())
+								.append("\"];\n");
+						nodeIds.put(node, nodeId);
+					}
+					sb.append("  }\n\n");
+				});
+
+		Set<String> notFound = new HashSet<>();
 
 		// walk over each node outputs and build the connections
-		for (Node node : nodePartitions.keySet()) {
-			// upload and download nodes have no common connections
-			// download nodes are never drawn, and upload only has an input
-			if (node instanceof NodeUpload || node instanceof NodeDownload) {
-				continue;
-			}
-			String id = nodeIds.get(node);
+		nodeIds.forEach((node, id) -> {
 			for (StreamId output : node.getOutputs()) {
 				Node outputNode = nodesByInput.get(output);
 				boolean net = false;
@@ -225,40 +241,42 @@ public final class DataflowGraph {
 					}
 				}
 				String nodeId = nodeIds.get(outputNode);
-				// if still unbound, draw as point and force the stream label
-				if (nodeId == null) {
+				// if still unbound and not net (because of partition limit),
+				// draw as point and force the stream label
+				if (nodeId == null && !net) {
 					nodeId = "s" + output.getId();
 					notFound.add(nodeId);
 					forceLabel = true;
 				}
-				sb.append("  ")
-						.append(id)
-						.append(" -> ")
-						.append(nodeId)
-						.append(" [");
-
-				if (streamLabels || forceLabel) {
-					if (prev != null) {
-						sb.append("taillabel=\"")
-								.append(prev)
-								.append("\", headlabel=\"")
-								.append(output)
-								.append("\"");
-					} else {
-						sb.append("xlabel=\"")
-								.append(output)
-								.append("\"");
+				if (nodeId != null) { // nodeId might be null only for net nodes here, see previous 'if'
+					sb.append("  ")
+							.append(id)
+							.append(" -> ")
+							.append(nodeId)
+							.append(" [");
+					if (streamLabels || forceLabel) {
+						if (prev != null) {
+							sb.append("taillabel=\"")
+									.append(prev)
+									.append("\", headlabel=\"")
+									.append(output)
+									.append("\"");
+						} else {
+							sb.append("xlabel=\"")
+									.append(output)
+									.append("\"");
+						}
+						if (net) {
+							sb.append(", ");
+						}
 					}
 					if (net) {
-						sb.append(", ");
+						sb.append("style=dashed");
 					}
+					sb.append("];\n");
 				}
-				if (net) {
-					sb.append("style=dashed");
-				}
-				sb.append("];\n");
 			}
-		}
+		});
 
 		// draw the nodes that were never defined as points that still have connections
 		if (!notFound.isEmpty()) {

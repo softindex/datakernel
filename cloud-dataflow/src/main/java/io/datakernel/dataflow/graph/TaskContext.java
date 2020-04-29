@@ -18,7 +18,7 @@ package io.datakernel.dataflow.graph;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.di.core.Injector;
+import io.datakernel.di.core.ResourceLocator;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
@@ -40,10 +40,12 @@ public final class TaskContext {
 	private final Map<StreamId, StreamConsumer<?>> consumers = new LinkedHashMap<>();
 	private final SettablePromise<Void> executionPromise = new SettablePromise<>();
 
-	private final Injector environment;
+	private final ResourceLocator environment;
+	private final int nonce;
 
-	public TaskContext(Injector environment) {
+	public TaskContext(ResourceLocator environment, int nonce) {
 		this.environment = environment;
+		this.nonce = nonce;
 	}
 
 	public Object get(String key) {
@@ -52,6 +54,10 @@ public final class TaskContext {
 
 	public <T> T get(Class<T> cls) {
 		return environment.getInstance(cls);
+	}
+
+	public int getNonce() {
+		return nonce;
 	}
 
 	public <T> void bindChannel(StreamId streamId, StreamConsumer<T> consumer) {
