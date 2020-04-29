@@ -18,13 +18,14 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.test.rules.ByteBufRule;
 import org.junit.ClassRule;
 import org.junit.Ignore;
-import org.junit.Rule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -34,16 +35,16 @@ import java.net.Socket;
 import java.util.LinkedHashSet;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
-import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
+import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
+import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.lang.Math.min;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.junit.Assert.*;
 
 public final class AsyncHttpServerTest {
 	@ClassRule
@@ -180,6 +181,31 @@ public final class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
+	}
+
+	@Test
+	public void testBodySupplierClosingOnDisconnect() throws Exception {
+		Eventloop eventloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
+
+		int port = getFreePort();
+		SettablePromise<Throwable> throwablePromise = new SettablePromise<>();
+		ChannelSupplier<ByteBuf> supplier = ChannelSupplier.of(() -> Promise.of(wrapAscii("Hello")), throwablePromise::set);
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop, req -> HttpResponse.ok200().withBodyStream(supplier))
+				.withListenPort(port)
+				.withAcceptOnce();
+		server.listen();
+		new Thread(() -> {
+			try {
+				Socket socket = new Socket();
+				socket.connect(new InetSocketAddress("localhost", port));
+				writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\n\r\n");
+				socket.close();
+			} catch (IOException e) {
+				throw new AssertionError(e);
+			}
+		}).start();
+		Throwable throwable = await(throwablePromise);
+		assertThat(throwable, instanceOf(IOException.class));
 	}
 
 	@Test
