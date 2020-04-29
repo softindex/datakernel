@@ -485,15 +485,22 @@ public abstract class AbstractHttpConnection {
 	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
 		supplier.get()
 				.whenComplete((buf, e) -> {
-					if (isClosed()) return;
+					if (isClosed()) {
+						supplier.close();
+						return;
+					}
 					if (e == null) {
 						if (buf != null) {
 							socket.write(buf)
 									.whenComplete(($, e2) -> {
-										if (isClosed()) return;
+										if (isClosed()) {
+											supplier.close();
+											return;
+										}
 										if (e2 == null) {
 											writeStream(supplier);
 										} else {
+											supplier.closeEx(e2);
 											closeWithError(e2);
 										}
 									});

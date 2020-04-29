@@ -124,7 +124,7 @@ public final class EventloopJmxMbeanFactory implements JmxWrapperFactory, JmxRef
 
 		@Override
 		public void execute(Runnable command) {
-			eventloop.execute(command);
+			eventloop.execute(wrapContext(instance, command));
 		}
 
 		@Override
