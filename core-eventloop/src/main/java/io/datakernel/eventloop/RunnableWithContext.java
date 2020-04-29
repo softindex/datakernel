@@ -18,6 +18,14 @@ public interface RunnableWithContext extends Runnable {
 			public void run() {
 				runnable.run();
 			}
+
+			@Override
+			public String toString() {
+				return "RunnableWithContext{" +
+						"runnable=" + runnable +
+						", context=" + context +
+						'}';
+			}
 		};
 	}
 
