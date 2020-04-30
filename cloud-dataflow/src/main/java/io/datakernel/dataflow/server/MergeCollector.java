@@ -2,6 +2,7 @@ package io.datakernel.dataflow.server;
 
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
@@ -34,7 +35,7 @@ public class MergeCollector<K, T> {
 	}
 
 	public StreamSupplier<T> compile(DataflowGraph graph) {
-		List<StreamId> inputStreamIds = input.channels(graph);
+		List<StreamId> inputStreamIds = input.channels(DataflowContext.of(graph));
 
 		StreamMerger<K, T> merger = StreamMerger.create(keyFunction, keyComparator, distinct);
 		for (StreamId streamId : inputStreamIds) {

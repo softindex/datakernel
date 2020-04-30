@@ -22,6 +22,7 @@ import io.datakernel.common.collection.Try;
 import io.datakernel.common.ref.RefInt;
 import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.node.NodeDownload;
+import io.datakernel.dataflow.node.NodeShard;
 import io.datakernel.dataflow.node.NodeUpload;
 import io.datakernel.dataflow.server.DataflowClient;
 import io.datakernel.dataflow.server.DataflowClient.Session;
@@ -30,7 +31,6 @@ import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 import static io.datakernel.codec.StructuredCodecs.ofList;
 import static io.datakernel.codec.json.JsonUtils.toJson;
@@ -46,8 +46,6 @@ public final class DataflowGraph {
 	private final DataflowClient client;
 	private final List<Partition> availablePartitions;
 	private final StructuredCodec<List<Node>> listNodeCodec;
-
-	private final int nonce = ThreadLocalRandom.current().nextInt();
 
 	public DataflowGraph(DataflowClient client, List<Partition> availablePartitions, StructuredCodec<Node> nodeCodec) {
 		this.client = client;
@@ -81,8 +79,8 @@ public final class DataflowGraph {
 			this.session = session;
 		}
 
-		public Promise<Void> execute(int nonce, List<Node> nodes) {
-			return session.execute(nonce, nodes);
+		public Promise<Void> execute(List<Node> nodes) {
+			return session.execute(nodes);
 		}
 
 		@Override
@@ -96,15 +94,11 @@ public final class DataflowGraph {
 	 */
 	public Promise<Void> execute() {
 		Map<Partition, List<Node>> nodesByPartition = getNodesByPartition();
-
 		return connect(nodesByPartition.keySet())
 				.then(sessions ->
 						Promises.all(
 								sessions.stream()
-										.map(session -> {
-											List<Node> nodes = nodesByPartition.get(session.partition);
-											return session.execute(nonce, nodes);
-										}))
+										.map(session -> session.execute(nodesByPartition.get(session.partition))))
 								.whenException(() -> sessions.forEach(PartitionSession::close))
 				);
 	}

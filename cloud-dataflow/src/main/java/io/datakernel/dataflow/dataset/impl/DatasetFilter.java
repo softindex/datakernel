@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeFilter;
@@ -36,9 +37,10 @@ public final class DatasetFilter<T> extends Dataset<T> {
 	}
 
 	@Override
-	public List<StreamId> channels(DataflowGraph graph) {
+	public List<StreamId> channels(DataflowContext context) {
+		DataflowGraph graph = context.getGraph();
 		List<StreamId> outputStreamIds = new ArrayList<>();
-		List<StreamId> streamIds = input.channels(graph);
+		List<StreamId> streamIds = input.channels(context);
 		for (StreamId streamId : streamIds) {
 			NodeFilter<T> node = new NodeFilter<>(predicate, streamId);
 			graph.addNode(graph.getPartition(streamId), node);

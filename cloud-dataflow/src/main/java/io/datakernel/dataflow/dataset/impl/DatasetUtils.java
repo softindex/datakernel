@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
@@ -33,16 +34,18 @@ import java.util.function.Function;
 
 public class DatasetUtils {
 
-	public static <K, I, O, A> List<StreamId> repartitionAndReduce(DataflowGraph graph,
+	public static <K, I, O, A> List<StreamId> repartitionAndReduce(DataflowContext context,
 	                                                               LocallySortedDataset<K, I> input,
 	                                                               Reducer<K, I, O, A> reducer,
 	                                                               List<Partition> partitions) {
+		DataflowGraph graph = context.getGraph();
+		int nonce = context.getNonce();
 		Function<I, K> keyFunction = input.keyFunction();
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<NodeShard<K, I>> sharders = new ArrayList<>();
-		for (StreamId inputStreamId : input.channels(graph)) {
+		for (StreamId inputStreamId : input.channels(context.withoutFixedNonce())) {
 			Partition partition = graph.getPartition(inputStreamId);
-			NodeShard<K, I> sharder = new NodeShard<>(keyFunction, inputStreamId);
+			NodeShard<K, I> sharder = new NodeShard<>(keyFunction, inputStreamId, nonce);
 			graph.addNode(partition, sharder);
 			sharders.add(sharder);
 		}
@@ -64,9 +67,9 @@ public class DatasetUtils {
 		return outputStreamIds;
 	}
 
-	public static <K, T> List<StreamId> repartitionAndSort(DataflowGraph graph, LocallySortedDataset<K, T> input,
+	public static <K, T> List<StreamId> repartitionAndSort(DataflowContext context, LocallySortedDataset<K, T> input,
 	                                                       List<Partition> partitions) {
-		return repartitionAndReduce(graph, input, StreamReducers.mergeSortReducer(), partitions);
+		return repartitionAndReduce(context, input, StreamReducers.mergeSortReducer(), partitions);
 	}
 
 	public static <T> StreamId forwardChannel(DataflowGraph graph, Class<T> type,

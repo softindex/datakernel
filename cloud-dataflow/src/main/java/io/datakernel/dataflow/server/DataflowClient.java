@@ -175,8 +175,8 @@ public final class DataflowClient {
 			this.messaging = MessagingWithBinaryStreaming.create(socket, codec);
 		}
 
-		public Promise<Void> execute(int nonce, Collection<Node> nodes) {
-			return messaging.send(new DatagraphCommandExecute(nonce, new ArrayList<>(nodes)))
+		public Promise<Void> execute(Collection<Node> nodes) {
+			return messaging.send(new DatagraphCommandExecute(new ArrayList<>(nodes)))
 					.then(messaging::receive)
 					.then(response -> {
 						messaging.close();

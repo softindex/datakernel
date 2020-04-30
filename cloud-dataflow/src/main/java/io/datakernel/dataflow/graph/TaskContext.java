@@ -41,11 +41,9 @@ public final class TaskContext {
 	private final SettablePromise<Void> executionPromise = new SettablePromise<>();
 
 	private final ResourceLocator environment;
-	private final int nonce;
 
-	public TaskContext(ResourceLocator environment, int nonce) {
+	public TaskContext(ResourceLocator environment) {
 		this.environment = environment;
-		this.nonce = nonce;
 	}
 
 	public Object get(String key) {
@@ -54,10 +52,6 @@ public final class TaskContext {
 
 	public <T> T get(Class<T> cls) {
 		return environment.getInstance(cls);
-	}
-
-	public int getNonce() {
-		return nonce;
 	}
 
 	public <T> void bindChannel(StreamId streamId, StreamConsumer<T> consumer) {

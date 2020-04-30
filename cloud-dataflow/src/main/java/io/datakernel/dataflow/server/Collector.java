@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.server;
 
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
@@ -36,7 +37,7 @@ public final class Collector<T> {
 	}
 
 	public StreamSupplier<T> compile(DataflowGraph graph) {
-		List<StreamId> inputStreamIds = input.channels(graph);
+		List<StreamId> inputStreamIds = input.channels(DataflowContext.of(graph));
 		List<StreamSupplier<T>> suppliers = new ArrayList<>();
 
 		for (StreamId streamId : inputStreamIds) {

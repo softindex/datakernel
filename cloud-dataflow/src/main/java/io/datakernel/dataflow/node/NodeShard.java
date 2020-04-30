@@ -42,17 +42,20 @@ public final class NodeShard<K, T> implements Node {
 
 	private StreamId input;
 	private List<StreamId> outputs;
+	private int nonce;
 
-	public NodeShard(Function<T, K> keyFunction, StreamId input) {
+	public NodeShard(Function<T, K> keyFunction, StreamId input, int nonce) {
 		this.keyFunction = keyFunction;
 		this.input = input;
 		this.outputs = new ArrayList<>();
+		this.nonce = nonce;
 	}
 
-	public NodeShard(Function<T, K> keyFunction, StreamId input, List<StreamId> outputs) {
+	public NodeShard(Function<T, K> keyFunction, StreamId input, List<StreamId> outputs, int nonce) {
 		this.keyFunction = keyFunction;
 		this.input = input;
 		this.outputs = outputs;
+		this.nonce = nonce;
 	}
 
 	public StreamId newPartition() {
@@ -95,9 +98,12 @@ public final class NodeShard<K, T> implements Node {
 		this.outputs = outputs;
 	}
 
+	public int getNonce() {
+		return nonce;
+	}
+
 	@Override
 	public void createAndBind(TaskContext taskContext) {
-		int nonce = taskContext.getNonce();
 		int partitions = outputs.size();
 		int bits = partitions - 1;
 		BiConsumer<T, StreamDataAcceptor<T>[]> splitter = (partitions & bits) == 0 ?

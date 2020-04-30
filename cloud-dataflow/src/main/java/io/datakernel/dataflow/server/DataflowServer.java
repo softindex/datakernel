@@ -111,7 +111,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
 		public void onCommand(Messaging<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
-			TaskContext task = new TaskContext(environment, command.getNonce());
+			TaskContext task = new TaskContext(environment);
 			try {
 				for (Node node : command.getNodes()) {
 					node.createAndBind(task);

@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
@@ -56,12 +57,14 @@ public final class DatasetSplitSortReduceRepartitionReduce<K, I, O, A> extends D
 	}
 
 	@Override
-	public List<StreamId> channels(DataflowGraph graph) {
+	public List<StreamId> channels(DataflowContext context) {
+		DataflowGraph graph = context.getGraph();
+		int nonce = context.getNonce();
 		List<StreamId> outputStreamIds = new ArrayList<>();
 		List<NodeShard<K, I>> sharders = new ArrayList<>();
-		for (StreamId inputStreamId : input.channels(graph)) {
+		for (StreamId inputStreamId : input.channels(context.withoutFixedNonce())) {
 			Partition partition = graph.getPartition(inputStreamId);
-			NodeShard<K, I> sharder = new NodeShard<>(inputKeyFunction, inputStreamId);
+			NodeShard<K, I> sharder = new NodeShard<>(inputKeyFunction, inputStreamId, nonce);
 			graph.addNode(partition, sharder);
 			sharders.add(sharder);
 		}

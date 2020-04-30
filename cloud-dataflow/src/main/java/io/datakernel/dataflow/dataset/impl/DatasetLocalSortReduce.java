@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeReduceSimple;
@@ -39,9 +40,10 @@ public final class DatasetLocalSortReduce<K, I, O> extends LocallySortedDataset<
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public List<StreamId> channels(DataflowGraph graph) {
+	public List<StreamId> channels(DataflowContext context) {
+		DataflowGraph graph = context.getGraph();
 		List<StreamId> outputStreamIds = new ArrayList<>();
-		for (StreamId streamId : input.channels(graph)) {
+		for (StreamId streamId : input.channels(context)) {
 			NodeReduceSimple<K, I, O, Object> node = new NodeReduceSimple<>(input.keyFunction(),
 					input.keyComparator(), (Reducer<K, I, O, Object>) reducer);
 			node.addInput(streamId);

@@ -87,9 +87,8 @@ public final class DataflowCodecs extends AbstractModule {
 	}
 
 	@Provides
-	StructuredCodec<DatagraphCommandExecute> datagraphCommandExecute(@Subtypes StructuredCodec<Node> node, StructuredCodec<Integer> integer) {
+	StructuredCodec<DatagraphCommandExecute> datagraphCommandExecute(@Subtypes StructuredCodec<Node> node) {
 		return object(DatagraphCommandExecute::new,
-				"nonce", DatagraphCommandExecute::getNonce, integer,
 				"nodes", DatagraphCommandExecute::getNodes, ofList(node));
 	}
 
@@ -174,11 +173,12 @@ public final class DataflowCodecs extends AbstractModule {
 	}
 
 	@Provides
-	StructuredCodec<NodeShard> nodeShard(@Subtypes StructuredCodec<Function> function, StructuredCodec<StreamId> streamId, StructuredCodec<List<StreamId>> streamIds) {
+	StructuredCodec<NodeShard> nodeShard(@Subtypes StructuredCodec<Function> function, StructuredCodec<StreamId> streamId, StructuredCodec<List<StreamId>> streamIds, StructuredCodec<Integer> integer) {
 		return object(NodeShard::new,
 				"keyFunction", NodeShard::getKeyFunction, function,
 				"input", NodeShard::getInput, streamId,
-				"outputs", NodeShard::getOutputs, streamIds);
+				"outputs", NodeShard::getOutputs, streamIds,
+				"nonce", NodeShard::getNonce, integer);
 	}
 
 	@Provides

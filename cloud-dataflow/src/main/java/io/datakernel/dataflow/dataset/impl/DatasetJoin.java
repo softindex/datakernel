@@ -17,6 +17,7 @@
 package io.datakernel.dataflow.dataset.impl;
 
 import io.datakernel.dataflow.dataset.SortedDataset;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.NodeJoin;
@@ -24,6 +25,7 @@ import io.datakernel.datastream.processor.StreamJoin.Joiner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
 import static io.datakernel.dataflow.dataset.impl.DatasetUtils.repartitionAndSort;
@@ -32,6 +34,8 @@ public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 	private final SortedDataset<K, L> left;
 	private final SortedDataset<K, R> right;
 	private final Joiner<K, L, R, V> joiner;
+
+	private final int sharderNonce = ThreadLocalRandom.current().nextInt();
 
 	public DatasetJoin(SortedDataset<K, L> left, SortedDataset<K, R> right, Joiner<K, L, R, V> joiner,
 			Class<V> resultType, Function<V, K> keyFunction) {
@@ -42,11 +46,15 @@ public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 	}
 
 	@Override
-	public List<StreamId> channels(DataflowGraph graph) {
+	public List<StreamId> channels(DataflowContext context) {
+		DataflowGraph graph = context.getGraph();
 		List<StreamId> outputStreamIds = new ArrayList<>();
-		List<StreamId> leftStreamIds = left.channels(graph);
 
-		List<StreamId> rightStreamIds = repartitionAndSort(graph, right, graph.getPartitions(leftStreamIds));
+		DataflowContext next = context.withFixedNonce(sharderNonce);
+
+		List<StreamId> leftStreamIds = left.channels(next);
+		List<StreamId> rightStreamIds = repartitionAndSort(next, right, graph.getPartitions(leftStreamIds));
+
 		assert leftStreamIds.size() == rightStreamIds.size();
 		for (int i = 0; i < leftStreamIds.size(); i++) {
 			StreamId leftStreamId = leftStreamIds.get(i);

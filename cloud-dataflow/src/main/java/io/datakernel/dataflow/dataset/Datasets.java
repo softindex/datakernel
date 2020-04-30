@@ -17,7 +17,7 @@
 package io.datakernel.dataflow.dataset;
 
 import io.datakernel.dataflow.dataset.impl.*;
-import io.datakernel.dataflow.graph.DataflowGraph;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.datastream.processor.StreamJoin.Joiner;
@@ -35,8 +35,8 @@ public final class Datasets {
 	                                                      Function<T, K> keyFunction, Comparator<K> keyComparator) {
 		return new SortedDataset<K, T>(dataset.valueType(), keyComparator, keyType, keyFunction) {
 			@Override
-			public List<StreamId> channels(DataflowGraph graph) {
-				return dataset.channels(graph);
+			public List<StreamId> channels(DataflowContext context) {
+				return dataset.channels(context);
 			}
 		};
 	}
@@ -45,8 +45,8 @@ public final class Datasets {
 		return new SortedDataset<K, T>(dataset.valueType(), dataset.keyComparator(), dataset.keyType(),
 				dataset.keyFunction()) {
 			@Override
-			public List<StreamId> channels(DataflowGraph graph) {
-				return dataset.channels(graph);
+			public List<StreamId> channels(DataflowContext context) {
+				return dataset.channels(context);
 			}
 		};
 	}
