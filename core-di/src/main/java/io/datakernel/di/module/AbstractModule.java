@@ -12,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.UnaryOperator;
 
 import static io.datakernel.di.util.Utils.checkState;
@@ -28,10 +27,8 @@ public abstract class AbstractModule implements Module {
 	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators;
 	private Map<Key<?>, Multibinder<?>> multibinders;
 
-	private final AtomicBoolean configured = new AtomicBoolean();
-
 	@Nullable
-	private ModuleBuilder builder = null;
+	private ModuleBuilder builder;
 
 	@Nullable
 	private final StackTraceElement location;
@@ -53,7 +50,8 @@ public abstract class AbstractModule implements Module {
 				break;
 			}
 		}
-		location = found;
+		this.location = found;
+		this.builder = new ModuleBuilderImpl<>(getName(), location);
 	}
 
 	/**
@@ -196,22 +194,22 @@ public abstract class AbstractModule implements Module {
 	}
 
 	private void finish() {
-		if (!configured.compareAndSet(false, true)) {
+		if (builder == null) {
 			return;
 		}
 
-		ModuleBuilderImpl<?> b = new ModuleBuilderImpl<>(getName(), location);
-		b.scan(getClass().getSuperclass(), this);
-		ReflectionUtils.scanClassInto(getClass(), this, b); // so that provider methods and dsl bindings are in one 'export area'
+		builder.scan(getClass().getSuperclass(), this);
+		ReflectionUtils.scanClassInto(getClass(), this, builder); // so that provider methods and dsl bindings are in one 'export area'
 
-		builder = b;
 		configure();
+
+		Module module = builder.build();
 		builder = null;
 
-		bindings = b.getBindings();
-		bindingTransformers = b.getBindingTransformers();
-		bindingGenerators = b.getBindingGenerators();
-		multibinders = b.getMultibinders();
+		bindings = module.getBindings();
+		bindingTransformers = module.getBindingTransformers();
+		bindingGenerators = module.getBindingGenerators();
+		multibinders = module.getMultibinders();
 	}
 
 	@Override

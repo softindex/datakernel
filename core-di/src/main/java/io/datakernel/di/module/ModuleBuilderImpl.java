@@ -11,7 +11,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import static io.datakernel.di.binding.BindingType.*;
@@ -21,20 +20,16 @@ import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("UnusedReturnValue")
-final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
+final class ModuleBuilderImpl<T> implements ModuleBuilder0<T> {
 	private static final Binding<?> TO_BE_GENERATED = new Binding<>(emptySet(), (compiledBindings, threadsafe, scope, slot) -> missingOptionalBinding());
 
-	private final List<BindingDesc> bindingDescs = new ArrayList<>();
-
-	private Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings = Trie.leaf(new HashMap<>());
-	private Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
-	private Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
-	private Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
-
-	private final AtomicBoolean configured = new AtomicBoolean();
+	private final Trie<Scope, Map<Key<?>, BindingSet<?>>> bindings = Trie.leaf(new HashMap<>());
+	private final Map<Integer, Set<BindingTransformer<?>>> bindingTransformers = new HashMap<>();
+	private final Map<Class<?>, Set<BindingGenerator<?>>> bindingGenerators = new HashMap<>();
+	private final Map<Key<?>, Multibinder<?>> multibinders = new HashMap<>();
 
 	@Nullable
-	private volatile BindingDesc current = null;
+	private BindingDesc current = null;
 
 	private final String name;
 	@Nullable
@@ -53,25 +48,37 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 		this.location = location;
 	}
 
-	private void completeCurrent() {
-		BindingDesc prev = current;
-		if (prev != null) {
-			bindingDescs.add(prev);
+	private void completePreviousStep() {
+		if (current != null) {
+			addBindingDesc(current);
 			current = null;
+		}
+	}
+
+	private void addBindingDesc(BindingDesc desc) {
+		BindingSet<?> bindingSet = bindings
+				.computeIfAbsent(desc.getScope(), $ -> new HashMap<>())
+				.get()
+				.computeIfAbsent(desc.getKey(), $ -> new BindingSet<>(new HashSet<>(), REGULAR));
+
+		bindingSet.setType(desc.getType());
+
+		Binding<?> binding = desc.getBinding();
+		if (binding != TO_BE_GENERATED) {
+			//noinspection rawtypes,unchecked
+			bindingSet.getBindings().add((Binding) binding);
 		}
 	}
 
 	@Override
 	@SuppressWarnings("unchecked")
 	public <U> ModuleBuilder0<U> bind(@NotNull Key<U> key) {
-		checkState(!configured.get(), "Cannot bind after the module builder was used as a module");
-		completeCurrent();
+		completePreviousStep();
 		current = new BindingDesc(key, TO_BE_GENERATED);
 		return (ModuleBuilder0<U>) this;
 	}
 
 	private BindingDesc ensureCurrent() {
-		checkState(!configured.get(), "Cannot use the module builder DSL after the module was used");
 		BindingDesc desc = current;
 		checkState(desc != null, "Cannot configure binding before bind(...) call");
 		return desc;
@@ -141,19 +148,12 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 
 	@Override
 	public ModuleBuilder scan(@NotNull Class<?> moduleClass, @Nullable Object module) {
-		checkState(!configured.get(), "Cannot add declarative bindings after the module builder was used as a module");
 		return install(scanClassHierarchy(moduleClass, module).values());
 	}
 
 	@Override
-	public Module build() {
-		return this;
-	}
-
-	@Override
 	public ModuleBuilder install(Collection<Module> modules) {
-		checkState(!configured.get(), "Cannot install modules after the module builder was used as a module");
-		completeCurrent();
+		completePreviousStep();
 		for (Module module : modules) {
 			bindings.addAll(module.getBindings(), bindingMultimapMerger());
 			combineMultimap(bindingTransformers, module.getBindingTransformers());
@@ -165,14 +165,9 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 
 	@Override
 	public <S, E extends S> ModuleBuilder bindIntoSet(Key<S> setOf, Binding<E> binding) {
-		checkState(!configured.get(), "Cannot install modules after the module builder was used as a module");
-
-		completeCurrent();
-
+		completePreviousStep();
 		Key<Set<S>> set = Key.ofType(Types.parameterized(Set.class, setOf.getType()), setOf.getQualifier());
-
-		bindingDescs.add(new BindingDesc(set, binding.mapInstance(Collections::singleton)));
-
+		addBindingDesc(new BindingDesc(set, binding.mapInstance(Collections::singleton)));
 		multibinders.put(set, Multibinder.toSet());
 		return this;
 	}
@@ -180,9 +175,7 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <E> ModuleBuilder transform(int priority, BindingTransformer<E> bindingTransformer) {
-		checkState(!configured.get(), "Cannot add transformers after the module builder was used as a module");
-		completeCurrent();
-
+		completePreviousStep();
 		bindingTransformers.computeIfAbsent(priority, $ -> new HashSet<>())
 				.add((bindings, scope, key, binding) -> {
 					Binding<Object> transformed = (Binding<Object>) bindingTransformer.transform(bindings, scope, (Key<E>) key, (Binding<E>) binding);
@@ -197,9 +190,7 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <E> ModuleBuilder generate(Class<?> pattern, BindingGenerator<E> bindingGenerator) {
-		checkState(!configured.get(), "Cannot add generators after the module builder was used as a module");
-		completeCurrent();
-
+		completePreviousStep();
 		bindingGenerators.computeIfAbsent(pattern, $ -> new HashSet<>())
 				.add((bindings, scope, key) -> {
 					Binding<Object> generated = (Binding<Object>) bindingGenerator.generate(bindings, scope, (Key<E>) key);
@@ -213,57 +204,35 @@ final class ModuleBuilderImpl<T> implements Module, ModuleBuilder0<T> {
 
 	@Override
 	public <E> ModuleBuilder multibind(Key<E> key, Multibinder<E> multibinder) {
-		checkState(!configured.get(), "Cannot add multibinders after the module builder was used as a module");
-		completeCurrent();
-
+		completePreviousStep();
 		multibinders.put(key, multibinder);
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
-	private void finish() {
-		if (!configured.compareAndSet(false, true)) {
-			return;
-		}
-		completeCurrent(); // finish the last binding
-
-		for (BindingDesc desc : bindingDescs) {
-			BindingSet<?> bindingSet = bindings
-					.computeIfAbsent(desc.getScope(), $ -> new HashMap<>())
-					.get()
-					.computeIfAbsent(desc.getKey(), $ -> new BindingSet<>(new HashSet<>(), REGULAR));
-
-			bindingSet.setType(desc.getType());
-
-			Binding<?> binding = desc.getBinding();
-			if (binding != TO_BE_GENERATED) {
-				bindingSet.getBindings().add((Binding) binding);
+	@Override
+	public Module build() {
+		completePreviousStep(); // finish the last binding
+		return new Module() {
+			@Override
+			public final Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings() {
+				return bindings;
 			}
-		}
-	}
 
-	@Override
-	public final Trie<Scope, Map<Key<?>, BindingSet<?>>> getBindings() {
-		finish();
-		return bindings;
-	}
+			@Override
+			public final Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
+				return bindingTransformers;
+			}
 
-	@Override
-	public final Map<Integer, Set<BindingTransformer<?>>> getBindingTransformers() {
-		finish();
-		return bindingTransformers;
-	}
+			@Override
+			public final Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
+				return bindingGenerators;
+			}
 
-	@Override
-	public final Map<Class<?>, Set<BindingGenerator<?>>> getBindingGenerators() {
-		finish();
-		return bindingGenerators;
-	}
-
-	@Override
-	public final Map<Key<?>, Multibinder<?>> getMultibinders() {
-		finish();
-		return multibinders;
+			@Override
+			public final Map<Key<?>, Multibinder<?>> getMultibinders() {
+				return multibinders;
+			}
+		};
 	}
 
 	@Override
