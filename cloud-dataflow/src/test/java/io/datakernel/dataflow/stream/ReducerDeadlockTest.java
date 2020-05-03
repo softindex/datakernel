@@ -9,7 +9,7 @@ import io.datakernel.dataflow.stream.DataflowTest.TestComparator;
 import io.datakernel.dataflow.stream.DataflowTest.TestItem;
 import io.datakernel.dataflow.stream.DataflowTest.TestKeyFunction;
 import io.datakernel.datastream.StreamConsumerToList;
-import io.datakernel.di.core.Injector;
+import io.datakernel.di.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.test.rules.EventloopRule;

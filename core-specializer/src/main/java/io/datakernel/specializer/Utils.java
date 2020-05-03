@@ -83,7 +83,7 @@ class Utils {
 				Class<?> compiledBindingClass = Class.forName("io.datakernel.di.impl.CompiledBinding");
 				this.specializer = Specializer.create()
 						.withPredicate(cls -> compiledBindingClass.isAssignableFrom(cls) &&
-								!cls.getName().startsWith("io.datakernel.di.core.Multibinder$"));
+								!cls.getName().startsWith("io.datakernel.di.binding.Multibinder$"));
 			} catch (ClassNotFoundException e) {
 				throw new IllegalStateException("Can not access Datakernel DI", e);
 			}

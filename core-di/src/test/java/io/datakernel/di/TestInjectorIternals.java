@@ -1,5 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
+import io.datakernel.di.binding.Binding;
 import io.datakernel.di.module.ModuleBuilder;
 import org.junit.Test;
 

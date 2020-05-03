@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
 
 /**
  * Bindings can be transient, eager, or none of the previous.

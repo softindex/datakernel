@@ -19,8 +19,8 @@ import io.datakernel.datastream.processor.StreamReducers.ReducerToResult.Accumul
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult.AccumulatorToOutput;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult.InputToAccumulator;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult.InputToOutput;
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 
 import java.net.InetAddress;

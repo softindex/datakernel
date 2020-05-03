@@ -1,7 +1,7 @@
 package io.datakernel.di.annotation;
 
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Qualifier;
+import io.datakernel.di.Key;
+import io.datakernel.di.Qualifiers;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -18,7 +18,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * will be used as a qualifier.
  * <p>
  * If you want to create a stateful annotation, you should also annotate it with {@link QualifierAnnotation}.
- * Additionally, you need to get an instance of it with compatible equals method (you can use {@link Qualifier}.NamedImpl class as an example)
+ * Additionally, you need to get an instance of it with compatible equals method (you can use {@link Qualifiers}.NamedImpl class as an example)
  * After that, you can use your annotation in our DSL's and then make keys programmatically with created qualifier instances.
  */
 @Target(ANNOTATION_TYPE)

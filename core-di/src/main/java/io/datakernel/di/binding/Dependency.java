@@ -1,4 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
+
+import io.datakernel.di.Key;
 
 import java.util.Objects;
 

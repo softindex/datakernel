@@ -16,9 +16,9 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.QualifierAnnotation;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.jmx.api.ConcurrentJmxMBean;
 import io.datakernel.worker.Worker;

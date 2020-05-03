@@ -1,6 +1,6 @@
 package io.datakernel.di.annotation;
 
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
 import io.datakernel.di.util.Utils;
 
 import java.lang.annotation.Retention;

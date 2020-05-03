@@ -17,8 +17,8 @@
 package io.datakernel.config;
 
 import io.datakernel.common.Initializable;
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
+import io.datakernel.di.binding.Binding;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.launcher.OnStart;
 import org.slf4j.Logger;

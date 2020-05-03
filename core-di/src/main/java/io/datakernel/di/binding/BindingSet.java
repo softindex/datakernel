@@ -1,5 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
 
+import io.datakernel.di.Key;
 import io.datakernel.di.module.ModuleBuilder0;
 
 import java.util.HashSet;

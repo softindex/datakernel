@@ -18,7 +18,7 @@ package io.datakernel.dataflow.graph;
 
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.di.core.ResourceLocator;
+import io.datakernel.di.ResourceLocator;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;

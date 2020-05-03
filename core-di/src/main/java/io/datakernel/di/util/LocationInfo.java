@@ -6,7 +6,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Method;
 
 /**
- * LocationInfo is a transient field in {@link io.datakernel.di.core.Binding binding} that is set
+ * LocationInfo is a transient field in {@link io.datakernel.di.binding.Binding binding} that is set
  * where possible by the DSL so that error messages can show where a binding was made.
  */
 public final class LocationInfo {

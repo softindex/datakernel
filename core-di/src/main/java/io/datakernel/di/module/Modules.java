@@ -1,11 +1,16 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import io.datakernel.di.binding.BindingGenerator;
+import io.datakernel.di.binding.BindingSet;
+import io.datakernel.di.binding.BindingTransformer;
+import io.datakernel.di.binding.Multibinder;
 import io.datakernel.di.util.Trie;
 
 import java.util.*;
 
-import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Collections.emptyMap;
 

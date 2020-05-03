@@ -1,4 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
+
+import io.datakernel.di.binding.Binding;
 
 /**
  * A provider, unlike other DI frameworks, is just a version of {@link Injector#getInstance} with a baked in key.

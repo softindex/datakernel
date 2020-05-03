@@ -16,8 +16,8 @@
 
 package io.datakernel.config;
 
+import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.launcher.OnStart;
 import org.jetbrains.annotations.NotNull;

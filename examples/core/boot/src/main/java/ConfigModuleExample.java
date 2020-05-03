@@ -1,5 +1,5 @@
 import io.datakernel.config.Config;
-import io.datakernel.di.core.Injector;
+import io.datakernel.di.Injector;
 import io.datakernel.di.module.ModuleBuilder;
 
 import java.net.InetAddress;

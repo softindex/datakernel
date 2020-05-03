@@ -1,6 +1,6 @@
 package io.datakernel.service;
 
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
 
 @SuppressWarnings("unused")
 public interface ServiceGraphModuleSettings {

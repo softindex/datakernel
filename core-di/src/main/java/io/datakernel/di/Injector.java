@@ -1,5 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
+import io.datakernel.di.binding.*;
 import io.datakernel.di.impl.*;
 import io.datakernel.di.module.DefaultModule;
 import io.datakernel.di.module.Module;
@@ -18,14 +19,14 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.datakernel.di.core.BindingGenerator.REFUSING;
-import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
-import static io.datakernel.di.core.BindingTransformer.IDENTITY;
-import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
-import static io.datakernel.di.core.BindingType.*;
-import static io.datakernel.di.core.Multibinder.ERROR_ON_DUPLICATE;
-import static io.datakernel.di.core.Multibinder.combinedMultibinder;
-import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.Scope.UNSCOPED;
+import static io.datakernel.di.binding.BindingGenerator.REFUSING;
+import static io.datakernel.di.binding.BindingGenerator.combinedGenerator;
+import static io.datakernel.di.binding.BindingTransformer.IDENTITY;
+import static io.datakernel.di.binding.BindingTransformer.combinedTransformer;
+import static io.datakernel.di.binding.BindingType.*;
+import static io.datakernel.di.binding.Multibinder.ERROR_ON_DUPLICATE;
+import static io.datakernel.di.binding.Multibinder.combinedMultibinder;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.Utils.getScopeDisplayString;
 import static io.datakernel.di.util.Utils.next;

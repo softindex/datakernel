@@ -20,7 +20,7 @@ import io.datakernel.async.service.EventloopTaskScheduler;
 import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.jmx.JmxModuleSettings;

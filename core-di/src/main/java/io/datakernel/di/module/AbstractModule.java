@@ -1,6 +1,9 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.InstanceInjector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import io.datakernel.di.binding.*;
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;

@@ -1,6 +1,6 @@
 package io.datakernel.trigger;
 
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
 
 import java.util.function.Function;
 

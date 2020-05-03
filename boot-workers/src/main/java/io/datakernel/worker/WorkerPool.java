@@ -16,18 +16,18 @@
 
 package io.datakernel.worker;
 
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.ShortTypeName;
-import io.datakernel.di.core.BindingInfo;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
+import io.datakernel.di.binding.BindingInfo;
 import io.datakernel.di.util.Trie;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-import static io.datakernel.di.core.BindingType.TRANSIENT;
+import static io.datakernel.di.binding.BindingType.TRANSIENT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
 

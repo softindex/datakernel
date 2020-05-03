@@ -34,7 +34,7 @@ import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
 import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.csp.ChannelSerializer;
-import io.datakernel.di.core.ResourceLocator;
+import io.datakernel.di.ResourceLocator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.AsyncTcpSocket;

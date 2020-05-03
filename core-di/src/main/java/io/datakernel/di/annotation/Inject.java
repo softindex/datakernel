@@ -11,7 +11,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 /**
  * This annotation is part of the injection DSL, it allows you to generate bindings
  * using object constructors or static factory methods.
- * By {@link io.datakernel.di.module.DefaultModule default} there is a {@link io.datakernel.di.core.BindingGenerator generator}
+ * By {@link io.datakernel.di.module.DefaultModule default} there is a {@link io.datakernel.di.binding.BindingGenerator generator}
  * present, that can generate missing bindings for injectable classes.
  * <p>
  * This annotation can be put on the class itself - its default constructor is used for binding generation and must exist,

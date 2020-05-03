@@ -1,6 +1,8 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import io.datakernel.di.binding.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,9 +15,9 @@ import java.util.function.Function;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collector;
 
-import static io.datakernel.di.core.BindingType.EAGER;
-import static io.datakernel.di.core.BindingType.TRANSIENT;
-import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.Scope.UNSCOPED;
+import static io.datakernel.di.binding.BindingType.EAGER;
+import static io.datakernel.di.binding.BindingType.TRANSIENT;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.*;
 

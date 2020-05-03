@@ -1,8 +1,8 @@
 package io.datakernel.dataflow.di;
 
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.QualifierAnnotation;
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.binding.Binding;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import org.jetbrains.annotations.NotNull;

@@ -1,6 +1,10 @@
 package io.datakernel.test;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.Injector;
+import io.datakernel.di.InstanceInjector;
+import io.datakernel.di.Key;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.Dependency;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.di.module.Modules;

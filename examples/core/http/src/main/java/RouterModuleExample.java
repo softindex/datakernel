@@ -1,5 +1,5 @@
+import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.http.AsyncServlet;

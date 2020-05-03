@@ -1,11 +1,11 @@
 package io.datakernel.launchers.http;
 
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ScopeAnnotation;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;
 import io.datakernel.eventloop.Eventloop;

@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
 
 import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.MarkedBinding;
@@ -7,8 +7,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Set;
 
-import static io.datakernel.di.core.BindingType.EAGER;
-import static io.datakernel.di.core.BindingType.TRANSIENT;
+import static io.datakernel.di.binding.BindingType.EAGER;
+import static io.datakernel.di.binding.BindingType.TRANSIENT;
 
 public final class BindingInfo {
 	private final Set<Dependency> dependencies;

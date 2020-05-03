@@ -1,8 +1,12 @@
 package io.datakernel.di.module;
 
+import io.datakernel.di.Key;
+import io.datakernel.di.Qualifiers;
+import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.Eager;
 import io.datakernel.di.annotation.Transient;
-import io.datakernel.di.core.*;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.Dependency;
 import io.datakernel.di.util.Constructors.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,7 +25,7 @@ public interface ModuleBuilder0<T> extends ModuleBuilder {
 	 * <b>This is not the same as qualifying a {@link Key key} with {@link String} qualifier</b>
 	 */
 	default ModuleBuilder0<T> named(@NotNull String name) {
-		return qualified(Qualifier.named(name));
+		return qualified(Qualifiers.named(name));
 	}
 
 	/**

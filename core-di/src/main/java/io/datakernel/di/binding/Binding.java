@@ -1,5 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
 
+import io.datakernel.di.Key;
 import io.datakernel.di.impl.*;
 import io.datakernel.di.util.Constructors.*;
 import io.datakernel.di.util.LocationInfo;

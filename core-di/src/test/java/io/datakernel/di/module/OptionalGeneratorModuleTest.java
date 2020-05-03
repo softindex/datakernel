@@ -1,8 +1,8 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.InstanceProvider;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Injector;
+import io.datakernel.di.InstanceProvider;
+import io.datakernel.di.Key;
 import org.junit.Test;
 
 import java.util.Optional;

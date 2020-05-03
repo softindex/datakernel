@@ -1,9 +1,9 @@
 package io.datakernel.http.di;
 
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Scope;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.Modules;

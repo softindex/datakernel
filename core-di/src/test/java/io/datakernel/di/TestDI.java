@@ -2,7 +2,9 @@ package io.datakernel.di;
 
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
-import io.datakernel.di.core.*;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.BindingInfo;
+import io.datakernel.di.binding.DIException;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
@@ -21,7 +23,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.Qualifier.named;
+import static io.datakernel.di.Qualifiers.named;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.di.module.Modules.override;
 import static io.datakernel.di.util.Utils.printGraphVizGraph;

@@ -1,6 +1,6 @@
 package io.datakernel.di.impl;
 
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
 import org.jetbrains.annotations.NotNull;
 
 public interface CompiledBindingLocator {

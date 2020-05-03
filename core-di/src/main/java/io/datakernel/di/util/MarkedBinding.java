@@ -1,10 +1,10 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.BindingType;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.BindingType;
 
-import static io.datakernel.di.core.BindingType.EAGER;
-import static io.datakernel.di.core.BindingType.TRANSIENT;
+import static io.datakernel.di.binding.BindingType.EAGER;
+import static io.datakernel.di.binding.BindingType.TRANSIENT;
 
 /**
  * A container that groups together a bindings and its type, only for internal use

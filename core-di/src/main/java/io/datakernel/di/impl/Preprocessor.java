@@ -1,6 +1,7 @@
 package io.datakernel.di.impl;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.*;
+import io.datakernel.di.binding.*;
 import io.datakernel.di.module.UniqueQualifierImpl;
 import io.datakernel.di.util.MarkedBinding;
 import io.datakernel.di.util.Trie;
@@ -13,7 +14,7 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyMap;
@@ -105,6 +106,7 @@ public final class Preprocessor {
 					reduced = bindingSet.getBindings().iterator().next();
 					break;
 				default:
+					//noinspection rawtypes
 					reduced = ((Multibinder) multibinder).multibind(key, bindingSet);
 			}
 
@@ -130,6 +132,7 @@ public final class Preprocessor {
 		}
 
 		// transform it (once!)
+		//noinspection rawtypes
 		Binding<?> transformed = ((BindingTransformer) transformer).transform(recursiveLocator, scope, key, reduced);
 
 		MarkedBinding<?> finalReduced = new MarkedBinding<>(transformed, type);

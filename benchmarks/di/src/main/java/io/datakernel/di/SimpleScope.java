@@ -1,13 +1,16 @@
 package io.datakernel.di;
 
 import com.google.common.collect.Maps;
-import com.google.inject.*;
+import com.google.inject.Key;
+import com.google.inject.OutOfScopeException;
+import com.google.inject.Provider;
+import com.google.inject.Scopes;
 
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkState;
 
-public class SimpleScope implements Scope {
+public class SimpleScope implements com.google.inject.Scope {
 	private static final Provider<Object> SEEDED_KEY_PROVIDER =
 			() -> {
 				throw new IllegalStateException("If you got here then it means that" +

@@ -1,11 +1,11 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.core.Scope;
+import io.datakernel.di.Scope;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
 
-import static io.datakernel.di.core.Scope.UNSCOPED;
+import static io.datakernel.di.Scope.UNSCOPED;
 import static io.datakernel.di.util.Utils.getScopeDisplayString;
 
 /**

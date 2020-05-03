@@ -2,8 +2,6 @@ package io.datakernel.di;
 
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import org.openjdk.jmh.annotations.*;
@@ -19,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @since 3.0.0
  */
-@State(Scope.Benchmark)
+@State(org.openjdk.jmh.annotations.Scope.Benchmark)
 @SuppressWarnings("FieldCanBeLocal")
 public class DkDirectScopebindBenchmark {
 	public static final boolean SPECIALIZE = ApplicationSettings.getBoolean(DkDiScopesBenchmark.class, "specialize", false);
@@ -225,7 +223,7 @@ public class DkDirectScopebindBenchmark {
 	Module cookbook;
 	Injector injector;
 
-	public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
+	public static final Scope ORDER_SCOPE = Scope.of(OrderScope.class);
 
 	@Setup
 	public void setup() {

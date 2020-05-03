@@ -17,7 +17,7 @@
 package io.datakernel.trigger.util;
 
 import io.datakernel.common.reflection.RecursiveType;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

@@ -1,7 +1,13 @@
 package io.datakernel.di.module;
 
+import io.datakernel.di.InstanceInjector;
+import io.datakernel.di.InstanceProvider;
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.ProvidesIntoSet;
-import io.datakernel.di.core.*;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.BindingGenerator;
+import io.datakernel.di.binding.BindingTransformer;
+import io.datakernel.di.binding.Multibinder;
 import io.datakernel.di.util.Types;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

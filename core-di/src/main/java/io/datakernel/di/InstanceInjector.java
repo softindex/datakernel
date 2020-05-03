@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
 /**
  * This is a function which can inject instances into {@link io.datakernel.di.annotation.Inject}

@@ -1,46 +1,18 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
 import io.datakernel.di.annotation.Named;
-import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.module.UniqueQualifierImpl;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.annotation.Annotation;
 
-import static io.datakernel.di.util.Utils.checkArgument;
-import static io.datakernel.di.util.Utils.isMarker;
-
 /**
  * This class holds utility methods used for validating and creating objects used as qualifiers.
  * Qualifiers serve as additional tags to distinguish different {@link Key keys} that have same type.
  * <p>
  */
-public final class Qualifier {
-
-	/**
-	 * Validates a marker (or stateless) annotation, only identified by its class.
-	 */
-	public static Object validate(Class<? extends Annotation> annotationType) {
-		checkArgument(isMarker(annotationType), "Name by annotation type only accepts marker annotations with no arguments");
-		checkArgument(annotationType.isAnnotationPresent(QualifierAnnotation.class),
-				"Only annotations annotated with @QualifierAnnotation meta-annotation are allowed");
-		return annotationType;
-	}
-
-	/**
-	 * Validates a qualifier from a real (or its custom surrogate impl) annotation instance and returns a valid qualifier
-	 */
-	public static Object validate(Annotation annotation) {
-		//noinspection unchecked
-		Class<Annotation> annotationType = (Class<Annotation>) annotation.annotationType();
-		checkArgument(annotationType.isAnnotationPresent(QualifierAnnotation.class),
-				"Only annotations annotated with @QualifierAnnotation meta-annotation are allowed");
-		return isMarker(annotationType) ?
-				annotationType :
-				annotation;
-	}
-
+public final class Qualifiers {
 	/**
 	 * A shortcut for creating qualifiers based on {@link Named} built-in annotation.
 	 */

@@ -1,7 +1,7 @@
 package io.datakernel.http.di;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.BindingGenerator;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.BindingGenerator;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.promise.Promise;
 

@@ -1,8 +1,10 @@
 package io.datakernel.di.util;
 
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.*;
-import io.datakernel.di.core.*;
+import io.datakernel.di.binding.*;
 import io.datakernel.di.impl.BindingInitializer;
 import io.datakernel.di.impl.BindingLocator;
 import io.datakernel.di.impl.CompiledBinding;
@@ -22,7 +24,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.Qualifier.uniqueQualifier;
+import static io.datakernel.di.Qualifiers.uniqueQualifier;
 import static io.datakernel.di.util.Utils.isMarker;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toList;

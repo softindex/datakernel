@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  * any anonymous class usage is compiled as a inner class and not a method with invokedynamic instruction.
  * This is needed for compiled bindings to be applicable for later specialization.
  */
+@SuppressWarnings("rawtypes")
 public interface CompiledBinding<R> {
 	@SuppressWarnings("Convert2Lambda")
 	CompiledBinding<?> MISSING_OPTIONAL_BINDING = new CompiledBinding<Object>() {

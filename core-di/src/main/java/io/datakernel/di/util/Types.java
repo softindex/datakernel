@@ -1,6 +1,6 @@
 package io.datakernel.di.util;
 
-import io.datakernel.di.core.DIException;
+import io.datakernel.di.binding.DIException;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 

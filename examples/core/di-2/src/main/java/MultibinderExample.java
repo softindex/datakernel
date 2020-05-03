@@ -1,7 +1,7 @@
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;

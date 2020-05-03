@@ -1,11 +1,11 @@
 package io.datakernel.test;
 
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Qualifiers;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
-import io.datakernel.di.core.Qualifier;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.test.DatakernelRunnerTest.ClassModule;
 import org.jetbrains.annotations.Nullable;
@@ -63,7 +63,7 @@ public class DatakernelRunnerTest {
 		assertEquals(asList(HELLO, HELLO, HELLO), hellos);
 		assertEquals(asList(42, 42, 42), numbers);
 
-		assertEquals(PROVIDES_STRING, injector.getInstance(Key.of(String.class, Qualifier.named(PROVIDES_STRING))));
+		assertEquals(PROVIDES_STRING, injector.getInstance(Key.of(String.class, Qualifiers.named(PROVIDES_STRING))));
 	}
 
 	@Test

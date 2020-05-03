@@ -3,7 +3,6 @@ package io.datakernel.di;
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -18,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * @since 3.0.0
  */
-@State(Scope.Benchmark)
+@State(org.openjdk.jmh.annotations.Scope.Benchmark)
 @SuppressWarnings("FieldCanBeLocal")
 public class DkDiScopesBenchmark {
 	private static final boolean SPECIALIZE = ApplicationSettings.getBoolean(DkDiScopesBenchmark.class, "specialize", false);
@@ -249,7 +248,7 @@ public class DkDiScopesBenchmark {
 	Injector injector;
 	CookieBucket cb;
 
-	public static final io.datakernel.di.core.Scope ORDER_SCOPE = io.datakernel.di.core.Scope.of(OrderScope.class);
+	public static final Scope ORDER_SCOPE = Scope.of(OrderScope.class);
 
 	@Setup
 	public void setup() {

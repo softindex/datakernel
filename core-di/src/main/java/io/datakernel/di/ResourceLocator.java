@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

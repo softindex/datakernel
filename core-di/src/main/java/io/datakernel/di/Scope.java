@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
 import io.datakernel.di.annotation.ScopeAnnotation;
 import org.jetbrains.annotations.NotNull;

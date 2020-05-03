@@ -1,6 +1,6 @@
 package io.datakernel.di.annotation;
 
-import io.datakernel.di.core.Multibinder;
+import io.datakernel.di.binding.Multibinder;
 import io.datakernel.di.module.AbstractModule;
 
 import java.lang.annotation.Retention;

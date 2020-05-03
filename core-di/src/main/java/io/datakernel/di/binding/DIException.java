@@ -1,5 +1,8 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
 
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.di.util.Utils.getScopeDisplayString;

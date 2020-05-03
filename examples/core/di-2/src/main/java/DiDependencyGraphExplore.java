@@ -1,7 +1,7 @@
+import io.datakernel.di.Injector;
+import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Scope;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.util.Utils;
 

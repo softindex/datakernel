@@ -1,6 +1,8 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import io.datakernel.di.binding.*;
 import io.datakernel.di.impl.Preprocessor;
 import io.datakernel.di.util.Trie;
 
@@ -9,9 +11,9 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 
-import static io.datakernel.di.core.BindingGenerator.combinedGenerator;
-import static io.datakernel.di.core.BindingTransformer.combinedTransformer;
-import static io.datakernel.di.core.Multibinder.combinedMultibinder;
+import static io.datakernel.di.binding.BindingGenerator.combinedGenerator;
+import static io.datakernel.di.binding.BindingTransformer.combinedTransformer;
+import static io.datakernel.di.binding.Multibinder.combinedMultibinder;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toMap;
 

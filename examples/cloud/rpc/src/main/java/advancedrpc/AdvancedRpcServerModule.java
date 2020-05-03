@@ -1,7 +1,7 @@
 package advancedrpc;
 
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;

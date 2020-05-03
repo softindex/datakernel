@@ -1,7 +1,11 @@
 package io.datakernel.di.module;
 
+import io.datakernel.di.InstanceInjector;
+import io.datakernel.di.InstanceProvider;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.Inject;
-import io.datakernel.di.core.*;
+import io.datakernel.di.binding.*;
 import io.datakernel.di.impl.AbstractCompiledBinding;
 import io.datakernel.di.impl.BindingInitializer;
 import io.datakernel.di.impl.CompiledBinding;
@@ -28,7 +32,7 @@ import static java.util.Collections.singleton;
  * <p>
  * The last two generate appropriate instances for {@link InstanceProvider} and {@link InstanceInjector} requests.
  */
-@SuppressWarnings("Convert2Lambda")
+@SuppressWarnings({"Convert2Lambda", "rawtypes"})
 public final class DefaultModule implements Module {
 	private static final Trie<Scope, Map<Key<?>, BindingSet<?>>> emptyTrie = Trie.leaf(new HashMap<>());
 	private static final Map<Class<?>, Set<BindingGenerator<?>>> generators = new HashMap<>();

@@ -1,6 +1,8 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.*;
+import io.datakernel.di.Key;
+import io.datakernel.di.Scope;
+import io.datakernel.di.binding.*;
 import io.datakernel.di.util.LocationInfo;
 import io.datakernel.di.util.Trie;
 import io.datakernel.di.util.Types;
@@ -12,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.BindingType.*;
+import static io.datakernel.di.binding.BindingType.*;
 import static io.datakernel.di.impl.CompiledBinding.missingOptionalBinding;
 import static io.datakernel.di.util.ReflectionUtils.scanClassHierarchy;
 import static io.datakernel.di.util.Utils.*;

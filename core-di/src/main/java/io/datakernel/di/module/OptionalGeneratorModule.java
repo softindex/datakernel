@@ -1,6 +1,6 @@
 package io.datakernel.di.module;
 
-import io.datakernel.di.core.Binding;
+import io.datakernel.di.binding.Binding;
 
 import java.util.Optional;
 

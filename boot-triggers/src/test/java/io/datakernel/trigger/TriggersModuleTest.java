@@ -17,10 +17,10 @@
 package io.datakernel.trigger;
 
 import io.datakernel.common.ref.RefBoolean;
+import io.datakernel.di.Injector;
+import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
-import io.datakernel.di.core.Key;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.LauncherService;

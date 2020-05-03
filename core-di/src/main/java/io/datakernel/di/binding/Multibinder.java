@@ -1,5 +1,6 @@
-package io.datakernel.di.core;
+package io.datakernel.di.binding;
 
+import io.datakernel.di.Key;
 import io.datakernel.di.impl.AbstractCompiledBinding;
 import io.datakernel.di.impl.CompiledBinding;
 import io.datakernel.di.util.Utils;
@@ -11,12 +12,13 @@ import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.di.core.BindingType.TRANSIENT;
+import static io.datakernel.di.binding.BindingType.TRANSIENT;
 import static java.util.stream.Collectors.joining;
 
 /**
  * This is a function that is used to resolve binding conflicts.
  */
+@SuppressWarnings("rawtypes")
 @FunctionalInterface
 public interface Multibinder<T> {
 	Binding<T> multibind(Key<T> key, BindingSet<?> bindings);

@@ -1,4 +1,4 @@
-package io.datakernel.di.core;
+package io.datakernel.di;
 
 import io.datakernel.di.util.ReflectionUtils;
 import io.datakernel.di.util.Types;
@@ -68,7 +68,7 @@ public abstract class Key<T> {
 
 	@NotNull
 	public static <T> Key<T> ofName(@NotNull Class<T> type, @NotNull String name) {
-		return new KeyImpl<>(type, Qualifier.named(name));
+		return new KeyImpl<>(type, Qualifiers.named(name));
 	}
 
 	@NotNull
@@ -99,7 +99,7 @@ public abstract class Key<T> {
 	 * <b>This is not the same as a {@link Key} with {@link String} qualifier</b>
 	 */
 	public Key<T> named(String name) {
-		return new KeyImpl<>(type, Qualifier.named(name));
+		return new KeyImpl<>(type, Qualifiers.named(name));
 	}
 
 	@NotNull

@@ -1,6 +1,6 @@
+import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.Transient;
-import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.AbstractModule;
 
 import java.util.Random;

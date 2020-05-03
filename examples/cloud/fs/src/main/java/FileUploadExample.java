@@ -1,8 +1,8 @@
 import io.datakernel.common.MemSize;
 import io.datakernel.csp.file.ChannelFileReader;
+import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;

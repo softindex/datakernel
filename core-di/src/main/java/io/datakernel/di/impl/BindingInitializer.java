@@ -1,7 +1,7 @@
 package io.datakernel.di.impl;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Dependency;
+import io.datakernel.di.binding.Binding;
+import io.datakernel.di.binding.Dependency;
 
 import java.util.Collection;
 import java.util.Set;
@@ -15,6 +15,7 @@ import static java.util.Collections.emptySet;
  * This is a {@link Binding} binding modifying function, that can add extra dependencies to it
  * and run initialization code for instance after it was created.
  */
+@SuppressWarnings({"rawtypes", "Convert2Lambda"})
 public final class BindingInitializer<T> {
 	private static final BindingInitializer<?> NOOP = new BindingInitializer<>(emptySet(),
 			compiledBindings -> new CompiledBindingInitializer<Object>() {

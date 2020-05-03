@@ -1,6 +1,6 @@
 import io.datakernel.csp.file.ChannelFileWriter;
+import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Provides;
-import io.datakernel.di.core.Injector;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;

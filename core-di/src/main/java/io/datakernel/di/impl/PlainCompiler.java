@@ -1,7 +1,7 @@
 package io.datakernel.di.impl;
 
-import io.datakernel.di.core.Binding;
-import io.datakernel.di.core.Key;
+import io.datakernel.di.Key;
+import io.datakernel.di.binding.Binding;
 import org.jetbrains.annotations.Nullable;
 
 /**

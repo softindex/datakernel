@@ -1,6 +1,6 @@
 package io.datakernel.di.annotation;
 
-import io.datakernel.di.core.Injector;
+import io.datakernel.di.Injector;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;

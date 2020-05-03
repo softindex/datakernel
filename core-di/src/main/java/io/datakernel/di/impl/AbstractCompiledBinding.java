@@ -2,6 +2,7 @@ package io.datakernel.di.impl;
 
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+@SuppressWarnings("rawtypes")
 public abstract class AbstractCompiledBinding<R> implements CompiledBinding<R> {
 	protected final int scope;
 
