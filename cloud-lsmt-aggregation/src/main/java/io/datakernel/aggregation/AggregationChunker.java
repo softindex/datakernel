@@ -91,8 +91,6 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 		private T last;
 		private int count;
 
-		boolean switched;
-
 		public ChunkWriter(StreamConsumer<T> actualConsumer,
 				C chunkId, int chunkSize, PartitionPredicate<T> partitionPredicate) {
 			super(actualConsumer);
@@ -107,7 +105,6 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 									PrimaryKey.ofObject(last, aggregation.getKeys()),
 									count))
 					.whenComplete(result::trySet);
-			getAcknowledgement().whenException(result::trySetException);
 		}
 
 		@Override
@@ -124,10 +121,7 @@ public final class AggregationChunker<C, T> extends ForwardingStreamConsumer<T> 
 			last = item;
 			dataAcceptor.accept(item);
 			if (++count == chunkSize || (partitionPredicate != null && !partitionPredicate.isSamePartition(last, item))) {
-				if (!switched) {
-					switched = true;
-					startNewChunk();
-				}
+				startNewChunk();
 			}
 		}
 
