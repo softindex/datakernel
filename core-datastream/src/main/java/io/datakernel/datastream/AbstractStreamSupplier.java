@@ -73,6 +73,8 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 		if (!isEndOfStream()) {
 			onStarted();
 		}
+		//noinspection unchecked
+		this.dataAcceptor = (StreamDataAcceptor<T>) NO_ACCEPTOR;
 		consumer.consume(this);
 		updateDataAcceptor();
 		return consumer.getAcknowledgement();

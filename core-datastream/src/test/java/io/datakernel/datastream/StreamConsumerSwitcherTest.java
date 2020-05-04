@@ -2,10 +2,13 @@ package io.datakernel.datastream;
 
 import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.common.ref.RefInt;
+import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.EventloopRule;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -172,5 +175,50 @@ public class StreamConsumerSwitcherTest {
 
 		StreamConsumerToList<Integer> newConsumer = StreamConsumerToList.create();
 		switcher.switchTo(newConsumer);
+	}
+
+	@Test
+	public void testSwitchingToSlowConsumer() {
+		ArrayList<Integer> list1 = new ArrayList<>();
+		ArrayList<Integer> list2 = new ArrayList<>();
+		List<StreamConsumer<Integer>> consumers = asList(StreamConsumerToList.create(list1),
+				StreamConsumer.ofPromise(Promises.delay(Duration.ofMillis(1), StreamConsumerToList.create(list2))));
+		StreamConsumerSwitcher<Integer> switcher = StreamConsumerSwitcher.create();
+
+		AbstractStreamSupplier<Integer> streamSupplier = new AbstractStreamSupplier<Integer>() {
+			RefInt refInt = new RefInt(0);
+			Iterator<StreamConsumer<Integer>> iterator = consumers.iterator();
+
+			@Override
+			protected void onStarted() {
+				switcher.switchTo(iterator.next());
+			}
+
+			@Override
+			protected void onResumed() {
+				while (isReady()) {
+					send(refInt.inc());
+					if (refInt.get() == 10) {
+						if (iterator.hasNext()) {
+							refInt.set(0);
+							switcher.switchTo(iterator.next());
+						} else {
+							break;
+						}
+					}
+				}
+				if (!iterator.hasNext() && refInt.get() == 10) {
+					sendEndOfStream();
+				}
+			}
+		};
+
+		await(streamSupplier.streamTo(switcher));
+
+		assertEndOfStream(streamSupplier, switcher);
+
+		List<Integer> expected = asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+		assertEquals(expected, list1);
+		assertEquals(expected, list2);
 	}
 }
