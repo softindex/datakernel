@@ -35,10 +35,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 public class StreamSharderTest {
-	private static final ToIntFunction<Integer> SHARDER = object -> (object.hashCode() & Integer.MAX_VALUE) % 2;
-
 	@ClassRule
 	public static final EventloopRule eventloopRule = new EventloopRule();
+	private static final ToIntFunction<Integer> SHARDER = object -> (object.hashCode() & Integer.MAX_VALUE) % 2;
 
 	@Test
 	public void test1() {

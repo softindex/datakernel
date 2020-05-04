@@ -188,8 +188,11 @@ public interface StreamSupplier<T> extends AsyncCloseable {
 	}
 
 	static <T> StreamSupplier<T> ofAnotherEventloop(@NotNull Eventloop anotherEventloop,
-			@NotNull StreamSupplier<T> anotherEventloopConsumer) {
-		return new StreamSuppliers.OfAnotherEventloop<>(anotherEventloop, anotherEventloopConsumer);
+			@NotNull StreamSupplier<T> anotherEventloopSupplier) {
+		if (Eventloop.getCurrentEventloop() == anotherEventloop){
+			return anotherEventloopSupplier;
+		}
+		return new StreamSuppliers.OfAnotherEventloop<>(anotherEventloop, anotherEventloopSupplier);
 	}
 
 	/**

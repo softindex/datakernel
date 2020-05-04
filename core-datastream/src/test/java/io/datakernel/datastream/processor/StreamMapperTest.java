@@ -55,8 +55,7 @@ public class StreamMapperTest {
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
 		assertEndOfStream(supplier);
-		assertEndOfStream(mapper.getInput());
-		assertEndOfStream(mapper.getOutput());
+		assertEndOfStream(mapper);
 		assertEndOfStream(consumer);
 	}
 
@@ -79,8 +78,7 @@ public class StreamMapperTest {
 
 		assertClosedWithError(source1);
 		assertClosedWithError(consumer);
-		assertClosedWithError(mapper.getInput());
-		assertClosedWithError(mapper.getOutput());
+		assertClosedWithError(mapper);
 	}
 
 	@Test
@@ -102,8 +100,7 @@ public class StreamMapperTest {
 		assertEquals(asList(1, 4, 9, 16, 25, 36), consumer.getList());
 
 		assertClosedWithError(consumer);
-		assertClosedWithError(mapper.getInput());
-		assertClosedWithError(mapper.getOutput());
+		assertClosedWithError(mapper);
 	}
 
 	@Test
@@ -128,8 +125,7 @@ public class StreamMapperTest {
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
 		assertEndOfStream(supplier);
-		assertEndOfStream(mapper.getInput());
-		assertEndOfStream(mapper.getOutput());
+		assertEndOfStream(mapper);
 		assertEndOfStream(consumer);
 	}
 
@@ -147,12 +143,9 @@ public class StreamMapperTest {
 		assertEquals(asList(20, 80, 180, 320, 500, 720), consumer.getList());
 
 		assertEndOfStream(supplier);
-		assertEndOfStream(squareMapper.getInput());
-		assertEndOfStream(squareMapper.getOutput());
-		assertEndOfStream(doubleMapper.getInput());
-		assertEndOfStream(doubleMapper.getOutput());
-		assertEndOfStream(mul10Mapper.getInput());
-		assertEndOfStream(mul10Mapper.getOutput());
+		assertEndOfStream(squareMapper);
+		assertEndOfStream(doubleMapper);
+		assertEndOfStream(mul10Mapper);
 		assertEndOfStream(consumer);
 	}
 }

@@ -232,10 +232,17 @@ final class StreamConsumers {
 	}
 
 	static final class OfAnotherEventloop<T> extends AbstractStreamConsumer<T> {
+		private static final int MAX_BUFFER_SIZE = 100;
 		private static final Iterator<?> END_OF_STREAM = Collections.emptyIterator();
 
 		private List<T> list = new ArrayList<>();
-		private final StreamDataAcceptor<T> toList = item -> list.add(item);
+		private final StreamDataAcceptor<T> toList = item -> {
+			list.add(item);
+			if (list.size() == MAX_BUFFER_SIZE) {
+				flush();
+				suspend();
+			}
+		};
 
 		private final StreamConsumer<T> anotherEventloopConsumer;
 		private final InternalSupplier internalSupplier;
@@ -262,9 +269,15 @@ final class StreamConsumers {
 			flush();
 			if (internalSupplier.isReady) {
 				resume(toList);
+				internalSupplier.wakeUp();
 			} else {
 				suspend();
 			}
+		}
+
+		@Override
+		protected void onInit() {
+			eventloop.startExternalTask();
 		}
 
 		@Override
@@ -276,6 +289,11 @@ final class StreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			flush();
+		}
+
+		@Override
+		protected void onComplete() {
+			eventloop.completeExternalTask();
 		}
 
 		private void flush() {
@@ -324,6 +342,11 @@ final class StreamConsumers {
 			}
 
 			@Override
+			protected void onInit() {
+				eventloop.startExternalTask();
+			}
+
+			@Override
 			protected void onResumed() {
 				isReady = true;
 				flush();
@@ -333,6 +356,11 @@ final class StreamConsumers {
 			protected void onSuspended() {
 				isReady = false;
 				OfAnotherEventloop.this.wakeUp();
+			}
+
+			@Override
+			protected void onComplete() {
+				eventloop.completeExternalTask();
 			}
 
 			private void flush() {
@@ -346,7 +374,7 @@ final class StreamConsumers {
 				}
 				if (iterator == END_OF_STREAM) {
 					sendEndOfStream();
-				} else {
+				} else if (!this.iterator.hasNext()) {
 					this.iterator = null;
 					OfAnotherEventloop.this.wakeUp();
 				}

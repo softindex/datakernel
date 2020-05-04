@@ -128,7 +128,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * Checks if this buffer contains elements.
 	 *
 	 * @return {@code true} if {@code tail}
-	 * and {@code head} indexes are equal,
+	 * and {@code head} values are equal,
 	 * otherwise {@code false}
 	 */
 	public boolean isEmpty() {
@@ -139,7 +139,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * Returns amount of elements in this buffer.
 	 */
 	public int size() {
-		return (tail - head) & (elements.length - 1);
+		return tail - head;
 	}
 
 	/**
@@ -164,28 +164,12 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	}
 
 	private void doAdd(@Nullable T value) {
-		elements[tail] = value;
-		tail = (tail + 1) & (elements.length - 1);
-		if (tail == head) {
-			doubleCapacity();
-		}
-	}
-
-	private void doubleCapacity() {
-		assert head == tail;
-		int r = elements.length - head;
-		Object[] newElements = new Object[elements.length << 1];
-		System.arraycopy(elements, head, newElements, 0, r);
-		System.arraycopy(elements, 0, newElements, r, head);
-		head = 0;
-		tail = elements.length;
-		elements = newElements;
+		elements[(tail++) & (elements.length - 1)] = value;
 	}
 
 	/**
-	 * Returns the element of {@code head} index of
-	 * the buffer if it is not empty, otherwise returns
-	 * {@code null}. Increases the value of {@code head}.
+	 * Returns the head of the buffer if it is not empty,
+	 * otherwise returns {@code null}. Increases the value of {@code head}.
 	 * <p>
 	 * If the buffer will have less elements than {@code bufferMinSize}
 	 * after this poll and {@code put} promise is not {@code null},
@@ -194,7 +178,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	 * If current {@code exception} is not {@code null},
 	 * it will be thrown.
 	 *
-	 * @return element of this buffer at {@code head}
+	 * @return head element of this buffer
 	 * index if the buffer is not empty, otherwise {@code null}
 	 * @throws Exception if current {@code exception}
 	 *                   is not {@code null}
@@ -216,18 +200,15 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 
 	private T doPoll() {
 		assert head != tail;
+		int pos = (head++) & (elements.length - 1);
 		@SuppressWarnings("unchecked")
-		T result = (T) elements[head];
-		elements[head] = null;     // Must null out slot
-		head = (head + 1) & (elements.length - 1);
+		T result = (T) elements[pos];
+		elements[pos] = null;     // Must null out slot
 		return result;
 	}
 
 	/**
-	 * Puts {@code value} in this buffer at {@code tail}
-	 * index and increases {@code tail} value. If after the
-	 * operation {@code tail} will be equal to {@code head},
-	 * the buffer capacity will be doubled.
+	 * Puts {@code value} in this buffer and increases {@code tail} value.
 	 * <p>
 	 * Current {@code put} must be {@code null}. If
 	 * current {@code exception} is not {@code null},
@@ -269,7 +250,7 @@ public final class ChannelBuffer<T> implements ChannelQueue<T> {
 	}
 
 	/**
-	 * Returns a promise of the {@code head} index of
+	 * Returns a promise of the head of
 	 * the {@code buffer} if it is not empty.
 	 * <p>
 	 * If this buffer will be exhausted after this

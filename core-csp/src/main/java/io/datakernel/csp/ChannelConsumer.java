@@ -210,20 +210,30 @@ public interface ChannelConsumer<T> extends AsyncCloseable {
 
 	static <T> ChannelConsumer<T> ofAnotherEventloop(@NotNull Eventloop anotherEventloop,
 			@NotNull ChannelConsumer<T> anotherEventloopConsumer) {
+		if (Eventloop.getCurrentEventloop() == anotherEventloop) {
+			return anotherEventloopConsumer;
+		}
 		return new AbstractChannelConsumer<T>() {
 			@Override
 			protected Promise<Void> doAccept(@Nullable T value) {
 				SettablePromise<Void> promise = new SettablePromise<>();
+				eventloop.startExternalTask();
 				anotherEventloop.execute(() ->
 						anotherEventloopConsumer.accept(value)
-								.whenComplete((v, e) ->
-										eventloop.execute(() -> promise.accept(v, e))));
+								.whenComplete((v, e) -> {
+									eventloop.execute(() -> promise.accept(v, e));
+									eventloop.completeExternalTask();
+								}));
 				return promise;
 			}
 
 			@Override
 			protected void onClosed(@NotNull Throwable e) {
-				anotherEventloop.execute(() -> anotherEventloopConsumer.closeEx(e));
+				eventloop.startExternalTask();
+				anotherEventloop.execute(() -> {
+					anotherEventloopConsumer.closeEx(e);
+					eventloop.completeExternalTask();
+				});
 			}
 		};
 	}

@@ -2,6 +2,7 @@ package io.datakernel.csp;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.exception.ExpectedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.test.rules.ByteBufRule;
@@ -12,14 +13,17 @@ import org.junit.Test;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.datakernel.csp.ChannelConsumers.channelConsumerAsOutputStream;
 import static io.datakernel.csp.ChannelConsumers.outputStreamAsChannelConsumer;
+import static io.datakernel.eventloop.Eventloop.initWithEventloop;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class ChannelConsumerTest {
 	@ClassRule
@@ -144,4 +148,49 @@ public class ChannelConsumerTest {
 			return null;
 		}));
 	}
+
+	@Test
+	public void testOfAnotherEventloop() {
+		Eventloop anotherEventloop = Eventloop.create();
+		List<Integer> expectedList = asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+		List<Integer> actualList = new ArrayList<>();
+		ChannelConsumer<Integer> anotherEventloopConsumer = initWithEventloop(anotherEventloop, () -> ChannelConsumer.ofConsumer(actualList::add));
+		ChannelConsumer<Integer> consumer = ChannelConsumer.ofAnotherEventloop(anotherEventloop, anotherEventloopConsumer);
+
+		startAnotherEventloop(anotherEventloop);
+		await(consumer.acceptAll(expectedList));
+		stopAnotherEventloop(anotherEventloop);
+
+		assertEquals(expectedList, actualList);
+	}
+
+	@Test
+	public void testOfAnotherEventloopException() {
+		Eventloop anotherEventloop = Eventloop.create();
+		ExpectedException expectedException = new ExpectedException();
+		List<Integer> list = new ArrayList<>();
+		ChannelConsumer<Integer> anotherEventloopConsumer = initWithEventloop(anotherEventloop, () -> ChannelConsumer.ofConsumer(list::add));
+		ChannelConsumer<Integer> consumer = ChannelConsumer.ofAnotherEventloop(anotherEventloop, anotherEventloopConsumer);
+
+		startAnotherEventloop(anotherEventloop);
+		Throwable exception = awaitException(consumer.accept(1)
+				.then(() -> consumer.accept(2))
+				.whenComplete(() -> consumer.closeEx(expectedException))
+				.then(() -> consumer.accept(3)));
+		stopAnotherEventloop(anotherEventloop);
+
+		assertSame(expectedException, exception);
+		assertEquals(asList(1,2), list);
+	}
+
+
+	private void startAnotherEventloop(Eventloop anotherEventloop) {
+		anotherEventloop.keepAlive(true);
+		new Thread(anotherEventloop, "another").start();
+	}
+
+	private void stopAnotherEventloop(Eventloop anotherEventloop) {
+		anotherEventloop.execute(() -> anotherEventloop.keepAlive(false));
+	}
+
 }

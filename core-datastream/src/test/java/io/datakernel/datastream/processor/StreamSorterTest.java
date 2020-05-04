@@ -106,7 +106,7 @@ public final class StreamSorterTest {
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 		assertEndOfStream(source, consumerToList);
-		assertEndOfStream(sorter.getOutput(), sorter.getInput());
+		assertEndOfStream(sorter);
 	}
 
 	@Test
@@ -133,7 +133,7 @@ public final class StreamSorterTest {
 		assertSame(exception, e);
 		assertEndOfStream(source);
 		assertClosedWithError(exception, consumer);
-		assertClosedWithError(exception, sorter.getOutput(), sorter.getInput());
+		assertClosedWithError(exception, sorter);
 	}
 
 	@Test
@@ -158,7 +158,7 @@ public final class StreamSorterTest {
 		assertSame(exception, e);
 		assertEquals(0, consumerToList.getList().size());
 		assertClosedWithError(exception, source, consumerToList);
-		assertClosedWithError(exception, sorter.getOutput(), sorter.getInput());
+		assertClosedWithError(exception, sorter);
 	}
 
 	@Test
@@ -193,7 +193,7 @@ public final class StreamSorterTest {
 		doTestFailingStorage(failingNewPartitionStorage, (streamPromise, sorter, supplier, consumerToList) -> {
 			Throwable exception = awaitException(streamPromise);
 			assertSame(STORAGE_EXCEPTION, exception);
-			assertClosedWithError(STORAGE_EXCEPTION, sorter.getOutput(), sorter.getInput());
+			assertClosedWithError(STORAGE_EXCEPTION, sorter);
 			assertClosedWithError(STORAGE_EXCEPTION, supplier, consumerToList);
 			assertTrue(consumerToList.getList().isEmpty());
 		});
@@ -202,7 +202,7 @@ public final class StreamSorterTest {
 		doTestFailingStorage(failingWriteStorage, (streamPromise, sorter, supplier, consumerToList) -> {
 			Throwable exception = awaitException(streamPromise);
 			assertSame(STORAGE_EXCEPTION, exception);
-			assertClosedWithError(STORAGE_EXCEPTION, sorter.getOutput(), sorter.getInput());
+			assertClosedWithError(STORAGE_EXCEPTION, sorter);
 			assertClosedWithError(STORAGE_EXCEPTION, supplier, consumerToList);
 			assertTrue(consumerToList.getList().isEmpty());
 		});
@@ -211,7 +211,7 @@ public final class StreamSorterTest {
 		doTestFailingStorage(failingReadStorage, (streamPromise, sorter, supplier, consumerToList) -> {
 			Throwable exception = awaitException(streamPromise);
 			assertSame(STORAGE_EXCEPTION, exception);
-			assertClosedWithError(STORAGE_EXCEPTION, sorter.getOutput(), sorter.getInput());
+			assertClosedWithError(STORAGE_EXCEPTION, sorter);
 			assertEndOfStream(supplier);
 			assertClosedWithError(STORAGE_EXCEPTION, consumerToList);
 			assertTrue(consumerToList.getList().isEmpty());
@@ -220,7 +220,7 @@ public final class StreamSorterTest {
 		FailingStreamSorterStorageStub<Integer> failingCleanup = FailingStreamSorterStorageStub.<Integer>create().withFailCleanup();
 		doTestFailingStorage(failingCleanup, (streamPromise, sorter, supplier, consumerToList) -> {
 			await(streamPromise);
-			assertEndOfStream(sorter.getOutput(), sorter.getInput());
+			assertEndOfStream(sorter);
 			assertEndOfStream(supplier, consumerToList);
 			assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 		});

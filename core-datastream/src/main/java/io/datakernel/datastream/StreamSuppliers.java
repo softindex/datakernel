@@ -209,6 +209,7 @@ final class StreamSuppliers {
 	}
 
 	static final class OfAnotherEventloop<T> extends AbstractStreamSupplier<T> {
+		private static final int MAX_BUFFER_SIZE = 100;
 		private static final Iterator<?> END_OF_STREAM = Collections.emptyIterator();
 
 		private volatile Iterator<T> iterator;
@@ -240,6 +241,11 @@ final class StreamSuppliers {
 		}
 
 		@Override
+		protected void onInit() {
+			eventloop.startExternalTask();
+		}
+
+		@Override
 		protected void onStarted() {
 			internalConsumer.execute(() ->
 					anotherEventloopSupplier.streamTo(internalConsumer));
@@ -257,6 +263,11 @@ final class StreamSuppliers {
 			internalConsumer.wakeUp();
 		}
 
+		@Override
+		protected void onComplete() {
+			eventloop.completeExternalTask();
+		}
+
 		private void flush() {
 			if (iterator == null) {
 				internalConsumer.wakeUp();
@@ -268,7 +279,7 @@ final class StreamSuppliers {
 			}
 			if (iterator == END_OF_STREAM) {
 				sendEndOfStream();
-			} else {
+			} else if (!iterator.hasNext()) {
 				this.iterator = null;
 				internalConsumer.wakeUp();
 			}
@@ -291,7 +302,13 @@ final class StreamSuppliers {
 
 		final class InternalConsumer extends AbstractStreamConsumer<T> {
 			private List<T> list = new ArrayList<>();
-			private final StreamDataAcceptor<T> toList = item -> list.add(item);
+			private final StreamDataAcceptor<T> toList = item -> {
+				list.add(item);
+				if (list.size() == MAX_BUFFER_SIZE) {
+					flush();
+					suspend();
+				}
+			};
 			volatile boolean wakingUp;
 
 			void execute(Runnable runnable) {
@@ -316,6 +333,11 @@ final class StreamSuppliers {
 			}
 
 			@Override
+			protected void onInit() {
+				eventloop.startExternalTask();
+			}
+
+			@Override
 			protected void onEndOfStream() {
 				flush();
 			}
@@ -337,6 +359,11 @@ final class StreamSuppliers {
 			@Override
 			protected void onError(Throwable e) {
 				OfAnotherEventloop.this.execute(() -> OfAnotherEventloop.this.closeEx(e));
+			}
+
+			@Override
+			protected void onComplete() {
+				eventloop.completeExternalTask();
 			}
 
 			@Override

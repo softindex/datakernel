@@ -41,7 +41,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
 
 	{
-		eventloop.post(this::tryInitialize);
+		if (eventloop.inEventloopThread()){
+			eventloop.post(this::tryInitialize);
+		} else {
+			eventloop.execute(this::tryInitialize);
+		}
 	}
 
 	@Override

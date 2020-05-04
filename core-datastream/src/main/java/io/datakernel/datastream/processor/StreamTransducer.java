@@ -57,13 +57,16 @@ public final class StreamTransducer<I, O> implements StreamTransformer<I, O> {
 	private final class Input extends AbstractStreamConsumer<I> {
 		@Override
 		protected void onStarted() {
-			accumulator = transducer.onStarted(output::send);
+			final StreamDataAcceptor<O> dataAcceptor = transducer.isOneToMany() ? output::send : output.getDataAcceptor();
+			accumulator = transducer.onStarted(dataAcceptor);
 			sync();
 		}
 
 		@Override
 		protected void onEndOfStream() {
-			transducer.onEndOfStream(output::send, accumulator);
+			final StreamDataAcceptor<O> dataAcceptor = transducer.isOneToMany() ? output::send : output.getDataAcceptor();
+			transducer.onEndOfStream(dataAcceptor, accumulator);
+			output.sendEndOfStream();
 		}
 
 		@Override

@@ -16,6 +16,8 @@
 
 package io.datakernel.datastream;
 
+import io.datakernel.datastream.processor.StreamTransformer;
+
 import java.util.List;
 
 import static org.junit.Assert.assertSame;
@@ -71,4 +73,42 @@ public class TestUtils {
 	public static void assertConsumersClosedWithError(List<? extends StreamConsumer<?>> streamConsumers) {
 		assertTrue(streamConsumers.stream().allMatch(StreamConsumer::isException));
 	}
+
+	public static void assertEndOfStream(StreamTransformer<?, ?> streamTransformer) {
+		assertTrue(streamTransformer.getInput().isResult());
+		assertTrue(streamTransformer.getOutput().isResult());
+	}
+
+	public static void assertClosedWithError(StreamTransformer<?, ?> streamTransformer) {
+		assertTrue(streamTransformer.getInput().isException());
+		assertTrue(streamTransformer.getOutput().isException());
+	}
+
+	public static void assertClosedWithError(Throwable throwable, StreamTransformer<?, ?> streamTransformer) {
+		assertSame(throwable, streamTransformer.getInput().getAcknowledgement().getException());
+		assertSame(throwable, streamTransformer.getOutput().getEndOfStream().getException());
+	}
+
+	public static class CountingStreamConsumer<T> extends AbstractStreamConsumer<T> {
+		private int count;
+
+		@Override
+		protected void onStarted() {
+			resume(this::accept);
+		}
+
+		private void accept(T item) {
+			count++;
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			acknowledge();
+		}
+
+		public int getCount(){
+			return count;
+		}
+	}
+
 }

@@ -58,7 +58,11 @@ public abstract class AbstractStreamSupplier<T> implements StreamSupplier<T> {
 
 	{
 		dataAcceptorSafe = buffer::addLast;
-		eventloop.post(this::tryInitialize);
+		if (eventloop.inEventloopThread()){
+			eventloop.post(this::tryInitialize);
+		} else {
+			eventloop.execute(this::tryInitialize);
+		}
 	}
 
 	@Override

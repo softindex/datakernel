@@ -27,7 +27,8 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
-import static io.datakernel.datastream.TestStreamTransformers.*;
+import static io.datakernel.datastream.TestStreamTransformers.decorate;
+import static io.datakernel.datastream.TestStreamTransformers.randomlySuspending;
 import static io.datakernel.datastream.TestUtils.assertClosedWithError;
 import static io.datakernel.datastream.TestUtils.assertEndOfStream;
 import static io.datakernel.promise.TestUtils.await;
@@ -52,8 +53,8 @@ public class StreamFilterTest {
 
 		assertEquals(asList(1, 3, 5), consumer.getList());
 		assertEndOfStream(supplier);
-		assertEndOfStream(filter.getInput());
-		assertEndOfStream(filter.getOutput());
+		assertEndOfStream(filter);
+		assertEndOfStream(consumer);
 	}
 
 	@Test
@@ -73,8 +74,7 @@ public class StreamFilterTest {
 		assertEquals(asList(2, 4), consumer.getList());
 		assertClosedWithError(source);
 		assertClosedWithError(consumer);
-		assertClosedWithError(streamFilter.getInput());
-		assertClosedWithError(streamFilter.getOutput());
+		assertClosedWithError(streamFilter);
 	}
 
 	@Test
@@ -95,8 +95,7 @@ public class StreamFilterTest {
 
 //		assertEquals(3, consumer.getList().size());
 		assertClosedWithError(consumer);
-		assertClosedWithError(streamFilter.getInput());
-		assertClosedWithError(streamFilter.getOutput());
+		assertClosedWithError(streamFilter);
 	}
 
 	@Test
@@ -113,8 +112,7 @@ public class StreamFilterTest {
 
 		assertEquals(asList(1, 3, 5), consumer.getList());
 		assertEndOfStream(supplier);
-		assertEndOfStream(filter.getInput());
-		assertEndOfStream(filter.getOutput());
+		assertEndOfStream(filter);
 	}
 
 }

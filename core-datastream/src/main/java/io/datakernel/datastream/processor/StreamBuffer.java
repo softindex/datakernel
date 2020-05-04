@@ -17,15 +17,18 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Check;
 import io.datakernel.datastream.*;
 
 import static io.datakernel.common.Preconditions.checkArgument;
+import static io.datakernel.common.Preconditions.checkState;
 import static java.lang.Integer.numberOfLeadingZeros;
 
 /**
  * A stream transformer that changes each item according to given function.
  */
 public final class StreamBuffer<T> implements StreamTransformer<T, T> {
+	private static final boolean CHECK = Check.isEnabled(StreamBuffer.class);
 	private static final boolean NULLIFY_ON_TAKE_OUT = ApplicationSettings.getBoolean(StreamBuffer.class, "nullifyOnTakeOut", true);
 
 	private final Input input;
@@ -61,6 +64,10 @@ public final class StreamBuffer<T> implements StreamTransformer<T, T> {
 				.whenException(input::closeEx);
 	}
 
+	public static <T> StreamBuffer<T> create(int bufferMinSize, int bufferMaxSize) {
+		return new StreamBuffer<T>(bufferMinSize, bufferMaxSize);
+	}
+
 	public boolean isSaturated() {
 		return size() >= bufferMaxSize;
 	}
@@ -74,20 +81,11 @@ public final class StreamBuffer<T> implements StreamTransformer<T, T> {
 	}
 
 	public int size() {
-		return (tail - head) & (elements.length - 1);
+		return tail - head;
 	}
 
 	private void doAdd(T value) {
-		elements[tail] = value;
-		tail = (tail + 1) & (elements.length - 1);
-	}
-
-	private T doPoll() {
-		@SuppressWarnings("unchecked")
-		T result = (T) elements[head];
-		elements[head] = null;     // Must null out slot
-		head = (head + 1) & (elements.length - 1);
-		return result;
+		elements[(tail++) & (elements.length - 1)] = value;
 	}
 
 	@Override
@@ -126,14 +124,15 @@ public final class StreamBuffer<T> implements StreamTransformer<T, T> {
 				acceptor = getDataAcceptor();
 				if (acceptor == null) break;
 				if (head == tail) break;
+				int pos = (head++) & (elements.length - 1);
 				//noinspection unchecked
-				T item = (T) elements[head];
+				T item = (T) elements[pos];
 				if (NULLIFY_ON_TAKE_OUT) {
-					elements[head] = null;
+					elements[pos] = null;
 				}
-				head = (head + 1) & (elements.length - 1);
 				acceptor.accept(item);
 			}
+			if (CHECK) checkState(tail == StreamBuffer.this.tail, "New items have been added to buffer while flushing");
 			StreamBuffer.this.head = head;
 			if (isEmpty() && input.isEndOfStream()) {
 				sendEndOfStream();
