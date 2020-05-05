@@ -6,9 +6,9 @@ import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.ot.DiffsReducer;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
@@ -38,7 +38,7 @@ import static io.datakernel.ot.OTAlgorithms.*;
 import static java.util.Collections.singleton;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeCleanerController<K, D, C> implements EventloopJmxMBeanEx {
+public final class CubeCleanerController<K, D, C> implements EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeCleanerController.class);
 
 	public static final Duration DEFAULT_CHUNKS_CLEANUP_DELAY = Duration.ofMinutes(1);

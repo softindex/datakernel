@@ -11,9 +11,9 @@ import io.datakernel.etl.LogDiff;
 import io.datakernel.etl.LogOTProcessor;
 import io.datakernel.etl.LogOTState;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
@@ -34,7 +34,7 @@ import static io.datakernel.promise.Promises.asPromises;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeLogProcessorController<K, C> implements EventloopJmxMBeanEx {
+public final class CubeLogProcessorController<K, C> implements EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeLogProcessorController.class);
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);

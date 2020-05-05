@@ -31,9 +31,9 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinaryInput;
@@ -44,7 +44,7 @@ import org.rocksdb.*;
 import java.time.Duration;
 import java.util.concurrent.Executor;
 
-public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageRocksDB<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxBeanEx {
 	private final Eventloop eventloop;
 	private final Executor executor;
 	private final RocksDB db;

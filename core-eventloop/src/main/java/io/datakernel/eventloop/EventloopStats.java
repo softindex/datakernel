@@ -18,8 +18,8 @@ package io.datakernel.eventloop;
 
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.inspector.ForwardingInspector;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.stats.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

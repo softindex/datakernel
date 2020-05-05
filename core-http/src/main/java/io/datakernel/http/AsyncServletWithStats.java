@@ -1,15 +1,15 @@
 package io.datakernel.http;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Duration;
 
-public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJmxMBeanEx {
+public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJmxBeanEx {
 	@NotNull
 	protected final Eventloop eventloop;
 

@@ -26,7 +26,7 @@ import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioChannelEventHandler;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.promise.Promise;

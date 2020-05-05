@@ -16,19 +16,19 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.MBeanWrapperFactory;
-import io.datakernel.jmx.helper.StubWrapperFactory;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.JmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.helper.JmxBeanAdapterStub;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 
-public class DynamicMBeanFactoryImplAttributesArraysTest {
+public class DynamicMBeanFactoryAttributesArraysTest {
 
 	@Test
 	public void properlyGetsArrayOfInts() throws Exception {
@@ -60,7 +60,7 @@ public class DynamicMBeanFactoryImplAttributesArraysTest {
 	}
 
 	// region helper classes
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static class MBeanWithIntArray {
 
 		@JmxAttribute
@@ -69,7 +69,7 @@ public class DynamicMBeanFactoryImplAttributesArraysTest {
 		}
 	}
 
-	public static class MBeanWithDoubleArray implements ConcurrentJmxMBean {
+	public static class MBeanWithDoubleArray implements ConcurrentJmxBean {
 
 		@JmxAttribute
 		public double[] getDoubleNumbers() {
@@ -80,7 +80,7 @@ public class DynamicMBeanFactoryImplAttributesArraysTest {
 
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
-		return DynamicMBeanFactoryImpl.create()
+		return DynamicMBeanFactory.create()
 				.createDynamicMBean(asList(objects), defaultSettings(), false);
 	}
 	// endregion

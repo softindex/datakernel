@@ -26,9 +26,9 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.multilog.LogFile;
 import io.datakernel.multilog.LogPosition;
 import io.datakernel.multilog.Multilog;
@@ -51,7 +51,7 @@ import static java.util.Collections.emptyMap;
  * Processes logs. Creates new aggregation logs and persists to {@link LogDataConsumer} .
  */
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
-public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxMBeanEx {
+public final class LogOTProcessor<T, D> implements EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(LogOTProcessor.class);
 
 	private final Eventloop eventloop;

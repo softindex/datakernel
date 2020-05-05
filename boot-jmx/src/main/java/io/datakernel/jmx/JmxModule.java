@@ -27,7 +27,7 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactory.JmxCustomTypeAdapter;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.launcher.LauncherService;
 import io.datakernel.trigger.Severity;
@@ -47,7 +47,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 
@@ -62,8 +62,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 
 	private final Set<Object> globalSingletons = new HashSet<>();
 
-	private final Map<Key<?>, MBeanSettings> keyToSettings = new HashMap<>();
-	private final Map<Type, MBeanSettings> typeToSettings = new HashMap<>();
+	private final Map<Key<?>, JmxBeanSettings> keyToSettings = new HashMap<>();
+	private final Map<Type, JmxBeanSettings> typeToSettings = new HashMap<>();
 	private final Map<Key<?>, String> keyToObjectNames = new HashMap<>();
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes = new HashMap<>();
 	private final Map<Type, Key<?>> globalMBeans = new HashMap<>();
@@ -100,25 +100,25 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	public <T> JmxModule withModifier(Key<?> key, String attrName, AttributeModifier<T> modifier) {
-		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.create())
+		keyToSettings.computeIfAbsent(key, $ -> JmxBeanSettings.create())
 				.withModifier(attrName, modifier);
 		return this;
 	}
 
 	public <T> JmxModule withModifier(Type type, String attrName, AttributeModifier<T> modifier) {
-		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.create())
+		typeToSettings.computeIfAbsent(type, $ -> JmxBeanSettings.create())
 				.withModifier(attrName, modifier);
 		return this;
 	}
 
 	public JmxModule withOptional(Key<?> key, String attrName) {
-		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.create())
+		keyToSettings.computeIfAbsent(key, $ -> JmxBeanSettings.create())
 				.withIncludedOptional(attrName);
 		return this;
 	}
 
 	public JmxModule withOptional(Type type, String attrName) {
-		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.create())
+		typeToSettings.computeIfAbsent(type, $ -> JmxBeanSettings.create())
 				.withIncludedOptional(attrName);
 		return this;
 	}
@@ -172,18 +172,18 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 	}
 
 	@Provides
-	JmxRegistry jmxRegistry(DynamicMBeanFactoryImpl mbeanFactory) {
+	JmxRegistry jmxRegistry(DynamicMBeanFactory mbeanFactory) {
 		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames, customTypes)
 				.withScopes(withScopes);
 	}
 
 	@Provides
-    DynamicMBeanFactoryImpl mbeanFactory() {
-		return DynamicMBeanFactoryImpl.create(refreshPeriod, maxJmxRefreshesPerOneCycle);
+	DynamicMBeanFactory mbeanFactory() {
+		return DynamicMBeanFactory.create(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
 
 	@ProvidesIntoSet
-	LauncherService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactoryImpl mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
+	LauncherService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
 		if (initializers != null) {
 			for (Initializer<JmxModule> initializer : initializers) {
 				initializer.accept(this);
@@ -204,13 +204,13 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		};
 	}
 
-	private void doStart(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactoryImpl mbeanFactory) {
+	private void doStart(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
 		Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
 
 		// register global singletons
 		for (Object globalSingleton : globalSingletons) {
 			Key<?> globalKey = Key.of(globalSingleton.getClass());
-			jmxRegistry.registerSingleton(globalKey, globalSingleton, MBeanSettings.create().withCustomTypes(customTypes));
+			jmxRegistry.registerSingleton(globalKey, globalSingleton, JmxBeanSettings.create().withCustomTypes(customTypes));
 		}
 
 		// register singletons
@@ -259,8 +259,8 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		}
 	}
 
-	private MBeanSettings ensureSettingsFor(Key<?> key) {
-		MBeanSettings settings = MBeanSettings.create()
+	private JmxBeanSettings ensureSettingsFor(Key<?> key) {
+		JmxBeanSettings settings = JmxBeanSettings.create()
 				.withCustomTypes(customTypes);
 		if (keyToSettings.containsKey(key)) {
 			settings.merge(keyToSettings.get(key));

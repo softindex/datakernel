@@ -27,8 +27,8 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.jmx.PromiseStats;
@@ -54,7 +54,7 @@ import static java.util.stream.Collectors.toList;
  * An implementation of {@link FsClient} which operates on a map of other clients as a cluster.
  * Contains some redundancy and fail-safety capabilities.
  */
-public final class RemoteFsClusterClient implements FsClient, Initializable<RemoteFsClusterClient>, EventloopService, EventloopJmxMBeanEx {
+public final class RemoteFsClusterClient implements FsClient, Initializable<RemoteFsClusterClient>, EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsClusterClient.class);
 
 	private final Eventloop eventloop;

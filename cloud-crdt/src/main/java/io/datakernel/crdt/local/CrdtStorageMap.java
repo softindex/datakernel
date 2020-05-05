@@ -29,9 +29,9 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -44,7 +44,7 @@ import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
 
-public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageMap<K, S>>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageMap<K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageMap<K, S>>, EventloopService, EventloopJmxBeanEx {
 	private static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 
 	private final Eventloop eventloop;

@@ -16,8 +16,8 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.JmxRefreshableStats;
 import org.junit.Test;
 
@@ -26,12 +26,12 @@ import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import java.util.Map;
 
-import static io.datakernel.jmx.DynamicMBeanFactoryImplAttributesTest.createDynamicMBeanFor;
+import static io.datakernel.jmx.DynamicMBeanFactoryAttributesTest.createDynamicMBeanFor;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class DynamicMBeanFactoryImplAttributesSelectionTest {
+public class DynamicMBeanFactoryAttributesSelectionTest {
 
 	@Test
 	public void doNotConsiderOptionalAttributesByDefault() {
@@ -77,7 +77,7 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		assertEquals("stats_sum", attributesInfoArr[0].getName());
 	}
 
-	public static class MBeanWithNoExtraSubAttributes implements ConcurrentJmxMBean {
+	public static class MBeanWithNoExtraSubAttributes implements ConcurrentJmxBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
 		@JmxAttribute
@@ -86,7 +86,7 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		}
 	}
 
-	public static class MBeanWithExtraSubAttributes implements ConcurrentJmxMBean {
+	public static class MBeanWithExtraSubAttributes implements ConcurrentJmxBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
 		@JmxAttribute(extraSubAttributes = "count")
@@ -95,7 +95,7 @@ public class DynamicMBeanFactoryImplAttributesSelectionTest {
 		}
 	}
 
-	public static class MBeansStubWithInvalidExtraAttrName implements ConcurrentJmxMBean {
+	public static class MBeansStubWithInvalidExtraAttrName implements ConcurrentJmxBean {
 		private final JmxStatsWithOptionalAttributes stats = new JmxStatsWithOptionalAttributes();
 
 		@JmxAttribute(extraSubAttributes = "QWERTY") // QWERTY subAttribute doesn't exist

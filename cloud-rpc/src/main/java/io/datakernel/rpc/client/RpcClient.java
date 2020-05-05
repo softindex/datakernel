@@ -24,11 +24,11 @@ import io.datakernel.common.MemSize;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.net.AsyncTcpSocketNio;
@@ -80,7 +80,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * @see RpcStrategies
  * @see RpcServer
  */
-public final class RpcClient implements IRpcClient, EventloopService, Initializable<RpcClient>, EventloopJmxMBeanEx {
+public final class RpcClient implements IRpcClient, EventloopService, Initializable<RpcClient>, EventloopJmxBeanEx {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = SocketSettings.createDefault();
 	public static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
 	public static final Duration DEFAULT_RECONNECT_INTERVAL = Duration.ofSeconds(1);

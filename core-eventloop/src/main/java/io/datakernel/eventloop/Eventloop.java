@@ -25,14 +25,15 @@ import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.common.inspector.BaseInspector;
+import io.datakernel.common.reflection.ReflectionUtils;
 import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.common.time.CurrentTimeProviderSystem;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.DatagramSocketSettings;
 import io.datakernel.eventloop.net.ServerSocketSettings;
 import io.datakernel.eventloop.util.OptimizedSelectedKeysSet;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -58,7 +59,6 @@ import java.util.function.Supplier;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Utils.nullToSupplier;
-import static io.datakernel.common.reflection.ReflectionUtils.isPrivateApiAvailable;
 import static io.datakernel.eventloop.util.Utils.tryToOptimizeSelector;
 import static java.util.Collections.emptyIterator;
 
@@ -79,15 +79,15 @@ import static java.util.Collections.emptyIterator;
  * Working of this eventloop will be ended when it has no selected keys
  * and its queues with tasks are empty.
  */
-public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxMBeanEx {
+public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, Initializable<Eventloop>, EventloopJmxBeanEx {
 	public static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 	private static final Boolean CHECK = Check.isEnabled(Eventloop.class);
 
-	public static final boolean jigsawDisabled;
+	public static final boolean JIGSAW_DETECTED;
 	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	static {
-		jigsawDisabled = isPrivateApiAvailable();
+		JIGSAW_DETECTED = ReflectionUtils.isClassPresent("java.lang.Module");
 	}
 
 	public static final AsyncTimeoutException CONNECT_TIMEOUT = new AsyncTimeoutException(Eventloop.class, "Connection timed out");
@@ -364,7 +364,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 		ensureSelector();
 		assert selector != null;
 		breakEventloop = false;
-		boolean setWasOptimized = jigsawDisabled && tryToOptimizeSelector(selector);
+		boolean setWasOptimized = !JIGSAW_DETECTED && tryToOptimizeSelector(selector);
 
 		long timeAfterSelectorSelect;
 		long timeAfterBusinessLogic = 0;
@@ -996,7 +996,8 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	@NotNull
 	@Override
 	public ScheduledRunnable scheduleBackground(long timestamp, @NotNull @Async.Schedule Runnable runnable) {
-		if (CHECK) checkState(inEventloopThread(), "scheduleBackground(...) should be called from within eventloop thread");
+		if (CHECK)
+			checkState(inEventloopThread(), "scheduleBackground(...) should be called from within eventloop thread");
 		return addScheduledTask(timestamp, runnable, true);
 	}
 

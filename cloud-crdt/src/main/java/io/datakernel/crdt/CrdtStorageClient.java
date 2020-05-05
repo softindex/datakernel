@@ -29,10 +29,10 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
@@ -46,7 +46,7 @@ import static io.datakernel.crdt.CrdtMessaging.CrdtMessages.PING;
 import static io.datakernel.crdt.CrdtMessaging.CrdtResponses.*;
 import static io.datakernel.crdt.Utils.nullTerminatedJson;
 
-public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxBeanEx {
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 	private final CrdtDataSerializer<K, S> serializer;

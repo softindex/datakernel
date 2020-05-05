@@ -28,11 +28,11 @@ import io.datakernel.dns.DnsResponse;
 import io.datakernel.dns.RemoteAsyncDnsClient;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.net.AsyncTcpSocket;
@@ -70,7 +70,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * to cleanup the keepalive connections etc.
  */
 @SuppressWarnings({"WeakerAccess", "unused", "UnusedReturnValue"})
-public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxMBeanEx {
+public final class AsyncHttpClient implements IAsyncHttpClient, EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = getLogger(AsyncHttpClient.class);
 	private static final Boolean CHECK = Check.isEnabled(AsyncHttpClient.class);
 

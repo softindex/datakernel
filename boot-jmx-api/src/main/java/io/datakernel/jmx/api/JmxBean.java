@@ -8,6 +8,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Target(TYPE)
 @Retention(RUNTIME)
-public @interface MBeanWrapperFactory {
-	Class<? extends JmxWrapperFactory> value();
+public @interface JmxBean {
+	Class<? extends JmxBeanAdapter> value();
 }

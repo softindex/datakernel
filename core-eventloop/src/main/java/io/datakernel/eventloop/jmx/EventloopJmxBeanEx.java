@@ -16,12 +16,29 @@
 
 package io.datakernel.eventloop.jmx;
 
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.api.MBeanWrapperFactory;
-import org.jetbrains.annotations.NotNull;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
+import io.datakernel.jmx.stats.StatsUtils;
+import org.jetbrains.annotations.Nullable;
 
-@MBeanWrapperFactory(EventloopJmxMbeanFactory.class)
-public interface EventloopJmxMBean {
-	@NotNull
-	Eventloop getEventloop();
+import java.time.Duration;
+
+public interface EventloopJmxBeanEx extends EventloopJmxBean {
+
+	@JmxOperation
+	default void resetStats() {
+		StatsUtils.resetStats(this);
+	}
+
+	@JmxAttribute
+	@Nullable
+	default Duration getSmoothingWindow() {
+		return StatsUtils.getSmoothingWindow(this);
+	}
+
+	@JmxAttribute
+	default void setSmoothingWindow(Duration smoothingWindowSeconds) {
+		StatsUtils.setSmoothingWindow(this, smoothingWindowSeconds);
+	}
+
 }

@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.api.JmxAttribute;
 import io.datakernel.jmx.api.JmxRefreshable;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.jmx.stats.ValueStats;

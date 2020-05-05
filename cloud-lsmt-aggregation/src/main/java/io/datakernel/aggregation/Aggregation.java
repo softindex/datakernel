@@ -30,8 +30,8 @@ import io.datakernel.datastream.processor.*;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
@@ -69,7 +69,7 @@ import static java.util.stream.Collectors.toSet;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class Aggregation implements IAggregation, Initializable<Aggregation>, EventloopJmxMBeanEx {
+public class Aggregation implements IAggregation, Initializable<Aggregation>, EventloopJmxBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final int DEFAULT_CHUNK_SIZE = 1_000_000;

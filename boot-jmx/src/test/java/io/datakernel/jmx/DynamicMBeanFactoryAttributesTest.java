@@ -16,11 +16,11 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.MBeanWrapperFactory;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.JmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.helper.JmxBeanAdapterStub;
 import io.datakernel.jmx.helper.JmxStatsStub;
-import io.datakernel.jmx.helper.StubWrapperFactory;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -34,13 +34,13 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 import java.util.*;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
-public class DynamicMBeanFactoryImplAttributesTest {
+public class DynamicMBeanFactoryAttributesTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
@@ -190,8 +190,8 @@ public class DynamicMBeanFactoryImplAttributesTest {
 	// test empty leaf names
 	@Test
 	public void handlesAttributeWithEmptyLeafNamesProperly() throws Exception {
-		MBeanWithEmptyLeafName monitorable = new MBeanWithEmptyLeafName();
-		DynamicMBean mbean = createDynamicMBeanFor(monitorable);
+		MBeanWithEmptyLeafName bean = new MBeanWithEmptyLeafName();
+		DynamicMBean mbean = createDynamicMBeanFor(bean);
 
 		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
 		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
@@ -292,7 +292,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 
 	// region helper methods
 	public static DynamicMBean createDynamicMBeanFor(Object... objects) {
-		return DynamicMBeanFactoryImpl.create()
+		return DynamicMBeanFactory.create()
 				.createDynamicMBean(asList(objects), defaultSettings(), false);
 	}
 
@@ -322,7 +322,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	public static final class MBeanWithSimpleAttrsAndPojo implements ConcurrentJmxMBean {
+	public static final class MBeanWithSimpleAttrsAndPojo implements ConcurrentJmxBean {
 		private final String info;
 		private final SamplePojo samplePojo;
 
@@ -342,7 +342,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanWithListAttr {
 		private final List<String> list;
 
@@ -356,7 +356,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanWithSingleIntAttr {
 		private final int value;
 
@@ -370,7 +370,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanWithJmxStats {
 		private final JmxStatsStub jmxStatsStub;
 
@@ -384,7 +384,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanWithMap {
 		private final Map<String, Integer> nameToNumber;
 
@@ -399,7 +399,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 	}
 
 	// classes for empty names tests
-	public static final class MBeanWithEmptyNames implements ConcurrentJmxMBean {
+	public static final class MBeanWithEmptyNames implements ConcurrentJmxBean {
 		private final SamplePojo_L_1_1 pojo1;
 		private final SamplePojo_L_1_2 pojo2;
 
@@ -459,7 +459,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 	}
 
 	// classes for empty leaf names
-	public static final class MBeanWithEmptyLeafName implements ConcurrentJmxMBean {
+	public static final class MBeanWithEmptyLeafName implements ConcurrentJmxBean {
 		private final PojoWithEmptyLeafName pojo = new PojoWithEmptyLeafName();
 
 		@JmxAttribute
@@ -476,7 +476,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 	}
 
 	// classes for setter tests
-	public static final class MBeanWithSettableAttributes implements ConcurrentJmxMBean {
+	public static final class MBeanWithSettableAttributes implements ConcurrentJmxBean {
 		private final int notSettableInt;
 		private int settableInt;
 		private String settableStr;
@@ -513,7 +513,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	public static final class MBeanWithPojoWithSettableAttribute implements ConcurrentJmxMBean {
+	public static final class MBeanWithPojoWithSettableAttribute implements ConcurrentJmxBean {
 		private final PojoWithSettableAttribute pojo;
 
 		public MBeanWithPojoWithSettableAttribute(PojoWithSettableAttribute pojo) {
@@ -544,7 +544,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	public static final class MBeanWithIsGetter implements ConcurrentJmxMBean {
+	public static final class MBeanWithIsGetter implements ConcurrentJmxBean {
 
 		@JmxAttribute
 		public boolean isActive() {
@@ -552,7 +552,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 		}
 	}
 
-	public static final class MBeanWithJmxAttributesOfArbitraryTypes implements ConcurrentJmxMBean {
+	public static final class MBeanWithJmxAttributesOfArbitraryTypes implements ConcurrentJmxBean {
 		private final ArbitraryType arbitraryType;
 		private final Date date;
 
@@ -586,7 +586,7 @@ public class DynamicMBeanFactoryImplAttributesTest {
 	}
 
 	// classes for default attribute test (@JmxAttribute get())
-	public static final class MBeanWithPojoWithDefaultGetter implements ConcurrentJmxMBean {
+	public static final class MBeanWithPojoWithDefaultGetter implements ConcurrentJmxBean {
 		private final PojoWithDefaultGetter pojo = new PojoWithDefaultGetter();
 
 		@JmxAttribute

@@ -26,7 +26,7 @@ import javax.management.MBeanServer;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
 public class GenericTypesRegistrationTest {
@@ -34,7 +34,7 @@ public class GenericTypesRegistrationTest {
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
-	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, DynamicMBeanFactoryImpl.create());
+	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, DynamicMBeanFactory.create());
 	private final String domain = ServiceStubOne.class.getPackage().getName();
 
 	@Test

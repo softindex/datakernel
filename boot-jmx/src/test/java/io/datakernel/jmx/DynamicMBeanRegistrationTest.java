@@ -28,7 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
 public class DynamicMBeanRegistrationTest {
@@ -36,7 +36,7 @@ public class DynamicMBeanRegistrationTest {
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
-	private DynamicMBeanFactoryImpl mbeanFactory = DynamicMBeanFactoryImpl.create();
+	private DynamicMBeanFactory mbeanFactory = DynamicMBeanFactory.create();
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = CustomKeyClass.class.getPackage().getName();
 

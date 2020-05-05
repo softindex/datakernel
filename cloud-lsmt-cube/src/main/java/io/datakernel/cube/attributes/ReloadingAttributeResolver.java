@@ -19,9 +19,9 @@ package io.datakernel.cube.attributes;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
@@ -34,7 +34,7 @@ import java.util.Map;
 import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
-public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService, EventloopJmxMBean {
+public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService, EventloopJmxBean {
 	protected final Eventloop eventloop;
 
 	private long timestamp;

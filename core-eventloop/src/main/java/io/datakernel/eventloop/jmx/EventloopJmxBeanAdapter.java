@@ -1,7 +1,7 @@
 package io.datakernel.eventloop.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.api.JmxRefreshHandler;
+import io.datakernel.jmx.api.JmxBeanAdapterWithRefresh;
 import io.datakernel.jmx.api.JmxRefreshable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -16,7 +16,7 @@ import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.ceil;
 
-public final class EventloopJmxMbeanFactory implements JmxRefreshHandler {
+public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh {
 	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
 	private final Map<Eventloop, Integer> refreshableStatsCounts = new ConcurrentHashMap<>();
 	private final Map<Eventloop, Integer> effectiveRefreshPeriods = new ConcurrentHashMap<>();
@@ -33,9 +33,7 @@ public final class EventloopJmxMbeanFactory implements JmxRefreshHandler {
 
 	private Eventloop ensureEventloop(Object bean) {
 		Eventloop eventloop = beanToEventloop.get().get(bean);
-		if (eventloop != null) {
-			return eventloop;
-		}
+		if (eventloop != null) return eventloop;
 		try {
 			eventloop = (Eventloop) bean.getClass().getMethod("getEventloop").invoke(bean);
 		} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
@@ -43,6 +41,7 @@ public final class EventloopJmxMbeanFactory implements JmxRefreshHandler {
 		}
 		checkNotNull(eventloop);
 		while (true) {
+			if (beanToEventloop.get().containsKey(bean)) break;
 			IdentityHashMap<Object, Eventloop> oldMap = beanToEventloop.get();
 			IdentityHashMap<Object, Eventloop> newMap = new IdentityHashMap<>(oldMap);
 			newMap.put(bean, eventloop);
@@ -58,16 +57,16 @@ public final class EventloopJmxMbeanFactory implements JmxRefreshHandler {
 	}
 
 	@Override
-	public void registerRefreshables(Object bean, List<JmxRefreshable> refreshables) {
+	public void registerRefreshableBean(Object bean, List<JmxRefreshable> beanRefreshables) {
 		checkNotNull(refreshPeriod, "Not initialized");
 		Eventloop eventloop = ensureEventloop(bean);
 		if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
-			eventloopToJmxRefreshables.put(eventloop, refreshables);
+			eventloopToJmxRefreshables.put(eventloop, beanRefreshables);
 			eventloop.execute(wrapContext(this, createRefreshTask(eventloop, null, 0)));
 		} else {
 			List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
 			List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);
-			allRefreshables.addAll(refreshables);
+			allRefreshables.addAll(beanRefreshables);
 			eventloopToJmxRefreshables.put(eventloop, allRefreshables);
 		}
 

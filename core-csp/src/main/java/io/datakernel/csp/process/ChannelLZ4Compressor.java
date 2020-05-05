@@ -22,7 +22,7 @@ import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.ValueStats;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;

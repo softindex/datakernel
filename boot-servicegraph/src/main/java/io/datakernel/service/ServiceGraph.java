@@ -19,9 +19,9 @@ package io.datakernel.service;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.collection.CollectionUtils;
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ import static java.util.stream.Collectors.toList;
  * {@link ServiceGraphModule}.
  */
 @SuppressWarnings("StringConcatenationInsideStringBufferAppend")
-public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxMBean {
+public final class ServiceGraph implements Initializable<ServiceGraph>, ConcurrentJmxBean {
 	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
 
 	public interface Key {

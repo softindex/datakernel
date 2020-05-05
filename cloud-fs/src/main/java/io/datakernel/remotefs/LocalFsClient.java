@@ -29,8 +29,8 @@ import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.csp.file.ChannelFileWriter;
 import io.datakernel.csp.process.ChannelByteRanger;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
@@ -67,7 +67,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
  */
-public final class LocalFsClient implements FsClient, EventloopService, EventloopJmxMBeanEx {
+public final class LocalFsClient implements FsClient, EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
 
 	public static final FileNamingScheme REVISION_NAMING_SCHEME = new FileNamingScheme() {

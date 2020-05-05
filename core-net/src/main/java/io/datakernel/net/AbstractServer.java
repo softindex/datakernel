@@ -20,10 +20,10 @@ import io.datakernel.common.Check;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.ServerSocketSettings;
 import io.datakernel.eventloop.net.SocketSettings;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.net.AsyncTcpSocketNio.Inspector;
 import io.datakernel.promise.Promise;
@@ -62,7 +62,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * This is simply a higher-level wrapper around eventloop {@link Eventloop#listen} call.
  */
 @SuppressWarnings("WeakerAccess, unused")
-public abstract class AbstractServer<Self extends AbstractServer<Self>> implements EventloopServer, WorkerServer, Initializable<Self>, EventloopJmxMBeanEx {
+public abstract class AbstractServer<Self extends AbstractServer<Self>> implements EventloopServer, WorkerServer, Initializable<Self>, EventloopJmxBeanEx {
 	protected Logger logger = getLogger(getClass());
 	private static final Boolean CHECK = Check.isEnabled(AbstractServer.class);
 

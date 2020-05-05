@@ -19,7 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.di.Key;
 import io.datakernel.di.Scope;
 import io.datakernel.di.module.UniqueQualifierImpl;
-import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactory.JmxCustomTypeAdapter;
 import io.datakernel.worker.WorkerPool;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,6 +38,7 @@ import static io.datakernel.jmx.Utils.*;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 public final class JmxRegistry implements JmxRegistryMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
@@ -46,7 +47,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private static final String ROOT_PACKAGE_NAME = "";
 
 	private final MBeanServer mbs;
-	private final DynamicMBeanFactoryImpl mbeanFactory;
+	private final DynamicMBeanFactory mbeanFactory;
 	private final Map<Key<?>, String> keyToObjectNames;
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes;
 	private final Map<WorkerPool, Key<?>> workerPoolKeys = new HashMap<>();
@@ -59,7 +60,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private int totallyRegisteredMBeans;
 
 	private JmxRegistry(@NotNull MBeanServer mbs,
-			DynamicMBeanFactoryImpl mbeanFactory,
+			DynamicMBeanFactory mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.mbs = mbs;
@@ -68,12 +69,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		this.customTypes = customTypes;
 	}
 
-	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactoryImpl mbeanFactory) {
+	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
 		return new JmxRegistry(mbs, mbeanFactory, Collections.emptyMap(), Collections.emptyMap());
 	}
 
 	public static JmxRegistry create(MBeanServer mbs,
-			DynamicMBeanFactoryImpl mbeanFactory,
+			DynamicMBeanFactory mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
@@ -89,10 +90,10 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		workerPoolKeys.put(workerPool, workerPoolKey);
 	}
 
-	public void registerSingleton(@NotNull Key<?> key, @NotNull Object singletonInstance, @NotNull MBeanSettings settings) {
+	public void registerSingleton(@NotNull Key<?> key, @NotNull Object singletonInstance, @NotNull JmxBeanSettings settings) {
 		Class<?> instanceClass = singletonInstance.getClass();
 		Object mbean;
-		if (isJmxMBean(instanceClass)) {
+		if (isJmxBean(instanceClass)) {
 			// this will throw exception if something happens during initialization
 			mbean = mbeanFactory.createDynamicMBean(singletonList(singletonInstance), settings, true);
 		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass) || isDynamicMBean(instanceClass)) {
@@ -154,18 +155,18 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		}
 	}
 
-	public void registerWorkers(@NotNull WorkerPool pool, Key<?> key, @NotNull List<?> poolInstances, MBeanSettings settings) {
+	public void registerWorkers(@NotNull WorkerPool pool, Key<?> key, @NotNull List<?> poolInstances, JmxBeanSettings settings) {
 		if (poolInstances.size() == 0) {
 			logger.info(format("Pool of instances with key %s is empty", key.toString()));
 			return;
 		}
 
-		if (!allInstancesAreOfSameType(poolInstances)) {
+		if (poolInstances.stream().map(Object::getClass).collect(toSet()).size() != 1) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx because their types differ", key.toString()));
 			return;
 		}
 
-		if (!isJmxMBean(poolInstances.get(0).getClass())) {
+		if (!isJmxBean(poolInstances.get(0).getClass())) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
 					"because instances' type is not annotated with annotation annotated with @JmxWrapperFactory",
 					key.toString()));
@@ -183,7 +184,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		// register mbeans for each worker separately
 		for (int i = 0; i < poolInstances.size(); i++) {
-			MBeanSettings settingsForOptionals = MBeanSettings.of(
+			JmxBeanSettings settingsForOptionals = JmxBeanSettings.of(
 					settings.getIncludedOptionals(), new HashMap<>(), customTypes);
 			registerMBeanForWorker(poolInstances.get(i), i, commonName, key, settingsForOptionals);
 		}
@@ -230,11 +231,11 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			return;
 		}
 
-		if (!allInstancesAreOfSameType(poolInstances)) {
+		if (poolInstances.stream().map(Object::getClass).collect(toSet()).size() != 1) {
 			return;
 		}
 
-		if (!isJmxMBean(poolInstances.get(0).getClass())) {
+		if (!isJmxBean(poolInstances.get(0).getClass())) {
 			return;
 		}
 
@@ -289,7 +290,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	}
 
 	private void registerMBeanForWorker(Object worker, int workerId, String commonName,
-			Key<?> key, MBeanSettings settings) {
+			Key<?> key, JmxBeanSettings settings) {
 		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;

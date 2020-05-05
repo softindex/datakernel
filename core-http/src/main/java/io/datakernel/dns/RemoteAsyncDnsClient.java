@@ -22,9 +22,9 @@ import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.DatagramSocketSettings;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.net.AsyncUdpSocket;
 import io.datakernel.net.AsyncUdpSocketNio;
@@ -52,7 +52,7 @@ import static io.datakernel.promise.Promises.timeout;
  * Implementation of {@link AsyncDnsClient} that asynchronously
  * connects to some <i>real</i> DNS server and gets the response from it.
  */
-public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
+public final class RemoteAsyncDnsClient implements AsyncDnsClient, EventloopJmxBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(RemoteAsyncDnsClient.class);
 	private static final Boolean CHECK = Check.isEnabled(RemoteAsyncDnsClient.class);
 

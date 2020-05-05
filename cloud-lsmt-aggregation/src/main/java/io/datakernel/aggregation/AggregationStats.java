@@ -2,7 +2,7 @@ package io.datakernel.aggregation;
 
 import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
 public class AggregationStats {

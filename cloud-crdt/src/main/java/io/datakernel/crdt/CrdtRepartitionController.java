@@ -23,12 +23,12 @@ import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
 
-public final class CrdtRepartitionController<I extends Comparable<I>, K extends Comparable<K>, S> implements EventloopJmxMBeanEx {
+public final class CrdtRepartitionController<I extends Comparable<I>, K extends Comparable<K>, S> implements EventloopJmxBeanEx {
 	private final I localPartitionId;
 	private final CrdtStorage<K, S> localClient;
 	private final CrdtStorageCluster<I, K, S> cluster;

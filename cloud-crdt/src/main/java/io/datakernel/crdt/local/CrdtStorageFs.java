@@ -37,9 +37,9 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.jmx.PromiseStats;
@@ -59,7 +59,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 
 public final class CrdtStorageFs<K extends Comparable<K>, S> implements CrdtStorage<K, S>,
-		Initializable<CrdtStorageFs<K, S>>, EventloopService, EventloopJmxMBeanEx {
+		Initializable<CrdtStorageFs<K, S>>, EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageFs.class);
 
 	private final Eventloop eventloop;

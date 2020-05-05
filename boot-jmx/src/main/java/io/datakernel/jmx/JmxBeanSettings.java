@@ -16,56 +16,57 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
+import io.datakernel.jmx.DynamicMBeanFactory.JmxCustomTypeAdapter;
 
 import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 
-public final class MBeanSettings {
+@SuppressWarnings("UnusedReturnValue")
+public final class JmxBeanSettings {
 	private final Set<String> includedOptionals = new HashSet<>();
 	private final Map<String, AttributeModifier<?>> modifiers = new HashMap<>();
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes = new HashMap<>();
 
-	private MBeanSettings(Set<String> includedOptionals, Map<String, ? extends AttributeModifier<?>> modifiers, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+	private JmxBeanSettings(Set<String> includedOptionals, Map<String, ? extends AttributeModifier<?>> modifiers, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.includedOptionals.addAll(includedOptionals);
 		this.modifiers.putAll(modifiers);
 		this.customTypes.putAll(customTypes);
 	}
 
-	public static MBeanSettings of(Set<String> includedOptionals,
+	public static JmxBeanSettings of(Set<String> includedOptionals,
 			Map<String, ? extends AttributeModifier<?>> modifiers,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
-		return new MBeanSettings(includedOptionals, modifiers, customTypes);
+		return new JmxBeanSettings(includedOptionals, modifiers, customTypes);
 	}
 
-	public static MBeanSettings create() {
-		return new MBeanSettings(new HashSet<>(), new HashMap<>(), new HashMap<>());
+	public static JmxBeanSettings create() {
+		return new JmxBeanSettings(new HashSet<>(), new HashMap<>(), new HashMap<>());
 	}
 
-	public static MBeanSettings defaultSettings() {
-		return new MBeanSettings(Collections.emptySet(), Collections.emptyMap(), Collections.emptyMap());
+	public static JmxBeanSettings defaultSettings() {
+		return new JmxBeanSettings(Collections.emptySet(), Collections.emptyMap(), Collections.emptyMap());
 	}
 
-	public void merge(MBeanSettings otherSettings) {
+	public void merge(JmxBeanSettings otherSettings) {
 		includedOptionals.addAll(otherSettings.includedOptionals);
 		modifiers.putAll(otherSettings.modifiers);
 		customTypes.putAll(otherSettings.customTypes);
 	}
 
-	public MBeanSettings withIncludedOptional(String attrName) {
+	public JmxBeanSettings withIncludedOptional(String attrName) {
 		includedOptionals.add(attrName);
 		return this;
 	}
 
-	public MBeanSettings withModifier(String attrName, AttributeModifier<?> modifier) {
+	public JmxBeanSettings withModifier(String attrName, AttributeModifier<?> modifier) {
 		checkArgument(!modifiers.containsKey(attrName), "cannot add two modifiers for one attribute");
 		modifiers.put(attrName, modifier);
 		return this;
 	}
 
-	public MBeanSettings withCustomTypes(Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+	public JmxBeanSettings withCustomTypes(Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.customTypes.putAll(customTypes);
 		return this;
 	}

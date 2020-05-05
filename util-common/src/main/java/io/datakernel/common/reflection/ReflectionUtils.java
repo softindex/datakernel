@@ -17,7 +17,6 @@
 package io.datakernel.common.reflection;
 
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.ref.Ref;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +25,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
@@ -171,52 +170,23 @@ public final class ReflectionUtils {
 		}
 	}
 
-	public static void walkOverHierarchy(Class<?> leaf, Predicate<Class<?>> callback) {
-		walkOverHierarchy(leaf, callback, new HashSet<>());
+	public static <A extends Annotation> Optional<A> deepFindAnnotation(Class<?> aClass, Class<A> annotation) {
+		return walkClassHierarchy(aClass, clazz -> Optional.ofNullable(clazz.getAnnotation(annotation)));
 	}
 
-	private static void walkOverHierarchy(Class<?> leaf, Predicate<Class<?>> callback, Set<Class<?>> visited) {
-		while (leaf != null && callback.test(leaf)) {
-			for (Class<?> iface : leaf.getInterfaces()) {
-				if (visited.add(iface)) {
-					walkOverHierarchy(iface, callback, visited);
-				}
-			}
-			leaf = leaf.getSuperclass();
+	public static <T> Optional<T> walkClassHierarchy(@NotNull Class<?> aClass, @NotNull Function<Class<?>, Optional<T>> finder) {
+		return walkClassHierarchy(aClass, finder, new HashSet<>());
+	}
+
+	private static <T> Optional<T> walkClassHierarchy(@Nullable Class<?> aClass, @NotNull Function<Class<?>, Optional<T>> finder, @NotNull Set<Class<?>> visited) {
+		if (aClass == null || !visited.add(aClass)) return Optional.empty();
+		Optional<T> maybeResult = finder.apply(aClass);
+		if (maybeResult.isPresent()) return maybeResult;
+		for (Class<?> iface : aClass.getInterfaces()) {
+			maybeResult = walkClassHierarchy(iface, finder, visited);
+			if (maybeResult.isPresent()) return maybeResult;
 		}
-	}
-
-	public static List<Class<?>> getAllInterfaces(Class<?> cls) {
-		Set<Class<?>> found = new LinkedHashSet<>();
-		walkOverHierarchy(cls, ancestor -> {
-			if (ancestor.isInterface()) {
-				found.add(ancestor);
-			}
-			return true;
-		});
-		return new ArrayList<>(found);
-	}
-
-	@Nullable
-	public static Annotation deepFindAnnotation(Class<?> cls, Predicate<Annotation> predicate) {
-		Ref<Annotation> found = new Ref<>(null);
-		walkOverHierarchy(cls, ancestor -> {
-			for (Annotation annotation : ancestor.getAnnotations()) {
-				if (predicate.test(annotation)) {
-					found.set(annotation);
-					return false;
-				}
-			}
-			return true;
-		});
-		return found.get();
-	}
-
-	public static String getAnnotationString(@NotNull Class<? extends Annotation> annotationType, @Nullable Annotation annotation) throws ReflectiveOperationException {
-		if (annotation != null) {
-			return getAnnotationString(annotation);
-		}
-		return annotationType.getSimpleName();
+		return walkClassHierarchy(aClass.getSuperclass(), finder, visited);
 	}
 
 	/**
@@ -258,7 +228,7 @@ public final class ReflectionUtils {
 		return annotationString.toString();
 	}
 
-	public static Method[] filterNonEmptyElements(Annotation annotation) throws ReflectiveOperationException {
+	private static Method[] filterNonEmptyElements(Annotation annotation) throws ReflectiveOperationException {
 		List<Method> filtered = new ArrayList<>();
 		for (Method method : annotation.annotationType().getDeclaredMethods()) {
 			Object elementValue = fetchAnnotationElementValue(annotation, method);
@@ -285,14 +255,5 @@ public final class ReflectionUtils {
 			throw new NullPointerException(errorMsg);
 		}
 		return value;
-	}
-
-	public static boolean isPrivateApiAvailable() {
-		try {
-			Class.forName("java.lang.Module");
-			return false;
-		} catch (ClassNotFoundException e) {
-			return true;
-		}
 	}
 }

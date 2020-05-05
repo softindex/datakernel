@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.api;
+package io.datakernel.eventloop.jmx;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.api.JmxBean;
+import org.jetbrains.annotations.NotNull;
 
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface JmxOperation {
-	String name() default "";
-
-	String description() default "";
+@JmxBean(EventloopJmxBeanAdapter.class)
+public interface EventloopJmxBean {
+	@NotNull
+	Eventloop getEventloop();
 }

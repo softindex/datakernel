@@ -2,8 +2,8 @@ package io.datakernel.ot.util;
 
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.jmx.PromiseStats;
 import org.jetbrains.annotations.NotNull;
@@ -18,7 +18,7 @@ import static io.datakernel.async.function.AsyncSuppliers.reuse;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.promise.Promises.retry;
 
-public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxMBeanEx {
+public final class IdGeneratorSql implements IdGenerator<Long>, EventloopJmxBeanEx {
 
 	private final Eventloop eventloop;
 	private final Executor executor;

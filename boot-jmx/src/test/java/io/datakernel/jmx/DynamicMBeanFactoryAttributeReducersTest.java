@@ -16,25 +16,25 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxReducer;
-import io.datakernel.jmx.api.MBeanWrapperFactory;
-import io.datakernel.jmx.helper.StubWrapperFactory;
+import io.datakernel.jmx.api.JmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxReducer;
+import io.datakernel.jmx.helper.JmxBeanAdapterStub;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import java.util.List;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class DynamicMBeanFactoryImplAttributeReducersTest {
+public class DynamicMBeanFactoryAttributeReducersTest {
 
 	// region simple type reducers
 	@Test
 	public void createdMBeanShouldUseSpecifiedReducerForAggregation() throws Exception {
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(
 						asList(new MBeanWithCustomReducer(200), new MBeanWithCustomReducer(350)),
 						defaultSettings(),
@@ -43,7 +43,7 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 		assertEquals(ConstantValueReducer.CONSTANT_VALUE, mbean.getAttribute("attr"));
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanWithCustomReducer {
 		private final int attr;
 
@@ -72,7 +72,7 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 	public void properlyAggregatesPojosWithReducer() throws Exception {
 		MBeanWithPojoReducer mbean_1 = new MBeanWithPojoReducer(new PojoStub(10, "abc"));
 		MBeanWithPojoReducer mbean_2 = new MBeanWithPojoReducer(new PojoStub(15, "xz"));
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(
 						asList(mbean_1, mbean_2),
 						defaultSettings(),
@@ -82,7 +82,7 @@ public class DynamicMBeanFactoryImplAttributeReducersTest {
 		assertEquals("abcxz", mbean.getAttribute("pojo_name"));
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanWithPojoReducer {
 		private final PojoStub pojo;
 

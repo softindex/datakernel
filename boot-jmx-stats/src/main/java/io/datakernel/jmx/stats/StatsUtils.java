@@ -1,13 +1,16 @@
 package io.datakernel.jmx.stats;
 
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import static io.datakernel.common.collection.CollectionUtils.first;
@@ -71,7 +74,7 @@ public final class StatsUtils {
 			if (returnType == void.class || isSimpleType(returnType)) {
 				continue;
 			}
-			if (Arrays.stream(method.getAnnotations()).noneMatch(a -> a.annotationType() == JmxAttribute.class)) {
+			if (!method.isAnnotationPresent(JmxAttribute.class)) {
 				continue;
 			}
 			Object fieldValue;

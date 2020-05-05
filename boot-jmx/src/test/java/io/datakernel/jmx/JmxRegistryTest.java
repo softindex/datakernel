@@ -20,7 +20,7 @@ import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.QualifierAnnotation;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
@@ -43,11 +43,11 @@ public class JmxRegistryTest {
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
-	private DynamicMBeanFactoryImpl mbeanFactory = DynamicMBeanFactoryImpl.create();
+	private DynamicMBeanFactory mbeanFactory = DynamicMBeanFactory.create();
 	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
-	private final MBeanSettings settings = MBeanSettings.defaultSettings();
+	private final JmxBeanSettings settings = JmxBeanSettings.defaultSettings();
 
 	@Test
 	public void unregisterSingletonInstance() throws Exception {
@@ -168,7 +168,7 @@ public class JmxRegistryTest {
 	}
 
 	// helper classes
-	public final class ServiceStub implements ConcurrentJmxMBean {
+	public final class ServiceStub implements ConcurrentJmxBean {
 
 	}
 }

@@ -30,7 +30,6 @@ import io.datakernel.serializer.BinarySerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.impl.SerializerDefClass;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -69,8 +68,8 @@ public class Utils {
 	}
 
 	public static <T, R> Function<T, R> createMapper(Class<T> recordClass, Class<R> resultClass,
-	                                                 List<String> keys, List<String> fields,
-	                                                 DefiningClassLoader classLoader) {
+			List<String> keys, List<String> fields,
+			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
 				.withClassKey(recordClass, resultClass, keys, fields)
 				.withMethod("apply",
@@ -87,8 +86,8 @@ public class Utils {
 	}
 
 	public static <K extends Comparable, R> Function<R, K> createKeyFunction(Class<R> recordClass, Class<K> keyClass,
-	                                                                         List<String> keys,
-	                                                                         DefiningClassLoader classLoader) {
+			List<String> keys,
+			DefiningClassLoader classLoader) {
 		return ClassBuilder.create(classLoader, Function.class)
 				.withClassKey(recordClass, keyClass, keys)
 				.withMethod("apply",
@@ -106,8 +105,8 @@ public class Utils {
 	}
 
 	public static <T> Class<T> createRecordClass(AggregationStructure aggregation,
-	                                             Collection<String> keys, Collection<String> fields,
-	                                             DefiningClassLoader classLoader) {
+			Collection<String> keys, Collection<String> fields,
+			DefiningClassLoader classLoader) {
 		return createRecordClass(
 				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
 				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
@@ -131,8 +130,8 @@ public class Utils {
 	}
 
 	public static <T> BinarySerializer<T> createBinarySerializer(AggregationStructure aggregation, Class<T> recordClass,
-	                                                             List<String> keys, List<String> fields,
-	                                                             DefiningClassLoader classLoader) {
+			List<String> keys, List<String> fields,
+			DefiningClassLoader classLoader) {
 		return createBinarySerializer(recordClass,
 				keysToMap(keys.stream(), aggregation.getKeyTypes()::get),
 				keysToMap(fields.stream(), aggregation.getMeasureTypes()::get),
@@ -165,8 +164,8 @@ public class Utils {
 	}
 
 	public static <K extends Comparable, I, O, A> Reducer<K, I, O, A> aggregationReducer(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
-	                                                                                     List<String> keys, List<String> fields,
-	                                                                                     DefiningClassLoader classLoader) {
+			List<String> keys, List<String> fields,
+			DefiningClassLoader classLoader) {
 
 		return ClassBuilder.create(classLoader, Reducer.class)
 				.withClassKey(inputClass, outputClass, keys, fields)
@@ -207,8 +206,8 @@ public class Utils {
 	}
 
 	public static <I, O> Aggregate<O, Object> createPreaggregator(AggregationStructure aggregation, Class<I> inputClass, Class<O> outputClass,
-	                                                              Map<String, String> keyFields, Map<String, String> measureFields,
-	                                                              DefiningClassLoader classLoader) {
+			Map<String, String> keyFields, Map<String, String> measureFields,
+			DefiningClassLoader classLoader) {
 
 		ArrayList<String> keysList = new ArrayList<>(keyFields.keySet());
 		ArrayList<String> measuresList = new ArrayList<>(measureFields.keySet());
@@ -254,7 +253,7 @@ public class Utils {
 	}
 
 	public static PartitionPredicate createPartitionPredicate(Class recordClass, List<String> partitioningKey,
-	                                                          DefiningClassLoader classLoader) {
+			DefiningClassLoader classLoader) {
 		if (partitioningKey.isEmpty())
 			return singlePartition();
 
@@ -271,19 +270,17 @@ public class Utils {
 	public static <T> Map<String, String> scanKeyFields(Class<T> inputClass) {
 		Map<String, String> keyFields = new LinkedHashMap<>();
 		for (Field field : inputClass.getFields()) {
-			for (Annotation annotation : field.getAnnotations()) {
-				if (annotation.annotationType() == Key.class) {
-					String value = ((Key) annotation).value();
-					keyFields.put("".equals(value) ? field.getName() : value, field.getName());
-				}
+			Key annotation = field.getAnnotation(Key.class);
+			if (annotation != null) {
+				String value = annotation.value();
+				keyFields.put("".equals(value) ? field.getName() : value, field.getName());
 			}
 		}
 		for (Method method : inputClass.getMethods()) {
-			for (Annotation annotation : method.getAnnotations()) {
-				if (annotation.annotationType() == Key.class) {
-					String value = ((Key) annotation).value();
-					keyFields.put("".equals(value) ? method.getName() : value, method.getName());
-				}
+			Key annotation = method.getAnnotation(Key.class);
+			if (annotation != null) {
+				String value = annotation.value();
+				keyFields.put("".equals(value) ? method.getName() : value, method.getName());
 			}
 		}
 		checkArgument(!keyFields.isEmpty(), "Missing @Key annotations in %s", inputClass);
@@ -292,28 +289,25 @@ public class Utils {
 
 	public static <T> Map<String, String> scanMeasureFields(Class<T> inputClass) {
 		Map<String, String> measureFields = new LinkedHashMap<>();
-		for (Annotation annotation : inputClass.getAnnotations()) {
-			if (annotation.annotationType() == Measures.class) {
-				for (String measure : ((Measures) annotation).value()) {
-					measureFields.put(measure, null);
-				}
+		Measures annotation = inputClass.getAnnotation(Measures.class);
+		if (annotation != null) {
+			for (String measure : annotation.value()) {
+				measureFields.put(measure, null);
 			}
 		}
 		for (Field field : inputClass.getFields()) {
-			for (Annotation annotation : field.getAnnotations()) {
-				if (annotation.annotationType() == Measures.class) {
-					for (String measure : ((Measures) annotation).value()) {
-						measureFields.put(measure.equals("") ? field.getName() : measure, field.getName());
-					}
+			annotation = field.getAnnotation(Measures.class);
+			if (annotation != null) {
+				for (String measure : annotation.value()) {
+					measureFields.put(measure.equals("") ? field.getName() : measure, field.getName());
 				}
 			}
 		}
 		for (Method method : inputClass.getMethods()) {
-			for (Annotation annotation : method.getAnnotations()) {
-				if (annotation.annotationType() == Measures.class) {
-					for (String measure : ((Measures) annotation).value()) {
-						measureFields.put(measure.equals("") ? extractFieldNameFromGetter(method) : measure, method.getName());
-					}
+			annotation = method.getAnnotation(Measures.class);
+			if (annotation != null) {
+				for (String measure : annotation.value()) {
+					measureFields.put(measure.equals("") ? extractFieldNameFromGetter(method) : measure, method.getName());
 				}
 			}
 		}

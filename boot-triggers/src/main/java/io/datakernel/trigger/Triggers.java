@@ -18,9 +18,9 @@ package io.datakernel.trigger;
 
 import io.datakernel.common.Initializable;
 import io.datakernel.common.time.CurrentTimeProvider;
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
@@ -35,7 +35,7 @@ import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
-public final class Triggers implements ConcurrentJmxMBean, Initializable<Triggers> {
+public final class Triggers implements ConcurrentJmxBean, Initializable<Triggers> {
 	public static final Duration CACHE_TIMEOUT = Duration.ofSeconds(1);
 
 	private final List<Trigger> triggers = new ArrayList<>();

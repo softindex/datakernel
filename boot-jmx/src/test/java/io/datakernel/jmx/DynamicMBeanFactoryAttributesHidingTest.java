@@ -16,10 +16,10 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.MBeanWrapperFactory;
-import io.datakernel.jmx.helper.StubWrapperFactory;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.JmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.helper.JmxBeanAdapterStub;
 import io.datakernel.jmx.stats.JmxRefreshableStats;
 import org.junit.Test;
 
@@ -29,19 +29,19 @@ import javax.management.MBeanInfo;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.Utils.nameToAttribute;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class DynamicMBeanFactoryImplAttributesHidingTest {
+public class DynamicMBeanFactoryAttributesHidingTest {
 	// region pojos
 	@Test
 	public void omitsNullPojoAttributesInSingleton() {
 		MBeanStubOne singletonWithNullPojo = new MBeanStubOne(null);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(singletonList(singletonWithNullPojo), defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
@@ -55,7 +55,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		MBeanStubOne mbean_1 = new MBeanStubOne(null);
 		MBeanStubOne mbean_2 = new MBeanStubOne(null);
 		List<MBeanStubOne> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
@@ -69,7 +69,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		MBeanStubOne mbean_1 = new MBeanStubOne(null);
 		MBeanStubOne mbean_2 = new MBeanStubOne(new PojoStub());
 		List<MBeanStubOne> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
@@ -92,7 +92,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		}
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanStubOne {
 		private final PojoStub pojoStub;
 
@@ -111,7 +111,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 	@Test
 	public void omitsNullJmxStatsAttributesInSingleton() {
 		MBeanStubTwo singletonWithNullJmxStats = new MBeanStubTwo(null);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(singletonList(singletonWithNullJmxStats), defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
@@ -125,7 +125,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		MBeanStubTwo mbean_1 = new MBeanStubTwo(null);
 		MBeanStubTwo mbean_2 = new MBeanStubTwo(null);
 		List<MBeanStubTwo> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
@@ -139,7 +139,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		MBeanStubTwo mbean_1 = new MBeanStubTwo(null);
 		MBeanStubTwo mbean_2 = new MBeanStubTwo(new JmxStatsStub());
 		List<MBeanStubTwo> workersWithNullPojo = asList(mbean_1, mbean_2);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(workersWithNullPojo, defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
@@ -164,7 +164,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		}
 	}
 
-	@MBeanWrapperFactory(StubWrapperFactory.class)
+	@JmxBean(JmxBeanAdapterStub.class)
 	public static final class MBeanStubTwo {
 		private final JmxStatsStub jmxStatsStub;
 
@@ -182,9 +182,9 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 	// region stats in pojo
 	@Test
 	public void omitsNullPojosInNonNullPojos() {
-		MBeanStubThree monitorable = new MBeanStubThree(new PojoStubThree(null));
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
-				.createDynamicMBean(singletonList(monitorable), defaultSettings(), false);
+		MBeanStubThree bean = new MBeanStubThree(new PojoStubThree(null));
+		DynamicMBean mbean = DynamicMBeanFactory.create()
+				.createDynamicMBean(singletonList(bean), defaultSettings(), false);
 
 		MBeanInfo mbeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> attrs = nameToAttribute(mbeanInfo.getAttributes());
@@ -211,7 +211,7 @@ public class DynamicMBeanFactoryImplAttributesHidingTest {
 		}
 	}
 
-	public static final class MBeanStubThree implements ConcurrentJmxMBean {
+	public static final class MBeanStubThree implements ConcurrentJmxBean {
 		private final PojoStubThree pojoStubThree;
 
 		public MBeanStubThree(PojoStubThree pojoStubThree) {

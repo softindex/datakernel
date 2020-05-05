@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx.helper;
 
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.JmxRefreshableStats;
 
 public final class JmxStatsStub implements JmxRefreshableStats<JmxStatsStub> {

@@ -20,7 +20,7 @@ import io.datakernel.async.callback.Callback;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.common.jmx.MBeanFormat;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.promise.Promise;
@@ -30,7 +30,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import static io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 
 /**
  * Allows to track stats of {@link Promise}s.

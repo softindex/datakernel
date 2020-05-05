@@ -26,9 +26,9 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
@@ -52,7 +52,7 @@ import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.csp.ChannelConsumer.getAcknowledgement;
 import static io.datakernel.remotefs.RemoteFsUtils.isWildcard;
 
-public final class RemoteFsRepartitionController implements Initializable<RemoteFsRepartitionController>, EventloopJmxMBeanEx, EventloopService {
+public final class RemoteFsRepartitionController implements Initializable<RemoteFsRepartitionController>, EventloopJmxBeanEx, EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(RemoteFsRepartitionController.class);
 	private static final Boolean CHECK = Check.isEnabled(RemoteFsRepartitionController.class);
 

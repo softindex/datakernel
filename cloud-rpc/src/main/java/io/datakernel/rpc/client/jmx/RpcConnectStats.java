@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 
 public final class RpcConnectStats {
 	public long successfulConnects;

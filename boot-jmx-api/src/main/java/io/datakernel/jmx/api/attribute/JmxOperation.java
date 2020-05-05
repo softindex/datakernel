@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.api;
+package io.datakernel.jmx.api.attribute;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -23,17 +23,8 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface JmxAttribute {
-	String USE_GETTER_NAME = "_USE_GETTER_NAME_";
-	String NO_DESCRIPTION = "_NO_DESCRIPTION_";
+public @interface JmxOperation {
+	String name() default "";
 
-	String name() default USE_GETTER_NAME;
-
-	String description() default NO_DESCRIPTION;
-
-	Class<? extends JmxReducer> reducer() default JmxReducers.JmxReducerDistinct.class;
-
-	boolean optional() default false;
-
-	String[] extraSubAttributes() default {};
+	String description() default "";
 }

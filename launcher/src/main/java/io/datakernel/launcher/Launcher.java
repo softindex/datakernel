@@ -22,9 +22,9 @@ import io.datakernel.di.Key;
 import io.datakernel.di.module.Module;
 import io.datakernel.di.module.ModuleBuilder;
 import io.datakernel.di.util.Types;
-import io.datakernel.jmx.api.ConcurrentJmxMBeanFactory;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.MBeanWrapperFactory;
+import io.datakernel.jmx.api.ConcurrentJmxBeanAdapter;
+import io.datakernel.jmx.api.JmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -74,7 +74,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  * </pre>
  */
 @SuppressWarnings({"WeakerAccess", "RedundantThrows", "unused"})
-@MBeanWrapperFactory(ConcurrentJmxMBeanFactory.class)
+@JmxBean(ConcurrentJmxBeanAdapter.class)
 public abstract class Launcher {
 	public static final Key<Set<InstanceInjector<?>>> INSTANCE_INJECTORS_KEY = new Key<Set<InstanceInjector<?>>>() {};
 

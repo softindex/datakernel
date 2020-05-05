@@ -97,7 +97,7 @@ public final class SerializerBuilder {
 		builder.setSerializer(Object.class, (type, generics, target) -> {
 			checkArgument(type.getTypeParameters().length == generics.length, "Number of type parameters should be equal to number of generics");
 			checkArgument(target == null, "Target must be null");
-			SerializeInterface annotation = findAnnotation(SerializeInterface.class, type.getAnnotations());
+			SerializeInterface annotation = type.getAnnotation(SerializeInterface.class);
 			SerializerDefClass serializer = annotation != null && annotation.impl() != void.class ?
 					SerializerDefClass.of(type, annotation.impl()) :
 					SerializerDefClass.of(type);
@@ -310,7 +310,7 @@ public final class SerializerBuilder {
 			return new SerializerDefArray(itemSerializer, type);
 		}
 
-		SerializeSubclasses serializeSubclasses = findAnnotation(SerializeSubclasses.class, type.getAnnotations());
+		SerializeSubclasses serializeSubclasses = type.getAnnotation(SerializeSubclasses.class);
 		if (serializeSubclasses != null) {
 			return createSubclassesSerializer(type, serializeSubclasses);
 		}
@@ -587,7 +587,7 @@ public final class SerializerBuilder {
 
 	private void scanAnnotations(Class<?> classType, SerializerForType[] classGenerics, SerializerDefClass serializer) {
 		if (classType.isInterface()) {
-			SerializeInterface annotation = findAnnotation(SerializeInterface.class, classType.getAnnotations());
+			SerializeInterface annotation = classType.getAnnotation(SerializeInterface.class);
 			scanInterface(classType, classGenerics, serializer, (annotation != null) && annotation.inherit());
 			if (annotation != null) {
 				Class<?> impl = annotation.impl();
@@ -617,7 +617,7 @@ public final class SerializerBuilder {
 			return;
 		}
 
-		SerializeInterface annotation = findAnnotation(SerializeInterface.class, classType.getAnnotations());
+		SerializeInterface annotation = classType.getAnnotation(SerializeInterface.class);
 		if (annotation != null && !annotation.inherit()) {
 			return;
 		}
@@ -719,7 +719,7 @@ public final class SerializerBuilder {
 	}
 
 	private void scanFactories(Class<?> classType, SerializerDefClass serializer) {
-		DeserializeFactory annotationFactory = findAnnotation(DeserializeFactory.class, classType.getAnnotations());
+		DeserializeFactory annotationFactory = classType.getAnnotation(DeserializeFactory.class);
 		Class<?> factoryClassType = (annotationFactory == null) ? classType : annotationFactory.value();
 		for (Method factory : factoryClassType.getDeclaredMethods()) {
 			if (classType != factory.getReturnType()) {

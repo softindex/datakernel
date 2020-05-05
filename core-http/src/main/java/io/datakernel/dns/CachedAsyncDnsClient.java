@@ -19,7 +19,7 @@ package io.datakernel.dns;
 import io.datakernel.common.Check;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,7 +40,7 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
  * Implementation of {@link AsyncDnsClient} that asynchronously
  * connects to some DNS server and gets the response from it.
  */
-public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxMBeanEx {
+public final class CachedAsyncDnsClient implements AsyncDnsClient, EventloopJmxBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(CachedAsyncDnsClient.class);
 	private static final Boolean CHECK = Check.isEnabled(CachedAsyncDnsClient.class);
 

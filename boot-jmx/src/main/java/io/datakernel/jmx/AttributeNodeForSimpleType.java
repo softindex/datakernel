@@ -16,8 +16,8 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.JmxReducer;
 import io.datakernel.jmx.api.JmxRefreshable;
+import io.datakernel.jmx.api.attribute.JmxReducer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

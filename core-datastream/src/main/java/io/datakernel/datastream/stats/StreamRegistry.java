@@ -11,7 +11,7 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerTransformer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.StreamSupplierTransformer;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 
 import java.util.ArrayList;

@@ -34,9 +34,9 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.jmx.stats.StatsUtils;
 import io.datakernel.jmx.stats.ValueStats;
@@ -68,7 +68,7 @@ import static io.datakernel.datastream.stats.StreamStatsSizeCounter.forByteBufs;
 import static org.slf4j.LoggerFactory.getLogger;
 
 @SuppressWarnings("rawtypes") // JMX doesn't work with generic types
-public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopService, Initializable<RemoteFsChunkStorage<C>>, EventloopJmxMBeanEx {
+public final class RemoteFsChunkStorage<C> implements AggregationChunkStorage<C>, EventloopService, Initializable<RemoteFsChunkStorage<C>>, EventloopJmxBeanEx {
 	private static final Logger logger = getLogger(RemoteFsChunkStorage.class);
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);
 

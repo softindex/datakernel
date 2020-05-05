@@ -17,7 +17,7 @@
 package io.datakernel.jmx.stats;
 
 import io.datakernel.common.jmx.MBeanFormat;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Instant;

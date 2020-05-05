@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.api;
+package io.datakernel.jmx.api.attribute;
 
-/**
- * Marker interface to denote that class publishes thread-safe jmx operations and jmx attribute setters
- */
-@MBeanWrapperFactory(ConcurrentJmxMBeanFactory.class)
-public interface ConcurrentJmxMBean {
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface JmxParameter {
+	String value();
 }

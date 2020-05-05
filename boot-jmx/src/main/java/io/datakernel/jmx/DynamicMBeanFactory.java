@@ -18,8 +18,15 @@ package io.datakernel.jmx;
 
 import io.datakernel.common.ref.Ref;
 import io.datakernel.common.reflection.ReflectionUtils;
-import io.datakernel.jmx.api.*;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerDistinct;
+import io.datakernel.jmx.api.ConcurrentJmxBeanAdapter;
+import io.datakernel.jmx.api.JmxBeanAdapter;
+import io.datakernel.jmx.api.JmxBeanAdapterWithRefresh;
+import io.datakernel.jmx.api.JmxRefreshable;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxParameter;
+import io.datakernel.jmx.api.attribute.JmxReducer;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerDistinct;
 import io.datakernel.jmx.stats.JmxRefreshableStats;
 import io.datakernel.jmx.stats.JmxStats;
 import org.jetbrains.annotations.NotNull;
@@ -42,23 +49,25 @@ import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.common.reflection.ReflectionUtils.*;
-import static io.datakernel.jmx.Utils.*;
+import static io.datakernel.jmx.Utils.extractRefreshStats;
+import static io.datakernel.jmx.Utils.findAdapterClass;
 import static io.datakernel.jmx.stats.StatsUtils.isJmxStats;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
 @SuppressWarnings("rawtypes")
-public class DynamicMBeanFactoryImpl {
-	private static final Logger logger = LoggerFactory.getLogger(DynamicMBeanFactoryImpl.class);
+public final class DynamicMBeanFactory {
+	private static final Logger logger = LoggerFactory.getLogger(DynamicMBeanFactory.class);
 
 	// refreshing jmx
 	public static final Duration DEFAULT_REFRESH_PERIOD_IN_SECONDS = Duration.ofSeconds(1);
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 500;
 	private int maxJmxRefreshesPerOneCycle;
 	private Duration specifiedRefreshPeriod;
-	private final Map<Class<? extends JmxWrapperFactory>, JmxWrapperFactory> wrapperFactoryRegistry = new HashMap<>();
+	private final Map<Class<? extends JmxBeanAdapter>, JmxBeanAdapter> adapters = new HashMap<>();
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducerDistinct();
 
@@ -66,30 +75,30 @@ public class DynamicMBeanFactoryImpl {
 	private static final String CREATE = "create";
 	private static final String CREATE_ACCUMULATOR = "createAccumulator";
 
-	private static final DynamicMBeanFactoryImpl INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new DynamicMBeanFactoryImpl(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
+	private static final DynamicMBeanFactory INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new DynamicMBeanFactory(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
 	// region constructor and factory methods
-	private DynamicMBeanFactoryImpl(@NotNull Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+	private DynamicMBeanFactory(@NotNull Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
 		this.specifiedRefreshPeriod = refreshPeriod;
 		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 	}
 
-	public static DynamicMBeanFactoryImpl create() {
+	public static DynamicMBeanFactory create() {
 		return INSTANCE_WITH_DEFAULT_REFRESH_PERIOD;
 	}
 
-	public static DynamicMBeanFactoryImpl create(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
-		return new DynamicMBeanFactoryImpl(refreshPeriod, maxJmxRefreshesPerOneCycle);
+	public static DynamicMBeanFactory create(Duration refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+		return new DynamicMBeanFactory(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
 	// endregion
 
 	// region exportable stats for JmxRegistry
 	public Collection<Integer> getRefreshableStatsCounts() {
-		return extractRefreshStats(wrapperFactoryRegistry.values(), JmxRefreshHandler::getRefreshableStatsCounts);
+		return extractRefreshStats(adapters.values(), JmxBeanAdapterWithRefresh::getRefreshableStatsCounts);
 	}
 
 	public Collection<Integer> getEffectiveRefreshPeriods() {
-		return extractRefreshStats(wrapperFactoryRegistry.values(), JmxRefreshHandler::getEffectiveRefreshPeriods);
+		return extractRefreshStats(adapters.values(), JmxBeanAdapterWithRefresh::getEffectiveRefreshPeriods);
 	}
 
 	public Duration getSpecifiedRefreshPeriod() {
@@ -110,23 +119,22 @@ public class DynamicMBeanFactoryImpl {
 	// endregion
 
 	/**
-	 * Creates Jmx MBean for monitorables with operations and attributes.
+	 * Creates Jmx MBean for beans with operations and attributes.
 	 */
-	public DynamicMBean createDynamicMBean(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh) {
-		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
-		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
-		checkArgument(allInstancesAreOfSameType(monitorables), "Monitorables should be of the same type");
+	public DynamicMBean createDynamicMBean(@NotNull List<?> beans, @NotNull JmxBeanSettings setting, boolean enableRefresh) {
+		checkArgument(beans.size() > 0, "Size of list of beans should be greater than 0");
+		checkArgument(beans.stream().noneMatch(Objects::isNull), "Bean can not be null");
+		checkArgument(beans.stream().map(Object::getClass).collect(toSet()).size() == 1, "Beans should be of the same type");
 
-		Object firstMBean = monitorables.get(0);
-		Class<?> mbeanClass = firstMBean.getClass();
+		Class<?> beanClass = beans.get(0).getClass();
 
-		JmxWrapperFactory wrapperFactory = ensureWrapperFactory(mbeanClass);
-		if (wrapperFactory.getClass().equals(ConcurrentJmxMBeanFactory.class)) {
-			checkArgument(monitorables.size() == 1, "ConcurrentJmxMBeans cannot be used in pool");
+		JmxBeanAdapter wrapperFactory = ensureAdapter(beanClass);
+		if (wrapperFactory.getClass().equals(ConcurrentJmxBeanAdapter.class)) {
+			checkArgument(beans.size() == 1, "ConcurrentJmxMBeans cannot be used in pool");
 		}
 
-		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass, setting.getCustomTypes());
-		rootNode.hideNullPojos(monitorables);
+		AttributeNodeForPojo rootNode = createAttributesTree(beanClass, setting.getCustomTypes());
+		rootNode.hideNullPojos(beans);
 
 		for (String included : setting.getIncludedOptionals()) {
 			rootNode.setVisible(included);
@@ -136,7 +144,7 @@ public class DynamicMBeanFactoryImpl {
 		for (String attrName : setting.getModifiers().keySet()) {
 			AttributeModifier<?> modifier = setting.getModifiers().get(attrName);
 			try {
-				rootNode.applyModifier(attrName, modifier, monitorables);
+				rootNode.applyModifier(attrName, modifier, beans);
 			} catch (ClassCastException e) {
 				//noinspection ThrowInsideCatchBlockWhichIgnoresCaughtException - doesn't ignore
 				throw new IllegalArgumentException("Cannot apply modifier \"" + modifier.getClass().getName() +
@@ -144,34 +152,32 @@ public class DynamicMBeanFactoryImpl {
 			}
 		}
 
-		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass);
-		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(mbeanClass);
+		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, beanClass);
+		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(beanClass);
 
-		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, wrapperFactory, monitorables, rootNode, opkeyToMethod);
+		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, wrapperFactory, beans, rootNode, opkeyToMethod);
 
 		// TODO(vmykhalko): maybe try to get all attributes and log warn message in case of exception? (to prevent potential errors during viewing jmx stats using jconsole)
 //		tryGetAllAttributes(mbean);
 
-		if (enableRefresh && wrapperFactory instanceof JmxRefreshHandler) {
-			for (Object instance : monitorables) {
-				((JmxRefreshHandler) wrapperFactory).registerRefreshables(instance, rootNode.getAllRefreshables(instance));
+		if (enableRefresh && wrapperFactory instanceof JmxBeanAdapterWithRefresh) {
+			for (Object bean : beans) {
+				((JmxBeanAdapterWithRefresh) wrapperFactory).registerRefreshableBean(bean, rootNode.getAllRefreshables(bean));
 			}
 		}
 		return mbean;
 	}
 
-	JmxWrapperFactory ensureWrapperFactory(Class<?> clazz) {
-		Class<? extends JmxWrapperFactory> wrapperFactoryClass = getWrapperFactoryClass(clazz);
-		if (wrapperFactoryClass == null) {
-			throw new NoSuchElementException("Class or its superclass or any of implemented interfaces should be annotated with @JmxWrapperFactory annotation");
-		}
-		return wrapperFactoryRegistry.computeIfAbsent(wrapperFactoryClass, $ -> {
+	JmxBeanAdapter ensureAdapter(Class<?> beanClass) {
+		Class<? extends JmxBeanAdapter> adapterClass = findAdapterClass(beanClass)
+				.orElseThrow(() -> new NoSuchElementException("Class or its superclass or any of implemented interfaces should be annotated with @JmxWrapperFactory annotation"));
+		return adapters.computeIfAbsent(adapterClass, $ -> {
 			try {
-				JmxWrapperFactory jmxWrapperFactory = wrapperFactoryClass.newInstance();
-				if (jmxWrapperFactory instanceof JmxRefreshHandler) {
-					((JmxRefreshHandler) jmxWrapperFactory).init(specifiedRefreshPeriod, maxJmxRefreshesPerOneCycle);
+				JmxBeanAdapter jmxBeanAdapter = adapterClass.newInstance();
+				if (jmxBeanAdapter instanceof JmxBeanAdapterWithRefresh) {
+					((JmxBeanAdapterWithRefresh) jmxBeanAdapter).init(specifiedRefreshPeriod, maxJmxRefreshesPerOneCycle);
 				}
-				return jmxWrapperFactory;
+				return jmxBeanAdapter;
 			} catch (InstantiationException | IllegalAccessException e) {
 				throw new RuntimeException(e);
 			}
@@ -179,7 +185,7 @@ public class DynamicMBeanFactoryImpl {
 	}
 
 	// region building tree of AttributeNodes
-	private List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
+	private List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> beanClass,
 			String[] includedOptionalAttrs, @Nullable Method getter,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 
@@ -211,7 +217,7 @@ public class DynamicMBeanFactoryImpl {
 			Type type = attrGetter.getGenericReturnType();
 			Method attrSetter = descriptor.getSetter();
 			AttributeNode attrNode = createAttributeNodeFor(attrName, attrDescription, type, included,
-					attrAnnotation, attrGetter, attrSetter, mbeanClass,
+					attrAnnotation, attrGetter, attrSetter, beanClass,
 					customTypes);
 			attrNodes.add(attrNode);
 		}
@@ -293,7 +299,7 @@ public class DynamicMBeanFactoryImpl {
 			@Nullable JmxAttribute attrAnnotation,
 			@Nullable Method getter,
 			@Nullable Method setter,
-			Class<?> mbeanClass,
+			Class<?> beanClass,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		if (attrType instanceof Class) {
 			ValueFetcher defaultFetcher = createAppropriateFetcher(getter);
@@ -323,17 +329,17 @@ public class DynamicMBeanFactoryImpl {
 				Class<?> elementType = returnClass.getComponentType();
 				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxRefreshableStats or JmxMBeans");
 				ValueFetcher fetcher = new ValueFetcherFromGetterArrayAdapter(getter);
-				return createListAttributeNodeFor(attrName, attrDescription, included, fetcher, elementType, mbeanClass, customTypes);
+				return createListAttributeNodeFor(attrName, attrDescription, included, fetcher, elementType, beanClass, customTypes);
 
 			} else if (isJmxStats(returnClass)) {
 				// JmxRefreshableStats case
 
-				checkJmxStatsAreValid(returnClass, mbeanClass, getter);
+				checkJmxStatsAreValid(returnClass, beanClass, getter);
 
 				String[] extraSubAttributes =
 						attrAnnotation != null ? attrAnnotation.extraSubAttributes() : new String[0];
 				List<AttributeNode> subNodes =
-						createNodesFor(returnClass, mbeanClass, extraSubAttributes, getter, customTypes);
+						createNodesFor(returnClass, beanClass, extraSubAttributes, getter, customTypes);
 
 				if (subNodes.size() == 0) {
 					throw new IllegalArgumentException(format(
@@ -348,7 +354,7 @@ public class DynamicMBeanFactoryImpl {
 				String[] extraSubAttributes =
 						attrAnnotation != null ? attrAnnotation.extraSubAttributes() : new String[0];
 				List<AttributeNode> subNodes =
-						createNodesFor(returnClass, mbeanClass, extraSubAttributes, getter, customTypes);
+						createNodesFor(returnClass, beanClass, extraSubAttributes, getter, customTypes);
 
 				if (subNodes.size() == 0) {
 					throw new IllegalArgumentException("Unrecognized type of Jmx attribute: " + attrType.getTypeName());
@@ -368,7 +374,7 @@ public class DynamicMBeanFactoryImpl {
 			}
 		} else if (attrType instanceof ParameterizedType) {
 			return createNodeForParametrizedType(
-					attrName, attrDescription, (ParameterizedType) attrType, included, getter, setter, mbeanClass, customTypes);
+					attrName, attrDescription, (ParameterizedType) attrType, included, getter, setter, beanClass, customTypes);
 		} else {
 			throw new IllegalArgumentException("Unrecognized type of Jmx attribute: " + attrType.getTypeName());
 		}
@@ -409,13 +415,12 @@ public class DynamicMBeanFactoryImpl {
 		return ((Class<? extends JmxReducer<?>>) reducerClass).newInstance();
 	}
 
-	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, @Nullable Method getter) {
-		Class<? extends JmxWrapperFactory> wrapperFactoryClass = getWrapperFactoryClass(mbeanClass);
+	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> beanClass, @Nullable Method getter) {
 		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
-				(wrapperFactoryClass == null || !JmxRefreshHandler.class.isAssignableFrom(wrapperFactoryClass))
+				!findAdapterClass(beanClass).filter(JmxBeanAdapterWithRefresh.class::isAssignableFrom).isPresent()
 		) {
 			logger.warn("JmxRefreshableStats won't be refreshed when MBean wrapper factory does not implement JmxRefreshHandler. " +
-					"MBean class: " + mbeanClass.getName());
+					"MBean class: " + beanClass.getName());
 		}
 
 		if (returnClass.isInterface()) {
@@ -446,7 +451,7 @@ public class DynamicMBeanFactoryImpl {
 
 	private AttributeNode createNodeForParametrizedType(String attrName, @Nullable String attrDescription,
 			ParameterizedType pType, boolean included,
-			@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
+			@Nullable Method getter, @Nullable Method setter, Class<?> beanClass,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
@@ -454,10 +459,10 @@ public class DynamicMBeanFactoryImpl {
 		if (rawType == List.class) {
 			Type listElementType = pType.getActualTypeArguments()[0];
 			return createListAttributeNodeFor(
-					attrName, attrDescription, included, fetcher, listElementType, mbeanClass, customTypes);
+					attrName, attrDescription, included, fetcher, listElementType, beanClass, customTypes);
 		} else if (rawType == Map.class) {
 			Type valueType = pType.getActualTypeArguments()[1];
-			return createMapAttributeNodeFor(attrName, attrDescription, included, fetcher, valueType, mbeanClass, customTypes);
+			return createMapAttributeNodeFor(attrName, attrDescription, included, fetcher, valueType, beanClass, customTypes);
 		} else if (customTypes.containsKey(rawType)) {
 			return createConverterAttributeNodeFor(attrName, attrDescription, pType, included, fetcher, setter, customTypes);
 		} else {
@@ -487,7 +492,7 @@ public class DynamicMBeanFactoryImpl {
 			@Nullable String attrDescription,
 			boolean included,
 			ValueFetcher fetcher,
-			Type listElementType, Class<?> mbeanClass,
+			Type listElementType, Class<?> beanClass,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		if (listElementType instanceof Class<?>) {
 			Class<?> listElementClass = (Class<?>) listElementType;
@@ -497,7 +502,7 @@ public class DynamicMBeanFactoryImpl {
 					attrDescription,
 					included,
 					fetcher,
-					createAttributeNodeFor("", attrDescription, listElementType, true, null, null, null, mbeanClass, customTypes),
+					createAttributeNodeFor("", attrDescription, listElementType, true, null, null, null, beanClass, customTypes),
 					isListOfJmxRefreshable
 			);
 		} else if (listElementType instanceof ParameterizedType) {
@@ -508,7 +513,7 @@ public class DynamicMBeanFactoryImpl {
 					included,
 					fetcher,
 					createNodeForParametrizedType(
-							typeName, attrDescription, (ParameterizedType) listElementType, true, null, null, mbeanClass,
+							typeName, attrDescription, (ParameterizedType) listElementType, true, null, null, beanClass,
 							customTypes
 					),
 					false
@@ -522,17 +527,17 @@ public class DynamicMBeanFactoryImpl {
 			String attrName,
 			@Nullable String attrDescription,
 			boolean included, ValueFetcher fetcher,
-			Type valueType, Class<?> mbeanClass,
+			Type valueType, Class<?> beanClass,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		boolean isMapOfJmxRefreshable = false;
 		AttributeNode node;
 		if (valueType instanceof Class<?>) {
 			Class<?> valueClass = (Class<?>) valueType;
 			isMapOfJmxRefreshable = JmxRefreshable.class.isAssignableFrom(valueClass);
-			node = createAttributeNodeFor("", attrDescription, valueType, true, null, null, null, mbeanClass, customTypes);
+			node = createAttributeNodeFor("", attrDescription, valueType, true, null, null, null, beanClass, customTypes);
 		} else if (valueType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
-			node = createNodeForParametrizedType(typeName, attrDescription, (ParameterizedType) valueType, true, null, null, mbeanClass,
+			node = createNodeForParametrizedType(typeName, attrDescription, (ParameterizedType) valueType, true, null, null, beanClass,
 					customTypes);
 		} else {
 			throw new IllegalArgumentException("Can't create map attribute node for " + valueType.getTypeName());
@@ -554,16 +559,16 @@ public class DynamicMBeanFactoryImpl {
 	}
 
 	// region creating jmx metadata - MBeanInfo
-	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode, Class<?> monitorableClass) {
-		String monitorableName = "";
-		String monitorableDescription = "";
+	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode, Class<?> beanClass) {
+		String beanName = "";
+		String beanDescription = "";
 		MBeanAttributeInfo[] attributes = rootNode != null ?
 				fetchAttributesInfo(rootNode) :
 				new MBeanAttributeInfo[0];
-		MBeanOperationInfo[] operations = fetchOperationsInfo(monitorableClass);
+		MBeanOperationInfo[] operations = fetchOperationsInfo(beanClass);
 		return new MBeanInfo(
-				monitorableName,
-				monitorableDescription,
+				beanName,
+				beanDescription,
 				attributes,
 				null,  // constructors
 				operations,
@@ -608,9 +613,9 @@ public class DynamicMBeanFactoryImpl {
 		return totalDescription.toString();
 	}
 
-	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass) {
+	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> beanClass) {
 		List<MBeanOperationInfo> operations = new ArrayList<>();
-		Method[] methods = monitorableClass.getMethods();
+		Method[] methods = beanClass.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
 				JmxOperation annotation = method.getAnnotation(JmxOperation.class);
@@ -618,49 +623,36 @@ public class DynamicMBeanFactoryImpl {
 				if (opName.equals("")) {
 					opName = method.getName();
 				}
-				String opDescription = annotation.description();
-				Class<?> returnType = method.getReturnType();
-				List<MBeanParameterInfo> params = new ArrayList<>();
-				Class<?>[] paramTypes = method.getParameterTypes();
-				Annotation[][] paramAnnotations = method.getParameterAnnotations();
 
-				assert paramAnnotations.length == paramTypes.length;
-
-				for (int i = 0; i < paramTypes.length; i++) {
-					String paramName = String.format("arg%d", i);
-					Class<?> paramType = paramTypes[i];
-					JmxParameter nameAnnotation = findJmxNamedParameterAnnotation(paramAnnotations[i]);
-					if (nameAnnotation != null) {
-						paramName = nameAnnotation.value();
-					}
-					MBeanParameterInfo paramInfo = new MBeanParameterInfo(paramName, paramType.getName(), "");
-					params.add(paramInfo);
+				Class<?>[] parameterTypes = method.getParameterTypes();
+				Annotation[][] parameterAnnotations = method.getParameterAnnotations();
+				MBeanParameterInfo[] parameterInfos = new MBeanParameterInfo[parameterTypes.length];
+				for (int i = 0; i < parameterTypes.length; i++) {
+					parameterInfos[i] = new MBeanParameterInfo(
+							Arrays.stream(parameterAnnotations[i])
+									.filter(a -> a.annotationType() == JmxParameter.class)
+									.map(JmxParameter.class::cast)
+									.map(JmxParameter::value)
+									.findFirst()
+									.orElse(String.format("arg%d", i)),
+							parameterTypes[i].getName(),
+							"");
 				}
-				MBeanParameterInfo[] paramsArray = params.toArray(new MBeanParameterInfo[0]);
+
 				MBeanOperationInfo operationInfo = new MBeanOperationInfo(
-						opName, opDescription, paramsArray, returnType.getName(), MBeanOperationInfo.ACTION);
+						opName, annotation.description(), parameterInfos, method.getReturnType().getName(), MBeanOperationInfo.ACTION);
 				operations.add(operationInfo);
 			}
 		}
 
 		return operations.toArray(new MBeanOperationInfo[0]);
 	}
-
-	@Nullable
-	private static JmxParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {
-		for (Annotation annotation : annotations) {
-			if (annotation.annotationType().equals(JmxParameter.class)) {
-				return (JmxParameter) annotation;
-			}
-		}
-		return null;
-	}
 	// endregion
 
 	// region jmx operations fetching
-	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<?> mbeanClass) {
+	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<?> beanClass) {
 		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
-		Method[] methods = mbeanClass.getMethods();
+		Method[] methods = beanClass.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
 				JmxOperation annotation = method.getAnnotation(JmxOperation.class);
@@ -753,16 +745,16 @@ public class DynamicMBeanFactoryImpl {
 
 	private static final class DynamicMBeanAggregator implements DynamicMBean {
 		private final MBeanInfo mBeanInfo;
-		private final JmxWrapperFactory jmxWrapperFactory;
-		private final List<?> mbeans;
+		private final JmxBeanAdapter adapter;
+		private final List<?> beans;
 		private final AttributeNodeForPojo rootNode;
 		private final Map<OperationKey, Method> opkeyToMethod;
 
-		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, JmxWrapperFactory jmxWrapperFactory, List<?> mbeans,
+		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, JmxBeanAdapter adapter, List<?> beans,
 				AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
 			this.mBeanInfo = mBeanInfo;
-			this.jmxWrapperFactory = jmxWrapperFactory;
-			this.mbeans = mbeans;
+			this.adapter = adapter;
+			this.beans = beans;
 
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
@@ -770,7 +762,7 @@ public class DynamicMBeanFactoryImpl {
 
 		@Override
 		public Object getAttribute(String attribute) throws MBeanException {
-			Object value = rootNode.aggregateAttributes(singleton(attribute), mbeans).get(attribute);
+			Object value = rootNode.aggregateAttributes(singleton(attribute), beans).get(attribute);
 			if (value instanceof Throwable) {
 				propagate((Throwable) value);
 			}
@@ -778,16 +770,15 @@ public class DynamicMBeanFactoryImpl {
 		}
 
 		@Override
-		public void setAttribute(Attribute attribute)
-				throws MBeanException {
+		public void setAttribute(Attribute attribute) throws MBeanException {
 			String attrName = attribute.getName();
 			Object attrValue = attribute.getValue();
 
-			CountDownLatch latch = new CountDownLatch(mbeans.size());
+			CountDownLatch latch = new CountDownLatch(beans.size());
 			Ref<Exception> exceptionRef = new Ref<>();
 
-			for (Object bean : mbeans) {
-				jmxWrapperFactory.execute(bean, () -> {
+			for (Object bean : beans) {
+				adapter.execute(bean, () -> {
 					try {
 						rootNode.setAttribute(attrName, attrValue, singletonList(bean));
 						latch.countDown();
@@ -820,7 +811,7 @@ public class DynamicMBeanFactoryImpl {
 			AttributeList attrList = new AttributeList();
 			Set<String> attrNames = new HashSet<>(Arrays.asList(attributes));
 			try {
-				Map<String, Object> aggregatedAttrs = rootNode.aggregateAttributes(attrNames, mbeans);
+				Map<String, Object> aggregatedAttrs = rootNode.aggregateAttributes(attrNames, beans);
 				for (String aggregatedAttrName : aggregatedAttrs.keySet()) {
 					Object aggregatedValue = aggregatedAttrs.get(aggregatedAttrName);
 					if (!(aggregatedValue instanceof Throwable)) {
@@ -850,8 +841,7 @@ public class DynamicMBeanFactoryImpl {
 
 		@Nullable
 		@Override
-		public Object invoke(String actionName, Object[] params, String[] signature)
-				throws MBeanException {
+		public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException {
 
 			Object[] args = nullToDefault(params, new Object[0]);
 			String[] argTypes = nullToDefault(signature, new String[0]);
@@ -863,11 +853,11 @@ public class DynamicMBeanFactoryImpl {
 				throw new RuntimeOperationsException(new IllegalArgumentException("Operation not found"), errorMsg);
 			}
 
-			CountDownLatch latch = new CountDownLatch(mbeans.size());
+			CountDownLatch latch = new CountDownLatch(beans.size());
 			Ref<Object> lastValueRef = new Ref<>();
 			Ref<Exception> exceptionRef = new Ref<>();
-			for (Object bean : mbeans) {
-				jmxWrapperFactory.execute(bean, () -> {
+			for (Object bean : beans) {
+				adapter.execute(bean, () -> {
 					try {
 						Object result = opMethod.invoke(bean, args);
 						lastValueRef.set(result);
@@ -890,8 +880,8 @@ public class DynamicMBeanFactoryImpl {
 				propagate(e);
 			}
 
-			// We don't know how to aggregate return values if there are several mbeans
-			return mbeans.size() == 1 ? lastValueRef.get() : null;
+			// We don't know how to aggregate return values if there are several beans
+			return beans.size() == 1 ? lastValueRef.get() : null;
 		}
 
 		private void propagate(Throwable e) throws MBeanException {

@@ -21,9 +21,9 @@ import io.datakernel.async.function.AsyncSuppliers;
 import io.datakernel.common.Initializable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.RetryPolicy;
 import io.datakernel.promise.jmx.PromiseStats;
@@ -39,7 +39,7 @@ import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.promise.Promises.retry;
 
 @SuppressWarnings("UnusedReturnValue")
-public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxMBeanEx {
+public final class EventloopTaskScheduler implements EventloopService, Initializable<EventloopTaskScheduler>, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(EventloopTaskScheduler.class);
 
 	private final Eventloop eventloop;

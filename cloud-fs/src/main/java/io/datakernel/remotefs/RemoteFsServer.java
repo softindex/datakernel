@@ -23,7 +23,7 @@ import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.AsyncTcpSocket;
 import io.datakernel.promise.Promise;

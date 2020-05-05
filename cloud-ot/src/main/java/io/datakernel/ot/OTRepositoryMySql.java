@@ -21,8 +21,8 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.json.JsonUtils;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.ot.exceptions.OTNoCommitException;
 import io.datakernel.ot.util.IdGenerator;
 import io.datakernel.promise.Promise;
@@ -53,7 +53,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.sql.Connection.TRANSACTION_READ_COMMITTED;
 import static java.util.stream.Collectors.joining;
 
-public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxMBeanEx {
+public class OTRepositoryMySql<D> implements OTRepositoryEx<Long, D>, EventloopJmxBeanEx {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);
 	public static final String DEFAULT_REVISION_TABLE = "ot_revisions";

@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx.stats;
 
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
 
 import java.text.DecimalFormat;

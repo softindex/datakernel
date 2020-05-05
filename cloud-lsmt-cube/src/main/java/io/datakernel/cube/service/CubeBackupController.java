@@ -4,9 +4,9 @@ import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTRepositoryEx;
 import io.datakernel.ot.OTSystem;
@@ -30,7 +30,7 @@ import static io.datakernel.common.collection.CollectionUtils.toLimitedString;
 import static io.datakernel.cube.Utils.chunksInDiffs;
 import static io.datakernel.ot.OTAlgorithms.checkout;
 
-public final class CubeBackupController<K, D, C> implements EventloopJmxMBeanEx {
+public final class CubeBackupController<K, D, C> implements EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeBackupController.class);
 
 	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(5);

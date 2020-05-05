@@ -14,31 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.jmx.api.attribute;
 
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
-import io.datakernel.jmx.stats.StatsUtils;
 import org.jetbrains.annotations.Nullable;
 
-import java.time.Duration;
+import java.util.List;
 
-public interface EventloopJmxMBeanEx extends EventloopJmxMBean {
-
-	@JmxOperation
-	default void resetStats() {
-		StatsUtils.resetStats(this);
-	}
-
-	@JmxAttribute
+/**
+ * Reduces input list to single value.
+ * <p>
+ * It's highly recommended for implementations of this interface to be stateless or immutable
+ * (namely have immutable state after creation)
+ *
+ * @param <T>
+ */
+public interface JmxReducer<T> {
 	@Nullable
-	default Duration getSmoothingWindow() {
-		return StatsUtils.getSmoothingWindow(this);
-	}
-
-	@JmxAttribute
-	default void setSmoothingWindow(Duration smoothingWindowSeconds) {
-		StatsUtils.setSmoothingWindow(this, smoothingWindowSeconds);
-	}
-
+	T reduce(List<? extends T> list);
 }

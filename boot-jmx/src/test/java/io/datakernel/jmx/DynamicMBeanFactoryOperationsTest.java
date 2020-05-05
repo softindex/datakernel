@@ -16,9 +16,9 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxOperation;
-import io.datakernel.jmx.api.JmxParameter;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.attribute.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxParameter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -32,18 +32,18 @@ import javax.management.MBeanParameterInfo;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
-public final class DynamicMBeanFactoryImplOperationsTest {
+public final class DynamicMBeanFactoryOperationsTest {
 
 	@Test
 	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() {
-		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
-				.createDynamicMBean(singletonList(monitorable), defaultSettings(), false);
+		BeanStubWithOperations bean = new BeanStubWithOperations();
+		DynamicMBean mbean = DynamicMBeanFactory.create()
+				.createDynamicMBean(singletonList(bean), defaultSettings(), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
@@ -73,9 +73,9 @@ public final class DynamicMBeanFactoryImplOperationsTest {
 
 	@Test
 	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws Exception {
-		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
-				.createDynamicMBean(singletonList(monitorable), defaultSettings(), false);
+		BeanStubWithOperations bean = new BeanStubWithOperations();
+		DynamicMBean mbean = DynamicMBeanFactory.create()
+				.createDynamicMBean(singletonList(bean), defaultSettings(), false);
 
 		mbean.invoke("increment", null, null);
 		mbean.invoke("increment", null, null);
@@ -85,25 +85,25 @@ public final class DynamicMBeanFactoryImplOperationsTest {
 
 		mbean.invoke("multiplyAndAdd", new Object[]{120, 150}, new String[]{"long", "long"});
 
-		assertEquals(monitorable.getCount(), 2);
-		assertEquals(monitorable.getInfo(), "data1data2");
-		assertEquals(monitorable.getSum(), 120 * 150);
+		assertEquals(bean.getCount(), 2);
+		assertEquals(bean.getInfo(), "data1data2");
+		assertEquals(bean.getSum(), 120 * 150);
 	}
 
 	@Ignore("does not work concurrently yet")
 	@Test
-	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
-		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
-		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
-				.createDynamicMBean(asList(monitorable_1, monitorable_2), defaultSettings(), false);
+	public void itShouldBroadcastOperationCallToAllBean() throws Exception {
+		BeanStubWithOperations bean_1 = new BeanStubWithOperations();
+		BeanStubWithOperations bean_2 = new BeanStubWithOperations();
+		DynamicMBean mbean = DynamicMBeanFactory.create()
+				.createDynamicMBean(asList(bean_1, bean_2), defaultSettings(), false);
 
-		// set manually init value for second monitorable to be different from first
-		monitorable_2.inc();
-		monitorable_2.inc();
-		monitorable_2.inc();
-		monitorable_2.addInfo("second");
-		monitorable_2.multiplyAndAdd(10, 15);
+		// set manually init value for second bean to be different from first
+		bean_2.inc();
+		bean_2.inc();
+		bean_2.inc();
+		bean_2.addInfo("second");
+		bean_2.multiplyAndAdd(10, 15);
 
 		mbean.invoke("increment", null, null);
 		mbean.invoke("increment", null, null);
@@ -113,21 +113,21 @@ public final class DynamicMBeanFactoryImplOperationsTest {
 
 		mbean.invoke("multiplyAndAdd", new Object[]{120, 150}, new String[]{"long", "long"});
 
-		// check first monitorable
-		assertEquals(monitorable_1.getCount(), 2);
-		assertEquals(monitorable_1.getInfo(), "data1data2");
-		assertEquals(monitorable_1.getSum(), 120 * 150);
+		// check first bean
+		assertEquals(bean_1.getCount(), 2);
+		assertEquals(bean_1.getInfo(), "data1data2");
+		assertEquals(bean_1.getSum(), 120 * 150);
 
-		// check second monitorable
-		assertEquals(monitorable_2.getCount(), 2 + 3);
-		assertEquals(monitorable_2.getInfo(), "second" + "data1data2");
-		assertEquals(monitorable_2.getSum(), 10 * 15 + 120 * 150);
+		// check second bean
+		assertEquals(bean_2.getCount(), 2 + 3);
+		assertEquals(bean_2.getInfo(), "second" + "data1data2");
+		assertEquals(bean_2.getSum(), 10 * 15 + 120 * 150);
 	}
 
 	@Test
 	public void operationReturnsValueInCaseOfSingleMBeanInPool() throws Exception {
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue = new MBeanWithOperationThatReturnsValue();
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(singletonList(mbeanOpWithValue), defaultSettings(), false);
 
 		assertEquals(15, (int) mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
@@ -138,14 +138,14 @@ public final class DynamicMBeanFactoryImplOperationsTest {
 	public void operationReturnsNullInCaseOfSeveralMBeansInPool() throws Exception {
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue_1 = new MBeanWithOperationThatReturnsValue();
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue_2 = new MBeanWithOperationThatReturnsValue();
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(asList(mbeanOpWithValue_1, mbeanOpWithValue_2), defaultSettings(), false);
 
 		assertNull(mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
 	}
 
 	// helpers
-	public static class MonitorableStubWithOperations implements ConcurrentJmxMBean {
+	public static class BeanStubWithOperations implements ConcurrentJmxBean {
 		private int count = 0;
 		private String info = "";
 		private long sum = 0;
@@ -178,7 +178,7 @@ public final class DynamicMBeanFactoryImplOperationsTest {
 		}
 	}
 
-	public static final class MBeanWithOperationThatReturnsValue implements ConcurrentJmxMBean {
+	public static final class MBeanWithOperationThatReturnsValue implements ConcurrentJmxBean {
 
 		@JmxOperation
 		public int sum(int a, int b) {

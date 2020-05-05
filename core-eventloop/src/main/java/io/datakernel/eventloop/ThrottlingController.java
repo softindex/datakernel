@@ -18,10 +18,10 @@ package io.datakernel.eventloop;
 
 import io.datakernel.common.Stopwatch;
 import io.datakernel.common.inspector.AbstractInspector;
-import io.datakernel.eventloop.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.eventloop.jmx.EventloopJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -32,7 +32,7 @@ import java.time.Duration;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxMBean, EventloopInspector {
+public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);

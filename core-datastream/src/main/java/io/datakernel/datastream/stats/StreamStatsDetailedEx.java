@@ -1,8 +1,8 @@
 package io.datakernel.datastream.stats;
 
 import io.datakernel.datastream.StreamDataAcceptor;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxReducers.JmxReducerSum;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.jmx.stats.ValueStats;
 import org.jetbrains.annotations.Nullable;

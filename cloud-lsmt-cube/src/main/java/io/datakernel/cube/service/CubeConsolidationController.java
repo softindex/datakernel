@@ -9,9 +9,9 @@ import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeDiffScheme;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.ot.OTStateManager;
 import io.datakernel.promise.Promise;
@@ -30,7 +30,7 @@ import static io.datakernel.async.util.LogUtils.thisMethod;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toSet;
 
-public final class CubeConsolidationController<K, D, C> implements EventloopJmxMBeanEx {
+public final class CubeConsolidationController<K, D, C> implements EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CubeConsolidationController.class);
 
 	public static final Supplier<Function<Aggregation, Promise<AggregationDiff>>> DEFAULT_STRATEGY = new Supplier<Function<Aggregation,

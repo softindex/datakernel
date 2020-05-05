@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.api;
+package io.datakernel.jmx.api.attribute;
 
 import org.jetbrains.annotations.Nullable;
 

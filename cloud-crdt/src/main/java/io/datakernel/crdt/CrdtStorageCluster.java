@@ -31,9 +31,9 @@ import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsBasic;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
-import io.datakernel.jmx.api.JmxOperation;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
+import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import org.jetbrains.annotations.NotNull;
@@ -47,7 +47,7 @@ import static io.datakernel.async.util.LogUtils.toLogger;
 import static java.util.stream.Collectors.toList;
 
 @SuppressWarnings("rawtypes") // JMX
-public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxMBeanEx {
+public final class CrdtStorageCluster<I extends Comparable<I>, K extends Comparable<K>, S> implements CrdtStorage<K, S>, Initializable<CrdtStorageCluster<I, K, S>>, EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(CrdtStorageCluster.class);
 
 	private final Eventloop eventloop;

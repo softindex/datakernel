@@ -16,8 +16,8 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.helper.Utils;
 import org.junit.Test;
 
@@ -26,16 +26,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import static io.datakernel.jmx.MBeanSettings.defaultSettings;
+import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class DynamicMBeanFactoryImplAttributesBulkGettersTest {
+public class DynamicMBeanFactoryAttributesBulkGettersTest {
 	@Test
 	public void bulkGetOmitsAttributesWithExceptionButReturnsValidAttributes() {
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(singletonList(new MBeanStub()), defaultSettings(), false);
 
 		Map<String, MBeanAttributeInfo> attrs = Utils.nameToAttribute(mbean.getMBeanInfo().getAttributes());
@@ -57,13 +57,13 @@ public class DynamicMBeanFactoryImplAttributesBulkGettersTest {
 
 	@Test(expected = MBeanException.class)
 	public void propagatesExceptionInCaseOfSingleAttributeGet() throws Exception {
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(singletonList(new MBeanStub()), defaultSettings(), false);
 
 		mbean.getAttribute("value");
 	}
 
-	public static final class MBeanStub implements ConcurrentJmxMBean {
+	public static final class MBeanStub implements ConcurrentJmxBean {
 
 		@JmxAttribute
 		public String getText() {

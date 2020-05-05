@@ -16,13 +16,9 @@
 
 package io.datakernel.jmx.api;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-@Target(ElementType.PARAMETER)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface JmxParameter {
-	String value();
+/**
+ * Marker interface to denote that class publishes thread-safe jmx operations and jmx attribute setters
+ */
+@JmxBean(ConcurrentJmxBeanAdapter.class)
+public interface ConcurrentJmxBean {
 }

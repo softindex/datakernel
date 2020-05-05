@@ -32,7 +32,7 @@ import io.datakernel.datastream.stats.StreamRegistry;
 import io.datakernel.datastream.stats.StreamStats;
 import io.datakernel.datastream.stats.StreamStatsDetailed;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import io.datakernel.remotefs.FileMetadata;
@@ -52,7 +52,7 @@ import static io.datakernel.datastream.stats.StreamStatsSizeCounter.forByteBufs;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 
-public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxMBeanEx {
+public final class MultilogImpl<T> implements Multilog<T>, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(MultilogImpl.class);
 
 	public static final MemSize DEFAULT_BUFFER_SIZE = MemSize.kilobytes(256);

@@ -16,9 +16,9 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.DynamicMBeanFactoryImpl.JmxCustomTypeAdapter;
-import io.datakernel.jmx.api.ConcurrentJmxMBean;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.jmx.DynamicMBeanFactory.JmxCustomTypeAdapter;
+import io.datakernel.jmx.api.ConcurrentJmxBean;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.JmxStats;
 import org.junit.Test;
 
@@ -37,16 +37,16 @@ import static java.util.Collections.singleton;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class DynamicMBeanFactoryImplSettingsTest {
-	private static final Set<String> NO_MONITORABLES = Collections.emptySet();
+public class DynamicMBeanFactorySettingsTest {
+	private static final Set<String> NO_BEANS = Collections.emptySet();
 	private static final Map<String, AttributeModifier<?>> NO_MODIFIERS = Collections.emptyMap();
 	private static final Map<Type, JmxCustomTypeAdapter<?>> NO_CUSTOM_TYPES = Collections.emptyMap();
 
 	// region included optionals
 	@Test
 	public void includesOptionalAttributes_thatAreSpecifiedInSettings() {
-		MBeanSettings settings = MBeanSettings.of(singleton("stats_text"), NO_MODIFIERS, NO_CUSTOM_TYPES);
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		JmxBeanSettings settings = JmxBeanSettings.of(singleton("stats_text"), NO_MODIFIERS, NO_CUSTOM_TYPES);
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(asList(new MBeanStubOne()), settings, false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
@@ -56,7 +56,7 @@ public class DynamicMBeanFactoryImplSettingsTest {
 		assertTrue(attrs.containsKey("stats_text"));
 	}
 
-	public static final class MBeanStubOne implements ConcurrentJmxMBean {
+	public static final class MBeanStubOne implements ConcurrentJmxBean {
 		private final JmxStatsStub stats = new JmxStatsStub();
 
 		@JmxAttribute
@@ -94,15 +94,15 @@ public class DynamicMBeanFactoryImplSettingsTest {
 	public void modifiesDynamicMBeanComponentsAccordingToSettings() throws Exception {
 		Map<String, AttributeModifier<?>> nameToModifier = new HashMap<>();
 		nameToModifier.put("stats", (AttributeModifier<ConfigurableStats>) attribute -> attribute.setConfigurableText("configurated"));
-		MBeanSettings settings = MBeanSettings.of(NO_MONITORABLES, nameToModifier, NO_CUSTOM_TYPES);
+		JmxBeanSettings settings = JmxBeanSettings.of(NO_BEANS, nameToModifier, NO_CUSTOM_TYPES);
 		MBeanStubTwo mBeanStubTwo = new MBeanStubTwo();
-		DynamicMBean mbean = DynamicMBeanFactoryImpl.create()
+		DynamicMBean mbean = DynamicMBeanFactory.create()
 				.createDynamicMBean(asList(mBeanStubTwo), settings, false);
 
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}
 
-	private static final class MBeanStubTwo implements ConcurrentJmxMBean {
+	private static final class MBeanStubTwo implements ConcurrentJmxBean {
 		private final ConfigurableStats stats = new ConfigurableStats();
 
 		@JmxAttribute

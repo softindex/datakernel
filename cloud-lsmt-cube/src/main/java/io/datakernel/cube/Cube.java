@@ -44,8 +44,8 @@ import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import io.datakernel.datastream.processor.StreamSplitter;
 import io.datakernel.etl.LogDataConsumer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.jmx.EventloopJmxMBeanEx;
-import io.datakernel.jmx.api.JmxAttribute;
+import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.ot.OTState;
 import io.datakernel.promise.Promise;
@@ -91,7 +91,7 @@ import static java.util.stream.Collectors.toMap;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxMBeanEx {
+public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
