@@ -19,6 +19,7 @@ package io.datakernel.worker;
 import io.datakernel.common.ref.RefInt;
 import io.datakernel.di.Injector;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.worker.annotation.Worker;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;

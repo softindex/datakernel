@@ -1,6 +1,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.common.ref.Ref;
+import io.datakernel.eventloop.util.RunnableWithContext;
 import org.junit.Test;
 
 import static java.util.Objects.requireNonNull;

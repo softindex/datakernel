@@ -17,6 +17,8 @@
 package io.datakernel.config;
 
 import io.datakernel.common.CollectorsEx;
+import io.datakernel.config.converter.ConfigConverter;
+import io.datakernel.config.converter.ConfigConverters;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;

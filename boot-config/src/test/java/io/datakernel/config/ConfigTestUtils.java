@@ -16,6 +16,9 @@
 
 package io.datakernel.config;
 
+import io.datakernel.config.converter.ConfigConverter;
+import io.datakernel.config.converter.ConfigConverters;
+
 import java.util.NoSuchElementException;
 
 import static io.datakernel.common.collection.CollectionUtils.set;

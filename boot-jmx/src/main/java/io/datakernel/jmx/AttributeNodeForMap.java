@@ -27,7 +27,7 @@ import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static java.util.Collections.emptyList;
 
-final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
+final class AttributeNodeForMap extends AbstractAttributeNodeForLeaf {
 	private static final String KEY_COLUMN_NAME = "> key";
 	private static final String VALUE_COLUMN_NAME = "value";
 	private static final String EMPTY_COLUMN_NAME = "default";

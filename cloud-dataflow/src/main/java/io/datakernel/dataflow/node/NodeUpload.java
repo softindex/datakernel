@@ -16,9 +16,9 @@
 
 package io.datakernel.dataflow.node;
 
+import io.datakernel.dataflow.DataflowServer;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
-import io.datakernel.dataflow.server.DataflowServer;
 
 import java.util.Collection;
 

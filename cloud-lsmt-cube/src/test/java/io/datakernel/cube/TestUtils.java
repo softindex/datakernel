@@ -21,8 +21,8 @@ import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.etl.LogDiff;
 import io.datakernel.etl.LogOTProcessor;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRepositoryMySql;
 import io.datakernel.ot.OTStateManager;
+import io.datakernel.ot.repository.OTRepositoryMySql;
 
 import java.io.IOException;
 import java.sql.SQLException;

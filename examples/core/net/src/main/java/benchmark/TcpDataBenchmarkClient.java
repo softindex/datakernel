@@ -14,15 +14,15 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
 import java.util.function.Supplier;
 
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 
 @SuppressWarnings("WeakerAccess")

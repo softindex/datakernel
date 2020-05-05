@@ -19,7 +19,7 @@ package io.datakernel.http.stream;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.exception.StacklessException;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.promise.Promise;

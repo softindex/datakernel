@@ -17,15 +17,15 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.common.parse.ParseException;
-import io.datakernel.common.parse.UnknownFormatException;
+import io.datakernel.common.exception.parse.ParseException;
+import io.datakernel.common.exception.parse.UnknownFormatException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient.Inspector;
 import io.datakernel.http.stream.BufsConsumerGzipInflater;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;

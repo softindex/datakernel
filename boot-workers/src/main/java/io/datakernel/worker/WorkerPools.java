@@ -18,6 +18,7 @@ package io.datakernel.worker;
 
 import io.datakernel.di.Injector;
 import io.datakernel.di.Scope;
+import io.datakernel.worker.annotation.Worker;
 
 import java.util.ArrayList;
 import java.util.List;

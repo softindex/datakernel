@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 import java.time.Duration;
 import java.time.Instant;

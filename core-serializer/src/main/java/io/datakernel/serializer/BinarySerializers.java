@@ -16,6 +16,8 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.serializer.util.BinaryOutputUtils;
+
 import java.util.*;
 import java.util.function.Supplier;
 

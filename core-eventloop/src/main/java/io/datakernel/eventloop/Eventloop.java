@@ -19,8 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.async.callback.AsyncComputation;
 import io.datakernel.async.callback.Callback;
 import io.datakernel.common.Check;
-import io.datakernel.common.Initializable;
-import io.datakernel.common.Stopwatch;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.exception.AsyncTimeoutException;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.exception.UncheckedException;
@@ -28,10 +27,19 @@ import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.common.reflection.ReflectionUtils;
 import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.common.time.CurrentTimeProviderSystem;
+import io.datakernel.common.time.Stopwatch;
+import io.datakernel.eventloop.error.FatalErrorHandler;
+import io.datakernel.eventloop.error.FatalErrorHandlers;
+import io.datakernel.eventloop.executor.EventloopExecutor;
+import io.datakernel.eventloop.inspector.EventloopInspector;
+import io.datakernel.eventloop.inspector.EventloopStats;
 import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.DatagramSocketSettings;
 import io.datakernel.eventloop.net.ServerSocketSettings;
+import io.datakernel.eventloop.schedule.ScheduledRunnable;
+import io.datakernel.eventloop.schedule.Scheduler;
 import io.datakernel.eventloop.util.OptimizedSelectedKeysSet;
+import io.datakernel.eventloop.util.RunnableWithContext;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
 import org.jetbrains.annotations.Async;
@@ -81,7 +89,7 @@ public final class Eventloop implements Runnable, EventloopExecutor, Scheduler, 
 	private static final Boolean CHECK = Check.isEnabled(Eventloop.class);
 
 	public static final boolean JIGSAW_DETECTED;
-	static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
+	public static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
 	static {
 		JIGSAW_DETECTED = ReflectionUtils.isClassPresent("java.lang.Module");

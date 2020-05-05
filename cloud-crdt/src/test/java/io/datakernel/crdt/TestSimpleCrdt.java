@@ -16,7 +16,10 @@
 
 package io.datakernel.crdt;
 
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.storage.CrdtStorage;
+import io.datakernel.crdt.storage.local.CrdtStorageMap;
+import io.datakernel.crdt.util.CrdtDataSerializer;
+import io.datakernel.crdt.util.TimestampContainer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.test.rules.ByteBufRule;

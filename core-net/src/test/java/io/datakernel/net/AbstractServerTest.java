@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.common.ref.RefLong;
 import io.datakernel.eventloop.net.SocketSettings;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ByteBufRule;

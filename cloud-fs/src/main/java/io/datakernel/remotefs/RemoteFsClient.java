@@ -29,7 +29,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
-import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;

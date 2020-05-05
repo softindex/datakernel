@@ -23,7 +23,7 @@ import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.ref.RefInt;
 import io.datakernel.common.tuple.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.eventloop.schedule.ScheduledRunnable;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -41,7 +41,7 @@ import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.common.collection.CollectionUtils.asIterator;
 import static io.datakernel.common.collection.CollectionUtils.transformIterator;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 

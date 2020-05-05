@@ -16,9 +16,9 @@
 
 package io.datakernel.codec;
 
+import io.datakernel.common.api.ParserFunction;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.parse.ParseException;
-import io.datakernel.common.parse.ParserFunction;
+import io.datakernel.common.exception.parse.ParseException;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;

@@ -16,13 +16,13 @@
 
 package io.datakernel.launchers.crdt;
 
-import io.datakernel.common.Initializer;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverters;
+import io.datakernel.config.converter.ConfigConverters;
 import io.datakernel.crdt.CrdtStorageClient;
-import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFs;
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.storage.cluster.CrdtStorageCluster;
+import io.datakernel.crdt.storage.local.CrdtStorageFs;
+import io.datakernel.crdt.storage.local.CrdtStorageMap;
 import io.datakernel.eventloop.Eventloop;
 
 import java.net.InetSocketAddress;
@@ -30,8 +30,8 @@ import java.time.Duration;
 import java.util.Map;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.config.ConfigConverters.ofDuration;
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofDuration;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 
 public final class Initializers {
 

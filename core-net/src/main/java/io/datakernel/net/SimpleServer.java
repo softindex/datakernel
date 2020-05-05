@@ -17,6 +17,7 @@
 package io.datakernel.net;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 
 import java.net.InetAddress;
 import java.util.function.Consumer;

@@ -17,7 +17,7 @@
 package io.datakernel.net;
 
 import io.datakernel.common.Check;
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
@@ -25,7 +25,9 @@ import io.datakernel.eventloop.net.ServerSocketSettings;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.EventStats;
-import io.datakernel.net.AsyncTcpSocketNio.Inspector;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio.Inspector;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -46,10 +48,10 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static io.datakernel.eventloop.net.ServerSocketSettings.DEFAULT_BACKLOG;
-import static io.datakernel.net.AsyncTcpSocketNio.wrapChannel;
-import static io.datakernel.net.AsyncTcpSocketSsl.wrapServerSocket;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
+import static io.datakernel.net.socket.tcp.AsyncTcpSocketNio.wrapChannel;
+import static io.datakernel.net.socket.tcp.AsyncTcpSocketSsl.wrapServerSocket;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.slf4j.LoggerFactory.getLogger;

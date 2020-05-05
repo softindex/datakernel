@@ -1,7 +1,7 @@
 package io.datakernel.csp.binary;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 class Utils {
 

@@ -20,8 +20,8 @@ import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.common.Initializable;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.ref.RefInt;
 import io.datakernel.csp.process.ChannelByteChunker;
 import io.datakernel.csp.process.ChannelLZ4Compressor;
@@ -59,7 +59,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static io.datakernel.aggregation.Utils.createBinarySerializer;
+import static io.datakernel.aggregation.util.Utils.createBinarySerializer;
 import static io.datakernel.async.util.LogUtils.thisMethod;
 import static io.datakernel.async.util.LogUtils.toLogger;
 import static io.datakernel.common.collection.CollectionUtils.difference;

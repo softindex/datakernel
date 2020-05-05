@@ -1,10 +1,10 @@
 package io.datakernel.dataflow.stream;
 
+import io.datakernel.dataflow.DataflowServer;
+import io.datakernel.dataflow.dataset.DatasetListConsumer;
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
-import io.datakernel.dataflow.server.DataflowServer;
 import io.datakernel.dataflow.stream.DataflowTest.TestComparator;
 import io.datakernel.dataflow.stream.DataflowTest.TestItem;
 import io.datakernel.dataflow.stream.DataflowTest.TestKeyFunction;

@@ -20,7 +20,7 @@ import io.datakernel.codec.CodecSubtype;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.common.tuple.*;
 import org.jetbrains.annotations.Nullable;

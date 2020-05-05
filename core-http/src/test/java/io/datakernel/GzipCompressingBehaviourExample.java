@@ -22,7 +22,7 @@ import io.datakernel.http.*;
 import java.io.IOException;
 
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.HttpHeaders.ACCEPT_ENCODING;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.test.TestUtils.getFreePort;

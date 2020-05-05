@@ -25,7 +25,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
 
 public abstract class AbstractChannelConsumer<T> extends AbstractAsyncCloseable implements ChannelConsumer<T> {
 	protected static final Boolean CHECK = Check.isEnabled(AbstractChannelConsumer.class);

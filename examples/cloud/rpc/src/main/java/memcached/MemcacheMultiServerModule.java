@@ -9,13 +9,13 @@ import io.datakernel.memcache.server.RingBuffer;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.config.ConfigConverters.ofMemSize;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofMemSize;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 
 public class MemcacheMultiServerModule extends AbstractModule {

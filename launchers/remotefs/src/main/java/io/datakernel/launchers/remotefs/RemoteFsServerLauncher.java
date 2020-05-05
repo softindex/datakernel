@@ -17,14 +17,14 @@
 package io.datakernel.launchers.remotefs;
 
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.config.converter.ConfigConverters;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.eventloop.inspector.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.remotefs.RemoteFsServer;
@@ -32,7 +32,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.Executor;
 
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.converter.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.remotefs.Initializers.ofRemoteFsServer;

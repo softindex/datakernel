@@ -1,6 +1,6 @@
 import io.datakernel.async.callback.Callback;
-import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Key;
@@ -18,9 +18,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.lang.Math.min;
 

@@ -1,4 +1,4 @@
-import io.datakernel.common.Initializer;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;

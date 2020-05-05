@@ -2,6 +2,7 @@ package io.datakernel.datastream;
 
 import io.datakernel.csp.AbstractChannelConsumer;
 import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.datastream.processor.StreamConsumerTransformer;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

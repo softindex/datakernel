@@ -17,9 +17,9 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
-import io.datakernel.codegen.utils.Primitives;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Expressions;
+import io.datakernel.codegen.util.Primitives;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

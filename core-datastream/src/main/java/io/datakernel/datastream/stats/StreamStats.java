@@ -4,10 +4,14 @@ import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.dsl.ChannelSupplierTransformer;
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamDataAcceptor;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.processor.StreamConsumerTransformer;
+import io.datakernel.datastream.processor.StreamSupplierTransformer;
 
 public interface StreamStats<T> extends
-		StreamSupplierTransformer<T, StreamSupplier<T>>, StreamConsumerTransformer<T, StreamConsumer<T>>,
+        StreamSupplierTransformer<T, StreamSupplier<T>>, StreamConsumerTransformer<T, StreamConsumer<T>>,
 		ChannelSupplierTransformer<T, ChannelSupplier<T>>, ChannelConsumerTransformer<T, ChannelConsumer<T>> {
 	StreamDataAcceptor<T> createDataAcceptor(StreamDataAcceptor<T> actualDataAcceptor);
 

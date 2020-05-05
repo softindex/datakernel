@@ -7,8 +7,8 @@ import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.net.ServerSocketSettings;
-import io.datakernel.net.AsyncTcpSocket;
-import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc;
 
-import io.datakernel.common.Stopwatch;
+import io.datakernel.common.time.Stopwatch;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.client.RpcClient;

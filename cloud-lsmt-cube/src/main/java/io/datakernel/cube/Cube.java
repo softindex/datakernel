@@ -24,14 +24,18 @@ import io.datakernel.aggregation.ot.AggregationDiff;
 import io.datakernel.aggregation.ot.AggregationStructure;
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.process.AsyncCollector;
-import io.datakernel.codegen.*;
-import io.datakernel.common.Initializable;
+import io.datakernel.codegen.ClassBuilder;
+import io.datakernel.codegen.DefiningClassLoader;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.ExpressionComparator;
+import io.datakernel.codegen.expression.Variable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.cube.CubeQuery.Ordering;
-import io.datakernel.cube.asm.MeasuresFunction;
-import io.datakernel.cube.asm.RecordFunction;
-import io.datakernel.cube.asm.TotalsFunction;
 import io.datakernel.cube.attributes.AttributeResolver;
+import io.datakernel.cube.function.MeasuresFunction;
+import io.datakernel.cube.function.RecordFunction;
+import io.datakernel.cube.function.TotalsFunction;
 import io.datakernel.cube.ot.CubeDiff;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamConsumerWithResult;
@@ -66,11 +70,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.datakernel.aggregation.Utils.*;
-import static io.datakernel.codegen.ExpressionComparator.leftProperty;
-import static io.datakernel.codegen.ExpressionComparator.rightProperty;
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.utils.Primitives.isWrapperType;
+import static io.datakernel.aggregation.util.Utils.*;
+import static io.datakernel.codegen.expression.ExpressionComparator.leftProperty;
+import static io.datakernel.codegen.expression.ExpressionComparator.rightProperty;
+import static io.datakernel.codegen.expression.Expressions.*;
+import static io.datakernel.codegen.util.Primitives.isWrapperType;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Utils.of;
@@ -639,7 +643,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 				break;
 			}
 
-			Function<S, K> keyFunction = io.datakernel.aggregation.Utils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
+			Function<S, K> keyFunction = io.datakernel.aggregation.util.Utils.createKeyFunction(aggregationClass, resultKeyClass, dimensions, queryClassLoader);
 
 			Reducer<K, S, T, A> reducer = aggregationContainer.aggregation.aggregationReducer(aggregationClass, resultClass,
 					dimensions, compatibleMeasures, queryClassLoader);

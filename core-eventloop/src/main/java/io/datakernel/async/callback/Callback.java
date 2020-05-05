@@ -3,7 +3,7 @@ package io.datakernel.async.callback;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 /**
  * Represents a universal Callback interface

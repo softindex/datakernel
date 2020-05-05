@@ -19,8 +19,8 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.callback.Callback;
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.Check;
-import io.datakernel.common.Stopwatch;
 import io.datakernel.common.exception.AsyncTimeoutException;
+import io.datakernel.common.time.Stopwatch;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.api.JmxRefreshable;
@@ -39,7 +39,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 import static io.datakernel.rpc.client.IRpcClient.RPC_OVERLOAD_EXCEPTION;
 import static io.datakernel.rpc.client.IRpcClient.RPC_TIMEOUT_EXCEPTION;
 import static org.slf4j.LoggerFactory.getLogger;

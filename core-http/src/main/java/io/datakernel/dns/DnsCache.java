@@ -18,6 +18,10 @@ package io.datakernel.dns;
 
 import io.datakernel.common.Check;
 import io.datakernel.common.time.CurrentTimeProvider;
+import io.datakernel.dns.protocol.DnsProtocol;
+import io.datakernel.dns.protocol.DnsQuery;
+import io.datakernel.dns.protocol.DnsQueryException;
+import io.datakernel.dns.protocol.DnsResponse;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;

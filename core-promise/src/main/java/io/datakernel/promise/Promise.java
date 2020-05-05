@@ -35,7 +35,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 /**
  * Replacement of default Java {@link CompletionStage} interface with

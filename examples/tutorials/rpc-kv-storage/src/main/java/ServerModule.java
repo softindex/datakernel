@@ -5,7 +5,7 @@ import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 
 // [START EXAMPLE]
 public class ServerModule extends AbstractModule {

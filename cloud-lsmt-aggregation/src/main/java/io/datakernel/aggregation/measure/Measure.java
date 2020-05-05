@@ -17,8 +17,8 @@
 package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 
 @SuppressWarnings("rawtypes")
 public abstract class Measure {

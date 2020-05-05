@@ -11,9 +11,9 @@ import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.ServiceGraphModule;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 
 public class RpcBenchmarkServer extends Launcher {
 	private final static int SERVICE_PORT = 25565;

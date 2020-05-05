@@ -8,7 +8,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 
-import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
 
 public final class ChannelBufferWithFallback<T> implements ChannelQueue<T> {
 	private final ChannelQueue<T> queue;

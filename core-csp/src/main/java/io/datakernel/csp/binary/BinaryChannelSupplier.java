@@ -20,7 +20,7 @@ import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;

@@ -27,7 +27,7 @@ import io.datakernel.datastream.AbstractStreamSupplier;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
 

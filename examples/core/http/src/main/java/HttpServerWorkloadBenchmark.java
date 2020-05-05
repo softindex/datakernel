@@ -19,7 +19,7 @@ import org.jetbrains.annotations.Nullable;
 import java.time.Duration;
 import java.util.function.Supplier;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
 import static java.lang.Math.min;
 

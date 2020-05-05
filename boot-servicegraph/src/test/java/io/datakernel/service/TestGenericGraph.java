@@ -21,11 +21,11 @@ import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.service.ServiceAdapters.SimpleServiceAdapter;
-import io.datakernel.worker.Worker;
+import io.datakernel.service.adapter.ServiceAdapters.SimpleServiceAdapter;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.annotation.Worker;
 import org.junit.Test;
 
 public class TestGenericGraph {

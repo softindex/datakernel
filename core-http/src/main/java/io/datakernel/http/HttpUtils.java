@@ -16,8 +16,8 @@
 
 package io.datakernel.http;
 
-import io.datakernel.common.parse.ParseException;
-import io.datakernel.common.parse.UnknownFormatException;
+import io.datakernel.common.exception.parse.ParseException;
+import io.datakernel.common.exception.parse.UnknownFormatException;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.UnsupportedEncodingException;

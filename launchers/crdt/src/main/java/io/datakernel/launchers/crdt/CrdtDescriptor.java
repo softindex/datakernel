@@ -17,8 +17,8 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtFunction;
+import io.datakernel.crdt.function.CrdtFunction;
+import io.datakernel.crdt.util.CrdtDataSerializer;
 
 public final class CrdtDescriptor<K extends Comparable<K>, S> {
 	private final CrdtFunction<S> crdtFunction;

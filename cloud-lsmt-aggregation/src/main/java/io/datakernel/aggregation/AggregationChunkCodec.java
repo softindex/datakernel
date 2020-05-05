@@ -19,7 +19,7 @@ package io.datakernel.aggregation;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 import java.util.ArrayList;
 import java.util.List;

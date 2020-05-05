@@ -18,6 +18,9 @@ package io.datakernel.dns;
 
 import io.datakernel.common.Check;
 import io.datakernel.dns.DnsCache.DnsQueryCacheResult;
+import io.datakernel.dns.protocol.DnsQuery;
+import io.datakernel.dns.protocol.DnsQueryException;
+import io.datakernel.dns.protocol.DnsResponse;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.promise.Promise;
@@ -34,7 +37,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 /**
  * Implementation of {@link AsyncDnsClient} that asynchronously

@@ -16,13 +16,13 @@
 
 package io.datakernel.launchers.rpc;
 
-import io.datakernel.common.Initializer;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.rpc.server.RpcServer;
 
 import java.time.Duration;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_INITIAL_BUFFER_SIZE;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_MAX_MESSAGE_SIZE;

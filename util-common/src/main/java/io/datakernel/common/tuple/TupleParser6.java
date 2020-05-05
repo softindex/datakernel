@@ -1,6 +1,6 @@
 package io.datakernel.common.tuple;
 
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 @FunctionalInterface
 public interface TupleParser6<T1, T2, T3, T4, T5, T6, R> {

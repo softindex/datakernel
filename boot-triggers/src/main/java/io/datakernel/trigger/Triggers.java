@@ -16,7 +16,7 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.time.CurrentTimeProvider;
 import io.datakernel.jmx.api.ConcurrentJmxBean;
 import io.datakernel.jmx.api.attribute.JmxAttribute;

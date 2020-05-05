@@ -1,5 +1,7 @@
 package io.datakernel.ot;
 
+import io.datakernel.ot.reducers.DiffsReducer;
+import io.datakernel.ot.system.OTSystem;
 import io.datakernel.ot.utils.OTRepositoryStub;
 import io.datakernel.ot.utils.TestOp;
 import io.datakernel.ot.utils.TestOpState;

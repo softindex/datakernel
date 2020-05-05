@@ -17,7 +17,7 @@
 package io.datakernel.aggregation.fieldtype;
 
 import io.datakernel.codec.StructuredCodec;
-import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.expression.Expression;
 import io.datakernel.serializer.SerializerDef;
 import org.jetbrains.annotations.Nullable;
 

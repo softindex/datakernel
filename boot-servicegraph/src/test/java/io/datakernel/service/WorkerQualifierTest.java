@@ -22,12 +22,16 @@ import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.worker.*;
+import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static io.datakernel.service.ServiceAdapters.combinedAdapter;
-import static io.datakernel.service.ServiceAdapters.immediateServiceAdapter;
+import static io.datakernel.service.adapter.ServiceAdapters.combinedAdapter;
+import static io.datakernel.service.adapter.ServiceAdapters.immediateServiceAdapter;
 
 public final class WorkerQualifierTest {
 	public static final int WORKERS = 4;

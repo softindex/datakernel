@@ -1,7 +1,7 @@
 package io.datakernel.launchers.initializers;
 
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverter;
+import io.datakernel.config.converter.ConfigConverter;
 import io.datakernel.dns.DnsCache;
 import io.datakernel.eventloop.Eventloop;
 import org.jetbrains.annotations.Contract;
@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
 
-import static io.datakernel.config.ConfigConverters.ofDuration;
+import static io.datakernel.config.converter.ConfigConverters.ofDuration;
 import static io.datakernel.dns.DnsCache.*;
 
 public final class ConfigConverters {

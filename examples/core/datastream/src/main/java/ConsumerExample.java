@@ -3,7 +3,7 @@ import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
  * Example of creating custom StreamConsumer. This implementation outputs received data to the console.

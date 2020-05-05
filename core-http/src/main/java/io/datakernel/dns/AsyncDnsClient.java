@@ -16,6 +16,7 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.dns.protocol.*;
 import io.datakernel.http.HttpUtils;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;

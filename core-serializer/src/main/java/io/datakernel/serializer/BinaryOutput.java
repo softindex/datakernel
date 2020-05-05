@@ -16,6 +16,8 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.serializer.util.BinaryOutputUtils;
+
 public final class BinaryOutput {
 	private final byte[] array;
 	private int pos;

@@ -16,15 +16,15 @@
 
 package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.BinaryOutputUtils;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.StringFormat;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static io.datakernel.common.Utils.of;
 import static io.datakernel.serializer.CompatibilityLevel.LEVEL_3_LE;
 import static io.datakernel.serializer.StringFormat.UTF8;

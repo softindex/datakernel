@@ -20,8 +20,12 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.MemSize;
-import io.datakernel.csp.*;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelInput;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import io.datakernel.csp.process.AbstractCommunicatingProcess;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.zip.CRC32;

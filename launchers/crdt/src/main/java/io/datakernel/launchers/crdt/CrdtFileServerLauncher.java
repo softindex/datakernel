@@ -19,7 +19,7 @@ package io.datakernel.launchers.crdt;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.crdt.CrdtServer;
-import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.storage.local.CrdtStorageFs;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
@@ -35,8 +35,8 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
-import static io.datakernel.config.ConfigConverters.ofExecutor;
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.converter.ConfigConverters.ofExecutor;
+import static io.datakernel.config.converter.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 

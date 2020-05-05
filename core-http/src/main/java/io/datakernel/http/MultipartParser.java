@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.ApplicationSettings;
-import io.datakernel.common.Recyclable;
+import io.datakernel.common.api.Recyclable;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.csp.ChannelConsumer;

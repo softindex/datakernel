@@ -22,6 +22,7 @@ import io.datakernel.di.Scope;
 import io.datakernel.di.annotation.ShortTypeName;
 import io.datakernel.di.binding.BindingInfo;
 import io.datakernel.di.util.Trie;
+import io.datakernel.worker.annotation.WorkerId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

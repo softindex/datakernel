@@ -2,7 +2,7 @@ package io.datakernel.ot.utils;
 
 import io.datakernel.ot.OTCommit;
 import io.datakernel.ot.OTCommitFactory;
-import io.datakernel.ot.OTRepository;
+import io.datakernel.ot.repository.OTRepository;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 

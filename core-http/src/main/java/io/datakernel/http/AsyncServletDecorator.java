@@ -1,9 +1,7 @@
 package io.datakernel.http;
 
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -11,7 +9,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.function.*;
 
-import static io.datakernel.csp.ChannelConsumers.recycling;
 import static io.datakernel.http.AsyncServlet.firstSuccessful;
 import static java.util.Arrays.asList;
 
@@ -81,10 +78,6 @@ public interface AsyncServletDecorator {
 						.map(response -> {
 							HttpResponse newResponse = fn.apply(request, response);
 							if (response != newResponse) {
-								ChannelSupplier<ByteBuf> bodyStream = response.getBodyStream();
-								if (bodyStream != null) {
-									bodyStream.streamTo(recycling());
-								}
 								response.recycle();
 							}
 							return newResponse;

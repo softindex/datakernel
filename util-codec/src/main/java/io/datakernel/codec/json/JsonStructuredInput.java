@@ -6,7 +6,7 @@ import com.google.gson.stream.MalformedJsonException;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 import java.io.EOFException;
 import java.io.IOException;

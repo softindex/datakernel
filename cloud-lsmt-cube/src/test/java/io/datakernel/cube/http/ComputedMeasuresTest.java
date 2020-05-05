@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofDouble;
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static org.junit.Assert.assertEquals;
 

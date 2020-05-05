@@ -16,8 +16,8 @@
 
 package io.datakernel.trigger;
 
-import io.datakernel.common.Initializable;
-import io.datakernel.common.Initializer;
+import io.datakernel.common.api.Initializable;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Optional;
@@ -25,7 +25,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.launcher.LauncherService;
-import io.datakernel.trigger.jmx.KeyWithWorkerData;
+import io.datakernel.trigger.util.KeyWithWorkerData;
 import io.datakernel.trigger.util.Utils;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPools;

@@ -18,8 +18,8 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsDecoder;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.net.SimpleServer;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

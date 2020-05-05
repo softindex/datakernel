@@ -37,7 +37,7 @@ import java.util.function.BiConsumer;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Utils.nullify;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 import static java.lang.Math.max;
 
 /**

@@ -16,8 +16,8 @@ import io.datakernel.uikernel.UiKernelServlets;
 
 import java.util.concurrent.Executor;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
-import static io.datakernel.config.ConfigConverters.ofString;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofString;
 import static io.datakernel.di.module.Modules.combine;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 

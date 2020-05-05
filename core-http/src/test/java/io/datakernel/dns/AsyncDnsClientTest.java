@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.ref.RefInt;
 import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
+import io.datakernel.dns.protocol.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
@@ -38,8 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.dns.protocol.DnsProtocol.ResponseErrorCode.*;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
 import static io.datakernel.test.TestUtils.assertComplete;

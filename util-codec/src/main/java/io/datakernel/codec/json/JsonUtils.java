@@ -20,12 +20,12 @@ import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
+import com.google.gson.stream.MalformedJsonException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.util.ByteBufWriter;
-import com.google.gson.stream.MalformedJsonException;
 import io.datakernel.codec.*;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 import java.io.*;
 

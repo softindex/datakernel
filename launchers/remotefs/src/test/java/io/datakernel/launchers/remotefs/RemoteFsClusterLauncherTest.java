@@ -33,7 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Random;
 
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.test.TestUtils.getFreePort;
 
 @Ignore

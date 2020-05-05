@@ -16,8 +16,8 @@
 
 package io.datakernel.codec;
 
-import io.datakernel.common.Initializable;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.api.Initializable;
+import io.datakernel.common.exception.parse.ParseException;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;

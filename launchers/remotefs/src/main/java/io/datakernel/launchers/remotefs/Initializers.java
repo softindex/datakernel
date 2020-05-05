@@ -16,20 +16,20 @@
 
 package io.datakernel.launchers.remotefs;
 
-import io.datakernel.common.Initializer;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.remotefs.RemoteFsClient;
-import io.datakernel.remotefs.RemoteFsClusterClient;
-import io.datakernel.remotefs.RemoteFsRepartitionController;
 import io.datakernel.remotefs.RemoteFsServer;
+import io.datakernel.remotefs.cluster.RemoteFsClusterClient;
+import io.datakernel.remotefs.cluster.RemoteFsRepartitionController;
 
 import java.util.Map;
 
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.config.Config.THIS;
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 
 public final class Initializers {

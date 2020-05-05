@@ -18,13 +18,13 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBufStrings;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopInspector;
-import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.eventloop.inspector.EventloopInspector;
+import io.datakernel.eventloop.inspector.ThrottlingController;
 
 import java.util.Random;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.test.TestUtils.getFreePort;
 
 public class HttpThrottlingServer {

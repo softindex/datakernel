@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.concurrent.RejectedExecutionException;
 
 import static io.datakernel.common.Preconditions.checkArgument;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 public class AsyncExecutors {
 

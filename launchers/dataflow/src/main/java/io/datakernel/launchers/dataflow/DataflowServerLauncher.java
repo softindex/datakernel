@@ -3,27 +3,27 @@ package io.datakernel.launchers.dataflow;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.dataflow.DataflowClient;
+import io.datakernel.dataflow.DataflowServer;
+import io.datakernel.dataflow.command.DataflowCommand;
+import io.datakernel.dataflow.command.DataflowResponse;
 import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
 import io.datakernel.dataflow.di.DataflowModule;
-import io.datakernel.dataflow.server.DataflowClient;
-import io.datakernel.dataflow.server.DataflowServer;
-import io.datakernel.dataflow.server.command.DatagraphCommand;
-import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.eventloop.inspector.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.concurrent.Executor;
 
-import static io.datakernel.config.ConfigConverters.getExecutor;
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.converter.ConfigConverters.getExecutor;
+import static io.datakernel.config.converter.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofAbstractServer;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
@@ -48,14 +48,14 @@ public abstract class DataflowServerLauncher extends Launcher {
 	}
 
 	@Provides
-	DataflowServer server(Eventloop eventloop, Config config, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializers serializers, Injector environment) {
+	DataflowServer server(Eventloop eventloop, Config config, ByteBufsCodec<DataflowCommand, DataflowResponse> codec, BinarySerializers serializers, Injector environment) {
 		return new DataflowServer(eventloop, codec, serializers, environment)
 				.initialize(ofAbstractServer(config.getChild("dataflow.server")))
 				.initialize(s -> s.withSocketSettings(s.getSocketSettings().withTcpNoDelay(true)));
 	}
 
 	@Provides
-	DataflowClient client(Executor executor, Config config, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
+	DataflowClient client(Executor executor, Config config, ByteBufsCodec<DataflowResponse, DataflowCommand> codec, BinarySerializers serializers) {
 		return new DataflowClient(executor, config.get(ofPath(), "dataflow.secondaryBufferPath"), codec, serializers);
 	}
 

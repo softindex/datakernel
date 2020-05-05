@@ -16,10 +16,11 @@
 
 package io.datakernel.config;
 
+import io.datakernel.config.converter.ConfigConverter;
 import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.launcher.OnStart;
+import io.datakernel.launcher.annotation.OnStart;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
 
@@ -27,7 +28,7 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 

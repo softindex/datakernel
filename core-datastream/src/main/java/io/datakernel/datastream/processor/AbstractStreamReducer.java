@@ -17,6 +17,8 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.dsl.HasStreamInputs;
+import io.datakernel.datastream.dsl.HasStreamOutput;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

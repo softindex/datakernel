@@ -7,9 +7,9 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 public class AdvancedRpcServerModule extends AbstractModule {
 	@Override

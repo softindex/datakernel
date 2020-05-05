@@ -31,7 +31,7 @@ import java.security.SecureRandom;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.bytebuf.ByteBufStrings.wrapAscii;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.https.SslUtils.*;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.concurrent.Executors.newCachedThreadPool;

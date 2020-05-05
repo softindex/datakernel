@@ -18,6 +18,8 @@ package io.datakernel.ot;
 
 import io.datakernel.common.tuple.Tuple3;
 import io.datakernel.ot.exceptions.OTTransformException;
+import io.datakernel.ot.system.OTSystem;
+import io.datakernel.ot.system.OTSystemImpl;
 import io.datakernel.ot.utils.TestAdd;
 import io.datakernel.ot.utils.TestSet;
 import io.datakernel.ot.utils.TestSetName;
@@ -27,9 +29,9 @@ import org.junit.Test;
 import java.util.List;
 
 import static io.datakernel.common.collection.CollectionUtils.concat;
-import static io.datakernel.ot.MergedOTSystem.mergeOtSystems;
 import static io.datakernel.ot.TransformResult.left;
 import static io.datakernel.ot.TransformResult.right;
+import static io.datakernel.ot.system.MergedOTSystem.mergeOtSystems;
 import static io.datakernel.ot.utils.TestSetName.setName;
 import static io.datakernel.ot.utils.Utils.add;
 import static io.datakernel.ot.utils.Utils.set;

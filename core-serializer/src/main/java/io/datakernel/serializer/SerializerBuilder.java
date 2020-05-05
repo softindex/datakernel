@@ -18,8 +18,8 @@ package io.datakernel.serializer;
 
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 import io.datakernel.serializer.SerializerDef.StaticDecoders;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
@@ -37,14 +37,14 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.*;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.Utils.of;
-import static io.datakernel.serializer.Utils.findAnnotation;
 import static io.datakernel.serializer.impl.SerializerExpressions.readByte;
 import static io.datakernel.serializer.impl.SerializerExpressions.writeByte;
+import static io.datakernel.serializer.util.Utils.findAnnotation;
 import static java.lang.reflect.Modifier.*;
 import static java.util.Arrays.asList;
 

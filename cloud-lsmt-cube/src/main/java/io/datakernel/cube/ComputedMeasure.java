@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.expression.Expression;
 
 import java.util.Map;
 import java.util.Set;

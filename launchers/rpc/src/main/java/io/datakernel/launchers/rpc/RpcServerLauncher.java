@@ -16,7 +16,7 @@
 
 package io.datakernel.launchers.rpc;
 
-import io.datakernel.common.Initializer;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.annotation.Inject;
@@ -25,7 +25,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.eventloop.inspector.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.promise.Promise;

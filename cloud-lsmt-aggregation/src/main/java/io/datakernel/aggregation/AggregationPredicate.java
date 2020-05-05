@@ -17,7 +17,7 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
-import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.expression.Expression;
 
 import java.util.Map;
 import java.util.Set;

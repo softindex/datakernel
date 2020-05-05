@@ -36,12 +36,12 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import static io.datakernel.aggregation.Utils.*;
+import static io.datakernel.aggregation.StreamUtils.assertEndOfStream;
 import static io.datakernel.aggregation.fieldtype.FieldTypes.ofInt;
 import static io.datakernel.aggregation.measure.Measures.union;
+import static io.datakernel.aggregation.util.Utils.*;
 import static io.datakernel.common.collection.CollectionUtils.keysToMap;
 import static io.datakernel.promise.TestUtils.await;
-import static io.datakernel.stream.TestUtils.assertEndOfStream;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 import static org.junit.Assert.assertEquals;

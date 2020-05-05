@@ -2,7 +2,7 @@ import io.datakernel.datastream.*;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.eventloop.Eventloop;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
  * Example of creating custom StreamTransformer, which takes strings from input stream

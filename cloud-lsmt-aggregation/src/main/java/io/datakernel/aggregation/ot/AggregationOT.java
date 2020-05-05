@@ -1,9 +1,9 @@
 package io.datakernel.aggregation.ot;
 
-import io.datakernel.ot.OTSystem;
-import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.TransformResult.ConflictResolution;
+import io.datakernel.ot.system.OTSystem;
+import io.datakernel.ot.system.OTSystemImpl;
 
 import static io.datakernel.common.collection.CollectionUtils.hasIntersection;
 import static java.util.Collections.singletonList;

@@ -7,12 +7,12 @@ import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.csp.ChannelDeserializer;
 import io.datakernel.datastream.csp.ChannelSerializer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocket;
-import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 

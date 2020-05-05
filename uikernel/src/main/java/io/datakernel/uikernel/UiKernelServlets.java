@@ -19,7 +19,7 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.http.*;
 import io.datakernel.promise.Promise;
 

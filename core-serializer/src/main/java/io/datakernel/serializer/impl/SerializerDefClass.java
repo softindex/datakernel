@@ -17,8 +17,8 @@
 package io.datakernel.serializer.impl;
 
 import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 import io.datakernel.common.Utils;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerDef;
@@ -30,7 +30,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.serializer.SerializerDef.StaticDecoders.IN;
 import static io.datakernel.serializer.SerializerDef.StaticEncoders.*;

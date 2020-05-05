@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ActivePromisesRule;
@@ -39,7 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static io.datakernel.common.Recyclable.deepRecycle;
+import static io.datakernel.common.api.Recyclable.deepRecycle;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.CRLF;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;

@@ -2,15 +2,15 @@ package io.datakernel.dataflow.di;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
+import io.datakernel.dataflow.command.DataflowCommand;
+import io.datakernel.dataflow.command.DataflowCommandDownload;
+import io.datakernel.dataflow.command.DataflowCommandExecute;
+import io.datakernel.dataflow.command.DataflowResponse;
 import io.datakernel.dataflow.di.CodecsModule.SubtypeNameFactory;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.*;
-import io.datakernel.dataflow.server.command.DatagraphCommand;
-import io.datakernel.dataflow.server.command.DatagraphCommandDownload;
-import io.datakernel.dataflow.server.command.DatagraphCommandExecute;
-import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.processor.StreamJoin.Joiner;
 import io.datakernel.datastream.processor.StreamReducers.MergeSortReducer;
 import io.datakernel.datastream.processor.StreamReducers.Reducer;
@@ -55,7 +55,7 @@ public final class DataflowCodecs extends AbstractModule {
 	protected void configure() {
 		install(CodecsModule.create());
 
-		bind(new Key<StructuredCodec<DatagraphCommand>>() {}).qualified(Subtypes.class);
+		bind(new Key<StructuredCodec<DataflowCommand>>() {}).qualified(Subtypes.class);
 
 		bind(Key.ofType(Types.parameterized(StructuredCodec.class, NATURAL_ORDER_CLASS)))
 				.toInstance(StructuredCodec.ofObject(() -> NATURAL_ORDER));
@@ -93,22 +93,22 @@ public final class DataflowCodecs extends AbstractModule {
 	}
 
 	@Provides
-	StructuredCodec<DatagraphCommandDownload> datagraphCommandDownload(StructuredCodec<StreamId> streamId) {
-		return object(DatagraphCommandDownload::new,
-				"streamId", DatagraphCommandDownload::getStreamId, streamId);
+	StructuredCodec<DataflowCommandDownload> datagraphCommandDownload(StructuredCodec<StreamId> streamId) {
+		return object(DataflowCommandDownload::new,
+				"streamId", DataflowCommandDownload::getStreamId, streamId);
 	}
 
 	@Provides
-	StructuredCodec<DatagraphCommandExecute> datagraphCommandExecute(@Subtypes StructuredCodec<Node> node) {
-		return object(DatagraphCommandExecute::new,
-				"nodes", DatagraphCommandExecute::getNodes, ofList(node));
+	StructuredCodec<DataflowCommandExecute> datagraphCommandExecute(@Subtypes StructuredCodec<Node> node) {
+		return object(DataflowCommandExecute::new,
+				"nodes", DataflowCommandExecute::getNodes, ofList(node));
 	}
 
 	@Provides
-	StructuredCodec<DatagraphResponse> datagraphResponse(StructuredCodec<String> string) {
+	StructuredCodec<DataflowResponse> datagraphResponse(StructuredCodec<String> string) {
 		//noinspection ConstantConditions - intellji false positive
-		return object(DatagraphResponse::new,
-				"error", DatagraphResponse::getError, string.nullable());
+		return object(DataflowResponse::new,
+				"error", DataflowResponse::getError, string.nullable());
 	}
 
 	@Provides
@@ -290,9 +290,9 @@ public final class DataflowCodecs extends AbstractModule {
 	SubtypeNameFactory subtypeNames() {
 		return subtype -> {
 			if (subtype == NATURAL_ORDER_CLASS) return "Comparator.naturalOrder";
-			if (subtype == DatagraphCommandDownload.class) return "Download";
-			if (subtype == DatagraphCommandExecute.class) return "Execute";
-			if (subtype == DatagraphResponse.class) return "Response";
+			if (subtype == DataflowCommandDownload.class) return "Download";
+			if (subtype == DataflowCommandExecute.class) return "Execute";
+			if (subtype == DataflowResponse.class) return "Response";
 			return null;
 		};
 	}

@@ -17,12 +17,12 @@
 package io.datakernel.serializer;
 
 import io.datakernel.codegen.ClassBuilder;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.arg;
+import static io.datakernel.codegen.expression.Expressions.arg;
 
 /**
  * Represents a serializer and deserializer of a particular class to byte arrays

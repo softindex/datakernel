@@ -18,9 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.common.parse.InvalidSizeException;
-import io.datakernel.common.parse.ParseException;
-import io.datakernel.common.parse.UnknownFormatException;
+import io.datakernel.common.exception.parse.InvalidSizeException;
+import io.datakernel.common.exception.parse.ParseException;
+import io.datakernel.common.exception.parse.UnknownFormatException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -229,7 +229,7 @@ public final class UrlParser {
 	}
 
 	// getters
-	boolean isRelativePath() {
+	public boolean isRelativePath() {
 		return host == -1;
 	}
 

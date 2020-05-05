@@ -16,11 +16,11 @@
 
 package io.datakernel.config;
 
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.di.Key;
 import io.datakernel.di.binding.Binding;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.launcher.OnStart;
+import io.datakernel.launcher.annotation.OnStart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

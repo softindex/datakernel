@@ -8,7 +8,7 @@ import io.datakernel.serializer.SerializerBuilder;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 
 // [START EXAMPLE]
 public class ClientModule extends AbstractModule {

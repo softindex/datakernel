@@ -20,7 +20,10 @@ import io.datakernel.common.exception.Exceptions;
 import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.ref.RefBoolean;
 import io.datakernel.common.ref.RefInt;
-import io.datakernel.csp.*;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelInput;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelInput;
 import io.datakernel.csp.dsl.WithChannelOutputs;
 import io.datakernel.promise.Promise;
@@ -31,10 +34,10 @@ import java.util.List;
 import java.util.Objects;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.common.Recyclable.tryRecycle;
-import static io.datakernel.common.Sliceable.trySlice;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Sliceable.trySlice;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 public final class ChannelSplitter<T> extends AbstractCommunicatingProcess
 		implements WithChannelInput<ChannelSplitter<T>, T>, WithChannelOutputs<ChannelSplitter<T>, T> {

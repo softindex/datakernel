@@ -8,7 +8,7 @@ import io.datakernel.eventloop.Eventloop;
 
 import java.util.function.ToIntFunction;
 
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 
 /**
  * Example of some simple builtin stream nodes.

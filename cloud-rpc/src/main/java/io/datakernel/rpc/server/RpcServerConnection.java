@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.jmx.api.JmxRefreshable;
 import io.datakernel.jmx.api.attribute.JmxAttribute;

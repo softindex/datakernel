@@ -17,7 +17,7 @@
 package io.datakernel.test.rules;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.FatalErrorHandlers;
+import io.datakernel.eventloop.error.FatalErrorHandlers;
 import org.junit.rules.TestRule;
 import org.junit.runner.Description;
 import org.junit.runners.model.Statement;

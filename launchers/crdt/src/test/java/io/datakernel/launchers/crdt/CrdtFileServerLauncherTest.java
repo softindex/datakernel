@@ -1,7 +1,7 @@
 package io.datakernel.launchers.crdt;
 
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.crdt.util.CrdtDataSerializer;
+import io.datakernel.crdt.util.TimestampContainer;
 import io.datakernel.di.annotation.Provides;
 import org.junit.Test;
 

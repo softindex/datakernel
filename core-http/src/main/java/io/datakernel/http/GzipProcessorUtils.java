@@ -20,9 +20,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.Check;
 import io.datakernel.common.collection.ConcurrentStack;
-import io.datakernel.common.parse.InvalidSizeException;
-import io.datakernel.common.parse.ParseException;
-import io.datakernel.common.parse.UnknownFormatException;
+import io.datakernel.common.exception.parse.InvalidSizeException;
+import io.datakernel.common.exception.parse.ParseException;
+import io.datakernel.common.exception.parse.UnknownFormatException;
 
 import java.util.zip.CRC32;
 import java.util.zip.DataFormatException;

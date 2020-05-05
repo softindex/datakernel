@@ -8,9 +8,9 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.dsl.ChannelSupplierTransformer;
 import io.datakernel.datastream.StreamConsumer;
-import io.datakernel.datastream.StreamConsumerTransformer;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.StreamSupplierTransformer;
+import io.datakernel.datastream.processor.StreamConsumerTransformer;
+import io.datakernel.datastream.processor.StreamSupplierTransformer;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.promise.Promise;
 

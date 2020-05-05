@@ -18,13 +18,13 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelOutput;
 import io.datakernel.csp.binary.BinaryChannelInput;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.dsl.WithBinaryChannelInput;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import io.datakernel.csp.process.AbstractCommunicatingProcess;
 
 import static io.datakernel.common.Preconditions.checkState;
 

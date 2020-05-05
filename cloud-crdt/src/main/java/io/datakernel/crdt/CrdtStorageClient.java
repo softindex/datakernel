@@ -19,6 +19,8 @@ package io.datakernel.crdt;
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.exception.StacklessException;
+import io.datakernel.crdt.storage.CrdtStorage;
+import io.datakernel.crdt.util.CrdtDataSerializer;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.datastream.StreamConsumer;
@@ -33,7 +35,7 @@ import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.eventloop.net.SocketSettings;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
-import io.datakernel.net.AsyncTcpSocketNio;
+import io.datakernel.net.socket.tcp.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.NotNull;
@@ -44,7 +46,7 @@ import java.util.function.Function;
 import static io.datakernel.crdt.CrdtMessaging.*;
 import static io.datakernel.crdt.CrdtMessaging.CrdtMessages.PING;
 import static io.datakernel.crdt.CrdtMessaging.CrdtResponses.*;
-import static io.datakernel.crdt.Utils.nullTerminatedJson;
+import static io.datakernel.crdt.util.Utils.nullTerminatedJson;
 
 public final class CrdtStorageClient<K extends Comparable<K>, S> implements CrdtStorage<K, S>, EventloopService, EventloopJmxBeanEx {
 	private final Eventloop eventloop;

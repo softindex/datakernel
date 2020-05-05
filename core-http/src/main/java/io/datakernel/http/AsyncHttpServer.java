@@ -21,13 +21,13 @@ import io.datakernel.common.MemSize;
 import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.common.inspector.BaseInspector;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
+import io.datakernel.eventloop.schedule.ScheduledRunnable;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.stats.EventStats;
 import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.net.AbstractServer;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -39,7 +39,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 import static io.datakernel.http.AbstractHttpConnection.READ_TIMEOUT_ERROR;
 import static java.util.stream.Collectors.toList;
 

@@ -1,9 +1,9 @@
 import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtStorage;
-import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFs;
 import io.datakernel.crdt.primitives.LWWSet;
+import io.datakernel.crdt.storage.CrdtStorage;
+import io.datakernel.crdt.storage.cluster.CrdtStorageCluster;
+import io.datakernel.crdt.storage.local.CrdtStorageFs;
+import io.datakernel.crdt.util.CrdtDataSerializer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;

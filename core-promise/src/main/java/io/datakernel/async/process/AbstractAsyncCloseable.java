@@ -20,7 +20,7 @@ import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
 
 public abstract class AbstractAsyncCloseable implements AsyncCloseable {
 	@Nullable

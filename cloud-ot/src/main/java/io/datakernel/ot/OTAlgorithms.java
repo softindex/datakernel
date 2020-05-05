@@ -5,6 +5,11 @@ import io.datakernel.common.exception.StacklessException;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.ot.OTCommitFactory.DiffsWithLevel;
 import io.datakernel.ot.exceptions.OTException;
+import io.datakernel.ot.reducers.AbstractGraphReducer;
+import io.datakernel.ot.reducers.DiffsReducer;
+import io.datakernel.ot.reducers.GraphReducer;
+import io.datakernel.ot.repository.OTRepository;
+import io.datakernel.ot.system.OTSystem;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.SettablePromise;
@@ -22,7 +27,7 @@ import static io.datakernel.common.CollectorsEx.throwingMerger;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.Utils.nullToEmpty;
 import static io.datakernel.common.collection.CollectionUtils.*;
-import static io.datakernel.ot.GraphReducer.Result.*;
+import static io.datakernel.ot.reducers.GraphReducer.Result.*;
 import static io.datakernel.promise.Promises.toList;
 import static java.util.Collections.*;
 import static java.util.Comparator.comparingLong;
@@ -35,7 +40,7 @@ public final class OTAlgorithms {
 	public static final StacklessException GRAPH_EXHAUSTED = new StacklessException(OTAlgorithms.class, "Graph exhausted");
 
 	public static <K, D, R> Promise<R> reduce(OTRepository<K, D> repository, OTSystem<D> system,
-			Set<K> heads, GraphReducer<K, D, R> reducer) {
+                                              Set<K> heads, GraphReducer<K, D, R> reducer) {
 		return toList(heads.stream().map(repository::loadCommit))
 				.then(headCommits -> {
 					PriorityQueue<OTCommit<K, D>> queue = new PriorityQueue<>(reverseOrder(comparingLong(OTCommit::getLevel)));
@@ -134,7 +139,7 @@ public final class OTAlgorithms {
 	}
 
 	public static <K, D, A> Promise<FindResult<K, A>> findParent(OTRepository<K, D> repository, OTSystem<D> system,
-			Set<K> startNodes, DiffsReducer<A, D> diffsReducer, AsyncPredicate<OTCommit<K, D>> matchPredicate) {
+																 Set<K> startNodes, DiffsReducer<A, D> diffsReducer, AsyncPredicate<OTCommit<K, D>> matchPredicate) {
 		return reduce(repository, system, startNodes,
 				new AbstractGraphReducer<K, D, A, FindResult<K, A>>(diffsReducer) {
 					int epoch;

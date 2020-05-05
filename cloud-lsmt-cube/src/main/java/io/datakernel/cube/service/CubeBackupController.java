@@ -2,14 +2,14 @@ package io.datakernel.cube.service;
 
 import io.datakernel.aggregation.RemoteFsChunkStorage;
 import io.datakernel.async.function.AsyncSupplier;
-import io.datakernel.cube.CubeDiffScheme;
+import io.datakernel.cube.ot.CubeDiffScheme;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTRepositoryEx;
-import io.datakernel.ot.OTSystem;
+import io.datakernel.ot.repository.OTRepositoryEx;
+import io.datakernel.ot.system.OTSystem;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.promise.jmx.PromiseStats;

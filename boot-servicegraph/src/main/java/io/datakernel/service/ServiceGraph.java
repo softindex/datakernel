@@ -16,9 +16,9 @@
 
 package io.datakernel.service;
 
-import io.datakernel.common.Initializable;
-import io.datakernel.common.Stopwatch;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.collection.CollectionUtils;
+import io.datakernel.common.time.Stopwatch;
 import io.datakernel.jmx.api.ConcurrentJmxBean;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
@@ -40,7 +40,7 @@ import static io.datakernel.common.collection.CollectionUtils.difference;
 import static io.datakernel.di.util.ReflectionUtils.getDisplayName;
 import static io.datakernel.di.util.Utils.getDisplayString;
 import static io.datakernel.di.util.Utils.union;
-import static io.datakernel.service.util.Utils.combineAll;
+import static io.datakernel.service.Utils.combineAll;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.asList;
 import static java.util.Collections.*;

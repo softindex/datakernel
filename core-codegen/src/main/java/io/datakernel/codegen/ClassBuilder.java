@@ -17,8 +17,9 @@
 package io.datakernel.codegen;
 
 import io.datakernel.codegen.DefiningClassLoader.ClassKey;
-import io.datakernel.codegen.utils.DefiningClassWriter;
-import io.datakernel.common.Initializable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.util.DefiningClassWriter;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.common.collection.CollectionUtils;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.Type;

@@ -3,8 +3,12 @@ package io.datakernel.launchers.dataflow;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.dataflow.DataflowClient;
+import io.datakernel.dataflow.collector.Collector;
+import io.datakernel.dataflow.command.DataflowCommand;
+import io.datakernel.dataflow.command.DataflowResponse;
 import io.datakernel.dataflow.dataset.Dataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.dataset.DatasetListConsumer;
 import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
@@ -12,10 +16,6 @@ import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
-import io.datakernel.dataflow.server.Collector;
-import io.datakernel.dataflow.server.DataflowClient;
-import io.datakernel.dataflow.server.command.DatagraphCommand;
-import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToAccumulator;
@@ -344,7 +344,7 @@ public class DataflowServerTest {
 				.scan(new Object() {
 
 					@Provides
-					DataflowClient client(ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) throws IOException {
+					DataflowClient client(ByteBufsCodec<DataflowResponse, DataflowCommand> codec, BinarySerializers serializers) throws IOException {
 						return new DataflowClient(Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath(), codec, serializers);
 					}
 

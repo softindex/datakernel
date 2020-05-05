@@ -25,10 +25,14 @@ import io.datakernel.di.annotation.Optional;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.eventloop.inspector.ThrottlingController;
 import io.datakernel.jmx.JmxModule;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.remotefs.*;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.RemoteFsServer;
+import io.datakernel.remotefs.cluster.RemoteFsClusterClient;
+import io.datakernel.remotefs.cluster.RemoteFsRepartitionController;
+import io.datakernel.remotefs.cluster.ServerSelector;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.HashMap;
@@ -36,19 +40,19 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.common.Utils.nullToDefault;
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.converter.ConfigConverters.ofPath;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloopTaskScheduler;
 import static io.datakernel.launchers.remotefs.Initializers.*;
-import static io.datakernel.remotefs.ServerSelector.RENDEZVOUS_HASH_SHARDER;
+import static io.datakernel.remotefs.cluster.ServerSelector.RENDEZVOUS_HASH_SHARDER;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
 public abstract class RemoteFsClusterLauncher extends Launcher {
 	public static final String PROPERTIES_FILE = "remotefs-cluster.properties";
 
 	@Inject
-	RemoteFsRepartitionController controller;
+    RemoteFsRepartitionController controller;
 
 	@Inject
 	@Named("repartition")

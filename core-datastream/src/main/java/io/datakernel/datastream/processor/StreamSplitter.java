@@ -17,6 +17,8 @@
 package io.datakernel.datastream.processor;
 
 import io.datakernel.datastream.*;
+import io.datakernel.datastream.dsl.HasStreamInput;
+import io.datakernel.datastream.dsl.HasStreamOutputs;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promises;
 

@@ -16,15 +16,15 @@
 
 package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerDef;
 
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.codegen.utils.Primitives.wrap;
+import static io.datakernel.codegen.expression.Expressions.cast;
+import static io.datakernel.codegen.util.Primitives.wrap;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Collections.emptySet;
 

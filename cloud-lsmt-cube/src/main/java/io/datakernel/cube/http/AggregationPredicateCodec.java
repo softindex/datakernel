@@ -21,7 +21,7 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
 import io.datakernel.codec.registry.CodecFactory;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 import java.lang.reflect.Type;
 import java.util.*;

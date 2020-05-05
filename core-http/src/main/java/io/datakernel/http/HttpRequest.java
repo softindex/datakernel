@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.Check;
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.http.HttpHeaderValue.HttpHeaderValueOfSimpleCookies;
 import io.datakernel.http.MultipartParser.MultipartDataHandler;

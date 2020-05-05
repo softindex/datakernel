@@ -4,8 +4,8 @@ import io.datakernel.di.module.ModuleBuilder;
 
 import java.net.InetAddress;
 
-import static io.datakernel.config.ConfigConverters.ofInetAddress;
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofInetAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 
 //[START EXAMPLE]
 public final class ConfigModuleExample {

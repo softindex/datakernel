@@ -2,17 +2,17 @@ package io.datakernel.memcache.protocol;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 import io.datakernel.serializer.BinaryInput;
-import io.datakernel.serializer.BinaryOutputUtils;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerDef;
 import io.datakernel.serializer.impl.SerializerDefWithNullable;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static java.util.Collections.emptySet;
 
 @SuppressWarnings("unused")

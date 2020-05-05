@@ -16,6 +16,7 @@
 
 package io.datakernel.config;
 
+import io.datakernel.config.converter.ConfigConverter;
 import io.datakernel.eventloop.net.ServerSocketSettings;
 import org.junit.Before;
 import org.junit.Rule;
@@ -29,9 +30,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.config.ConfigConverters.ofLong;
-import static io.datakernel.config.ConfigConverters.ofServerSocketSettings;
 import static io.datakernel.config.ConfigTestUtils.testBaseConfig;
+import static io.datakernel.config.converter.ConfigConverters.ofLong;
+import static io.datakernel.config.converter.ConfigConverters.ofServerSocketSettings;
 import static junit.framework.TestCase.assertNotNull;
 import static org.junit.Assert.*;
 

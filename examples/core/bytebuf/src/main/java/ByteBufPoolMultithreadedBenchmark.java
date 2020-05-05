@@ -5,7 +5,7 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.launcher.Launcher;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 
 public class ByteBufPoolMultithreadedBenchmark extends Launcher {
 

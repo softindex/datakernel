@@ -17,8 +17,8 @@
 package io.datakernel.launchers.initializers;
 
 import io.datakernel.async.service.EventloopTaskScheduler;
-import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.di.Key;
 import io.datakernel.eventloop.Eventloop;
@@ -29,7 +29,7 @@ import io.datakernel.net.PrimaryServer;
 
 import java.time.Duration;
 
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 
 public class Initializers {
 	public static final String GLOBAL_EVENTLOOP_NAME = "GlobalEventloopStats";

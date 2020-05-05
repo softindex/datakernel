@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

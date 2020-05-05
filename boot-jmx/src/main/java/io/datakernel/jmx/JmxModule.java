@@ -17,10 +17,10 @@
 package io.datakernel.jmx;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.common.Initializable;
-import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
 import io.datakernel.common.StringFormatUtils;
+import io.datakernel.common.api.Initializable;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Optional;

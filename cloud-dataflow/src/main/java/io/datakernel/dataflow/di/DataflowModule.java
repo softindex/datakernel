@@ -4,9 +4,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.dataflow.command.DataflowCommand;
+import io.datakernel.dataflow.command.DataflowResponse;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
-import io.datakernel.dataflow.server.command.DatagraphCommand;
-import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
@@ -32,12 +32,12 @@ public final class DataflowModule extends AbstractModule {
 	}
 
 	@Provides
-	ByteBufsCodec<DatagraphCommand, DatagraphResponse> commandToResponse(@Subtypes StructuredCodec<DatagraphCommand> command, StructuredCodec<DatagraphResponse> response) {
+	ByteBufsCodec<DataflowCommand, DataflowResponse> commandToResponse(@Subtypes StructuredCodec<DataflowCommand> command, StructuredCodec<DataflowResponse> response) {
 		return nullTerminated(command, response);
 	}
 
 	@Provides
-	ByteBufsCodec<DatagraphResponse, DatagraphCommand> responseToCommand(@Subtypes StructuredCodec<DatagraphCommand> command, StructuredCodec<DatagraphResponse> response) {
+	ByteBufsCodec<DataflowResponse, DataflowCommand> responseToCommand(@Subtypes StructuredCodec<DataflowCommand> command, StructuredCodec<DataflowResponse> response) {
 		return nullTerminated(response, command);
 	}
 

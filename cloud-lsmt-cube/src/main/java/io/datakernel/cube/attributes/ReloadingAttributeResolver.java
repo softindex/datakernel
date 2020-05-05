@@ -18,8 +18,8 @@ package io.datakernel.cube.attributes;
 
 import io.datakernel.async.service.EventloopService;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.eventloop.jmx.EventloopJmxBean;
+import io.datakernel.eventloop.schedule.ScheduledRunnable;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.jmx.stats.ValueStats;
@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.common.Utils.nullify;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 public abstract class ReloadingAttributeResolver<K, A> extends AbstractAttributeResolver<K, A> implements EventloopService, EventloopJmxBean {
 	protected final Eventloop eventloop;

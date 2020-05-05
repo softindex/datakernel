@@ -19,7 +19,11 @@ import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.trigger.Severity;
 import io.datakernel.trigger.TriggerResult;
 import io.datakernel.trigger.TriggersModule;
-import io.datakernel.worker.*;
+import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;

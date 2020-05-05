@@ -1,7 +1,7 @@
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static java.lang.ClassLoader.getSystemClassLoader;
 
 //[START EXAMPLE]

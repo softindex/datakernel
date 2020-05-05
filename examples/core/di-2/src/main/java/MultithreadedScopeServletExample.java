@@ -9,8 +9,8 @@ import io.datakernel.http.di.RequestScope;
 import io.datakernel.http.di.ScopeServlet;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
 import io.datakernel.promise.Promise;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 import java.util.function.Function;
 

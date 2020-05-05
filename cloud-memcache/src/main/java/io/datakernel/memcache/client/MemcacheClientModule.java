@@ -13,7 +13,7 @@ import io.datakernel.serializer.SerializerBuilder;
 import java.time.Duration;
 
 import static io.datakernel.common.MemSize.kilobytes;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.HASH_FUNCTION;
 import static io.datakernel.rpc.client.RpcClient.DEFAULT_SOCKET_SETTINGS;
 import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;

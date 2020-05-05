@@ -8,7 +8,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.eventloop.inspector.ThrottlingController;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
@@ -20,7 +20,7 @@ import java.net.InetSocketAddress;
 
 import static io.datakernel.config.Config.ofClassPathProperties;
 import static io.datakernel.config.Config.ofSystemProperties;
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.di.module.Modules.combine;
 import static io.datakernel.launchers.initializers.Initializers.ofEventloop;
 import static io.datakernel.launchers.initializers.Initializers.ofHttpServer;

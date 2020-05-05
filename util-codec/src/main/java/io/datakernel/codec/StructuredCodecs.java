@@ -16,7 +16,7 @@
 
 package io.datakernel.codec;
 
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.common.tuple.*;
 
 import java.lang.reflect.Type;

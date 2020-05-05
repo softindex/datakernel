@@ -18,12 +18,12 @@ package io.datakernel.launchers.crdt;
 
 import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.config.Config;
-import io.datakernel.crdt.CrdtRepartitionController;
 import io.datakernel.crdt.CrdtServer;
-import io.datakernel.crdt.CrdtStorage;
-import io.datakernel.crdt.CrdtStorageCluster;
-import io.datakernel.crdt.local.CrdtStorageFs;
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.storage.CrdtStorage;
+import io.datakernel.crdt.storage.cluster.CrdtRepartitionController;
+import io.datakernel.crdt.storage.cluster.CrdtStorageCluster;
+import io.datakernel.crdt.storage.local.CrdtStorageFs;
+import io.datakernel.crdt.storage.local.CrdtStorageMap;
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.QualifierAnnotation;

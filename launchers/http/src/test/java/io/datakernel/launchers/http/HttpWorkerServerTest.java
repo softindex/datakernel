@@ -27,8 +27,8 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.net.PrimaryServer;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 import org.junit.ClassRule;
 import org.junit.Test;
 
@@ -40,7 +40,7 @@ import java.util.LinkedHashSet;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static io.datakernel.bytebuf.ByteBufStrings.encodeAscii;
-import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.test.TestUtils.getFreePort;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;

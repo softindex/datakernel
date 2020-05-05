@@ -3,8 +3,8 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launchers.http.MultithreadedHttpServerLauncher;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 /**
  * HTTP multithreaded server example.

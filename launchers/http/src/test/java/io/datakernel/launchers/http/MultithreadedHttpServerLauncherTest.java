@@ -3,8 +3,8 @@ package io.datakernel.launchers.http;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.http.AsyncServlet;
 import io.datakernel.test.rules.ByteBufRule;
-import io.datakernel.worker.Worker;
-import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 import org.junit.ClassRule;
 import org.junit.Test;
 

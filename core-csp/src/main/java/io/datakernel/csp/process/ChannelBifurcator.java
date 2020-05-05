@@ -1,16 +1,15 @@
 package io.datakernel.csp.process;
 
-import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelInput;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.common.Recyclable.tryRecycle;
-import static io.datakernel.common.Sliceable.trySlice;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Sliceable.trySlice;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 /**
  * Communicating process which distributes

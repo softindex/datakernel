@@ -22,6 +22,7 @@ import io.datakernel.datastream.StreamConsumers.ClosingWithError;
 import io.datakernel.datastream.StreamConsumers.Idle;
 import io.datakernel.datastream.StreamConsumers.OfChannelConsumer;
 import io.datakernel.datastream.StreamConsumers.Skip;
+import io.datakernel.datastream.processor.StreamConsumerTransformer;
 import io.datakernel.datastream.processor.StreamTransformer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;

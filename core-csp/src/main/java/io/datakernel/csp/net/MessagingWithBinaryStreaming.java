@@ -23,7 +23,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.ChannelSuppliers;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.csp.binary.ByteBufsCodec;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 

@@ -16,8 +16,8 @@ import io.datakernel.service.ServiceGraphModule;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.config.ConfigConverters.ofDuration;
-import static io.datakernel.config.ConfigConverters.ofInetAddress;
+import static io.datakernel.config.converter.ConfigConverters.ofDuration;
+import static io.datakernel.config.converter.ConfigConverters.ofInetAddress;
 import static io.datakernel.di.module.Modules.combine;
 import static java.nio.charset.StandardCharsets.UTF_8;
 

@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.examples;
 
-import io.datakernel.codegen.AbstractExpressionMapForEach;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.VarLocal;
+import io.datakernel.codegen.expression.AbstractExpressionMapForEach;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.VarLocal;
 
 import java.util.function.Function;
 
-import static io.datakernel.codegen.Expressions.property;
+import static io.datakernel.codegen.expression.Expressions.property;
 
 public final class ForEachHppcMap extends AbstractExpressionMapForEach {
 

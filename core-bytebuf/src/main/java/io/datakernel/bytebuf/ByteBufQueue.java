@@ -18,9 +18,9 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.Check;
-import io.datakernel.common.Recyclable;
+import io.datakernel.common.api.Recyclable;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.parse.InvalidSizeException;
+import io.datakernel.common.exception.parse.InvalidSizeException;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

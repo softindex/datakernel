@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.BinaryOutputUtils;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
+import io.datakernel.serializer.util.BinaryOutputUtils;
 import org.jetbrains.annotations.NotNull;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 
 /**
  * Provides methods for writing primitives

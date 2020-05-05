@@ -36,7 +36,7 @@ import java.util.LinkedHashSet;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufStrings.*;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
+import static io.datakernel.eventloop.error.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.promise.TestUtils.await;

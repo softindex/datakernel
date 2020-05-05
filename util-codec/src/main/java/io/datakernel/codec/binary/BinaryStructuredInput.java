@@ -4,7 +4,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codec.StructuredDecoder;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.common.exception.UncheckedException;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Type;

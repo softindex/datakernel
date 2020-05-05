@@ -17,7 +17,7 @@
 package io.datakernel.csp;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.common.Recyclable;
+import io.datakernel.common.api.Recyclable;
 import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
@@ -32,8 +32,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.common.Recyclable.deepRecycle;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.common.api.Recyclable.deepRecycle;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 /**
  * Provides additional functionality for managing {@link ChannelConsumer}s.

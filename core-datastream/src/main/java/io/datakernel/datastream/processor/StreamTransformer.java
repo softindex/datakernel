@@ -16,7 +16,10 @@
 
 package io.datakernel.datastream.processor;
 
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.dsl.HasStreamInput;
+import io.datakernel.datastream.dsl.HasStreamOutput;
 
 import java.util.function.Function;
 

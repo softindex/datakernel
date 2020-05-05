@@ -20,7 +20,7 @@ import io.datakernel.common.exception.UncheckedException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 /**
  * A stub client which forwards requests straight to the underlying servlet without any real I/O operations.

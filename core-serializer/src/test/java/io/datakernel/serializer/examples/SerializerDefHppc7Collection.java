@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.examples;
 
-import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.expression.Expression;
 import io.datakernel.serializer.SerializerDef;
 import io.datakernel.serializer.impl.AbstractSerializerDefCollection;
 

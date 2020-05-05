@@ -25,7 +25,7 @@ import io.datakernel.csp.dsl.ChannelConsumerTransformer;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +38,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
 
 /**
  * This interface represents consumer of data items that should be used serially

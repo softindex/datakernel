@@ -18,7 +18,7 @@ package io.datakernel.bytebuf;
 
 import io.datakernel.common.Check;
 import io.datakernel.common.concurrent.ThreadLocalCharArray;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 

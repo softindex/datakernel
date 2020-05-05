@@ -18,8 +18,8 @@ package io.datakernel.aggregation.measure;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.codegen.Context;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Variable;
 import io.datakernel.serializer.SerializerDef;
 import io.datakernel.serializer.impl.SerializerDefArray;
 import io.datakernel.serializer.impl.SerializerDefByte;
@@ -28,8 +28,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import static io.datakernel.codec.StructuredCodecs.INT_CODEC;
-import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.codegen.Utils.isWrapperType;
+import static io.datakernel.codegen.expression.Expressions.*;
+import static io.datakernel.codegen.util.Utils.isWrapperType;
 import static java.util.Collections.singletonList;
 import static org.objectweb.asm.Type.*;
 

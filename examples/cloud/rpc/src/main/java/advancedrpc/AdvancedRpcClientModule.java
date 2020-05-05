@@ -1,7 +1,7 @@
 package advancedrpc;
 
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverters;
+import io.datakernel.config.converter.ConfigConverters;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.eventloop.Eventloop;

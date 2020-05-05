@@ -4,7 +4,7 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelOutput;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
-import io.datakernel.datastream.StreamSupplierTransformer;
+import io.datakernel.datastream.processor.StreamSupplierTransformer;
 
 /**
  * This interface is a shortcut for implementing transformers that convert

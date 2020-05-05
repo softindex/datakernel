@@ -3,7 +3,7 @@ package io.datakernel.aggregation.ot;
 import io.datakernel.aggregation.ChunkIdCodec;
 import io.datakernel.aggregation.fieldtype.FieldType;
 import io.datakernel.aggregation.measure.Measure;
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 
 import java.util.*;
 

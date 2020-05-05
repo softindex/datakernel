@@ -19,10 +19,10 @@ package io.datakernel.ot.utils;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.ot.OTCommit;
-import io.datakernel.ot.OTSystem;
-import io.datakernel.ot.OTSystemImpl;
+import io.datakernel.ot.system.OTSystem;
+import io.datakernel.ot.system.OTSystemImpl;
 
 import java.util.*;
 import java.util.function.Consumer;

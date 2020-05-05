@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.test.rules.ByteBufRule;
 import org.junit.ClassRule;
 import org.junit.Test;

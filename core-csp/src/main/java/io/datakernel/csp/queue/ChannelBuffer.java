@@ -23,7 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.common.Recyclable.tryRecycle;
+import static io.datakernel.common.api.Recyclable.tryRecycle;
 import static java.lang.Integer.numberOfLeadingZeros;
 import static java.lang.Math.max;
 

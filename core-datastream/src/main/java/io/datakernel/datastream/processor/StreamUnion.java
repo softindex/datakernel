@@ -16,7 +16,12 @@
 
 package io.datakernel.datastream.processor;
 
-import io.datakernel.datastream.*;
+import io.datakernel.datastream.AbstractStreamConsumer;
+import io.datakernel.datastream.AbstractStreamSupplier;
+import io.datakernel.datastream.StreamConsumer;
+import io.datakernel.datastream.StreamSupplier;
+import io.datakernel.datastream.dsl.HasStreamInputs;
+import io.datakernel.datastream.dsl.HasStreamOutput;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;

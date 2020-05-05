@@ -1,13 +1,13 @@
 package io.datakernel.dataflow.stream;
 
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.dataflow.DataflowClient;
+import io.datakernel.dataflow.DataflowServer;
+import io.datakernel.dataflow.collector.Collector;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
-import io.datakernel.dataflow.server.Collector;
-import io.datakernel.dataflow.server.DataflowClient;
-import io.datakernel.dataflow.server.DataflowServer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToAccumulator;

@@ -10,7 +10,7 @@ import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.common.MemSize.kilobytes;
-import static io.datakernel.config.ConfigConverters.*;
+import static io.datakernel.config.converter.ConfigConverters.*;
 import static io.datakernel.memcache.protocol.MemcacheRpcMessage.*;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SERVER_SOCKET_SETTINGS;
 import static io.datakernel.rpc.server.RpcServer.DEFAULT_SOCKET_SETTINGS;

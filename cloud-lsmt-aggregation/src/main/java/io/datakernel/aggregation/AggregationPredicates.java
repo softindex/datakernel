@@ -17,9 +17,9 @@
 package io.datakernel.aggregation;
 
 import io.datakernel.aggregation.fieldtype.FieldType;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.Expressions;
-import io.datakernel.codegen.Variable;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.expression.Expressions;
+import io.datakernel.codegen.expression.Variable;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

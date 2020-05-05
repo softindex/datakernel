@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.http.CaseInsensitiveTokenMap.Token;
 import org.jetbrains.annotations.Nullable;
 

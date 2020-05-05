@@ -1,7 +1,11 @@
 import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
-import io.datakernel.worker.*;
+import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPools;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 //[START EXAMPLE]
 public final class WorkerPoolModuleExample extends AbstractModule {

@@ -17,8 +17,8 @@
 package io.datakernel.promise;
 
 import io.datakernel.async.callback.Callback;
-import io.datakernel.common.Check;
 import io.datakernel.common.ApplicationSettings;
+import io.datakernel.common.Check;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.UncheckedException;
 import org.jetbrains.annotations.Async;
@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 
 import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.eventloop.Eventloop.getCurrentEventloop;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 
 @SuppressWarnings({"unchecked", "WeakerAccess", "unused"})
 abstract class AbstractPromise<T> implements Promise<T> {

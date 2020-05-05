@@ -1,6 +1,6 @@
 import io.datakernel.async.callback.Callback;
-import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.api.Initializer;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.di.Key;
@@ -24,7 +24,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 import static io.datakernel.di.module.Modules.combine;
 import static java.lang.Math.min;
 

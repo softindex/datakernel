@@ -18,7 +18,7 @@ package io.datakernel.cube.http;
 
 import io.datakernel.codec.registry.CodecFactory;
 import io.datakernel.codec.registry.CodecRegistry;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.cube.CubeQuery.Ordering;
 import io.datakernel.cube.ReportType;
 

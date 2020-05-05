@@ -18,10 +18,10 @@ package io.datakernel.multilog;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.time.CurrentTimeProvider;
-import io.datakernel.csp.AbstractCommunicatingProcess;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelInput;
 import io.datakernel.csp.ChannelSupplier;
+import io.datakernel.csp.process.AbstractCommunicatingProcess;
 import io.datakernel.promise.Promise;
 import io.datakernel.remotefs.FsClient;
 import org.jetbrains.annotations.Nullable;

@@ -17,8 +17,8 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.config.Config;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.TimestampContainer;
+import io.datakernel.crdt.util.CrdtDataSerializer;
+import io.datakernel.crdt.util.TimestampContainer;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.di.module.Module;
@@ -30,8 +30,8 @@ import io.datakernel.remotefs.LocalFsClient;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.config.ConfigConverters.ofExecutor;
-import static io.datakernel.config.ConfigConverters.ofPath;
+import static io.datakernel.config.converter.ConfigConverters.ofExecutor;
+import static io.datakernel.config.converter.ConfigConverters.ofPath;
 import static io.datakernel.serializer.BinarySerializers.INT_SERIALIZER;
 import static io.datakernel.serializer.BinarySerializers.UTF8_SERIALIZER;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;

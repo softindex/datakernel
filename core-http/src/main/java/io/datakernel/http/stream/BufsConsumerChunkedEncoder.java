@@ -18,8 +18,12 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.csp.*;
+import io.datakernel.csp.ChannelConsumer;
+import io.datakernel.csp.ChannelInput;
+import io.datakernel.csp.ChannelOutput;
+import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import io.datakernel.csp.process.AbstractCommunicatingProcess;
 
 import static io.datakernel.bytebuf.ByteBufStrings.CR;
 import static io.datakernel.bytebuf.ByteBufStrings.LF;

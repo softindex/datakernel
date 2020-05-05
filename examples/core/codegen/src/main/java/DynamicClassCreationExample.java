@@ -1,9 +1,9 @@
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
-import io.datakernel.codegen.ExpressionToString;
+import io.datakernel.codegen.expression.ExpressionToString;
 import org.jetbrains.annotations.NotNull;
 
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 
 /**
  * In this example a Class that implements the specified interface is dynamically created.

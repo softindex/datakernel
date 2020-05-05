@@ -18,10 +18,15 @@ package io.datakernel.dataflow.stream;
 
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.csp.binary.ByteBufsCodec;
+import io.datakernel.dataflow.DataflowClient;
+import io.datakernel.dataflow.DataflowServer;
+import io.datakernel.dataflow.collector.Collector;
+import io.datakernel.dataflow.command.DataflowCommand;
+import io.datakernel.dataflow.command.DataflowResponse;
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.dataset.DatasetListConsumer;
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.di.BinarySerializersModule;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
@@ -32,11 +37,6 @@ import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
-import io.datakernel.dataflow.server.Collector;
-import io.datakernel.dataflow.server.DataflowClient;
-import io.datakernel.dataflow.server.DataflowServer;
-import io.datakernel.dataflow.server.command.DatagraphCommand;
-import io.datakernel.dataflow.server.command.DatagraphResponse;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.di.Injector;
@@ -391,12 +391,12 @@ public final class DataflowTest {
 				.scan(new Object() {
 
 					@Provides
-					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
+					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DataflowCommand, DataflowResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
 						return new DataflowServer(eventloop, codec, serializers, environment);
 					}
 
 					@Provides
-					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) {
+					DataflowClient client(Executor executor, ByteBufsCodec<DataflowResponse, DataflowCommand> codec, BinarySerializersModule.BinarySerializers serializers) {
 						return new DataflowClient(executor, secondaryPath, codec, serializers);
 					}
 

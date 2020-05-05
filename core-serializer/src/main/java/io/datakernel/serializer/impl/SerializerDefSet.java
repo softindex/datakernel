@@ -16,15 +16,15 @@
 
 package io.datakernel.serializer.impl;
 
-import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.expression.Expression;
 import io.datakernel.serializer.SerializerDef;
 
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.staticCall;
-import static io.datakernel.codegen.Expressions.value;
+import static io.datakernel.codegen.expression.Expressions.staticCall;
+import static io.datakernel.codegen.expression.Expressions.value;
 
 public final class SerializerDefSet extends AbstractSerializerDefCollection {
 	public SerializerDefSet(SerializerDef valueSerializer) {

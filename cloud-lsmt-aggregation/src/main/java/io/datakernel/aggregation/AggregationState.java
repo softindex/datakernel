@@ -253,7 +253,6 @@ public final class AggregationState implements OTState<AggregationDiff> {
 		}
 	}
 
-	// visibleForTest
 	SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> groupByPartition(int partitioningKeyLength) {
 		SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = new TreeMap<>();
 

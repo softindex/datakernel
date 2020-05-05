@@ -18,10 +18,10 @@ package io.datakernel.async.service;
 
 import io.datakernel.async.function.AsyncSupplier;
 import io.datakernel.async.function.AsyncSuppliers;
-import io.datakernel.common.Initializable;
+import io.datakernel.common.api.Initializable;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.ScheduledRunnable;
 import io.datakernel.eventloop.jmx.EventloopJmxBeanEx;
+import io.datakernel.eventloop.schedule.ScheduledRunnable;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
 import io.datakernel.promise.Promise;
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 
 import static io.datakernel.common.Utils.nullify;
-import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
+import static io.datakernel.eventloop.util.RunnableWithContext.wrapContext;
 import static io.datakernel.promise.Promises.retry;
 
 @SuppressWarnings("UnusedReturnValue")

@@ -17,16 +17,16 @@
 package io.datakernel.dataflow.stream;
 
 import io.datakernel.codec.StructuredCodec;
+import io.datakernel.dataflow.DataflowServer;
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.dataset.DatasetListConsumer;
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.dsl.AST;
-import io.datakernel.dataflow.dsl.EvaluationContext;
 import io.datakernel.dataflow.dsl.DslParser;
+import io.datakernel.dataflow.dsl.EvaluationContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
-import io.datakernel.dataflow.server.DataflowServer;
 import io.datakernel.datastream.StreamConsumerToList;
 import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.datastream.processor.StreamJoin.InnerJoiner;
@@ -64,7 +64,6 @@ import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 

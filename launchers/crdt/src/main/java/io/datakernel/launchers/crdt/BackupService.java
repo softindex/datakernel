@@ -17,8 +17,8 @@
 package io.datakernel.launchers.crdt;
 
 import io.datakernel.async.service.EventloopService;
-import io.datakernel.crdt.local.CrdtStorageFs;
-import io.datakernel.crdt.local.CrdtStorageMap;
+import io.datakernel.crdt.storage.local.CrdtStorageFs;
+import io.datakernel.crdt.storage.local.CrdtStorageMap;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;

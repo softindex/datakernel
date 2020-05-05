@@ -1,8 +1,8 @@
 import io.datakernel.crdt.CrdtData;
-import io.datakernel.crdt.CrdtDataSerializer;
-import io.datakernel.crdt.CrdtFunction;
-import io.datakernel.crdt.TimestampContainer;
-import io.datakernel.crdt.local.CrdtStorageFs;
+import io.datakernel.crdt.function.CrdtFunction;
+import io.datakernel.crdt.storage.local.CrdtStorageFs;
+import io.datakernel.crdt.util.CrdtDataSerializer;
+import io.datakernel.crdt.util.TimestampContainer;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.eventloop.Eventloop;

@@ -20,9 +20,9 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredCodecs;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.utils.Primitives;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.codegen.expression.Expression;
+import io.datakernel.codegen.util.Primitives;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.common.reflection.RecursiveType;
 import io.datakernel.serializer.SerializerDef;
 import io.datakernel.serializer.StringFormat;
@@ -34,7 +34,7 @@ import java.time.LocalDate;
 import java.util.Set;
 
 import static io.datakernel.codec.StructuredCodecs.*;
-import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.expression.Expressions.*;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 public final class FieldTypes {

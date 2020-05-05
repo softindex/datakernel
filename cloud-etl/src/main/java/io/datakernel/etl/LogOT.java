@@ -1,9 +1,9 @@
 package io.datakernel.etl;
 
-import io.datakernel.ot.OTSystem;
-import io.datakernel.ot.OTSystemImpl;
 import io.datakernel.ot.TransformResult;
 import io.datakernel.ot.TransformResult.ConflictResolution;
+import io.datakernel.ot.system.OTSystem;
+import io.datakernel.ot.system.OTSystemImpl;
 
 import java.util.HashMap;
 import java.util.List;

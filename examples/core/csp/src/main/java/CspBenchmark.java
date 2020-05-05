@@ -14,7 +14,7 @@ import io.datakernel.service.ServiceGraphModule;
 
 import java.util.function.Function;
 
-import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.converter.ConfigConverters.ofInteger;
 
 @SuppressWarnings("WeakerAccess")
 public class CspBenchmark extends Launcher {

@@ -20,6 +20,8 @@ import io.datakernel.di.Injector;
 import io.datakernel.di.Key;
 import io.datakernel.di.binding.Binding;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.worker.annotation.Worker;
+import io.datakernel.worker.annotation.WorkerId;
 
 import java.lang.annotation.Annotation;
 

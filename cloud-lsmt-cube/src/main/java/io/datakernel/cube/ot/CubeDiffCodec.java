@@ -6,7 +6,7 @@ import io.datakernel.aggregation.ot.AggregationDiffCodec;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.codec.StructuredInput;
 import io.datakernel.codec.StructuredOutput;
-import io.datakernel.common.parse.ParseException;
+import io.datakernel.common.exception.parse.ParseException;
 import io.datakernel.cube.Cube;
 
 import java.util.LinkedHashMap;

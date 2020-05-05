@@ -25,7 +25,7 @@ import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.net.AbstractServer;
-import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.net.socket.tcp.AsyncTcpSocket;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.jmx.PromiseStats;
 import io.datakernel.remotefs.RemoteFsCommands.*;
