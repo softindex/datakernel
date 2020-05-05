@@ -23,7 +23,7 @@ import io.datakernel.config.Config;
 import io.datakernel.di.Key;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.jmx.JmxModuleSettings;
+import io.datakernel.jmx.JmxModule;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.PrimaryServer;
 
@@ -77,7 +77,7 @@ public class Initializers {
 				.withMaxBodySize(config.get(ofMemSize(), "maxBodySize", MemSize.ZERO));
 	}
 
-	public static Initializer<JmxModuleSettings> ofGlobalEventloopStats() {
+	public static Initializer<JmxModule> ofGlobalEventloopStats() {
 		return jmxModule -> jmxModule
 				.withGlobalMBean(Eventloop.class, GLOBAL_EVENTLOOP_KEY)
 				.withOptional(GLOBAL_EVENTLOOP_KEY, "fatalErrors_total")

@@ -56,7 +56,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
  * <br>
  * Automatically builds MBeans for parts of application and adds Jmx attributes and operations to it.
  */
-public final class JmxModule extends AbstractModule implements JmxModuleSettings, Initializable<JmxModule> {
+public final class JmxModule extends AbstractModule implements Initializable<JmxModule> {
 	public static final Duration REFRESH_PERIOD_DEFAULT = Duration.ofSeconds(1);
 	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 
@@ -87,78 +87,66 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 				.withGlobalSingletons(ByteBufPool.getStats());
 	}
 
-	@Override
 	public JmxModule withRefreshPeriod(Duration refreshPeriod) {
 		checkArgument(refreshPeriod.toMillis() > 0, "Duration of refresh period should be a positive value");
 		this.refreshPeriod = refreshPeriod;
 		return this;
 	}
 
-	@Override
 	public JmxModule withMaxJmxRefreshesPerOneCycle(int max) {
 		checkArgument(max > 0, "Number of JMX refreshes should be a positive value");
 		this.maxJmxRefreshesPerOneCycle = max;
 		return this;
 	}
 
-	@Override
 	public <T> JmxModule withModifier(Key<?> key, String attrName, AttributeModifier<T> modifier) {
 		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.create())
 				.withModifier(attrName, modifier);
 		return this;
 	}
 
-	@Override
 	public <T> JmxModule withModifier(Type type, String attrName, AttributeModifier<T> modifier) {
 		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.create())
 				.withModifier(attrName, modifier);
 		return this;
 	}
 
-	@Override
 	public JmxModule withOptional(Key<?> key, String attrName) {
 		keyToSettings.computeIfAbsent(key, $ -> MBeanSettings.create())
 				.withIncludedOptional(attrName);
 		return this;
 	}
 
-	@Override
 	public JmxModule withOptional(Type type, String attrName) {
 		typeToSettings.computeIfAbsent(type, $ -> MBeanSettings.create())
 				.withIncludedOptional(attrName);
 		return this;
 	}
 
-	@Override
 	public JmxModule withHistogram(Key<?> key, String attrName, int[] histogramLevels) {
 		return withOptional(key, attrName + "_histogram")
 				.withModifier(key, attrName, (ValueStats attribute) ->
 						attribute.setHistogramLevels(histogramLevels));
 	}
 
-	@Override
 	public JmxModule withHistogram(Class<?> clazz, String attrName, int[] histogramLevels) {
 		return withHistogram(Key.of(clazz), attrName, histogramLevels);
 	}
 
-	@Override
 	public JmxModule withGlobalMBean(Type type, String named) {
 		return withGlobalMBean(type, Key.ofType(type, named));
 	}
 
-	@Override
 	public JmxModule withGlobalMBean(Type type, Key<?> key) {
 		globalMBeans.put(type, key);
 		return this;
 	}
 
-	@Override
 	public JmxModule withObjectName(Key<?> key, String objectName) {
 		this.keyToObjectNames.put(key, objectName);
 		return this;
 	}
 
-	@Override
 	public JmxModule withScopes(boolean withScopes) {
 		this.withScopes = withScopes;
 		return this;
@@ -168,39 +156,36 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 //		return withObjectName(Key.of(type), objectName);
 //	}
 
-	@Override
 	public <T> JmxModule withCustomType(Class<T> type, Function<T, String> to, Function<String, T> from) {
 		this.customTypes.put(type, new JmxCustomTypeAdapter<>(to, from));
 		return this;
 	}
 
-	@Override
 	public <T> JmxModule withCustomType(Class<T> type, Function<T, String> to) {
 		this.customTypes.put(type, new JmxCustomTypeAdapter<>(to));
 		return this;
 	}
 
-	@Override
 	public JmxModule withGlobalSingletons(Object... instances) {
 		this.globalSingletons.addAll(asList(instances));
 		return this;
 	}
 
 	@Provides
-	JmxRegistry jmxRegistry(DynamicMBeanFactory mbeanFactory) {
+	JmxRegistry jmxRegistry(DynamicMBeanFactoryImpl mbeanFactory) {
 		return JmxRegistry.create(ManagementFactory.getPlatformMBeanServer(), mbeanFactory, keyToObjectNames, customTypes)
 				.withScopes(withScopes);
 	}
 
 	@Provides
-	DynamicMBeanFactory mbeanFactory() {
+    DynamicMBeanFactoryImpl mbeanFactory() {
 		return DynamicMBeanFactoryImpl.create(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
 
 	@ProvidesIntoSet
-	LauncherService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory, @Optional Set<Initializer<JmxModuleSettings>> initializers) {
+	LauncherService service(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactoryImpl mbeanFactory, @Optional Set<Initializer<JmxModule>> initializers) {
 		if (initializers != null) {
-			for (Initializer<JmxModuleSettings> initializer : initializers) {
+			for (Initializer<JmxModule> initializer : initializers) {
 				initializer.accept(this);
 			}
 		}
@@ -219,7 +204,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 		};
 	}
 
-	private void doStart(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactory mbeanFactory) {
+	private void doStart(Injector injector, JmxRegistry jmxRegistry, DynamicMBeanFactoryImpl mbeanFactory) {
 		Map<Type, List<Object>> globalMBeanObjects = new HashMap<>();
 
 		// register global singletons

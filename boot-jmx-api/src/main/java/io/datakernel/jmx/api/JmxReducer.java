@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx.api;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -27,5 +29,6 @@ import java.util.List;
  * @param <T>
  */
 public interface JmxReducer<T> {
+	@Nullable
 	T reduce(List<? extends T> list);
 }

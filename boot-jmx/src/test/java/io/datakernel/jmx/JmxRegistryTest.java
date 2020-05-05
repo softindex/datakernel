@@ -38,91 +38,16 @@ import java.lang.annotation.RetentionPolicy;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 public class JmxRegistryTest {
-
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
-	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
+	private DynamicMBeanFactoryImpl mbeanFactory = DynamicMBeanFactoryImpl.create();
 	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);
 	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 	private final MBeanSettings settings = MBeanSettings.defaultSettings();
-
-	@Test
-	public void registerSingletonInstanceWithout_Annotation_AndComposeAppropriateObjectName() throws Exception {
-		ServiceStub service = new ServiceStub();
-
-		context.checking(new Expectations() {{
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
-			will(returnValue(dynamicMBean));
-
-			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
-		}});
-
-		Key<?> key_1 = Key.of(ServiceStub.class);
-		jmxRegistry.registerSingleton(key_1, service, settings);
-	}
-
-	@Test
-	public void registerSingletonInstanceWith_AnnotationWithoutParameters_AndComposeAppropriateObjectName()
-			throws Exception {
-		ServiceStub service = new ServiceStub();
-
-		context.checking(new Expectations() {{
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
-			will(returnValue(dynamicMBean));
-
-			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService")));
-		}});
-
-		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
-		Key<?> key = Key.of(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.registerSingleton(key, service, settings);
-	}
-
-	@Test
-	public void registerSingletonInstanceWith_AnnotationWithOneDefaultParameter_AndComposeAppropriateObjectName()
-			throws Exception {
-		ServiceStub service = new ServiceStub();
-
-		context.checking(new Expectations() {{
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
-			will(returnValue(dynamicMBean));
-
-			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,Group=major")));
-		}});
-
-		Group groupAnnotation = createGroupAnnotation("major");
-		Key<?> key = Key.of(ServiceStub.class, groupAnnotation);
-		jmxRegistry.registerSingleton(key, service, settings);
-	}
-
-	@Test
-	public void registerSingletonInstanceWith_AnnotationWithSeveralParameters_AndComposeAppropriateObjectName()
-			throws Exception {
-		ServiceStub service = new ServiceStub();
-
-		context.checking(new Expectations() {{
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(service)), with(any(MBeanSettings.class)), with(true));
-			will(returnValue(dynamicMBean));
-
-			oneOf(mBeanServer).registerMBean(
-					with(dynamicMBean), with(objectname(domain + ":type=ServiceStub,threadId=1,threadName=thread-one")));
-		}});
-
-		ComplexAnnotation complexAnnotation = createComplexAnnotation(1, "thread-one");
-		Key<?> key = Key.of(ServiceStub.class, complexAnnotation);
-		jmxRegistry.registerSingleton(key, service, settings);
-
-	}
 
 	@Test
 	public void unregisterSingletonInstance() throws Exception {
@@ -135,58 +60,6 @@ public class JmxRegistryTest {
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.of(ServiceStub.class, basicServiceAnnotation);
 		jmxRegistry.unregisterSingleton(key, service);
-	}
-
-	@Test
-	public void registerWorkers_andComposeAppropriateObjectNames() throws Exception {
-		WorkerPool workerPool = getWorkerPool();
-		WorkerPool.Instances<ServiceStub> instances = workerPool.getInstances(ServiceStub.class);
-
-		ServiceStub worker_1 = instances.get(0);
-		ServiceStub worker_2 = instances.get(1);
-		ServiceStub worker_3 = instances.get(2);
-
-		context.checking(new Expectations() {{
-			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(worker_1)), with(any(MBeanSettings.class)), with(false));
-			will(returnValue(dynamicMBean));
-
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(worker_2)), with(any(MBeanSettings.class)), with(false));
-			will(returnValue(dynamicMBean));
-
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(singletonList(worker_3)), with(any(MBeanSettings.class)), with(false));
-			will(returnValue(dynamicMBean));
-
-			// creating DynamicMBean for worker pool
-			allowing(mbeanFactory)
-					.createDynamicMBean(with(asList(worker_1, worker_2, worker_3)),
-							with(any(MBeanSettings.class)), with(true));
-			will(doAll());
-			will(returnValue(dynamicMBean));
-
-			// checking calls and names for each worker separately
-			oneOf(mBeanServer).registerMBean(
-					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-0")));
-			oneOf(mBeanServer).registerMBean(
-					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-1")));
-			oneOf(mBeanServer).registerMBean(
-					with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker,workerId=worker-2")));
-
-			// checking calls and names for worker_pool DynamicMBean
-			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
-					with(objectname(domain + ":type=ServiceStub,annotation=BasicService,scope=Worker")));
-
-		}});
-
-		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
-		Key<?> key = Key.of(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.registerWorkers(workerPool, key, asList(worker_1, worker_2, worker_3), settings);
 	}
 
 	@Test

@@ -1,5 +1,5 @@
 package io.datakernel.jmx.api;
 
 public interface JmxWrapperFactory {
-	MBeanWrapper wrap(Object instance);
+	void execute(Object instance, Runnable command);
 }

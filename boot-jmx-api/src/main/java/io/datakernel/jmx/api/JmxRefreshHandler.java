@@ -3,13 +3,11 @@ package io.datakernel.jmx.api;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 
-public interface JmxRefreshHandler {
-
+public interface JmxRefreshHandler extends JmxWrapperFactory {
 	void init(Duration refreshPeriod, int maxRefreshesPerCycle);
 
-	void handleRefresh(List<MBeanWrapper> wrappers, Function<Object, List<JmxRefreshable>> refreshablesExtractor);
+	void registerRefreshables(Object bean, List<JmxRefreshable> refreshables);
 
 	Collection<Integer> getRefreshableStatsCounts();
 

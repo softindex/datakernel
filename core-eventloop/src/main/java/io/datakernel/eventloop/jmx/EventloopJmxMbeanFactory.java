@@ -3,35 +3,52 @@ package io.datakernel.eventloop.jmx;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.api.JmxRefreshHandler;
 import io.datakernel.jmx.api.JmxRefreshable;
-import io.datakernel.jmx.api.JmxWrapperFactory;
-import io.datakernel.jmx.api.MBeanWrapper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.ceil;
 
-public final class EventloopJmxMbeanFactory implements JmxWrapperFactory, JmxRefreshHandler {
+public final class EventloopJmxMbeanFactory implements JmxRefreshHandler {
 	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
 	private final Map<Eventloop, Integer> refreshableStatsCounts = new ConcurrentHashMap<>();
 	private final Map<Eventloop, Integer> effectiveRefreshPeriods = new ConcurrentHashMap<>();
+	private final AtomicReference<IdentityHashMap<Object, Eventloop>> beanToEventloop = new AtomicReference<>(new IdentityHashMap<>());
 
 	private Duration refreshPeriod;
 	private int maxRefreshesPerCycle;
 
 	@Override
-	public MBeanWrapper wrap(Object instance) {
-		return new EventloopMBeanWrapper(instance);
+	public void execute(Object bean, Runnable command) {
+		Eventloop eventloop = ensureEventloop(bean);
+		eventloop.execute(wrapContext(bean, command));
+	}
+
+	private Eventloop ensureEventloop(Object bean) {
+		Eventloop eventloop = beanToEventloop.get().get(bean);
+		if (eventloop != null) {
+			return eventloop;
+		}
+		try {
+			eventloop = (Eventloop) bean.getClass().getMethod("getEventloop").invoke(bean);
+		} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+			throw new IllegalStateException("Class annotated with @EventloopJmxMBean should have a 'getEventloop()' method");
+		}
+		checkNotNull(eventloop);
+		while (true) {
+			IdentityHashMap<Object, Eventloop> oldMap = beanToEventloop.get();
+			IdentityHashMap<Object, Eventloop> newMap = new IdentityHashMap<>(oldMap);
+			newMap.put(bean, eventloop);
+			if (beanToEventloop.compareAndSet(oldMap, newMap)) break;
+		}
+		return eventloop;
 	}
 
 	@Override
@@ -41,23 +58,20 @@ public final class EventloopJmxMbeanFactory implements JmxWrapperFactory, JmxRef
 	}
 
 	@Override
-	public void handleRefresh(List<MBeanWrapper> wrappers, Function<Object, List<JmxRefreshable>> refreshablesExtractor) {
+	public void registerRefreshables(Object bean, List<JmxRefreshable> refreshables) {
 		checkNotNull(refreshPeriod, "Not initialized");
-		for (MBeanWrapper mbeanWrapper : wrappers) {
-			Eventloop eventloop = ((EventloopMBeanWrapper) mbeanWrapper).eventloop;
-			List<JmxRefreshable> currentRefreshables = refreshablesExtractor.apply(mbeanWrapper.getMBean());
-			if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
-				eventloopToJmxRefreshables.put(eventloop, currentRefreshables);
-				eventloop.execute(wrapContext(this, createRefreshTask(eventloop, null, 0)));
-			} else {
-				List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
-				List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);
-				allRefreshables.addAll(currentRefreshables);
-				eventloopToJmxRefreshables.put(eventloop, allRefreshables);
-			}
-
-			refreshableStatsCounts.put(eventloop, eventloopToJmxRefreshables.get(eventloop).size());
+		Eventloop eventloop = ensureEventloop(bean);
+		if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
+			eventloopToJmxRefreshables.put(eventloop, refreshables);
+			eventloop.execute(wrapContext(this, createRefreshTask(eventloop, null, 0)));
+		} else {
+			List<JmxRefreshable> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
+			List<JmxRefreshable> allRefreshables = new ArrayList<>(previousRefreshables);
+			allRefreshables.addAll(refreshables);
+			eventloopToJmxRefreshables.put(eventloop, allRefreshables);
 		}
+
+		refreshableStatsCounts.put(eventloop, eventloopToJmxRefreshables.get(eventloop).size());
 	}
 
 	@Override
@@ -109,27 +123,4 @@ public final class EventloopJmxMbeanFactory implements JmxWrapperFactory, JmxRef
 		return (long) (refreshPeriod.toMillis() / ratio);
 	}
 
-	private static class EventloopMBeanWrapper implements MBeanWrapper {
-		private final Eventloop eventloop;
-		private final Object instance;
-
-		public EventloopMBeanWrapper(Object instance) {
-			this.instance = instance;
-			try {
-				eventloop = (Eventloop) instance.getClass().getMethod("getEventloop").invoke(instance);
-			} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-				throw new IllegalStateException("Class annotated with @EventloopJmxMBean should have a 'getEventloop()' method");
-			}
-		}
-
-		@Override
-		public void execute(Runnable command) {
-			eventloop.execute(wrapContext(instance, command));
-		}
-
-		@Override
-		public Object getMBean() {
-			return instance;
-		}
-	}
 }

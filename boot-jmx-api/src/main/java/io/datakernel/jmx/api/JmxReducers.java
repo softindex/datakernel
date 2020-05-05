@@ -26,6 +26,7 @@ import java.util.stream.LongStream;
 
 import static java.util.stream.Collectors.toList;
 
+@SuppressWarnings("OptionalGetWithoutIsPresent")
 public final class JmxReducers {
 
 	public static final class JmxReducerDistinct implements JmxReducer<Object> {
@@ -40,28 +41,26 @@ public final class JmxReducers {
 	public static final class JmxReducerSum implements JmxReducer<Number> {
 		@Override
 		public Number reduce(List<? extends Number> list) {
-			return processNumbers(list, DoubleStream::sum, LongStream::sum);
+			return reduceNumbers(list, DoubleStream::sum, LongStream::sum);
 		}
 	}
 
-	@SuppressWarnings("OptionalGetWithoutIsPresent")
 	public static final class JmxReducerMin implements JmxReducer<Number> {
 		@Override
 		public Number reduce(List<? extends Number> list) {
-			return processNumbers(list, s -> s.min().getAsDouble(), s -> s.min().getAsLong());
+			return reduceNumbers(list, s -> s.min().getAsDouble(), s -> s.min().getAsLong());
 		}
 	}
 
-	@SuppressWarnings("OptionalGetWithoutIsPresent")
 	public static final class JmxReducerMax implements JmxReducer<Number> {
 		@Override
 		public Number reduce(List<? extends Number> list) {
-			return processNumbers(list, s -> s.max().getAsDouble(), s -> s.max().getAsLong());
+			return reduceNumbers(list, s -> s.max().getAsDouble(), s -> s.max().getAsLong());
 		}
 	}
 
 	@Nullable
-	private static Number processNumbers(List<? extends Number> list,
+	private static Number reduceNumbers(List<? extends Number> list,
 			Function<DoubleStream, Double> opDouble, Function<LongStream, Long> opLong) {
 		list = list.stream().filter(Objects::nonNull).collect(toList());
 

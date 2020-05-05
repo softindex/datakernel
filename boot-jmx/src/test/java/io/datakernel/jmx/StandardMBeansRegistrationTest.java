@@ -32,8 +32,7 @@ public class StandardMBeansRegistrationTest {
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
-	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
-	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, mbeanFactory);
+	private JmxRegistry jmxRegistry = JmxRegistry.create(mBeanServer, DynamicMBeanFactoryImpl.create());
 	private final String domain = ServiceStub.class.getPackage().getName();
 
 	@Test

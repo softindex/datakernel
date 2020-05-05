@@ -50,7 +50,7 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 
 @SuppressWarnings("rawtypes")
-public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
+public class DynamicMBeanFactoryImpl {
 	private static final Logger logger = LoggerFactory.getLogger(DynamicMBeanFactoryImpl.class);
 
 	// refreshing jmx
@@ -112,7 +112,6 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	/**
 	 * Creates Jmx MBean for monitorables with operations and attributes.
 	 */
-	@Override
 	public DynamicMBean createDynamicMBean(@NotNull List<?> monitorables, @NotNull MBeanSettings setting, boolean enableRefresh) {
 		checkArgument(monitorables.size() > 0, "Size of list of monitorables should be greater than 0");
 		checkArgument(monitorables.stream().noneMatch(Objects::isNull), "Monitorable can not be null");
@@ -121,15 +120,9 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		Object firstMBean = monitorables.get(0);
 		Class<?> mbeanClass = firstMBean.getClass();
 
-		List<MBeanWrapper> mbeanWrappers = new ArrayList<>(monitorables.size());
 		JmxWrapperFactory wrapperFactory = ensureWrapperFactory(mbeanClass);
 		if (wrapperFactory.getClass().equals(ConcurrentJmxMBeanFactory.class)) {
 			checkArgument(monitorables.size() == 1, "ConcurrentJmxMBeans cannot be used in pool");
-			mbeanWrappers.add(wrapperFactory.wrap(firstMBean));
-		} else {
-			for (Object monitorable : monitorables) {
-				mbeanWrappers.add(wrapperFactory.wrap(monitorable));
-			}
 		}
 
 		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass, setting.getCustomTypes());
@@ -154,13 +147,15 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(mbeanClass);
 
-		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, mbeanWrappers, rootNode, opkeyToMethod);
+		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, wrapperFactory, monitorables, rootNode, opkeyToMethod);
 
 		// TODO(vmykhalko): maybe try to get all attributes and log warn message in case of exception? (to prevent potential errors during viewing jmx stats using jconsole)
 //		tryGetAllAttributes(mbean);
 
 		if (enableRefresh && wrapperFactory instanceof JmxRefreshHandler) {
-			((JmxRefreshHandler) wrapperFactory).handleRefresh(mbeanWrappers, rootNode::getAllRefreshables);
+			for (Object instance : monitorables) {
+				((JmxRefreshHandler) wrapperFactory).registerRefreshables(instance, rootNode.getAllRefreshables(instance));
+			}
 		}
 		return mbean;
 	}
@@ -185,8 +180,8 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 
 	// region building tree of AttributeNodes
 	private List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
-											   String[] includedOptionalAttrs, @Nullable Method getter,
-											   Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			String[] includedOptionalAttrs, @Nullable Method getter,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 
 		Set<String> includedOptionals = new HashSet<>(asList(includedOptionalAttrs));
 		List<AttributeDescriptor> attrDescriptors = fetchAttributeDescriptors(clazz, customTypes);
@@ -450,9 +445,9 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 	}
 
 	private AttributeNode createNodeForParametrizedType(String attrName, @Nullable String attrDescription,
-														ParameterizedType pType, boolean included,
-														@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
-														Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+			ParameterizedType pType, boolean included,
+			@Nullable Method getter, @Nullable Method setter, Class<?> mbeanClass,
+			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
 
@@ -758,21 +753,16 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 
 	private static final class DynamicMBeanAggregator implements DynamicMBean {
 		private final MBeanInfo mBeanInfo;
-		private final List<? extends MBeanWrapper> mbeanWrappers;
+		private final JmxWrapperFactory jmxWrapperFactory;
 		private final List<?> mbeans;
 		private final AttributeNodeForPojo rootNode;
 		private final Map<OperationKey, Method> opkeyToMethod;
 
-		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
-									  AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
+		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, JmxWrapperFactory jmxWrapperFactory, List<?> mbeans,
+				AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
 			this.mBeanInfo = mBeanInfo;
-			this.mbeanWrappers = mbeanWrappers;
-
-			List<Object> extractedMBeans = new ArrayList<>(mbeanWrappers.size());
-			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-				extractedMBeans.add(mbeanWrapper.getMBean());
-			}
-			this.mbeans = extractedMBeans;
+			this.jmxWrapperFactory = jmxWrapperFactory;
+			this.mbeans = mbeans;
 
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
@@ -793,14 +783,13 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			String attrName = attribute.getName();
 			Object attrValue = attribute.getValue();
 
-			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
+			CountDownLatch latch = new CountDownLatch(mbeans.size());
 			Ref<Exception> exceptionRef = new Ref<>();
 
-			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-				Object mbean = mbeanWrapper.getMBean();
-				mbeanWrapper.execute(() -> {
+			for (Object bean : mbeans) {
+				jmxWrapperFactory.execute(bean, () -> {
 					try {
-						rootNode.setAttribute(attrName, attrValue, singletonList(mbean));
+						rootNode.setAttribute(attrName, attrValue, singletonList(bean));
 						latch.countDown();
 					} catch (Exception e) {
 						exceptionRef.set(e);
@@ -874,14 +863,13 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 				throw new RuntimeOperationsException(new IllegalArgumentException("Operation not found"), errorMsg);
 			}
 
-			CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
+			CountDownLatch latch = new CountDownLatch(mbeans.size());
 			Ref<Object> lastValueRef = new Ref<>();
 			Ref<Exception> exceptionRef = new Ref<>();
-			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-				Object mbean = mbeanWrapper.getMBean();
-				mbeanWrapper.execute(() -> {
+			for (Object bean : mbeans) {
+				jmxWrapperFactory.execute(bean, () -> {
 					try {
-						Object result = opMethod.invoke(mbean, args);
+						Object result = opMethod.invoke(bean, args);
 						lastValueRef.set(result);
 						latch.countDown();
 					} catch (Exception e) {
@@ -903,7 +891,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			}
 
 			// We don't know how to aggregate return values if there are several mbeans
-			return mbeanWrappers.size() == 1 ? lastValueRef.get() : null;
+			return mbeans.size() == 1 ? lastValueRef.get() : null;
 		}
 
 		private void propagate(Throwable e) throws MBeanException {
@@ -952,7 +940,6 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			return mBeanInfo;
 		}
 	}
-
 
 	static class JmxCustomTypeAdapter<T> {
 		@Nullable

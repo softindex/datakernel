@@ -46,7 +46,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private static final String ROOT_PACKAGE_NAME = "";
 
 	private final MBeanServer mbs;
-	private final DynamicMBeanFactory mbeanFactory;
+	private final DynamicMBeanFactoryImpl mbeanFactory;
 	private final Map<Key<?>, String> keyToObjectNames;
 	private final Map<Type, JmxCustomTypeAdapter<?>> customTypes;
 	private final Map<WorkerPool, Key<?>> workerPoolKeys = new HashMap<>();
@@ -59,7 +59,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	private int totallyRegisteredMBeans;
 
 	private JmxRegistry(@NotNull MBeanServer mbs,
-			DynamicMBeanFactory mbeanFactory,
+			DynamicMBeanFactoryImpl mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		this.mbs = mbs;
@@ -68,12 +68,12 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 		this.customTypes = customTypes;
 	}
 
-	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
+	public static JmxRegistry create(MBeanServer mbs, DynamicMBeanFactoryImpl mbeanFactory) {
 		return new JmxRegistry(mbs, mbeanFactory, Collections.emptyMap(), Collections.emptyMap());
 	}
 
 	public static JmxRegistry create(MBeanServer mbs,
-			DynamicMBeanFactory mbeanFactory,
+			DynamicMBeanFactoryImpl mbeanFactory,
 			Map<Key<?>, String> keyToObjectNames,
 			Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		return new JmxRegistry(mbs, mbeanFactory, keyToObjectNames, customTypes);
@@ -417,28 +417,28 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public String getRefreshPeriod() {
-		return formatDuration(((DynamicMBeanFactoryImpl) mbeanFactory).getSpecifiedRefreshPeriod());
+		return formatDuration(mbeanFactory.getSpecifiedRefreshPeriod());
 	}
 
 	@Override
 	public void setRefreshPeriod(String refreshPeriod) {
-		((DynamicMBeanFactoryImpl) mbeanFactory).setRefreshPeriod(parseDuration(refreshPeriod));
+		mbeanFactory.setRefreshPeriod(parseDuration(refreshPeriod));
 	}
 
 	@Override
 	public int getMaxRefreshesPerOneCycle() {
-		return ((DynamicMBeanFactoryImpl) mbeanFactory).getMaxJmxRefreshesPerOneCycle();
+		return mbeanFactory.getMaxJmxRefreshesPerOneCycle();
 	}
 
 	@Override
 	public void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle) {
-		((DynamicMBeanFactoryImpl) mbeanFactory).setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
+		mbeanFactory.setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
 	}
 
 	@Override
 	public double[] getEffectiveRefreshPeriods() {
 		List<Integer> effectivePeriods =
-				new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getEffectiveRefreshPeriods());
+				new ArrayList<>(mbeanFactory.getEffectiveRefreshPeriods());
 		double[] effectivePeriodsSeconds = new double[effectivePeriods.size()];
 		for (int i = 0; i < effectivePeriods.size(); i++) {
 			int periodMillis = effectivePeriods.get(i);
@@ -450,7 +450,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 	@Override
 	public int[] getRefreshableStatsCount() {
-		List<Integer> counts = new ArrayList<>(((DynamicMBeanFactoryImpl) mbeanFactory).getRefreshableStatsCounts());
+		List<Integer> counts = new ArrayList<>(mbeanFactory.getRefreshableStatsCounts());
 		int[] refreshableStatsCountsArr = new int[counts.size()];
 		for (int i = 0; i < counts.size(); i++) {
 			Integer count = counts.get(i);
