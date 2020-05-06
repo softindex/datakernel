@@ -365,10 +365,14 @@ public abstract class HttpMessage {
 		this.flags |= USE_GZIP;
 	}
 
-	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	boolean isRecycled() {
 		return (this.flags & RECYCLED) != 0;
 	}
+
+	/**
+	 * Shows whether content length should be present when there is no message body nor body stream
+	 */
+	abstract boolean isContentLengthExpected();
 
 	final void recycle() {
 		assert !isRecycled();
