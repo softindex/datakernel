@@ -435,29 +435,5 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	public void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle) {
 		mbeanFactory.setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
 	}
-
-	@Override
-	public double[] getEffectiveRefreshPeriods() {
-		List<Integer> effectivePeriods =
-				new ArrayList<>(mbeanFactory.getEffectiveRefreshPeriods());
-		double[] effectivePeriodsSeconds = new double[effectivePeriods.size()];
-		for (int i = 0; i < effectivePeriods.size(); i++) {
-			int periodMillis = effectivePeriods.get(i);
-			effectivePeriodsSeconds[i] = periodMillis / (double) 1000;
-
-		}
-		return effectivePeriodsSeconds;
-	}
-
-	@Override
-	public int[] getRefreshableStatsCount() {
-		List<Integer> counts = new ArrayList<>(mbeanFactory.getRefreshableStatsCounts());
-		int[] refreshableStatsCountsArr = new int[counts.size()];
-		for (int i = 0; i < counts.size(); i++) {
-			Integer count = counts.get(i);
-			refreshableStatsCountsArr[i] = count;
-		}
-		return refreshableStatsCountsArr;
-	}
 	// endregion
 }

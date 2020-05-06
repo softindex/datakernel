@@ -49,7 +49,6 @@ import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Utils.nullToDefault;
 import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.common.reflection.ReflectionUtils.*;
-import static io.datakernel.jmx.Utils.extractRefreshStats;
 import static io.datakernel.jmx.Utils.findAdapterClass;
 import static io.datakernel.jmx.stats.StatsUtils.isJmxStats;
 import static java.lang.String.format;
@@ -93,14 +92,6 @@ public final class DynamicMBeanFactory {
 	// endregion
 
 	// region exportable stats for JmxRegistry
-	public Collection<Integer> getRefreshableStatsCounts() {
-		return extractRefreshStats(adapters.values(), JmxBeanAdapterWithRefresh::getRefreshableStatsCounts);
-	}
-
-	public Collection<Integer> getEffectiveRefreshPeriods() {
-		return extractRefreshStats(adapters.values(), JmxBeanAdapterWithRefresh::getEffectiveRefreshPeriods);
-	}
-
 	public Duration getSpecifiedRefreshPeriod() {
 		return specifiedRefreshPeriod;
 	}

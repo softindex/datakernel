@@ -1,7 +1,6 @@
 package io.datakernel.jmx.api;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 
 public interface JmxBeanAdapterWithRefresh extends JmxBeanAdapter {
@@ -9,7 +8,5 @@ public interface JmxBeanAdapterWithRefresh extends JmxBeanAdapter {
 
 	void registerRefreshableBean(Object bean, List<JmxRefreshable> beanRefreshables);
 
-	Collection<Integer> getRefreshableStatsCounts();
-
-	Collection<Integer> getEffectiveRefreshPeriods();
+    Duration getEffectiveRefreshPeriod();
 }
