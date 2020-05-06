@@ -7,59 +7,25 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.InvocationTargetException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.common.Preconditions.*;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
-import static java.lang.System.identityHashCode;
 
 public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh {
 	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
-	private final Map<IdentityKey, Eventloop> beanToEventloop = new ConcurrentHashMap<>();
-
-	private static final class IdentityKey {
-		private final Object object;
-
-		private IdentityKey(Object object) {this.object = object;}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-			IdentityKey that = (IdentityKey) o;
-			return this.object == that.object;
-		}
-
-		@Override
-		public int hashCode() {
-			return identityHashCode(object);
-		}
-	}
+	private final Set<JmxRefreshable> allRefreshables = Collections.newSetFromMap(new IdentityHashMap<>());
+	private final Map<Object, Eventloop> beanToEventloop = new IdentityHashMap<>();
 
 	private Duration refreshPeriod;
 	private int maxRefreshesPerCycle;
 
 	@Override
-	public void execute(Object bean, Runnable command) {
-		Eventloop eventloop = ensureEventloop(bean);
+	synchronized public void execute(Object bean, Runnable command) {
+		Eventloop eventloop = beanToEventloop.get(bean);
+		checkNotNull(eventloop, () -> "Unregistered bean " + bean);
 		eventloop.execute(wrapContext(bean, command));
-	}
-
-	private Eventloop ensureEventloop(Object bean) {
-		Eventloop eventloop = beanToEventloop.get(new IdentityKey(bean));
-		if (eventloop == null) {
-			try {
-				eventloop = (Eventloop) bean.getClass().getMethod("getEventloop").invoke(bean);
-			} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-				throw new IllegalStateException("Class annotated with @EventloopJmxBean should have a 'getEventloop()' method");
-			}
-			checkNotNull(eventloop);
-			beanToEventloop.put(new IdentityKey(bean), eventloop);
-		}
-		return eventloop;
 	}
 
 	@Override
@@ -81,10 +47,31 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 			eventloop.execute(wrapContext(this, () -> refresh(eventloop, list, 0)));
 		}
 
+		Set<JmxRefreshable> beanRefreshablesFiltered = new HashSet<>();
+		for (JmxRefreshable refreshable : beanRefreshables) {
+			if (allRefreshables.add(refreshable)) {
+				beanRefreshablesFiltered.add(refreshable);
+			}
+		}
+
 		eventloop.submit(() -> {
 			List<JmxRefreshable> refreshables = eventloopToJmxRefreshables.get(eventloop);
-			refreshables.addAll(beanRefreshables);
+			refreshables.addAll(beanRefreshablesFiltered);
 		});
+	}
+
+	private Eventloop ensureEventloop(Object bean) {
+		Eventloop eventloop = beanToEventloop.get(bean);
+		if (eventloop == null) {
+			try {
+				eventloop = (Eventloop) bean.getClass().getMethod("getEventloop").invoke(bean);
+			} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+				throw new IllegalStateException("Class annotated with @EventloopJmxBean should have a 'getEventloop()' method");
+			}
+			checkNotNull(eventloop);
+			beanToEventloop.put(bean, eventloop);
+		}
+		return eventloop;
 	}
 
 	@Override
