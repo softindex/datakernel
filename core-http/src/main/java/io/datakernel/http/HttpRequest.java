@@ -185,6 +185,11 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return url.isHttps();
 	}
 
+	@Override
+	boolean isContentLengthExpected() {
+		return method != GET && method != HEAD && method != TRACE && method != CONNECT && method != OPTIONS;
+	}
+
 	UrlParser getUrl() {
 		if (CHECK) checkState(!isRecycled());
 		return url;

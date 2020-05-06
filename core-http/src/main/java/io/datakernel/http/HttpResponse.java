@@ -209,6 +209,11 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 		addHeader(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookie));
 	}
 
+	@Override
+	boolean isContentLengthExpected() {
+		return true;
+	}
+
 	@NotNull
 	public HttpResponse withCookies(@NotNull List<HttpCookie> cookies) {
 		addCookies(cookies);

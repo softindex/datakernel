@@ -434,7 +434,9 @@ public abstract class AbstractHttpConnection {
 		}
 
 		if (httpMessage.bodyStream == null) {
-			httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(0));
+			if (httpMessage.isContentLengthExpected()) {
+				httpMessage.addHeader(CONTENT_LENGTH, ofDecimal(0));
+			}
 			ByteBuf buf = ByteBufPool.allocate(httpMessage.estimateSize());
 			httpMessage.writeTo(buf);
 			return buf;
