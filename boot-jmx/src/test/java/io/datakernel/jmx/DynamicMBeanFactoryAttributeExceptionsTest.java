@@ -31,13 +31,13 @@ public class DynamicMBeanFactoryAttributeExceptionsTest {
 	public ExpectedException expectedException = ExpectedException.none();
 
 	@Test
-	public void concurrentJmxMBeansAreNotAllowedToBeInPool() {
+	public void concurrentJmxBeansAreNotAllowedToBeInPool() {
 		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("ConcurrentJmxMBeans cannot be used in pool");
+		expectedException.expectMessage("ConcurrentJmxBeans cannot be used in pool");
 
 		DynamicMBeanFactory.create()
 				.createDynamicMBean(
-						asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()),
+						asList(new ConcurrentJmxBeanWithSingleIntAttr(), new ConcurrentJmxBeanWithSingleIntAttr()),
 						defaultSettings(), false);
 	}
 
@@ -81,7 +81,7 @@ public class DynamicMBeanFactoryAttributeExceptionsTest {
 				.createDynamicMBean(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), defaultSettings(), false);
 	}
 
-	public static final class ConcurrentJmxMBeanWithSingleIntAttr implements ConcurrentJmxBean {
+	public static final class ConcurrentJmxBeanWithSingleIntAttr implements ConcurrentJmxBean {
 
 		@JmxAttribute
 		public int getCount() {

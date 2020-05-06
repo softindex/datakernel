@@ -54,7 +54,7 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 			try {
 				eventloop = (Eventloop) bean.getClass().getMethod("getEventloop").invoke(bean);
 			} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-				throw new IllegalStateException("Class annotated with @EventloopJmxMBean should have a 'getEventloop()' method");
+				throw new IllegalStateException("Class annotated with @EventloopJmxBean should have a 'getEventloop()' method");
 			}
 			checkNotNull(eventloop);
 			beanToEventloop.put(new IdentityKey(bean), eventloop);

@@ -100,7 +100,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 			mbean = singletonInstance;
 		} else {
 			logger.trace(format("Instance with key %s was not registered to jmx, " +
-					"because its type is not annotated with annotation annotated with @JmxWrapperFactory " +
+					"because its type or any of its supertypes is not annotated with @JmxBean annotation " +
 					"and does not implement neither *MBean nor *MXBean interface", key.toString()));
 			return;
 		}
@@ -168,7 +168,7 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 
 		if (!isJmxBean(poolInstances.get(0).getClass())) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
-					"because instances' type is not annotated with annotation annotated with @JmxWrapperFactory",
+					"because instances' type or any of instances' supertypes is not annotated with @JmxBean annotation",
 					key.toString()));
 			return;
 		}

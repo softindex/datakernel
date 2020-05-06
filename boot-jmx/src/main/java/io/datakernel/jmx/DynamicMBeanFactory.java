@@ -119,9 +119,9 @@ public final class DynamicMBeanFactory {
 
 		Class<?> beanClass = beans.get(0).getClass();
 
-		JmxBeanAdapter wrapperFactory = ensureAdapter(beanClass);
-		if (wrapperFactory.getClass().equals(ConcurrentJmxBeanAdapter.class)) {
-			checkArgument(beans.size() == 1, "ConcurrentJmxMBeans cannot be used in pool");
+		JmxBeanAdapter adapter = ensureAdapter(beanClass);
+		if (adapter.getClass().equals(ConcurrentJmxBeanAdapter.class)) {
+			checkArgument(beans.size() == 1, "ConcurrentJmxBeans cannot be used in pool");
 		}
 
 		AttributeNodeForPojo rootNode = createAttributesTree(beanClass, setting.getCustomTypes());
@@ -146,14 +146,14 @@ public final class DynamicMBeanFactory {
 		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, beanClass);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(beanClass);
 
-		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, wrapperFactory, beans, rootNode, opkeyToMethod);
+		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, adapter, beans, rootNode, opkeyToMethod);
 
 		// TODO(vmykhalko): maybe try to get all attributes and log warn message in case of exception? (to prevent potential errors during viewing jmx stats using jconsole)
 //		tryGetAllAttributes(mbean);
 
-		if (enableRefresh && wrapperFactory instanceof JmxBeanAdapterWithRefresh) {
+		if (enableRefresh && adapter instanceof JmxBeanAdapterWithRefresh) {
 			for (Object bean : beans) {
-				((JmxBeanAdapterWithRefresh) wrapperFactory).registerRefreshableBean(bean, rootNode.getAllRefreshables(bean));
+				((JmxBeanAdapterWithRefresh) adapter).registerRefreshableBean(bean, rootNode.getAllRefreshables(bean));
 			}
 		}
 		return mbean;
@@ -161,7 +161,7 @@ public final class DynamicMBeanFactory {
 
 	JmxBeanAdapter ensureAdapter(Class<?> beanClass) {
 		Class<? extends JmxBeanAdapter> adapterClass = findAdapterClass(beanClass)
-				.orElseThrow(() -> new NoSuchElementException("Class or its superclass or any of implemented interfaces should be annotated with @JmxWrapperFactory annotation"));
+				.orElseThrow(() -> new NoSuchElementException("Class or its superclass or any of implemented interfaces should be annotated with @JmxBean annotation"));
 		return adapters.computeIfAbsent(adapterClass, $ -> {
 			try {
 				JmxBeanAdapter jmxBeanAdapter = adapterClass.newInstance();
@@ -410,7 +410,7 @@ public final class DynamicMBeanFactory {
 		if (JmxRefreshableStats.class.isAssignableFrom(returnClass) &&
 				!findAdapterClass(beanClass).filter(JmxBeanAdapterWithRefresh.class::isAssignableFrom).isPresent()
 		) {
-			logger.warn("JmxRefreshableStats won't be refreshed when MBean wrapper factory does not implement JmxRefreshHandler. " +
+			logger.warn("JmxRefreshableStats won't be refreshed when Bean adapter does not implement JmxBeanAdapterWithRefresh. " +
 					"MBean class: " + beanClass.getName());
 		}
 
