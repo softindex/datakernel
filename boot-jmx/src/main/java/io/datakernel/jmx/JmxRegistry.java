@@ -435,5 +435,11 @@ public final class JmxRegistry implements JmxRegistryMXBean {
 	public void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle) {
 		mbeanFactory.setMaxJmxRefreshesPerOneCycle(maxRefreshesPerOneCycle);
 	}
+
+	@Override
+	public String[] getRefreshStats() {
+		return mbeanFactory.getRefreshStats();
+	}
+
 	// endregion
 }

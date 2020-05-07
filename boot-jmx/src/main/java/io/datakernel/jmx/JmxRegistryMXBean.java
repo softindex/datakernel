@@ -31,4 +31,6 @@ public interface JmxRegistryMXBean {
 	int getMaxRefreshesPerOneCycle();
 
 	void setMaxRefreshesPerOneCycle(int maxRefreshesPerOneCycle);
+
+	String[] getRefreshStats();
 }

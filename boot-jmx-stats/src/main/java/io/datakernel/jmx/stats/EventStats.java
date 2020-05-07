@@ -226,6 +226,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 			decimalFormat = new DecimalFormat("0");
 			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(smoothedRate) / precision), 0), 6)));
 		}
-		return format(totalCount, smoothedRate, rateUnit, decimalFormat);
+		String result = format(totalCount, smoothedRate, rateUnit, decimalFormat);
+		if (addedStats != 0){
+			result += "  [" + addedStats + ']';
+		}
+		return result;
 	}
 }

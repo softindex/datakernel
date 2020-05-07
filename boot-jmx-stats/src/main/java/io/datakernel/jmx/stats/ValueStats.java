@@ -786,7 +786,15 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		if (rateUnit != null) {
 			constructorTemplate
 					.append("calls: ")
-					.append(EventStats.format(totalCount, smoothedRate, rateUnit, decimalFormat));
+					.append(EventStats.format(totalCount, smoothedRate, rateUnit, decimalFormat))
+					.append("  ");
+		}
+
+		if (addedStats != 0) {
+			constructorTemplate
+					.append('[')
+					.append(addedStats)
+					.append(']');
 		}
 
 		return constructorTemplate.toString().trim();

@@ -109,6 +109,13 @@ public final class DynamicMBeanFactory {
 		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 		updateAdaptersRefreshParameters();
 	}
+
+	public String[] getRefreshStats() {
+		return adapters.values().stream()
+				.filter(adapter -> adapter instanceof JmxBeanAdapterWithRefresh)
+				.flatMap(adapter -> Arrays.stream(((JmxBeanAdapterWithRefresh) adapter).getRefreshStats()))
+				.toArray(String[]::new);
+	}
 	// endregion
 
 	/**

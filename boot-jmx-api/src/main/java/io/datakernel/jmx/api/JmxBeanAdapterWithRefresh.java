@@ -8,5 +8,5 @@ public interface JmxBeanAdapterWithRefresh extends JmxBeanAdapter {
 
 	void registerRefreshableBean(Object bean, List<JmxRefreshable> beanRefreshables);
 
-    Duration getEffectiveRefreshPeriod();
+    String[] getRefreshStats();
 }
