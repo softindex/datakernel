@@ -29,7 +29,7 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 	}
 
 	@Override
-	public void init(@NotNull Duration refreshPeriod, int maxRefreshesPerCycle) {
+	public void setRefreshParameters(@NotNull Duration refreshPeriod, int maxRefreshesPerCycle) {
 		checkArgument(refreshPeriod.toMillis() > 0);
 		checkArgument(maxRefreshesPerCycle > 0);
 		this.refreshPeriod = refreshPeriod;

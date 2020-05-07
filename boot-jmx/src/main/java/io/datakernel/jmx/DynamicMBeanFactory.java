@@ -98,6 +98,7 @@ public final class DynamicMBeanFactory {
 
 	public void setRefreshPeriod(Duration refreshPeriod) {
 		this.specifiedRefreshPeriod = refreshPeriod;
+		updateAdaptersRefreshParameters();
 	}
 
 	public int getMaxJmxRefreshesPerOneCycle() {
@@ -106,6 +107,7 @@ public final class DynamicMBeanFactory {
 
 	public void setMaxJmxRefreshesPerOneCycle(int maxJmxRefreshesPerOneCycle) {
 		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
+		updateAdaptersRefreshParameters();
 	}
 	// endregion
 
@@ -166,7 +168,7 @@ public final class DynamicMBeanFactory {
 			try {
 				JmxBeanAdapter jmxBeanAdapter = adapterClass.newInstance();
 				if (jmxBeanAdapter instanceof JmxBeanAdapterWithRefresh) {
-					((JmxBeanAdapterWithRefresh) jmxBeanAdapter).init(specifiedRefreshPeriod, maxJmxRefreshesPerOneCycle);
+					((JmxBeanAdapterWithRefresh) jmxBeanAdapter).setRefreshParameters(specifiedRefreshPeriod, maxJmxRefreshesPerOneCycle);
 				}
 				return jmxBeanAdapter;
 			} catch (InstantiationException | IllegalAccessException e) {
@@ -278,6 +280,14 @@ public final class DynamicMBeanFactory {
 					name, attrType, previousDescriptor.getGetter(), setter));
 		} else {
 			nameToAttr.put(name, new AttributeDescriptor(name, attrType, null, setter));
+		}
+	}
+
+	private void updateAdaptersRefreshParameters() {
+		for (JmxBeanAdapter adapter : adapters.values()) {
+			if (adapter instanceof JmxBeanAdapterWithRefresh) {
+				((JmxBeanAdapterWithRefresh) adapter).setRefreshParameters(specifiedRefreshPeriod, maxJmxRefreshesPerOneCycle);
+			}
 		}
 	}
 
