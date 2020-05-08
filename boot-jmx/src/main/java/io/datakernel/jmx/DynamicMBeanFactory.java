@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.common.collection.Either;
 import io.datakernel.common.ref.Ref;
 import io.datakernel.common.reflection.ReflectionUtils;
 import io.datakernel.jmx.api.ConcurrentJmxBeanAdapter;
@@ -153,9 +154,9 @@ public final class DynamicMBeanFactory {
 		}
 
 		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, beanClass);
-		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(beanClass);
+		Map<OperationKey, Either<Method, AttributeNode>> opkeyToMethodOrNode = fetchOpkeyToMethodOrNode(beanClass, setting.getCustomTypes());
 
-		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, adapter, beans, rootNode, opkeyToMethod);
+		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, adapter, beans, rootNode, opkeyToMethodOrNode);
 
 		// TODO(vmykhalko): maybe try to get all attributes and log warn message in case of exception? (to prevent potential errors during viewing jmx stats using jconsole)
 //		tryGetAllAttributes(mbean);
@@ -321,10 +322,14 @@ public final class DynamicMBeanFactory {
 
 			} else if (ReflectionUtils.isSimpleType(returnClass)) {
 				JmxReducer<?> reducer;
-				try {
-					reducer = fetchReducerFrom(getter);
-				} catch (Exception e) {
-					throw new RuntimeException(e);
+				if (attrAnnotation == null){
+					reducer = DEFAULT_REDUCER;
+				} else {
+					try {
+						reducer = fetchReducerFrom(getter);
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
 				}
 				return new AttributeNodeForSimpleType(
 						attrName, attrDescription, included, defaultFetcher, setter, returnClass, reducer
@@ -658,8 +663,8 @@ public final class DynamicMBeanFactory {
 	// endregion
 
 	// region jmx operations fetching
-	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<?> beanClass) {
-		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
+	private Map<OperationKey, Either<Method, AttributeNode>> fetchOpkeyToMethodOrNode(Class<?> beanClass, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
+		Map<OperationKey, Either<Method, AttributeNode>> opkeyToMethod = new HashMap<>();
 		Method[] methods = beanClass.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
@@ -677,7 +682,17 @@ public final class DynamicMBeanFactory {
 				for (int i = 0; i < paramTypes.length; i++) {
 					paramTypesNames[i] = paramTypes[i].getName();
 				}
-				opkeyToMethod.put(new OperationKey(opName, paramTypesNames), method);
+
+				Either<Method, AttributeNode> either;
+				if (isGetter(method)) {
+					String name = extractFieldNameFromGetter(method);
+					AttributeNode node = createAttributeNodeFor(name, null, method.getGenericReturnType(), true, null, method, null, beanClass, customTypes);
+					either = Either.right(node);
+				} else {
+					either = Either.left(method);
+				}
+
+				opkeyToMethod.put(new OperationKey(opName, paramTypesNames), either);
 			}
 		}
 		return opkeyToMethod;
@@ -756,16 +771,16 @@ public final class DynamicMBeanFactory {
 		private final JmxBeanAdapter adapter;
 		private final List<?> beans;
 		private final AttributeNodeForPojo rootNode;
-		private final Map<OperationKey, Method> opkeyToMethod;
+		private final Map<OperationKey, Either<Method, AttributeNode>> opKeyToMethodOrNode;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, JmxBeanAdapter adapter, List<?> beans,
-				AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod) {
+				AttributeNodeForPojo rootNode, Map<OperationKey, Either<Method, AttributeNode>> opKeyToMethodOrNode) {
 			this.mBeanInfo = mBeanInfo;
 			this.adapter = adapter;
 			this.beans = beans;
 
 			this.rootNode = rootNode;
-			this.opkeyToMethod = opkeyToMethod;
+			this.opKeyToMethodOrNode = opKeyToMethodOrNode;
 		}
 
 		@Override
@@ -854,20 +869,31 @@ public final class DynamicMBeanFactory {
 			Object[] args = nullToDefault(params, new Object[0]);
 			String[] argTypes = nullToDefault(signature, new String[0]);
 			OperationKey opkey = new OperationKey(actionName, argTypes);
-			Method opMethod = opkeyToMethod.get(opkey);
-			if (opMethod == null) {
+			Either<Method, AttributeNode> methodOrNode = opKeyToMethodOrNode.get(opkey);
+			if (methodOrNode == null) {
 				String operationName = prettyOperationName(actionName, argTypes);
 				String errorMsg = "There is no operation \"" + operationName + "\"";
 				throw new RuntimeOperationsException(new IllegalArgumentException("Operation not found"), errorMsg);
 			}
 
+			if (methodOrNode.isLeft()) {
+				return invokeMethod(methodOrNode.getLeft(), args);
+			} else {
+				if (args.length != 0) {
+					throw new MBeanException(new IllegalArgumentException("Passing arguments to getter operation"));
+				}
+				return invokeNode(extractFieldNameFromGetterName(actionName), methodOrNode.getRight());
+			}
+		}
+
+		private Object invokeMethod(Method method, Object[] args) throws MBeanException {
 			CountDownLatch latch = new CountDownLatch(beans.size());
 			Ref<Object> lastValueRef = new Ref<>();
 			Ref<Exception> exceptionRef = new Ref<>();
 			for (Object bean : beans) {
 				adapter.execute(bean, () -> {
 					try {
-						Object result = opMethod.invoke(bean, args);
+						Object result = method.invoke(bean, args);
 						lastValueRef.set(result);
 						latch.countDown();
 					} catch (Exception e) {
@@ -890,6 +916,15 @@ public final class DynamicMBeanFactory {
 
 			// We don't know how to aggregate return values if there are several beans
 			return beans.size() == 1 ? lastValueRef.get() : null;
+		}
+
+		private Object invokeNode(String name, AttributeNode node) throws MBeanException {
+			try {
+				return node.aggregateAttributes(singleton(name), beans).get(name);
+			} catch (Throwable e){
+				propagate(e);
+				return null;
+			}
 		}
 
 		private void propagate(Throwable e) throws MBeanException {

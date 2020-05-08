@@ -100,7 +100,8 @@ final class AttributeNodeForList extends AttributeNodeForLeafAbstract {
 		for (Object source : sources) {
 			List<?> currentList = (List<?>) fetcher.fetchFrom(source);
 			if (currentList != null) {
-				for (Object element : currentList) {
+				List<?> list = new ArrayList<>(currentList);
+				for (Object element : list) {
 					Map<String, Object> attributesFromElement =
 							subNode.aggregateAttributes(visibleSubAttrs, singletonList(element));
 

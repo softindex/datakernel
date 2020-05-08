@@ -307,7 +307,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return stats;
 	}
 
-	@JmxAttribute(description = "detailed information about connections")
+	@JmxOperation(description = "detailed information about connections")
 	public List<RpcServerConnection> getConnections() {
 		return connections;
 	}

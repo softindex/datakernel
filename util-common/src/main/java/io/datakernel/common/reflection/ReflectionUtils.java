@@ -82,17 +82,19 @@ public final class ReflectionUtils {
 	}
 
 	public static String extractFieldNameFromGetter(Method getter) {
-		if (getter.getName().startsWith("get")) {
-			if (getter.getName().length() == 3) {
+		return extractFieldNameFromGetterName(getter.getName());
+	}
+
+	public static String extractFieldNameFromGetterName(String getterName) {
+		if (getterName.startsWith("get")) {
+			if (getterName.length() == 3) {
 				return "";
 			}
-			String getterName = getter.getName();
 			String firstLetter = getterName.substring(3, 4);
 			String restOfName = getterName.substring(4);
 			return firstLetter.toLowerCase() + restOfName;
 		}
-		if (getter.getName().startsWith("is") && getter.getName().length() > 2) {
-			String getterName = getter.getName();
+		if (getterName.startsWith("is") && getterName.length() > 2) {
 			String firstLetter = getterName.substring(2, 3);
 			String restOfName = getterName.substring(3);
 			return firstLetter.toLowerCase() + restOfName;
@@ -101,11 +103,14 @@ public final class ReflectionUtils {
 	}
 
 	public static String extractFieldNameFromSetter(Method setter) {
-		String name = setter.getName();
-		checkArgument(name.startsWith("set") && name.length() > 3, "Given method is not a setter");
+		return extractFieldNameFromSetterName(setter.getName());
+	}
 
-		String firstLetter = name.substring(3, 4);
-		String restOfName = name.substring(4);
+	public static String extractFieldNameFromSetterName(String setterName) {
+		checkArgument(setterName.startsWith("set") && setterName.length() > 3, "Given method is not a setter");
+
+		String firstLetter = setterName.substring(3, 4);
+		String restOfName = setterName.substring(4);
 		return firstLetter.toLowerCase() + restOfName;
 	}
 

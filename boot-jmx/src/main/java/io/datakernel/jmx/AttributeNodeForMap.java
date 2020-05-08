@@ -154,7 +154,7 @@ final class AttributeNodeForMap extends AttributeNodeForLeafAbstract {
 		for (Object pojo : pojos) {
 			Map<?, ?> map = (Map<?, ?>) fetcher.fetchFrom(pojo);
 			if (map != null && map.size() > 0) {
-				listOfMaps.add(map);
+				listOfMaps.add(new HashMap<>(map));
 			}
 		}
 
