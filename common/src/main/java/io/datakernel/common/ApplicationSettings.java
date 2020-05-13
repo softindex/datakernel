@@ -16,26 +16,44 @@
 
 package io.datakernel.common;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 import java.util.function.Function;
 
-public final class ApplicationSettings {
+import static java.util.Collections.emptyMap;
 
-	public static String getString(Class<?> type, String name, String defValue) {
-		String property;
-		property = System.getProperty(type.getName() + "." + name);
-		if (property != null) return property;
-		property = System.getProperty(type.getSimpleName() + "." + name);
-		if (property != null) return property;
-		return defValue;
+public final class ApplicationSettings {
+	private static final Map<Class<?>, Map<String, Object>> customSettings = new HashMap<>();
+
+	private static Properties properties = System.getProperties();
+
+	public static void useProperties(Properties properties){
+		ApplicationSettings.properties = properties;
 	}
 
+	public static void set(Class<?> type, String name, Object value) {
+		customSettings.computeIfAbsent(type, $ -> new HashMap<>()).put(name, value);
+	}
+
+	@SuppressWarnings("unchecked")
 	public static <T> T get(Function<String, T> parser, Class<?> type, String name, T defValue) {
-		String property = getString(type, name, null);
+		T customSetting = (T) customSettings.getOrDefault(type, emptyMap()).get(name);
+		if (customSetting != null) {
+			return customSetting;
+		}
+		String property = getProperty(type, name);
 		if (property != null) {
 			return parser.apply(property);
 		}
 		return defValue;
+	}
+
+	public static String getString(Class<?> type, String name, String defValue) {
+		return get(Function.identity(), type, name, defValue);
 	}
 
 	public static int getInt(Class<?> type, String name, int defValue) {
@@ -62,4 +80,12 @@ public final class ApplicationSettings {
 		return get(MemSize::valueOf, type, name, defValue);
 	}
 
+	@Nullable
+	private static String getProperty(Class<?> type, String name) {
+		String property;
+		property = properties.getProperty(type.getName() + "." + name);
+		if (property != null) return property;
+		property = properties.getProperty(type.getSimpleName() + "." + name);
+		return property;
+	}
 }
