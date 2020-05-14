@@ -19,6 +19,7 @@ package io.datakernel.csp.process;
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 import static io.datakernel.common.Preconditions.checkState;
 
@@ -36,6 +37,7 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 		return output.accept(null);
 	}
 
+	@NotNull
 	protected abstract Promise<Void> onItem(I item);
 
 	protected Promise<Void> onProcessFinish() {
@@ -57,22 +59,13 @@ public abstract class AbstractChannelTransformer<S extends AbstractChannelTransf
 		onProcessStart()
 				.whenComplete(($, e) -> {
 					if (e == null) {
-						loop();
+						input.streamTo(ChannelConsumer.of(this::onItem))
+								.whenResult($1 -> onProcessFinish()
+										.whenResult($2 -> completeProcess()));
 					} else {
 						close(e);
 					}
 				});
-	}
-
-	private void loop() {
-		input.get()
-				.then(item ->
-						item != null ?
-								onItem(item)
-										.whenResult($ -> loop()) :
-								onProcessFinish()
-										.whenResult($ -> completeProcess()))
-				.whenException(this::close);
 	}
 
 	@SuppressWarnings("ConstantConditions")

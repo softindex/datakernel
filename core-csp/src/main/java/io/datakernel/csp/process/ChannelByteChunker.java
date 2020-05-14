@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.MemSize;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
+import org.jetbrains.annotations.NotNull;
 
 import static java.lang.Math.min;
 
@@ -39,6 +40,7 @@ public final class ChannelByteChunker extends AbstractChannelTransformer<Channel
 		return new ChannelByteChunker(minChunkSize.toInt(), maxChunkSize.toInt());
 	}
 
+	@NotNull
 	@Override
 	protected Promise<Void> onItem(ByteBuf item) {
 		bufs.add(item);

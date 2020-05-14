@@ -534,6 +534,21 @@ public final class PromisesTest {
 		}
 	}
 
+	@Test
+	public void testFirstSuccessfulForStackOverflow() {
+		Exception exception = new Exception();
+		Stream<AsyncSupplier<?>> suppliers = Stream.concat(
+				Stream.generate(() -> AsyncSupplier.cast(() -> Promise.ofException(exception))).limit(100_000),
+				Stream.of(AsyncSupplier.cast(Promise::complete))
+		);
+		await(Promises.firstSuccessful(suppliers));
+	}
+
+	@Test
+	public void testUntilForStackOverflow() {
+		await(until(0, number -> Promise.of(++number), number -> number == 100_000));
+	}
+
 	// For testing cases when a some previous promise in Iterator is being completed by calling Iterator::hasNext or Iterator::next
 	private static <T> void doTestCompletingIterator(Consumer<SettablePromise<T>> firstPromiseConsumer, AsyncSupplier<T> secondPromiseSupplier,
 			Consumer<Iterator<Promise<T>>> assertion) {
