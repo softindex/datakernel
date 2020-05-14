@@ -24,23 +24,28 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static java.util.Collections.emptyMap;
 
 public final class ApplicationSettings {
 	private static final Map<Class<?>, Map<String, Object>> customSettings = new HashMap<>();
 
 	private static Properties properties = System.getProperties();
+	private static volatile boolean firstLookupDone = false;
 
-	public static void useProperties(Properties properties){
+	public static void useProperties(Properties properties) {
+		ensureNotLookedUp();
 		ApplicationSettings.properties = properties;
 	}
 
 	public static void set(Class<?> type, String name, Object value) {
+		ensureNotLookedUp();
 		customSettings.computeIfAbsent(type, $ -> new HashMap<>()).put(name, value);
 	}
 
 	@SuppressWarnings("unchecked")
 	public static <T> T get(Function<String, T> parser, Class<?> type, String name, T defValue) {
+		firstLookupDone = true;
 		T customSetting = (T) customSettings.getOrDefault(type, emptyMap()).get(name);
 		if (customSetting != null) {
 			return customSetting;
@@ -87,5 +92,11 @@ public final class ApplicationSettings {
 		if (property != null) return property;
 		property = properties.getProperty(type.getSimpleName() + "." + name);
 		return property;
+	}
+
+	private static void ensureNotLookedUp() {
+		checkState(!firstLookupDone, () -> "Attempting to update application settings after some of them have been retrieved\n" +
+				"All updates should happen prior to any constant initialization via ApplicationSettings, " +
+				"preferably in static initialization block of 'main' class");
 	}
 }
