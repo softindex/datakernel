@@ -25,6 +25,9 @@ import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
 import io.datakernel.dataflow.di.BinarySerializerModule;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
+import io.datakernel.dataflow.dsl.AST;
+import io.datakernel.dataflow.dsl.EvaluationContext;
+import io.datakernel.dataflow.dsl.DslParser;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.Node;
@@ -68,6 +71,7 @@ import java.util.function.Predicate;
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
 import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
+import static io.datakernel.dataflow.dsl.DslParser.defaultExpressions;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -408,5 +412,73 @@ public final class DataflowTest {
 
 	static InetSocketAddress getFreeListenAddress() throws UnknownHostException {
 		return new InetSocketAddress(InetAddress.getByName("127.0.0.1"), getFreePort());
+	}
+
+	@Test
+	public void testFilterQL() throws Exception {
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2)))
+				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
+				.build();
+
+		StreamConsumerToList<TestItem> result1 = StreamConsumerToList.create();
+		StreamConsumerToList<TestItem> result2 = StreamConsumerToList.create();
+
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
+						new TestItem(6),
+						new TestItem(4),
+						new TestItem(2),
+						new TestItem(3),
+						new TestItem(1)))
+				.bind(slot("result")).toInstance(result1)
+				.build();
+
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
+						new TestItem(7),
+						new TestItem(7),
+						new TestItem(8),
+						new TestItem(2),
+						new TestItem(5)))
+				.bind(slot("result")).toInstance(result2)
+				.build();
+
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
+		server1.listen();
+		server2.listen();
+
+		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
+
+		AST.Query query = DslParser.create(defaultExpressions()).parse(
+				"USE \"io.datakernel.dataflow.stream.DataflowTest$\"\n" +
+						"\n" +
+						"-- this is a comment\n" +
+						"\n" +
+						"items = DATASET \"items\" TYPE \"TestItem\"\n" +
+						"filtered = FILTER items WITH \"TestPredicate\"\n" +
+						"sorted = LOCAL SORT filtered BY \"TestKeyFunction\"\n" +
+						"                             COMPARING WITH \"TestComparator\"\n" +
+						"\n" +
+						"WRITE sorted INTO \"result\"\n"
+		);
+		query.evaluate(new EvaluationContext(graph));
+
+		System.out.println(graph.toGraphViz());
+
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
+
+		assertEquals(asList(new TestItem(2), new TestItem(4), new TestItem(6)), result1.getList());
+		assertEquals(asList(new TestItem(2), new TestItem(8)), result2.getList());
 	}
 }
