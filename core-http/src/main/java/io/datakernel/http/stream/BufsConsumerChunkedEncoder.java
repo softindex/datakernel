@@ -74,21 +74,10 @@ public final class BufsConsumerChunkedEncoder extends AbstractCommunicatingProce
 
 	@Override
 	protected void doProcess() {
-		input.get()
-				.whenResult(buf -> {
-					if (buf != null) {
-						if (buf.canRead()) {
-							output.accept(encodeBuf(buf))
-									.whenResult($ -> doProcess());
-						} else {
-							buf.recycle();
-							doProcess();
-						}
-					} else {
-						output.accept(LAST_CHUNK, null)
-								.whenResult($ -> completeProcess());
-					}
-				});
+		input.filter(ByteBuf::canRead)
+				.streamTo(ChannelConsumer.of(buf -> output.accept(encodeBuf(buf))))
+				.whenResult($ -> output.accept(LAST_CHUNK, null)
+						.whenResult($2 -> completeProcess()));
 	}
 
 	private static ByteBuf encodeBuf(ByteBuf buf) {

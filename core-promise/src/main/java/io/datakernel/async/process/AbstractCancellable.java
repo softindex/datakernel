@@ -55,7 +55,7 @@ public abstract class AbstractCancellable implements Cancellable {
 
 	@NotNull
 	public final <T> Promise<T> sanitize(Promise<T> promise) {
-		return promise
+		return promise.async()
 				.thenEx(this::sanitize);
 	}
 
