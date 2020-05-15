@@ -20,6 +20,9 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.dsl.AST;
+import io.datakernel.dataflow.dsl.EvaluationContext;
+import io.datakernel.dataflow.dsl.DslParser;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
@@ -54,12 +57,14 @@ import java.util.function.Function;
 import static io.datakernel.codec.StructuredCodecs.object;
 import static io.datakernel.dataflow.dataset.Datasets.*;
 import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.dsl.DslParser.defaultExpressions;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.dataflow.stream.DataflowTest.createCommon;
 import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 
@@ -244,7 +249,6 @@ public class PageRankTest {
 
 	@Test
 	public void test() throws Exception {
-
 		InetSocketAddress address1 = getFreeListenAddress();
 		InetSocketAddress address2 = getFreeListenAddress();
 
@@ -295,6 +299,133 @@ public class PageRankTest {
 		DatasetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
 
 		consumerNode.compileInto(graph);
+
+		await(graph.execute()
+				.whenComplete(assertComplete($ -> {
+					server1.close();
+					server2.close();
+				})));
+
+		List<Rank> result = new ArrayList<>();
+		result.addAll(result1.getList());
+		result.addAll(result2.getList());
+		result.sort(Comparator.comparingLong(rank -> rank.pageId));
+
+		assertEquals(asList(new Rank(1, 1.7861), new Rank(2, 0.6069), new Rank(3, 0.6069)), result);
+	}
+
+	@Test
+	public void testQL() throws Exception {
+		InetSocketAddress address1 = getFreeListenAddress();
+		InetSocketAddress address2 = getFreeListenAddress();
+
+		Module common = createCommon(executor, temporaryFolder.newFolder().toPath(), asList(new Partition(address1), new Partition(address2)))
+				.bind(new Key<StructuredCodec<PageKeyFunction>>() {}).toInstance(object(PageKeyFunction::new))
+				.bind(new Key<StructuredCodec<RankKeyFunction>>() {}).toInstance(object(RankKeyFunction::new))
+				.bind(new Key<StructuredCodec<RankAccumulatorKeyFunction>>() {}).toInstance(object(RankAccumulatorKeyFunction::new))
+				.bind(new Key<StructuredCodec<LongComparator>>() {}).toInstance(object(LongComparator::new))
+				.bind(new Key<StructuredCodec<PageToRankFunction>>() {}).toInstance(object(PageToRankFunction::new))
+				.bind(new Key<StructuredCodec<RankAccumulatorReducer>>() {}).toInstance(object(RankAccumulatorReducer::new))
+				.bind(new Key<StructuredCodec<PageRankJoiner>>() {}).toInstance(object(PageRankJoiner::new))
+				.bind(StreamSorterStorageFactory.class).toInstance(FACTORY_STUB)
+				.build();
+
+		StreamConsumerToList<Rank> result1 = StreamConsumerToList.create();
+
+		Module serverModule1 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(asList(
+						new Page(1, new long[]{1, 2, 3}),
+						new Page(3, new long[]{1})))
+				.bind(slot("result")).toInstance(result1)
+
+				.build();
+
+		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
+		Module serverModule2 = ModuleBuilder.create()
+				.install(common)
+				.bind(slot("items")).toInstance(singletonList(
+						new Page(2, new long[]{1})))
+				.bind(slot("result")).toInstance(result2)
+
+				.build();
+
+		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
+		DataflowServer server2 = Injector.of(serverModule2).getInstance(DataflowServer.class).withListenAddress(address2);
+
+		server1.listen();
+		server2.listen();
+
+		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
+
+		AST.Query query = DslParser.create(defaultExpressions()).parse(
+				"USE \"io.datakernel.dataflow.stream.PageRankTest$\"\n" +
+						"\n" +
+						"pages = DATASET \"items\" TYPE \"Page\"\n" +
+						"pages = CAST SORT pages BY \"PageKeyFunction\"\n" +
+						"pages = REPARTITION SORT pages\n" +
+						"ranks = MAP pages BY \"PageToRankFunction\"\n" +
+						"ranks = CAST SORT ranks BY \"RankKeyFunction\"\n" +
+						"\n" +
+						"REPEAT 10 TIMES\n" +
+						"    updates = JOIN pages AND ranks WITH \"PageRankJoiner\" RESULT \"Rank\" BY \"RankKeyFunction\"\n" +
+						"    ranks = SORT REDUCE REPARTITION REDUCE updates TYPE \"Rank\"\n" +
+						"                 WITH \"RankAccumulatorReducer\"\n" +
+						"                 BY \"RankKeyFunction\"\n" +
+						"                 ACCUMULATING BY \"RankAccumulator\"\n" +
+						"                 EXTRACTING BY \"RankAccumulatorKeyFunction\"\n" +
+						"    ranks = CAST SORT ranks BY \"RankKeyFunction\"\n" +
+						"END\n" +
+						"\n" +
+						"WRITE ranks INTO \"result\"\n"
+		);
+		query.evaluate(new EvaluationContext(graph));
+
+//		Dataset<Rank> newRanks = sort_Reduce_Repartition_Reduce(updates, new RankAccumulatorReducer(),
+//				Long.class, new RankKeyFunction(), new LongComparator(),
+//				RankAccumulator.class, new RankAccumulatorKeyFunction(),
+//				Rank.class);
+
+//		USE "io.datakernel.dataflow.stream.PageRankTest$"
+//
+//		pages = DATASET "items" -> "Page"
+//		pages = CAST SORT pages BY "PageKeyFunction" COMPARING WITH "PageToRankFunction"
+//		pages = REPARTITION SORT pages
+//		ranks = MAP pages BY "PageToRankFunction"
+//		ranks = CAST SORT ranks BY "RankKeyFunction" /* COMPARING WITH "LongComparator" */
+//
+//		REPEAT 10 TIMES
+//			updates = JOIN pages AND ranks WITH "PageRankJoiner" BY "RankKeyFunction"
+//			ranks = SORT REDUCE REPARTITION REDUCE updates
+//						WITH "RankAccumulatorReducer"
+//						BY "RankKeyFunction"
+//						/* COMPARING WITH "LongComparator" */
+//			ranks = CAST SORT ranks "RankKeyFunction" /* COMPARING WITH "LongComparator" */
+//		END
+//
+//		WRITE ranks INTO "result"
+
+//		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
+//				Page.class, Long.class, new PageKeyFunction(), new LongComparator()));
+
+//		SortedDataset<Long, Rank> ranks = castToSorted(map(pages, new PageToRankFunction(), Rank.class),
+//				Long.class, new RankKeyFunction(), new LongComparator());
+//
+//		for (int i = 0; i < 10; i++) {
+//			Dataset<Rank> updates = join(pages, ranks, new PageRankJoiner(), Rank.class, new RankKeyFunction());
+//
+//			Dataset<Rank> newRanks = sort_Reduce_Repartition_Reduce(updates, new RankAccumulatorReducer(),
+//					Long.class, new RankKeyFunction(), new LongComparator(),
+//					RankAccumulator.class, new RankAccumulatorKeyFunction(),
+//					Rank.class);
+//
+//			ranks =  castToSorted(newRanks, Long.class, new RankKeyFunction(), new LongComparator());
+//		}
+//
+//		SortedDataset<Long, Rank> pageRanks = pageRank(pages);
+
+//		DatasetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
+//		consumerNode.compileInto(graph);
 
 		await(graph.execute()
 				.whenComplete(assertComplete($ -> {

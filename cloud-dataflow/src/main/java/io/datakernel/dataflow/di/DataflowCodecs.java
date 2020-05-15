@@ -22,6 +22,7 @@ import io.datakernel.datastream.processor.StreamReducers.ReducerToResult.InputTo
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.util.Types;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -47,11 +48,22 @@ public final class DataflowCodecs extends AbstractModule {
 		return new DataflowCodecs();
 	}
 
+	private static final Comparator<?> NATURAL_ORDER = Comparator.naturalOrder();
+	private static final Class<?> NATURAL_ORDER_CLASS = NATURAL_ORDER.getClass();
+
 	@Override
 	protected void configure() {
 		install(CodecsModule.create());
 
 		bind(new Key<StructuredCodec<DatagraphCommand>>() {}).qualified(Subtypes.class);
+
+		bind(Key.ofType(Types.parameterized(StructuredCodec.class, NATURAL_ORDER_CLASS)))
+				.toInstance(StructuredCodec.ofObject(() -> NATURAL_ORDER));
+	}
+
+	@Provides
+	StructuredCodec<Comparator> naturalComparator() {
+		return StructuredCodec.ofObject(Comparator::naturalOrder);
 	}
 
 	@Provides
@@ -277,6 +289,7 @@ public final class DataflowCodecs extends AbstractModule {
 	@Provides
 	SubtypeNameFactory subtypeNames() {
 		return subtype -> {
+			if (subtype == NATURAL_ORDER_CLASS) return "Comparator.naturalOrder";
 			if (subtype == DatagraphCommandDownload.class) return "Download";
 			if (subtype == DatagraphCommandExecute.class) return "Execute";
 			if (subtype == DatagraphResponse.class) return "Response";

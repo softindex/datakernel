@@ -8,7 +8,7 @@ public final class DataflowContext {
 	private final DataflowGraph graph;
 
 	@Nullable
-	private Integer nonce;
+	private final Integer nonce;
 
 	private DataflowContext(DataflowGraph graph, @Nullable Integer nonce) {
 		this.nonce = nonce;
