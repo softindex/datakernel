@@ -1102,17 +1102,27 @@ public final class Promises {
 	private static <T> void firstImpl(Iterator<? extends Promise<? extends T>> promises,
 			@NotNull BiPredicate<? super T, ? super Throwable> predicate,
 			SettablePromise<T> cb) {
-		if (!promises.hasNext()) {
-			cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
+		while (promises.hasNext()) {
+			Promise<? extends T> nextPromise = promises.next();
+			if (nextPromise.isComplete()) {
+				T v = nextPromise.getResult();
+				Throwable e = nextPromise.getException();
+				if (predicate.test(v, e)) {
+					cb.accept(v, e);
+					return;
+				}
+				continue;
+			}
+			nextPromise.whenComplete((v, e) -> {
+				if (predicate.test(v, e)) {
+					cb.accept(v, e);
+					return;
+				}
+				firstImpl(promises, predicate, cb);
+			});
 			return;
 		}
-		promises.next().whenComplete((result, e) -> {
-			if (predicate.test(result, e)) {
-				cb.accept(result, e);
-				return;
-			}
-			firstImpl(promises, predicate, cb);
-		});
+		cb.setException(new StacklessException(Promises.class, "No promise result met the condition"));
 	}
 
 	/**

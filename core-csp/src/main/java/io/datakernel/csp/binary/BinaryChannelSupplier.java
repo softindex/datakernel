@@ -23,7 +23,6 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
@@ -121,41 +120,25 @@ public abstract class BinaryChannelSupplier implements AsyncCloseable {
 	}
 
 	public final <T> Promise<T> parse(ByteBufsDecoder<T> decoder) {
-		if (!bufs.isEmpty()) {
-			T result;
-			try {
-				result = decoder.tryDecode(bufs);
-			} catch (Exception e) {
-				return Promise.ofException(e);
+		while (true) {
+			if (!bufs.isEmpty()) {
+				T result;
+				try {
+					result = decoder.tryDecode(bufs);
+				} catch (Exception e) {
+					closeEx(e);
+					return Promise.ofException(e);
+				}
+				if (result != null) {
+					return Promise.of(result);
+				}
 			}
-			if (result != null) {
-				return Promise.of(result);
-			}
+			Promise<Void> moreDataPromise = needMoreData();
+			if (moreDataPromise.isResult()) continue;
+			return moreDataPromise
+					.whenException(this::close)
+					.then(() -> parse(decoder));
 		}
-		return Promise.ofCallback(cb -> doParse(decoder, cb));
-	}
-
-	private <T> void doParse(ByteBufsDecoder<T> decoder, SettablePromise<T> cb) {
-		needMoreData()
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						T result;
-						try {
-							result = decoder.tryDecode(bufs);
-						} catch (Exception e2) {
-							closeEx(e2);
-							cb.setException(e2);
-							return;
-						}
-						if (result == null) {
-							doParse(decoder, cb);
-							return;
-						}
-						cb.set(result);
-					} else {
-						cb.setException(e);
-					}
-				});
 	}
 
 	public final <T> Promise<T> parseRemaining(ByteBufsDecoder<T> decoder) {

@@ -180,6 +180,7 @@ public final class CubeCleanerController<K, D, C> implements EventloopJmxBeanEx 
 	private void findSnapshotImpl(Set<K> heads, int skipSnapshots, SettablePromise<Optional<K>> cb) {
 		findParent(repository, otSystem, heads, DiffsReducer.toVoid(),
 				commit -> repository.hasSnapshot(commit.getId()))
+				.async()
 				.whenResult(findResult -> {
 					if (skipSnapshots <= 0) {
 						cb.set(Optional.of(findResult.getCommit()));

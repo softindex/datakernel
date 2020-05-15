@@ -33,7 +33,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.SP;
 import static io.datakernel.bytebuf.ByteBufStrings.decodePositiveInt;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
@@ -209,14 +208,16 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		ChannelSupplier<ByteBuf> ofQueue = readQueue.hasRemaining() ? ChannelSupplier.of(readQueue.takeRemaining()) : ChannelSupplier.of();
 		ChannelZeroBuffer<ByteBuf> buffer = new ChannelZeroBuffer<>();
 		ChannelSupplier<ByteBuf> supplier = ChannelSuppliers.concat(ofQueue, buffer.getSupplier());
+		Promise<Void> inflaterFinished = Promise.complete();
 		if ((flags & GZIPPED) != 0) {
-			supplier = supplier
-					.transformWith(BufsConsumerGzipInflater.create())
-					.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
+			BufsConsumerGzipInflater gzipInflater = BufsConsumerGzipInflater.create();
+			supplier = supplier.transformWith(gzipInflater);
+			inflaterFinished = gzipInflater.getProcessCompletion();
 		}
 		onHeadersReceived(null, supplier);
 		ChannelSupplier.of(socket::read, socket)
 				.streamTo(buffer.getConsumer())
+				.both(inflaterFinished)
 				.whenComplete(afterProcessCb);
 	}
 

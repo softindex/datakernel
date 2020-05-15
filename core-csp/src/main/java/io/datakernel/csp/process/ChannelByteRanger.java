@@ -19,6 +19,7 @@ package io.datakernel.csp.process;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.csp.dsl.ChannelTransformer;
 import io.datakernel.promise.Promise;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Drops exactly N bytes from a csp strem of byte buffers and limits that stream to exactly M bytes in length
@@ -49,6 +50,7 @@ public final class ChannelByteRanger extends AbstractChannelTransformer<ChannelB
 		return range(0, limit);
 	}
 
+	@NotNull
 	@Override
 	protected Promise<Void> onItem(ByteBuf item) {
 		int size = item.readRemaining();

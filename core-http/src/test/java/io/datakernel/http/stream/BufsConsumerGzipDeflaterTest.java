@@ -35,6 +35,7 @@ import java.util.zip.GZIPOutputStream;
 
 import static io.datakernel.http.GzipProcessorUtils.toGzip;
 import static io.datakernel.promise.TestUtils.await;
+import static java.util.Arrays.asList;
 
 public final class BufsConsumerGzipDeflaterTest {
 
@@ -104,6 +105,39 @@ public final class BufsConsumerGzipDeflaterTest {
 			buf2.moveHead(bufSize);
 		}
 		buf2.recycle();
+
+		doTest();
+	}
+
+	@Test
+	public void testCompressWithEmptyBufs() {
+		byte[] data1 = new byte[100];
+		byte[] data2 = new byte[100];
+		byte[] data3 = new byte[100];
+
+		ThreadLocalRandom.current().nextBytes(data1);
+		ThreadLocalRandom.current().nextBytes(data2);
+		ThreadLocalRandom.current().nextBytes(data3);
+
+		ByteBuf buf1 = ByteBuf.wrapForReading(data1);
+		ByteBuf buf2 = ByteBuf.wrapForReading(new byte[0]);
+		ByteBuf buf3 = ByteBuf.wrapForReading(data2);
+		ByteBuf buf4 = ByteBuf.wrapForReading(new byte[0]);
+		ByteBuf buf5 = ByteBuf.wrapForReading(data3);
+		ByteBuf buf6 = ByteBuf.wrapForReading(new byte[0]);
+
+		ByteBuf fullBuf = ByteBufPool.allocate(500);
+		fullBuf = ByteBufPool.append(fullBuf, buf1.slice());
+		fullBuf = ByteBufPool.append(fullBuf, buf2.slice());
+		fullBuf = ByteBufPool.append(fullBuf, buf3.slice());
+		fullBuf = ByteBufPool.append(fullBuf, buf4.slice());
+		fullBuf = ByteBufPool.append(fullBuf, buf5.slice());
+		fullBuf = ByteBufPool.append(fullBuf, buf6.slice());
+
+		ByteBuf gzipped = toGzip(fullBuf);
+		consumer.setExpectedBuf(gzipped);
+
+		list.addAll(asList(buf1, buf2, buf3, buf4, buf5, buf6));
 
 		doTest();
 	}

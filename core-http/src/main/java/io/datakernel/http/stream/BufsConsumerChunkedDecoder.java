@@ -147,10 +147,7 @@ public final class BufsConsumerChunkedDecoder extends AbstractCommunicatingProce
 			return;
 		}
 		input.parse(assertBytes(CRLF))
-				.whenException(e -> {
-					buf.recycle();
-					closeEx(MALFORMED_CHUNK);
-				})
+				.whenException(buf::recycle)
 				.then(() -> output.accept(buf))
 				.whenResult(this::processLength);
 	}

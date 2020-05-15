@@ -109,23 +109,14 @@ public final class BufsConsumerGzipDeflater extends AbstractCommunicatingProcess
 	}
 
 	private void writeBody() {
-		input.get()
-				.whenComplete((buf, e) -> {
-					if (buf != null) {
-						if (buf.canRead()) {
-							crc32.update(buf.array(), buf.head(), buf.readRemaining());
-							deflater.setInput(buf.array(), buf.head(), buf.readRemaining());
-							ByteBufQueue queue = deflate();
-							buf.recycle();
-							output.acceptAll(queue.asIterator())
-									.whenResult(this::writeBody);
-						} else {
-							buf.recycle();
-						}
-					} else {
-						writeFooter();
-					}
-				});
+		input.streamTo(ChannelConsumer.of(buf -> {
+					crc32.update(buf.array(), buf.head(), buf.readRemaining());
+					deflater.setInput(buf.array(), buf.head(), buf.readRemaining());
+					ByteBufQueue queue = deflate();
+					buf.recycle();
+					return output.acceptAll(queue.asIterator());
+				}))
+				.whenResult(this::writeFooter);
 	}
 
 	private void writeFooter() {

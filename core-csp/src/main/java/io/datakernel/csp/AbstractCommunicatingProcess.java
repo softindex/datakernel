@@ -188,7 +188,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 	}
 
 	protected final <T> Promise<T> sanitize(Promise<T> promise) {
-		return promise
+		return promise.async()
 				.thenEx(this::sanitize);
 	}
 

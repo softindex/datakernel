@@ -18,6 +18,8 @@ package io.datakernel.http.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.common.exception.StacklessException;
+import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.binary.BinaryChannelSupplier;
 import io.datakernel.promise.Promise;
@@ -30,14 +32,15 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import static io.datakernel.http.TestUtils.AssertingConsumer;
-import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK;
 import static io.datakernel.http.stream.BufsConsumerChunkedDecoder.MALFORMED_CHUNK_LENGTH;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.startsWith;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public final class BufsConsumerChunkedDecoderTest {
 
@@ -46,6 +49,8 @@ public final class BufsConsumerChunkedDecoderTest {
 
 	@ClassRule
 	public static final ByteBufRule byteBufRule = new ByteBufRule();
+
+	private static final StacklessException IGNORE_EXCEPTION = new StacklessException();
 
 	public final String[] plainText = {
 			"Suspendisse faucibus enim curabitur tempus leo viverra massa accumsan nisl nunc\n",
@@ -61,7 +66,6 @@ public final class BufsConsumerChunkedDecoderTest {
 	public final AssertingConsumer consumer = new AssertingConsumer();
 	public final List<ByteBuf> list = new ArrayList<>();
 	public final BufsConsumerChunkedDecoder chunkedDecoder = BufsConsumerChunkedDecoder.create();
-	public final Random random = new Random();
 
 	@Before
 	public void setUp() {
@@ -141,11 +145,14 @@ public final class BufsConsumerChunkedDecoderTest {
 	}
 
 	@Test
-	public void shouldThrowMalformedChunkException() {
-		consumer.setExpectedException(MALFORMED_CHUNK);
+	public void shouldThrowParseException() {
+		consumer.setExceptionValidator(e -> {
+			assertThat(e, instanceOf(ParseException.class));
+			assertThat(e.getMessage(), startsWith("Array of bytes differs at index 0"));
+		});
 		String message = Integer.toHexString(1);
 		message += "\r\nssss\r\n";
-		decodeOneString(message, MALFORMED_CHUNK);
+		decodeOneString(message, IGNORE_EXCEPTION);
 	}
 
 	@Test
@@ -218,7 +225,10 @@ public final class BufsConsumerChunkedDecoderTest {
 		if (expectedException == null) {
 			await(processResult);
 		} else {
-			assertEquals(expectedException, awaitException(processResult));
+			Throwable actualExceeption = awaitException(processResult);
+			if (expectedException != IGNORE_EXCEPTION){
+				assertEquals(expectedException, actualExceeption);
+			}
 		}
 	}
 }

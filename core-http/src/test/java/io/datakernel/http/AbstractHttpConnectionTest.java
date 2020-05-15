@@ -17,7 +17,8 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelByteChunker;
@@ -34,8 +35,9 @@ import org.junit.*;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -61,6 +63,8 @@ public final class AbstractHttpConnectionTest {
 
 	@Rule
 	public final ActivePromisesRule activePromisesRule = new ActivePromisesRule();
+
+	private static final Random RANDOM = ThreadLocalRandom.current();
 
 	private AsyncHttpClient client;
 
@@ -158,6 +162,30 @@ public final class AbstractHttpConnectionTest {
 	}
 
 	@Test
+	public void testGzipHugeBuf() throws IOException {
+		int size = 1_000_000;
+		ByteBuf expected = ByteBufPool.allocate(size);
+		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
+				request -> {
+					byte[] bytes = new byte[size];
+					RANDOM.nextBytes(bytes);
+					expected.put(bytes);
+					return HttpResponse.ok200()
+							.withBodyGzipCompression()
+							.withBodyStream(ChannelSupplier.of(expected.slice()));
+				})
+				.withAcceptOnce()
+				.withListenPort(PORT);
+
+		server.listen();
+
+		ByteBuf result = await(AsyncHttpClient.create(Eventloop.getCurrentEventloop()).request(HttpRequest.get("http://127.0.0.1:" + PORT))
+				.then(response -> response.getBodyStream().toCollector(ByteBufQueue.collector()))
+				.whenComplete(server::close));
+		assertArrayEquals(expected.asArray(), result.asArray());
+	}
+
+	@Test
 	public void testEmptyRequestResponse() {
 		List<Consumer<HttpMessage>> messageDecorators = asList(
 				message -> {},
@@ -237,32 +265,36 @@ public final class AbstractHttpConnectionTest {
 	}
 
 	private static void doTestHugeStreams(AsyncHttpClient client, SocketSettings socketSettings, int size, Consumer<HttpMessage> decorator) throws IOException {
+		ByteBuf expected = ByteBufPool.allocate(size);
 		AsyncHttpServer server = AsyncHttpServer.create(Eventloop.getCurrentEventloop(),
-				request -> {
-					HttpResponse httpResponse = HttpResponse.ok200().withBodyStream(request.getBodyStream());
-					decorator.accept(httpResponse);
-					return httpResponse;
-				})
+				request -> request.loadBody()
+						.map(body -> {
+							HttpResponse httpResponse = HttpResponse.ok200()
+									.withBodyStream(request.getBodyStream()
+											.transformWith(ChannelByteChunker.create(MemSize.of(1), MemSize.of(1))));
+							decorator.accept(httpResponse);
+							return httpResponse;
+						}))
 				.withListenPort(PORT)
 				.withSocketSettings(socketSettings);
 		server.listen();
 
 		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT)
-				.withBodyStream(ChannelSupplier.ofStream(Stream.generate(() -> ByteBufStrings.wrapAscii("a")).limit(size)));
+				.withBodyStream(ChannelSupplier.ofStream(Stream.generate(() -> {
+					byte[] temp = new byte[1];
+					RANDOM.nextBytes(temp);
+					ByteBuf buf = ByteBuf.wrapForReading(temp);
+					expected.put(buf.slice());
+					return buf;
+				}).limit(size)));
 
 		decorator.accept(request);
 
-		String result = await(client.request(request)
+		ByteBuf result = await(client.request(request)
 				.then(response -> response.getBodyStream()
-						.transformWith(ChannelByteChunker.create(MemSize.of(1), MemSize.of(1)))
-						.<CharSequence>map(ByteBufStrings::asAscii)
-						.toCollector(Collectors.joining()))
+						.toCollector(ByteBufQueue.collector()))
 				.whenComplete(server::close));
-
-		assertEquals(size, result.length());
-		for (char c : result.toCharArray()) {
-			assertEquals('a', c);
-		}
+		assertArrayEquals(expected.asArray(), result.asArray());
 	}
 
 	private Promise<HttpResponse> checkRequest(String expectedHeader, int expectedConnectionCount, EventStats connectionCount) {

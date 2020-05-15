@@ -97,7 +97,13 @@ public class AsyncExecutors {
 					AsyncSupplier<Object> supplier = (AsyncSupplier<Object>) deque.pollFirst();
 					SettablePromise<Object> cb = (SettablePromise<Object>) deque.pollFirst();
 					pendingCalls++;
-					supplier.get()
+					Promise<Object> promise = supplier.get();
+					if (promise.isComplete()){
+						pendingCalls--;
+						cb.accept(promise.getResult(), promise.getException());
+						continue;
+					}
+					promise
 							.whenComplete((result, e) -> {
 								pendingCalls--;
 								processBuffer();
@@ -127,7 +133,7 @@ public class AsyncExecutors {
 		};
 	}
 
-	public static AsyncExecutor retry(@NotNull RetryPolicy retryPolicy) {
+	public static AsyncExecutor retry(@NotNull RetryPolicy<?> retryPolicy) {
 		return new AsyncExecutor() {
 			@NotNull
 			@Override
