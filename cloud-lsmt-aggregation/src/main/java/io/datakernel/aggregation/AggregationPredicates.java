@@ -617,11 +617,13 @@ public class AggregationPredicates {
 
 		@Override
 		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
-			return fields.get(key) == null ?
-					E.isNull(E.property(record, key.replace('.', '$'))) :
+			Variable property = E.property(record, key.replace('.', '$'));
+			Object internalValue = toInternalValue(fields, key, this.value);
+			return internalValue == null ?
+					isNull(property, fields.get(key)) :
 					E.and(
-							isNotNull(E.property(record, key.replace('.', '$')), fields.get(key)),
-							E.cmpEq(E.property(record, key.replace('.', '$')), E.value(toInternalValue(fields, key, value))));
+							isNotNull(property, fields.get(key)),
+							E.cmpEq(property, E.value(internalValue)));
 		}
 
 		@Override
@@ -682,14 +684,14 @@ public class AggregationPredicates {
 
 		@Override
 		public Expression createPredicate(Expression record, Map<String, FieldType> fields) {
-			return fields.get(key) == null ?
-					E.isNotNull(
-							E.property(record, key.replace('.', '$'))) :
+			Variable property = E.property(record, key.replace('.', '$'));
+			Object internalValue = toInternalValue(fields, key, this.value);
+			FieldType fieldType = fields.get(key);
+			return internalValue == null ?
+					isNotNull(property, fieldType) :
 					E.or(
-							isNull(E.property(record, key.replace('.', '$')), fields.get(key)),
-							E.cmpNe(
-									E.property(record, key.replace('.', '$')),
-									E.value(toInternalValue(fields, key, value))));
+							isNull(property, fieldType),
+							E.cmpNe(property, E.value(internalValue)));
 		}
 
 		@Override

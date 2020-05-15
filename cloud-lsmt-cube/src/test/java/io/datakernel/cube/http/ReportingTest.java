@@ -527,7 +527,7 @@ public final class ReportingTest {
 						between("date", LocalDate.parse("2000-01-01"), LocalDate.parse("2000-01-04")),
 						and(notEq("advertiser", EXCLUDE_ADVERTISER), notEq("campaign", EXCLUDE_CAMPAIGN), notEq("banner", EXCLUDE_BANNER))))
 				.withHaving(and(
-						or(eq("advertiser.name", null), regexp("advertiser.name", ".*f.*")),
+						or(eq("advertiser.name", null), eq("advertiser.name", "first")),
 						between("date", LocalDate.parse("2000-01-01"), LocalDate.parse("2000-01-03"))))
 				.withReportType(DATA_WITH_TOTALS);
 
