@@ -39,7 +39,6 @@ import org.intellij.lang.annotations.MagicConstant;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static io.datakernel.async.process.AsyncExecutors.ofMaxRecursiveCalls;
 import static io.datakernel.bytebuf.ByteBufStrings.*;
 import static io.datakernel.http.HttpHeaderValue.ofBytes;
 import static io.datakernel.http.HttpHeaderValue.ofDecimal;
@@ -63,7 +62,6 @@ public abstract class AbstractHttpConnection {
 	public static final MemSize MAX_HEADER_LINE_SIZE = MemSize.of(ApplicationSettings.getInt(HttpMessage.class, "maxHeaderLineSize", MemSize.kilobytes(8).toInt())); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADER_LINE_SIZE_BYTES = MAX_HEADER_LINE_SIZE.toInt(); // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = ApplicationSettings.getInt(HttpMessage.class, "maxHeaders", 100); // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
-	public static final int MAX_RECURSIVE_CALLS = ApplicationSettings.getInt(AbstractHttpConnection.class, "maxRecursiveCalls", 64);
 
 	protected static final HttpHeaderValue CONNECTION_KEEP_ALIVE_HEADER = HttpHeaderValue.of("keep-alive");
 	protected static final HttpHeaderValue CONNECTION_CLOSE_HEADER = HttpHeaderValue.of("close");
@@ -391,16 +389,14 @@ public abstract class AbstractHttpConnection {
 			BufsConsumerChunkedDecoder decoder = BufsConsumerChunkedDecoder.create();
 			process = decoder;
 			encodedStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput()
-					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
+			bodyStream = decoder.getOutput();
 		}
 
 		if ((flags & GZIPPED) != 0) {
 			BufsConsumerGzipInflater decoder = BufsConsumerGzipInflater.create();
 			process = decoder;
 			bodyStream.bindTo(decoder.getInput());
-			bodyStream = decoder.getOutput()
-					.transformWith(consumer -> consumer.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS)));
+			bodyStream = decoder.getOutput();
 		}
 
 		ChannelSupplier<ByteBuf> supplier = bodyStream.getSupplier(); // process gets started here and can cause connection closing
@@ -453,8 +449,6 @@ public abstract class AbstractHttpConnection {
 		assert bodyStream != null;
 		httpMessage.bodyStream = null;
 
-		bodyStream = bodyStream.withExecutor(ofMaxRecursiveCalls(MAX_RECURSIVE_CALLS));
-
 		if ((httpMessage.flags & HttpMessage.USE_GZIP) != 0) {
 			httpMessage.addHeader(CONTENT_ENCODING, ofBytes(CONTENT_ENCODING_GZIP));
 			BufsConsumerGzipDeflater deflater = BufsConsumerGzipDeflater.create();
@@ -488,34 +482,11 @@ public abstract class AbstractHttpConnection {
 	}
 
 	private void writeStream(ChannelSupplier<ByteBuf> supplier) {
-		supplier.get()
-				.whenComplete((buf, e) -> {
-					if (isClosed()) {
-						supplier.cancel();
-						return;
-					}
-					if (e == null) {
-						if (buf != null) {
-							socket.write(buf)
-									.whenComplete(($, e2) -> {
-										if (isClosed()) {
-											supplier.cancel();
-											return;
-										}
-										if (e2 == null) {
-											writeStream(supplier);
-										} else {
-											supplier.close(e2);
-											closeWithError(e2);
-										}
-									});
-						} else {
-							onBodySent();
-						}
-					} else {
-						closeWithError(e);
-					}
-				});
+		supplier.streamTo(ChannelConsumer.of(
+				buf -> socket.write(buf)
+						.whenException(this::closeWithError),
+				this::closeWithError))
+				.whenResult($ -> onBodySent());
 	}
 
 	protected void switchPool(ConnectionsLinkedList newPool) {

@@ -57,6 +57,7 @@ public final class OTAlgorithms {
 					assert polledCommit == commit;
 					if (maybeResult.isResume()) {
 						toList(commit.getParents().keySet().stream().filter(visited::add).map(repository::loadCommit))
+								.async()
 								.whenResult(parentCommits -> {
 									queue.addAll(parentCommits);
 									walkGraphImpl(repository, reducer, queue, visited, cb);

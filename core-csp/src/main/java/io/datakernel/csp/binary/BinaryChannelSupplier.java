@@ -23,7 +23,6 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.common.parse.ParseException;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.promise.Promise;
-import io.datakernel.promise.SettablePromise;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
@@ -121,41 +120,25 @@ public abstract class BinaryChannelSupplier implements Cancellable {
 	}
 
 	public final <T> Promise<T> parse(ByteBufsParser<T> parser) {
-		if (!bufs.isEmpty()) {
-			T result;
-			try {
-				result = parser.tryParse(bufs);
-			} catch (Exception e) {
-				return Promise.ofException(e);
+		while (true) {
+			if (!bufs.isEmpty()) {
+				T result;
+				try {
+					result = parser.tryParse(bufs);
+				} catch (Exception e) {
+					close(e);
+					return Promise.ofException(e);
+				}
+				if (result != null) {
+					return Promise.of(result);
+				}
 			}
-			if (result != null) {
-				return Promise.of(result);
-			}
+			Promise<Void> moreDataPromise = needMoreData();
+			if (moreDataPromise.isResult()) continue;
+			return moreDataPromise
+					.whenException(this::close)
+					.then($ -> parse(parser));
 		}
-		return Promise.ofCallback(cb -> doParse(parser, cb));
-	}
-
-	private <T> void doParse(ByteBufsParser<T> parser, SettablePromise<T> cb) {
-		needMoreData()
-				.whenComplete(($, e) -> {
-					if (e == null) {
-						T result;
-						try {
-							result = parser.tryParse(bufs);
-						} catch (Exception e2) {
-							close(e2);
-							cb.setException(e2);
-							return;
-						}
-						if (result == null) {
-							doParse(parser, cb);
-							return;
-						}
-						cb.set(result);
-					} else {
-						cb.setException(e);
-					}
-				});
 	}
 
 	public final <T> Promise<T> parseRemaining(ByteBufsParser<T> parser) {

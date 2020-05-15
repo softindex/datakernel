@@ -27,6 +27,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.Consumer;
 
 import static io.datakernel.bytebuf.ByteBufStrings.decodeAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -80,6 +81,8 @@ public class TestUtils {
 		private ByteBuf expectedBuf;
 		@Nullable
 		private Exception expectedException;
+		@Nullable
+		private Consumer<Throwable> exceptionValidator;
 
 		public void setExpectedByteArray(@Nullable byte[] expectedByteArray) {
 			this.expectedByteArray = expectedByteArray;
@@ -97,11 +100,16 @@ public class TestUtils {
 			this.expectedException = expectedException;
 		}
 
+		public void setExceptionValidator(@Nullable Consumer<Throwable> exceptionValidator) {
+			this.exceptionValidator = exceptionValidator;
+		}
+
 		public void reset() {
 			expectedBuf = null;
 			expectedByteArray = null;
 			expectedException = null;
 			expectedString = null;
+			exceptionValidator = null;
 			executed = false;
 		}
 
@@ -144,6 +152,10 @@ public class TestUtils {
 			}
 			if (expectedException != null) {
 				assertEquals(expectedException, e);
+				return;
+			}
+			if (exceptionValidator != null) {
+				exceptionValidator.accept(e);
 				return;
 			}
 			throw new AssertionError(e);
