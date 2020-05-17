@@ -348,7 +348,7 @@ public class ValueStatsTest {
 		}
 
 		assertNumberOfDigitsAfterDot(valueStats);
-		assertEquals("8518±1408  [8409...9901]  last: 9901  calls: 100 @ 1/second", valueStats.toString());
+		assertEquals("8518±1408  [7152...9901]  last: 9901  calls: 100 @ 1/second", valueStats.toString());
 
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
@@ -358,7 +358,7 @@ public class ValueStatsTest {
 			inputValue += 0.01;
 		}
 		assertNumberOfDigitsAfterDot(valueStats);
-		assertEquals("10000.404±63.889  [10000.279...10001.99]  last: 10001.99  calls: 200 @ 1/second", valueStats.toString());
+		assertEquals("10000.4±63.89  [9989.24...10001.99]  last: 10001.99  calls: 200 @ 1/second", valueStats.toString());
 
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
@@ -368,7 +368,7 @@ public class ValueStatsTest {
 			inputValue += 0.00001;
 		}
 		assertNumberOfDigitsAfterDot(valueStats);
-		assertEquals("10001.999292±1.997154  [10001.99916...10002.00099]  last: 10002.00099  calls: 300 @ 1/second", valueStats.toString());
+		assertEquals("10001.99929±1.99715  [10001.97781...10002.00099]  last: 10002.00099  calls: 300 @ 1/second", valueStats.toString());
 	}
 
 	@Test
@@ -388,7 +388,7 @@ public class ValueStatsTest {
 		}
 
 		assertNumberOfDigitsAfterDot(valueStats);
-		assertEquals("-8517±1408  [-9900...-8302]  last: -9900  calls: 100 @ 1/second", valueStats.toString());
+		assertEquals("-8517±1408  [-9900...-7151]  last: -9900  calls: 100 @ 1/second", valueStats.toString());
 		valueStats.resetStats();
 		valueStats.refresh(currentTimestamp);
 		inputValue = 0;
@@ -400,7 +400,7 @@ public class ValueStatsTest {
 			inputValue -= 0.01;
 		}
 		assertNumberOfDigitsAfterDot(valueStats);
-		assertEquals("-0.8517±0.1408  [-0.99...-0.8302]  last: -0.99  calls: 100 @ 1/second", valueStats.toString());
+		assertEquals("-0.8517±0.1408  [-0.99...-0.7151]  last: -0.99  calls: 100 @ 1/second", valueStats.toString());
 
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
@@ -410,7 +410,7 @@ public class ValueStatsTest {
 			inputValue -= 0.00001;
 		}
 		assertNumberOfDigitsAfterDot(valueStats);
-		assertEquals("-1.000706±0.006408  [-1.00099...-1.000561]  last: -1.00099  calls: 200 @ 1/second", valueStats.toString());
+		assertEquals("-1.000706±0.006408  [-1.00099...-0.999465]  last: -1.00099  calls: 200 @ 1/second", valueStats.toString());
 	}
 
 	@Test
@@ -469,7 +469,7 @@ public class ValueStatsTest {
 			valueStats.refresh(currentTimestamp);
 			inputValue += 1;
 		}
-		assertEquals("0.517±0.5  [0...1]  last: 1  calls: 2 @ 1/second", valueStats.toString());
+		assertEquals("0.5173±0.4997  [0.0346...1]  last: 1  calls: 2 @ 1/second", valueStats.toString());
 
 		// Test if max == 0
 		valueStats.resetStats();
@@ -481,7 +481,7 @@ public class ValueStatsTest {
 			valueStats.refresh(currentTimestamp);
 			inputValue += 1;
 		}
-		assertEquals("-0.483±0.5  [-1...0]  last: 0  calls: 2 @ 1/second", valueStats.toString());
+		assertEquals("-0.4827±0.4997  [-0.9654...0]  last: 0  calls: 2 @ 1/second", valueStats.toString());
 	}
 
 	@Test
@@ -491,22 +491,21 @@ public class ValueStatsTest {
 		long currentTimestamp = 0;
 		double inputValue = 0.123456789123456789;
 
-		// Test if difference is 0.1 - precision should be 0.1/1000 = 0.0001 (4 digits)
+		// Test if difference is 0.2 - precision should be 0.2/1000 = 0.0002 (4 digits)
 		for (int i = 0; i < 2; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 0.1;
+			inputValue += 0.2;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 4);
 
-		// Test if difference is 1 - precision should be 1/1000 = 0.001 (3 digits)
 		valueStats.resetStats();
 		for (int i = 0; i < 2; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 1;
+			inputValue += 2;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 3);
 
@@ -516,7 +515,7 @@ public class ValueStatsTest {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 10;
+			inputValue += 20;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 2);
 
@@ -526,7 +525,7 @@ public class ValueStatsTest {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 100;
+			inputValue += 200;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 1);
 
@@ -536,7 +535,7 @@ public class ValueStatsTest {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 1000;
+			inputValue += 2000;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 0);
 
@@ -568,7 +567,7 @@ public class ValueStatsTest {
 
 			inputValue += 100;
 		}
-		assertEquals("8518±1408 bytes  [8409...9901]  last: 9901", valueStats.toString());
+		assertEquals("8518±1408 bytes  [7152...9901]  last: 9901", valueStats.toString());
 	}
 
 	@Test
@@ -586,7 +585,7 @@ public class ValueStatsTest {
 
 			inputValue += 100;
 		}
-		assertEquals("8518±1408  [8409...9901]  last: 9901  calls: 100 @ 1/second", valueStats.toString());
+		assertEquals("8518±1408  [7152...9901]  last: 9901  calls: 100 @ 1/second", valueStats.toString());
 	}
 
 	@Test
@@ -641,13 +640,13 @@ public class ValueStatsTest {
 		}
 		assertEquals(rate, valueStats.getSmoothedRate(), 0.1);
 
-		assertTrue(valueStats.toString().endsWith("calls: 9999 @ 20/second"));
+		assertTrue(valueStats.toString().endsWith("calls: 10000 @ 20/second"));
 
 		valueStats.withRate("messages");
-		assertTrue(valueStats.toString().endsWith("calls: 9999 @ 20 messages/second"));
+		assertTrue(valueStats.toString().endsWith("calls: 10000 @ 20 messages/second"));
 
 		valueStats.withRate("requests");
-		assertTrue(valueStats.toString().endsWith("calls: 9999 @ 20 requests/second"));
+		assertTrue(valueStats.toString().endsWith("calls: 10000 @ 20 requests/second"));
 	}
 
 	@Test
@@ -666,7 +665,7 @@ public class ValueStatsTest {
 			inputValue += 1.23456789;
 		}
 
-		assertEquals("1.063766E2±1.73837E1  [1.050406E2...1.234568E2]  last: 1.234568E2", valueStats.toString());
+		assertEquals("1.063766E2±1.73837E1  [8.952446E1...1.234568E2]  last: 1.234568E2", valueStats.toString());
 
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
@@ -676,7 +675,7 @@ public class ValueStatsTest {
 			inputValue += 0.0000000000000001;
 		}
 
-		assertEquals("1.246735E2±7.885133E-1  [1.246721E2...1.246914E2]  last: 1.246914E2", valueStats.toString());
+		assertEquals("1.246735E2±7.885133E-1  [1.245373E2...1.246902E2]  last: 1.246914E2", valueStats.toString());
 	}
 
 	@Test
@@ -719,7 +718,7 @@ public class ValueStatsTest {
 		valueStats1.recordValue(inputValue + 1);
 		currentTimestamp += ONE_SECOND_IN_MILLIS;
 		valueStats1.refresh(currentTimestamp);
-		assertEquals("1.752±0.5  [1.235...2.235]  last: 2.235  calls: 2 @ 1.933/second", valueStats1.toString());
+		assertEquals("1.7519±0.4997  [1.2692...2.2346]  last: 2.2346  calls: 2 @ 1.933/second", valueStats1.toString());
 
 		ValueStats valueStats2 = ValueStats.create(Duration.ofSeconds(10)).withAbsoluteValues(true);
 		valueStats2.recordValue(inputValue);
@@ -728,7 +727,7 @@ public class ValueStatsTest {
 		valueStats2.recordValue(inputValue + 1);
 		currentTimestamp += ONE_SECOND_IN_MILLIS;
 		valueStats2.refresh(currentTimestamp);
-		assertEquals("1.752±0.5  [0...2.235]  last: 2.235", valueStats2.toString());
+		assertEquals("1.752±0.5  [1.235...2.235]  last: 2.235", valueStats2.toString());
 
 		ValueStats valueStats3 = ValueStats.create(Duration.ofSeconds(10)).withAbsoluteValues(true).withRate();
 		valueStats3.recordValue(inputValue);
@@ -737,7 +736,7 @@ public class ValueStatsTest {
 		valueStats3.recordValue(inputValue + 1);
 		currentTimestamp += ONE_SECOND_IN_MILLIS;
 		valueStats3.refresh(currentTimestamp);
-		assertEquals("1.752±0.5  [0...2.235]  last: 2.235  calls: 2 @ 1.933/second", valueStats3.toString());
+		assertEquals("1.752±0.5  [1.235...2.235]  last: 2.235  calls: 2 @ 1.933/second", valueStats3.toString());
 	}
 
 	private void assertNumberOfDigitsAfterDot(ValueStats stats) {

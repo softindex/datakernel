@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx.stats;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
 
@@ -31,16 +32,15 @@ import static java.lang.Math.*;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxRefreshableStats<EventStats>, JmxStatsWithSmoothingWindow, JmxStatsWithReset {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(1).toMillis();
+	private static final long MAX_INTERVAL_BETWEEN_REFRESHES = ApplicationSettings.getDuration(JmxStats.class, "maxIntervalBetweenRefreshes", Duration.ofHours(1)).toMillis();
 	private static final double LN_2 = log(2);
 
 	private long lastTimestampMillis;
 	private int lastCount;
 
 	private long totalCount;
-	private double smoothedCount;
-	private double smoothedTimeSeconds;
-	private double smoothedRate;
+	private double smoothedRateCount;
+	private double smoothedRateTime;
 
 	private double smoothingWindow;
 	private double smoothingWindowCoef;
@@ -107,9 +107,8 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 		lastCount = 0;
 		totalCount = 0;
 		lastTimestampMillis = 0;
-		smoothedCount = 0;
-		smoothedRate = 0;
-		smoothedTimeSeconds = 0;
+		smoothedRateCount = 0;
+		smoothedRateTime = 0;
 	}
 
 	/**
@@ -133,11 +132,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 		long timeElapsedMillis = timestamp - lastTimestampMillis;
 
 		if (isTimePeriodValid(timeElapsedMillis)) {
-			double timeElapsedSeconds = timeElapsedMillis * 0.001;
-			double smoothingFactor = exp(timeElapsedSeconds * smoothingWindowCoef);
-			smoothedCount = lastCount + smoothedCount * smoothingFactor;
-			smoothedTimeSeconds = timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
-			smoothedRate = smoothedCount / smoothedTimeSeconds;
+			double timeElapsed = timeElapsedMillis * 0.001;
+			double smoothingFactor = exp(timeElapsed * smoothingWindowCoef);
+			smoothedRateCount = lastCount + smoothedRateCount * smoothingFactor;
+			smoothedRateTime = timeElapsed + smoothedRateTime * smoothingFactor;
 		} else {
 			// skip stats of last time period
 		}
@@ -148,14 +146,14 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	}
 
 	private static boolean isTimePeriodValid(long timePeriod) {
-		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
+		return timePeriod < MAX_INTERVAL_BETWEEN_REFRESHES && timePeriod >= 0;
 	}
 
 	@Override
 	public void add(EventStats anotherStats) {
 		totalCount += anotherStats.totalCount;
-		smoothedCount += anotherStats.smoothedCount;
-		smoothedRate += anotherStats.smoothedRate;
+		smoothedRateCount += anotherStats.smoothedRateCount;
+		smoothedRateTime += anotherStats.smoothedRateTime;
 
 		if (addedStats == 0) {
 			smoothingWindow = anotherStats.smoothingWindow;
@@ -183,7 +181,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 	 */
 	@JmxAttribute(optional = true)
 	public double getSmoothedRate() {
-		return smoothedRate;
+		return totalCount != 0 ? smoothedRateCount / smoothedRateTime * max(1, addedStats) : 0.0;
 	}
 
 	/**
@@ -220,11 +218,12 @@ public final class EventStats implements JmxRefreshableStats<EventStats>, JmxSta
 			return null;
 		}
 		DecimalFormat decimalFormat;
+		double smoothedRate = getSmoothedRate();
 		if (precision == -1) {
 			decimalFormat = new DecimalFormat("0.0####E0#");
 		} else {
 			decimalFormat = new DecimalFormat("0");
-			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(smoothedRate) / precision), 0), 6)));
+			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(smoothedRate / precision), 0), 6)));
 		}
 		String result = format(totalCount, smoothedRate, rateUnit, decimalFormat);
 		if (addedStats != 0){

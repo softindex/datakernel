@@ -24,7 +24,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
 
-import static io.datakernel.common.Preconditions.checkState;
 import static java.util.Collections.emptyMap;
 
 public final class ApplicationSettings {
@@ -95,8 +94,10 @@ public final class ApplicationSettings {
 	}
 
 	private static void ensureNotLookedUp() {
-		checkState(!firstLookupDone, () -> "Attempting to update application settings after some of them have been retrieved\n" +
-				"All updates should happen prior to any constant initialization via ApplicationSettings, " +
-				"preferably in static initialization block of 'main' class");
+		if (firstLookupDone) {
+			throw new IllegalStateException("Attempting to update application settings after some of them have been retrieved\n" +
+					"All updates should happen prior to any constant initialization via ApplicationSettings, " +
+					"preferably in static initialization block of 'main' class");
+		}
 	}
 }

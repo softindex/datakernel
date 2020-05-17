@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx.stats;
 
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,7 +37,7 @@ import static java.util.Arrays.asList;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxStatsWithReset, JmxStatsWithSmoothingWindow {
-	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = Duration.ofHours(1).toMillis();
+	private static final long MAX_INTERVAL_BETWEEN_REFRESHES = ApplicationSettings.getDuration(JmxStats.class, "maxIntervalBetweenRefreshes", Duration.ofHours(1)).toMillis();
 	private static final double LN_2 = log(2);
 
 	// region standard levels
@@ -100,8 +101,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	private double lastSumDouble;
 	private double lastSqrDouble;
 	private int lastCountDouble;
-	private double lastMinDouble;
-	private double lastMaxDouble;
+	private double lastMinDouble = Double.MAX_VALUE;
+	private double lastMaxDouble = -Double.MAX_VALUE;
 
 	// calculated during refresh
 	private double totalSum;
@@ -111,12 +112,12 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	private double smoothedSum;
 	private double smoothedSqr;
 	private double smoothedCount;
-	private double smoothedMin;
-	private double smoothedMax;
-	private double absoluteMaxValue;
-	private double absoluteMinValue;
-	private double smoothedTimeSeconds;
-	private double smoothedRate;
+	private double smoothedMin = Double.MAX_VALUE;
+	private double smoothedMax = -Double.MAX_VALUE;
+	private double absoluteMax = Double.MAX_VALUE;
+	private double absoluteMin = -Double.MAX_VALUE;
+	private double smoothedRateCount;
+	private double smoothedRateTime;
 
 	private double smoothingWindow;
 	private double smoothingWindowCoef;
@@ -235,8 +236,16 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		smoothedSum = 0.0;
 		smoothedSqr = 0.0;
 		smoothedCount = 0.0;
-		smoothedMin = 0.0;
-		smoothedMax = 0.0;
+		smoothedMin = Double.MAX_VALUE;
+		smoothedMax = -Double.MAX_VALUE;
+		smoothedRateCount = 0;
+		smoothedRateTime = 0;
+
+		totalSum = 0.0;
+		totalCount = 0;
+
+		absoluteMin = Double.MAX_VALUE;
+		absoluteMax = -Double.MAX_VALUE;
 
 		lastMaxInteger = Integer.MIN_VALUE;
 		lastMinInteger = Integer.MAX_VALUE;
@@ -253,11 +262,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		lastValueDouble = 0.0;
 
 		lastTimestampMillis = 0L;
-		smoothedRate = 0;
-		smoothedTimeSeconds = 0;
-
-		totalSum = 0.0;
-		totalCount = 0;
 
 		if (histogramLevels != null) {
 			Arrays.fill(histogramValues, 0);
@@ -365,69 +369,16 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		double lastSum = 0.0;
 		double lastSqr = 0.0;
 		long lastCount = 0;
-
-		if (lastCountDouble > 0) {
-			lastSum += lastSumDouble;
-			lastSqr += lastSqrDouble;
-			lastCount += lastCountDouble;
-		}
+		double lastMin = Double.MAX_VALUE;
+		double lastMax = -Double.MAX_VALUE;
 
 		if (lastCountInteger > 0) {
 			lastSum += lastSumInteger;
 			lastSqr += lastSqrInteger;
 			lastCount += lastCountInteger;
-		}
+			lastMin = lastMinInteger;
+			lastMax = lastMaxInteger;
 
-		double lastMin = (lastMinInteger < lastMinDouble) ? lastMinInteger : lastMinDouble;
-		double lastMax = (lastMaxInteger > lastMaxDouble) ? lastMaxInteger : lastMaxDouble;
-
-		absoluteMinValue = min(absoluteMinValue, lastMin);
-		absoluteMaxValue = max(absoluteMaxValue, lastMax);
-
-		if (lastTimestampMillis == 0L) {
-			smoothedSum = lastSum;
-			smoothedSqr = lastSqr;
-			smoothedCount = lastCount;
-			totalSum = lastSum;
-			totalCount = lastCount;
-			smoothedMin = lastMin;
-			smoothedMax = lastMax;
-		} else {
-			long timeElapsedMillis = timestamp - lastTimestampMillis;
-
-			if (isTimePeriodValid(timeElapsedMillis)) {
-				double timeElapsedSeconds = timeElapsedMillis * 0.001;
-				double smoothingFactor = exp(timeElapsedSeconds * smoothingWindowCoef);
-
-				smoothedSum = lastSum + smoothedSum * smoothingFactor;
-				smoothedSqr = lastSqr + smoothedSqr * smoothingFactor;
-				smoothedCount = lastCount + smoothedCount * smoothingFactor;
-				smoothedTimeSeconds = timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
-				smoothedRate = smoothedCount / smoothedTimeSeconds;
-
-				totalSum += lastSum;
-				totalCount += lastCount;
-
-				if (lastCount != 0) {
-					smoothedMin += (smoothedMax - smoothedMin) * (1 - smoothingFactor);
-					smoothedMax += (smoothedMin - smoothedMax) * (1 - smoothingFactor);
-
-					if (lastMin < smoothedMin) {
-						smoothedMin = lastMin;
-					}
-
-					if (lastMax > smoothedMax) {
-						smoothedMax = lastMax;
-					}
-				}
-			} else {
-				// skip stats of last time period
-			}
-		}
-
-		lastTimestampMillis = timestamp;
-
-		if (lastCountInteger > 0) {
 			lastSumInteger = 0;
 			lastSqrInteger = 0;
 			lastCountInteger = 0;
@@ -436,16 +387,53 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		}
 
 		if (lastCountDouble > 0) {
+			lastSum += lastSumDouble;
+			lastSqr += lastSqrDouble;
+			lastCount += lastCountDouble;
+			lastMin = min(lastMin, lastMinDouble);
+			lastMax = max(lastMax, lastMaxDouble);
+
 			lastSumDouble = 0;
 			lastSqrDouble = 0;
 			lastCountDouble = 0;
 			lastMinDouble = Double.MAX_VALUE;
 			lastMaxDouble = -Double.MAX_VALUE;
 		}
+
+		long timeElapsedMillis = lastTimestampMillis == 0L ? 0 : timestamp - lastTimestampMillis;
+
+		if (isTimePeriodValid(timeElapsedMillis)) {
+			double timeElapsed = timeElapsedMillis * 0.001;
+			double smoothingFactor = exp(timeElapsed * smoothingWindowCoef);
+
+			if (lastCount != 0) {
+				smoothedSum = lastSum + smoothedSum * smoothingFactor;
+				smoothedSqr = lastSqr + smoothedSqr * smoothingFactor;
+				smoothedCount = lastCount + smoothedCount * smoothingFactor;
+
+				totalSum += lastSum;
+				totalCount += lastCount;
+
+				double smoothedAvg = smoothedSum / smoothedCount;
+				smoothedMin = lastMin < smoothedMin ? lastMin : smoothedAvg + (smoothedMin - smoothedAvg) * smoothingFactor;
+				smoothedMax = lastMax > smoothedMax ? lastMax : smoothedAvg + (smoothedMax - smoothedAvg) * smoothingFactor;
+
+				absoluteMin = min(absoluteMin, lastMin);
+				absoluteMax = max(absoluteMax, lastMax);
+			}
+
+			smoothedRateCount = lastCount + smoothedRateCount * smoothingFactor;
+			smoothedRateTime = timeElapsed + smoothedRateTime * smoothingFactor;
+
+		} else {
+			// skip stats of last time period
+		}
+
+		lastTimestampMillis = timestamp;
 	}
 
 	private static boolean isTimePeriodValid(long timePeriod) {
-		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
+		return timePeriod < MAX_INTERVAL_BETWEEN_REFRESHES && timePeriod >= 0;
 	}
 
 	@Override
@@ -456,22 +444,14 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		smoothedSum += anotherStats.smoothedSum;
 		smoothedSqr += anotherStats.smoothedSqr;
 		smoothedCount += anotherStats.smoothedCount;
-		smoothedRate += anotherStats.smoothedRate;
+		smoothedRateCount += anotherStats.smoothedRateCount;
+		smoothedRateTime += anotherStats.smoothedRateTime;
 
 		totalSum += anotherStats.totalSum;
 		totalCount += anotherStats.totalCount;
 
-		if (addedStats == 0) {
-			smoothedMin = anotherStats.smoothedMin;
-			smoothedMax = anotherStats.smoothedMax;
-		} else {
-			if (anotherStats.smoothedMin < smoothedMin) {
-				smoothedMin = anotherStats.smoothedMin;
-			}
-			if (anotherStats.smoothedMax > smoothedMax) {
-				smoothedMax = anotherStats.smoothedMax;
-			}
-		}
+		smoothedMin = min(smoothedMin, anotherStats.smoothedMin);
+		smoothedMax = max(smoothedMax, anotherStats.smoothedMax);
 
 		if (anotherStats.lastTimestampMillis > lastTimestampMillis) {
 			lastTimestampMillis = anotherStats.lastTimestampMillis;
@@ -580,7 +560,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	 */
 	@JmxAttribute(name = "absoluteMin", optional = true)
 	public double getAbsosuteMin() {
-		return totalCount == 0 ? 0.0 : absoluteMinValue;
+		return totalCount == 0 ? 0.0 : absoluteMin;
 	}
 
 	/**
@@ -590,7 +570,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	 */
 	@JmxAttribute(name = "absoluteMax", optional = true)
 	public double getAbsoluteMax() {
-		return totalCount == 0 ? 0.0 : absoluteMaxValue;
+		return totalCount == 0 ? 0.0 : absoluteMax;
 	}
 
 	@JmxAttribute(optional = true)
@@ -600,7 +580,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 
 	@JmxAttribute(optional = true)
 	public double getSmoothedRate() {
-		return smoothedRate;
+		return totalCount != 0 ? smoothedRateCount / smoothedRateTime * max(1, addedStats) : 0.0;
 	}
 
 	@Override
@@ -728,7 +708,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 	@Override
 	public String toString() {
 		if (totalCount == 0) {
-			return "<totalCount is 0>";
+			return "";
 		}
 
 		double min = smoothedMin;
@@ -736,15 +716,15 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		DecimalFormat decimalFormat;
 
 		if (useAbsoluteValues) {
-			min = absoluteMinValue;
-			max = absoluteMaxValue;
+			min = absoluteMin;
+			max = absoluteMax;
 		}
 
 		if (precision == -1) {
 			decimalFormat = new DecimalFormat("0.0####E0#");
 		} else {
 			decimalFormat = new DecimalFormat("0");
-			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10(abs(max - min) / precision), 0), 6)));
+			decimalFormat.setMaximumFractionDigits((int) ceil(min(max(-log10((max - min) / precision), 0), 6)));
 		}
 
 		StringBuilder constructorTemplate = new StringBuilder();
@@ -786,7 +766,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats>, JmxSta
 		if (rateUnit != null) {
 			constructorTemplate
 					.append("calls: ")
-					.append(EventStats.format(totalCount, smoothedRate, rateUnit, decimalFormat))
+					.append(EventStats.format(totalCount, getSmoothedRate(), rateUnit, decimalFormat))
 					.append("  ");
 		}
 
