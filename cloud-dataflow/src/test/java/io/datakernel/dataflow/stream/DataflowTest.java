@@ -26,8 +26,8 @@ import io.datakernel.dataflow.di.BinarySerializerModule;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.dsl.AST;
-import io.datakernel.dataflow.dsl.EvaluationContext;
 import io.datakernel.dataflow.dsl.DslParser;
+import io.datakernel.dataflow.dsl.EvaluationContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.Node;
@@ -428,24 +428,24 @@ public final class DataflowTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(6),
 						new TestItem(4),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(1)))
-				.bind(slot("result")).toInstance(result1)
+				.bind(datasetId("result")).toInstance(result1)
 				.build();
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(7),
 						new TestItem(7),
 						new TestItem(8),
 						new TestItem(2),
 						new TestItem(5)))
-				.bind(slot("result")).toInstance(result2)
+				.bind(datasetId("result")).toInstance(result2)
 				.build();
 
 		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
@@ -462,12 +462,15 @@ public final class DataflowTest {
 						"-- this is a comment\n" +
 						"\n" +
 						"items = DATASET \"items\" TYPE \"TestItem\"\n" +
-						"filtered = FILTER items WITH \"TestPredicate\"\n" +
+						"filtered = FILTER items WITH \"TestPredicate\" -- (.value % 2 == 2 + 2 * 2)\n" +
 						"sorted = LOCAL SORT filtered BY \"TestKeyFunction\"\n" +
 						"                             COMPARING WITH \"TestComparator\"\n" +
 						"\n" +
 						"WRITE sorted INTO \"result\"\n"
 		);
+
+		System.out.println(query);
+
 		query.evaluate(new EvaluationContext(graph));
 
 		System.out.println(graph.toGraphViz());

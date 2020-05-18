@@ -40,7 +40,12 @@ public final class ExpressionDef {
 		TOKENS_REF.set(TOKENS);
 	}
 
-	static final Object NO_GROUP = new Object();
+	static final Object NO_GROUP = new Object() {
+		@Override
+		public String toString() {
+			return "<NO_GROUP>";
+		}
+	};
 
 	private final List<ExpressionToken> tokens;
 	private final Function<ExpressionContext, Dataset<?>> evaluationCallback;
@@ -79,6 +84,34 @@ public final class ExpressionDef {
 				.map(result -> Arrays.stream(result).filter(Objects::nonNull).collect(toList()));
 	}
 
+	@SuppressWarnings("unchecked")
+	private static void toStringRecursive(StringBuilder sb, List<ExpressionToken> tokens, List<Object> items) {
+		int index = 0;
+		for (int i = 0; i < tokens.size(); i++) {
+			ExpressionToken token = tokens.get(i);
+			if (token instanceof Keywords) {
+				List<String> value = ((Keywords) token).value;
+				for (int j = 0; j < value.size() - 1; j++) {
+					sb.append(value.get(j)).append(' ');
+				}
+				sb.append(value.get(value.size() - 1));
+			} else {
+				Object param = items.get(index++);
+				if (param instanceof List) {
+					toStringRecursive(sb, ((OptionalGroup) token).tokens, (List<Object>) param);
+				} else if (param == NO_GROUP) {
+					continue; // to skip the extra space
+				} else {
+					sb.append(param);
+				}
+			}
+			// really make sure no extra spaces are added at the end of the string
+			if (i != tokens.size() - 1 && (index == items.size() - 1 || items.get(index) != NO_GROUP)) {
+				sb.append(' ');
+			}
+		}
+	}
+
 	public Parser<AST.Expression> getParser(DslParser parser) {
 		return constructParser(parser, tokens)
 				.map(items -> new AST.Expression() {
@@ -86,6 +119,13 @@ public final class ExpressionDef {
 					@SuppressWarnings("unchecked")
 					public <T> Dataset<T> evaluate(EvaluationContext context) {
 						return (Dataset<T>) evaluationCallback.apply(new ExpressionContext(context, items));
+					}
+
+					@Override
+					public String toString() {
+						StringBuilder sb = new StringBuilder();
+						toStringRecursive(sb, tokens, items);
+						return sb.toString();
 					}
 				});
 	}
@@ -106,7 +146,7 @@ public final class ExpressionDef {
 		public Parser<?> getParser(DslParser parser) {
 			Parser<?>[] parsers = new Parser[value.size()];
 			for (int i = 0; i < value.size(); i++) {
-				parsers[i] = parser.getKeywordParser(value.get(i));
+				parsers[i] = parser.getTokenParser(value.get(i));
 			}
 			return Parsers.sequence(parsers).map($ -> null).atomic();
 		}
@@ -118,7 +158,7 @@ public final class ExpressionDef {
 	}
 
 	private enum PlaceholderType {
-		EXPR, STR, INT
+		EXPR, STR, INT, FLOAT, LAMBDA
 	}
 
 	private static final class Placeholder implements ExpressionToken {
@@ -133,10 +173,14 @@ public final class ExpressionDef {
 			switch (type) {
 				case INT:
 					return DslParser.INT_LITERAL;
+				case FLOAT:
+					return DslParser.FLOAT_LITERAL;
 				case STR:
 					return DslParser.STRING_LITERAL;
 				case EXPR:
 					return parser.getExpressionParser();
+				case LAMBDA:
+					return DslParser.STRING_LITERAL.cast().or(parser.getLambdaParser());
 			}
 			throw new NullPointerException("Placeholder.type is null");
 		}

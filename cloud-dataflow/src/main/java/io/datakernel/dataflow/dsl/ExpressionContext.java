@@ -4,6 +4,8 @@ import io.datakernel.dataflow.dataset.Dataset;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class ExpressionContext {
 	private final EvaluationContext evaluationContext;
@@ -19,9 +21,6 @@ public final class ExpressionContext {
 	}
 
 	private <T> T getItem(int position, Class<T> cls, String name) {
-		if (position < 0 || position >= items.size()) {
-			throw new IndexOutOfBoundsException("Index " + position + " is out of bounds [0; " + items.size() + "]");
-		}
 		Object object = items.get(position);
 		if (!cls.isInstance(object)) {
 			throw new IllegalStateException("Tried to get " + name + " at index " + position + ", got " + object);
@@ -33,12 +32,32 @@ public final class ExpressionContext {
 		return getItem(position, int.class, "an int");
 	}
 
+	public float getFloat(int position) {
+		return getItem(position, float.class, "a float");
+	}
+
 	public String getString(int position) {
 		return getItem(position, String.class, "a string");
 	}
 
 	public Class<Object> getClass(int position) {
 		return evaluationContext.resolveClass(getString(position));
+	}
+
+	public <T, R> Function<T, R> getMapper(int position) {
+		Object object = items.get(position);
+		if (object instanceof String) {
+			return evaluationContext.generateInstance((String) object);
+		}
+		return LambdaGenerator.generateMapper((AST.LambdaExpression) object);
+	}
+
+	public <T> Predicate<T> getPredicate(int position) {
+		Object object = items.get(position);
+		if (object instanceof String) {
+			return evaluationContext.generateInstance((String) object);
+		}
+		return LambdaGenerator.generatePredicate((AST.LambdaExpression) object);
 	}
 
 	public <T> T generateInstance(int position) {

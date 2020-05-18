@@ -7,10 +7,7 @@ import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.datastream.processor.StreamJoin.Joiner;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
-import org.jparsec.Parser;
-import org.jparsec.Parsers;
-import org.jparsec.Scanners;
-import org.jparsec.Terminals;
+import org.jparsec.*;
 
 import java.util.Comparator;
 import java.util.List;
@@ -31,40 +28,50 @@ public final class DslParser {
 	).skipMany();
 
 	public static final Parser<String> STRING_LITERAL = Terminals.StringLiteral.PARSER;
-	public static final Parser<Integer> INT_LITERAL = Terminals.DecimalLiteral.PARSER
-			.map(Integer::parseInt);
+	public static final Parser<Integer> INT_LITERAL = Terminals.DecimalLiteral.PARSER.map(Integer::parseInt);
+	public static final Parser<Float> FLOAT_LITERAL = Terminals.DecimalLiteral.PARSER.map(Float::parseFloat);
 
 	private final Parser<AST.Query> parser;
 	private final Terminals terminals;
 	private final Parser<AST.Expression> expressionParser;
+	private final Parser<AST.LambdaExpression> lambdaParser;
 
-	public DslParser(Parser<AST.Query> parser, Terminals terminals, Parser<AST.Expression> expressionParser) {
+	public DslParser(Parser<AST.Query> parser, Terminals terminals, Parser<AST.Expression> expressionParser, Parser<AST.LambdaExpression> lambdaParser) {
 		this.parser = parser;
 		this.terminals = terminals;
 		this.expressionParser = expressionParser;
+		this.lambdaParser = lambdaParser;
 	}
 
 	public AST.Query parse(String query) {
 		return parser.parse(query);
 	}
 
-	public Parser<Void> getKeywordParser(String keyword) {
-		return terminals.token(keyword).cast();
+	public Parser<Token> getTokenParser(String name) {
+		return terminals.token(name);
 	}
 
 	public Parser<AST.Expression> getExpressionParser() {
 		return expressionParser;
 	}
 
-	public static DslParser create(List<ExpressionDef> expressions) {
+	public Parser<AST.LambdaExpression> getLambdaParser() {
+		return lambdaParser;
+	}
 
+	public static DslParser create(List<ExpressionDef> expressions) {
 		Stream<String> builtinKeywords = Stream.of("USE", "WRITE", "INTO", "REPEAT", "TIMES", "END");
 
 		Stream<String> customKeywords = expressions.stream()
 				.flatMap(e -> e.getKeywords().stream());
 
+		Stream<String> builtinOperators = Stream.of("=", ".", "(", ")");
+
+		Stream<String> customOperators = LambdaParser.getOperatorTokens()
+				.sorted(Comparator.comparing(String::length).reversed());
+
 		Terminals dslTerminals =
-				Terminals.operators("<=", ">=", "==", "<", ">", "=", ".", "+", "-", "*", "/", "%", "(", ")")
+				Terminals.operators(Stream.concat(customOperators, builtinOperators).collect(toSet()))
 						.words(Scanners.IDENTIFIER)
 						.caseInsensitiveKeywords(Stream.concat(builtinKeywords, customKeywords).collect(toSet()))
 						.build();
@@ -77,12 +84,15 @@ public final class DslParser {
 
 		Parser.Reference<AST.Expression> expressionRef = Parser.newReference();
 		Parser.Reference<AST.Statement> statementRef = Parser.newReference();
+		Parser.Reference<AST.LambdaExpression> lambdaRef = Parser.newReference();
 
 		Parser<AST.Identifier> identifier = Terminals.identifier().map(AST.Identifier::new);
 
 		Parser<AST.Query> grammar = statementRef.lazy().many().map(AST.Query::new);
 
-		DslParser parser = new DslParser(grammar.from(dslTokenizer, IGNORED), dslTerminals, expressionRef.lazy());
+		DslParser parser = new DslParser(grammar.from(dslTokenizer, IGNORED), dslTerminals, expressionRef.lazy(), lambdaRef.lazy());
+
+		lambdaRef.set(LambdaParser.create(parser));
 
 		Parser<?>[] expressionParsers = new Parser[expressions.size() + 1];
 		for (int i = 0; i < expressions.size(); i++) {
@@ -129,7 +139,7 @@ public final class DslParser {
 		if (keyGroup == null) {
 			return new Tuple2<>(Function.identity(), (Class<Object>) dataset.valueType());
 		}
-		Function<Object, Object> function = keyGroup.generateInstance(0);
+		Function<Object, Object> function = keyGroup.getMapper(0);
 		return new Tuple2<>(function, getReturnType(function));
 	}
 
@@ -147,11 +157,11 @@ public final class DslParser {
 				expression("DATASET %str TYPE %str", context ->
 						Datasets.datasetOfList(context.getString(0), context.getClass(1))),
 
-				expression("FILTER %expr WITH %str", context ->
-						Datasets.filter(context.evaluateExpr(0), context.generateInstance(1))),
+				expression("FILTER %expr WITH %lambda", context ->
+						Datasets.filter(context.evaluateExpr(0), context.getPredicate(1))),
 
-				expression("MAP %expr BY %str", context -> {
-					Function<Object, Object> mapper = context.generateInstance(1);
+				expression("MAP %expr BY %lambda", context -> {
+					Function<Object, Object> mapper = context.getMapper(1);
 					return Datasets.map(context.evaluateExpr(0), mapper, getReturnType(mapper));
 				}),
 
@@ -166,7 +176,7 @@ public final class DslParser {
 
 					ExpressionContext keyGroup = context.getOptionalGroup(4);
 					Function<Object, Object> fn = keyGroup != null ?
-							keyGroup.generateInstance(0) :
+							keyGroup.getMapper(0) :
 							Function.identity();
 
 					return Datasets.join(left, right, joiner, resultType, fn);
@@ -182,7 +192,7 @@ public final class DslParser {
 					Comparator<Object> keyComparator = getComparator(context, 4);
 
 					Class<Object> accumulatorType = context.getClass(6);
-					Function<Object, Object> accumulatorKeyFunction = context.generateInstance(7);
+					Function<Object, Object> accumulatorKeyFunction = context.getMapper(7);
 
 					return Datasets.sort_Reduce_Repartition_Reduce(
 							dataset, reducer, fn.getValue2(), fn.getValue1(),

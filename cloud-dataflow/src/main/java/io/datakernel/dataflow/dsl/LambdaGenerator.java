@@ -2,8 +2,18 @@ package io.datakernel.dataflow.dsl;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 public final class LambdaGenerator {
+
+	public static <T, R> Function<T, R> generateMapper(AST.LambdaExpression expression) {
+		throw new UnsupportedOperationException("todo: support actual lambdas with codegen");
+	}
+
+	public static <T> Predicate<T> generatePredicate(AST.LambdaExpression expression) {
+		throw new UnsupportedOperationException("todo: support actual lambdas with codegen");
+	}
 
 	@SuppressWarnings("unchecked")
 	public static Class<Object> getReturnType(Object functional) {
