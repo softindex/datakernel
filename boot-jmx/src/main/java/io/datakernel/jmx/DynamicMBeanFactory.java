@@ -238,8 +238,9 @@ public final class DynamicMBeanFactory {
 
 	private List<AttributeDescriptor> fetchAttributeDescriptors(Class<?> clazz, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		Map<String, AttributeDescriptor> nameToAttr = new HashMap<>();
-		for (Method method : clazz.getMethods()) {
+		for (Method method : getAllMethods(clazz)) {
 			if (method.isAnnotationPresent(JmxAttribute.class)) {
+				validateJmxMethod(method, JmxAttribute.class);
 				if (isGetter(method)) {
 					processGetter(nameToAttr, method);
 				} else if (isSetter(method)) {
@@ -252,6 +253,17 @@ public final class DynamicMBeanFactory {
 			}
 		}
 		return new ArrayList<>(nameToAttr.values());
+	}
+
+	private static void validateJmxMethod(Method method, Class<? extends Annotation> annotationClass) {
+		if (!isPublic(method)) {
+			throw new IllegalStateException("A method '" + method.getName() + "' in class '" + method.getDeclaringClass().getName() +
+					"' annotated with @" + annotationClass.getSimpleName() + " should be declared public");
+		}
+		if (!isPublic(method.getDeclaringClass())) {
+			throw new IllegalStateException("A class '" + method.getDeclaringClass().getName() +
+					"' containing methods annotated with @" + annotationClass.getSimpleName() + " should be declared public");
+		}
 	}
 
 	private static void processGetter(Map<String, AttributeDescriptor> nameToAttr, Method getter) {
@@ -630,9 +642,10 @@ public final class DynamicMBeanFactory {
 
 	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> beanClass) {
 		List<MBeanOperationInfo> operations = new ArrayList<>();
-		Method[] methods = beanClass.getMethods();
+		List<Method> methods = getAllMethods(beanClass);
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
+				validateJmxMethod(method, JmxOperation.class);
 				JmxOperation annotation = method.getAnnotation(JmxOperation.class);
 				String opName = annotation.name();
 				if (opName.equals("")) {
@@ -667,7 +680,7 @@ public final class DynamicMBeanFactory {
 	// region jmx operations fetching
 	private Map<OperationKey, Either<Method, AttributeNode>> fetchOpkeyToMethodOrNode(Class<?> beanClass, Map<Type, JmxCustomTypeAdapter<?>> customTypes) {
 		Map<OperationKey, Either<Method, AttributeNode>> opkeyToMethod = new HashMap<>();
-		Method[] methods = beanClass.getMethods();
+		List<Method> methods = getAllMethods(beanClass);
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxOperation.class)) {
 				JmxOperation annotation = method.getAnnotation(JmxOperation.class);

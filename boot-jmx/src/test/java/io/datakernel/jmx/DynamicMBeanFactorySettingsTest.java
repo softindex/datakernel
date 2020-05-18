@@ -102,7 +102,7 @@ public class DynamicMBeanFactorySettingsTest {
 		assertEquals("configurated", mbean.getAttribute("stats_data"));
 	}
 
-	private static final class MBeanStubTwo implements ConcurrentJmxBean {
+	public static final class MBeanStubTwo implements ConcurrentJmxBean {
 		private final ConfigurableStats stats = new ConfigurableStats();
 
 		@JmxAttribute

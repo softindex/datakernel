@@ -66,16 +66,22 @@ public final class ReflectionUtils {
 		return Throwable.class.isAssignableFrom(cls);
 	}
 
+	public static boolean isPublic(Class<?> cls) {
+		return Modifier.isPublic(cls.getModifiers());
+	}
+
+	public static boolean isPublic(Method method) {
+		return Modifier.isPublic(method.getModifiers());
+	}
+
 	public static boolean isGetter(Method method) {
-		return Modifier.isPublic(method.getModifiers())
-				&& method.getName().length() > 2
+		return method.getName().length() > 2
 				&& (method.getName().startsWith("get") && method.getReturnType() != void.class
 				|| method.getName().startsWith("is") && (method.getReturnType() == boolean.class || method.getReturnType() == Boolean.class));
 	}
 
 	public static boolean isSetter(Method method) {
-		return Modifier.isPublic(method.getModifiers())
-				&& method.getName().length() > 3
+		return method.getName().length() > 3
 				&& method.getName().startsWith("set")
 				&& method.getReturnType() == void.class
 				&& method.getParameterCount() == 1;
@@ -173,6 +179,21 @@ public final class ReflectionUtils {
 		} catch (ClassNotFoundException e) {
 			return false;
 		}
+	}
+
+	/**
+	 * Returns a list containing {@code Method} objects reflecting all the
+	 * methods of the class or interface represented by this {@code
+	 * Class} object, including those declared by the class or interface and
+	 * those from superclasses and superinterfaces.
+	 */
+	public static List<Method> getAllMethods(Class<?> cls) {
+		Set<Method> methodsFound = new LinkedHashSet<>();
+		walkClassHierarchy(cls, aClass -> {
+			methodsFound.addAll(Arrays.asList(aClass.getDeclaredMethods()));
+			return Optional.empty();
+		});
+		return new ArrayList<>(methodsFound);
 	}
 
 	public static <A extends Annotation> Optional<A> deepFindAnnotation(Class<?> aClass, Class<A> annotation) {

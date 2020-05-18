@@ -35,6 +35,7 @@ import java.util.Map;
 import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.Assert.*;
 
 public final class DynamicMBeanFactoryOperationsTest {
@@ -133,6 +134,19 @@ public final class DynamicMBeanFactoryOperationsTest {
 		assertEquals(15, (int) mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
 	}
 
+	@Test
+	public void itShouldThrowExceptionForNonPublicOperations() {
+		MBeanWithNonPublicOperation instance = new MBeanWithNonPublicOperation();
+		try {
+			DynamicMBeanFactory.create()
+					.createDynamicMBean(singletonList(instance), defaultSettings(), false);
+			fail();
+		} catch (IllegalStateException e) {
+			assertThat(e.getMessage(), containsString( "A method 'action' in class '" + MBeanWithNonPublicOperation.class.getName() +
+					"' annotated with @JmxOperation should be declared public"));
+		}
+	}
+
 	@Ignore("does not work concurrently yet")
 	@Test
 	public void operationReturnsNullInCaseOfSeveralMBeansInPool() throws Exception {
@@ -183,6 +197,12 @@ public final class DynamicMBeanFactoryOperationsTest {
 		@JmxOperation
 		public int sum(int a, int b) {
 			return a + b;
+		}
+	}
+
+	public static class MBeanWithNonPublicOperation implements ConcurrentJmxBean {
+		@JmxOperation
+		void action() {
 		}
 	}
 

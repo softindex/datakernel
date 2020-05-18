@@ -68,6 +68,7 @@ public final class AsyncCollector<R> implements AsyncCloseable {
 	}
 
 	public <T> Promise<T> addPromise(@NotNull Promise<T> promise, @NotNull Accumulator<R, T> accumulator) {
+		if (resultPromise.isException()) return (Promise<T>) resultPromise;
 		checkState(!resultPromise.isComplete());
 		activePromises++;
 		return promise.whenComplete((v, e) -> {
