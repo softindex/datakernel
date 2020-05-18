@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Random;
 
+import static io.datakernel.jmx.stats.JmxHistogram.POWERS_OF_TWO;
 import static java.lang.Math.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -205,11 +206,9 @@ public class ValueStatsTest {
 		stats.recordValue(23);
 
 		List<String> expected = asList(
-				"(-∞, 10)  :  0",
 				"[10, 15)  :  2",
 				"[15, 20)  :  0",
-				"[20, 25)  :  1",
-				"[25, +∞)  :  0"
+				"[20, 25)  :  1"
 		);
 		assertEquals(expected, stats.getHistogram());
 	}
@@ -221,9 +220,7 @@ public class ValueStatsTest {
 		stats.recordValue(17);
 
 		List<String> expected = asList(
-				"( -∞,  15)  :  0",
-				"[ 15, 500)  :  1",
-				"[500,  +∞)  :  0"
+				"[15, 500)  :  1"
 		);
 		assertEquals(expected, stats.getHistogram());
 	}
@@ -235,8 +232,7 @@ public class ValueStatsTest {
 		stats.recordValue(600);
 
 		List<String> expected = asList(
-				"( -∞, 500)  :  0",
-				"[500,  +∞)  :  1"
+				"[500, +∞)  :  1"
 		);
 		assertEquals(expected, stats.getHistogram());
 	}
@@ -248,8 +244,7 @@ public class ValueStatsTest {
 		stats.recordValue(-10);
 
 		List<String> expected = asList(
-				"(-∞,  5)  :  1",
-				"[ 5, +∞)  :  0"
+				"(-∞,  5)  :  1"
 		);
 		assertEquals(expected, stats.getHistogram());
 	}
@@ -290,7 +285,7 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldProperlyBuild_Pow2_Histogram() {
-		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(ValueStats.POWERS_OF_TWO);
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 
 		stats.recordValue(-10);
 
@@ -308,20 +303,49 @@ public class ValueStatsTest {
 				"[ 0,  1)  :  2",
 				"[ 1,  2)  :  0",
 				"[ 2,  4)  :  3",
-				"[ 4,  8)  :  1",
-				"[ 8, +∞)  :  0"
+				"[ 4,  8)  :  1"
 		);
 		assertEquals(expected, stats.getHistogram());
 	}
 
 	@Test
 	public void itShouldProperlyBuild_Pow2_Histogram_withLimitValues() {
-		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(ValueStats.POWERS_OF_TWO);
+		ValueStats stats = ValueStats.create(SMOOTHING_WINDOW).withHistogram(POWERS_OF_TWO);
 
 		stats.recordValue(Integer.MAX_VALUE);
 
 		List<String> expected = asList(
-				"(        -∞, 1073741824)  :  0",
+				"[         0,          1)  :  0",
+				"[         1,          2)  :  0",
+				"[         2,          4)  :  0",
+				"[         4,          8)  :  0",
+				"[         8,         16)  :  0",
+				"[        16,         32)  :  0",
+				"[        32,         64)  :  0",
+				"[        64,        128)  :  0",
+				"[       128,        256)  :  0",
+				"[       256,        512)  :  0",
+				"[       512,       1024)  :  0",
+				"[      1024,       2048)  :  0",
+				"[      2048,       4096)  :  0",
+				"[      4096,       8192)  :  0",
+				"[      8192,      16384)  :  0",
+				"[     16384,      32768)  :  0",
+				"[     32768,      65536)  :  0",
+				"[     65536,     131072)  :  0",
+				"[    131072,     262144)  :  0",
+				"[    262144,     524288)  :  0",
+				"[    524288,    1048576)  :  0",
+				"[   1048576,    2097152)  :  0",
+				"[   2097152,    4194304)  :  0",
+				"[   4194304,    8388608)  :  0",
+				"[   8388608,   16777216)  :  0",
+				"[  16777216,   33554432)  :  0",
+				"[  33554432,   67108864)  :  0",
+				"[  67108864,  134217728)  :  0",
+				"[ 134217728,  268435456)  :  0",
+				"[ 268435456,  536870912)  :  0",
+				"[ 536870912, 1073741824)  :  0",
 				"[1073741824,         +∞)  :  1"
 		);
 		assertEquals(expected, stats.getHistogram());
@@ -486,26 +510,27 @@ public class ValueStatsTest {
 
 	@Test
 	public void testPrecision() {
-		ValueStats valueStats = ValueStats.create(Duration.ofSeconds(10));
+		ValueStats valueStats = ValueStats.create(Duration.ofSeconds(10)).withAbsoluteValues(true);
 
 		long currentTimestamp = 0;
 		double inputValue = 0.123456789123456789;
 
-		// Test if difference is 0.2 - precision should be 0.2/1000 = 0.0002 (4 digits)
+		// Test if difference is 0.1 - precision should be 0.1/1000 = 0.0001 (4 digits)
 		for (int i = 0; i < 2; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 0.2;
+			inputValue += 0.1;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 4);
 
+		// Test if difference is 1 - precision should be 1/1000 = 0.001 (3 digits)
 		valueStats.resetStats();
 		for (int i = 0; i < 2; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 2;
+			inputValue += 1;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 3);
 
@@ -515,7 +540,7 @@ public class ValueStatsTest {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 20;
+			inputValue += 10;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 2);
 
@@ -525,7 +550,7 @@ public class ValueStatsTest {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 200;
+			inputValue += 100;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 1);
 
@@ -535,7 +560,7 @@ public class ValueStatsTest {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += ONE_SECOND_IN_MILLIS;
 			valueStats.refresh(currentTimestamp);
-			inputValue += 2000;
+			inputValue += 1000;
 		}
 		assertNumberOfDigitsAfterDot(valueStats, 0);
 

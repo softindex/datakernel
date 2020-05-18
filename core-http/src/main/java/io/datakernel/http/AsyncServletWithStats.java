@@ -41,7 +41,7 @@ public abstract class AsyncServletWithStats implements AsyncServlet, EventloopJm
 	}
 
 	public void setStatsHistogramLevels(int[] levels) {
-		stats.setHistogramLevels(levels);
+		stats.setHistogram(levels);
 	}
 
 }

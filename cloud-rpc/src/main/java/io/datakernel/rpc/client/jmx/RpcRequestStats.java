@@ -24,7 +24,7 @@ import io.datakernel.jmx.stats.ValueStats;
 
 import java.time.Duration;
 
-import static io.datakernel.jmx.stats.ValueStats.POWERS_OF_TWO;
+import static io.datakernel.jmx.stats.JmxHistogram.POWERS_OF_TWO;
 
 public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats totalRequests;

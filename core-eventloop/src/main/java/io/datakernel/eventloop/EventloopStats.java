@@ -30,7 +30,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.eventloop.Eventloop.DEFAULT_SMOOTHING_WINDOW;
-import static io.datakernel.jmx.stats.ValueStats.POWERS_OF_TWO;
+import static io.datakernel.jmx.stats.JmxHistogram.POWERS_OF_TWO;
 
 @SuppressWarnings("unused")
 public final class EventloopStats extends ForwardingInspector<EventloopInspector> implements EventloopInspector {

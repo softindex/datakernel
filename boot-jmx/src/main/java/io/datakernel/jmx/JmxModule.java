@@ -28,6 +28,7 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.annotation.ProvidesIntoSet;
 import io.datakernel.di.module.AbstractModule;
 import io.datakernel.jmx.DynamicMBeanFactory.JmxCustomTypeAdapter;
+import io.datakernel.jmx.stats.JmxHistogram;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.launcher.LauncherService;
 import io.datakernel.trigger.Severity;
@@ -45,6 +46,7 @@ import java.time.Period;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
@@ -123,14 +125,22 @@ public final class JmxModule extends AbstractModule implements Initializable<Jmx
 		return this;
 	}
 
-	public JmxModule withHistogram(Key<?> key, String attrName, int[] histogramLevels) {
-		return withOptional(key, attrName + "_histogram")
-				.withModifier(key, attrName, (ValueStats attribute) ->
-						attribute.setHistogramLevels(histogramLevels));
+	public JmxModule withHistogram(Class<?> clazz, String attrName, int[] histogramLevels) {
+		return withHistogram(Key.of(clazz), attrName, () -> JmxHistogram.ofLevels(histogramLevels));
 	}
 
-	public JmxModule withHistogram(Class<?> clazz, String attrName, int[] histogramLevels) {
-		return withHistogram(Key.of(clazz), attrName, histogramLevels);
+	public JmxModule withHistogram(Key<?> key, String attrName, int[] histogramLevels) {
+		return withHistogram(key, attrName, () -> JmxHistogram.ofLevels(histogramLevels));
+	}
+
+	public JmxModule withHistogram(Class<?> clazz, String attrName, Supplier<JmxHistogram> histogram) {
+		return withHistogram(Key.of(clazz), attrName, histogram);
+	}
+
+	public JmxModule withHistogram(Key<?> key, String attrName, Supplier<JmxHistogram> histogram) {
+		return withOptional(key, attrName + "_histogram")
+				.withModifier(key, attrName, (ValueStats attribute) ->
+						attribute.setHistogram(histogram.get()));
 	}
 
 	public JmxModule withGlobalMBean(Type type, String named) {

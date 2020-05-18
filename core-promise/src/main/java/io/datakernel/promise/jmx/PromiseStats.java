@@ -22,6 +22,7 @@ import io.datakernel.common.jmx.MBeanFormat;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.JmxHistogram;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.Nullable;
@@ -59,12 +60,21 @@ public class PromiseStats {
 	}
 
 	public PromiseStats withHistogram(int[] levels) {
-		setHistogramLevels(levels);
+		setHistogram(levels);
 		return this;
 	}
 
-	public void setHistogramLevels(int[] levels) {
-		duration.setHistogramLevels(levels);
+	public PromiseStats withHistogram(JmxHistogram histogram) {
+		setHistogram(histogram);
+		return this;
+	}
+
+	public void setHistogram(int[] levels) {
+		duration.setHistogram(levels);
+	}
+
+	public void setHistogram(JmxHistogram histogram) {
+		duration.setHistogram(histogram);
 	}
 
 	private long currentTimeMillis() {

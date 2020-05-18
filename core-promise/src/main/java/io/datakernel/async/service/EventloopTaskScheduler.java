@@ -166,7 +166,7 @@ public final class EventloopTaskScheduler implements EventloopService, Initializ
 	}
 
 	public EventloopTaskScheduler withStatsHistogramLevels(int[] levels) {
-		this.stats.setHistogramLevels(levels);
+		this.stats.setHistogram(levels);
 		return this;
 	}
 

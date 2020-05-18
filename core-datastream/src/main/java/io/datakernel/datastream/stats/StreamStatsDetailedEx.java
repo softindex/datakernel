@@ -4,6 +4,7 @@ import io.datakernel.datastream.StreamDataAcceptor;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxReducers.JmxReducerSum;
 import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.JmxHistogram;
 import io.datakernel.jmx.stats.ValueStats;
 import org.jetbrains.annotations.Nullable;
 
@@ -56,8 +57,13 @@ public final class StreamStatsDetailedEx<T> extends StreamStatsBasic<T> {
 				};
 	}
 
-	public StreamStatsDetailedEx<T> withSizeHistogram(int[] levels) {
-		itemSize.setHistogramLevels(levels);
+	public StreamStatsDetailedEx<T> withHistogram(int[] levels) {
+		itemSize.setHistogram(levels);
+		return this;
+	}
+
+	public StreamStatsDetailedEx<T> withHistogram(JmxHistogram histogram) {
+		itemSize.setHistogram(histogram);
 		return this;
 	}
 
