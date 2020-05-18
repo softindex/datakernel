@@ -1,6 +1,5 @@
 package io.datakernel.eventloop.jmx;
 
-import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.api.JmxBeanAdapterWithRefresh;
 import io.datakernel.jmx.api.JmxRefreshable;
@@ -13,17 +12,16 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.common.Preconditions.*;
-import static io.datakernel.common.collection.CollectionUtils.first;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 
 public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh {
 	private static final Duration DEFAULT_SMOOTHING_WINDOW = Duration.ofMinutes(1);
 
-	private final Map<Eventloop, Tuple2<ValueStats, List<JmxRefreshable>>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
+	private final Map<Eventloop, List<JmxRefreshable>> eventloopToJmxRefreshables = new ConcurrentHashMap<>();
 	private final Set<JmxRefreshable> allRefreshables = Collections.newSetFromMap(new IdentityHashMap<>());
 	private final Map<Object, Eventloop> beanToEventloop = new IdentityHashMap<>();
 
-	private Duration refreshPeriod;
+	private volatile Duration refreshPeriod;
 	private int maxRefreshesPerCycle;
 
 	@Override
@@ -39,8 +37,8 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 		checkArgument(maxRefreshesPerCycle > 0);
 		this.refreshPeriod = refreshPeriod;
 		this.maxRefreshesPerCycle = maxRefreshesPerCycle;
-		for (Map.Entry<Eventloop, Tuple2<ValueStats, List<JmxRefreshable>>> entry : eventloopToJmxRefreshables.entrySet()) {
-			entry.getKey().execute(() -> entry.getValue().getValue1().resetStats());
+		for (Map.Entry<Eventloop, List<JmxRefreshable>> entry : eventloopToJmxRefreshables.entrySet()) {
+			entry.getKey().execute(() -> ((ValueStats) entry.getValue().get(0)).resetStats());
 		}
 	}
 
@@ -51,14 +49,14 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 		Eventloop eventloop = ensureEventloop(bean);
 		if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
 			Duration smoothingWindows = eventloop.getSmoothingWindow();
-			if (smoothingWindows == null){
+			if (smoothingWindows == null) {
 				smoothingWindows = DEFAULT_SMOOTHING_WINDOW;
 			}
 			ValueStats refreshStats = ValueStats.create(smoothingWindows).withRate().withUnit("ms");
 			List<JmxRefreshable> list = new ArrayList<>();
 			list.add(refreshStats);
-			eventloopToJmxRefreshables.put(eventloop, new Tuple2<>(refreshStats, list));
-			eventloop.execute(wrapContext(this, () -> refresh(eventloop, list, 0)));
+			eventloopToJmxRefreshables.put(eventloop, list);
+			eventloop.execute(wrapContext(this, () -> refresh(eventloop, list, 0, refreshStats)));
 		}
 
 		Set<JmxRefreshable> beanRefreshablesFiltered = new HashSet<>();
@@ -69,7 +67,7 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 		}
 
 		eventloop.submit(() -> {
-			List<JmxRefreshable> refreshables = eventloopToJmxRefreshables.get(eventloop).getValue2();
+			List<JmxRefreshable> refreshables = eventloopToJmxRefreshables.get(eventloop);
 			refreshables.addAll(beanRefreshablesFiltered);
 		});
 	}
@@ -89,30 +87,24 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 	}
 
 	@Override
-	public String[] getRefreshStats() {
-		int size = eventloopToJmxRefreshables.size();
-		if (size == 0) return new String[0];
-		if (size == 1) {
-			Tuple2<ValueStats, List<JmxRefreshable>> statsAndRefreshables = first(eventloopToJmxRefreshables.values());
-			return new String[]{getStatsString(statsAndRefreshables.getValue2().size(), statsAndRefreshables.getValue1())};
+	public List<String> getRefreshStats() {
+		List<String> result = new ArrayList<>();
+		if (eventloopToJmxRefreshables.size() > 1) {
+			int count = 0;
+			ValueStats total = ValueStats.createAccumulator().withRate().withUnit("ms");
+			for (List<JmxRefreshable> refreshables : eventloopToJmxRefreshables.values()) {
+				total.add((ValueStats) refreshables.get(0));
+				count += refreshables.size();
+			}
+			result.add(getStatsString(count, total));
 		}
-
-		int count = 0;
-		String[] resultStats = new String[size + 1];
-		ValueStats accumulator = ValueStats.createAccumulator().withRate().withUnit("ms");
-		for (Tuple2<ValueStats, List<JmxRefreshable>> tuple : eventloopToJmxRefreshables.values()) {
-			accumulator.add(tuple.getValue1());
-			count += tuple.getValue2().size();
+		for (List<JmxRefreshable> refreshables : eventloopToJmxRefreshables.values()) {
+			result.add(getStatsString(refreshables.size(), (ValueStats) refreshables.get(0)));
 		}
-		resultStats[0] = getStatsString(count, accumulator);
-		int i = 1;
-		for (Tuple2<ValueStats, List<JmxRefreshable>> tuple : eventloopToJmxRefreshables.values()) {
-			resultStats[i++] = getStatsString(tuple.getValue2().size(), tuple.getValue1());
-		}
-		return resultStats;
+		return result;
 	}
 
-	private void refresh(@NotNull Eventloop eventloop, @NotNull List<JmxRefreshable> list, int startIndex) {
+	private void refresh(@NotNull Eventloop eventloop, @NotNull List<JmxRefreshable> list, int startIndex, ValueStats refreshStats) {
 		checkState(eventloop.inEventloopThread());
 
 		long currentTime = eventloop.currentTimeMillis();
@@ -124,10 +116,10 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 		}
 
 		long refreshTime = eventloop.currentTimeMillis() - currentTime;
-		eventloopToJmxRefreshables.get(eventloop).getValue1().recordValue(refreshTime);
+		refreshStats.recordValue(refreshTime);
 
 		long nextTimestamp = currentTime + computeEffectiveRefreshPeriod(list.size());
-		eventloop.scheduleBackground(nextTimestamp, wrapContext(this, () -> refresh(eventloop, list, endIndex)));
+		eventloop.scheduleBackground(nextTimestamp, wrapContext(this, () -> refresh(eventloop, list, endIndex, refreshStats)));
 	}
 
 	private long computeEffectiveRefreshPeriod(int totalCount) {
@@ -136,7 +128,7 @@ public final class EventloopJmxBeanAdapter implements JmxBeanAdapterWithRefresh 
 				refreshPeriod.toMillis() * maxRefreshesPerCycle / totalCount;
 	}
 
-	private static String getStatsString(int numberOfRefreshables, ValueStats stats){
+	private static String getStatsString(int numberOfRefreshables, ValueStats stats) {
 		return "# of refreshables: " + numberOfRefreshables + "  " + stats;
 	}
 

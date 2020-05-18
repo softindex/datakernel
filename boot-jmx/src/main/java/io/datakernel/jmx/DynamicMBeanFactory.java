@@ -114,7 +114,9 @@ public final class DynamicMBeanFactory {
 	public String[] getRefreshStats() {
 		return adapters.values().stream()
 				.filter(adapter -> adapter instanceof JmxBeanAdapterWithRefresh)
-				.flatMap(adapter -> Arrays.stream(((JmxBeanAdapterWithRefresh) adapter).getRefreshStats()))
+				.map(JmxBeanAdapterWithRefresh.class::cast)
+				.map(JmxBeanAdapterWithRefresh::getRefreshStats)
+				.flatMap(Collection::stream)
 				.toArray(String[]::new);
 	}
 	// endregion
