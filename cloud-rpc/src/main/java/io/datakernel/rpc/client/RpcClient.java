@@ -504,7 +504,7 @@ public final class RpcClient implements IRpcClient, EventloopService, Initializa
 
 	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
 			"(for example, responseTime and requestsStatsPerClass are collected only when monitoring is enabled)")
-	private boolean isMonitoring() {
+	public boolean isMonitoring() {
 		return monitoring;
 	}
 

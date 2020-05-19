@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.channels.Selector;
 import java.util.LinkedHashSet;
 import java.util.Random;
 
@@ -407,6 +408,49 @@ public final class AsyncHttpServerTest {
 
 		server.closeFuture().get();
 		thread.join();
+	}
+
+	@Test
+	public void testBodyRecycledOnce() throws IOException, InterruptedException {
+		int port = getFreePort();
+
+		Eventloop eventloop = Eventloop.create().withCurrentThread().withFatalErrorHandler(rethrowOnAnyError());
+
+		AsyncHttpServer server = AsyncHttpServer.create(eventloop,
+				request -> {
+					// imitate network problems
+					shutdownAllChannels(eventloop);
+					return HttpResponse.ok200();
+				})
+				.withListenPort(port)
+				.withAcceptOnce(true);
+
+		server.listen();
+
+		Thread thread = new Thread(() -> {
+			try (Socket socket = new Socket()) {
+				socket.connect(new InetSocketAddress("localhost", port));
+				ByteBuf buf = ByteBuf.wrapForReading(encodeAscii("GET /  HTTP/1.1\r\nHost: localhost\r\n" +
+						"Connection: close\r\nContent-Length: 10\r\n\r\ntest"));
+				socket.getOutputStream().write(buf.array(), buf.head(), buf.readRemaining());
+			} catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		});
+
+		thread.start();
+		eventloop.run();
+		thread.join();
+	}
+
+	private static void shutdownAllChannels(Eventloop eventloop) {
+		try {
+			Selector selector = eventloop.getSelector();
+			assert selector != null;
+			selector.keys().iterator().next().channel().close();
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	public static void main(String[] args) throws Exception {
