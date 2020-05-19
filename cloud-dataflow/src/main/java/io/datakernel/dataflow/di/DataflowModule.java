@@ -27,8 +27,7 @@ public final class DataflowModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		install(DataflowCodecs.create());
-		install(EnvironmentModule.create());
-		install(BinarySerializersModule.create());
+		install(BinarySerializerModule.create());
 	}
 
 	@Provides

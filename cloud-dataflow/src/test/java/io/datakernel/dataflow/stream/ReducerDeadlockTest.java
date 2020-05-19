@@ -29,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.dataflow.dataset.Datasets.*;
-import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static io.datakernel.dataflow.stream.DataflowTest.createCommon;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -76,8 +76,8 @@ public class ReducerDeadlockTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(list1)
-				.bind(slot("result")).toInstance(result1)
+				.bind(datasetId("items")).toInstance(list1)
+				.bind(datasetId("result")).toInstance(result1)
 				.build();
 
 		List<TestItem> list2 = new ArrayList<>(20000);
@@ -87,8 +87,8 @@ public class ReducerDeadlockTest {
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(list2)
-				.bind(slot("result")).toInstance(result2)
+				.bind(datasetId("items")).toInstance(list2)
+				.bind(datasetId("result")).toInstance(result2)
 				.build();
 
 		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);

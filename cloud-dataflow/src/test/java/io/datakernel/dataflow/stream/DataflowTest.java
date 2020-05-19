@@ -22,7 +22,7 @@ import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
-import io.datakernel.dataflow.di.BinarySerializersModule;
+import io.datakernel.dataflow.di.BinarySerializerModule;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
@@ -67,7 +67,7 @@ import java.util.function.Predicate;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
-import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.test.TestUtils.assertComplete;
@@ -112,21 +112,21 @@ public final class DataflowTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(3),
 						new TestItem(5)))
-				.bind(slot("result")).toInstance(result1)
+				.bind(datasetId("result")).toInstance(result1)
 				.build();
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(2),
 						new TestItem(4),
 						new TestItem(6)
 				))
-				.bind(slot("result")).toInstance(result2)
+				.bind(datasetId("result")).toInstance(result2)
 				.build();
 
 		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
@@ -163,22 +163,22 @@ public final class DataflowTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(4),
 						new TestItem(5),
 						new TestItem(6)))
-				.bind(slot("result")).toInstance(result1)
+				.bind(datasetId("result")).toInstance(result1)
 				.build();
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(6)))
-				.bind(slot("result")).toInstance(result2)
+				.bind(datasetId("result")).toInstance(result2)
 				.build();
 
 		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
@@ -230,24 +230,24 @@ public final class DataflowTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(6),
 						new TestItem(4),
 						new TestItem(2),
 						new TestItem(3),
 						new TestItem(1)))
-				.bind(slot("result")).toInstance(result1)
+				.bind(datasetId("result")).toInstance(result1)
 				.build();
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(7),
 						new TestItem(7),
 						new TestItem(8),
 						new TestItem(2),
 						new TestItem(5)))
-				.bind(slot("result")).toInstance(result2)
+				.bind(datasetId("result")).toInstance(result2)
 				.build();
 
 		DataflowServer server1 = Injector.of(serverModule1).getInstance(DataflowServer.class).withListenAddress(address1);
@@ -286,7 +286,7 @@ public final class DataflowTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(1),
 						new TestItem(2),
 						new TestItem(3),
@@ -296,7 +296,7 @@ public final class DataflowTest {
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new TestItem(6),
 						new TestItem(7),
 						new TestItem(8),
@@ -387,12 +387,12 @@ public final class DataflowTest {
 				.scan(new Object() {
 
 					@Provides
-					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializersModule.BinarySerializers serializers, Injector environment) {
+					DataflowServer server(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializerModule.BinarySerializerLocator serializers, Injector environment) {
 						return new DataflowServer(eventloop, codec, serializers, environment);
 					}
 
 					@Provides
-					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializersModule.BinarySerializers serializers) {
+					DataflowClient client(Executor executor, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializerModule.BinarySerializerLocator serializers) {
 						return new DataflowClient(executor, secondaryPath, codec, serializers);
 					}
 

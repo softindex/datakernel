@@ -24,7 +24,7 @@ import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.csp.queue.ChannelQueue;
 import io.datakernel.csp.queue.ChannelZeroBuffer;
-import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
+import io.datakernel.dataflow.di.BinarySerializerModule.BinarySerializerLocator;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.graph.TaskContext;
 import io.datakernel.dataflow.node.Node;
@@ -55,7 +55,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 	private final Map<Class, CommandHandler> handlers = new HashMap<>();
 
 	private final ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec;
-	private final BinarySerializers serializers;
+	private final BinarySerializerLocator serializers;
 	private final ResourceLocator environment;
 
 	{
@@ -67,7 +67,7 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 		void onCommand(Messaging<I, O> messaging, I command);
 	}
 
-	public DataflowServer(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializers serializers, ResourceLocator environment) {
+	public DataflowServer(Eventloop eventloop, ByteBufsCodec<DatagraphCommand, DatagraphResponse> codec, BinarySerializerLocator serializers, ResourceLocator environment) {
 		super(eventloop);
 		this.codec = codec;
 		this.serializers = serializers;

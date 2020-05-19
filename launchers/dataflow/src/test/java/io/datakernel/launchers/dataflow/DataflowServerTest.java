@@ -5,7 +5,7 @@ import io.datakernel.config.Config;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
-import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
+import io.datakernel.dataflow.di.BinarySerializerModule.BinarySerializerLocator;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
 import io.datakernel.dataflow.graph.DataflowGraph;
@@ -48,7 +48,7 @@ import java.util.stream.Stream;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
-import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static io.datakernel.launchers.dataflow.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
@@ -343,7 +343,7 @@ public class DataflowServerTest {
 				.scan(new Object() {
 
 					@Provides
-					DataflowClient client(ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) throws IOException {
+					DataflowClient client(ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializerLocator serializers) throws IOException {
 						return new DataflowClient(Executors.newSingleThreadExecutor(), temporaryFolder.newFolder().toPath(), codec, serializers);
 					}
 
@@ -374,11 +374,11 @@ public class DataflowServerTest {
 		protected Module getOverrideModule() {
 			return createModule(emptyList())
 					.overrideWith(ModuleBuilder.create()
-							.bind(malformed ? slot("") : slot("items")).toInstance(words)
+							.bind(datasetId(malformed ? "" : "items")).toInstance(words)
 							.bind(Config.class).toInstance(Config.create().with("dataflow.server.listenAddresses", String.valueOf(port)))
 							.bind(Eventloop.class).toInstance(Eventloop.create().withCurrentThread())
 							.bind(Executor.class).toInstance(Executors.newSingleThreadExecutor())
-							.bind(slot("result")).toInstance(StreamConsumerToList.create(result))
+							.bind(datasetId("result")).toInstance(StreamConsumerToList.create(result))
 							.build());
 		}
 

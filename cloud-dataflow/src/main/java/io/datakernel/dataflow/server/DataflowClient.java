@@ -22,7 +22,7 @@ import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.csp.net.Messaging;
 import io.datakernel.csp.net.MessagingWithBinaryStreaming;
 import io.datakernel.csp.queue.*;
-import io.datakernel.dataflow.di.BinarySerializersModule.BinarySerializers;
+import io.datakernel.dataflow.di.BinarySerializerModule.BinarySerializerLocator;
 import io.datakernel.dataflow.graph.StreamId;
 import io.datakernel.dataflow.node.Node;
 import io.datakernel.dataflow.server.command.DatagraphCommand;
@@ -60,13 +60,13 @@ public final class DataflowClient {
 	private final Path secondaryPath;
 
 	private final ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec;
-	private final BinarySerializers serializers;
+	private final BinarySerializerLocator serializers;
 
 	private final AtomicInteger secondaryId = new AtomicInteger(Math.abs(ThreadLocalRandom.current().nextInt()));
 
 	private int bufferMinSize, bufferMaxSize;
 
-	public DataflowClient(Executor executor, Path secondaryPath, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializers serializers) {
+	public DataflowClient(Executor executor, Path secondaryPath, ByteBufsCodec<DatagraphResponse, DatagraphCommand> codec, BinarySerializerLocator serializers) {
 		this.executor = executor;
 		this.secondaryPath = secondaryPath;
 		this.codec = codec;

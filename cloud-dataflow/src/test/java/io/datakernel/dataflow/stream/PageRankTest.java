@@ -53,7 +53,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodecs.object;
 import static io.datakernel.dataflow.dataset.Datasets.*;
-import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.dataflow.stream.DataflowTest.createCommon;
 import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
@@ -262,19 +262,19 @@ public class PageRankTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						new Page(1, new long[]{1, 2, 3}),
 						new Page(3, new long[]{1})))
-				.bind(slot("result")).toInstance(result1)
+				.bind(datasetId("result")).toInstance(result1)
 
 				.build();
 
 		StreamConsumerToList<Rank> result2 = StreamConsumerToList.create();
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(singletonList(
+				.bind(datasetId("items")).toInstance(singletonList(
 						new Page(2, new long[]{1})))
-				.bind(slot("result")).toInstance(result2)
+				.bind(datasetId("result")).toInstance(result2)
 
 				.build();
 

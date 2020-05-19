@@ -16,7 +16,7 @@ import static java.util.stream.Collectors.toMap;
  * This class contains reflection utilities to work with Java types.
  * Its main use is for method {@link #parameterized Types.parameterized}.
  * However, just like with {@link ReflectionUtils}, other type utility
- * methods are pretty clean too so they are left public.
+ * methods are pretty clean too, so they are left public.
  */
 public final class Types {
 

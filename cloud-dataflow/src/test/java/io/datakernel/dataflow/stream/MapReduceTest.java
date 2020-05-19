@@ -35,7 +35,7 @@ import java.util.function.Function;
 
 import static io.datakernel.codec.StructuredCodec.ofObject;
 import static io.datakernel.dataflow.dataset.Datasets.*;
-import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static io.datakernel.dataflow.helper.StreamMergeSorterStorageStub.FACTORY_STUB;
 import static io.datakernel.dataflow.stream.DataflowTest.createCommon;
 import static io.datakernel.dataflow.stream.DataflowTest.getFreeListenAddress;
@@ -113,7 +113,7 @@ public class MapReduceTest {
 
 		Module serverModule1 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						"dog",
 						"cat",
 						"horse",
@@ -122,7 +122,7 @@ public class MapReduceTest {
 
 		Module serverModule2 = ModuleBuilder.create()
 				.install(common)
-				.bind(slot("items")).toInstance(asList(
+				.bind(datasetId("items")).toInstance(asList(
 						"dog",
 						"cat"))
 				.build();

@@ -28,7 +28,7 @@ import java.util.Map;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.dataflow.di.EnvironmentModule.slot;
+import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -47,7 +47,7 @@ public final class TaskContext {
 	}
 
 	public Object get(String key) {
-		return environment.getInstance(slot(key));
+		return environment.getInstance(datasetId(key));
 	}
 
 	public <T> T get(Class<T> cls) {

@@ -16,16 +16,16 @@ import java.util.Map;
 
 import static java.lang.ClassLoader.getSystemClassLoader;
 
-public final class BinarySerializersModule extends AbstractModule {
-	private static final Logger logger = LoggerFactory.getLogger(BinarySerializersModule.class);
+public final class BinarySerializerModule extends AbstractModule {
+	private static final Logger logger = LoggerFactory.getLogger(BinarySerializerModule.class);
 
-	private final BinarySerializers serializers = new BinarySerializers();
+	private final BinarySerializerLocator locator = new BinarySerializerLocator();
 
-	private BinarySerializersModule() {
+	private BinarySerializerModule() {
 	}
 
 	public static Module create() {
-		return new BinarySerializersModule();
+		return new BinarySerializerModule();
 	}
 
 	@Override
@@ -36,23 +36,23 @@ public final class BinarySerializersModule extends AbstractModule {
 			}
 			Class<?> rawType = key.getTypeParameter(0).getRawType();
 			return binding.mapInstance(serializer -> {
-				serializers.serializers.putIfAbsent(rawType, (BinarySerializer<?>) serializer);
+				locator.serializers.putIfAbsent(rawType, (BinarySerializer<?>) serializer);
 				return serializer;
 			});
 		});
 	}
 
 	@Provides
-	BinarySerializers serializers() {
-		return serializers;
+	BinarySerializerLocator serializerLocator() {
+		return locator;
 	}
 
 	@Provides
 	<T> BinarySerializer<T> serializer(Key<T> t) {
-		return serializers.get(t.getRawType());
+		return locator.get(t.getRawType());
 	}
 
-	public static final class BinarySerializers {
+	public static final class BinarySerializerLocator {
 		private final Map<Class<?>, BinarySerializer<?>> serializers = new HashMap<>();
 		@Nullable
 		private SerializerBuilder builder = null;
