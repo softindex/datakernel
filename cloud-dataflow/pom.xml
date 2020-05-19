@@ -20,11 +20,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.jparsec</groupId>
-      <artifactId>jparsec</artifactId>
-      <version>3.1</version>
-    </dependency>
-    <dependency>
       <groupId>io.datakernel</groupId>
       <artifactId>datakernel-datastream</artifactId>
       <version>${project.version}</version>

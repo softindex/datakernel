@@ -62,11 +62,6 @@ public final class DataflowCodecs extends AbstractModule {
 	}
 
 	@Provides
-	StructuredCodec<Comparator> naturalComparator() {
-		return StructuredCodec.ofObject(Comparator::naturalOrder);
-	}
-
-	@Provides
 	StructuredCodec<StreamId> streamId() {
 		return StructuredCodec.of(
 				in -> new StreamId(in.readLong()),

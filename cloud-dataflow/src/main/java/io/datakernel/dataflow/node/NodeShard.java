@@ -29,8 +29,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
-import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.HashUtils.murmur3hash;
+import static io.datakernel.common.Preconditions.checkArgument;
 import static java.util.Collections.singletonList;
 
 /**

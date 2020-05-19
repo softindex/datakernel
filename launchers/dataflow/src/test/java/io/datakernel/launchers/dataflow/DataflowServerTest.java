@@ -95,7 +95,6 @@ public class DataflowServerTest {
 		launchServers(asList("dog", "cat", "horse", "cat"), asList("dog", "cat"), false);
 		List<StringCount> result = new ArrayList<>();
 		await(mapReduce(result));
-		System.out.println("AWAITED");
 		result.sort(StringCount.COMPARATOR);
 		assertEquals(asList(new StringCount("cat", 3), new StringCount("dog", 2), new StringCount("horse", 1)), result);
 	}
