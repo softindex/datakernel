@@ -375,7 +375,7 @@ public abstract class HttpMessage {
 	abstract boolean isContentLengthExpected();
 
 	final void recycle() {
-		assert !isRecycled();
+		if (isRecycled()) return;
 		flags |= RECYCLED;
 		if (bufs != null) {
 			bufs.recycle();

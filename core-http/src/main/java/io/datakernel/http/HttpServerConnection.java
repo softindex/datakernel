@@ -285,10 +285,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				writeException(e);
 			}
 
-			if (request.bodyStream != null) {
-				request.bodyStream.streamTo(BUF_RECYCLER);
-				request.bodyStream = null;
-			}
+			request.recycle();
 		});
 	}
 
@@ -317,11 +314,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private void onHttpMessageComplete() {
 		assert !isClosed();
-
-		if (request != null) {
-			request.recycle();
-			request = null;
-		}
 
 		if ((flags & KEEP_ALIVE) != 0 && server.keepAliveTimeoutMillis != 0) {
 			switchPool(server.poolKeepAlive);
