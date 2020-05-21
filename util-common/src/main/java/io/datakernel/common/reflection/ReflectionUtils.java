@@ -29,6 +29,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
+import static java.util.stream.Collectors.toList;
 
 public final class ReflectionUtils {
 
@@ -188,12 +189,17 @@ public final class ReflectionUtils {
 	 * those from superclasses and superinterfaces.
 	 */
 	public static List<Method> getAllMethods(Class<?> cls) {
-		Set<Method> methodsFound = new LinkedHashSet<>();
+		Set<MethodSignature> methodSignatures = new LinkedHashSet<>();
 		walkClassHierarchy(cls, aClass -> {
-			methodsFound.addAll(Arrays.asList(aClass.getDeclaredMethods()));
+			Arrays.stream(aClass.getDeclaredMethods())
+					.filter(method -> !method.isBridge() && !method.isSynthetic())
+					.map(MethodSignature::new)
+					.forEach(methodSignatures::add);
 			return Optional.empty();
 		});
-		return new ArrayList<>(methodsFound);
+		return methodSignatures.stream()
+				.map(MethodSignature::getMethod)
+				.collect(toList());
 	}
 
 	public static <A extends Annotation> Optional<A> deepFindAnnotation(Class<?> aClass, Class<A> annotation) {
@@ -281,5 +287,30 @@ public final class ReflectionUtils {
 			throw new NullPointerException(errorMsg);
 		}
 		return value;
+	}
+
+	@SuppressWarnings("EqualsWhichDoesntCheckParameterClass") // other Object is always MethodSignature
+	private static final class MethodSignature {
+		final Method method;
+
+		MethodSignature(Method method) {
+			this.method = method;
+		}
+
+		public Method getMethod() {
+			return method;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			Method otherMethod = ((MethodSignature) obj).method;
+			return method.getName().equals(otherMethod.getName()) &&
+					Arrays.equals(method.getParameterTypes(), otherMethod.getParameterTypes());
+		}
+
+		@Override
+		public int hashCode() {
+			return method.getName().hashCode() ^ Arrays.hashCode(method.getParameterTypes());
+		}
 	}
 }

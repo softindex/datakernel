@@ -34,8 +34,7 @@ import static io.datakernel.jmx.JmxBeanSettings.defaultSettings;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Collections.singletonList;
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class DynamicMBeanRegistrationTest {
 
@@ -61,6 +60,15 @@ public class DynamicMBeanRegistrationTest {
 	}
 
 	@Test
+	public void itShouldRegisterDynamicMBeansWithOverriddenAttributes() throws Exception {
+		PublicMBeanSubclass instance = new PublicMBeanSubclass();
+		DynamicMBean mBean = DynamicMBeanFactory.create()
+				.createDynamicMBean(singletonList(instance), defaultSettings(), false);
+
+		assertEquals(instance.getValue(), mBean.getAttribute("value"));
+	}
+
+	@Test
 	public void itShouldThrowExceptionForNonPublicMBeans() throws Exception {
 		NonPublicMBean instance = new NonPublicMBean();
 
@@ -77,8 +85,10 @@ public class DynamicMBeanRegistrationTest {
 	@Test
 	public void itShouldNotThrowExceptionForNonPublicMBeansWithNoJmxFields() throws Exception {
 		NonPublicMBeanSubclass instance = new NonPublicMBeanSubclass();
-		DynamicMBeanFactory.create()
+		DynamicMBean mBean = DynamicMBeanFactory.create()
 				.createDynamicMBean(singletonList(instance), defaultSettings(), false);
+
+		assertEquals(instance.getValue(), mBean.getAttribute("value"));
 	}
 
 	// region helper classes
@@ -130,6 +140,13 @@ public class DynamicMBeanRegistrationTest {
 	}
 
 	static class NonPublicMBeanSubclass extends PublicMBean {
+	}
+
+	public static class PublicMBeanSubclass extends PublicMBean{
+		@JmxAttribute
+		public int getValue() {
+			return 321;
+		}
 	}
 
 	public static class CustomKeyClass {

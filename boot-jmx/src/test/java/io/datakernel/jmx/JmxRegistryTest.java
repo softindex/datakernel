@@ -168,7 +168,7 @@ public class JmxRegistryTest {
 	}
 
 	// helper classes
-	public final class ServiceStub implements ConcurrentJmxBean {
+	public static final class ServiceStub implements ConcurrentJmxBean {
 
 	}
 }
