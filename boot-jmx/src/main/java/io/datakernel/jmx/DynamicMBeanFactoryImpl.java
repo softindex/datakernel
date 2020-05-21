@@ -264,7 +264,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			AttributeDescriptor previousDescriptor = nameToAttr.get(name);
 
 			checkArgument(previousDescriptor.getGetter() == null,
-					"More that one getter with name \"%s\"", getter.getName());
+					"More than one getter with name \"%s\"", getter.getName());
 			checkArgument(previousDescriptor.getType().equals(attrType),
 					"Getter with name \"%s\" has different type than appropriate setter", getter.getName());
 
@@ -285,7 +285,7 @@ public final class DynamicMBeanFactoryImpl implements DynamicMBeanFactory {
 			AttributeDescriptor previousDescriptor = nameToAttr.get(name);
 
 			checkArgument(previousDescriptor.getSetter() == null,
-					"More that one setter with name \"%s\"", setter.getName());
+					"More than one setter with name \"%s\"", setter.getName());
 			checkArgument(previousDescriptor.getType().equals(attrType),
 					"Setter with name \"%s\" has different type than appropriate getter", setter.getName());
 

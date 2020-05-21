@@ -182,6 +182,8 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 
 	@Override
 	public JmxModule withGlobalSingletons(Object... instances) {
+		checkArgument(Arrays.stream(instances).map(Object::getClass).noneMatch(Class::isAnonymousClass),
+				"Instances of anonymous classes will not be registered in JMX");
 		this.globalSingletons.addAll(asList(instances));
 		return this;
 	}
@@ -232,7 +234,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 		for (Map.Entry<Key<?>, Object> entry : injector.peekInstances().entrySet()) {
 			Key<?> key = entry.getKey();
 			Object instance = entry.getValue();
-			if (instance == null) continue;
+			if (instance == null || key.getRawType().isAnonymousClass()) continue;
 			jmxRegistry.registerSingleton(key, instance, ensureSettingsFor(key));
 
 			Type type = key.getType();
@@ -253,6 +255,7 @@ public final class JmxModule extends AbstractModule implements JmxModuleSettings
 				for (Map.Entry<Key<?>, WorkerPool.Instances<?>> entry : workerPool.peekInstances().entrySet()) {
 					Key<?> key = entry.getKey();
 					WorkerPool.Instances<?> workerInstances = entry.getValue();
+					if (key.getRawType().isAnonymousClass()) continue;
 					jmxRegistry.registerWorkers(workerPool, key, workerInstances.getList(), ensureSettingsFor(key));
 
 					Type type = key.getType();

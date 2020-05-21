@@ -39,6 +39,7 @@ import java.util.function.Supplier;
 
 import static io.datakernel.common.Preconditions.checkArgument;
 import static io.datakernel.common.collection.CollectionUtils.first;
+import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 
 public final class ReflectionUtils {
@@ -240,9 +241,14 @@ public final class ReflectionUtils {
 	 * those from superclasses and superinterfaces.
 	 */
 	public static List<Method> getAllMethods(Class<?> cls) {
-		Set<Method> methodsFound = new LinkedHashSet<>();
-		traverseInheritanceTree(cls, aClass -> methodsFound.addAll(Arrays.asList(aClass.getDeclaredMethods())));
-		return new ArrayList<>(methodsFound);
+		Set<MethodSignature> methodSignatures = new LinkedHashSet<>();
+		traverseInheritanceTree(cls, aClass -> Arrays.stream(aClass.getDeclaredMethods())
+				.filter(method -> !method.isBridge() && !method.isSynthetic())
+				.map(MethodSignature::new)
+				.forEach(methodSignatures::add));
+		return methodSignatures.stream()
+				.map(MethodSignature::getMethod)
+				.collect(toList());
 	}
 
 	public static void traverseInheritanceTree(Class<?> cls, Consumer<Class<?>> consumer) {
@@ -430,6 +436,31 @@ public final class ReflectionUtils {
 			return false;
 		} catch (ClassNotFoundException e) {
 			return true;
+		}
+	}
+
+	@SuppressWarnings("EqualsWhichDoesntCheckParameterClass") // other Object is always MethodSignature
+	private static final class MethodSignature {
+		final Method method;
+
+		MethodSignature(Method method) {
+			this.method = method;
+		}
+
+		public Method getMethod() {
+			return method;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			Method otherMethod = ((MethodSignature) obj).method;
+			return method.getName().equals(otherMethod.getName()) &&
+					Arrays.equals(method.getParameterTypes(), otherMethod.getParameterTypes());
+		}
+
+		@Override
+		public int hashCode() {
+			return method.getName().hashCode() ^ Arrays.hashCode(method.getParameterTypes());
 		}
 	}
 }

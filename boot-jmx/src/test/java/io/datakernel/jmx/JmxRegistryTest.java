@@ -39,6 +39,8 @@ import java.lang.annotation.RetentionPolicy;
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static org.hamcrest.Matchers.startsWith;
+import static org.junit.Assert.assertThat;
 
 public class JmxRegistryTest {
 
@@ -65,6 +67,27 @@ public class JmxRegistryTest {
 
 		Key<?> key_1 = Key.of(ServiceStub.class);
 		jmxRegistry.registerSingleton(key_1, service, settings);
+	}
+
+	@Test
+	public void registerSingletonInstanceOfAnonymousClass() throws Exception {
+		ConcurrentJmxMBean anonymousMBean = new ConcurrentJmxMBean(){};
+		Class<? extends ConcurrentJmxMBean> anonymousMBeanClass = anonymousMBean.getClass();
+		String packageName = anonymousMBeanClass.getPackage().getName();
+		String typeName = anonymousMBeanClass.getName().substring(packageName.length() + 1);
+		assertThat(typeName, startsWith("JmxRegistryTest$"));
+
+		context.checking(new Expectations() {{
+			allowing(mbeanFactory)
+					.createDynamicMBean(with(singletonList(anonymousMBean)), with(any(MBeanSettings.class)), with(true));
+			will(returnValue(dynamicMBean));
+
+			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
+					with(objectname(packageName + ":type=" + typeName)));
+		}});
+
+		Key<?> key_1 = Key.of(anonymousMBeanClass);
+		jmxRegistry.registerSingleton(key_1, anonymousMBean, settings);
 	}
 
 	@Test
@@ -295,7 +318,7 @@ public class JmxRegistryTest {
 	}
 
 	// helper classes
-	public final class ServiceStub implements ConcurrentJmxMBean {
+	public static final class ServiceStub implements ConcurrentJmxMBean {
 
 	}
 }
