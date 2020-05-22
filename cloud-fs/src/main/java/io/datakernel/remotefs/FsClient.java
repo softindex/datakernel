@@ -56,7 +56,6 @@ public interface FsClient {
 	 * So, outer promise might fail on connection try, end-of-stream promise
 	 * might fail while uploading and result promise might fail when closing.
 	 * <p>
-	 * If offset is -1 then this will fail when file exists.
 	 * If offset is 0 or more then this will override existing file starting from that byte
 	 * and fail if file does not exist or is smaller than the offset.
 	 * <p>
@@ -161,6 +160,7 @@ public interface FsClient {
 	 * @param name   file to be copied
 	 * @param target new file name
 	 */
+	@MustImplement
 	default Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
 		return ChannelSuppliers.streamTo(download(name), upload(target, targetRevision));
 	}
@@ -177,6 +177,7 @@ public interface FsClient {
 	 * @param name   file to be moved
 	 * @param target new file name
 	 */
+	@MustImplement
 	default Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
 		return copy(name, target, targetRevision)
 				.then(() -> delete(name, tombstoneRevision));
@@ -186,7 +187,9 @@ public interface FsClient {
 		return move(name, target, DEFAULT_REVISION, DEFAULT_REVISION);
 	}
 
+	@MustImplement
 	default Promise<Void> moveDir(@NotNull String name, @NotNull String target, long targetRevision, long removeRevision) {
+		// TODO anton: fix for windows and change moveDir to moveBulk
 		String finalName = name.endsWith("/") ? name : name + '/';
 		String finalTarget = target.endsWith("/") ? target : target + '/';
 		return list(finalName + "**")
@@ -225,6 +228,7 @@ public interface FsClient {
 	 * @param glob specified in {@link java.nio.file.FileSystem#getPathMatcher NIO path matcher} documentation for glob patterns
 	 * @return list of {@link FileMetadata file metadata}
 	 */
+	@MustImplement
 	default Promise<List<FileMetadata>> list(@NotNull String glob) {
 		return listEntities(glob)
 				.map(list -> list.stream()
@@ -238,6 +242,7 @@ public interface FsClient {
 	 * @param name name of a file to fetch its metadata.
 	 * @return promise of file description or <code>null</code>
 	 */
+	@MustImplement
 	default Promise<@Nullable FileMetadata> getMetadata(@NotNull String name) {
 		return listEntities(escapeGlob(name))
 				.map(list -> list.isEmpty() ? null : list.get(0));

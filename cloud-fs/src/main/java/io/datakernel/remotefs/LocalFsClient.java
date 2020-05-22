@@ -64,7 +64,8 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * An implementation of {@link FsClient} which operates on a real underlying filesystem, no networking involved.
+ * An implementation of {@link FsClient} which operates on a real underlying
+ * filesystem, no networking involved.
  */
 public final class LocalFsClient implements FsClient, EventloopService, EventloopJmxBeanEx {
 	private static final Logger logger = LoggerFactory.getLogger(LocalFsClient.class);
@@ -301,12 +302,12 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 		checkArgument(defaultRevision == null || targetRevision == defaultRevision, "unsupported revision");
 		checkArgument(defaultRevision == null || tombstoneRevision == defaultRevision, "unsupported revision");
 
-		return Promise.ofBlockingCallable(executor,
+		return Promise.<Void>ofBlockingCallable(executor,
 				() -> {
 					if (defaultRevision == null) {
 						doCopy(name, target, targetRevision);
 						doDelete(name, tombstoneRevision);
-						return (Void) null;
+						return null;
 					}
 
 					// old logic (optimization that uses atomic moves)
@@ -319,21 +320,21 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 					if (Files.isDirectory(path) || Files.isDirectory(targetPath)) {
 						throw MOVING_DIRS;
 					}
+					// cannot move non-existing file
+					if (!Files.isRegularFile(path)) {
+						throw FILE_NOT_FOUND;
+					}
 					// noop when paths are equal
 					if (path.equals(targetPath)) {
 						return null;
 					}
 					// cannot move into existing file
 					if (Files.isRegularFile(targetPath)) {
+						//TODO anton: this is broken, do suffix uploading same as in copy
 						throw FILE_EXISTS;
 					}
-
-					if (Files.isRegularFile(path)) {
-						Files.createDirectories(targetPath.getParent());
-						Files.move(path, targetPath, ATOMIC_MOVE);
-					} else {
-						Files.deleteIfExists(targetPath);
-					}
+					Files.createDirectories(targetPath.getParent());
+					Files.move(path, targetPath, ATOMIC_MOVE);
 					return null;
 				})
 				.whenComplete(toLogger(logger, TRACE, "move", name, target, this))
@@ -516,41 +517,57 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 		throw BAD_PATH;
 	}
 
-	private void tryHardlinkOrCopy(Path path, Path targetPath) throws IOException {
-		if (!Files.deleteIfExists(targetPath)) {
-			Files.createDirectories(targetPath.getParent());
-		}
-		try {
-			// try to create a hardlink
-			Files.createLink(targetPath, path);
-		} catch (UnsupportedOperationException | SecurityException e) {
-			// if couldn't, then just actually copy it
-			Files.copy(path, targetPath);
-		}
+	private Promise<Path> resolvePromise(String name) {
+		Path path = storage.resolve(toLocalName.apply(name)).normalize();
+		return path.startsWith(storage) ? Promise.of(path) : Promise.ofException(BAD_PATH);
 	}
 
-	private void doCopy(String name, String target, long targetRevision) throws StacklessException, IOException {
-		FilenameInfo info = getInfo(name);
-		if (info == null || info.isTombstone()) {
-			return;
-		}
-		Path path = info.getFilePath();
-		Path targetPath = resolve(namingScheme.encode(target, targetRevision, false));
-
-		if (Files.isDirectory(path) || Files.isDirectory(targetPath)) {
-			throw MOVING_DIRS;
-		}
-		// noop when paths are equal
-		if (path.equals(targetPath)) {
-			return;
-		}
-
-		// with old logic we cannot move into existing file
-		if (Files.isRegularFile(targetPath)) {
-			throw FILE_EXISTS;
-		}
-
-		tryHardlinkOrCopy(path, targetPath);
+	private Promise<Void> doCopy(String name, String target, long targetRevision) throws StacklessException, IOException {
+		return Promise.ofBlockingCallable(executor, () -> getInfo(name))
+				.then(info -> {
+					if (info == null || info.isTombstone()) {
+						return Promise.ofException(FILE_NOT_FOUND);
+					}
+					Path path = info.getFilePath();
+					return resolvePromise(namingScheme.encode(target, targetRevision, false))
+							.then(targetPath -> Promise.ofBlockingCallable(executor, () -> Files.isDirectory(path) || Files.isDirectory(targetPath))
+									.then(anyDir -> {
+										if (anyDir) {
+											return Promise.ofException(MOVING_DIRS);
+										}
+										// noop when paths are equal
+										if (path.equals(targetPath)) {
+											return Promise.complete();
+										}
+										return Promise.ofBlockingCallable(executor,
+												() -> {
+													if (Files.isRegularFile(targetPath)) {
+														long targetSize = Files.size(targetPath);
+														long sourceSize = Files.size(path);
+														return targetSize > sourceSize;
+													}
+													// ensure parent dirs exist
+													if (!Files.deleteIfExists(targetPath)) {
+														Files.createDirectories(targetPath.getParent());
+													}
+													try {
+														// try to create a hardlink
+														Files.createLink(targetPath, path);
+													} catch (UnsupportedOperationException | SecurityException e) {
+														// if couldn't, then just actually copy it
+														Files.copy(path, targetPath);
+													}
+													return false;
+												})
+												.then(needsSlice -> {
+													// TODO anton: upload the [sourceSize;targetSize) slice, rework whole doCopy
+													if (needsSlice) {
+														throw new UnsupportedOperationException("not implemented"); // TODO anton: implement
+													}
+													return Promise.complete();
+												});
+									}));
+				});
 	}
 
 	private void doDelete(String name, long revision) throws IOException, StacklessException {
