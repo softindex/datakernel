@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -63,21 +64,26 @@ final class TransformFsClient implements FsClient {
 
 	@Override
 	public Promise<Void> move(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
-		return renamingOp(name, target, () -> parent.move(name, target, targetRevision, tombstoneRevision));
+		return renamingOp(name, target, (from, to) -> parent.move(from, to, targetRevision, tombstoneRevision));
+	}
+
+	@Override
+	public Promise<Void> moveDir(@NotNull String name, @NotNull String target, long targetRevision, long tombstoneRevision) {
+		return renamingOp(name, target, (from, to) -> parent.moveDir(from, to, targetRevision, tombstoneRevision));
 	}
 
 	@Override
 	public Promise<Void> copy(@NotNull String name, @NotNull String target, long targetRevision) {
-		return renamingOp(name, target, () -> parent.copy(name, target, targetRevision));
+		return renamingOp(name, target, (from, to) -> parent.copy(from, to, targetRevision));
 	}
 
-	private Promise<Void> renamingOp(String filename, String newFilename, Supplier<Promise<Void>> original) {
+	private Promise<Void> renamingOp(String filename, String newFilename, BiFunction<String, String, Promise<Void>> original) {
 		Optional<String> transformed = into.apply(filename);
 		Optional<String> transformedNew = into.apply(newFilename);
 		if (!transformed.isPresent() || !transformedNew.isPresent()) {
 			return Promise.ofException(BAD_PATH);
 		}
-		return original.get();
+		return original.apply(transformed.get(), transformedNew.get());
 	}
 
 	@Override

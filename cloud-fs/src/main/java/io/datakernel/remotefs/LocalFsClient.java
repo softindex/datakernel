@@ -466,6 +466,9 @@ public final class LocalFsClient implements FsClient, EventloopService, Eventloo
 	}
 
 	public Promise<Void> cleanup() {
+		if (defaultRevision != null) {
+			return Promise.complete();
+		}
 		return Promise.ofBlockingCallable(executor, () -> {
 			long border = now.currentTimeMillis() - tombstoneTtl;
 			findMatching("**", true).stream()
