@@ -36,6 +36,7 @@
     <module>core/eventloop</module>
     <module>core/di</module>
     <module>core/di-2</module>
+    <module>core/specializer</module>
 
     <module>cloud/fs</module>
     <module>cloud/rpc</module>

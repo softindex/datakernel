@@ -17,6 +17,15 @@
       <artifactId>datakernel-specializer</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>examples-specializer</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>examples-codegen</artifactId>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
-
 </project>

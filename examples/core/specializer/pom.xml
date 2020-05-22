@@ -9,8 +9,8 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>examples-codegen</artifactId>
-  <name>Examples : Core : Codegen</name>
+  <artifactId>examples-specializer</artifactId>
+  <name>Examples : Core : Specializer</name>
 
   <dependencies>
     <dependency>
@@ -20,8 +20,17 @@
     </dependency>
     <dependency>
       <groupId>io.datakernel</groupId>
-      <artifactId>datakernel-codegen</artifactId>
+      <artifactId>datakernel-specializer</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.openjdk.jmh</groupId>
+      <artifactId>jmh-generator-annprocess</artifactId>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 
@@ -30,28 +39,36 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
+        <configuration>
+          <systemProperties>
+            <systemProperty>
+              <key>java.class.path</key>
+              <!--suppress UnresolvedMavenProperty -->
+              <value>${project.build.outputDirectory}${path.separator}${depClasspath}</value>
+            </systemProperty>
+          </systemProperties>
+        </configuration>
         <executions>
           <execution>
-            <id>io.datakernel.example.codegen.DynamicClassCreationExample</id>
+            <id>CalculatorExample</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.datakernel.example.codegen.DynamicClassCreationExample</mainClass>
+              <mainClass>CalculatorExample</mainClass>
             </configuration>
           </execution>
           <execution>
-            <id>io.datakernel.example.codegen.CodegenExpressionsExample</id>
+            <id>calc.CalculatorBenchmark</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>io.datakernel.example.codegen.CodegenExpressionsExample</mainClass>
+              <mainClass>calc.CalculatorBenchmark</mainClass>
             </configuration>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
-
 </project>

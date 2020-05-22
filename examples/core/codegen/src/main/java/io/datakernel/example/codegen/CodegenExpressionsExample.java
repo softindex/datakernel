@@ -1,3 +1,5 @@
+package io.datakernel.example.codegen;
+
 import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 
