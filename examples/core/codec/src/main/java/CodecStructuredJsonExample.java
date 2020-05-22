@@ -20,7 +20,6 @@ public final class CodecStructuredJsonExample {
 		Person decodedPerson = JsonUtils.fromJson(PERSON_CODEC, json);
 		System.out.println("Person after encoding: " + decodedPerson);
 		System.out.println("Persons are equal? : " + sarah.equals(decodedPerson));
-		System.out.println();
 	}
 
 	public static void main(String[] args) throws ParseException {

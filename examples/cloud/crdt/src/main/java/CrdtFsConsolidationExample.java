@@ -13,7 +13,6 @@ import io.datakernel.remotefs.LocalFsClient;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -38,8 +37,7 @@ public final class CrdtFsConsolidationExample {
 
 		//[START REGION_1]
 		// create our storage dir and an fs client which operates on that dir
-		Path storage = Paths.get("storage");
-		Files.createDirectories(storage);
+		Path storage = Files.createTempDirectory("storage");
 		LocalFsClient fsClient = LocalFsClient.create(eventloop, executor, storage);
 
 		// our item is a set of integers, so we create a CRDT function for it
@@ -88,16 +86,16 @@ public final class CrdtFsConsolidationExample {
 					Promises.sequence(
 							// here we can see that two files were created, one for each upload
 							() -> fsClient.list("**")
-									.whenComplete((res, $) -> System.out.println(res))
+									.whenResult(res -> System.out.println("\n" + res + "\n"))
 									.toVoid(),
 
 							// run the consolidation process
 							client::consolidate,
 
 							// now we can see that there is only one file left, and its size is
-							// equal of less than the sum of the sizes of the two files from above
+							// less than the sum of the sizes of the two files from above
 							() -> fsClient.list("**")
-									.whenComplete((res, $) -> System.out.println(res))
+									.whenResult(res -> System.out.println("\n" + res + "\n"))
 									.toVoid()
 					);
 				});

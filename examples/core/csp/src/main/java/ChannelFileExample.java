@@ -1,5 +1,4 @@
 import io.datakernel.bytebuf.ByteBufStrings;
-import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.file.ChannelFileReader;
@@ -44,7 +43,6 @@ public final class ChannelFileExample {
 	@NotNull
 	private static Promise<Void> readFile() {
 		return ChannelFileReader.open(executor, PATH)
-				.map(cfr -> cfr.withBufferSize(MemSize.bytes(10)))
 				.then(cfr -> cfr.streamTo(ChannelConsumer.ofConsumer(buf -> System.out.print(buf.asString(UTF_8)))));
 
 	}

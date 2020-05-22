@@ -1,3 +1,5 @@
+package io.datakernel.rpc.memcache;
+
 import io.datakernel.async.callback.Callback;
 import io.datakernel.common.Initializer;
 import io.datakernel.common.MemSize;
@@ -48,9 +50,6 @@ public class MemcacheRpcBenchmark extends Launcher {
 	@Inject
 	Eventloop eventloop;
 
-	@Provides
-	Eventloop eventloop() {return Eventloop.create(); }
-
 	@Inject
 	RawMemcacheClient client;
 
@@ -72,7 +71,7 @@ public class MemcacheRpcBenchmark extends Launcher {
 
 	@ProvidesIntoSet
 	Initializer<ServiceGraphModuleSettings> configureServiceGraph() {
-		// add logical dependency so that service graph starts client only after it started the server
+		// add logical dependency so that service graph starts client only after it has started the server
 		return settings -> settings.addDependency(Key.of(RpcClient.class), Key.of(RpcServer.class));
 	}
 

@@ -1,4 +1,4 @@
-package benchmark;
+package io.datakernel.net;
 
 import io.datakernel.csp.ChannelConsumer;
 import io.datakernel.csp.ChannelSupplier;
@@ -10,7 +10,6 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.net.SimpleServer;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.util.function.Function;

@@ -1,5 +1,6 @@
 import io.datakernel.csp.*;
 import io.datakernel.csp.dsl.WithChannelTransformer;
+import io.datakernel.eventloop.Eventloop;
 
 /**
  * AsyncProcess that takes a string, sets it to upper-case and adds string's length in parentheses
@@ -52,10 +53,14 @@ public final class CspExample extends AbstractCommunicatingProcess implements Wi
 	}
 
 	public static void main(String[] args) {
+		Eventloop eventloop = Eventloop.create().withCurrentThread();
+
 		CspExample process = new CspExample();
 		ChannelSupplier.of("hello", "world", "nice", "to", "see", "you")
 				.transformWith(process)
 				.streamTo(ChannelConsumer.ofConsumer(System.out::println));
+
+		eventloop.run();
 	}
 }
 //[END EXAMPLE]

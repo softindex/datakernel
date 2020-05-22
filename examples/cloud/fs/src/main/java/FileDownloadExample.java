@@ -59,8 +59,10 @@ public final class FileDownloadExample extends Launcher {
 	protected void run() throws Exception {
 		ExecutorService executor = newSingleThreadExecutor();
 		CompletableFuture<Void> future = eventloop.submit(() ->
-				ChannelSupplier.ofPromise(client.download(REQUIRED_FILE, 0))
+				ChannelSupplier.ofPromise(client.download(REQUIRED_FILE))
 						.streamTo(ChannelFileWriter.open(executor, clientStorage.resolve(DOWNLOADED_FILE)))
+						.whenResult(() -> System.out.printf("\nFile '%s' successfully downloaded to '%s'\n\n",
+								REQUIRED_FILE, clientStorage))
 		);
 		future.get();
 		executor.shutdown();

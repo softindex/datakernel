@@ -23,7 +23,7 @@ public final class RoutingServletExample extends HttpServerLauncher {
 				//[END REGION_2]
 				.map(GET, "/path1", request ->
 						HttpResponse.ok200()
-								.withHtml("<h1>Hello form the first path!</h1>" +
+								.withHtml("<h1>Hello from the first path!</h1>" +
 										"<a href=\"/\">Go home</a>"))
 				.map(GET, "/path2", request ->
 						HttpResponse.ok200()

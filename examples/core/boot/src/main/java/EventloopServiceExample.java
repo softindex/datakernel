@@ -5,11 +5,11 @@ import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.promise.Promise;
+import io.datakernel.promise.Promises;
 import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.time.Duration;
 
 //[START EXAMPLE]
 public class EventloopServiceExample extends Launcher {
@@ -20,14 +20,9 @@ public class EventloopServiceExample extends Launcher {
 	}
 
 	@Provides
-	Executor executor() {
-		return Executors.newCachedThreadPool();
-	}
-
-	@Provides
 	@Eager
-	CustomEventloopService customEventloopService(Eventloop eventloop, Executor executor) {
-		return new CustomEventloopService(eventloop, executor);
+	CustomEventloopService customEventloopService(Eventloop eventloop) {
+		return new CustomEventloopService(eventloop);
 	}
 
 	@Override
@@ -36,14 +31,14 @@ public class EventloopServiceExample extends Launcher {
 	}
 
 	@Override
-	protected void run() { }
+	protected void run() {
+		System.out.println("|RUNNING|");
+	}
 
 	private static final class CustomEventloopService implements EventloopService {
-		private final Executor executor;
 		private final Eventloop eventloop;
 
-		public CustomEventloopService(Eventloop eventloop, Executor executor) {
-			this.executor = executor;
+		public CustomEventloopService(Eventloop eventloop) {
 			this.eventloop = eventloop;
 		}
 
@@ -54,16 +49,16 @@ public class EventloopServiceExample extends Launcher {
 
 		@Override
 		public @NotNull Promise<?> start() {
-			System.out.println(String.format("|%s|", "Eventloop-Service starting".toUpperCase()));
-			return Promise.ofBlockingRunnable(executor,
-					() -> System.out.println(String.format("|%s|", "Eventloop-Service started".toUpperCase())));
+			System.out.println("|CUSTOM EVENTLOOP SERVICE STARTING|");
+			return Promises.delay(Duration.ofMillis(10))
+					.whenResult(() -> System.out.println("|CUSTOM EVENTLOOP SERVICE STARTED|"));
 		}
 
 		@Override
 		public @NotNull Promise<?> stop() {
-			System.out.println(String.format("|%s|", "Eventloop-Service stopping".toUpperCase()));
-			return Promise.ofBlockingRunnable(executor,
-					() -> System.out.println(String.format("|%s|", "Eventloop-Service stopped".toUpperCase())));
+			System.out.println("|CUSTOM EVENTLOOP SERVICE STOPPING|");
+			return Promises.delay(Duration.ofMillis(10))
+					.whenResult(() -> System.out.println("|CUSTOM EVENTLOOP SERVICE STOPPED|"));
 		}
 	}
 

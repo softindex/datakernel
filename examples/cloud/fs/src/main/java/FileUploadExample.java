@@ -1,4 +1,3 @@
-import io.datakernel.common.MemSize;
 import io.datakernel.csp.file.ChannelFileReader;
 import io.datakernel.di.Injector;
 import io.datakernel.di.annotation.Inject;
@@ -61,8 +60,8 @@ public final class FileUploadExample extends Launcher {
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				// consumer result here is a marker of it being successfully uploaded
 				ChannelFileReader.open(executor, clientFile)
-						.map(cfr -> cfr.withBufferSize(MemSize.kilobytes(16)))
 						.then(cfr -> cfr.streamTo(client.upload(FILE_NAME)))
+						.whenResult(() -> System.out.printf("\nFile '%s' successfully uploaded\n\n", FILE_NAME))
 		);
 		future.get();
 		executor.shutdown();

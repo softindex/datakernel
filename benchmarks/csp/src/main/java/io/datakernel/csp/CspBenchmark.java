@@ -1,7 +1,6 @@
+package io.datakernel.csp;
+
 import io.datakernel.config.Config;
-import io.datakernel.csp.AbstractChannelSupplier;
-import io.datakernel.csp.ChannelConsumer;
-import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.di.InstanceProvider;
 import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
@@ -91,10 +90,6 @@ public class CspBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		benchmark("CSP Channel");
-	}
-
-	private void benchmark(String nameBenchmark) throws Exception {
 		long time = 0;
 		long bestTime = -1;
 		long worstTime = -1;
@@ -107,7 +102,7 @@ public class CspBenchmark extends Launcher {
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; OPS : " + rps);
 		}
 
-		System.out.println("Start benchmarking " + nameBenchmark);
+		System.out.println("Start benchmarking CSP Channel");
 
 		for (int i = 0; i < benchmarkRounds; i++) {
 			long roundTime = round();

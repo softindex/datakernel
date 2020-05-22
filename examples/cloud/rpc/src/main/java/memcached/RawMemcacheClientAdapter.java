@@ -7,7 +7,7 @@ import io.datakernel.promise.Promise;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class RawMemcacheClientAdapter {
-	private RawMemcacheClient client;
+	private final RawMemcacheClient client;
 
 	RawMemcacheClientAdapter(RawMemcacheClient client) {
 		this.client = client;

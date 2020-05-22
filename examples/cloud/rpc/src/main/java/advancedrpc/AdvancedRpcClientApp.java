@@ -31,11 +31,13 @@ public class AdvancedRpcClientApp extends Launcher {
 
 	@Override
 	protected void run() throws ExecutionException, InterruptedException {
+		System.out.println();
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				Promises.all(range(0, 100).mapToObj(i ->
 						client.sendRequest(i, 1000)
 								.whenResult(res -> System.out.println("Answer : " + res)))));
 		future.get();
+		System.out.println();
 	}
 
 	public static void main(String[] args) throws Exception {

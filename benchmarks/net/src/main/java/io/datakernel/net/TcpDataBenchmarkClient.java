@@ -1,4 +1,4 @@
-package benchmark;
+package io.datakernel.net;
 
 import io.datakernel.config.Config;
 import io.datakernel.csp.ChannelConsumer;
@@ -14,12 +14,10 @@ import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.launcher.Launcher;
-import io.datakernel.net.AsyncTcpSocketNio;
 import io.datakernel.promise.Promise;
 import io.datakernel.service.ServiceGraphModule;
 
 import java.net.InetSocketAddress;
-import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.ofInetSocketAddress;
 import static io.datakernel.config.ConfigConverters.ofInteger;
@@ -74,24 +72,20 @@ public class TcpDataBenchmarkClient extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		benchmark(this::round, "TCP Echo Server");
-	}
-
-	private void benchmark(Supplier<Promise<Long>> function, String nameBenchmark) throws Exception {
 		long timeAllRounds = 0;
 		long bestTime = -1;
 		long worstTime = -1;
 
 		System.out.println("Warming up ...");
 		for (int i = 0; i < warmupRounds; i++) {
-			long roundTime = round(function);
+			long roundTime = round();
 			long rps = roundTime != 0 ? (items * 1000L / roundTime) : 0;
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
 		}
 
-		System.out.println("Start benchmarking " + nameBenchmark);
+		System.out.println("Start benchmarking TCP Echo Server");
 		for (int i = 0; i < benchmarkRounds; i++) {
-			long roundTime = round(function);
+			long roundTime = round();
 			timeAllRounds += roundTime;
 
 			if (bestTime == -1 || roundTime < bestTime) {
@@ -112,11 +106,11 @@ public class TcpDataBenchmarkClient extends Launcher {
 				bestTime + "ms; Worst time: " + worstTime + "ms; Average RPS: " + avgRps);
 	}
 
-	private long round(Supplier<Promise<Long>> function) throws Exception {
-		return benchmarkEventloop.submit(function).get();
+	private long round() throws Exception {
+		return benchmarkEventloop.submit(this::roundGet).get();
 	}
 
-	private Promise<Long> round() {
+	private Promise<Long> roundGet() {
 		long start = System.currentTimeMillis();
 
 		InetSocketAddress address = config.get(ofInetSocketAddress(), "echo.address", new InetSocketAddress(9001));

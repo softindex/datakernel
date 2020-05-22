@@ -16,15 +16,18 @@ public class DynamicClassCreationExample {
 	public static void main(String[] args) throws IllegalAccessException, InstantiationException {
 		// Construct a Class that implements Person interface
 		Class<Person> personClass = ClassBuilder.create(DefiningClassLoader.create(Thread.currentThread().getContextClassLoader()), Person.class)
+
 				// declare fields
 				.withField("id", int.class)
 				.withField("name", String.class)
+
 				// setter for both fields - a sequence of actions
 				.withMethod("setIdAndName", sequence(
 						set(property(self(), "id"), arg(0)),
 						set(property(self(), "name"), arg(1))))
 				.withMethod("getId", property(self(), "id"))
 				.withMethod("getName", property(self(), "name"))
+
 				// compareTo, equals, hashCode and toString methods implementations follow the standard convention
 				.withMethod("int compareTo(Person)", compareToImpl("id", "name"))
 				.withMethod("equals", equalsImpl("id", "name"))

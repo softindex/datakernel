@@ -25,7 +25,8 @@ public final class MultithreadedScopeServletExample extends MultithreadedHttpSer
 	@Worker
 	AsyncServlet servlet(@Named("1") AsyncServlet servlet1, @Named("2") AsyncServlet servlet2) {
 		return RoutingServlet.create()
-				.map("/", request -> HttpResponse.ok200().withHtml("<a href=\"/first\">first</a><br><a href=\"/second\">second</a>"))
+				.map("/", request -> HttpResponse.ok200()
+						.withHtml("<a href=\"/first\">first</a><br><a href=\"/second\">second</a>"))
 				.map("/first", servlet1)
 				.map("/second", servlet2);
 	}

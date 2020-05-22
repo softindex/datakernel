@@ -12,8 +12,9 @@ import io.datakernel.promise.Promises;
 import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.LocalFsClient;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -26,7 +27,7 @@ public final class CrdtClusterExample {
 	private static final CrdtDataSerializer<String, LWWSet<String>> SERIALIZER =
 			new CrdtDataSerializer<>(UTF8_SERIALIZER, new LWWSet.Serializer<>(UTF8_SERIALIZER));
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = Eventloop.create().withCurrentThread();
 		ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -36,7 +37,7 @@ public final class CrdtClusterExample {
 		Map<String, CrdtStorage<String, LWWSet<String>>> clients = new HashMap<>();
 		for (int i = 0; i < 10; i++) {
 			String id = "partition" + i;
-			Path storage = Paths.get("storage", id);
+			Path storage = Files.createTempDirectory("storage_"+ id);
 			FsClient fs = LocalFsClient.create(eventloop, executor, storage);
 			clients.put(id, CrdtStorageFs.create(eventloop, fs, SERIALIZER));
 		}
@@ -100,7 +101,7 @@ public final class CrdtClusterExample {
 				.then(StreamSupplier::toList)
 				// and then print the resulting list of items, it should match the expectation from above
 				// (remember that sets are unordered, so you may not see it exactly as above)
-				.whenComplete((list, $) -> System.out.println(list));
+				.whenComplete((list, $) -> System.out.println(list + "\n"));
 
 		// actually run the eventloop and then shutdown the executor allowing the program to finish
 		eventloop.run();

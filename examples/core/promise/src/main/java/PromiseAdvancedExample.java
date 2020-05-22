@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutorService;
 
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
-public class PromiseAdvanceExample {
+public class PromiseAdvancedExample {
 	private static final ExecutorService executor = newSingleThreadExecutor();
 
 	public static void main(String[] args) {

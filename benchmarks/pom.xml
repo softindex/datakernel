@@ -14,8 +14,13 @@
   <name>Benchmarks</name>
 
   <modules>
+    <module>csp</module>
+    <module>datastream</module>
     <module>di</module>
+    <module>http</module>
+    <module>net</module>
     <module>promise</module>
+    <module>rpc</module>
     <module>serializer</module>
     <module>specializer</module>
   </modules>

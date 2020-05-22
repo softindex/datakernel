@@ -1,3 +1,5 @@
+package io.datakernel.http;
+
 import io.datakernel.async.callback.Callback;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
@@ -6,10 +8,6 @@ import io.datakernel.di.annotation.Named;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.Module;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.promise.Promise;
 import io.datakernel.promise.SettablePromise;
@@ -17,7 +15,6 @@ import io.datakernel.service.ServiceGraphModule;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.function.Supplier;
 
 import static io.datakernel.config.ConfigConverters.*;
 import static io.datakernel.di.module.Modules.combine;
@@ -106,24 +103,20 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 
 	@Override
 	protected void run() throws Exception {
-		benchmark(this::roundGet, "GET Request");
-	}
-
-	private void benchmark(Supplier<Promise<Long>> function, String nameBenchmark) throws Exception {
 		long timeAllRounds = 0;
 		long bestTime = -1;
 		long worstTime = -1;
 
 		System.out.println("Warming up ...");
 		for (int i = 0; i < warmupRounds; i++) {
-			long roundTime = round(function);
+			long roundTime = round();
 			long rps = totalRequests * 1000L / roundTime;
 			System.out.println("Round: " + (i + 1) + "; Round time: " + roundTime + "ms; RPS : " + rps);
 		}
 
-		System.out.println("Start benchmarking " + nameBenchmark);
+		System.out.println("Start benchmarking GET Request");
 		for (int i = 0; i < measureRounds; i++) {
-			long roundTime = round(function);
+			long roundTime = round();
 			timeAllRounds += roundTime;
 
 			if (bestTime == -1 || roundTime < bestTime) {
@@ -144,8 +137,8 @@ public class HttpServerWorkloadBenchmark extends Launcher {
 				bestTime + "ms; Worst time: " + worstTime + "ms; Requests per second: " + requestsPerSecond);
 	}
 
-	private long round(Supplier<Promise<Long>> function) throws Exception {
-		return clientEventloop.submit(function).get();
+	private long round() throws Exception {
+		return clientEventloop.submit(this::roundGet).get();
 	}
 
 	int sent;

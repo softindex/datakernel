@@ -37,15 +37,6 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>RpcBenchmark</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>RpcBenchmark</mainClass>
-            </configuration>
-          </execution>
-          <execution>
             <id>RpcExample</id>
             <goals>
               <goal>java</goal>

@@ -58,6 +58,7 @@ public class MemcacheLikeClient extends Launcher {
 	protected void run() throws ExecutionException, InterruptedException {
 		String message = "Hello, Memcached Server";
 
+		System.out.println();
 		CompletableFuture<Void> future = eventloop.submit(() ->
 				sequence(
 						() -> Promises.all(range(0, 25).mapToObj(i ->
@@ -65,6 +66,7 @@ public class MemcacheLikeClient extends Launcher {
 						() -> Promises.all(range(0, 25).mapToObj(i ->
 								client.get(i).whenResult(res -> System.out.println(i + " : " + res))))));
 		future.get();
+		System.out.println();
 	}
 
 	public static void main(String[] args) throws Exception {

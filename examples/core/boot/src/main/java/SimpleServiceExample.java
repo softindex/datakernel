@@ -25,24 +25,20 @@ public class SimpleServiceExample extends Launcher {
 	private static class CustomService implements Service {
 		@Override
 		public CompletableFuture<?> start() {
-			System.out.println(String.format("|%s|", "Service starting".toUpperCase()));
-			return CompletableFuture.completedFuture(null)
-					.whenCompleteAsync(($1, $2) ->
-							System.out.println("|SERVICE STARTED|"));
+			System.out.println("|SERVICE STARTING|");
+			return CompletableFuture.completedFuture(null);
 		}
 
 		@Override
 		public CompletableFuture<?> stop() {
-			System.out.println(String.format("|%s|", "Service stopping".toUpperCase()));
-			return CompletableFuture.completedFuture(null)
-					.whenCompleteAsync(($1, $2) ->
-							System.out.println("|SERVICE STOPPED|"));
+			System.out.println("|SERVICE STOPPING|");
+			return CompletableFuture.completedFuture(null);
 		}
 	}
 
 	@Override
 	protected void run() {
-		System.out.println("|RUN|");
+		System.out.println("|RUNNING|");
 	}
 }
 //[END EXAMPLE]

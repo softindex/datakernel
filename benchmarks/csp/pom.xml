@@ -1,0 +1,32 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.datakernel</groupId>
+    <artifactId>benchmarks</artifactId>
+    <version>3.2-SNAPSHOT</version>
+    <relativePath>../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>benchmarks-csp</artifactId>
+  <name>Benchmarks : CSP</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-launcher</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-boot</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.datakernel</groupId>
+      <artifactId>datakernel-csp</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+</project>

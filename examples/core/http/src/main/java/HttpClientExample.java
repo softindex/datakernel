@@ -74,13 +74,14 @@ public final class HttpClientExample extends Launcher {
 	@Override
 	protected void run() throws ExecutionException, InterruptedException {
 		String url = args.length != 0 ? args[0] : "http://127.0.0.1:8080/";
-		System.out.println("HTTP request: " + url);
+		System.out.println("\nHTTP request: " + url);
 		CompletableFuture<String> future = eventloop.submit(() ->
 				httpClient.request(HttpRequest.get(url))
 						.then(HttpMessage::loadBody)
 						.map(body -> body.getString(UTF_8))
 		);
 		System.out.println("HTTP response: " + future.get());
+		System.out.println();
 	}
 	//[END REGION_3]
 

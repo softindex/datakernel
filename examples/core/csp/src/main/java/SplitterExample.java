@@ -4,9 +4,8 @@ import io.datakernel.csp.ChannelSupplier;
 import io.datakernel.csp.process.ChannelSplitter;
 import io.datakernel.eventloop.Eventloop;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -18,18 +17,21 @@ public class SplitterExample {
 				.limit(5)
 				.collect(Collectors.toList());
 
-		Queue<Integer> result = new ConcurrentLinkedQueue<>();
 		ChannelSplitter<Integer> splitter = ChannelSplitter.create(ChannelSupplier.ofIterable(integers));
 
-		for (int i = 0; i < 3; i++) {
-			splitter.addOutput()
-					.set(ChannelConsumer.of(AsyncConsumer.of(result::offer)).async());
-		}
+		List<Integer> list1 = new ArrayList<>();
+		List<Integer> list2 = new ArrayList<>();
+		List<Integer> list3 = new ArrayList<>();
+
+		splitter.addOutput().set(ChannelConsumer.of(AsyncConsumer.of(list1::add)));
+		splitter.addOutput().set(ChannelConsumer.of(AsyncConsumer.of(list2::add)));
+		splitter.addOutput().set(ChannelConsumer.of(AsyncConsumer.of(list3::add)));
 
 		eventloop.run();
-		while (!result.isEmpty()) {
-			System.out.println(result.poll());
-		}
+
+		System.out.println("First list: " + list1);
+		System.out.println("Second list: " + list2);
+		System.out.println("Third list: " + list3);
 	}
 }
 //[END EXAMPLE]

@@ -3,7 +3,7 @@ import java.util.Map;
 
 //[START EXAMPLE]
 public final class AuthServiceImpl implements AuthService {
-	private Map<String, String> credentials = new HashMap<>();
+	private final Map<String, String> credentials = new HashMap<>();
 
 	@Override
 	public boolean authorize(String login, String password) {

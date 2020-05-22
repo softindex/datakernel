@@ -1,7 +1,6 @@
+package io.datakernel.datastream;
+
 import io.datakernel.config.Config;
-import io.datakernel.datastream.AbstractStreamSupplier;
-import io.datakernel.datastream.StreamConsumer;
-import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.datastream.processor.StreamMapper;
 import io.datakernel.di.InstanceProvider;
 import io.datakernel.di.annotation.Inject;
@@ -25,7 +24,7 @@ public class DatastreamBenchmark extends Launcher {
 
 	static final class IntegerStreamSupplier extends AbstractStreamSupplier<Integer> {
 		private Integer integer;
-		private int limit;
+		private final int limit;
 
 		public IntegerStreamSupplier(int limit) {
 			this.integer = 0;

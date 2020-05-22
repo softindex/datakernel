@@ -1,3 +1,5 @@
+package io.datakernel.rpc;
+
 import io.datakernel.common.MemSize;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;

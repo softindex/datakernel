@@ -23,7 +23,7 @@ public class TransientBindingExample {
 		Injector injector = Injector.of(cookbook);
 		Integer someInt = injector.getInstance(Integer.class);
 		Integer otherInt = injector.getInstance(Integer.class);
-		System.out.println("First : " + someInt + ", second one : " + otherInt);
+		System.out.println("First : " + someInt + ", second  : " + otherInt);
 		//[END REGION_2]
 	}
 }

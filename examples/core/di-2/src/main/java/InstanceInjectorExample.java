@@ -4,7 +4,6 @@ import io.datakernel.di.annotation.Inject;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.launcher.Launcher;
 
-@SuppressWarnings("FinalClass")
 public final class InstanceInjectorExample extends Launcher {
 	//[START REGION_1]
 	@Inject

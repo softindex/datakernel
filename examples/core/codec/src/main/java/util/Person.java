@@ -5,7 +5,7 @@ import java.time.LocalDate;
 public final class Person {
 	private final int id;
 	private final String name;
-	private LocalDate dateOfBirth;
+	private final LocalDate dateOfBirth;
 
 	public Person(int id, String name, LocalDate dateOfBirth) {
 		this.name = name;

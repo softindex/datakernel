@@ -37,15 +37,6 @@
         <artifactId>exec-maven-plugin</artifactId>
         <executions>
           <execution>
-            <id>HttpServerWorkloadBenchmark</id>
-            <goals>
-              <goal>java</goal>
-            </goals>
-            <configuration>
-              <mainClass>HttpServerWorkloadBenchmark</mainClass>
-            </configuration>
-          </execution>
-          <execution>
             <id>HttpClientExample</id>
             <goals>
               <goal>java</goal>

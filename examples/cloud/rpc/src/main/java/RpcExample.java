@@ -68,7 +68,7 @@ public class RpcExample extends Launcher {
 		CompletableFuture<Object> future = eventloop.submit(() ->
 				client.sendRequest("World", 1000)
 		);
-		System.out.println("RPC result: " + future.get());
+		System.out.printf("\nRPC result: %s \n\n", future.get());
 	}
 
 	public static void main(String[] args) throws Exception {

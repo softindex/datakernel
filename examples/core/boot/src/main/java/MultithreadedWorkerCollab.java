@@ -31,13 +31,6 @@ public final class MultithreadedWorkerCollab extends AbstractModule {
 		return new ConcurrentLinkedQueue<>();
 	}
 
-	@Provides
-	@Worker
-	Integer string(@WorkerId int workerId) {
-		System.out.println("Hello from worker #" + workerId);
-		return workerId;
-	}
-
 	public static void main(String[] args) throws InterruptedException {
 		Injector injector = Injector.of(WorkerPoolModule.create(), new MultithreadedWorkerCollab());
 		WorkerPool workerPool = injector.getInstance(WorkerPool.class);
