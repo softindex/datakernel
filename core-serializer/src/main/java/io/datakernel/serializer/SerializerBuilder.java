@@ -20,6 +20,7 @@ import io.datakernel.codegen.ClassBuilder;
 import io.datakernel.codegen.DefiningClassLoader;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.serializer.SerializerDef.StaticDecoders;
 import io.datakernel.serializer.TypedModsMap.Builder;
 import io.datakernel.serializer.annotations.*;
@@ -53,10 +54,12 @@ import static java.util.Arrays.asList;
  */
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public final class SerializerBuilder {
+	private static final Path DEFAULT_SAVE_DIR = ApplicationSettings.getPath(SerializerBuilder.class, "saveDir", null);
+
 	private final DefiningClassLoader classLoader;
 	private String profile;
 	private int version = Integer.MAX_VALUE;
-	private Path saveBytecodePath;
+	private Path saveBytecodePath = DEFAULT_SAVE_DIR;
 	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_3;
 	private Object[] classKey = null;
 

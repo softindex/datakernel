@@ -18,6 +18,7 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.DefiningClassLoader.ClassKey;
 import io.datakernel.codegen.utils.DefiningClassWriter;
+import io.datakernel.common.ApplicationSettings;
 import io.datakernel.common.Initializable;
 import io.datakernel.common.collection.CollectionUtils;
 import org.jetbrains.annotations.Nullable;
@@ -27,10 +28,10 @@ import org.objectweb.asm.commons.Method;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,6 +55,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	private final Logger logger = LoggerFactory.getLogger(getClass());
 
 	public static final String DEFAULT_CLASS_NAME = ClassBuilder.class.getPackage().getName() + ".Class";
+	private static final Path DEFAULT_SAVE_DIR = ApplicationSettings.getPath(ClassBuilder.class, "saveDir", null);
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 
 	private final DefiningClassLoader classLoader;
@@ -62,7 +64,7 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 	private final List<Class<?>> interfaces;
 	@Nullable
 	private ClassKey classKey;
-	private Path bytecodeSaveDir;
+	private Path bytecodeSaveDir = DEFAULT_SAVE_DIR;
 
 	private String className;
 	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
@@ -337,8 +339,16 @@ public final class ClassBuilder<T> implements Initializable<ClassBuilder<T>> {
 		}
 
 		if (bytecodeSaveDir != null) {
-			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(actualClassName + ".class").toFile())) {
-				fos.write(cw.toByteArray());
+			try {
+				Path pathToClass = bytecodeSaveDir;
+				String[] pathParts = actualClassName.split("\\.");
+				int i = 0;
+				for (; i < pathParts.length - 1; i++) {
+					pathToClass = pathToClass.resolve(pathParts[i]);
+				}
+				Files.createDirectories(pathToClass);
+				pathToClass = pathToClass.resolve(pathParts[i] + ".class");
+				Files.write(pathToClass, cw.toByteArray());
 			} catch (IOException e) {
 				throw new RuntimeException(e);
 			}

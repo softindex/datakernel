@@ -18,6 +18,8 @@ package io.datakernel.common;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -83,6 +85,10 @@ public final class ApplicationSettings {
 
 	public static MemSize getMemSize(Class<?> type, String name, MemSize defValue) {
 		return get(MemSize::valueOf, type, name, defValue);
+	}
+
+	public static Path getPath(Class<?> type, String name, Path defValue){
+		return get(Paths::get, type, name, defValue);
 	}
 
 	@Nullable
