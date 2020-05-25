@@ -81,6 +81,7 @@ public abstract class HttpMessage {
 	}
 
 	void addHeaderBuf(@NotNull ByteBuf buf) {
+		if (CHECK) checkState(!isRecycled());
 		buf.addRef();
 		if (bufs == null) {
 			bufs = buf;
@@ -153,6 +154,7 @@ public abstract class HttpMessage {
 	}
 
 	public void addCookies(@NotNull HttpCookie... cookies) {
+		if (CHECK) checkState(!isRecycled());
 		addCookies(Arrays.asList(cookies));
 	}
 
@@ -161,6 +163,7 @@ public abstract class HttpMessage {
 	public abstract void addCookie(@NotNull HttpCookie cookie);
 
 	public void setBodyStream(@NotNull ChannelSupplier<ByteBuf> bodySupplier) {
+		if (CHECK) checkState(!isRecycled());
 		this.bodyStream = bodySupplier;
 	}
 
@@ -171,6 +174,7 @@ public abstract class HttpMessage {
 	 * to recycle the byte buffers received.
 	 */
 	public ChannelSupplier<ByteBuf> getBodyStream() {
+		if (CHECK) checkState(!isRecycled());
 		ChannelSupplier<ByteBuf> bodyStream = this.bodyStream;
 		this.bodyStream = null;
 		if (bodyStream != null) return bodyStream;
@@ -183,10 +187,12 @@ public abstract class HttpMessage {
 	}
 
 	public void setBody(@NotNull ByteBuf body) {
+		if (CHECK) checkState(!isRecycled());
 		this.body = body;
 	}
 
 	public void setBody(@NotNull byte[] body) {
+		if (CHECK) checkState(!isRecycled());
 		setBody(ByteBuf.wrapForReading(body));
 	}
 
@@ -194,6 +200,7 @@ public abstract class HttpMessage {
 	 * Allows you to peak at the body when it is available without taking the ownership.
 	 */
 	public final ByteBuf getBody() {
+		if (CHECK) checkState(!isRecycled());
 		if ((flags & MUST_LOAD_BODY) != 0) throw new IllegalStateException("Body is not loaded");
 		if (body != null) return body;
 		throw new IllegalStateException("Body is missing or already consumed");
@@ -204,6 +211,7 @@ public abstract class HttpMessage {
 	 * It returns sucessfully only when this message in in {@link #MUST_LOAD_BODY non-streaming mode}
 	 */
 	public final ByteBuf takeBody() {
+		if (CHECK) checkState(!isRecycled());
 		ByteBuf body = getBody();
 		this.body = null;
 		return body;
@@ -218,10 +226,12 @@ public abstract class HttpMessage {
 	}
 
 	public void setMaxBodySize(MemSize maxBodySize) {
+		if (CHECK) checkState(!isRecycled());
 		this.maxBodySize = maxBodySize.toInt();
 	}
 
 	public void setMaxBodySize(int maxBodySize) {
+		if (CHECK) checkState(!isRecycled());
 		this.maxBodySize = maxBodySize;
 	}
 
@@ -229,6 +239,7 @@ public abstract class HttpMessage {
 	 * @see #loadBody(int)
 	 */
 	public Promise<ByteBuf> loadBody() {
+		if (CHECK) checkState(!isRecycled());
 		return loadBody(maxBodySize);
 	}
 
@@ -236,6 +247,7 @@ public abstract class HttpMessage {
 	 * @see #loadBody(int)
 	 */
 	public Promise<ByteBuf> loadBody(@NotNull MemSize maxBodySize) {
+		if (CHECK) checkState(!isRecycled());
 		return loadBody(maxBodySize.toInt());
 	}
 
@@ -246,6 +258,7 @@ public abstract class HttpMessage {
 	 * @param maxBodySize max number of bytes to load from the stream, an exception is returned if exceeded.
 	 */
 	public Promise<ByteBuf> loadBody(int maxBodySize) {
+		if (CHECK) checkState(!isRecycled());
 		if (body != null) {
 			this.flags &= ~MUST_LOAD_BODY;
 			return Promise.of(body);
@@ -282,6 +295,7 @@ public abstract class HttpMessage {
 	 * add some kind of session data here.
 	 */
 	public <T> void attach(Type type, T extra) {
+		if (CHECK) checkState(!isRecycled());
 		if (attachments == null) {
 			attachments = new HashMap<>();
 		}
@@ -292,6 +306,7 @@ public abstract class HttpMessage {
 	 * @see #attach(Type, Object)
 	 */
 	public <T> void attach(Class<T> type, T extra) {
+		if (CHECK) checkState(!isRecycled());
 		if (attachments == null) {
 			attachments = new HashMap<>();
 		}
@@ -302,6 +317,7 @@ public abstract class HttpMessage {
 	 * @see #attach(Type, Object)
 	 */
 	public void attach(Object extra) {
+		if (CHECK) checkState(!isRecycled());
 		if (attachments == null) {
 			attachments = new HashMap<>();
 		}
@@ -313,6 +329,7 @@ public abstract class HttpMessage {
 	 * This is used for context management.
 	 */
 	public <T> void attach(String key, T extra) {
+		if (CHECK) checkState(!isRecycled());
 		if (attachments == null) {
 			attachments = new HashMap<>();
 		}
@@ -366,6 +383,7 @@ public abstract class HttpMessage {
 	 * Sets this message to use the DEFLATE compression algorithm.
 	 */
 	public void setBodyGzipCompression() {
+		if (CHECK) checkState(!isRecycled());
 		this.flags |= USE_GZIP;
 	}
 

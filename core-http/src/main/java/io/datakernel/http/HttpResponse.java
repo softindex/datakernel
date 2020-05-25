@@ -197,23 +197,6 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 		return this;
 	}
 
-	@Override
-	public void addCookies(@NotNull List<HttpCookie> cookies) {
-		for (HttpCookie cookie : cookies) {
-			addCookie(cookie);
-		}
-	}
-
-	@Override
-	public void addCookie(@NotNull HttpCookie cookie) {
-		addHeader(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookie));
-	}
-
-	@Override
-	boolean isContentLengthExpected() {
-		return true;
-	}
-
 	@NotNull
 	public HttpResponse withCookies(@NotNull List<HttpCookie> cookies) {
 		addCookies(cookies);
@@ -273,6 +256,7 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 		return withHeader(CONTENT_TYPE, ofContentType(JSON_UTF_8))
 				.withBody(text.getBytes(UTF_8));
 	}
+	// endregion
 
 	@Override
 	public Promise<HttpResponse> get() {
@@ -285,10 +269,26 @@ public final class HttpResponse extends HttpMessage implements Async<HttpRespons
 		Promise<ChannelSupplier<ByteBuf>> getFileSlice(long offset, long limit);
 	}
 
-	// endregion
+	@Override
+	public void addCookies(@NotNull List<HttpCookie> cookies) {
+		if (CHECK) checkState(!isRecycled());
+		for (HttpCookie cookie : cookies) {
+			addCookie(cookie);
+		}
+	}
+
+	@Override
+	public void addCookie(@NotNull HttpCookie cookie) {
+		if (CHECK) checkState(!isRecycled());
+		addHeader(SET_COOKIE, new HttpHeaderValueOfSetCookies(cookie));
+	}
+
+	@Override
+	boolean isContentLengthExpected() {
+		return true;
+	}
 
 	public int getCode() {
-		if (CHECK) checkState(!isRecycled());
 		return code;
 	}
 

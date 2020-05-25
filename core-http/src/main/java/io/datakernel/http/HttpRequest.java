@@ -128,17 +128,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 		return this;
 	}
 
-	@Override
-	public void addCookies(@NotNull List<HttpCookie> cookies) {
-		if (CHECK) checkState(!isRecycled());
-		headers.add(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
-	}
-
-	@Override
-	public void addCookie(@NotNull HttpCookie cookie) {
-		addCookies(singletonList(cookie));
-	}
-
 	@NotNull
 	public HttpRequest withCookies(@NotNull List<HttpCookie> cookies) {
 		addCookies(cookies);
@@ -164,20 +153,31 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 	// endregion
 
+	@Override
+	public void addCookies(@NotNull List<HttpCookie> cookies) {
+		if (CHECK) checkState(!isRecycled());
+		headers.add(COOKIE, new HttpHeaderValueOfSimpleCookies(cookies));
+	}
+
+	@Override
+	public void addCookie(@NotNull HttpCookie cookie) {
+		if (CHECK) checkState(!isRecycled());
+		addCookies(singletonList(cookie));
+	}
+
 	@NotNull
 	@Contract(pure = true)
 	public HttpMethod getMethod() {
-		if (CHECK) checkState(!isRecycled());
 		return method;
 	}
 
 	@Contract(pure = true)
 	public InetAddress getRemoteAddress() {
-		if (CHECK) checkState(!isRecycled());
 		return remoteAddress;
 	}
 
 	void setRemoteAddress(@NotNull InetAddress inetAddress) {
+		if (CHECK) checkState(!isRecycled());
 		remoteAddress = inetAddress;
 	}
 
@@ -191,7 +191,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	UrlParser getUrl() {
-		if (CHECK) checkState(!isRecycled());
 		return url;
 	}
 
@@ -211,13 +210,11 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public String getPath() {
-		if (CHECK) checkState(!isRecycled());
 		return url.getPath();
 	}
 
 	@NotNull
 	public String getPathAndQuery() {
-		if (CHECK) checkState(!isRecycled());
 		return url.getPathAndQuery();
 	}
 
@@ -253,7 +250,6 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public Map<String, String> getQueryParameters() {
-		if (CHECK) checkState(!isRecycled());
 		if (queryParameters != null) {
 			return queryParameters;
 		}
@@ -263,19 +259,16 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@Nullable
 	public String getQueryParameter(@NotNull String key) {
-		if (CHECK) checkState(!isRecycled());
 		return url.getQueryParameter(key);
 	}
 
 	@NotNull
 	public List<String> getQueryParameters(@NotNull String key) {
-		if (CHECK) checkState(!isRecycled());
 		return url.getQueryParameters(key);
 	}
 
 	@NotNull
 	public Iterable<QueryParameter> getQueryParametersIterable() {
-		if (CHECK) checkState(!isRecycled());
 		return url.getQueryParametersIterable();
 	}
 
@@ -312,13 +305,11 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 
 	@NotNull
 	public Map<String, String> getPathParameters() {
-		if (CHECK) checkState(!isRecycled());
 		return pathParameters != null ? pathParameters : emptyMap();
 	}
 
 	@NotNull
 	public String getPathParameter(@NotNull String key) {
-		if (CHECK) checkState(!isRecycled());
 		if (pathParameters != null) {
 			String pathParameter = pathParameters.get(key);
 			if (pathParameter != null) {
@@ -329,6 +320,7 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	public Promise<Void> handleMultipart(MultipartDataHandler multipartDataHandler) {
+		if (CHECK) checkState(!isRecycled());
 		String contentType = getHeader(CONTENT_TYPE);
 		if (contentType == null || !contentType.startsWith("multipart/form-data; boundary=")) {
 			return Promise.ofException(HttpException.ofCode(400, "Content type is not multipart/form-data"));
@@ -346,18 +338,17 @@ public final class HttpRequest extends HttpMessage implements Initializable<Http
 	}
 
 	void setPos(int pos) {
+		if (CHECK) checkState(!isRecycled());
 		url.pos = (short) pos;
 	}
 
 	@NotNull
 	public String getRelativePath() {
-		if (CHECK) checkState(!isRecycled());
 		String partialPath = url.getPartialPath();
 		return partialPath.startsWith("/") ? partialPath.substring(1) : partialPath; // strip first '/'
 	}
 
 	String pollUrlPart() {
-		if (CHECK) checkState(!isRecycled());
 		return url.pollUrlPart();
 	}
 
