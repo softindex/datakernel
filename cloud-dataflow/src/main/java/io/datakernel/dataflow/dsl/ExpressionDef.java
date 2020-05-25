@@ -112,9 +112,9 @@ public final class ExpressionDef {
 		}
 	}
 
-	public Parser<AST.Expression> getParser(DslParser parser) {
+	public Parser<AST.DatasetExpression> getParser(DslParser parser) {
 		return constructParser(parser, tokens)
-				.map(items -> new AST.Expression() {
+				.map(items -> new AST.DatasetExpression() {
 					@Override
 					@SuppressWarnings("unchecked")
 					public <T> Dataset<T> evaluate(EvaluationContext context) {

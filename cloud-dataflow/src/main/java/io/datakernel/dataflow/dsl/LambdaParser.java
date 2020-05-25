@@ -1,11 +1,15 @@
 package io.datakernel.dataflow.dsl;
 
-import io.datakernel.dataflow.dsl.AST.*;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Expressions;
+import org.jetbrains.annotations.Nullable;
 import org.jparsec.*;
 
 import java.util.Arrays;
+import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.dataflow.dsl.LambdaParser.Arity.BINARY;
 import static io.datakernel.dataflow.dsl.LambdaParser.Arity.UNARY;
 
@@ -15,37 +19,36 @@ public final class LambdaParser {
 
 		Parser<Token> dot = parser.getTokenParser(".");
 
-		Parser<Parens> parensParser = lambdaExprRef.lazy()
-				.between(parser.getTokenParser("("), parser.getTokenParser(")"))
-				.map(Parens::new);
+		Parser<LambdaExpression> parensParser = lambdaExprRef.lazy()
+				.between(parser.getTokenParser("("), parser.getTokenParser(")"));
 
 		Parser<LambdaExpression> simpleExpr = Parsers.or(
 				parensParser,
 
 				dot.next(Terminals.identifier())
 						.many1()
-						.map(strs -> {
-							FieldReference reference = null;
-							// java has no proper foldLeft (at least in jdk8)
-							for (String str : strs) {
-								reference = new FieldReference(reference, str);
-							}
-							return reference;
-						})
-						.or(dot.retn(FieldReference.DOT)),
+						.map(strs ->
+								(LambdaExpression) argType -> {
+									Expression reference = cast(arg(0), argType);
+									// java has no proper foldLeft (at least in jdk8)
+									for (String str : strs) {
+										reference = property(reference, str);
+									}
+									return reference;
+								})
+						.or(dot.retn(argType -> cast(arg(0), argType))),
 
-				DslParser.INT_LITERAL.map(IntLiteral::new),
-				DslParser.FLOAT_LITERAL.map(FloatLiteral::new),
-				DslParser.STRING_LITERAL.map(StringLiteral::new)
+				Parsers.or(DslParser.INT_LITERAL.map(Integer::longValue), DslParser.FLOAT_LITERAL, DslParser.STRING_LITERAL)
+						.map(value -> $ -> value(value))
 		);
 
 		OperatorTable<LambdaExpression> operatorTable = new OperatorTable<>();
 		for (OpType op : OpType.values()) {
 			Parser<Token> tokenParser = parser.getTokenParser(op.token);
 			if (op.arity == BINARY) {
-				operatorTable.infixl(tokenParser.retn((left, right) -> new BinaryOp(op, left, right)), op.precedence);
+				operatorTable.infixl(tokenParser.retn(op::compile), op.precedence);
 			} else if (op.arity == UNARY) {
-				operatorTable.prefix(tokenParser.retn(expr -> new UnaryOp(op, expr)), op.precedence);
+				operatorTable.prefix(tokenParser.retn(expr -> op.compile(expr, null)), op.precedence);
 			}
 		}
 		lambdaExprRef.set(operatorTable.build(simpleExpr));
@@ -62,25 +65,40 @@ public final class LambdaParser {
 
 	// precedence is the same as in Java
 	public enum OpType {
-		OR(BINARY, "||", 10),
-		AND(BINARY, "&&", 20),
-		EQ(BINARY, "==", 30), NE(BINARY, "!=", 30),
-		LE(BINARY, "<=", 40), GE(BINARY, ">=", 40), LT(BINARY, "<", 40), GT(BINARY, ">", 40),
-		ADD(BINARY, "+", 50), SUB(BINARY, "-", 50),
-		MUL(BINARY, "*", 60), DIV(BINARY, "/", 60), MOD(BINARY, "%", 60),
+		OR(BINARY, "||", 10, Expressions::or),
+		AND(BINARY, "&&", 20, Expressions::and),
+		EQ(BINARY, "==", 30, Expressions::cmpEq), NE(BINARY, "!=", 30, Expressions::cmpNe),
+		LE(BINARY, "<=", 40, Expressions::cmpLe), GE(BINARY, ">=", 40, Expressions::cmpGe), LT(BINARY, "<", 40, Expressions::cmpLt), GT(BINARY, ">", 40, Expressions::cmpGt),
+		ADD(BINARY, "+", 50, Expressions::add), SUB(BINARY, "-", 50, Expressions::sub),
+		MUL(BINARY, "*", 60, Expressions::mul), DIV(BINARY, "/", 60, Expressions::div), MOD(BINARY, "%", 60, Expressions::rem),
 
-		NOT(UNARY, "!", 70),
-		MINUS(UNARY, "-", 70),
+		NOT(UNARY, "!", 70, (expression, $) -> Expressions.not(expression)),
+		MINUS(UNARY, "-", 70, (expression, $) -> Expressions.neg(expression)),
 		;
 
 		public final Arity arity;
 		public final String token;
 		public final int precedence;
+		private final BiFunction<Expression, Expression, Expression> codegen;
 
-		OpType(Arity arity, String token, int precedence) {
+		OpType(Arity arity, String token, int precedence, BiFunction<Expression, Expression, Expression> codegen) {
 			this.arity = arity;
 			this.token = token;
 			this.precedence = precedence;
+			this.codegen = codegen;
 		}
+
+		/**
+		 * Right expression can be null for unary operators
+		 */
+		public LambdaExpression compile(LambdaExpression left, @Nullable LambdaExpression right) {
+			return argType -> codegen.apply(left.compile(argType), right != null ? right.compile(argType) : null);
+		}
+	}
+
+	@FunctionalInterface
+	public interface LambdaExpression {
+
+		Expression compile(Class<?> argumentType);
 	}
 }

@@ -1,8 +1,7 @@
 package io.datakernel.dataflow.dsl;
 
+import io.datakernel.codegen.Expression;
 import io.datakernel.dataflow.dataset.Dataset;
-import io.datakernel.dataflow.dsl.LambdaParser.OpType;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -16,14 +15,9 @@ public final class AST {
 		void evaluate(EvaluationContext context);
 	}
 
-	public interface Expression {
+	public interface DatasetExpression {
 
 		<T> Dataset<T> evaluate(EvaluationContext context);
-	}
-
-	public interface LambdaExpression {
-
-		//TODO some kind of evaluation for codegen here
 	}
 
 	public static class Query implements Statement {
@@ -56,7 +50,7 @@ public final class AST {
 				+ "\"";
 	}
 
-	public static final class Identifier implements Expression {
+	public static final class Identifier implements DatasetExpression {
 		public final String name;
 
 		public Identifier(String name) {
@@ -95,9 +89,9 @@ public final class AST {
 
 	public static final class Assignment implements Statement {
 		public final Identifier identifier;
-		public final Expression expression;
+		public final DatasetExpression expression;
 
-		public Assignment(Identifier identifier, Expression expression) {
+		public Assignment(Identifier identifier, DatasetExpression expression) {
 			this.identifier = identifier;
 			this.expression = expression;
 		}
@@ -114,10 +108,10 @@ public final class AST {
 	}
 
 	public static final class Write implements Statement {
-		public final Expression source;
+		public final DatasetExpression source;
 		public final String destination;
 
-		public Write(Expression source, String destination) {
+		public Write(DatasetExpression source, String destination) {
 			this.source = source;
 			this.destination = destination;
 		}
@@ -155,108 +149,6 @@ public final class AST {
 			return "REPEAT " + times + " TIMES\n    " +
 					query.statements.stream().map(Statement::toString).collect(joining("\n    ")) +
 					"\nEND";
-		}
-	}
-
-	public static final class UnaryOp implements LambdaExpression {
-		public final OpType operator;
-		public final LambdaExpression operand;
-
-		public UnaryOp(OpType operator, LambdaExpression operand) {
-			this.operator = operator;
-			this.operand = operand;
-		}
-
-		@Override
-		public String toString() {
-			return operator.token + operand;
-		}
-	}
-
-	public static final class BinaryOp implements LambdaExpression {
-		public final OpType operator;
-		public final LambdaExpression left, right;
-
-		public BinaryOp(OpType operator, LambdaExpression left, LambdaExpression right) {
-			this.operator = operator;
-			this.left = left;
-			this.right = right;
-		}
-
-		@Override
-		public String toString() {
-			return left + " " + operator.token + " " + right;
-		}
-	}
-
-	public static final class FieldReference implements LambdaExpression {
-		public static final FieldReference DOT = new FieldReference(null, "");
-
-		@Nullable
-		public final FieldReference parent;
-		public final String field;
-
-		public FieldReference(@Nullable FieldReference parent, String field) {
-			this.parent = parent;
-			this.field = field;
-		}
-
-		@Override
-		public String toString() {
-			return (parent != null ? parent : "") + "." + field;
-		}
-	}
-
-	// this node can (and should) be flattened, but I keep it to store paren information for nice toString
-	public static final class Parens implements LambdaExpression {
-		public final LambdaExpression expr;
-
-		public Parens(LambdaExpression expr) {
-			this.expr = expr;
-		}
-
-		@Override
-		public String toString() {
-			return "(" + expr + ")";
-		}
-	}
-
-	public static final class StringLiteral implements LambdaExpression {
-		public final String value;
-
-		public StringLiteral(String value) {
-			this.value = value;
-		}
-
-		@Override
-		public String toString() {
-			return stringLiteral(value);
-		}
-	}
-
-	public static final class IntLiteral implements LambdaExpression {
-		public final int value;
-
-		public IntLiteral(int value) {
-			this.value = value;
-		}
-
-		@Override
-		public String toString() {
-			return "" + value;
-		}
-	}
-
-	public static final class FloatLiteral implements LambdaExpression {
-		public final float value;
-
-		public FloatLiteral(float value) {
-			this.value = value;
-		}
-
-		@Override
-		public String toString() {
-			return "" + value;
 		}
 	}
 }

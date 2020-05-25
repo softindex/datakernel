@@ -1,6 +1,8 @@
 package io.datakernel.dataflow.dsl;
 
+import io.datakernel.codegen.Expression;
 import io.datakernel.dataflow.dataset.Dataset;
+import io.datakernel.dataflow.dsl.LambdaParser.LambdaExpression;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -49,15 +51,15 @@ public final class ExpressionContext {
 		if (object instanceof String) {
 			return evaluationContext.generateInstance((String) object);
 		}
-		return LambdaGenerator.generateMapper((AST.LambdaExpression) object);
+		return LambdaUtils.generateMapper((LambdaExpression) object);
 	}
 
-	public <T> Predicate<T> getPredicate(int position) {
+	public <T> Predicate<T> getPredicate(int position, Class<T> argumentType) {
 		Object object = items.get(position);
 		if (object instanceof String) {
 			return evaluationContext.generateInstance((String) object);
 		}
-		return LambdaGenerator.generatePredicate((AST.LambdaExpression) object);
+		return LambdaUtils.generatePredicate((LambdaExpression) object, argumentType);
 	}
 
 	public <T> T generateInstance(int position) {
@@ -65,7 +67,7 @@ public final class ExpressionContext {
 	}
 
 	public <T> Dataset<T> evaluateExpr(int position) {
-		return getItem(position, AST.Expression.class, "an expression").evaluate(evaluationContext);
+		return getItem(position, AST.DatasetExpression.class, "an expression").evaluate(evaluationContext);
 	}
 
 	@Nullable

@@ -1,10 +1,12 @@
 package io.datakernel.dataflow.dsl;
 
+import io.datakernel.codegen.Expression;
 import io.datakernel.common.tuple.Tuple2;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.Datasets;
 import io.datakernel.dataflow.dataset.LocallySortedDataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
+import io.datakernel.dataflow.dsl.LambdaParser.LambdaExpression;
 import io.datakernel.datastream.processor.StreamJoin.Joiner;
 import io.datakernel.datastream.processor.StreamReducers.ReducerToResult;
 import org.jparsec.*;
@@ -15,7 +17,7 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static io.datakernel.dataflow.dsl.ExpressionDef.expression;
-import static io.datakernel.dataflow.dsl.LambdaGenerator.getReturnType;
+import static io.datakernel.dataflow.dsl.LambdaUtils.getReturnType;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toSet;
 import static org.jparsec.Parsers.sequence;
@@ -33,10 +35,10 @@ public final class DslParser {
 
 	private final Parser<AST.Query> parser;
 	private final Terminals terminals;
-	private final Parser<AST.Expression> expressionParser;
-	private final Parser<AST.LambdaExpression> lambdaParser;
+	private final Parser<AST.DatasetExpression> expressionParser;
+	private final Parser<LambdaExpression> lambdaParser;
 
-	public DslParser(Parser<AST.Query> parser, Terminals terminals, Parser<AST.Expression> expressionParser, Parser<AST.LambdaExpression> lambdaParser) {
+	public DslParser(Parser<AST.Query> parser, Terminals terminals, Parser<AST.DatasetExpression> expressionParser, Parser<LambdaExpression> lambdaParser) {
 		this.parser = parser;
 		this.terminals = terminals;
 		this.expressionParser = expressionParser;
@@ -51,11 +53,11 @@ public final class DslParser {
 		return terminals.token(name);
 	}
 
-	public Parser<AST.Expression> getExpressionParser() {
+	public Parser<AST.DatasetExpression> getExpressionParser() {
 		return expressionParser;
 	}
 
-	public Parser<AST.LambdaExpression> getLambdaParser() {
+	public Parser<LambdaExpression> getLambdaParser() {
 		return lambdaParser;
 	}
 
@@ -82,9 +84,9 @@ public final class DslParser {
 						Terminals.DecimalLiteral.TOKENIZER,
 						dslTerminals.tokenizer());
 
-		Parser.Reference<AST.Expression> expressionRef = Parser.newReference();
+		Parser.Reference<AST.DatasetExpression> expressionRef = Parser.newReference();
 		Parser.Reference<AST.Statement> statementRef = Parser.newReference();
-		Parser.Reference<AST.LambdaExpression> lambdaRef = Parser.newReference();
+		Parser.Reference<LambdaExpression> lambdaRef = Parser.newReference();
 
 		Parser<AST.Identifier> identifier = Terminals.identifier().map(AST.Identifier::new);
 
@@ -100,7 +102,7 @@ public final class DslParser {
 		}
 		expressionParsers[expressions.size()] = identifier;
 
-		Parser<AST.Expression> expression = Parsers.or(expressionParsers).cast();
+		Parser<AST.DatasetExpression> expression = Parsers.or(expressionParsers).cast();
 
 		expressionRef.set(expression);
 
@@ -157,8 +159,10 @@ public final class DslParser {
 				expression("DATASET %str TYPE %str", context ->
 						Datasets.datasetOfList(context.getString(0), context.getClass(1))),
 
-				expression("FILTER %expr WITH %lambda", context ->
-						Datasets.filter(context.evaluateExpr(0), context.getPredicate(1))),
+				expression("FILTER %expr WITH %lambda", context -> {
+					Dataset<Object> dataset = context.evaluateExpr(0);
+					return Datasets.filter(dataset, context.getPredicate(1, dataset.valueType()));
+				}),
 
 				expression("MAP %expr BY %lambda", context -> {
 					Function<Object, Object> mapper = context.getMapper(1);

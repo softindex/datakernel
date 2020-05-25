@@ -462,7 +462,7 @@ public final class DataflowTest {
 						"-- this is a comment\n" +
 						"\n" +
 						"items = DATASET \"items\" TYPE \"TestItem\"\n" +
-						"filtered = FILTER items WITH \"TestPredicate\" -- (.value % 2 == 2 + 2 * 2)\n" +
+						"filtered = FILTER items WITH (.value % 2 == 0)\n" +
 						"sorted = LOCAL SORT filtered BY \"TestKeyFunction\"\n" +
 						"                             COMPARING WITH \"TestComparator\"\n" +
 						"\n" +
