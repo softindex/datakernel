@@ -69,6 +69,23 @@ public final class ChannelLZ4Compressor extends AbstractCommunicatingProcess
 		void onBuf(ByteBuf in, ByteBuf out);
 	}
 
+	public abstract static class ForwardingInspector implements Inspector {
+		protected final @Nullable Inspector next;
+
+		public ForwardingInspector(@Nullable Inspector next) {this.next = next;}
+
+		@Override
+		public void onBuf(ByteBuf in, ByteBuf out) {
+			if (next != null) next.onBuf(in, out);
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T extends Inspector> @Nullable T lookup(Class<T> type) {
+			return type.isAssignableFrom(this.getClass()) ? (T) this : next != null ? next.lookup(type) : null;
+		}
+	}
+
 	public static class JmxInspector extends AbstractInspector<Inspector> implements Inspector {
 		public static final Duration SMOOTHING_WINDOW = Duration.ofMinutes(1);
 

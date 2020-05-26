@@ -16,12 +16,7 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.common.inspector.AbstractInspector;
-import io.datakernel.common.ref.RefInt;
-import io.datakernel.dns.RemoteAsyncDnsClient.Inspector;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.promise.Promise;
 import io.datakernel.promise.Promises;
 import io.datakernel.test.rules.ActivePromisesRule;
 import io.datakernel.test.rules.ByteBufRule;
@@ -33,16 +28,11 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static io.datakernel.dns.DnsProtocol.ResponseErrorCode.*;
-import static io.datakernel.eventloop.FatalErrorHandlers.rethrowOnAnyError;
 import static io.datakernel.promise.TestUtils.await;
 import static io.datakernel.promise.TestUtils.awaitException;
-import static io.datakernel.test.TestUtils.assertComplete;
 import static java.util.stream.Collectors.joining;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -123,85 +113,4 @@ public final class AsyncDnsClientTest {
 		assertEquals(NAME_ERROR, e.getResult().getErrorCode());
 	}
 
-	@Test
-	@Ignore
-	public void testAdaptedClientsInMultipleThreads() {
-		int threadCount = 10;
-		Eventloop eventloop = Eventloop.getCurrentEventloop();
-
-		InspectorGadget inspector = new InspectorGadget();
-		CachedAsyncDnsClient primaryCachedDnsClient = CachedAsyncDnsClient.create(
-				eventloop,
-				RemoteAsyncDnsClient.create(eventloop)
-						.withInspector(inspector),
-				DnsCache.create(eventloop)
-		);
-
-		RefInt index = new RefInt(-1);
-		IntStream.range(0, threadCount)
-				.mapToObj($ -> (Runnable) () -> {
-					eventloop.startExternalTask();
-					Eventloop subloop = Eventloop.create().withFatalErrorHandler(rethrowOnAnyError()).withCurrentThread();
-
-					AsyncDnsClient cachedClient = primaryCachedDnsClient.adaptToAnotherEventloop(subloop);
-
-					Promises.toList(
-							Stream.generate(() -> null)
-									.flatMap($2 -> Stream.of("www.google.com", "www.github.com", "www.kpi.ua"))
-									.limit(100)
-									.map(cachedClient::resolve4))
-							.thenEx(($2, e) -> {
-								if (e instanceof DnsQueryException) {
-									if (((DnsQueryException) e).getResult().getErrorCode() == TIMED_OUT) {
-										System.out.println("TIMED_OUT");
-										return Promise.complete();
-									}
-								}
-								return Promise.of(null, e);
-							})
-							.whenComplete(assertComplete());
-
-					try {
-						subloop.run();
-					} catch (Throwable e) {
-						eventloop.recordFatalError(e, subloop);
-					} finally {
-						eventloop.completeExternalTask();
-					}
-				})
-				.forEach(runnable -> new Thread(runnable, "test thread #" + index.inc()).start());
-		await();
-
-		System.out.println("Real requests per query:");
-		inspector.getRequestCounts().forEach((k, v) -> System.out.println(v + " of " + k));
-		inspector.getRequestCounts().forEach((k, v) -> assertEquals(1, v.intValue()));
-	}
-
-	private static class InspectorGadget extends AbstractInspector<Inspector> implements Inspector {
-		private Map<DnsQuery, Integer> requestCounts = new ConcurrentHashMap<>();
-
-		public Map<DnsQuery, Integer> getRequestCounts() {
-			return requestCounts;
-		}
-
-		@Override
-		public void onDnsQuery(DnsQuery query, ByteBuf payload) {
-			requestCounts.merge(query, 1, Integer::sum);
-		}
-
-		@Override
-		public void onDnsQueryResult(DnsQuery query, DnsResponse result) {
-
-		}
-
-		@Override
-		public void onDnsQueryError(DnsQuery query, Throwable e) {
-
-		}
-
-		@Override
-		public void onDnsQueryExpiration(DnsQuery query) {
-
-		}
-	}
 }

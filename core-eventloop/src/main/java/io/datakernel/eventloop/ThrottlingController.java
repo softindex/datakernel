@@ -16,8 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.common.Stopwatch;
-import io.datakernel.common.inspector.AbstractInspector;
 import io.datakernel.eventloop.jmx.EventloopJmxBean;
 import io.datakernel.jmx.api.attribute.JmxAttribute;
 import io.datakernel.jmx.api.attribute.JmxOperation;
@@ -32,7 +30,7 @@ import java.time.Duration;
 import static io.datakernel.common.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController extends AbstractInspector<EventloopInspector> implements EventloopJmxBean, EventloopInspector {
+public final class ThrottlingController extends ForwardingEventloopInspector implements EventloopJmxBean, EventloopInspector {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
@@ -78,17 +76,18 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	private float throttling;
 
 	// region creators
-	private ThrottlingController() {
-	}
-
-	@NotNull
-	public static ThrottlingController create(@NotNull Eventloop eventloop) {
-		return create().withEventloop(eventloop);
+	private ThrottlingController(@Nullable EventloopInspector next) {
+		super(next);
 	}
 
 	@NotNull
 	public static ThrottlingController create() {
-		return new ThrottlingController()
+		return create(null);
+	}
+
+	@NotNull
+	public static ThrottlingController create(EventloopInspector next) {
+		return new ThrottlingController(next)
 				.withTargetTime(TARGET_TIME)
 				.withGcTime(GC_TIME)
 				.withSmoothingWindow(SMOOTHING_WINDOW)
@@ -171,15 +170,17 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 	@Override
 	public void onUpdateConcurrentTasksStats(int concurrentTasksSize, long loopTime) {
 		this.concurrentTasksSize = concurrentTasksSize;
+		super.onUpdateConcurrentTasksStats(concurrentTasksSize, loopTime);
 	}
 
 	@Override
 	public void onUpdateSelectedKeysStats(int lastSelectedKeys, int invalidKeys, int acceptKeys, int connectKeys, int readKeys, int writeKeys, long loopTime) {
 		this.lastSelectedKeys = lastSelectedKeys;
+		super.onUpdateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys, loopTime);
 	}
 
 	@Override
-	public void onUpdateBusinessLogicTime(boolean anyTaskOrKeyPresent, boolean externalTaskOrKeyPresent, long businessLogicTime) {
+	public void onUpdateBusinessLogicTime(boolean taskOrKeyPresent, boolean externalTaskPresent, long businessLogicTime) {
 		if (businessLogicTime < 0 || businessLogicTime > 60000) {
 			logger.warn("Invalid processing time: {}", businessLogicTime);
 			return;
@@ -211,6 +212,8 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 		}
 
 		infoTotalTimeMillis += businessLogicTime;
+
+		super.onUpdateBusinessLogicTime(taskOrKeyPresent, externalTaskPresent, businessLogicTime);
 	}
 
 	@Override
@@ -234,45 +237,9 @@ public final class ThrottlingController extends AbstractInspector<EventloopInspe
 		infoRounds++;
 
 		throttling = (float) newThrottling;
-	}
 
-	// region NOP
-	@Override
-	public void onUpdateSelectorSelectTimeout(long selectorSelectTimeout) {
+		super.onUpdateSelectorSelectTime(selectorSelectTime);
 	}
-
-	@Override
-	public void onUpdateSelectedKeyDuration(@NotNull Stopwatch sw) {
-	}
-
-	@Override
-	public void onUpdateLocalTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw) {
-	}
-
-	@Override
-	public void onUpdateLocalTasksStats(int newTasks, long loopTime) {
-	}
-
-	@Override
-	public void onUpdateConcurrentTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw) {
-	}
-
-	@Override
-	public void onUpdateScheduledTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw, boolean background) {
-	}
-
-	@Override
-	public void onUpdateScheduledTasksStats(int newTasks, long loopTime, boolean background) {
-	}
-
-	@Override
-	public void onFatalError(@NotNull Throwable e, Object causedObject) {
-	}
-
-	@Override
-	public void onScheduledTaskOverdue(int overdue, boolean background) {
-	}
-	// endregion
 
 	public double getAvgTimePerKeyMillis() {
 		return smoothedTimePerKeyMillis;

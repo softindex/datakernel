@@ -6,7 +6,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public interface EventloopInspector extends BaseInspector<EventloopInspector> {
-	void onUpdateBusinessLogicTime(boolean taskOrKerPresent, boolean externalTaskPresent, long businessLogicTime);
+	void onUpdateBusinessLogicTime(boolean taskOrKeyPresent, boolean externalTaskPresent, long businessLogicTime);
 
 	void onUpdateSelectorSelectTime(long selectorSelectTime);
 
@@ -18,7 +18,7 @@ public interface EventloopInspector extends BaseInspector<EventloopInspector> {
 
 	void onUpdateLocalTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw);
 
-	void onUpdateLocalTasksStats(int newLocalTasks, long loopTime);
+	void onUpdateLocalTasksStats(int localTasks, long loopTime);
 
 	void onUpdateConcurrentTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw);
 
@@ -26,9 +26,9 @@ public interface EventloopInspector extends BaseInspector<EventloopInspector> {
 
 	void onUpdateScheduledTaskDuration(@NotNull Runnable runnable, @Nullable Stopwatch sw, boolean background);
 
-	void onUpdateScheduledTasksStats(int newScheduledTasks, long loopTime, boolean background);
+	void onUpdateScheduledTasksStats(int scheduledTasks, long loopTime, boolean background);
 
-	void onFatalError(@NotNull Throwable e, @Nullable Object causedObject);
+	void onFatalError(@NotNull Throwable e, @Nullable Object context);
 
 	void onScheduledTaskOverdue(int overdue, boolean background);
 }
