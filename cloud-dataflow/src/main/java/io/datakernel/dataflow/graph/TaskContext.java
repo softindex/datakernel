@@ -16,6 +16,7 @@
 
 package io.datakernel.dataflow.graph;
 
+import io.datakernel.dataflow.di.DatasetIdModule.DatasetIds;
 import io.datakernel.datastream.StreamConsumer;
 import io.datakernel.datastream.StreamSupplier;
 import io.datakernel.di.ResourceLocator;
@@ -28,11 +29,11 @@ import java.util.Map;
 
 import static io.datakernel.common.Preconditions.checkNotNull;
 import static io.datakernel.common.Preconditions.checkState;
-import static io.datakernel.dataflow.di.DatasetIdImpl.datasetId;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a context of a datagraph system: environment, suppliers and consumers.
+ * Represents a context of a datagraph system: environment, suppliers and
+ * consumers.
  * Provides functionality to alter context and wire components.
  */
 public final class TaskContext {
@@ -41,13 +42,15 @@ public final class TaskContext {
 	private final SettablePromise<Void> executionPromise = new SettablePromise<>();
 
 	private final ResourceLocator environment;
+	private final DatasetIds datasetIds;
 
 	public TaskContext(ResourceLocator environment) {
 		this.environment = environment;
+		datasetIds = environment.getInstance(DatasetIds.class);
 	}
 
 	public Object get(String key) {
-		return environment.getInstance(datasetId(key));
+		return environment.getInstance(datasetIds.getKeyForId(key));
 	}
 
 	public <T> T get(Class<T> cls) {

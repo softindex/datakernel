@@ -22,6 +22,7 @@ import io.datakernel.datastream.processor.StreamReducers.ReducerToResult.InputTo
 import io.datakernel.di.Key;
 import io.datakernel.di.annotation.Provides;
 import io.datakernel.di.module.AbstractModule;
+import io.datakernel.di.module.Module;
 import io.datakernel.di.util.Types;
 
 import java.net.InetAddress;
@@ -44,7 +45,7 @@ public final class DataflowCodecs extends AbstractModule {
 	private DataflowCodecs() {
 	}
 
-	public static DataflowCodecs create() {
+	public static Module create() {
 		return new DataflowCodecs();
 	}
 
