@@ -180,7 +180,7 @@ public abstract class AbstractCommunicatingProcess implements AsyncProcess {
 			}
 
 			@Override
-			public void closeEx(@NotNull Throwable e) {
+			public void onClosed(@NotNull Throwable e) {
 				supplier.closeEx(e);
 				AbstractCommunicatingProcess.this.closeEx(e);
 			}

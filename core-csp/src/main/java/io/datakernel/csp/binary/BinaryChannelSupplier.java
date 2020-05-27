@@ -17,6 +17,7 @@
 package io.datakernel.csp.binary;
 
 import io.datakernel.async.function.AsyncSupplier;
+import io.datakernel.async.process.AbstractAsyncCloseable;
 import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
@@ -27,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Iterator;
 
-public abstract class BinaryChannelSupplier implements AsyncCloseable {
+public abstract class BinaryChannelSupplier extends AbstractAsyncCloseable {
 	public static final Exception UNEXPECTED_DATA_EXCEPTION = new ParseException(BinaryChannelSupplier.class, "Unexpected data after end-of-stream");
 	public static final Exception UNEXPECTED_END_OF_STREAM_EXCEPTION = new ParseException(BinaryChannelSupplier.class, "Unexpected end-of-stream");
 
@@ -92,8 +93,7 @@ public abstract class BinaryChannelSupplier implements AsyncCloseable {
 			}
 
 			@Override
-			public void closeEx(@NotNull Throwable e) {
-				bufs.recycle();
+			protected void onClosed(@NotNull Throwable e) {
 				input.closeEx(e);
 			}
 		};
@@ -113,7 +113,7 @@ public abstract class BinaryChannelSupplier implements AsyncCloseable {
 			}
 
 			@Override
-			public void closeEx(@NotNull Throwable e) {
+			protected void onClosed(@NotNull Throwable e) {
 				closeable.closeEx(e);
 			}
 		};
@@ -136,7 +136,7 @@ public abstract class BinaryChannelSupplier implements AsyncCloseable {
 			Promise<Void> moreDataPromise = needMoreData();
 			if (moreDataPromise.isResult()) continue;
 			return moreDataPromise
-					.whenException(this::close)
+					.whenException(this::closeEx)
 					.then(() -> parse(decoder));
 		}
 	}
@@ -165,5 +165,10 @@ public abstract class BinaryChannelSupplier implements AsyncCloseable {
 
 	public Promise<Void> bindTo(BinaryChannelInput input) {
 		return input.set(this);
+	}
+
+	@Override
+	protected void onCleanup() {
+		bufs.recycle();
 	}
 }

@@ -16,13 +16,20 @@
 
 package io.datakernel.async.process;
 
+import io.datakernel.common.Check;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.promise.Promise;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import static io.datakernel.common.Preconditions.checkState;
 import static io.datakernel.common.Recyclable.tryRecycle;
 
 public abstract class AbstractAsyncCloseable implements AsyncCloseable {
+	private static final Boolean CHECK = Check.isEnabled(AbstractAsyncCloseable.class);
+
+	protected final Eventloop eventloop = Eventloop.getCurrentEventloop();
+
 	@Nullable
 	private AsyncCloseable closeable;
 
@@ -39,10 +46,15 @@ public abstract class AbstractAsyncCloseable implements AsyncCloseable {
 	protected void onClosed(@NotNull Throwable e) {
 	}
 
+	protected void onCleanup() {
+	}
+
 	@Override
 	public final void closeEx(@NotNull Throwable e) {
+		if (CHECK) checkState(eventloop.inEventloopThread(), "Not in eventloop thread");
 		if (isClosed()) return;
 		exception = e;
+		eventloop.post(this::onCleanup);
 		onClosed(e);
 		if (closeable != null) {
 			closeable.closeEx(e);

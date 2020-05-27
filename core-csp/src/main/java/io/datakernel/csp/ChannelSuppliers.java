@@ -20,6 +20,7 @@ import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.common.MemSize;
+import io.datakernel.common.Recyclable;
 import io.datakernel.common.collection.CollectionUtils;
 import io.datakernel.common.collection.Try;
 import io.datakernel.common.exception.StacklessException;
@@ -44,7 +45,6 @@ import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
 import static io.datakernel.common.Recyclable.deepRecycle;
-import static io.datakernel.common.Recyclable.tryRecycle;
 import static io.datakernel.common.Utils.nullify;
 import static io.datakernel.eventloop.RunnableWithContext.wrapContext;
 import static java.lang.Math.min;
@@ -453,9 +453,8 @@ public final class ChannelSuppliers {
 		}
 
 		@Override
-		protected void onClosed(@NotNull Throwable e) {
-			tryRecycle(item);
-			item = null;
+		protected void onCleanup() {
+			item = nullify(item, Recyclable::tryRecycle);
 		}
 	}
 
@@ -477,7 +476,7 @@ public final class ChannelSuppliers {
 		}
 
 		@Override
-		protected void onClosed(@NotNull Throwable e) {
+		protected void onCleanup() {
 			deepRecycle(iterator);
 		}
 	}

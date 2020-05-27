@@ -144,12 +144,16 @@ public class TestUtils {
 		}
 
 		@Override
-		protected void onClosed(@NotNull Throwable e) {
-			executed = true;
+		protected void onCleanup() {
 			queue.recycle();
 			if (expectedBuf != null) {
 				expectedBuf.recycle();
 			}
+		}
+
+		@Override
+		protected void onClosed(@NotNull Throwable e) {
+			executed = true;
 			if (expectedException != null) {
 				assertEquals(expectedException, e);
 				return;
