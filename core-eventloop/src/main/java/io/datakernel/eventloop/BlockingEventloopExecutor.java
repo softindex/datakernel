@@ -111,6 +111,8 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 			} catch (UncheckedException u) {
 				future.completeExceptionally(u.getCause());
 				return;
+			} finally {
+				complete();
 			}
 			future.complete(null);
 		}, future);
@@ -136,6 +138,8 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				throw e;
 			} catch (Exception e) {
 				future.completeExceptionally(e);
+			} finally {
+				complete();
 			}
 		}, future);
 		return future;
