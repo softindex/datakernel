@@ -21,26 +21,30 @@ import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.graph.StreamId;
-import io.datakernel.dataflow.node.NodeConsumerToList;
+import io.datakernel.dataflow.node.NodeSupplierOfId;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public final class DatasetListConsumer<T> {
-	private final String listId;
+public final class DatasetSupplierOfId<T> extends Dataset<T> {
+	private final String id;
 
-	private final Dataset<T> input;
-
-	public DatasetListConsumer(Dataset<T> input, String listId) {
-		this.listId = listId;
-		this.input = input;
+	public DatasetSupplierOfId(String id, Class<T> resultType) {
+		super(resultType);
+		this.id = id;
 	}
 
-	public void compileInto(DataflowGraph graph) {
-		List<StreamId> streamIds = input.channels(DataflowContext.of(graph));
-		for (StreamId streamId : streamIds) {
-			Partition partition = graph.getPartition(streamId);
-			NodeConsumerToList<T> node = new NodeConsumerToList<>(streamId, listId);
+	@Override
+	public List<StreamId> channels(DataflowContext context) {
+		DataflowGraph graph = context.getGraph();
+		List<StreamId> outputStreamIds = new ArrayList<>();
+		List<Partition> availablePartitions = graph.getAvailablePartitions();
+		for (int i = 0, size = availablePartitions.size(); i < size; i++) {
+			Partition partition = availablePartitions.get(i);
+			NodeSupplierOfId<T> node = new NodeSupplierOfId<>(id, i, size);
 			graph.addNode(partition, node);
+			outputStreamIds.add(node.getOutput());
 		}
+		return outputStreamIds;
 	}
 }

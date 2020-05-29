@@ -19,7 +19,8 @@ package io.datakernel.dataflow.stream;
 import io.datakernel.codec.StructuredCodec;
 import io.datakernel.dataflow.dataset.Dataset;
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.dataset.impl.DatasetConsumerOfId;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.NodeSort.StreamSorterStorageFactory;
@@ -286,14 +287,14 @@ public class PageRankTest {
 
 		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
 
-		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfList("items",
+		SortedDataset<Long, Page> pages = repartition_Sort(sortedDatasetOfId("items",
 				Page.class, Long.class, new PageKeyFunction(), new LongComparator()));
 
 		SortedDataset<Long, Rank> pageRanks = pageRank(pages);
 
-		DatasetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
+		DatasetConsumerOfId<Rank> consumerNode = consumerOfId(pageRanks, "result");
 
-		consumerNode.compileInto(graph);
+		consumerNode.channels(DataflowContext.of(graph));
 
 		await(graph.execute()
 				.whenComplete(assertComplete($ -> {

@@ -16,6 +16,7 @@
 
 package io.datakernel.dataflow.server;
 
+import io.datakernel.async.process.AsyncCloseable;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.common.MemSize;
 import io.datakernel.csp.ChannelConsumer;
@@ -38,12 +39,15 @@ import io.datakernel.di.ResourceLocator;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.AbstractServer;
 import io.datakernel.net.AsyncTcpSocket;
+import io.datakernel.promise.SettablePromise;
 import io.datakernel.serializer.BinarySerializer;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -206,5 +210,13 @@ public final class DataflowServer extends AbstractServer<DataflowServer> {
 		} else {
 			handler.onCommand(messaging, command);
 		}
+	}
+
+	@Override
+	protected void onClose(SettablePromise<Void> cb) {
+		List<ChannelQueue<ByteBuf>> pending = new ArrayList<>(pendingStreams.values());
+		pendingStreams.clear();
+		pending.forEach(AsyncCloseable::close);
+		cb.set(null);
 	}
 }

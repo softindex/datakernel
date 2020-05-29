@@ -1,7 +1,8 @@
 package io.datakernel.dataflow.stream;
 
 import io.datakernel.dataflow.dataset.SortedDataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.dataset.impl.DatasetConsumerOfId;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.server.DataflowServer;
@@ -99,12 +100,12 @@ public class ReducerDeadlockTest {
 
 		DataflowGraph graph = Injector.of(common).getInstance(DataflowGraph.class);
 
-		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
+		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfId("items",
 				TestItem.class, Long.class, new TestKeyFunction(), new TestComparator()));
 
-		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
+		DatasetConsumerOfId<TestItem> consumerNode = consumerOfId(items, "result");
 
-		consumerNode.compileInto(graph);
+		consumerNode.channels(DataflowContext.of(graph));
 
 		await(graph.execute()
 				.whenComplete(assertComplete($ -> {

@@ -4,10 +4,11 @@ import io.datakernel.codec.StructuredCodec;
 import io.datakernel.config.Config;
 import io.datakernel.csp.binary.ByteBufsCodec;
 import io.datakernel.dataflow.dataset.Dataset;
-import io.datakernel.dataflow.dataset.impl.DatasetListConsumer;
+import io.datakernel.dataflow.dataset.impl.DatasetConsumerOfId;
 import io.datakernel.dataflow.di.BinarySerializerModule.BinarySerializerLocator;
 import io.datakernel.dataflow.di.CodecsModule.Subtypes;
 import io.datakernel.dataflow.di.DataflowModule;
+import io.datakernel.dataflow.graph.DataflowContext;
 import io.datakernel.dataflow.graph.DataflowGraph;
 import io.datakernel.dataflow.graph.Partition;
 import io.datakernel.dataflow.node.Node;
@@ -185,7 +186,7 @@ public class DataflowServerTest {
 		DataflowClient client = injector.getInstance(DataflowClient.class);
 		DataflowGraph graph = injector.getInstance(DataflowGraph.class);
 
-		Dataset<String> items = datasetOfList("items", String.class);
+		Dataset<String> items = datasetOfId("items", String.class);
 		Dataset<StringCount> mappedItems = map(items, new TestMapFunction(), StringCount.class);
 		Dataset<StringCount> reducedItems = splitSortReduce_Repartition_Reduce(mappedItems, new TestReducer(), new TestKeyFunction(), new TestComparator());
 		Collector<StringCount> collector = new Collector<>(reducedItems, client);
@@ -207,10 +208,10 @@ public class DataflowServerTest {
 
 		DataflowGraph graph = injector.getInstance(DataflowGraph.class);
 
-		Dataset<String> items = datasetOfList("items", String.class);
+		Dataset<String> items = datasetOfId("items", String.class);
 		Dataset<String> sorted = repartition_Sort(localSort(items, String.class, new StringFunction(), new TestComparator()));
-		DatasetListConsumer<?> consumerNode = listConsumer(sorted, "result");
-		consumerNode.compileInto(graph);
+		DatasetConsumerOfId<String> consumerNode = consumerOfId(sorted, "result");
+		consumerNode.channels(DataflowContext.of(graph));
 
 		System.out.println(graph);
 		return graph.execute();
