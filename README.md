@@ -2,6 +2,10 @@
 [![Apache license](https://img.shields.io/badge/license-apache2-green.svg)](https://github.com/softindex/datakernel/blob/master/LICENSE)
 [![Twitter](https://img.shields.io/badge/twitter-%40datakernel__io-38A1F3.svg)](https://twitter.com/datakernel_io)
 
+## Project status
+Please note that DataKernel framework was **massively improved and restructured** into a new project named **[ActiveJ](https://github.com/activej/activej)**. 
+DataKernel **will not be maintained** anymore. We highly recommend you to migrate to **ActiveJ**. It's even more streamlined, convenient, and powerful!
+
 ## Introduction
 
 DataKernel is a full-featured alternative web and big data Java framework built from the ground up. It does not use Netty, Jetty, Spring/Guice DI, RxJava, etc. Instead, it features a full application stack: Event Loop, Promises, HTTP, DI, and others, including decentralized big-data technologies and map-reduce algorithms.
