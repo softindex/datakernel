@@ -4,7 +4,7 @@
 
 ## Project status
 Please note that DataKernel framework was **massively improved and restructured** into a new project named **[ActiveJ](https://github.com/activej/activej)**. 
-DataKernel **will not be maintained** anymore. We highly recommend you to migrate to **ActiveJ**. It's even more streamlined, convenient, and powerful!
+Now it's even more streamlined, convenient, and powerful! We highly recommend you to migrate to **ActiveJ**. 
 
 ## Introduction
 
