@@ -919,7 +919,7 @@ public final class Cube implements ICube, OTState<CubeDiff>, Initializable<Cube>
 
 		RecordFunction createRecordFunction() {
 			return ClassBuilder.create(queryClassLoader, RecordFunction.class)
-					.withClassKey(resultClass)
+					.withClassKey(resultClass, recordScheme.getFields())
 					.withMethod("copyAttributes",
 							sequence(expressions -> {
 								for (String field : recordScheme.getFields()) {
